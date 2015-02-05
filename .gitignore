@@ -1,0 +1,14 @@
+.project
+.settings
+.classpath
+.gradle
+.idea
+*.iml
+*.ipr
+*.iws
+.DS_Store
+/build
+*/build
+out/
+*/bin/
+*/conf/jobs/
