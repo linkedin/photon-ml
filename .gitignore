@@ -12,3 +12,15 @@
 out/
 */bin/
 */conf/jobs/
+.project
+.settings
+.classpath
+.gradle
+.idea
+*.iml
+*.ipr
+*.iws
+/build
+*/build
+out/
+*/bin/

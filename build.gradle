@@ -1,24 +1,7 @@
 apply plugin: 'li-product'
 
 subprojects {
-  configurations.all {
-    // Brought in by azkaban2, but not needed
-    exclude group: 'commons-dbutils'
-    exclude group: 'commons-fileupload'
-    exclude group: 'commons-pool'
-    exclude group: 'com.h2database'
-    exclude group: 'mysql'
-    exclude group: 'com.google.collections', module: 'google-collections'
-    exclude group: 'kafka', module: 'kafka'
-    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-      // Brought in by azkaban2
-      if((details.requested.group == 'org.codehaus.jackson')) {
-        details.useVersion '1.9.13'
-      }
-    }
-  }
   plugins.withType(JavaPlugin) {
-    sourceCompatibility = 1.6
     dependencies {
       // dependency defined in product_spec.json
       testCompile spec.external.testng
@@ -26,15 +9,6 @@ subprojects {
 
     test {
       useTestNG()
-    }
-  }
-
-  tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation"]
-    scalaCompileOptions.useAnt = false
-    configure(scalaCompileOptions.forkOptions) {
-      memoryMaximumSize = '1g'
-      jvmArgs = ['-XX:MaxPermSize=1g']
     }
   }
 }

@@ -1,23 +1,5 @@
-apply plugin: com.linkedin.ligradle.scala.LiScalaCrossBuildPlugin // can't be applied by id because of GRADLE-2914
+def modules = ['demo'] /* the name of the modules to use */
 
-def modules = ['mlease', 'azkaban-util']
-scalaCrossBuild {
-  defaultScalaVersion '2.10.4'
-  targetScalaVersions '2.10.4'
-  /* NOTE: this is simply saying don't cross build anything. The latest li-scala in RUM 3.16.19 is problematic (TOOLS-53150)
-   * We should revist this problem when actually cross-building a module (right now we have none), and make sure li-scala
-   * cross-building does not cause any problem.
-   */
-  projectsToNotCrossBuild modules
-  // discoverProjects fileTree(dir: '.', includes: [])
-}
-// need rum plugins on the classpath
-buildscript {
-  gradle.ext.addArtifactory(repositories)
-  dependencies {
-    classpath "com.linkedin.rum:product-plugins:$gradle.ext.rumVersion"
-  }
-}
 modules.each { module ->
   if (!file(module).directory) {
     throw new GradleException("Module '$module' specified in the settings.gradle file must be a valid directory in the root project.")
