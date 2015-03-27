@@ -1,4 +1,6 @@
 apply plugin: 'li-product'
+apply plugin: 'li-jacoco-product'
+apply plugin: 'li-findbugs-product'
 
 subprojects {
   configurations.all {
@@ -17,15 +19,18 @@ subprojects {
       }
     }
   }
-  plugins.withType(JavaPlugin) {
-    sourceCompatibility = 1.6
-    dependencies {
-      // dependency defined in product_spec.json
-      testCompile spec.external.testng
-    }
 
+  plugins.withType(JavaPlugin) {
     test {
       useTestNG()
+
+      afterSuite { desc, result ->
+        if (!desc.parent) {
+          println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
+        }
+      }
+
+      systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
     }
   }
 
@@ -34,7 +39,6 @@ subprojects {
     scalaCompileOptions.useAnt = false
     configure(scalaCompileOptions.forkOptions) {
       memoryMaximumSize = '1g'
-      jvmArgs = ['-XX:MaxPermSize=1g']
     }
   }
 }
