@@ -24,6 +24,11 @@ subprojects {
     test {
       useTestNG()
 
+      options {
+        parallel = 'methods'
+        threadCount = 4
+      }
+
       afterSuite { desc, result ->
         if (!desc.parent) {
           println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
@@ -32,13 +37,64 @@ subprojects {
 
       systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
     }
+
+    dependencies {
+      testCompile spec.external."testng"
+      testCompile project(":mlease-test$scalaSuffix")
+      testRuntime spec.external."jcommander"
+      testRuntime spec.external."netlib"
+      testRuntime spec.external."netlib-java"
+      testRuntime spec.external."jblas"
+      testRuntime spec.external."arpack"
+      testRuntime spec.external."slf4j-api"
+      testRuntime spec.external."slf4j-log4j12"
+      testRuntime spec.external."guava"
+      testRuntime spec.external."commonsLang3"
+      testRuntime spec.external."spark-network-shuffle$scalaSuffix"
+      testRuntime spec.external."spark-network-common$scalaSuffix"
+      testRuntime spec.external."typesafe-config"
+      testRuntime spec.external."akka-remote$scalaSuffix"
+      testRuntime spec.external."akka-slf4j$scalaSuffix"
+      testRuntime spec.external."spark-protobuf"
+      testRuntime spec.external."commons-logging"
+      testRuntime spec.external."commons-collections"
+      testRuntime spec.external."commons-configuration"
+      testRuntime spec.external."commons-lang"
+      testRuntime spec.external."servlet"
+      testRuntime spec.external."metrics-core"
+      testRuntime spec.external."metrics-graphite"
+      testRuntime spec.external."metrics-json"
+      testRuntime spec.external."metrics-jvm"
+      testRuntime spec.external."jetty"
+      testRuntime spec.external."netty3"
+      testRuntime spec.external."netty4"
+      testRuntime spec.external."jacksonAnnotations"
+      testRuntime spec.external."jacksonCore"
+      testRuntime spec.external."jacksonDatabind"
+      testRuntime spec.external."snappy"
+      testRuntime spec.external."mesos"
+      testRuntime spec.external."protobuf"
+    }
+  }
+
+  configurations {
+    all {
+      resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if((details.requested.group == 'org.eclipse.jetty')) {
+          details.useTarget spec.external.jetty
+        }
+      }
+    }
   }
 
   tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation"]
+    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-explaintypes", "-g:vars"]
+
     scalaCompileOptions.useAnt = false
+
     configure(scalaCompileOptions.forkOptions) {
       memoryMaximumSize = '1g'
     }
+    configurations.zinc.transitive = true
   }
 }

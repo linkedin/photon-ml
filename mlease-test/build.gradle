@@ -21,29 +21,9 @@ repositories {
   }
 }
 dependencies {
-  compile(spec.external."scalaCompiler_2.10")
-  compile(spec.external."scalaLibrary_2.10")
-  compile(spec.external."scalaReflect_2.10")
-  compile(spec.external."spark-core")
-  compile(spec.external."breeze-core")
-  compile(spec.product.'li-hadoop'.'hadoop-mapreduce-client-core')
-  compile(spec.product.'li-hadoop'.'hadoop-common')
-  compile(spec.product.'li-hadoop'.'hadoop-auth')
-  compile(spec.product.'li-hadoop'.'hadoop-client')
-
-  compile(spec.external.commonsMath3)
-  compile(spec.external.log4j)
-  compile(spec.external."slf4j-api")
-  compile(spec.external."akka-actor")
-  compile(spec.external."akka-remote")
-  compile(spec.external."akka-slf4j")
-}
-
-configurations {
-  all*.transitive = false
-
-}
-
-project.plugins.withType(ScalaPlugin) {
-  configurations.zinc.transitive = true
+  compile(spec.external."scalaCompiler$scalaSuffix")
+  compile(spec.external."scalaLibrary$scalaSuffix")
+  compile(spec.external."scalaReflect$scalaSuffix")
+  compile(spec.external."spark-core$scalaSuffix")
+  compile(spec.external."breeze-core$scalaSuffix")
 }
