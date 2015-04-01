@@ -1,6 +1,7 @@
 apply plugin: 'li-product'
 apply plugin: 'li-jacoco-product'
 apply plugin: 'li-findbugs-product'
+apply plugin: 'li-checkstyle-product'
 
 subprojects {
   configurations.all {
@@ -46,5 +47,15 @@ subprojects {
       memoryMaximumSize = '1g'
     }
     configurations.zinc.transitive = true
+  }
+}
+
+allprojects {
+  tasks.withType(JacocoReport) {
+    afterEvaluate {
+      reports.html.enabled = true
+      reports.xml.enabled = true
+      reports.csv.enabled = true
+    }
   }
 }
