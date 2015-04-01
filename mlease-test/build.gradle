@@ -15,4 +15,6 @@ dependencies {
   compile(spec.external."scalaLibrary$scalaSuffix")
   compile(spec.external."scalaReflect$scalaSuffix")
   compile(spec.external."spark-core$scalaSuffix")
+  compile(spec.external."breeze-core$scalaSuffix")
+  compile(spec.external."breeze-macro$scalaSuffix")
 }
