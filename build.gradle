@@ -12,12 +12,6 @@ subprojects {
     exclude group: 'mysql'
     exclude group: 'com.google.collections', module: 'google-collections'
     exclude group: 'kafka', module: 'kafka'
-    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-      // Brought in by azkaban2
-      if((details.requested.group == 'org.codehaus.jackson')) {
-        details.useVersion '1.9.13'
-      }
-    }
   }
 
   plugins.withType(JavaPlugin) {
@@ -43,7 +37,6 @@ subprojects {
       testCompile project(":mlease-test$scalaSuffix")
       testRuntime spec.external."jcommander"
       testRuntime spec.external."netlib"
-      testRuntime spec.external."netlib-java"
       testRuntime spec.external."jblas"
       testRuntime spec.external."arpack"
       testRuntime spec.external."slf4j-api"
@@ -74,16 +67,6 @@ subprojects {
       testRuntime spec.external."snappy"
       testRuntime spec.external."mesos"
       testRuntime spec.external."protobuf"
-    }
-  }
-
-  configurations {
-    all {
-      resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-        if((details.requested.group == 'org.eclipse.jetty')) {
-          details.useTarget spec.external.jetty
-        }
-      }
     }
   }
 
