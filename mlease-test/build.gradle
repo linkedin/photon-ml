@@ -17,4 +17,5 @@ dependencies {
   compile(spec.external."spark-core$scalaSuffix")
   compile(spec.external."breeze-core$scalaSuffix")
   compile(spec.external."breeze-macro$scalaSuffix")
+  compile(spec.external.commonsMath3)
 }
