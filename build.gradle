@@ -29,7 +29,8 @@ subprojects {
           println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
         }
       }
-
+      // Forward standard out from child JVMs to the console
+      testLogging.showStandardStreams = true;
       systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
     }
 
