@@ -10,12 +10,17 @@ compileScala {
   ]
 }
 
+jar {
+  from sourceSets.test.output
+}
+
 dependencies {
-  compile(spec.external."scalaCompiler$scalaSuffix")
-  compile(spec.external."scalaLibrary$scalaSuffix")
-  compile(spec.external."scalaReflect$scalaSuffix")
-  compile(spec.external."spark-core$scalaSuffix")
-  compile(spec.external."breeze-core$scalaSuffix")
-  compile(spec.external."breeze-macro$scalaSuffix")
+  testCompile(spec.external."scalaCompiler$scalaSuffix")
+  testCompile(spec.external."scalaLibrary$scalaSuffix")
+  testCompile(spec.external."scalaReflect$scalaSuffix")
+  testCompile(spec.external."spark-core$scalaSuffix")
+  testCompile(spec.external."breeze-core$scalaSuffix")
+  testCompile(spec.external."breeze-macro$scalaSuffix")
+  testCompile(spec.external."commons-io")
   compile(spec.external.commonsMath3)
 }
