@@ -11,6 +11,7 @@ compileScala {
 }
 
 jar {
+  classifier "test"
   from sourceSets.test.output
 }
 
@@ -22,5 +23,5 @@ dependencies {
   testCompile(spec.external."breeze-core$scalaSuffix")
   testCompile(spec.external."breeze-macro$scalaSuffix")
   testCompile(spec.external."commons-io")
-  compile(spec.external.commonsMath3)
+  testCompile(spec.external.commonsMath3)
 }
