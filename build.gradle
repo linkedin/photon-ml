@@ -37,6 +37,12 @@ subprojects {
     dependencies {
       testCompile spec.external."testng"
     }
+
+    // TODO: Currently spark-shell on Nertz runs on Java 1.7, so 1.8 build doesn't run correctly on spark-shell.
+    // TODO: Ticket about Java version of Spark on Nertz:
+    // TODO: https://jira01.corp.linkedin.com:8443/browse/HADOOP-6994
+    // TODO: Should update to 1.8 after Spark on Java 1.8 is available.
+    sourceCompatibility = 1.7
   }
 
   tasks.withType(ScalaCompile) {
