@@ -1,27 +1,33 @@
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.io.LogWriter
-import com.linkedin.photon.ml.stat.BasicStatistics
+import java.io.{OutputStreamWriter, PrintWriter}
+
+import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
+import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
+import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticToPhysicalReportTransformer, DiagnosticReport}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
+import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType._
-import com.linkedin.photon.ml.supervised.model.ModelTracker
-import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.{BasicStatistics, BasicStatisticalSummary}
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, BinaryClassifier}
 import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
 import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, LinearRegressionModel, Regression}
 import com.linkedin.photon.ml.util.Utils
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.xml.PrettyPrinter
 
 /**
  * Driver for the MLEase core machine learning algorithms. The processing done in the driver include three main components:
@@ -63,8 +69,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
   private[this] var featureNum: Int = -1
   private[this] var trainingDataNum: Int = -1
   private[this] var summaryOption: Option[BasicStatisticalSummary] = None
-  private[this] var weightModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
-  private[this] var weightModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
+  private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
+  private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
+  private[this] var diagnostic:DiagnosticReport = null
 
   def numFeatures(): Int = {
     assertEqualOrAfterDriverStage(DriverStage.PREPROCESSED)
@@ -99,7 +106,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
     val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT).toString
     Utils.deleteHDFSDir(finalModelsDir, sc.hadoopConfiguration)
-    suite.writeModelsInText(sc, weightModelTuples, finalModelsDir.toString)
+    suite.writeModelsInText(sc, lambdaModelTuples, finalModelsDir.toString)
 
     logger.println(s"Final models are written to: $finalModelsDir")
   }
@@ -129,6 +136,10 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       summarizeFeatures(summarizationDir)
     }
 
+    diagnostic = new DiagnosticReport(
+      new SystemReport(suite.featureKeyToIdMap, params, summaryOption),
+      new ListBuffer[ModelDiagnosticReport[GeneralizedLinearModel]]())
+
     updateStage(DriverStage.PREPROCESSED)
   }
 
@@ -155,7 +166,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
     // The sole purpose of optimizationStateTrackersMapOption is used for logging. When we have better logging support, we should
     // remove stop returning optimizationStateTrackerMapOption
-    val (_weightModelTuples, _weightModelTrackerTuplesOption) = ModelTraining.trainGeneralizedLinearModel(
+    val (_lambdaModelTuples, _lambdaModelTrackerTuplesOption) = ModelTraining.trainGeneralizedLinearModel(
       trainingData = trainingData,
       taskType = params.taskType,
       optimizerType = params.optimizerType,
@@ -167,13 +178,13 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
       constraintMap = suite.constraintFeatureMap)
-    weightModelTuples = _weightModelTuples
-    weightModelTrackerTuplesOption = _weightModelTrackerTuplesOption
+    lambdaModelTuples = _lambdaModelTuples
+    lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
 
     val trainingTime = (System.currentTimeMillis() - startTimeForTraining) * 0.001
     logger.println(f"model training finished, time elapsed: $trainingTime%.3f(s)")
 
-    weightModelTrackerTuplesOption.foreach { modelTrackersMap =>
+    lambdaModelTrackerTuplesOption.foreach { modelTrackersMap =>
       logger.println(s"optimization state tracker information:")
       modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
         logger.println(s"model with regularization weight $regularizationWeight:")
@@ -203,9 +214,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       val startTimeForValidating = System.currentTimeMillis()
       if (params.validatePerIteration) {
         // Calculate metrics for all (models, iterations)
-        weightModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
-          weightModelTrackerTuples.foreach { case (weight, modelTracker) =>
-            logger.println(s"Models with regWeight = $weight:")
+        lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
+          weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
+            logger.println(s"Models with lambda = $lambda:")
             params.taskType match {
               case LINEAR_REGRESSION =>
                 val rmses = modelTracker.models.map(model => Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression]))
@@ -222,22 +233,56 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         }
       } else {
         // Calculate metrics for all models
-        weightModelTuples.foreach { case (weight, model: GeneralizedLinearModel) =>
-          logger.println(s"Model with regWeight = $weight:")
+        lambdaModelTuples.foreach { case (lambda, model: GeneralizedLinearModel) =>
+          val chapter: String = f"${MODEL_DIAGNOSTIC_CHAPTER} lambda=$lambda%.06g"
+          val sections = new mutable.ListBuffer[SectionPhysicalReport]()
+
+          logger.println(s"Model with lambda = $lambda:")
           params.taskType match {
             case LINEAR_REGRESSION =>
               val rmse = Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression])
-              logger.println(s"Validating RMSE: $rmse")
+              logger.println(s"Validation set RMSE: $rmse")
             case POISSON_REGRESSION =>
               val rmse = Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression])
-              logger.println(s"Validating RMSE: $rmse")
+              logger.println(s"Validation set RMSE: $rmse")
             case LOGISTIC_REGRESSION =>
               val auc = Evaluation.getBinaryClassificationMetrics(validatingData, model.asInstanceOf[BinaryClassifier]).areaUnderROC()
-              logger.println(s"Validating AUC: $auc")
+              logger.println(s"Validation set AUC: $auc")
             case _ => throw new IllegalArgumentException(s"unrecognized task type ${params.taskType}")
           }
         }
       }
+
+      if (null != diagnostic) {
+        val hlDiagnostic = new HosmerLemeshowDiagnostic()
+
+        diagnostic.modelReports ++= lambdaModelTuples.map(x => {
+          val (lambda, model) = x
+
+          model match {
+            case lm: LogisticRegressionModel =>
+              new ModelDiagnosticReport[GeneralizedLinearModel](
+                model,
+                lambda,
+                lm.getClass.getName,
+                suite.featureKeyToIdMap,
+                summaryOption,
+                Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)))
+
+            case glm: GeneralizedLinearModel =>
+              new ModelDiagnosticReport[GeneralizedLinearModel](
+                model,
+                lambda,
+                glm.getClass.getName,
+                suite.featureKeyToIdMap,
+                summaryOption,
+                None)
+          }
+        })
+
+        writeDiagnostics(params.outputDir, REPORT_FILE, diagnostic)
+      }
+
       logger.flush()
 
       val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
@@ -248,13 +293,13 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       /* Select the best model using the validating data set and stores the best model as text file */
       val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
         case LINEAR_REGRESSION =>
-          val models = weightModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
+          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
           ModelSelection.selectBestLinearRegressionModel(models, validatingData)
         case POISSON_REGRESSION =>
-          val models = weightModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
+          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
           ModelSelection.selectBestPoissonRegressionModel(models, validatingData)
         case LOGISTIC_REGRESSION =>
-          val models = weightModelTuples.map(x => (x._1, x._2.asInstanceOf[BinaryClassifier]))
+          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[BinaryClassifier]))
           ModelSelection.selectBestBinaryClassifier(models, validatingData)
       }
 
@@ -304,6 +349,13 @@ object Driver {
   val LOW_PRIORITY_STORAGE_LEVEL = StorageLevel.DISK_ONLY
   val LEARNED_MODELS_TEXT = "learned-models-text"
   val BEST_MODEL_TEXT = "best-model-text"
+  val REPORT_FILE = "diagnostic.html"
+  val SUMMARY_CHAPTER = "Feature Summary"
+  val MODEL_DIAGNOSTIC_CHAPTER = "Model Analysis"
+
+  // Control pretty printer output
+  val MAX_WIDTH = 120
+  val INDENT = 2
 
   def main(args: Array[String]): Unit = {
     /* Parse the parameters from command line, should always be the 1st line in main*/
@@ -318,5 +370,31 @@ object Driver {
 
     logger.close()
     sc.stop()
+  }
+
+  private def writeDiagnostics(outputDir: String, file: String, diagReport: DiagnosticReport): Unit = {
+    val xform = new DiagnosticToPhysicalReportTransformer()
+    val doc = xform.transform(diagReport)
+    val rs = new HTMLRenderStrategy()
+    val rendered = rs.locateRenderer(doc).render(doc)
+
+    val hdfs = FileSystem.get(new Configuration())
+    try {
+      val fileStream = hdfs.create(new Path(s"$outputDir/$file"), true)
+      val writer = new PrintWriter(new OutputStreamWriter(fileStream))
+
+      try {
+        val pp = new PrettyPrinter(MAX_WIDTH, INDENT)
+        val buffer = new StringBuilder()
+        pp.format(rendered, buffer)
+        writer.println(buffer.toString)
+        writer.flush()
+        writer.close()
+      } finally {
+        fileStream.close()
+      }
+    } finally {
+      hdfs.close()
+    }
   }
 }

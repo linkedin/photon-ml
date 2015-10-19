@@ -283,14 +283,16 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val varVector = buildSparseVector(dim)((0, 1d), (3, 7d), (4, 0.5d))
 
 
-    val summary = BasicStatisticalSummary(mean = meanVector,
+    val summary = BasicStatisticalSummary(
+      mean = meanVector,
       variance = varVector,
       count = 101L,
       numNonzeros = numNonzeros,
       max = maxVector,
       min = minVector,
       normL1 = normL1Vector,
-      normL2 = normL2Vector)
+      normL2 = normL2Vector,
+      meanAbs = meanVector)
 
     val suite = new GLMSuite(fieldNamesType = FieldNamesType.TRAINING_EXAMPLE, addIntercept = true, constraintString = None)
     suite.featureKeyToIdMap = Map(("f0" + GLMSuite.DELIMITER -> 0), ("f1" + GLMSuite.DELIMITER + "t1" -> 1),
