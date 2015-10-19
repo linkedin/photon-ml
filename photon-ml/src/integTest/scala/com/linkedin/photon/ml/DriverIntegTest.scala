@@ -1,5 +1,7 @@
 package com.linkedin.photon.ml
 
+import java.util.UUID
+
 import OptionNames._
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -193,7 +195,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testRunWithDataValidation(): Unit = sparkTestSelfServeContext("testRunWithDataValidation") {
-    val tmpDir = getTmpDir + "/testRunWithDataValidation"
+    val tmpDir = s"/tmp/${UUID.randomUUID.toString}/testRunWithDataValidation"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir, isValidating = true)
 

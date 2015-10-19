@@ -10,8 +10,8 @@ import scala.xml._
  */
 class SimpleTextToHTMLRenderer(namespaceBinding: NamespaceBinding, htmlPrefix: String, svgPrefix: String) extends SpecificRenderer[SimpleTextPhysicalReport, Node] {
   def render(text: SimpleTextPhysicalReport): Node = {
-    val paragraphs = text.text.split("\\R+").map(contents =>
-      new Elem(htmlPrefix, "p", getAttributes(text.getId), namespaceBinding, true, new Text(text.text)))
+    val paragraphs = text.text.split("\\n+").map(contents =>
+      new Elem(htmlPrefix, "p", getAttributes(text.getId), namespaceBinding, true, new Text(contents)))
     new Elem(htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", text.getId.toString, Null), namespaceBinding, true, paragraphs: _*)
   }
 
