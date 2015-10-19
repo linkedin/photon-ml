@@ -1,8 +1,8 @@
 package com.linkedin.photon.ml
 
 import OptionNames._
-import com.linkedin.mlease.spark.io.FieldNamesType
-import com.linkedin.mlease.spark.optimization.RegularizationType
+import com.linkedin.photon.ml.io.FieldNamesType
+import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType._
 import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType}

@@ -3,7 +3,7 @@ package com.linkedin.photon.ml.function
 import java.util.Random
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import com.linkedin.mlease.spark.optimization._
+import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.test.SparkTestUtils

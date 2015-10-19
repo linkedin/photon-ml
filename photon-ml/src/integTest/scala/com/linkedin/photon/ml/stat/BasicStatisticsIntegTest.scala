@@ -4,7 +4,7 @@ import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir, Assertions}
 import Assertions.assertIterableEqualsWithTolerance
-import com.linkedin.mlease.spark.test.SparkTestUtils
+import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.data.LabeledPoint
 import org.testng.Assert._
 import org.testng.annotations.Test

@@ -1,9 +1,7 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import breeze.optimize.DiffFunction
 import breeze.optimize.{DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS, OWLQN => BreezeOWLQN}
-import com.linkedin.mlease.spark.function.L1RegularizationTerm
 import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.function.{DiffFunction, L1RegularizationTerm}
 import org.apache.spark.Logging

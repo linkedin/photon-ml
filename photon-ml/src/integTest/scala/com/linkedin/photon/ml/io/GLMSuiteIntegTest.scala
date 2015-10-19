@@ -4,9 +4,7 @@ import java.io.File
 
 import breeze.linalg.SparseVector
 import FieldNamesType.FieldNamesType
-import com.linkedin.mlease.spark.test.SparkTestUtils
 import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, TrainingExampleAvro}
-import com.linkedin.photon.ml.io.GLMSuiteTest
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}
 import org.apache.avro.Schema

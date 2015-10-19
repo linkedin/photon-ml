@@ -1,7 +1,7 @@
 apply plugin: com.linkedin.ligradle.scala.LiScalaCrossBuildPlugin // can't be applied by id because of GRADLE-2914
 
 def modulesToNotCrossBuild = []
-def modulesToCrossBuild = ['mlease', 'photon-test', 'azkaban-util']
+def modulesToCrossBuild = ['photon-ml', 'photon-test', 'azkaban-util']
 scalaCrossBuild {
   defaultScalaVersion '2.10.4'
   targetScalaVersions '2.10.4'

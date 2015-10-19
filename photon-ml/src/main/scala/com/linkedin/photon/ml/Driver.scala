@@ -1,11 +1,11 @@
 package com.linkedin.photon.ml
 
-import com.linkedin.mlease.spark.io.LogWriter
-import com.linkedin.mlease.spark.stat.BasicStatistics
+import com.linkedin.photon.ml.io.LogWriter
+import com.linkedin.photon.ml.stat.BasicStatistics
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType._
-import com.linkedin.mlease.spark.supervised.model.ModelTracker
-import com.linkedin.mlease.spark.supervised.regression.LinearRegressionModel
+import com.linkedin.photon.ml.supervised.model.ModelTracker
+import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
 import com.linkedin.photon.ml.normalization.NormalizationType

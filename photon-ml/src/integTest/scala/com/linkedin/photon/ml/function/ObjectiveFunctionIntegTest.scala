@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.function
 
-import com.linkedin.mlease.spark.optimization._
+import com.linkedin.photon.ml.optimization._
 
 import java.util.Random
 

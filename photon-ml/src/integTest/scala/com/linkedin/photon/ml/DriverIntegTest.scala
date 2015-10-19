@@ -1,14 +1,14 @@
 package com.linkedin.photon.ml
 
 import OptionNames._
-import com.linkedin.mlease.spark.io.FieldNamesType
+import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import OptimizerType.OptimizerType
-import com.linkedin.mlease.spark.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.RegularizationType
 import RegularizationType.RegularizationType
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType.TaskType
-import com.linkedin.mlease.spark.test.SparkTestUtils
+import com.linkedin.photon.ml.test.SparkTestUtils
 import breeze.linalg.Vector
 import java.io.File
 

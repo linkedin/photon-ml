@@ -4,7 +4,7 @@ import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
 import scala.language.existentials
 
 // existentials is imported to suppress the warning message:
-// photon_trunk/mlease/src/main/scala/com/linkedin/mlease/spark/supervised/model/ModelTracker.scala:11: inferred existential type Option[(com.linkedin.mlease.spark.optimization.OptimizationStatesTracker, Array[_$1])] forSome { type _$1 <: com.linkedin.mlease.spark.supervised.model.GeneralizedLinearModel }, which cannot be expressed by wildcards,  should be enabled
+// photon_trunk/mlease/src/main/scala/com/linkedin/mlease/spark/supervised/model/ModelTracker.scala:11: inferred existential type Option[(com.linkedin.photon.ml.optimization.OptimizationStatesTracker, Array[_$1])] forSome { type _$1 <: com.linkedin.mlease.spark.supervised.model.GeneralizedLinearModel }, which cannot be expressed by wildcards,  should be enabled
 // by making the implicit value scala.language.existentials visible.
 // This can be achieved by adding the import clause 'import scala.language.existentials'
 // or by setting the compiler option -language:existentials.

@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.base
 
-import com.linkedin.mlease.spark.diagnostics.reporting.PhysicalReport
+import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.{Renderer, SpecificRenderer, PhysicalReport}
 
 import scala.reflect.ClassTag

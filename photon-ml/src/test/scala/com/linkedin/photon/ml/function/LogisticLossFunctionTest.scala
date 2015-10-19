@@ -1,17 +1,15 @@
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{DenseVector}
-import com.linkedin.mlease.spark.data.LabeledPoint
+import breeze.linalg.DenseVector
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.Assertions
 import Assertions._
-import com.linkedin.photon.ml.function.LogisticLossFunction
 import org.testng.Assert._
 import org.testng.annotations.Test
 
 /**
  * Test the functions in [[LogisticLossFunction]]
- * More tests by numerical methods please see com.linkedin.mlease.spark.function.ObjectiveFunctionTest
+ * More tests by numerical methods please see com.linkedin.photon.ml.function.ObjectiveFunctionTest
  * @author yali
  */
 class LogisticLossFunctionTest {

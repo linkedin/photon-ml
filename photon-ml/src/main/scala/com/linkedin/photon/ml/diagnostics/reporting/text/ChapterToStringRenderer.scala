@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.text
 
-import com.linkedin.mlease.spark.diagnostics.reporting._
+import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
 import com.linkedin.photon.ml.diagnostics.reporting._
 

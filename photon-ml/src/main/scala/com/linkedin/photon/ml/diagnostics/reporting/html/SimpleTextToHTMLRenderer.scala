@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.mlease.spark.diagnostics.reporting.SimpleTextPhysicalReport
+import com.linkedin.photon.ml.diagnostics.reporting.SimpleTextPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, SpecificRenderer}
 
 import scala.xml._

@@ -1,14 +1,10 @@
 package com.linkedin.photon.ml
 
-import com.linkedin.mlease.spark.data._
-import com.linkedin.photon.ml.data
-import com.linkedin.photon.ml.optimization.{TRON, LBFGS, OptimizerType, RegularizationContext}
+import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, RegularizationContext}
 import OptimizerType.OptimizerType
-import com.linkedin.mlease.spark.optimization.TRON
+import com.linkedin.photon.ml.optimization.TRON
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType._
-import com.linkedin.mlease.spark.supervised.model.ModelTracker
-import com.linkedin.mlease.spark.supervised.regression.LinearRegressionAlgorithm
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary

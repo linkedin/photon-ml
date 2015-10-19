@@ -1,8 +1,8 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.mlease.spark.optimization.L2RegularizationContext
-import com.linkedin.mlease.spark.supervised.classification.LogisticRegressionModel
+import com.linkedin.photon.ml.optimization.L2RegularizationContext
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.ModelTraining
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization.{OptimizerType, L2RegularizationContext}
