@@ -1,7 +1,5 @@
 package com.linkedin.photon.ml.io
 
-import FieldNamesType.NONE
-import com.linkedin.photon.ml.io.GLMSuiteIntegTest
 import com.linkedin.photon.ml.test.CommonTestUtils
 import com.linkedin.photon.ml.util.Utils
 import org.testng.Assert

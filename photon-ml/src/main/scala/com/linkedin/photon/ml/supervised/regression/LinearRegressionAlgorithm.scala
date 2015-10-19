@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.mlease.spark.function.TwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{SquaredLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}

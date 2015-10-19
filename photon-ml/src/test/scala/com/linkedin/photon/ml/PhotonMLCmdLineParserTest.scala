@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml
 
 import OptionNames._
-import com.linkedin.mlease.spark.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}

@@ -33,7 +33,7 @@ dependencies {
   compile(spec.product."photon-schemas"."photon-schemas")
 
 
-  testCompile(project(":mlease-test$scalaSuffix"))
+  testCompile(project(":photon-test$scalaSuffix"))
   testRuntime(spec.external."breeze-core$scalaSuffix")
   testRuntime(spec.external."breeze-macro$scalaSuffix")
 }

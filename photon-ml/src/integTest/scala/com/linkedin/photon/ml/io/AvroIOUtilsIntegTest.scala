@@ -2,7 +2,7 @@ package com.linkedin.photon.ml.io
 
 import java.io.File
 
-import com.linkedin.mlease.spark.test.SparkTestUtils
+import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.avro.generated.FeatureAvro
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}
 import org.apache.avro.generic.GenericRecord

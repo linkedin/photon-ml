@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.mlease.spark.diagnostics.reporting._
+import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.{SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport}
 import scala.xml._
 

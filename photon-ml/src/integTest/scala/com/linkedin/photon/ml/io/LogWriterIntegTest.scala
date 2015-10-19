@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.io
 
-import com.linkedin.mlease.spark.test.SparkTestUtils
+import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}
 import org.apache.spark.SparkContext
 import org.testng.Assert.assertEquals

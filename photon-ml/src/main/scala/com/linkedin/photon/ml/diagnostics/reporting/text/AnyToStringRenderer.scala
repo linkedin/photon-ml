@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.text
 
-import com.linkedin.mlease.spark.diagnostics.reporting.PhysicalReport
+import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.{PhysicalReport, SpecificRenderer}
 
 /**

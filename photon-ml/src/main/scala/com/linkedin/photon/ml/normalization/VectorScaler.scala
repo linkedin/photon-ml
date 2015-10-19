@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import com.linkedin.mlease.spark.stat.BasicStatistics
+import com.linkedin.photon.ml.stat.BasicStatistics
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.{BasicStatistics, BasicStatisticalSummary}
 import org.apache.spark.rdd.RDD

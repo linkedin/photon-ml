@@ -5,7 +5,7 @@ import FieldNamesType.FieldNamesType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import OptimizerType.OptimizerType
 import RegularizationType.RegularizationType
-import com.linkedin.mlease.spark.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.RegularizationType

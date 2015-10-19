@@ -41,7 +41,7 @@ import com.linkedin.photon.ml.normalization.NormalizationType
  * @param jobName Job name of this spark application
  * @param constraintString A JSON string containing an array of maps specifying the box constraints on certain
  *                         coefficients, if any. Only keys from
- *                         {@see com.linkedin.mlease.spark.io.GLMSuite.ConstraintMapKeys} will be sought. Others if
+ *                         {@see com.linkedin.photon.ml.io.GLMSuite.ConstraintMapKeys} will be sought. Others if
  *                         specified will be ignored. The term is allowed to be a wildcard "*" in which case the bounds
  *                         are applied to all features with the specified name irrespective of the term. The name cannot
  *                         be a wildcard except for the special case where both name and term are wildcards so that one

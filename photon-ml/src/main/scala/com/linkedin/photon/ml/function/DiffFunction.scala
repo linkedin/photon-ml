@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-import com.linkedin.mlease.spark.data.LabeledPoint
+import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.data.{LabeledPoint, DataPoint}
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
 import com.linkedin.photon.ml.util.Utils

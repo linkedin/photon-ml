@@ -1,11 +1,11 @@
 package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
-import com.linkedin.mlease.spark.optimization._
-import com.linkedin.mlease.spark.supervised.classification.LogisticRegressionModel
-import com.linkedin.mlease.spark.supervised.model.GeneralizedLinearModel
-import com.linkedin.mlease.spark.supervised.regression.LinearRegressionModel
-import com.linkedin.mlease.spark.supervised.regression.PoissonRegressionModel
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
+import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationType

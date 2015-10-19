@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 
 /**
  * Encapsulates the logic for validating a model fit via an instance of
- * {@link com.linkedin.mlease.spark.supervised.GeneralizedLinearAlgorithm}.
+ * {@link com.linkedin.photon.ml.supervised.GeneralizedLinearAlgorithm}.
  *
  * It is expected that validateModel will be called before validateModelPredictions to try to
  * allow for fast(er) failure.

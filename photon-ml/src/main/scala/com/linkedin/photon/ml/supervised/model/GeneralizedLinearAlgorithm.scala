@@ -1,9 +1,9 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import com.linkedin.mlease.spark.data._
-import com.linkedin.mlease.spark.normalization._
-import com.linkedin.mlease.spark.optimization.RegularizationContext
+import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.normalization._
+import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization._
