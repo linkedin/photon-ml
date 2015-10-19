@@ -1,0 +1,43 @@
+{
+  "type" : "record",
+  "name" : "SimplifiedResponsePrediction",
+  "namespace" : "com.linkedin.lab.regression.avro",
+  "doc" : "Response prediction format truncated with the only field photon is expecting",
+  "fields" : [{
+    "name" : "response",
+    "type" : "double"
+  }, {
+    "name" : "features",
+    "type": {
+      "type": "array",
+      "items": {
+                 "type": "record",
+                 "name": "Feature",
+                 "namespace": "com.linkedin.lab.regression.avro",
+                 "fields": [
+                   {
+                     "name": "name",
+                     "type": "string"
+                   }, {
+                     "name": "term",
+                     "type": "string"
+                   }, {
+                     "name": "value",
+                     "type": "double"
+                   }
+                 ]
+               }
+    }
+  }, {
+    "name" : "weight",
+    "type" : "double",
+    "default": 1.0
+  }, {
+    "name" : "offset",
+    "type" : "double",
+    "default": 0.0
+  }, {
+    "name" : "randomTestField",
+    "type" : "string"
+  }]
+}
