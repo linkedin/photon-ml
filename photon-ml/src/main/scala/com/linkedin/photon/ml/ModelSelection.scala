@@ -1,9 +1,8 @@
 package com.linkedin.photon.ml
 
-import breeze.optimize.L2Regularization
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.PoissonLossFunction
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import org.apache.spark.rdd.RDD
 
@@ -11,6 +10,7 @@ import org.apache.spark.rdd.RDD
  * A collection of functions for model selection purpose
  * @author xazhang
  * @author dpeng
+ * @author bdrew
  */
 object ModelSelection
 {
@@ -21,12 +21,8 @@ object ModelSelection
    * @param validatingData The validating data
    * @return A tuple of the key and the best binary classifier model according to the evaluation metric
    */
-  def selectBestBinaryClassifier(binaryClassifiers: Iterable[(Double, BinaryClassifier)], validatingData: RDD[LabeledPoint]): (Double, BinaryClassifier) =
-  {
-    binaryClassifiers.map
-            { case (weight, classifier) =>
-              ((weight, classifier), Evaluation.getBinaryClassificationMetrics(validatingData, classifier).areaUnderROC())
-            }.toArray.sortBy(_._2).last._1
+  def selectBestLinearClassifier[M <: GeneralizedLinearModel with BinaryClassifier](binaryClassifiers: Iterable[(Double, M)], validatingData: RDD[LabeledPoint]): (Double, M) = {
+    selectModelByKey(binaryClassifiers, validatingData, Evaluation.AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS)
   }
 
   /**
@@ -37,10 +33,7 @@ object ModelSelection
    */
   def selectBestLinearRegressionModel(linearRegressionModels: Iterable[(Double, LinearRegressionModel)], validatingData: RDD[LabeledPoint]): (Double, LinearRegressionModel) =
   {
-    linearRegressionModels.map
-            { case (weight, regression) =>
-              ((weight, regression), Evaluation.computeRMSE(validatingData, regression))
-            }.toArray.sortBy(_._2).head._1
+    selectModelByKey(linearRegressionModels, validatingData, Evaluation.ROOT_MEAN_SQUARE_ERROR)
   }
 
   /**
@@ -51,10 +44,17 @@ object ModelSelection
    */
   def selectBestPoissonRegressionModel(poissonRegressionModels: Iterable[(Double, PoissonRegressionModel)], validatingData: RDD[LabeledPoint]): (Double, PoissonRegressionModel) =
   {
-    poissonRegressionModels.map
-            { case (weight, poissonRegression) =>
-              ((weight, poissonRegression), Evaluation.computeRMSE(validatingData, poissonRegression))
-            }.toArray.sortBy(_._2).head._1
+    // TODO:
+    // Change this to log loss
+    selectModelByKey(poissonRegressionModels, validatingData, Evaluation.ROOT_MEAN_SQUARE_ERROR)
+  }
+
+
+  private def selectModelByKey[M <: GeneralizedLinearModel](models:Iterable[(Double, M)], validatingData:RDD[LabeledPoint], metric:String): (Double, M) = {
+    val (_, bestLambda, bestModel) = models.map(x => {
+      (Evaluation.evaluate(x._2, validatingData).getOrElse(metric, -1.0), x._1, x._2)
+    }).toArray.sortBy(x => x._1).last
+    (bestLambda, bestModel)
   }
 }
 

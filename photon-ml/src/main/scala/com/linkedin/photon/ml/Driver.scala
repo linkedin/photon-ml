@@ -216,40 +216,24 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         // Calculate metrics for all (models, iterations)
         lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
           weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
-            logger.println(s"Models with lambda = $lambda:")
-            params.taskType match {
-              case LINEAR_REGRESSION =>
-                val rmses = modelTracker.models.map(model => Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression]))
-                logger.println(s"Validating RMSE per iteration:\n${rmses.mkString("\n")}")
-              case POISSON_REGRESSION =>
-                val rmses = modelTracker.models.map(model => Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression]))
-                logger.println(s"Validating RMSE per iteration:\n${rmses.mkString("\n")}")
-              case LOGISTIC_REGRESSION =>
-                val aucs = modelTracker.models.map(model => Evaluation.getBinaryClassificationMetrics(validatingData, model.asInstanceOf[BinaryClassifier]).areaUnderROC())
-                logger.println(s"Validating AUC per iteration:\n${aucs.mkString("\n")}")
-              case _ => throw new IllegalArgumentException(s"unrecognized task type ${params.taskType}")
-            }
+
+            val msg = modelTracker.models.map(model => Evaluation.evaluate(model, validatingData)).zipWithIndex.map( x => {
+              val (m, idx) = x
+              m.keys.toSeq.sorted.map( y => {
+                f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}"
+              }).mkString("\n") }).mkString("\n")
+
+            logger.println(s"Model with lambda = $lambda:\n$msg")
           }
         }
       } else {
         // Calculate metrics for all models
         lambdaModelTuples.foreach { case (lambda, model: GeneralizedLinearModel) =>
-          val chapter: String = f"${MODEL_DIAGNOSTIC_CHAPTER} lambda=$lambda%.06g"
-          val sections = new mutable.ListBuffer[SectionPhysicalReport]()
-
-          logger.println(s"Model with lambda = $lambda:")
-          params.taskType match {
-            case LINEAR_REGRESSION =>
-              val rmse = Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression])
-              logger.println(s"Validation set RMSE: $rmse")
-            case POISSON_REGRESSION =>
-              val rmse = Evaluation.computeRMSE(validatingData, model.asInstanceOf[Regression])
-              logger.println(s"Validation set RMSE: $rmse")
-            case LOGISTIC_REGRESSION =>
-              val auc = Evaluation.getBinaryClassificationMetrics(validatingData, model.asInstanceOf[BinaryClassifier]).areaUnderROC()
-              logger.println(s"Validation set AUC: $auc")
-            case _ => throw new IllegalArgumentException(s"unrecognized task type ${params.taskType}")
-          }
+          val metrics = Evaluation.evaluate(model, validatingData)
+          val msg = metrics.keys.toSeq.sorted.map( y => {
+            f"    Metric: [$y] value: ${metrics.get(y).get}"
+          }).mkString("\n")
+          logger.println(s"Model with lambda = $lambda:\nmsg")
         }
       }
 
@@ -299,8 +283,8 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
           val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
           ModelSelection.selectBestPoissonRegressionModel(models, validatingData)
         case LOGISTIC_REGRESSION =>
-          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[BinaryClassifier]))
-          ModelSelection.selectBestBinaryClassifier(models, validatingData)
+          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
+          ModelSelection.selectBestLinearClassifier(models, validatingData)
       }
 
       logger.println(s"Regularization weight of the best model is: $bestModelWeight")

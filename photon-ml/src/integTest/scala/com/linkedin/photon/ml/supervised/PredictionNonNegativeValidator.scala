@@ -18,7 +18,7 @@ class PredictionNonNegativeValidator extends ModelValidator[GeneralizedLinearMod
         predictions = r.predictAll(features)
 
       case b:BinaryClassifier =>
-        predictions = b.predictAll(features, 0.5)
+        predictions = b.predictClassAllWithThreshold(features, 0.5)
 
       case _ =>
         throw new IllegalArgumentException("Don't know how to handle models of type [" + model.getClass.getName + "]")
