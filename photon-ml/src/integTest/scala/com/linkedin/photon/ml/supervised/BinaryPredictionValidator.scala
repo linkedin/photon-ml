@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
 class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassifier: ClassTag] extends ModelValidator[GLM] {
 
   override def validateModelPredictions(model:GLM, data:RDD[LabeledPoint]) : Unit = {
-    val predictions = model.predictAll(data.map(x => x.features) , 0.5)
+    val predictions = model.predictClassAllWithThreshold(data.map(x => x.features) , 0.5)
     val invalidCount = predictions.filter(x => x != BinaryClassifier.negativeClassLabel && x != BinaryClassifier.positiveClassLabel).count
     if (invalidCount > 0) {
       throw new IllegalStateException(s"Found [$invalidCount] samples with invalid predictions (expect [$BinaryClassifier.negativeClassLabel] or [$BinaryClassifier.positiveClassLabel]")
