@@ -208,6 +208,8 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         .setName("validating data").persist(DEFAULT_STORAGE_LEVEL)
 
 
+      var perModelMetrics:Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
+
       /* Validating the learned models using the validating data set */
       logger.println("\nStart to validate the learned models with validating data")
       logger.flush()
@@ -228,8 +230,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         }
       } else {
         // Calculate metrics for all models
-        lambdaModelTuples.foreach { case (lambda, model: GeneralizedLinearModel) =>
+        lambdaModelTuples.foreach { case (lambda:Double, model: GeneralizedLinearModel) =>
           val metrics = Evaluation.evaluate(model, validatingData)
+          perModelMetrics += (lambda -> metrics)
           val msg = metrics.keys.toSeq.sorted.map( y => {
             f"    Metric: [$y] value: ${metrics.get(y).get}"
           }).mkString("\n")
@@ -242,7 +245,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
         diagnostic.modelReports ++= lambdaModelTuples.map(x => {
           val (lambda, model) = x
-
+          val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
           model match {
             case lm: LogisticRegressionModel =>
               new ModelDiagnosticReport[GeneralizedLinearModel](
@@ -250,6 +253,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 lambda,
                 lm.getClass.getName,
                 suite.featureKeyToIdMap,
+                metrics,
                 summaryOption,
                 Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)))
 
@@ -259,6 +263,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 lambda,
                 glm.getClass.getName,
                 suite.featureKeyToIdMap,
+                metrics,
                 summaryOption,
                 None)
           }

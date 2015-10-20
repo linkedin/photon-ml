@@ -15,14 +15,22 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
   import ModelDiagnosticToPhysicalReportTransformer._
 
   def transform(model: ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
+    val metricsSection:SectionPhysicalReport = transformMetrics(model)
     val modelSection: SectionPhysicalReport = transformModel(model.model, model.modelDescription, model.nameIdxMap, model.summary)
     model.hosmerLemeshow match {
       case Some(hl) =>
         val hlSection: SectionPhysicalReport = HOSMER_LEMESHOW_TRANSFORMER.transform(hl)
-        new SectionPhysicalReport(Seq(modelSection, hlSection), f"Model, lambda=${model.lambda}%.03g")
+        new SectionPhysicalReport(Seq(metricsSection, modelSection, hlSection), f"Model, lambda=${model.lambda}%.03g")
       case None =>
-        new SectionPhysicalReport(Seq(modelSection), f"Model, lambda=${model.lambda}%.03g")
+        new SectionPhysicalReport(Seq(metricsSection, modelSection), f"Model, lambda=${model.lambda}%.03g")
     }
+  }
+
+  private def transformMetrics(model:ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
+    new SectionPhysicalReport(
+      Seq(
+        new BulletedListPhysicalReport(model.metrics.map(x => s"Metric: [${x._1}, value: [${x._2}]").toSeq.sorted.map(x => new SimpleTextPhysicalReport(x)))),
+      "Validation Set Metrics")
   }
 
   private def transformModel(m: GLM, desc: String, nameIdx: Map[String, Int], summary: Option[BasicStatisticalSummary]): SectionPhysicalReport = {
@@ -90,6 +98,4 @@ object ModelDiagnosticToPhysicalReportTransformer {
   val MAX_IMPORTANT_FEATURES = 30
   val MODEL_IMPORTANCE_TITLE = "Model Coefficient Importance"
   val FEATURE_IMPORTANCE_TITLE = "Coefficient Importance Analysis"
-  val PLOT_HEIGHT = 960
-  val PLOT_WIDTH = 1280
 }
