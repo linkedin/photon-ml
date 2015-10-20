@@ -90,7 +90,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
 
     val epsilon = 1.0E-10
-    val normsAndCounts = models.map{ case (lambda, model) => (lambda, norm(model.coefficients, 1), model.coefficients.toArray.count(x => Math.abs(x) < epsilon)) }
+    val normsAndCounts = models.map { case (lambda, model) => (lambda, norm(model.coefficients, 1), model.coefficients.toArray.count(x => Math.abs(x) < epsilon)) }
     for (i <- 0 until lambdas.length - 1) {
       val (lambda1, norm1, zero1) = normsAndCounts(i)
       val (lambda2, norm2, zero2) = normsAndCounts(i + 1)
@@ -120,8 +120,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += "500"
 
     MockDriver.runLocally(args = args.toArray,
-    expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-    expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.size, lambdas.length)
@@ -198,10 +198,15 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val tmpDir = s"/tmp/${UUID.randomUUID.toString}/testRunWithDataValidation"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir, isValidating = true)
+    args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
+    args += tmpDir + "/summary"
+
+    args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
+    args += NormalizationType.USE_STANDARD_DEVIATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
-      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.size, 4)
@@ -212,12 +217,12 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
     assertEquals(bestModel.size, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 0.1)
+    assertEquals(bestModel(0)._1, 1.0)
   }
 
   @Test
   def testRunWithDataValidationPerIteration(): Unit = sparkTestSelfServeContext(
-      "testRunWithDataValidationPerIteration") {
+    "testRunWithDataValidationPerIteration") {
     val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir, isValidating = true)
@@ -251,8 +256,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += optimizer.toString
     MockDriver.runLocally(args = args.toArray,
-                          expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
-                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
   }
 
   @DataProvider(parallel = false)
@@ -319,7 +324,7 @@ object DriverIntegTest {
   def loadAllModels(modelsDir: String): Array[(Double, GeneralizedLinearModel)] = {
     val models = mutable.ArrayBuffer[(Double, GeneralizedLinearModel)]()
     val files = new File(modelsDir).listFiles()
-    for(file <- files.filter{ f => !f.getName().startsWith("_") && !f.getName().startsWith(".")}) {
+    for (file <- files.filter { f => !f.getName().startsWith("_") && !f.getName().startsWith(".") }) {
       models += loadModelFromText(file.getPath, TaskType.LOGISTIC_REGRESSION)
     }
     models.sortWith(_._1 < _._1).toArray
