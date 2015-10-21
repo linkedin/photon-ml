@@ -1,0 +1,55 @@
+{
+  "type" : "record",
+  "name" : "TrainingExample",
+  "namespace" : "com.linkedin.metronome.avro.generated",
+  "fields" : [ {
+    "name" : "uid",
+    "type" : [ "null", "string", "long", "int" ],
+    "doc" : "a unique id for the training event",
+    "default" : null
+  }, {
+    "name" : "label",
+    "type" : [ "double", "float", "int", "long", "boolean", "string" ],
+    "doc" : "label/response of the event"
+  }, {
+    "name" : "features",
+    "type" : {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "Feature",
+        "doc" : "a feature is a named numeric value",
+        "fields" : [ {
+          "name" : "name",
+          "type" : "string"
+        }, {
+          "name" : "value",
+          "type" : "double"
+        }, {
+          "name" : "term",
+          "type" : [ "null", "string" ],
+          "default" : null
+        } ]
+      }
+    },
+    "doc" : "sparse set of features describing the event"
+  }, {
+    "name" : "metadataMap",
+    "type" : [ "null", {
+      "type" : "map",
+      "values" : [ "boolean", "int", "long", "float", "double", "string" ]
+    } ],
+    "doc" : "optional field. allows attaching arbitrary non-feature metadata to each event",
+    "default" : null
+  }, {
+    "name" : "weight",
+    "type" : [ "null", "int", "long", "float", "double" ],
+    "doc" : "optional field. specifies strength of observation",
+    "default" : null
+  }, {
+    "name" : "offset",
+    "type" : [ "null", "int", "long", "float", "double" ],
+    "doc" : "optional field. when non-zero, admm will learn coefficient betas with the added offset",
+    "default" : null
+  } ]
+}
