@@ -1,6 +1,5 @@
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.{SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport}
 import scala.xml._
 
@@ -9,7 +8,7 @@ class PlotToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node],
                          htmlPrefix: String,
                          svgPrefix: String) extends SpecificRenderer[PlotPhysicalReport, Node] {
   def render(plot: PlotPhysicalReport): Node = {
-    val svg = plot.asSVG
+    val svg = plot.asSVG()
     val comment = new Comment(plot.toString)
 
     val fig = plot.getCaption match {

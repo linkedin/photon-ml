@@ -25,7 +25,7 @@ abstract class VectorImagePhysicalReport(caption:Option[String] = None, title:Op
    * Get the SVG corresponding to this image
    * @return
    */
-  def asSVG():Node
+  def asSVG(height:Int=960, width:Int=1280):Node
 
   override def toString():String = {
     s"VECTOR IMAGE <- ${super.toString}"

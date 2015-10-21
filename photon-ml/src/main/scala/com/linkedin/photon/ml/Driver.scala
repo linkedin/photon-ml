@@ -393,8 +393,6 @@ object Driver {
       } finally {
         fileStream.close()
       }
-    } finally {
-      hdfs.close()
     }
   }
 }
