@@ -1,0 +1,8 @@
+heart -- binary classification
+
+a9a and a9a.t -- binary classification, see https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#a9a
+
+mg.txt -- regression, see https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression.html#mg
+
+space_ga -- regression, see https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/regression.html#space_ga
+
