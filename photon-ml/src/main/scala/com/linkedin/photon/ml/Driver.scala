@@ -379,20 +379,18 @@ object Driver {
     val rendered = rs.locateRenderer(doc).render(doc)
 
     val hdfs = FileSystem.get(new Configuration())
-    try {
-      val fileStream = hdfs.create(new Path(s"$outputDir/$file"), true)
-      val writer = new PrintWriter(new OutputStreamWriter(fileStream))
+    val fileStream = hdfs.create(new Path(s"$outputDir/$file"), true)
+    val writer = new PrintWriter(new OutputStreamWriter(fileStream))
 
-      try {
-        val pp = new PrettyPrinter(MAX_WIDTH, INDENT)
-        val buffer = new StringBuilder()
-        pp.format(rendered, buffer)
-        writer.println(buffer.toString)
-        writer.flush()
-        writer.close()
-      } finally {
-        fileStream.close()
-      }
+    try {
+      val pp = new PrettyPrinter(MAX_WIDTH, INDENT)
+      val buffer = new StringBuilder()
+      pp.format(rendered, buffer)
+      writer.println(buffer.toString)
+      writer.flush()
+      writer.close()
+    } finally {
+      fileStream.close()
     }
   }
 }
