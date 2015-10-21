@@ -27,10 +27,8 @@ class NaiveHosmerLemeshowToPhysicalReportTransformer extends LogicalToPhysicalRe
     val builder = new ChartBuilder()
     builder
       .chartType(StyleManager.ChartType.Bar)
-      .height(960)
       .theme(StyleManager.ChartTheme.XChart)
       .title("Observed positive rate versus predicted positive rate")
-      .width(1280)
       .xAxisTitle("Predicted positive rate")
       .yAxisTitle("Observed positive rate")
     val chart = builder.build()

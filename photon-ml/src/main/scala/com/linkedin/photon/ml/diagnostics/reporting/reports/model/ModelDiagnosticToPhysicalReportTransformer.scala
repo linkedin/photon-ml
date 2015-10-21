@@ -66,8 +66,6 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
     val builder = new ChartBuilder()
     val chart = builder
       .chartType(StyleManager.ChartType.Line)
-      .height(PLOT_HEIGHT)
-      .width(PLOT_WIDTH)
       .theme(StyleManager.ChartTheme.XChart)
       .title(MODEL_IMPORTANCE_TITLE)
       .xAxisTitle("Rank (importance %-ile)")

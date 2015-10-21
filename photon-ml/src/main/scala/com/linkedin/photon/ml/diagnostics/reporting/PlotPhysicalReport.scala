@@ -13,7 +13,7 @@ import org.apache.batik.svggen.SVGGraphics2D
 
 import com.xeiam.xchart.Chart
 
-import scala.xml.{XML, Node}
+import scala.xml._
 import scala.xml.parsing.NoBindingFactoryAdapter
 
 /**
@@ -35,13 +35,18 @@ class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Op
     new RasterizedImagePhysicalReport(resultImage, caption, title)
   }
 
-  override def asSVG():Node = {
+  override def asSVG(height:Int=960, width:Int=1280):Node = {
     val docFac = DocumentBuilderFactory.newInstance()
     val doc = docFac.newDocumentBuilder().newDocument()
     val ctx = new SVGGraphics2D(doc)
     try {
       plot.paint(ctx)
-      asXml(ctx.getRoot)
+      var tmp = asXml(ctx.getRoot)
+
+      new Elem(null, "svg", new PrefixedAttribute(tmp.namespace, "viewBox", s"0 0 $width $height",
+        new UnprefixedAttribute("preserveAspectRatio", "xMidYMid meet",
+          new UnprefixedAttribute("width", "100%",
+            new UnprefixedAttribute("height", "100%", tmp.attributes)))), tmp.scope, true, tmp.child:_*)
     } finally {
       ctx.dispose()
     }
