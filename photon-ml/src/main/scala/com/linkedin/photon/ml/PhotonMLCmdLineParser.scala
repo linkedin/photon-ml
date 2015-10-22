@@ -35,10 +35,13 @@ object PhotonMLCmdLineParser {
    *   {"name": "actor_rawclicksw.gt.0", "term": "*", "lowerBound": -0.01}
    * ]
    *
+   * Please note: in addition to being called here, this function is also called from the Photon templates library to
+   * validate user-given constraints.
+   *
    * @param inputString constraint string
    * @return return true if input string could be successfully parsed, else return false
    */
-  private def checkConstraintStringValidity(inputString: String): Boolean = {
+  def checkConstraintStringValidity(inputString: String): Boolean = {
     JSON.parseFull(inputString) match {
       case Some(parsed: List[Map[String, Any]]) => true
       case None => false
