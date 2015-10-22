@@ -104,6 +104,17 @@ class BaseGLMIntegTest extends SparkTestUtils {
     runGeneralizedLinearAlgorithmScenario(desc, algorithm , solver, reg, List(1.0), None, NormalizationType.NO_SCALING, data, validator)
   }
 
+  @Test(dataProvider = "generateHappyPathCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def checkInvalidOffset[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
+                                                                                             desc:String,
+                                                                                             algorithm:GeneralizedLinearAlgorithm[GLM, Function],
+                                                                                             solver:Optimizer[LabeledPoint, Function],
+                                                                                             reg:RegularizationContext,
+                                                                                             data:Iterator[(Double, Vector[Double])],
+                                                                                             validator:ModelValidator[GLM]) = {
+    runInvalidOffsetScenario(desc, algorithm , solver, reg, List(1.0), None, NormalizationType.NO_SCALING, data, validator)
+  }
+
   /**
    * Enumerate sets of (description, generalized linear algorithm, invalid data set) tuples.
    */
@@ -254,6 +265,32 @@ class BaseGLMIntegTest extends SparkTestUtils {
       validator.validateModelPredictions(m, trainingSet)
     })
   }
+
+  /**
+   * Check that validators looking for invalid offsets work
+   */
+  def runInvalidOffsetScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
+                                                                                                   algorithm:GeneralizedLinearAlgorithm[GLM, Function],
+                                                                                                   solver:Optimizer[LabeledPoint, Function],
+                                                                                                   reg:RegularizationContext,
+                                                                                                   lambdas:List[Double],
+                                                                                                   summary:Option[BasicStatisticalSummary],
+                                                                                                   norm:NormalizationType,
+                                                                                                   data:Iterator[(Double, Vector[Double])],
+                                                                                                   validator:ModelValidator[GLM]) = sparkTest(desc) {
+    // Step 0: configure the algorithm
+    algorithm.enableIntercept = true
+    algorithm.isTrackingState = true
+    algorithm.validateData = true
+    algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
+
+    // Step 1: generate our input RDD
+    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList)
+
+    // Step 2: actually run
+    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, summary)
+  }
+
 }
 
 /**
