@@ -57,7 +57,9 @@ object DataValidators extends Logging {
    */
   val finiteFeaturesValidator: RDD[LabeledPoint] => Boolean = { data =>
     val numInvalid = data.filter( x => {
-      val nonFiniteCount:Int = x.features.mapActiveValues( y => { if (java.lang.Double.isFinite(y)) 0 else 1 }).sum
+      val featureCount:Int = x.features.mapActiveValues( y => { if (java.lang.Double.isFinite(y)) 0 else 1 }).sum
+      val offsetCount:Int = if (java.lang.Double.isFinite(x.offset)) { 0 } else { 1 }
+      val nonFiniteCount = featureCount + offsetCount
       nonFiniteCount > 0
     }).count
 
