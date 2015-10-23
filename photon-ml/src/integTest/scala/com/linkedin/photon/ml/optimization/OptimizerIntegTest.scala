@@ -7,8 +7,9 @@ import breeze.optimize.FirstOrderMinimizer.{FunctionValuesConverged, GradientCon
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.test.SparkTestUtils
-import org.testng.Assert
+import org.testng.Assert._
 import org.testng.annotations.{Test, DataProvider}
+
 
 
 /**
@@ -30,11 +31,11 @@ class OptimizerIntegTest extends SparkTestUtils {
     optim.tolerance = OptimizerIntegTest.CONVERGENCE_TOLERANCE
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
-    optim.optimize(Seq(pt), new TestObjective())
+    optim.optimize(Seq(pt), new IntegTestObjective())
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
     //test weight point
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 2.5)
-    optim.optimize(Seq(pt2), new TestObjective())
+    optim.optimize(Seq(pt2), new IntegTestObjective())
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
   }
 
@@ -49,7 +50,7 @@ class OptimizerIntegTest extends SparkTestUtils {
     val r = new Random(OptimizerIntegTest.RANDOM_SEED)
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
-      optim.optimize(Array(pt), new TestObjective(), initParam)
+      optim.optimize(Array(pt), new IntegTestObjective(), initParam)
       OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
       optim.cleanOptimizerState()
     }
@@ -58,7 +59,7 @@ class OptimizerIntegTest extends SparkTestUtils {
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 10.0)
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
-      optim.optimize(Array(pt2), new TestObjective(), initParam)
+      optim.optimize(Array(pt2), new IntegTestObjective(), initParam)
       OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
       optim.cleanOptimizerState()
     }
@@ -73,13 +74,13 @@ class OptimizerIntegTest extends SparkTestUtils {
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     val data = sc.parallelize(Seq(pt))
-    optim.optimize(data, new TestObjective())
+    optim.optimize(data, new IntegTestObjective())
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
 
     //test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 0.23)
     val data2 = sc.parallelize(Seq(pt2))
-    optim.optimize(data2, new TestObjective())
+    optim.optimize(data2, new IntegTestObjective())
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
   }
 
@@ -95,7 +96,7 @@ class OptimizerIntegTest extends SparkTestUtils {
     var r = new Random(OptimizerIntegTest.RANDOM_SEED)
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
-      optim.optimize(data, new TestObjective(), initParam)
+      optim.optimize(data, new IntegTestObjective(), initParam)
       OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
       optim.cleanOptimizerState()
     }
@@ -106,7 +107,7 @@ class OptimizerIntegTest extends SparkTestUtils {
     r = new Random(OptimizerIntegTest.RANDOM_SEED)
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
-      optim.optimize(data, new TestObjective(), initParam)
+      optim.optimize(data, new IntegTestObjective(), initParam)
       OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
       optim.cleanOptimizerState()
     }
@@ -128,7 +129,7 @@ object OptimizerIntegTest {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      Assert.assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value + "], previous=[" + lastValue + "])")
+      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value + "], previous=[" + lastValue + "])")
       lastValue = state.value
     }
   }
@@ -144,7 +145,7 @@ object OptimizerIntegTest {
   private def easyOptimizatonStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
 
     // The optimizer should be converged
-    Assert.assertTrue(optimizerStatesTracker.converged)
+    assertTrue(optimizerStatesTracker.converged)
 
     val optimizedObj = optimizerStatesTracker.getTrackedStates.last.value
     val optimizedGradientNorm = norm(optimizerStatesTracker.getTrackedStates.last.gradient, 2)
@@ -152,15 +153,15 @@ object OptimizerIntegTest {
 
     if (optimizerStatesTracker.convergenceReason == Some(FunctionValuesConverged)) {
       // Expected answer in terms of optimal objective
-      Assert.assertEquals(optimizedObj, 0, OBJECTIVE_TOLERANCE, "Optimized objective should be very close to zero (eps=[" + OBJECTIVE_TOLERANCE + "])")
+      assertEquals(optimizedObj, 0, OBJECTIVE_TOLERANCE, "Optimized objective should be very close to zero (eps=[" + OBJECTIVE_TOLERANCE + "])")
     } else if (optimizerStatesTracker.convergenceReason == Some(GradientConverged)) {
       // Expected answer in terms of optimal gradient
-      Assert.assertEquals(optimizedGradientNorm, 0, GRADIENT_TOLERANCE, "Optimized gradient norm should be very close to zero (eps=[" + GRADIENT_TOLERANCE + "])")
+      assertEquals(optimizedGradientNorm, 0, GRADIENT_TOLERANCE, "Optimized gradient norm should be very close to zero (eps=[" + GRADIENT_TOLERANCE + "])")
     }
 
     // Expected answer in terms of optimal parameters
     optimizedParam.foreachPair { (idx, x) =>
-      Assert.assertEquals(x, TestObjective.CENTROID, PARAMETER_TOLERANCE, "Optimized parameter for index [" + idx + "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
+      assertEquals(x, TestObjective.CENTROID, PARAMETER_TOLERANCE, "Optimized parameter for index [" + idx + "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
     }
 
     // Monotonic convergence

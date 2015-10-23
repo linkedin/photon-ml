@@ -19,6 +19,13 @@ class LabeledPoint(val label: Double,
   override def toString: String = {
     s"(label: $label offset: $offset weight: $weight features: $features)"
   }
+
+  /**
+   * Calculate the margin, i.e. z = theta^T^ features + offset
+   * @param coef The coefficient
+   * @return The margin
+   */
+  override def computeMargin(coef: Vector[Double]): Double = features.dot(coef) + offset
 }
 
 

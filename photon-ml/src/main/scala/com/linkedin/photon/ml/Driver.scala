@@ -1,23 +1,23 @@
 package com.linkedin.photon.ml
 
+
 import java.io.{OutputStreamWriter, PrintWriter}
 
+import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticToPhysicalReportTransformer, DiagnosticReport}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
-import com.linkedin.photon.ml.supervised.TaskType
-import TaskType._
-import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
-import com.linkedin.photon.ml.normalization.NormalizationType
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
-import com.linkedin.photon.ml.stat.{BasicStatistics, BasicStatisticalSummary}
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, BinaryClassifier}
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
-import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, LinearRegressionModel, Regression}
+import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
+import com.linkedin.photon.ml.supervised.TaskType._
+import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel, Regression}
 import com.linkedin.photon.ml.util.Utils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -26,13 +26,13 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.PrettyPrinter
 
 /**
  * Driver for the MLEase core machine learning algorithms. The processing done in the driver include three main components:
  * <ul>
- * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into ML-Ease's
+ * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
  * internal data structure </li>
  * <li> Train, which trains the model given the user's specified configurations and parameters
  * (through [[Params]]) </li>
@@ -41,7 +41,7 @@ import scala.xml.PrettyPrinter
  * </ul>
  * More detailed documentation can be found either through the comments and notations in the source code, or at
  * [[https://iwww.corp.linkedin.com/wiki/cf/display/ENGS/How+to+MLEase]].
- * @param params: The ML-Ease parameters [[Params]]], containing essential information
+ * @param params: The Photon-ML parameters [[Params]]], containing essential information
  *              for the underlying model training tasks.
  * @param sc: The Spark context.
  * @param logger: A temporary container to hold the driver's logs.
@@ -51,16 +51,10 @@ import scala.xml.PrettyPrinter
  */
 protected[ml] class Driver(protected val params: Params, protected val sc: SparkContext, protected val logger: LogWriter) {
 
-  import Driver._
+  import com.linkedin.photon.ml.Driver._
 
   protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
-  private[this] val trainDataStorageLevel: StorageLevel = params.normalizationType match {
-    case NormalizationType.NO_SCALING =>
-      DEFAULT_STORAGE_LEVEL
-    case _ =>
-      // If the input data needs to be normalized, do not persist the raw input data into memory.
-      LOW_PRIORITY_STORAGE_LEVEL
-  }
+  private[this] val trainDataStorageLevel: StorageLevel = DEFAULT_STORAGE_LEVEL
   private[this] val suite: GLMSuite = new GLMSuite(params.fieldsNameType, params.addIntercept, params.constraintString)
   protected var stage: DriverStage = DriverStage.INIT
   private[this] var trainingData: RDD[LabeledPoint] = null
@@ -68,7 +62,10 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
   private[this] val regularizationContext: RegularizationContext = new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
   private[this] var featureNum: Int = -1
   private[this] var trainingDataNum: Int = -1
+
   private[this] var summaryOption: Option[BasicStatisticalSummary] = None
+  private[this] var normalizationContext: NormalizationContext = NoNormalization
+
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
   private[this] var diagnostic:DiagnosticReport = null
@@ -132,8 +129,10 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
     logger.flush()
 
     /* Summarize */
-    for (summarizationDir <- params.summarizationOutputDirOpt) {
-      summarizeFeatures(summarizationDir)
+    if (params.summarizationOutputDirOpt.isDefined || params.normalizationType != NormalizationType.NONE) {
+      val summary = summarizeFeatures(params.summarizationOutputDirOpt)
+      summaryOption = Some(summary)
+      normalizationContext = NormalizationContext(params.normalizationType, summary, suite.getInterceptId)
     }
 
     diagnostic = new DiagnosticReport(
@@ -143,18 +142,20 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
     updateStage(DriverStage.PREPROCESSED)
   }
 
-  protected def summarizeFeatures(outputDir: String): Unit = {
+  protected def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
     val beforeSummarization = System.currentTimeMillis()
     val summary = BasicStatistics.getBasicStatistics(trainingData)
 
-    Utils.deleteHDFSDir(outputDir, sc.hadoopConfiguration)
-    suite.writeBasicStatistics(sc, summary, outputDir)
-    logger.println(s"Feature statistics written to $outputDir")
+    outputDir.foreach { dir =>
+      Utils.deleteHDFSDir(dir, sc.hadoopConfiguration)
+      suite.writeBasicStatistics(sc, summary, dir)
+      logger.println(s"Feature statistics written to $outputDir")
+    }
 
     val timeForSummarization = 1.0E-3 * (System.currentTimeMillis() - beforeSummarization)
     logger.println(f"Feature summary finishes. Time elapsed: $timeForSummarization%.3f")
     logger.flush()
-    summaryOption = Some(summary)
+    summary
   }
 
   protected def train(): Unit = {
@@ -172,8 +173,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       optimizerType = params.optimizerType,
       regularizationContext = regularizationContext,
       regularizationWeights = params.regularizationWeights,
-      normalizationType = params.normalizationType,
-      summaryOption = summaryOption,
+      normalizationContext = normalizationContext,
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
@@ -326,7 +326,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
  * [[Params]] via [[PhotonMLCmdLineParser]],
  * which in turn is to be consumed by the main Driver class.
  *
- * An example of running ML-Ease
+ * An example of running Photon-ML
  * through command line arguments can be found at [[https://iwww.corp.linkedin.com/wiki/cf/display/ENGS/How+to+MLEase]],
  * however, please note that our plan is to not have Driver or the command line as the user-facing interface for Photon,
  * instead, the template library should be.
@@ -335,7 +335,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
  */
 object Driver {
   val DEFAULT_STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK
-  val LOW_PRIORITY_STORAGE_LEVEL = StorageLevel.DISK_ONLY
   val LEARNED_MODELS_TEXT = "learned-models-text"
   val BEST_MODEL_TEXT = "best-model-text"
   val REPORT_FILE = "diagnostic.html"

@@ -19,9 +19,9 @@ class MockDriver(override val params: Params, override val sc: SparkContext, ove
     (stageHistory += stage).toArray
   }
 
-  override def summarizeFeatures(outputDir: String) = {
-    super.summarizeFeatures(outputDir)
+  override def summarizeFeatures(outputDir: Option[String]) = {
     isSummarized = true
+    super.summarizeFeatures(outputDir)
   }
 }
 

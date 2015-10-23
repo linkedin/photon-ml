@@ -1,14 +1,11 @@
 package com.linkedin.photon.ml
 
-import OptionNames._
-import com.linkedin.photon.ml.io.FieldNamesType
-import com.linkedin.photon.ml.optimization.RegularizationType
-import com.linkedin.photon.ml.supervised.TaskType
-import TaskType._
+import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.TaskType._
 import scopt.OptionParser
 
 import scala.util.parsing.json.JSON
@@ -44,7 +41,7 @@ object PhotonMLCmdLineParser {
   def checkConstraintStringValidity(inputString: String): Boolean = {
     JSON.parseFull(inputString) match {
       case Some(parsed: List[Map[String, Any]]) => true
-      case None => false
+      case _ => false
     }
   }
 
@@ -57,8 +54,8 @@ object PhotonMLCmdLineParser {
   def parseFromCommandLine(args: Array[String]): Params = {
 
     val defaultParams = Params()
-    val parser = new OptionParser[Params]("ML-Ease") {
-      head("ML-Ease")
+    val parser = new OptionParser[Params]("Photon-ML") {
+      head("Photon-ML")
       opt[String](TRAIN_DIR_OPTION)
         .required()
         .text("Input directory of training data.")
@@ -157,14 +154,16 @@ object PhotonMLCmdLineParser {
                            )
                          })
           .action((x, c) => c.copy(constraintString = Some(x)))
-      help(HELP_OPTION).text("prints ML-Ease's usage text")
+      help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
       checkConfig { c =>
         if ((c.regularizationType == RegularizationType.L1 || c.regularizationType == RegularizationType.ELASTIC_NET) && c.optimizerType == OptimizerType.TRON) {
           failure(s"Combination of (${c.regularizationType}, ${c.optimizerType}) is not allowed")
-        } else if (!c.constraintString.isEmpty && c.normalizationType != NormalizationType.NO_SCALING) {
+        } else if (!c.constraintString.isEmpty && c.normalizationType != NormalizationType.NONE) {
           failure(s"Normalization and box constraints should not be used together since we cannot guarantee the " +
               s"satisfaction of the coefficient constraints after normalization")
+        } else if (c.normalizationType == NormalizationType.STANDARDIZATION && !c.addIntercept) {
+          failure(s"Intercept must be used to enable feature standardization. Normalization type: ${c.normalizationType}, add intercept: ${c.addIntercept}")
         } else {
           success
         }

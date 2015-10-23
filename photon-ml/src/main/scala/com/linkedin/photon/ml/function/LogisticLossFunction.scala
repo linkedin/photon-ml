@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{Vector, axpy}
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.util.Utils
 
 /**
@@ -10,35 +9,61 @@ import com.linkedin.photon.ml.util.Utils
  * for label, features, offset, and weight of the i'th labeled data point, respectively.
  * Note that the above equation assumes the label y_i \in {0, 1}. However, the code below would also work when y_i \in {-1, 1}.
  * @author xazhang
+ * @author dpeng
  */
+class LogisticLossFunction(normalizationContext: NormalizationContext = NoNormalization) extends
+  GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
 
-class LogisticLossFunction extends TwiceDiffFunction[LabeledPoint] {
+/**
+ * A single logistic loss function
+ *
+ * l(z, y) = - log [1/(1+exp(-z))]         if this is a positive sample
+ *
+ *         or - log [1 - 1/(1+exp(-z))]    if this is a negative sample
+ *
+ */
+@SerialVersionUID(1L)
+object PointwiseLogisticLossFunction extends PointwiseLossFunction {
+  /**
+   * The sigmoid function 1/(1+exp(-z))
+   *
+   * @param z z
+   * @return The value
+   */
+  private def sigmoid(z: Double): Double = 1.0 / (1.0 + math.exp(-z))
 
-  override protected[ml] def calculateAt(dataPoint: LabeledPoint, coefficients: Vector[Double], cumGradient: Vector[Double]): Double = {
-    val LabeledPoint(label, features, _, weight) = dataPoint
-    val margin = computeMargin(dataPoint, coefficients)
-    /*
-    use axpy to add the computed gradient to cumGradient in place, this is more efficient than first compute the gradient
-    explicitly and then add it to cumGradient.
-     */
+
+  /**
+   * l(z, y) = - log [1 / (1 + exp(-z))] = log [1 + exp(-z)]            if this is a positive sample
+   *
+   *           - log [1 - 1/(1+exp(-z))] = log [1 + exp(z)]             if this is a negative sample
+   *
+   * dl/dz =  - 1 / (1 + exp(z))         if this is a positive sample
+   *
+   *          1 / (1 + exp(-z))          if this is a negative sample
+   *
+   * @param margin The margin, i.e. z in l(z, y)
+   * @param label The label, i.e. y in l(z, y)
+   * @return The value and the 1st derivative
+   */
+  override def loss(margin: Double, label: Double): (Double, Double) = {
     if (label > 0) {
-      axpy(weight * (1.0 / (1.0 + math.exp(-margin)) - 1.0), features, cumGradient)
       // The following is equivalent to log(1 + exp(-margin)) but more numerically stable.
-      weight * Utils.log1pExp(-margin)
+      (Utils.log1pExp(-margin), - sigmoid(-margin))
     } else {
-      axpy(weight * (1.0 - 1.0 / (1.0 + math.exp(margin))), features, cumGradient)
-      weight * Utils.log1pExp(margin)
+      (Utils.log1pExp(margin), sigmoid(margin))
     }
   }
 
-  override protected[ml] def hessianVectorAt(dataPoint: LabeledPoint,
-                                                coefficients: Vector[Double],
-                                                vector: Vector[Double],
-                                                cumHessianVector: Vector[Double]): Unit = {
-    val LabeledPoint(_, features, _, weight) = dataPoint
-    val margin = computeMargin(dataPoint, coefficients)
-    val sigma = 1.0 / (1.0 + math.exp(-margin))
-    val D = sigma * (1 - sigma)
-    axpy(weight * D * features.dot(vector), features, cumHessianVector)
+  /**
+   * d^2^l/dz^2^ = sigmoid(z) * (1 - sigmoid(z))
+   *
+   * @param margin The margin, i.e. z in l(z, y)
+   * @param label The label, i.e. y in l(z, y)
+   * @return The value and the 2st derivative with respect to z
+   */
+  override def d2lossdz2(margin: Double, label: Double): Double = {
+    val s = sigmoid(margin)
+    s * (1 - s)
   }
 }

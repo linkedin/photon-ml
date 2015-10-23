@@ -1,12 +1,12 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.data.{LabeledPoint, DataPoint}
+import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
 import com.linkedin.photon.ml.util.Utils
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+
 
 /**
  * Trait for differentiable function. The value/gradient of a differentiable function depends on
@@ -165,10 +165,7 @@ trait DiffFunction[Datum <: DataPoint] extends Serializable {
    * @return The computed margin
    */
   protected def computeMargin(datum: Datum, coefficients: Vector[Double]): Double = {
-    datum match {
-      case LabeledPoint(_, features, offset, _) => features.dot(coefficients) + offset
-      case DataPoint(features, _) => features.dot(coefficients)
-    }
+    datum.computeMargin(coefficients)
   }
 }
 
@@ -264,3 +261,4 @@ object DiffFunction {
     }
   }
 }
+

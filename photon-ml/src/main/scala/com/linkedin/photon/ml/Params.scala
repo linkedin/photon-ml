@@ -66,6 +66,6 @@ case class Params(trainDir: String = null,
                   kryo: Boolean = true,
                   fieldsNameType: FieldNamesType = RESPONSE_PREDICTION,
                   summarizationOutputDirOpt: Option[String] = None,
-                  normalizationType: NormalizationType = NormalizationType.NO_SCALING,
+                  normalizationType: NormalizationType = NormalizationType.NONE,
                   jobName: String = s"MLEase-Training",
                   constraintString: Option[String] = None)

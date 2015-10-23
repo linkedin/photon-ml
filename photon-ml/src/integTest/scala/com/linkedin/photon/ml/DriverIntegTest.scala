@@ -153,12 +153,32 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     appendCommonJobArgs(args, tmpDir)
 
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
-    args += NormalizationType.USE_STANDARD_DEVIATION.toString()
+    args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
 
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRuntWithFeatureStandardization(): Unit = sparkTestSelfServeContext("testRuntWithFeatureScaling") {
+    val tmpDir = getTmpDir + "/testRuntWithFeatureNormalization"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
+    args += NormalizationType.STANDARDIZATION.toString()
+
+    MockDriver.runLocally(args = args.toArray,
+                          expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.size, 4)
     // Verify lambdas

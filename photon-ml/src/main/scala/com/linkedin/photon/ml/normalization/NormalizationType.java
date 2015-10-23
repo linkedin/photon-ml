@@ -9,15 +9,20 @@ public enum NormalizationType {
   /**
    * Scale each feature to have unit variance
    */
-  USE_STANDARD_DEVIATION,
+  SCALE_WITH_STANDARD_DEVIATION,
 
   /**
    * Scale each feature to lie in the range [-1, 1]
    */
-  USE_MAX_MAGNITUDE,
+  SCALE_WITH_MAX_MAGNITUDE,
 
   /**
-   * Skip scaling
+   * Zero-mean unit variance distributions x -> (x - \mu)/\sigma. Intercept must be included to enable this feature.
    */
-  NO_SCALING
+  STANDARDIZATION,
+
+  /**
+   * Skip normalization
+   */
+  NONE
 }
