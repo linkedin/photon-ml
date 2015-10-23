@@ -5,7 +5,24 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 
 /**
- * Intercept as a feature value is always one.
+ * The normalization approach for the optimization problem, especially for generalized linear model. This gives concrete approach for
+ * normalization, given the [[NormalizationType]] and the input data.
+ *
+ * The transformation consists of two part, the factors and the shifts. The transformation of a feature is
+ *
+ * x -> (x - shift) .* factor
+ *
+ * where .* is a point wise multiplication.
+ *
+ * Note that if the shift is enabled, there must be an intercept provided. One typical transformation is the feature standardization,
+ * i.e. shifts are feature means the factors are the reciprocal of the feature standard deviations. After feature standardization,
+ * the features become zero-mean unit-variance distributed. Normalization is very important in the context of regularization.
+ *
+ * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the intercept should be 0,
+ * and the factor for the intercept should be 1.
+ *
+ * Also note that this normalization context class covers all affine transformations without rotation.
+ *
  * @author dpeng
  */
 case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Option[_ <: Vector[Double]],
@@ -15,9 +32,25 @@ case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Op
                                                      "Factors and shifts vectors should have the same size")
 
   /**
-   * Transform the coefficients to original form
-   * @param inputCoef
-   * @return
+   * Transform the coefficients of the transformed space to the original space. This is typically used to
+   * transform models in the transformed space to the models in the original space for other usages.
+   *
+   * The key requirement for the transformation is to keep the margin consistant in both space, i.e.
+   *
+   * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
+   *
+   * where b is the explicit intercept, and .* is a point wise multiplication.
+   *
+   * To make the equation work for all x, we have
+   *
+   * w = w' .* factor
+   *
+   * and
+   *
+   * b = - w'^T^ shift + b'
+   *
+   * @param inputCoef The coefficients + the intercept in the transformed space
+   * @return The coefficients + the intercept in the original space
    */
   def transformModelCoefficients(inputCoef: Vector[Double]): Vector[Double] = {
     val outputCoef = factors match {
@@ -34,9 +67,10 @@ case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Op
   }
 
   /**
-   * For testing purpose only. This is not designed to be efficient. Transform the vector to the normalized form
-   * @param input
-   * @return
+   * For testing purpose only. This is not designed to be efficient. This method transform a vector to
+   * from the original space to the normalized space.
+   * @param input Input vector
+   * @return Transformed vector
    */
   def transformVector(input: Vector[Double]): Vector[Double] = {
     (factors, shifts) match {
@@ -56,6 +90,15 @@ case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Op
 }
 
 object NormalizationContext {
+  /**
+   * A factory method to create normalization context according to the [[NormalizationType]] and the
+   * feature summary. If using [[NormalizationType]].STANDARDIZATION, an intercept index is also needed.
+   *
+   * @param normalizationType The normalization type
+   * @param summary Feature summary
+   * @param interceptId The index of the intercept
+   * @return The normalization context
+   */
   def apply(normalizationType: NormalizationType, summary: => BasicStatisticalSummary,
       interceptId: Option[Int]): NormalizationContext = {
     normalizationType match {
@@ -92,4 +135,7 @@ object NormalizationContext {
   }
 }
 
+/**
+ * An singleton object to represent no normalization.
+ */
 object NoNormalization extends NormalizationContext(factors = None, shifts = None, interceptId = None)
