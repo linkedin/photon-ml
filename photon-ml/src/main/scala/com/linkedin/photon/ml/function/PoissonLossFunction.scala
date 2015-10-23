@@ -10,7 +10,6 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
  * @author asaha
  * @author dpeng
  */
-
 class PoissonLossFunction(normalizationContext: NormalizationContext = NoNormalization) extends
   GeneralizedLinearModelLossFunction(PointwisePoissonLossFunction, normalizationContext)
 
@@ -21,6 +20,7 @@ class PoissonLossFunction(normalizationContext: NormalizationContext = NoNormali
  *
  * Used for Poisson regression
  */
+@SerialVersionUID(1L)
 object PointwisePoissonLossFunction extends PointwiseLossFunction {
   /**
    * l(z, y) = exp(z) - y * z

@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  *
  * @author dpeng
  */
-case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Option[_ <: Vector[Double]],
+private[ml] case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Option[_ <: Vector[Double]],
                                 interceptId: Option[Int]) {
   require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
   if (factors.isDefined && shifts.isDefined) require(factors.get.size == shifts.get.size,
@@ -89,7 +89,7 @@ case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Op
   }
 }
 
-object NormalizationContext {
+private[ml] object NormalizationContext {
   /**
    * A factory method to create normalization context according to the [[NormalizationType]] and the
    * feature summary. If using [[NormalizationType]].STANDARDIZATION, an intercept index is also needed.
@@ -138,4 +138,4 @@ object NormalizationContext {
 /**
  * An singleton object to represent no normalization.
  */
-object NoNormalization extends NormalizationContext(factors = None, shifts = None, interceptId = None)
+private[ml] object NoNormalization extends NormalizationContext(factors = None, shifts = None, interceptId = None)
