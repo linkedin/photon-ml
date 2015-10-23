@@ -3,7 +3,7 @@ package com.linkedin.photon.ml.supervised
 import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.normalization.{NormalizationContext, NoNormalization}
+import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionAlgorithm, LogisticRegressionModel}
@@ -107,7 +107,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
                                                                                              reg:RegularizationContext,
                                                                                              data:Iterator[(Double, Vector[Double])],
                                                                                              validator:ModelValidator[GLM]) = {
-    runInvalidOffsetScenario(desc, algorithm , solver, reg, List(1.0), None, NormalizationType.NO_SCALING, data, validator)
+    runInvalidOffsetScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
   }
 
   /**
@@ -270,7 +270,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
                                                                                                    reg:RegularizationContext,
                                                                                                    lambdas:List[Double],
                                                                                                    summary:Option[BasicStatisticalSummary],
-                                                                                                   norm:NormalizationType,
+                                                                                                   norm:NormalizationContext,
                                                                                                    data:Iterator[(Double, Vector[Double])],
                                                                                                    validator:ModelValidator[GLM]) = sparkTest(desc) {
     // Step 0: configure the algorithm
@@ -283,7 +283,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
     val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList)
 
     // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, summary)
+    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm)
   }
 
 }
