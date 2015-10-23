@@ -53,7 +53,7 @@ object ModelSelection
   private def selectModelByKey[M <: GeneralizedLinearModel](models:Iterable[(Double, M)], validatingData:RDD[LabeledPoint], metric:String): (Double, M) = {
     val (_, bestLambda, bestModel) = models.map(x => {
       (Evaluation.evaluate(x._2, validatingData).getOrElse(metric, -1.0), x._1, x._2)
-    }).toArray.sortBy(x => x._1).last
+    }).toArray.sortBy(_._1).last
     (bestLambda, bestModel)
   }
 }
