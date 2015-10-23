@@ -42,7 +42,7 @@ class ParamsTest {
     assertTrue(params.kryo)
     assertEquals(params.fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(params.summarizationOutputDirOpt, None)
-    assertEquals(params.normalizationType, NormalizationType.NO_SCALING)
+    assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.jobName, s"MLEase-Training")
     assertEquals(params.constraintString, None)
 
@@ -80,7 +80,7 @@ class ParamsTest {
     assertTrue(kryo)
     assertEquals(fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(summarizationOutputDirOpt, None)
-    assertEquals(normalizationType, NormalizationType.NO_SCALING)
+    assertEquals(normalizationType, NormalizationType.NONE)
     assertEquals(jobName, s"MLEase-Training")
     assertEquals(constraintString, None)
   }

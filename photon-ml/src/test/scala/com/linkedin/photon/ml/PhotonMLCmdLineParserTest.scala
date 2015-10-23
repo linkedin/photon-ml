@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml
 
-import OptionNames._
-import com.linkedin.photon.ml.optimization.RegularizationType
+import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -17,7 +16,7 @@ import org.testng.annotations.{DataProvider, Test}
  * @author dpeng
  */
 class PhotonMLCmdLineParserTest {
-  import PhotonMLCmdLineParserTest._
+  import com.linkedin.photon.ml.PhotonMLCmdLineParserTest._
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testMissingRequiredArgTrainDir(): Unit = {
@@ -66,7 +65,7 @@ class PhotonMLCmdLineParserTest {
     assertTrue(params.kryo)
     assertEquals(params.fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(params.summarizationOutputDirOpt, None)
-    assertEquals(params.normalizationType, NormalizationType.NO_SCALING)
+    assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.constraintString, None)
   }
 
@@ -95,7 +94,7 @@ class PhotonMLCmdLineParserTest {
     assertTrue(params.kryo)
     assertEquals(params.fieldsNameType, FieldNamesType.TRAINING_EXAMPLE)
     assertEquals(params.summarizationOutputDirOpt, Some("summarization_output_dir"))
-    assertEquals(params.normalizationType, NormalizationType.NO_SCALING)
+    assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.constraintString, Some(constraintString))
 
     val params2 = PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ optionalArgs(booleanOptionValue = false))
@@ -120,7 +119,7 @@ class PhotonMLCmdLineParserTest {
     assertFalse(params2.kryo)
     assertEquals(params2.fieldsNameType, FieldNamesType.TRAINING_EXAMPLE)
     assertEquals(params2.summarizationOutputDirOpt, Some("summarization_output_dir"))
-    assertEquals(params2.normalizationType, NormalizationType.NO_SCALING)
+    assertEquals(params2.normalizationType, NormalizationType.NONE)
     assertEquals(params2.constraintString, Some(constraintString))
   }
 
@@ -170,7 +169,7 @@ class PhotonMLCmdLineParserTest {
   @Test(dataProvider = "generateUnparseableConstraintStrings", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testUnparseableConstrainedString(constraintString: String): Unit = {
     val args = new Array[String](2)
-    args(0) = CommonTestUtils.fromOptionNameToArg(COEFFICIENT_BOX_CONSTRAINTS.toString)
+    args(0) = CommonTestUtils.fromOptionNameToArg(COEFFICIENT_BOX_CONSTRAINTS)
     args(1) = constraintString
     PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
   }
@@ -182,6 +181,17 @@ class PhotonMLCmdLineParserTest {
     args(1) = PhotonMLCmdLineParserTest.constraintString
     assertEquals(PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args).constraintString,
                  Some(PhotonMLCmdLineParserTest.constraintString))
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testFeatureStandardizationWithNoIntercept(): Unit = {
+    val args = Array(
+      CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE),
+      NormalizationType.STANDARDIZATION.toString,
+      CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION),
+      false.toString
+    )
+    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
   }
 }
 
@@ -251,7 +261,7 @@ object PhotonMLCmdLineParserTest {
         case FORMAT_TYPE_OPTION => FieldNamesType.TRAINING_EXAMPLE.toString()
         case MIN_NUM_PARTITIONS_OPTION => 888.toString()
         case SUMMARIZATION_OUTPUT_DIR => "summarization_output_dir"
-        case NORMALIZATION_TYPE => NormalizationType.NO_SCALING.toString()
+        case NORMALIZATION_TYPE => NormalizationType.NONE.toString()
         case COEFFICIENT_BOX_CONSTRAINTS => constraintString
         case _ => "dummy-value"
       }

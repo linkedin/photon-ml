@@ -58,9 +58,9 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
     val strTime = "Time(s)"
     val strValue = "Value"
     val strGradient = "|Gradient|"
-    stringBuilder ++= f"$strIter%10s$strTime%10s$strValue%20s$strGradient%15s\n"
+    stringBuilder ++= f"$strIter%10s$strTime%10s$strValue%25s$strGradient%15s\n"
     stringBuilder ++= states.zip(timeElapsed).map { case (OptimizerState(_, value, gradient, iter), time) =>
-      f"$iter%10d${time * 0.001}%10.3f$value%20.5f${norm(gradient, 2)}%15.2e"
+      f"$iter%10d${time * 0.001}%10.3f$value%25.8f${norm(gradient, 2)}%15.2e"
     }.mkString("\n")
     stringBuilder ++= "\n"
     stringBuilder.result()

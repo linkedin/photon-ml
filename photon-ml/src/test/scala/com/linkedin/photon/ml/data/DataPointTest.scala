@@ -1,25 +1,23 @@
 package com.linkedin.photon.ml.data
 
-import breeze.linalg.DenseVector
-import com.linkedin.photon.ml.test.Assertions
-import Assertions._
-import com.linkedin.photon.ml.data
+import breeze.linalg.{SparseVector, Vector, DenseVector}
+import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 
 /**
- * Test the functions in [[data.DataPoint]]
+ * Test the functions in [[DataPoint]]
  *
  * @author yali
+ * @author dpeng
  */
 class DataPointTest {
-  import DataPoint._
+  val delta = 1.0E-9
 
   //test the class and object
   @Test
   def testApply(): Unit = {
-    val delta = 1.0E-9
     val features = DenseVector[Double](1.0, 10.0, 0.0, -100.0)
     val weight = 1.0
     val dataPoint = new DataPoint(features, weight)
@@ -31,7 +29,6 @@ class DataPointTest {
   //test unapply()
   @Test
   def testUnapply(): Unit = {
-    val delta = 1.0E-9
     val features = DenseVector[Double](1.5, 13.0, -3.3, 1350.02)
     val weight = 3.2
     val dataPoint = DataPoint(features, weight)
@@ -43,20 +40,34 @@ class DataPointTest {
   //test the extractor by case class
   @Test
   def testExtractor(): Unit = {
-    val delta = 1.0E-9
     val features = DenseVector[Double](2.09, 113.0, -3.3, 150.30)
     val weight = 6.4
     val dataPoint = DataPoint(features, weight)
 
     //test the extractor
-    dataPoint match
-    {
+    dataPoint match {
       case DataPoint(f, w) =>
-      {
         assertEquals(dataPoint.weight, w, delta)
         assertIterableEqualsWithTolerance(dataPoint.features.toArray, f.toArray, delta)
-      }
       case _ => throw new RuntimeException(s"extractor behavior is unexpected : [$dataPoint]")
     }
+  }
+
+  @Test(dataProvider = "dataProvider")
+  def testMargin(features: Vector[Double], coef: Vector[Double], margin: Double): Unit ={
+    val weight = math.random
+    val dataPoint = DataPoint(features, weight)
+    val actual = dataPoint.computeMargin(coef)
+    assertEquals(actual, margin, delta)
+  }
+
+  @DataProvider(name = "dataProvider")
+  def dataProvider(): Array[Array[Any]] = {
+    Array(
+      Array(DenseVector(1.0, 0.0, 0.4, 0.5), DenseVector(-1.0, -0.5, 0.1, 0.0), -0.96),
+      Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), DenseVector(-1.0, -0.5, 0.1, 0.0), -0.96),
+      Array(DenseVector(1.0, 0.0, 0.4, 0.5), SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -0.96),
+      Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -0.96)
+    )
   }
 }

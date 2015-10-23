@@ -72,10 +72,11 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   /**
    * TODO: enable feature specific regularization / disable regularizing intercept https://jira01.corp.linkedin.com:8443/browse/OFFREL-324
    * Create the objective function of the generalized linear algorithm
+   * @param normalizationContext The normalization context for the training
    * @param regularizationContext The type of regularization to construct the objective function
    * @param regularizationWeight The weight of the regularization term in the objective function
    */
-  protected def createObjectiveFunction(regularizationContext: RegularizationContext, regularizationWeight: Double): Function
+  protected def createObjectiveFunction(normalizationContext: NormalizationContext, regularizationContext: RegularizationContext, regularizationWeight: Double): Function
 
   /**
    * Create a model given the coefficients and intercept
@@ -87,10 +88,11 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
 
   /**
    * Create a model given the coefficients and intercept
+   * @param normalizationContext The normalization context
    * @param coefficientsWithIntercept A vector of the form [intercept, coefficients parameters]
    * @return A generalized linear model with intercept and coefficients parameters
    */
-  protected def createModel(coefficientsWithIntercept: Vector[Double]): GLM = {
+  protected def createModel(normalizationContext: NormalizationContext, coefficientsWithIntercept: Vector[Double]): GLM = {
     val updatedWeights =
       if (enableIntercept) {
         new DenseVector(coefficientsWithIntercept.toArray.tail)
@@ -98,7 +100,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         coefficientsWithIntercept
       }
     val updatedIntercept = if (enableIntercept) Some(coefficientsWithIntercept(0)) else None
-    createModel(updatedWeights, updatedIntercept)
+    createModel(normalizationContext.transformModelCoefficients(updatedWeights), updatedIntercept)
   }
 
   /**
@@ -107,44 +109,20 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @param optimizer The optimizer
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
-   * @param normalizationType Normalization type for feature normalization
-   * @param summaryOption An optional feature summary to support normalization
+   * @param normalizationContext The normalization context
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   def run(input: RDD[LabeledPoint],
           optimizer: Optimizer[LabeledPoint, Function],
           regularizationContext: RegularizationContext,
           regularizationWeights: List[Double],
-          normalizationType: NormalizationType,
-          summaryOption: Option[BasicStatisticalSummary]): List[GLM] = {
+          normalizationContext: NormalizationContext): List[GLM] = {
     val numFeatures = input.first().features.size
-
-    // Normalize features and persist normalized data RDD
-    val (scaler, transformedRdd) = normalizationType match {
-      case NormalizationType.NO_SCALING =>
-        (new IdentityTransformer[Vector[Double]], input)
-      case _ =>
-        val beforeNormalization = System.currentTimeMillis()
-        logInfo(s"Applying feature normalization: $normalizationType")
-        val vectorScaler = summaryOption match {
-          case Some(summary) =>
-            VectorTransformerFactory(normalizationType, summary)
-          case None =>
-            VectorTransformerFactory(normalizationType, input)
-        }
-        val labeledPointScaler = new LabeledPointTransformer(vectorScaler)
-        val transformed = input.map(x => labeledPointScaler.transform(x)).setName("training data normalized").persist(targetStorageLevel)
-        val timeForNormalization = (System.currentTimeMillis() - beforeNormalization) * 1.0E-3
-        logInfo(f"Feature normalization finished, time elapsed: $timeForNormalization%.3f(s)")
-        (vectorScaler, transformed)
-    }
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
     val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(transformedRdd, initialModel, optimizer, regularizationContext, regularizationWeights, scaler)
-    // Unpersist the RDD
-    if (input != transformedRdd) transformedRdd.unpersist()
+    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext)
     models
   }
 
@@ -156,7 +134,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @param optimizer The optimizer container to learn the models
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
-   * @param scaler The scaler used for normalization
+   * @param normalizationContext The normalization context
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   protected def run(input: RDD[LabeledPoint],
@@ -164,7 +142,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
                     optimizer: Optimizer[LabeledPoint, Function],
                     regularizationContext: RegularizationContext,
                     regularizationWeights: List[Double],
-                    scaler: Transformer[Vector[Double]]): List[GLM] = {
+                    normalizationContext: NormalizationContext): List[GLM] = {
 
     if (input.getStorageLevel == StorageLevel.NONE) {
       logWarning("The input data is not directly cached, which may hurt performance if its"
@@ -189,30 +167,29 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       }
     }
     // Prepend an extra variable consisting of all 1.0's for the intercept.
-    val dataPoints =
-      if (enableIntercept) {
-        input.map { case LabeledPoint(label, features, offset, weight) => LabeledPoint(label, prepend(features, 1), offset, weight) }
-      } else {
-        input
-      }
+    val dataPoints = if (enableIntercept) {
+      input.map { case LabeledPoint(label, features, offset, weight) => LabeledPoint(label, prepend(features, 1), offset, weight) }
+    } else {
+      input
+    }
 
     /* Find the path of solutions with different regularization coefficients */
     var initialCoefficientsWithIntercept =
       if (enableIntercept) prepend(initialModel.coefficients, initialModel.intercept.getOrElse(0.0))
       else initialModel.coefficients
     val models = regularizationWeights.map { regularizationWeight =>
-      val objectiveFunction = createObjectiveFunction(regularizationContext, regularizationWeight)
+      val objectiveFunction = createObjectiveFunction(normalizationContext, regularizationContext, regularizationWeight)
       val (coefficientsWithIntercept, _) = optimizer.optimize(dataPoints, objectiveFunction, initialCoefficientsWithIntercept)
       initialCoefficientsWithIntercept = coefficientsWithIntercept
       logInfo(s"Training model with regularization weight $regularizationWeight finished")
       if (isTrackingState) {
         val tracker = optimizer.getStatesTracker.get
         logInfo(s"History tracker information:\n $tracker")
-        val modelsPerIteration = tracker.getTrackedStates.map(x => createModel(scaler.transform(x.coefficients)))
+        val modelsPerIteration = tracker.getTrackedStates.map(x => createModel(normalizationContext, x.coefficients))
         modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
         logInfo(s"Models number: ${modelsPerIteration.size}")
       }
-      createModel(scaler.transform(coefficientsWithIntercept))
+      createModel(normalizationContext, coefficientsWithIntercept)
     }
     models
   }

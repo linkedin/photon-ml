@@ -1,15 +1,13 @@
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, RegularizationContext}
-import OptimizerType.OptimizerType
-import com.linkedin.photon.ml.optimization.TRON
-import com.linkedin.photon.ml.supervised.TaskType
-import TaskType._
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
+import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, RegularizationContext, TRON}
+import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionAlgorithm
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, PoissonRegressionAlgorithm}
 import org.apache.spark.rdd.RDD
 
@@ -28,8 +26,7 @@ object ModelTraining {
    * @param optimizerType The type of optimizer that will be used to train the model
    * @param regularizationContext The type of regularization that will be used to train the model
    * @param regularizationWeights An array of regularization weights used to train the model
-   * @param normalizationType Normalization type for feature normalization
-   * @param summaryOption An optional feature summary to support normalization
+   * @param normalizationContext Normalization context for feature normalization
    * @param maxNumIter Maximum number of iterations to run
    * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of more iterations
    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the per-iteration log information of the running optimizer
@@ -40,8 +37,7 @@ object ModelTraining {
                                   optimizerType: OptimizerType,
                                   regularizationContext: RegularizationContext,
                                   regularizationWeights: List[Double],
-                                  normalizationType: NormalizationType,
-                                  summaryOption: Option[BasicStatisticalSummary],
+                                  normalizationContext: NormalizationContext,
                                   maxNumIter: Int,
                                   tolerance: Double,
                                   enableOptimizationStateTracker: Boolean,
@@ -70,7 +66,7 @@ object ModelTraining {
     /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence time */
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
     /* Model training with the chosen optimizer and algorithm */
-    val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights, normalizationType, summaryOption)
+    val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights, normalizationContext)
     val weightModelTuples = sortedRegularizationWeights.zip(models)
 
     val modelTrackersMapOption = algorithm.getStateTracker.map(modelTrackers => sortedRegularizationWeights.zip(modelTrackers))

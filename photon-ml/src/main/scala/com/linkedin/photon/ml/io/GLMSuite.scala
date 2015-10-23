@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml.io
 
 import java.io.IOException
-import java.lang.{Double => JDouble, Object => JObject}
+import java.lang.{Double => JDouble}
 import java.util.{List => JList, Map => JMap}
 
 import breeze.linalg.SparseVector
@@ -19,7 +19,6 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
-import scala.util.Random
 import scala.util.parsing.json.JSON
 
 
@@ -315,6 +314,12 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
     val outputFile = new Path(outputDir, GLMSuite.DEFAULT_AVRO_FILE_NAME).toString
     AvroIOUtils.saveAsSingleAvro(sc, outputAvro, outputFile, FeatureSummarizationResultAvro.getClassSchema.toString, forceOverwrite = true)
   }
+
+  /**
+   * Get the intercept index. This is used especially for normalization because the intercept should be treated differently.
+   * @return The option for the intercept index value
+   */
+  def getInterceptId: Option[Int] = featureKeyToIdMap.get(GLMSuite.INTERCEPT_NAME_TERM)
 }
 
 private case class BasicSummaryItems(max: Double, min: Double, mean: Double, normL1: Double, normL2: Double, numNonzeros: Double, variance: Double)

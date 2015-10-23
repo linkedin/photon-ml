@@ -31,11 +31,11 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     // List of functions that return a tuple containing an undecorated loss function and its corresponding local data
     // set
     val baseLossFunctions = Array(
-      () => ("Differentiable dummy objective to test optimizer, benign data", new TestObjective(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable dummy objective to test optimizer, benign data", new IntegTestObjective(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, benign data", new LogisticLossFunction(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable poisson loss, benign data", new PoissonLossFunction(), generateBenignLocalDataSetPoissonRegression()),
-      () => ("Differentiable dummy objective to test optimizer, outlier data", new TestObjective(), generateOutlierLocalDataSetBinaryClassification()),
+      () => ("Differentiable dummy objective to test optimizer, outlier data", new IntegTestObjective(), generateOutlierLocalDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, outlier data", new LogisticLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
       () => ("Differentiable squared loss, outlier data", new SquaredLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
       () => ("Differentiable poisson loss, outlier data", new PoissonLossFunction(), generateOutlierLocalDataSetPoissonRegression()))

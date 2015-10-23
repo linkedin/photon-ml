@@ -1,25 +1,21 @@
 package com.linkedin.photon.ml.data
 
-import breeze.linalg.DenseVector
-import com.linkedin.photon.ml.test.Assertions
-import Assertions._
-import com.linkedin.photon.ml.data
+import breeze.linalg.{SparseVector, Vector, DenseVector}
+import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 /**
- * Test the functions in [[data.LabeledPoint]]
+ * Test the functions in [[LabeledPoint]]
  *
  * @author yali
+ * @author dpeng
  */
-class LabeledPointTest
-{
-  import LabeledPoint._
+class LabeledPointTest {
+  val delta = 1.0E-9
 
   @Test
-  def testApply(): Unit =
-  {
-    val delta = 1.0E-9
+  def testApply(): Unit = {
     val label = 1.0
     val features = DenseVector[Double](1.0, 10.0, 0.0, -100.0)
     val offset = 1.5
@@ -35,7 +31,6 @@ class LabeledPointTest
   //test the unapply()
   @Test
   def testUnapply(): Unit = {
-    val delta = 1.0E-9
     val label = 1.0
     val features = DenseVector[Double](12.21, 10.0, -0.03, 10.3)
     val offset = 1.5
@@ -51,7 +46,6 @@ class LabeledPointTest
   //test the extractor by case class
   @Test
   def testExtractor(): Unit = {
-    val delta = 1.0E-9
     val label = 1.0
     val features = DenseVector[Double](2.09, 113.0, -3.3, 150.30)
     val offset = 1.5
@@ -59,16 +53,32 @@ class LabeledPointTest
     val dataPoint = LabeledPoint(label, features, offset, weight)
 
     //test the extractor
-    dataPoint match
-    {
+    dataPoint match {
       case LabeledPoint(l, f, o, w) =>
-      {
         assertEquals(l, label, delta)
         assertIterableEqualsWithTolerance(f.toArray, features.toArray, delta)
         assertEquals(o, offset, delta)
         assertEquals(w, weight, delta)
-      }
       case _ => throw new RuntimeException(s"extractor behavior is unexpected : [$dataPoint]")
     }
+  }
+
+  @Test(dataProvider = "dataProvider")
+  def testMargin(features: Vector[Double], offset: Double, coef: Vector[Double], margin: Double): Unit ={
+    val weight = math.random
+    val label = math.random
+    val labeledPoint = LabeledPoint(label = label, features = features, offset = offset, weight = weight)
+    val actual = labeledPoint.computeMargin(coef)
+    assertEquals(actual, margin, delta)
+  }
+
+  @DataProvider(name = "dataProvider")
+  def dataProvider(): Array[Array[Any]] = {
+    Array(
+      Array(DenseVector(1.0, 0.0, 0.4, 0.5), 1.0, DenseVector(-1.0, -0.5, 0.1, 0.0), 0.04),
+      Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), -1.0, DenseVector(-1.0, -0.5, 0.1, 0.0), -1.96),
+      Array(DenseVector(1.0, 0.0, 0.4, 0.5), 0.0, SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -0.96),
+      Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), -100.0, SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -100.96)
+    )
   }
 }

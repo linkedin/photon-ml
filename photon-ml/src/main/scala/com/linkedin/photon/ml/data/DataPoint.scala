@@ -13,6 +13,12 @@ class DataPoint(val features: Vector[Double], val weight: Double = 1.0) extends 
   override def toString: String = {
     s"(features $features\nweight $weight)"
   }
+  /**
+   * Calculate the margin, i.e. z = theta^T^ features
+   * @param coef The coefficient
+   * @return The margin
+   */
+  def computeMargin(coef: Vector[Double]): Double = features.dot(coef)
 }
 
 
