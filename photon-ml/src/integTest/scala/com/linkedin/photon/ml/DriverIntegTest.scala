@@ -222,7 +222,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += tmpDir + "/summary"
 
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
-    args += NormalizationType.USE_STANDARD_DEVIATION.toString()
+    args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
