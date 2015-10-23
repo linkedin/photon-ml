@@ -2,8 +2,9 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
-import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, RegressionMetrics}
 import org.apache.spark.rdd.RDD
 
 /**
@@ -12,34 +13,56 @@ import org.apache.spark.rdd.RDD
  */
 
 object Evaluation {
+  val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
+  val MEAN_SQUARE_ERROR = "Mean square error"
+  val ROOT_MEAN_SQUARE_ERROR = "Root mean square error"
+  val R_SQUARED = "R^2"
+  val AREA_UNDER_PRECISION_RECALL = "Area under precision/recall"
+  val AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS = "Area under ROC"
+  val PEAK_F1_SCORE = "Peak F1 score"
 
   /**
-   * Get the binomial classification metrics. Examples include area under ROC, f-measure, etc.
-   * @param dataPoints The RDD representation of labeled data points
-   * @param classifier The learned classifier
-   * @return The binary classification metrics
+   * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
+   * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
+   * all metrics.
+   *
+   * @param model
+   * @param dataSet
+   * @return Map of (metricName &rarr; value)
    */
-  def getBinaryClassificationMetrics(dataPoints: RDD[LabeledPoint], classifier: BinaryClassifier): BinaryClassificationMetrics = {
-    val broadcastedClassifier = dataPoints.context.broadcast(classifier)
-    val scoreAndLabels = dataPoints.map { case LabeledPoint(label, features, offset, _) =>
-      (broadcastedClassifier.value.computeScoreWithOffset(features, offset), label)
+  def evaluate(model:GeneralizedLinearModel, dataSet:RDD[LabeledPoint]):Map[String, Double] = {
+    val scoredSet = dataSet.map(x => x match {
+      case LabeledPoint(label, features, offset, _) => (label, (features, offset))
+    }).map(x => (x._1, model.computeMeanFunctionWithOffset(x._2._1, x._2._2)))
+
+    var metrics = Map[String, Double]()
+
+    // Compute regression facet metrics
+    model match {
+      case r:Regression =>
+        val regressionMetrics = new RegressionMetrics(scoredSet)
+        metrics ++= Map[String, Double](MEAN_ABSOLUTE_ERROR -> regressionMetrics.meanAbsoluteError,
+                                        MEAN_SQUARE_ERROR -> regressionMetrics.meanSquaredError,
+                                        ROOT_MEAN_SQUARE_ERROR -> regressionMetrics.rootMeanSquaredError)
+
+      case _ =>
+        // Do nothing
     }
-    new BinaryClassificationMetrics(scoreAndLabels)
+
+    // Compute binary classifier metrics
+    model match {
+      case b:BinaryClassifier =>
+        val binaryMetrics = new BinaryClassificationMetrics(scoredSet)
+        metrics ++= Map[String, Double](AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR,
+                                        AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC,
+                                        PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold.map(x => x._2).max)
+      case _ =>
+        // Do nothing
+    }
+
+    // Additional metrics (e.g. loss, log loss) go here
+
+    metrics
   }
 
-  /**
-   * Compute the root-mean-square error (RMSE) between the regression model's prediction and the true labels.
-   * @param dataPoints The RDD representation of labeled data points
-   * @param regression The learned regression model
-   * @return The computed root-mean-square error (RMSE)
-   */
-  def computeRMSE(dataPoints: RDD[LabeledPoint], regression: Regression): Double = {
-    val broadcastedRegression = dataPoints.context.broadcast(regression)
-    val (nume, deno) = dataPoints.map {
-      case LabeledPoint(label, features, offset, weight) =>
-        val diff = broadcastedRegression.value.predict(features) - label
-        (diff * diff * weight, weight)
-    }.reduce((p1, p2) => (p1._1 + p2._1, p1._2 + p2._2))
-    math.sqrt(nume / deno)
-  }
 }

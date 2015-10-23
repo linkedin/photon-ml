@@ -16,7 +16,7 @@ class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClas
   assert(minimumAUC <= 1.0)
 
   def validateModelPredictions(model:BC, data:RDD[LabeledPoint]) = {
-    val scored:RDD[(Double, Double)] = data.map { x => (x.label, model.computeScore(x.features))}
+    val scored:RDD[(Double, Double)] = data.map { x => (x.label, model.computeMeanFunctionWithOffset(x.features, x.offset))}
     val evaluator = new BinaryClassificationMetrics(scored)
     val auROC = evaluator.areaUnderROC
 
