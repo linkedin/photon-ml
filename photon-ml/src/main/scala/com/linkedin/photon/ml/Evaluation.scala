@@ -13,7 +13,6 @@ import org.apache.spark.rdd.RDD
  */
 
 object Evaluation {
-  val EXPLAINED_VARIANCE = "Explained variance"
   val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
   val MEAN_SQUARE_ERROR = "Mean square error"
   val ROOT_MEAN_SQUARE_ERROR = "Root mean square error"
@@ -42,10 +41,9 @@ object Evaluation {
     model match {
       case r:Regression =>
         val regressionMetrics = new RegressionMetrics(scoredSet)
-        metrics += (EXPLAINED_VARIANCE -> regressionMetrics.explainedVariance)
-        metrics += (MEAN_ABSOLUTE_ERROR -> regressionMetrics.meanAbsoluteError)
-        metrics += (MEAN_SQUARE_ERROR -> regressionMetrics.meanSquaredError)
-        metrics += (ROOT_MEAN_SQUARE_ERROR -> regressionMetrics.rootMeanSquaredError)
+        metrics ++= Map[String, Double](MEAN_ABSOLUTE_ERROR -> regressionMetrics.meanAbsoluteError,
+                                        MEAN_SQUARE_ERROR -> regressionMetrics.meanSquaredError,
+                                        ROOT_MEAN_SQUARE_ERROR -> regressionMetrics.rootMeanSquaredError)
 
       case _ =>
         // Do nothing
@@ -55,9 +53,9 @@ object Evaluation {
     model match {
       case b:BinaryClassifier =>
         val binaryMetrics = new BinaryClassificationMetrics(scoredSet)
-        metrics += (AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR)
-        metrics += (AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC)
-        metrics += (PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold.map(x => x._2).max)
+        metrics ++= Map[String, Double](AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR,
+                                        AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC,
+                                        PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold.map(x => x._2).max)
       case _ =>
         // Do nothing
     }
