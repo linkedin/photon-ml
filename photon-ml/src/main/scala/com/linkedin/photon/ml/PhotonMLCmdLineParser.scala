@@ -12,7 +12,7 @@ import scala.util.parsing.json.JSON
 
 
 /**
- * A collection of functions used to parse MLEase's parameters [[Params]]
+ * A collection of functions used to parse Photon-ML's parameters [[Params]]
  * @author xazhang
  * @author dpeng
  * @author nkatariy
@@ -62,7 +62,7 @@ object PhotonMLCmdLineParser {
         .action((x, c) => c.copy(trainDir = x))
       opt[String](OUTPUT_DIR_OPTION)
         .required()
-        .text("MLEase's output directory.")
+        .text("Photon-ML's output directory.")
         .action((x, c) => c.copy(outputDir = x))
       opt[String](TASK_TYPE_OPTION)
         .required()

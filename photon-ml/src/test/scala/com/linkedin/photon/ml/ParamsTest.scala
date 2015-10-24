@@ -43,7 +43,7 @@ class ParamsTest {
     assertEquals(params.fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(params.summarizationOutputDirOpt, None)
     assertEquals(params.normalizationType, NormalizationType.NONE)
-    assertEquals(params.jobName, s"MLEase-Training")
+    assertEquals(params.jobName, s"Photon-ML-Training")
     assertEquals(params.constraintString, None)
 
     val Params(_,
@@ -81,7 +81,7 @@ class ParamsTest {
     assertEquals(fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(summarizationOutputDirOpt, None)
     assertEquals(normalizationType, NormalizationType.NONE)
-    assertEquals(jobName, s"MLEase-Training")
+    assertEquals(jobName, s"Photon-ML-Training")
     assertEquals(constraintString, None)
   }
 

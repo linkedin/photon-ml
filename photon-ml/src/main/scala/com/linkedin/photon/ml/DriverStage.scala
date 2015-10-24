@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml
 
 /**
- * This is an Enum class that enumerates all stages of mlease Driver
+ * This is an Enum class that enumerates all stages of Photon-ML Driver
  *
  * @author yizhou
  */

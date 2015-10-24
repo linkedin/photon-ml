@@ -10,13 +10,13 @@ import TaskType._
 import com.linkedin.photon.ml.normalization.NormalizationType
 
 /**
- * MLEase's parameters
+ * Photon-ML's parameters
  * @param trainDir Training data directory
  * @param validateDirOpt Validating data directory. Note that
     1. Validation is optional
     2. If validation data set is provided, the best model will be provided;
     3. No matter 1 or 2, all learned models will be provided, so users can always perform an independent model selection job
- * @param outputDir MLEase's output directory
+ * @param outputDir Photon-ML's output directory
  * @param taskType Learning task type, e.g., LINEAR_REGRESSION, POISSON_REGRESSION or LOGISTIC_REGRESSION
  * @param addIntercept Whether to learn the intercept
  * @param regularizationWeights An array of regularization weights that will be used to train the model
@@ -67,5 +67,5 @@ case class Params(trainDir: String = null,
                   fieldsNameType: FieldNamesType = RESPONSE_PREDICTION,
                   summarizationOutputDirOpt: Option[String] = None,
                   normalizationType: NormalizationType = NormalizationType.NONE,
-                  jobName: String = s"MLEase-Training",
+                  jobName: String = s"Photon-ML-Training",
                   constraintString: Option[String] = None)

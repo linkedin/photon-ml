@@ -44,7 +44,7 @@ class PhotonMLCmdLineParserTest {
   def testPresentingAllRequiredArgs(): Unit = {
     val params = PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs())
 
-    assertEquals(params.jobName, s"MLEase-Training")
+    assertEquals(params.jobName, s"Photon-ML-Training")
     // Verify required parameters values
     assertEquals(params.trainDir, "value")
     assertEquals(params.outputDir, "value")

@@ -10,7 +10,7 @@ import scala.collection.mutable
  * @param maxNumStates The maximum number of states to track. This is used to prevent the OptimizationHistoryTracker
  *                     from using too much memory to track the history of the states.
  * @author xazhang
- * @note  DO NOT USE this class outside of MLEase. It is intended as an internal utility, and is likely to be changed or removed in future releases.
+ * @note  DO NOT USE this class outside of Photon-ML. It is intended as an internal utility, and is likely to be changed or removed in future releases.
  */
 protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable {
 
