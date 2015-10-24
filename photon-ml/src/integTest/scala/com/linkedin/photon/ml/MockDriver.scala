@@ -5,7 +5,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.testng.Assert._
 
 /**
- * This is a mock Driver which extends from mlease Driver. It's used to expose protected fields/methods for test
+ * This is a mock Driver which extends from Photon-ML Driver. It's used to expose protected fields/methods for test
  * purpose.
  *
  * @author yizhou

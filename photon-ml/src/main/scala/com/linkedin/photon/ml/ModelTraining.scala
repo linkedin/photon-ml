@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 object ModelTraining {
 
   /**
-   * Train a generalized linear model using the given training data set and the MLEase's parameter settings
+   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or BINARY_CLASSIFICATION or POISSON_REGRESSION
    * @param optimizerType The type of optimizer that will be used to train the model

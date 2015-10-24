@@ -30,7 +30,7 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.PrettyPrinter
 
 /**
- * Driver for the MLEase core machine learning algorithms. The processing done in the driver include three main components:
+ * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main components:
  * <ul>
  * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
  * internal data structure </li>
@@ -40,7 +40,7 @@ import scala.xml.PrettyPrinter
  * model given the validating results </li>
  * </ul>
  * More detailed documentation can be found either through the comments and notations in the source code, or at
- * [[https://iwww.corp.linkedin.com/wiki/cf/display/ENGS/How+to+MLEase]].
+ * [[***REMOVED***]].
  * @param params: The Photon-ML parameters [[Params]]], containing essential information
  *              for the underlying model training tasks.
  * @param sc: The Spark context.
@@ -327,7 +327,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
  * which in turn is to be consumed by the main Driver class.
  *
  * An example of running Photon-ML
- * through command line arguments can be found at [[https://iwww.corp.linkedin.com/wiki/cf/display/ENGS/How+to+MLEase]],
+ * through command line arguments can be found at [[***REMOVED***]],
  * however, please note that our plan is to not have Driver or the command line as the user-facing interface for Photon,
  * instead, the template library should be.
  *

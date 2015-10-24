@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml
 
 /**
- * A collection of option names used in MLEase
+ * A collection of option names used in Photon-ML
  * @author xazhang
  * @author dpeng
  */
