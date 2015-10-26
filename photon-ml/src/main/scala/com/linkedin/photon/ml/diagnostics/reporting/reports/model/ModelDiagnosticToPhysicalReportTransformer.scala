@@ -35,8 +35,6 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
         new BulletedListPhysicalReport(model.metrics.map(x => s"Metric: [${x._1}, value: [${x._2}]").toSeq.sorted.map(x => new SimpleTextPhysicalReport(x)))),
       "Validation Set Metrics")
   }
-
-
 }
 
 object ModelDiagnosticToPhysicalReportTransformer {
