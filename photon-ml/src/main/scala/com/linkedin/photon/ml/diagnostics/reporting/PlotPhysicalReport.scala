@@ -28,14 +28,14 @@ import scala.xml.parsing.NoBindingFactoryAdapter
  *              Plot title
  */
 class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Option[String] = None) extends VectorImagePhysicalReport(caption, title) {
-  override def asRasterizedImage(height:Int=960, width:Int=1280, dpi:Int=300):RasterizedImagePhysicalReport = {
+  override def asRasterizedImage(height:Int=PlotUtils.PLOT_HEIGHT, width:Int=PlotUtils.PLOT_WIDTH, dpi:Int=300):RasterizedImagePhysicalReport = {
     val resultImage: Image = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
     val graphics: Graphics2D = resultImage.getGraphics.asInstanceOf[Graphics2D]
     plot.paint(graphics, width, height)
     new RasterizedImagePhysicalReport(resultImage, caption, title)
   }
 
-  override def asSVG(height:Int=960, width:Int=1280):Node = {
+  override def asSVG(height:Int=PlotUtils.PLOT_HEIGHT, width:Int=PlotUtils.PLOT_WIDTH):Node = {
     val docFac = DocumentBuilderFactory.newInstance()
     val doc = docFac.newDocumentBuilder().newDocument()
     val ctx = new SVGGraphics2D(doc)
@@ -43,7 +43,7 @@ class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Op
       plot.paint(ctx)
       var tmp = asXml(ctx.getRoot)
 
-      new Elem(null, "svg", new PrefixedAttribute(tmp.namespace, "viewBox", s"0 0 $width $height",
+      new Elem(null, "svg", new PrefixedAttribute(tmp.namespace, "viewBox", s"0 0 $height $width",
         new UnprefixedAttribute("preserveAspectRatio", "xMidYMid meet",
           new UnprefixedAttribute("width", "100%",
             new UnprefixedAttribute("height", "100%", tmp.attributes)))), tmp.scope, true, tmp.child:_*)
@@ -62,13 +62,6 @@ class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Op
    * @return
    */
   private def  asXml(dom: _root_.org.w3c.dom.Node): Node = {
-//    val transformer = TransformerFactory.newInstance().newTransformer()
-//    transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8")
-//    transformer.setOutputProperty(OutputKeys.INDENT, "yes")
-//    val buffer = new StringWriter()
-//    transformer.transform(new DOMSource(dom), new StreamResult(buffer))
-//    XML.loadString(buffer.getBuffer.toString)
-
     val source = new DOMSource(dom)
     val adapter = new NoBindingFactoryAdapter
     val saxResult = new SAXResult(adapter)

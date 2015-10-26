@@ -78,6 +78,8 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
       .title(MODEL_IMPORTANCE_TITLE)
       .xAxisTitle("Rank (importance %-ile)")
       .yAxisTitle("Importance")
+      .width(PlotUtils.PLOT_WIDTH)
+      .height(PlotUtils.PLOT_HEIGHT)
       .build()
     chart.addSeries(coeffImportDesc, featImportanceX, featImportanceY)
     val plot = new PlotPhysicalReport(chart)
