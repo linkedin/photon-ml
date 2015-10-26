@@ -28,18 +28,24 @@ class HosmerLemeshowDiagnostic(scoreBinner: PredictedProbabilityVersusObservedFr
     val (chiSquaredMsg, chiSquaredScore) = binnedScores.map(bin => {
       val msg: StringBuilder = new StringBuilder()
 
-      val deltaPos: Double = if (bin.expectedPosCount > MINIMUM_EXPECTED_IN_BUCKET) {
+      val deltaPos: Double = if (bin.expectedPosCount > 0) {
         (bin.observedPosCount - bin.expectedPosCount) * (bin.observedPosCount - bin.expectedPosCount) / bin.expectedPosCount.toDouble
       } else {
-        msg.append(s"For bin [$bin], expected positive count is too small to soundly use in a Chi^2 estimate\n")
         0.0
+      }
+
+      if (bin.expectedPosCount < MINIMUM_EXPECTED_IN_BUCKET) {
+        msg.append(s"For bin [$bin], expected positive count is too small to soundly use in a Chi^2 estimate\n")
       }
 
       val deltaNeg: Double = if (bin.expectedNegCount > 0) {
         (bin.observedNegCount - bin.expectedNegCount) * (bin.observedNegCount - bin.expectedNegCount) / bin.expectedNegCount.toDouble
       } else {
-        msg.append(s"For bin [$bin], expected negative count is too small to soundly use in a Chi^2 estimate\n")
         0.0
+      }
+
+      if (bin.expectedNegCount < MINIMUM_EXPECTED_IN_BUCKET) {
+        msg.append(s"For bin [$bin], expected negative count is too small to soundly use in a Chi^2 estimate\n")
       }
 
       (msg.toString, deltaPos + deltaNeg)

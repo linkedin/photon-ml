@@ -43,13 +43,13 @@ class HosmerLemeshowReport(val binningMsg: String,
   }
 
   def getPointProbabilityAnalysis(): String = {
-    f"Pr[Chi^2 < $chiSquaredScore] = [$chiSquaredProb%.09g]"
+    f"Pr[Chi^2 < $chiSquaredScore] = [${100.0 * (1.0 - chiSquaredProb)}%.09g%%]"
   }
 
   def getCutoffAnalysis(): List[String] = {
     standardConfidencesAndCutoffs.map(x => {
-      val reject = if (chiSquaredScore > x._2) "reject" else "accept"
-      f"  Pr[X <= ${x._2}%12.09f] = ${100.0 * x._1}%.03f H0 (Well-specified model with Chi^2 <= $chiSquaredScore by chance alone): $reject"
+      val reject = if (chiSquaredScore > x._2) "accept" else "reject"
+      f"  Pr[X <= ${x._2}%12.09f] <===> ${100.0 * (1.0 - x._1)}%.09f%% H0 (Ill-specified model with Chi^2 <= ${x._2} by chance alone): $reject"
     })
   }
 }
