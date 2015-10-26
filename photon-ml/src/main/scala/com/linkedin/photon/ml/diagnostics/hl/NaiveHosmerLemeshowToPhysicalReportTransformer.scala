@@ -31,6 +31,8 @@ class NaiveHosmerLemeshowToPhysicalReportTransformer extends LogicalToPhysicalRe
       .title("Observed positive rate versus predicted positive rate")
       .xAxisTitle("Predicted positive rate")
       .yAxisTitle("Observed positive rate")
+      .width(PlotUtils.PLOT_WIDTH)
+      .height(PlotUtils.PLOT_HEIGHT)
     val chart = builder.build()
     chart.addSeries("Observed", xSeries, ySeries1)
     chart.addSeries("Expected", xSeries, ySeries2)
