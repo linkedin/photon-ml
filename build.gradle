@@ -1,9 +1,51 @@
-apply plugin: 'li-product'
-apply plugin: 'li-jacoco-product'
-apply plugin: 'li-findbugs-product'
-apply plugin: 'li-checkstyle-product'
+// TODO: codecoverage plugin apply plugin: 'li-jacoco-product'
+// TODO: checkstyle plugin apply plugin: 'li-checkstyle-product'
+
+buildscript {
+  repositories {
+    mavenCentral()
+    jcenter()
+  }
+
+  // TODO: is this the right way to incluse gradle plugins?
+  repositories {
+    repositories {
+      // For license plugin.
+      maven {
+        url 'http://dl.bintray.com/content/netflixoss/external-gradle-plugins/'
+      }
+    }
+  }
+
+}
+
+allprojects {
+  apply plugin: 'idea'
+  repositories {
+    mavenCentral()
+
+    // TODO: Linkedin internal repo, should be cleaned out
+    ['SNA', 'DDS', 'ext-restricted'].each { repositoryName ->
+      ivy {
+        url "http://artifactory.corp.linkedin.com:8081/artifactory/${repositoryName}"
+
+        layout 'pattern', {
+          m2compatible = true
+
+          artifact '[organisation]/[module]/[revision]/[module]-[revision](.[ext])'
+          ivy '[organisation]/[module]/[revision]/[module]-[revision].ivy'
+        }
+      }
+    }
+  }
+}
+
+apply from: file('scala.gradle')
 
 subprojects {
+  // Put the build dir into the rootProject
+  buildDir = "../build/$name"
+
   configurations.all {
     // Brought in by azkaban2, but not needed
     exclude group: 'commons-dbutils'
@@ -30,12 +72,20 @@ subprojects {
         }
       }
       // Forward standard out from child JVMs to the console
-      testLogging.showStandardStreams = true;
+      testLogging {
+        showStackTraces = true
+        showStandardStreams = true
+        showExceptions = true
+        showCauses = true
+        displayGranularity = maxGranularity
+        exceptionFormat = 'full'
+      }
+
       systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
     }
 
     dependencies {
-      testCompile spec.external."testng"
+      testCompile 'org.testng:testng:6.9.9'
     }
 
     // TODO: Currently spark-shell on Nertz runs on Java 1.7, so 1.8 build doesn't run correctly on spark-shell.
@@ -54,15 +104,5 @@ subprojects {
       memoryMaximumSize = '1g'
     }
     configurations.zinc.transitive = true
-  }
-}
-
-allprojects {
-  tasks.withType(JacocoReport) {
-    afterEvaluate {
-      reports.html.enabled = true
-      reports.xml.enabled = true
-      reports.csv.enabled = true
-    }
   }
 }

@@ -1,5 +1,6 @@
-apply plugin: 'li-scala'
-apply plugin: 'li-integ-test'
+apply plugin: 'scala'
+
+apply from: file('../build-scripts/integration-test.gradle')
 
 compileScala {
   scalaCompileOptions.fork = true
@@ -11,29 +12,32 @@ compileScala {
 }
 
 dependencies {
-  compile(spec.external."scalaCompiler$scalaSuffix")
-  compile(spec.external."scalaLibrary$scalaSuffix")
-  compile(spec.external."scalaReflect$scalaSuffix")
-  compile(spec.external.avro)
-  compile(spec.external.avroCompiler)
-  compile(spec.external.avroMapred)
-  compile(spec.external.xchart)
-  compile(spec.external.batik)
+  compile("org.scala-lang:scala-compiler:${scalaVersion}")
+  compile("org.scala-lang:scala-library:${scalaVersion}")
+  compile("org.scala-lang:scala-reflect:${scalaVersion}")
 
-  compile(spec.external."spark-core$scalaSuffix")
-  compile(spec.external."spark-mllib$scalaSuffix")
-  compile(spec.external."spark-sql$scalaSuffix")
-  compile(spec.external."spark-catalyst$scalaSuffix")
+  compile('org.apache.avro:avro:1.7.5')
+  compile('org.apache.avro:avro-compiler:1.7.5')
+  compile('org.apache.avro:avro-mapred:1.7.5')
+  compile('com.xeiam.xchart:xchart:2.5.1')
+  compile('org.apache.xmlgraphics:batik-svggen:1.7')
+
+  compile("org.apache.spark:spark-core_${baseScalaVersion}:1.4.0")
+  compile("org.apache.spark:spark-mllib_${baseScalaVersion}:1.4.0")
+  compile("org.apache.spark:spark-sql_${baseScalaVersion}:1.4.0")
+  compile("org.apache.spark:spark-catalyst_${baseScalaVersion}:1.4.0")
 
   //this one is scala's option parsing library
-  compile(spec.external."scopt$scalaSuffix")
+  compile("com.github.scopt:scopt_${baseScalaVersion}:3.2.0")
 
-  compile(spec.external."log4j")
+  compile('log4j:log4j:1.2.17')
 
-  compile(spec.product."photon-schemas"."photon-schemas")
+  compile('com.linkedin.photon-schemas:photon-schemas:0.0.2')
 
 
-  testCompile(project(":photon-test$scalaSuffix"))
-  testRuntime(spec.external."breeze-core$scalaSuffix")
-  testRuntime(spec.external."breeze-macro$scalaSuffix")
+  // TODO cross build
+  testCompile(project(":photon-test"))
+
+  testRuntime("org.scalanlp:breeze_${baseScalaVersion}:0.11.2")
+  testRuntime("org.scalanlp:breeze-macros_${baseScalaVersion}:0.11.2")
 }
