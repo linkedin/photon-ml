@@ -4,6 +4,7 @@ package com.linkedin.photon.ml
 import java.io.{OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
@@ -241,10 +242,15 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       }
 
       if (null != diagnostic) {
+        val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
+        val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
         val hlDiagnostic = new HosmerLemeshowDiagnostic()
 
         diagnostic.modelReports ++= lambdaModelTuples.map(x => {
           val (lambda, model) = x
+          val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
+          val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
+
           val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
           model match {
             case lm: LogisticRegressionModel =>
@@ -255,7 +261,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 suite.featureKeyToIdMap,
                 metrics,
                 summaryOption,
-                Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)))
+                Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
+                varImportance,
+                meanImportance)
 
             case glm: GeneralizedLinearModel =>
               new ModelDiagnosticReport[GeneralizedLinearModel](
@@ -265,7 +273,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 suite.featureKeyToIdMap,
                 metrics,
                 summaryOption,
-                None)
+                None,
+                varImportance,
+                meanImportance)
           }
         })
 
