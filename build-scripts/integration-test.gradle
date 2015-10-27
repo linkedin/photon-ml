@@ -1,0 +1,65 @@
+// Set up integration test tasks
+sourceSets {
+  integTest {
+    compileClasspath += main.output + test.output
+    runtimeClasspath += main.output + test.output
+
+    java.srcDir file('src/integTest/java')
+    scala.srcDir file('src/integTest/scala')
+    resources.srcDir file('src/integTest/resources')
+  }
+}
+
+configurations {
+  integTestCompile {
+    description = "Integration test compilation"
+    extendsFrom testCompile
+  }
+
+  integTestRuntime {
+    description = "Integration test runtime"
+    extendsFrom testRuntime
+  }
+}
+
+task integTest(type: Test) {
+  testClassesDir = sourceSets.integTest.output.classesDir
+  classpath = sourceSets.integTest.runtimeClasspath
+  // force always rerunning tests
+  outputs.upToDateWhen { false }
+
+  systemProperty "log4j.configuration", "file:$rootProject.projectDir/log4j.properties"
+}
+check.dependsOn integTest
+
+plugins.withType(JavaPlugin) {
+  integTest {
+    useTestNG()
+
+    options {
+      parallel = 'methods'
+      threadCount = 4
+    }
+
+    afterSuite { desc, result ->
+      if (!desc.parent) {
+        println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
+      }
+    }
+    // Forward standard out from child JVMs to the console
+    testLogging {
+      showStackTraces = true
+      showStandardStreams = true
+      showExceptions = true
+      showCauses = true
+      displayGranularity = maxGranularity
+      exceptionFormat = 'full'
+    }
+
+    systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
+  }
+
+  dependencies {
+    testCompile 'org.testng:testng:6.9.9'
+  }
+}

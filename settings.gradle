@@ -1,18 +1,3 @@
-apply plugin: com.linkedin.ligradle.scala.LiScalaCrossBuildPlugin // can't be applied by id because of GRADLE-2914
+apply from: file('scala.gradle')
 
-def modulesToNotCrossBuild = []
-def modulesToCrossBuild = ['photon-ml', 'photon-test', 'azkaban-util']
-scalaCrossBuild {
-  defaultScalaVersion '2.10.4'
-  targetScalaVersions '2.10.4'
-  projectsToCrossBuild modulesToCrossBuild
-  projectsToNotCrossBuild modulesToNotCrossBuild
-}
-
-// need rum plugins on the classpath
-buildscript {
-  gradle.ext.addArtifactory(repositories)
-  dependencies {
-    classpath "com.linkedin.rum:product-plugins:$gradle.ext.rumVersion"
-  }
-}
+include 'azkaban-util', 'photon-ml', 'photon-test'

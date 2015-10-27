@@ -1,4 +1,4 @@
-apply plugin: 'li-scala'
+apply plugin: 'scala'
 
 compileScala {
   scalaCompileOptions.fork = true
@@ -16,12 +16,15 @@ jar {
 }
 
 dependencies {
-  testCompile(spec.external."scalaCompiler$scalaSuffix")
-  testCompile(spec.external."scalaLibrary$scalaSuffix")
-  testCompile(spec.external."scalaReflect$scalaSuffix")
-  testCompile(spec.external."spark-core$scalaSuffix")
-  testCompile(spec.external."breeze-core$scalaSuffix")
-  testCompile(spec.external."breeze-macro$scalaSuffix")
-  testCompile(spec.external."commons-io")
-  testCompile(spec.external.commonsMath3)
+
+  testCompile("org.scala-lang:scala-compiler:${scalaVersion}")
+  testCompile("org.scala-lang:scala-library:${scalaVersion}")
+  testCompile("org.scala-lang:scala-reflect:${scalaVersion}")
+
+  testCompile("org.apache.spark:spark-core_${baseScalaVersion}:1.4.0")
+  testCompile("org.scalanlp:breeze_${baseScalaVersion}:0.11.2")
+  testCompile("org.scalanlp:breeze-macros_${baseScalaVersion}:0.11.2")
+
+  testCompile('commons-io:commons-io:2.4')
+  testCompile('org.apache.commons:commons-math3:3.5')
 }
