@@ -264,7 +264,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(bestModel(0)._1, 0.1)
   }
 
-  @DataProvider(parallel = false)
+  @DataProvider
   def testInvalidRegularizationAndOptimizerDataProvider(): Array[Array[Any]] = {
     Array(
       Array(RegularizationType.L1, OptimizerType.TRON),
@@ -286,14 +286,14 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
   }
 
-  @DataProvider(parallel = false)
+  @DataProvider
   def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
     val base = "src/integTest/resources/DriverIntegTest/input/"
     val models = Map(
       TaskType.LINEAR_REGRESSION -> ("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
 
-    val lambdas = List(1e-3, 1e-2, 1e-1, 1, 2, 4, 8, 1e1, 1e2, 1e3, 1e4)
+    val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
     val regularizations = Map(RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
       RegularizationType.L2 ->(OptimizerType.TRON, lambdas),
@@ -336,7 +336,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }).toArray
   }
 
-  @Test(dataProvider = "testDiagnosticGenerationProvider", enabled = true)
+  @Test(dataProvider = "testDiagnosticGenerationProvider")
   def testDiagnosticGeneration(outputDir: String, args: Array[String], numFeatures: Int, numTrainingSamples: Int): Unit = sparkTestSelfServeContext("testDiagnosticGeneration") {
     FileUtils.deleteDirectory(new File(outputDir))
 

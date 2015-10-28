@@ -7,6 +7,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
+import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
@@ -274,11 +275,13 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
         val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
         val hlDiagnostic = new HosmerLemeshowDiagnostic()
+        val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
 
         diagnostic.modelReports ++= lambdaModelTuples.map(x => {
           val (lambda, model) = x
           val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
           val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
+          val predErrReport = predictionErrorDiagnostic.diagnose(model, validatingData, summaryOption)
 
           val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
           model match {
@@ -290,6 +293,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 suite.featureKeyToIdMap,
                 metrics,
                 summaryOption,
+                predErrReport,
                 Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
                 varImportance,
                 meanImportance,
@@ -303,6 +307,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 suite.featureKeyToIdMap,
                 metrics,
                 summaryOption,
+                predErrReport,
                 None,
                 varImportance,
                 meanImportance,
