@@ -1,16 +1,12 @@
 package com.linkedin.photon.ml
 
-import java.util.UUID
-
 import OptionNames._
-import com.linkedin.photon.ml.io.FieldNamesType
-import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
+import com.linkedin.photon.ml.optimization.OptimizerType
 import OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.RegularizationType
 import RegularizationType.RegularizationType
 import com.linkedin.photon.ml.supervised.TaskType
 import TaskType.TaskType
-import com.linkedin.photon.ml.test.SparkTestUtils
 import breeze.linalg.Vector
 import java.io.File
 
@@ -21,6 +17,7 @@ import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, CommonTestUtils, TestTemplateWithTmpDir}
+import org.apache.commons.io.FileUtils
 
 import scala.collection.mutable
 import scala.io.Source
@@ -34,6 +31,7 @@ import org.testng.annotations.{DataProvider, Test}
  *
  * @author yizhou
  * @author dpeng
+ * @author bdrew
  */
 class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
@@ -215,7 +213,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testRunWithDataValidation(): Unit = sparkTestSelfServeContext("testRunWithDataValidation") {
-    val tmpDir = s"/tmp/${UUID.randomUUID.toString}/testRunWithDataValidation"
+    val tmpDir = getTmpDir + "/testRunWithDataValidation"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir, isValidating = true)
     args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
@@ -266,6 +264,14 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(bestModel(0)._1, 0.1)
   }
 
+  @DataProvider(parallel = false)
+  def testInvalidRegularizationAndOptimizerDataProvider(): Array[Array[Any]] = {
+    Array(
+      Array(RegularizationType.L1, OptimizerType.TRON),
+      Array(RegularizationType.ELASTIC_NET, OptimizerType.TRON)
+    )
+  }
+
   @Test(dataProvider = "testInvalidRegularizationAndOptimizerDataProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidRegularizationAndOptimizer(regularizationType: RegularizationType, optimizer: OptimizerType): Unit = sparkTestSelfServeContext("testInvalidRegularizationAndOptimizer") {
     val tmpDir = getTmpDir + "/testInvalidRegularizationAndOptimizer"
@@ -281,37 +287,62 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @DataProvider(parallel = false)
-  def testInvalidRegularizationAndOptimizerDataProvider(): Array[Array[Any]] = {
-    Array(
-      Array(RegularizationType.L1, OptimizerType.TRON),
-      Array(RegularizationType.ELASTIC_NET, OptimizerType.TRON)
-    )
+  def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
+    val base = "src/integTest/resources/DriverIntegTest/input/"
+    val models = Map(
+      TaskType.LINEAR_REGRESSION -> ("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
+      TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
+
+    val lambdas = List(1e-3, 1e-2, 1e-1, 1, 2, 4, 8, 1e1, 1e2, 1e3, 1e4)
+
+    val regularizations = Map(RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
+      RegularizationType.L2 ->(OptimizerType.TRON, lambdas),
+      RegularizationType.L1 ->(OptimizerType.LBFGS, lambdas),
+      RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, lambdas))
+
+    (for (m <- models; r <- regularizations) yield {
+      (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
+    }).map(x => {
+      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) = x
+      val outputDir = s"${taskType}_${regType}"
+      val args = mutable.ArrayBuffer[String]()
+      args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
+      args += 1e-4.toString
+      args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+      args += 200.toString
+      args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
+      args += regType.toString
+      args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+      args += optimType.toString
+      args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
+      args += s"$base/$trainData"
+      args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)
+      args += outputDir + "/models"
+      args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
+      args += taskType.toString
+      args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
+      args += FieldNamesType.TRAINING_EXAMPLE.toString
+      args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
+      args += s"$base/$testData"
+      args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
+      args += lambdas.mkString(",")
+      args += CommonTestUtils.fromOptionNameToArg(ELASTIC_NET_ALPHA_OPTION)
+      args += 0.5.toString
+      args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
+      args += outputDir + "/summary"
+      args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
+      args += NormalizationType.STANDARDIZATION.toString
+      Array(outputDir, args.toArray, numDim, numSamp)
+    }).toArray
   }
 
-  @Test(dataProvider = "testInvalidRegularizationAndAlphaDataProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidRegularizationAndAlpha(regularizationType: RegularizationType, alpha: Double): Unit = sparkTestSelfServeContext("testInvalidRegularizationAndAlpha") {
-    val tmpDir = getTmpDir + "/testInvalidRegularizationAndAlpha"
-    val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
-    args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
-    args += regularizationType.toString
-    args += CommonTestUtils.fromOptionNameToArg(ELASTIC_NET_ALPHA_OPTION)
-    args += alpha.toString
-    MockDriver.runLocally(
-      args = args.toArray,
+  @Test(dataProvider = "testDiagnosticGenerationProvider", enabled = true)
+  def testDiagnosticGeneration(outputDir: String, args: Array[String], numFeatures: Int, numTrainingSamples: Int): Unit = sparkTestSelfServeContext("testDiagnosticGeneration") {
+    FileUtils.deleteDirectory(new File(outputDir))
+
+    MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
-      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false
-    )
-  }
-
-  @DataProvider(parallel = false)
-  def testInvalidRegularizationAndAlphaDataProvider(): Array[Array[Any]] = {
-    Array(
-      Array(RegularizationType.L1, 0.5),
-      Array(RegularizationType.L2, 0.5),
-      Array(RegularizationType.ELASTIC_NET, 1.1),
-      Array(RegularizationType.ELASTIC_NET, -0.5)
-    )
+      expectedNumFeatures = numFeatures, expectedNumTrainingData = numTrainingSamples, expectedIsSummarized = true)
   }
 }
 
