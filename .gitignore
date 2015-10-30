@@ -14,3 +14,6 @@
 bin
 build
 out
+photon-ml/LOGISTIC*
+photon-ml/LINEAR*
+photon-ml/POISSON*

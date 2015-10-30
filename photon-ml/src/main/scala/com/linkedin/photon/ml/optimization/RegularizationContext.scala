@@ -10,18 +10,25 @@ import com.linkedin.photon.ml.function.{TwiceDiffFunction, DiffFunction}
  *
  * The regularization term will be lambda [ (1-alpha)/2 ||w||,,2,,^2^ + alpha ||w||,,1,, ]
  *
- * The 1/2 factor for L2 regularization is handled in [[TwiceDiffFunction#withRegularization TwiceDiffFunction]]
- * and [[DiffFunction#withRegularization DiffFunction]] so the L2 regularization weight here does not have 1/2 factor.
+ * Alpha is computed according to the following rules:
  *
- * If alpha = 1, it is an L1. If alpha = 0, it is an L2.
+ * <ul>
+ *   <li>[[RegularizationType.ELASTIC_NET]] has a default alpha of 0.5</li>
+ *   <li>[[RegularizationType.L1]] has a fixed alpha of 1.0</li>
+ *   <li>[[RegularizationType.L2]] has a fixed alpha of 0.0</li>
+ *   <li>[[RegularizationType.NONE]] has a fixed alpha of 0.0</li>
+ * </ul>
  *
  * @author dpeng
+ * @author bdrew
  */
 class RegularizationContext(val regularizationType: RegularizationType, elasticNetParam: Option[Double] = None) {
   val alpha: Double = (regularizationType, elasticNetParam) match {
     case (RegularizationType.ELASTIC_NET, Some(x)) if x > 0.0d && x <= 1.0d => x
-    case (RegularizationType.L1, None) => 1.0d
-    case (RegularizationType.L2, None) => 0.0d
+    case (RegularizationType.ELASTIC_NET, None) => 0.5d
+    case (RegularizationType.L1, _) => 1.0d
+    case (RegularizationType.L2, _) => 0.0d
+    case (RegularizationType.NONE, _) => 0.0d
     case _ => throw new IllegalArgumentException(s"Wrong input: RegularizationContext($regularizationType, $elasticNetParam)")
   }
 
