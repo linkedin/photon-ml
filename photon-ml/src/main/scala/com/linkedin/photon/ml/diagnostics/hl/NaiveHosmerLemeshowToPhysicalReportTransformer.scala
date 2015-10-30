@@ -36,10 +36,6 @@ class NaiveHosmerLemeshowToPhysicalReportTransformer extends LogicalToPhysicalRe
     val chart = builder.build()
     chart.addSeries("Observed", xSeries, ySeries1)
     chart.addSeries("Expected", xSeries, ySeries2)
-    chart.getStyleManager.setXAxisMin(0.0)
-    chart.getStyleManager.setXAxisMax(100.0)
-    chart.getStyleManager.setYAxisMin(0.0)
-    chart.getStyleManager.setYAxisMax(100.0)
     new SectionPhysicalReport(Seq(new PlotPhysicalReport(chart)), PLOT_HEADER)
   }
 

@@ -86,7 +86,7 @@ object PhotonMLCmdLineParser {
               s"regularization weight will be ignored. Default: ${defaultParams.regularizationType}")
         .action((x, c) => c.copy(regularizationType = RegularizationType.withName(x.toUpperCase)))
       opt[Double](ELASTIC_NET_ALPHA_OPTION)
-        .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and alpha = 0 is L2. Required for elastic net regularization. Default is 0.5")
+        .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and alpha = 0 is L2. Required for elastic net regularization.")
         .validate(x => if (x >= 0.0 && x <= 1.0) success else failure("alpha must be in the range [0, 1]."))
         .action((x, c) => c.copy(elasticNetAlpha = Some(x)))
       opt[Int](MAX_NUM_ITERATIONS_OPTION)
