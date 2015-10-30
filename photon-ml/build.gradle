@@ -1,30 +1,6 @@
 apply plugin: 'li-scala'
 apply plugin: 'li-integ-test'
 
-integTest {
-  useTestNG()
-
-  afterSuite { desc, result ->
-    if (!desc.parent) {
-      println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
-    }
-  }
-
-  // Forward standard out from child JVMs to the console
-  systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
-
-  minHeapSize = "2G"
-  maxHeapSize = "8G"
-
-  maxParallelForks = 4
-  forkEvery = 1
-
-  options {
-    parallel = 'methods'
-    threadCount = 1
-  }
-}
-
 compileScala {
   scalaCompileOptions.fork = true
   scalaCompileOptions.additionalParameters = [

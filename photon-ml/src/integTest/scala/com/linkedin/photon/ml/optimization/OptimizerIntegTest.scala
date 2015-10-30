@@ -23,7 +23,8 @@ class OptimizerIntegTest extends SparkTestUtils {
       Array(new TRON[LabeledPoint]()))
   }
 
-  @Test(dataProvider = "optimizeEasyTestFunction")
+  @Test(dataProvider = "optimizeEasyTestFunction",
+    dependsOnGroups = Array[String]("ObjectiveFunctionTests"))
   def checkEasyTestFunctionLocalNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = {
     optim.isTrackingState = true
     optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
@@ -38,7 +39,8 @@ class OptimizerIntegTest extends SparkTestUtils {
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
   }
 
-  @Test(dataProvider = "optimizeEasyTestFunction")
+  @Test(dataProvider = "optimizeEasyTestFunction",
+    dependsOnGroups = Array[String]("ObjectiveFunctionTests"))
   def checkEasyTestFunctionLocalInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = {
     optim.isTrackingState = true
     optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
@@ -63,7 +65,8 @@ class OptimizerIntegTest extends SparkTestUtils {
     }
   }
 
-  @Test(dataProvider = "optimizeEasyTestFunction")
+  @Test(dataProvider = "optimizeEasyTestFunction",
+    dependsOnGroups = Array[String]("ObjectiveFunctionTests"))
   def checkEasyTestFunctionSparkNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
     optim.isTrackingState = true
     optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
@@ -81,7 +84,8 @@ class OptimizerIntegTest extends SparkTestUtils {
     OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
   }
 
-  @Test(dataProvider = "optimizeEasyTestFunction")
+  @Test(dataProvider = "optimizeEasyTestFunction",
+    dependsOnGroups = Array[String]("ObjectiveFunctionTests"))
   def checkEasyTestFunctionSparkInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
     optim.isTrackingState = true
     optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS

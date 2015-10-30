@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.model
 
 import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceToPhysicalReportTransformer
-import com.linkedin.photon.ml.diagnostics.fitting.FittingToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.hl.NaiveHosmerLemeshowToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -21,21 +20,13 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
         FEATURE_IMPORTANCE_TRANSFORMER.transform(model.varianceImpactFeatureImportance)),
       FEATURE_IMPORTANCE_TITLE)
 
-    val hlSection = model.hosmerLemeshow match {
+    model.hosmerLemeshow match {
       case Some(hl) =>
-        Some(HOSMER_LEMESHOW_TRANSFORMER.transform(hl))
+        val hlSection: SectionPhysicalReport = HOSMER_LEMESHOW_TRANSFORMER.transform(hl)
+        new SectionPhysicalReport(Seq(metricsSection, modelSection, hlSection), f"Model, lambda=${model.lambda}%.03g")
       case None =>
-        None
+        new SectionPhysicalReport(Seq(metricsSection, modelSection), f"Model, lambda=${model.lambda}%.03g")
     }
-
-    val fitSection = model.fitReport match {
-      case Some(fr) =>
-        Some(FIT_TRANSFORMER.transform(fr))
-      case None =>
-        None
-    }
-
-    new SectionPhysicalReport(metricsSection :: modelSection :: fitSection.toList ++ hlSection.toList, s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
   }
 
   private def transformMetrics(model:ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
@@ -47,9 +38,9 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
 }
 
 object ModelDiagnosticToPhysicalReportTransformer {
-  val SECTION_TITLE = "Model Analysis"
   val HOSMER_LEMESHOW_TRANSFORMER = new NaiveHosmerLemeshowToPhysicalReportTransformer()
   val FEATURE_IMPORTANCE_TRANSFORMER = new FeatureImportanceToPhysicalReportTransformer()
-  val FIT_TRANSFORMER = new FittingToPhysicalReportTransformer()
+  val MAX_IMPORTANT_FEATURES = 30
+  val MODEL_IMPORTANCE_TITLE = "Model Coefficient Importance"
   val FEATURE_IMPORTANCE_TITLE = "Coefficient Importance Analysis"
 }

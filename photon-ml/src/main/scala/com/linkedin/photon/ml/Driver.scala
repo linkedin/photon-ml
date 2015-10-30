@@ -5,7 +5,6 @@ import java.io.{OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
-import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
@@ -50,7 +49,6 @@ import scala.xml.PrettyPrinter
  * @author xazhang
  * @author yizhou
  * @author dpeng
- * @author bdrew
  */
 protected[ml] class Driver(protected val params: Params, protected val sc: SparkContext, protected val logger: LogWriter) {
 
@@ -71,7 +69,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
-  private[this] var lambdaFitMap:Map[Double, FittingReport] = Map()
   private[this] var diagnostic:DiagnosticReport = null
 
   def numFeatures(): Int = {
@@ -196,30 +193,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         logger.flush()
       }
     }
-
-    if (params.validateDirOpt.isDefined) {
-      logger.println(s"Starting training diagnostics")
-      val startTrainingDiagnostics = System.currentTimeMillis
-      val diagnostic = new FittingDiagnostic()
-      val trainFunc = (x:RDD[LabeledPoint]) => {
-        ModelTraining.trainGeneralizedLinearModel(
-          trainingData = x,
-          taskType = params.taskType,
-          optimizerType = params.optimizerType,
-          regularizationContext = regularizationContext,
-          regularizationWeights = params.regularizationWeights,
-          normalizationContext = normalizationContext,
-          maxNumIter = params.maxNumIter,
-          tolerance = params.tolerance,
-          enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-          constraintMap = suite.constraintFeatureMap)._1
-      }
-      lambdaFitMap = diagnostic.diagnose(trainFunc, trainingData, summaryOption)
-
-      val diagnosticTime = (System.currentTimeMillis - startTimeForTraining) / 1000.0
-
-      logger.println(f"training diagnostics finished, time elapsed: $diagnosticTime%.03f(s)")
-    }
     trainingData.unpersist()
 
     updateStage(DriverStage.TRAINED)
@@ -290,8 +263,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 summaryOption,
                 Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
                 varImportance,
-                meanImportance,
-                lambdaFitMap.get(lambda))
+                meanImportance)
 
             case glm: GeneralizedLinearModel =>
               new ModelDiagnosticReport[GeneralizedLinearModel](
@@ -303,8 +275,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
                 summaryOption,
                 None,
                 varImportance,
-                meanImportance,
-                lambdaFitMap.get(lambda))
+                meanImportance)
           }
         })
 
