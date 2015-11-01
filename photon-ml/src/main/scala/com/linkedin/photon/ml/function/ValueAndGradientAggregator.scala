@@ -19,7 +19,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  * @author dpeng
  */
 @SerialVersionUID(1L)
-protected[function] class ValueAndGradientAggregator(coef: Vector[Double], func: PointwiseLossFunction,
+protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Double], func: PointwiseLossFunction,
                                                      @transient normalizationContext: NormalizationContext) extends Serializable {
   // The transformation for a feature will be
   // x_i' = (x_i - shift_i) * factor_i

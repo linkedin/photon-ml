@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  * @author dpeng
  */
 @SerialVersionUID(2L)
-protected[function] class HessianVectorAggregator(coef: Vector[Double], @transient multiplyVector: Vector[Double],
+protected[function] class HessianVectorAggregator(@transient coef: Vector[Double], @transient multiplyVector: Vector[Double],
                                                   func: PointwiseLossFunction, @transient normalizationContext: NormalizationContext) extends
      ValueAndGradientAggregator(coef, func, normalizationContext) {
 
