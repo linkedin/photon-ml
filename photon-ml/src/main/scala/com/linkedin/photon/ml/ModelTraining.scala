@@ -1,10 +1,10 @@
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, RegularizationContext, TRON}
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionAlgorithm
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
@@ -41,6 +41,7 @@ object ModelTraining {
                                   maxNumIter: Int,
                                   tolerance: Double,
                                   enableOptimizationStateTracker: Boolean,
+                                  dataValidationType: DataValidationType,
                                   constraintMap: Option[Map[Int, (Double, Double)]]): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
     /* Choose the optimizer */
     val optimizer = optimizerType match {
@@ -66,7 +67,7 @@ object ModelTraining {
     /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence time */
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
     /* Model training with the chosen optimizer and algorithm */
-    val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights, normalizationContext)
+    val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights, normalizationContext, dataValidationType)
     val weightModelTuples = sortedRegularizationWeights.zip(models)
 
     val modelTrackersMapOption = algorithm.getStateTracker.map(modelTrackers => sortedRegularizationWeights.zip(modelTrackers))

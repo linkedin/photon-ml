@@ -1,6 +1,7 @@
 package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
+import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
@@ -209,7 +210,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         x._3,                        // data
         x._4                         // validator
       )
-    }).toArray
+    })
   }
 
   @Test(dataProvider = "generateInvalidLabelCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -239,14 +240,13 @@ class BaseGLMIntegTest extends SparkTestUtils {
     // Step 0: configure the algorithm
     algorithm.enableIntercept = true
     algorithm.isTrackingState = true
-    algorithm.validateData = true
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
     val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList)
 
     // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm)
+    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
 
     // Step 3: check convergence
     // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
@@ -276,14 +276,13 @@ class BaseGLMIntegTest extends SparkTestUtils {
     // Step 0: configure the algorithm
     algorithm.enableIntercept = true
     algorithm.isTrackingState = true
-    algorithm.validateData = true
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
     val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList)
 
     // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm)
+    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
   }
 
 }

@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.fitting
 
-import com.linkedin.photon.ml.{Evaluation, ModelTraining}
+import com.linkedin.photon.ml.{DataValidationType, Evaluation, ModelTraining}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
@@ -33,6 +33,7 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         NUM_ITERATIONS,
         TOLERANCE,
         false,
+        DataValidationType.VALIDATE_DISABLED,
         None)._1
     }
 

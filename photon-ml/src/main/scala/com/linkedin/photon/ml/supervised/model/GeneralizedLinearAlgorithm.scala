@@ -1,6 +1,9 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
+import com.linkedin.photon.ml.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.RegularizationContext
@@ -31,7 +34,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   /**
    * The list of data validators to check the properties of the input data, e.g., the format of the input data
    */
-  protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.finiteFeaturesValidator, DataValidators.finiteLabelValidator)
+  protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.linearRegressionValidator)
 
   /**
    * Optimization state trackers
@@ -56,11 +59,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     if (isTrackingState) Some(modelTrackerBuilder.toList)
     else None
   }
-
-  /**
-   * Whether to validate the input data or not (default: true)
-   */
-  var validateData: Boolean = true
 
   /**
    * Whether to enable intercept (default: false).
@@ -116,13 +114,14 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
           optimizer: Optimizer[LabeledPoint, Function],
           regularizationContext: RegularizationContext,
           regularizationWeights: List[Double],
-          normalizationContext: NormalizationContext): List[GLM] = {
+          normalizationContext: NormalizationContext,
+          dataValidationType: DataValidationType): List[GLM] = {
     val numFeatures = input.first().features.size
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
     val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext)
+    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType)
     models
   }
 
@@ -142,7 +141,8 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
                     optimizer: Optimizer[LabeledPoint, Function],
                     regularizationContext: RegularizationContext,
                     regularizationWeights: List[Double],
-                    normalizationContext: NormalizationContext): List[GLM] = {
+                    normalizationContext: NormalizationContext,
+                    dataValidationType: DataValidationType): List[GLM] = {
 
     if (input.getStorageLevel == StorageLevel.NONE) {
       logWarning("The input data is not directly cached, which may hurt performance if its"
@@ -150,8 +150,25 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     }
 
     /* Check the data properties before running the optimizer */
-    if (validateData && !validators.forall(func => func(input))) {
-      throw new IllegalArgumentException("Input validation failed.")
+    dataValidationType match {
+      case DataValidationType.VALIDATE_FULL =>
+        val valid = validators.map(x => x(input)).fold(true)(_ && _)
+        if (!valid) {
+          logError("Data validation failed.")
+          throw new IllegalArgumentException("Data validation failed")
+        }
+
+      case DataValidationType.VALIDATE_SAMPLE =>
+        logWarning("Doing a partial validation on ~10% of the training data")
+        val subset = input.sample(false, 0.10)
+        val valid = validators.map(x => x(subset)).fold(true)(_ && _)
+        if (!valid) {
+          logError("Data validation failed.")
+          throw new IllegalArgumentException("Data validation failed")
+        }
+
+      case DataValidationType.VALIDATE_DISABLED =>
+        logWarning("Data validation disabled.")
     }
 
     optimizer.isTrackingState = isTrackingState

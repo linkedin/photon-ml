@@ -133,6 +133,9 @@ object PhotonMLCmdLineParser {
       opt[String](NORMALIZATION_TYPE)
         .text(s"The normalization type to use in the training. Options: [${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
         .action((x, c) => c.copy(normalizationType = NormalizationType.valueOf(x.toUpperCase)))
+      opt[String](DATA_VALIDATION_TYPE)
+        .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. Default: ${defaultParams.dataValidationType}")
+        .action((x, c) => c.copy(dataValidationType = DataValidationType.withName(x.toUpperCase())))
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
           .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be an array " +
           s"of maps with the map containing keys only from {" + ConstraintMapKeys.values.mkString(s",") + "} (other " +
