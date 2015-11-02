@@ -1,11 +1,11 @@
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.io.FieldNamesType
 import FieldNamesType.FieldNamesType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import OptimizerType.OptimizerType
 import RegularizationType.RegularizationType
-import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.RegularizationType
@@ -65,6 +65,7 @@ class ParamsTest {
         summarizationOutputDirOpt: Option[String],
         normalizationType: NormalizationType,
         jobName: String,
+        dataValidationType: DataValidationType,
         constraintString: Option[String]) = params
 
     assertEquals(validateDirOpt, None)
@@ -82,6 +83,7 @@ class ParamsTest {
     assertEquals(summarizationOutputDirOpt, None)
     assertEquals(normalizationType, NormalizationType.NONE)
     assertEquals(jobName, s"Photon-ML-Training")
+    assertEquals(dataValidationType, DataValidationType.VALIDATE_FULL)
     assertEquals(constraintString, None)
   }
 

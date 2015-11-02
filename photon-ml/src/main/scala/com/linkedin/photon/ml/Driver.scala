@@ -181,6 +181,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
+      dataValidationType = params.dataValidationType,
       constraintMap = suite.constraintFeatureMap)
     lambdaModelTuples = _lambdaModelTuples
     lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
@@ -212,6 +213,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
           maxNumIter = params.maxNumIter,
           tolerance = params.tolerance,
           enableOptimizationStateTracker = params.enableOptimizationStateTracker,
+          dataValidationType = DataValidationType.VALIDATE_DISABLED,
           constraintMap = suite.constraintFeatureMap)._1
       }
       lambdaFitMap = diagnostic.diagnose(trainFunc, trainingData, summaryOption)

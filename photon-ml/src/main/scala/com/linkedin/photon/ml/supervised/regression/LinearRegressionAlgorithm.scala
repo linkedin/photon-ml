@@ -6,6 +6,8 @@ import com.linkedin.photon.ml.function.{SquaredLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
+import com.linkedin.photon.ml.util.DataValidators
+import org.apache.spark.rdd.RDD
 
 /**
  * Train a regression model using L1/L2/Elastic net-regularized linear regression.
@@ -14,6 +16,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
  * @author dpeng
  */
 class LinearRegressionAlgorithm extends GeneralizedLinearAlgorithm[LinearRegressionModel, TwiceDiffFunction[LabeledPoint]] {
+  override protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.linearRegressionValidator)
 
   /**
    *  Objective function = loss function + l2weight * regularization
