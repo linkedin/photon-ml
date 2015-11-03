@@ -266,7 +266,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
           val msg = metrics.keys.toSeq.sorted.map( y => {
             f"    Metric: [$y] value: ${metrics.get(y).get}"
           }).mkString("\n")
-          logger.println(s"Model with lambda = $lambda:\nmsg")
+          logger.println(s"Model with lambda = $lambda:\n$msg")
         }
       }
 
