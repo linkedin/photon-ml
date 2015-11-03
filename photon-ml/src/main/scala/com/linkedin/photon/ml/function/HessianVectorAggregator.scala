@@ -3,6 +3,9 @@ package com.linkedin.photon.ml.function
 import breeze.linalg.{Vector, axpy}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 
 
 /**
@@ -34,7 +37,7 @@ protected[function] class HessianVectorAggregator(@transient coef: Vector[Double
   //    \sum_k (x_{ki} - shift_k) * factor_k * multiplyVector_k
   //  = \sum_k (x_{ki} - shift_k) * effectiveMultiplyVector_k
   // This vector is data point independent.
-  val effectiveMultiplyVector: Vector[Double] = factorsOption match {
+  @transient val effectiveMultiplyVector: Vector[Double] = factorsOption match {
     case Some(factors) =>
       interceptIdOption.foreach(id =>
                                   require(factors(id) == 1.0,
@@ -58,18 +61,40 @@ protected[function] class HessianVectorAggregator(@transient coef: Vector[Double
       0.0
   }
 
+  var effectiveMultiplyVectorBroadcast: Option[Broadcast[Vector[Double]]] = None
+
+  override def initBroadcast(sc: SparkContext): Unit = {
+    super.initBroadcast(sc)
+    effectiveMultiplyVectorBroadcast = Some(sc.broadcast(effectiveMultiplyVector))
+  }
+
+  override def cleanBroadcast(): Unit = {
+    super.cleanBroadcast()
+    effectiveMultiplyVectorBroadcast.foreach(x => x.destroy())
+  }
+
+  protected def getEffectiveMultiplyVector: Vector[Double] = effectiveMultiplyVectorBroadcast match {
+    case Some(broadcast) =>
+      broadcast.value
+    case None =>
+      effectiveMultiplyVector
+  }
+
   /**
    * Add a data point to the aggregator
    * @param datum a data point
    * @return The aggregator
    */
   override def add(datum: LabeledPoint): this.type = {
-    totalCnt += 1
-    val margin = datum.computeMargin(effectiveCoefficients) + marginShift
+    val localEffectiveCoef = getEffectiveCoef
     val LabeledPoint(label, features, _, weight) = datum
+    require(features.size == localEffectiveCoef.size, s"Size mismatch. Coefficient size: ${localEffectiveCoef.size}, features size: ${features.size}")
+    totalCnt += 1
+    val margin = datum.computeMargin(localEffectiveCoef) + marginShift
+
     val d2ldz2 = func.d2lossdz2(margin, label)
     // l'' * (\sum_k x_{ki} * effectiveMultiplyVector_k - featureVectorProductShift)
-    val effectiveWeight = weight * d2ldz2 * (features.dot(effectiveMultiplyVector) - featureVectorProductShift)
+    val effectiveWeight = weight * d2ldz2 * (features.dot(getEffectiveMultiplyVector) - featureVectorProductShift)
 
     vectorShiftPrefactorSum += effectiveWeight
 
@@ -78,3 +103,29 @@ protected[function] class HessianVectorAggregator(@transient coef: Vector[Double
   }
 }
 
+object HessianVectorAggregator {
+  def calcHessianVector(rdd: RDD[LabeledPoint], coef: Vector[Double], multiplyVector: Vector[Double],
+                        singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext): Vector[Double] = {
+    val aggregator = new HessianVectorAggregator(coef, multiplyVector,
+                                                 singleLossFunction, normalizationContext)
+    aggregator.initBroadcast(rdd.sparkContext)
+    val resultAggregator = rdd.aggregate(aggregator)(
+      seqOp = (ag, datum) => ag.add(datum),
+      combOp = (ag1, ag2) => ag1.merge(ag2)
+    )
+    val result = resultAggregator.getVector(normalizationContext)
+    aggregator.cleanBroadcast()
+    result
+  }
+
+  def calcHessianVector(data: Iterable[LabeledPoint], coef: Vector[Double], multiplyVector: Vector[Double],
+                        singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext): Vector[Double] = {
+    val aggregator = new HessianVectorAggregator(coef, multiplyVector,
+                                                 singleLossFunction, normalizationContext)
+    val resultAggregator = data.aggregate(aggregator)(
+      seqop = (ag, datum) => ag.add(datum),
+      combop = (ag1, ag2) => ag1.merge(ag2)
+    )
+    resultAggregator.getVector(normalizationContext)
+  }
+}

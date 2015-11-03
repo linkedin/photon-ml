@@ -3,6 +3,9 @@ package com.linkedin.photon.ml.function
 import breeze.linalg.{DenseVector, axpy, Vector}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 
 
 /**
@@ -23,7 +26,7 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
                                                      @transient normalizationContext: NormalizationContext) extends Serializable {
   // The transformation for a feature will be
   // x_i' = (x_i - shift_i) * factor_i
-  protected val NormalizationContext(factorsOption, shiftsOption, interceptIdOption) = normalizationContext
+  @transient protected val NormalizationContext(factorsOption, shiftsOption, interceptIdOption) = normalizationContext
   protected val dim = coef.size
 
   // effectiveCoef = coef .* factor (point wise multiplication)
@@ -34,7 +37,7 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
   //   = \sum_j effectiveCoef_j * x_j - \sum_j effectiveCoef_j * shift_j
   //   = effectiveCoef^T x - effectiveCoef^T shift
   // This vector is data point independent.
-  protected val effectiveCoefficients = factorsOption match {
+  @transient protected val effectiveCoefficients = factorsOption match {
     case Some(factors) =>
       interceptIdOption.foreach(id =>
                                   require(factors(id) == 1.0, "The intercept should not be transformed. Intercept " +
@@ -86,6 +89,26 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
   //      hv_j = factor_j * (vectorSum - shift_j * vectorShiftPrefactorSum)
   protected var vectorShiftPrefactorSum = 0.0d
 
+  protected var effectiveCoefBroadcast: Option[Broadcast[Vector[Double]]] = None
+
+  /**
+   * Initialize broadcast variables if RDD/SparkContext is used.
+   * @param sc Spark context
+   */
+  def initBroadcast(sc: SparkContext): Unit = {
+    effectiveCoefBroadcast = Some(sc.broadcast(effectiveCoefficients))
+  }
+
+  protected def cleanBroadcast(): Unit = {
+    effectiveCoefBroadcast.foreach(x => x.destroy())
+  }
+
+  protected def getEffectiveCoef: Vector[Double] = if (effectiveCoefBroadcast.isDefined) {
+    effectiveCoefBroadcast.get.value
+  } else {
+    effectiveCoefficients
+  }
+
   /**
    * Add a data point
    * @param datum a data point
@@ -93,14 +116,15 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
    */
   def add(datum: LabeledPoint): this.type = {
     val LabeledPoint(label, features, _, weight) = datum
-    require(features.size == effectiveCoefficients.size, s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
+    val localEffectiveCoef = getEffectiveCoef
+    require(features.size == localEffectiveCoef.size, s"Size mismatch. Coefficient size: ${localEffectiveCoef.size}, features size: ${features.size}")
     totalCnt += 1
-    val margin = datum.computeMargin(effectiveCoefficients) + marginShift
+    val margin = datum.computeMargin(localEffectiveCoef) + marginShift
 
     val (l, dldz) = func.loss(margin, label)
 
     valueSum += weight * l
-    if (shiftsOption.isDefined) vectorShiftPrefactorSum += weight * dldz
+    vectorShiftPrefactorSum += weight * dldz
     axpy(weight * dldz, features, vectorSum)
     this
   }
@@ -141,7 +165,8 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
    * in the context of normalization.
    * @return Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator
    */
-  def getVector: Vector[Double] = {
+  def getVector(normalizationContext: NormalizationContext): Vector[Double] = {
+    val NormalizationContext(factorsOption, shiftsOption, _) = normalizationContext
     val result = DenseVector.zeros[Double](dim)
     (factorsOption, shiftsOption) match {
       case (Some(factors), Some(shifts)) =>
@@ -165,3 +190,26 @@ protected[function] class ValueAndGradientAggregator(@transient coef: Vector[Dou
   }
 }
 
+object ValueAndGradientAggregator {
+  def calculateValueAndGradient(rdd: RDD[LabeledPoint], coef: Vector[Double], singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext): (Double, Vector[Double]) = {
+    val aggregator = new ValueAndGradientAggregator(coef, singleLossFunction,
+                                                    normalizationContext)
+    aggregator.initBroadcast(rdd.sparkContext)
+    val resultAggregator = rdd.aggregate(aggregator)(
+      seqOp = (ag, datum) => ag.add(datum),
+      combOp = (ag1, ag2) => ag1.merge(ag2)
+    )
+    val result = (resultAggregator.getValue, resultAggregator.getVector(normalizationContext))
+    resultAggregator.cleanBroadcast()
+    result
+  }
+
+  def calculateValueAndGradient(data: Iterable[LabeledPoint], coef: Vector[Double], singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext): (Double, Vector[Double]) = {
+    val aggregator = new ValueAndGradientAggregator(coef, singleLossFunction, normalizationContext)
+    val resultAggregator = data.aggregate(aggregator)(
+      seqop = (ag, datum) => ag.add(datum),
+      combop = (ag1, ag2) => ag1.merge(ag2)
+    )
+    (resultAggregator.getValue, resultAggregator.getVector(normalizationContext))
+  }
+}
