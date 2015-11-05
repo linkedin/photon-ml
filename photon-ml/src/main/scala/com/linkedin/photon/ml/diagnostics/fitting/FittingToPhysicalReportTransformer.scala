@@ -1,5 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.fitting
 
+import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
@@ -22,8 +23,18 @@ class FittingToPhysicalReportTransformer extends LogicalToPhysicalReportTransfor
     } else {
       Some(new SectionPhysicalReport(report.metrics.keys.toSeq.sorted.map(x => {
         val (xData, trainData, testData) = report.metrics.get(x).get
-        val minMetric = math.min(trainData.fold(trainData.last)((a, b) => math.min(a, b)), testData.fold(testData.last)((a, b) => math.min(a, b)))
-        val maxMetric = math.max(trainData.fold(trainData.last)((a, b) => math.max(a, b)), testData.fold(testData.last)((a, b) => math.max(a, b)))
+        val aprioriRange = Evaluation.metricMetadata.get(x).get.rangeOption
+
+        val minMetric = aprioriRange match {
+          case Some((minV:Double, _)) => minV
+          case None =>  math.min(trainData.fold(trainData.last)((a, b) => math.min(a, b)), testData.fold(testData.last)((a, b) => math.min(a, b)))
+        }
+
+        val maxMetric = aprioriRange match {
+          case Some((_, maxV:Double)) => maxV
+          case None =>  math.max(trainData.fold(trainData.last)((a, b) => math.max(a, b)), testData.fold(testData.last)((a, b) => math.max(a, b)))
+        }
+
         val range = maxMetric - minMetric
         val yMin = if (math.abs(range) < 1e-15) { 0.9 * (minMetric + maxMetric) / 2.0 } else { minMetric - 0.05 * range }
         val yMax = if (math.abs(range) < 1e-15) { 1.1 * (minMetric + maxMetric) / 2.0 } else { maxMetric + 0.05 * range }
