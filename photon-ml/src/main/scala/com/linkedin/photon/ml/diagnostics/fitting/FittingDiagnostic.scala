@@ -9,6 +9,7 @@ import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, ExecutionContext}
@@ -47,16 +48,29 @@ class FittingDiagnostic(numConcurrentFits:Int=4) extends TrainingDiagnostic[Gene
       val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(numConcurrentFits))
 
       val splits = trainingSet.randomSplit((0 to NUM_TRAINING_PARTITIONS).map(x => 1.0 / NUM_TRAINING_PARTITIONS).toArray, System.nanoTime())
-      val holdOut = splits(NUM_TRAINING_PARTITIONS - 1)
+      val holdOut = splits.head
+      holdOut.persist(StorageLevel.MEMORY_AND_DISK_SER_2)
+      val trainSets = splits.tail.scanLeft(trainingSet.sparkContext.emptyRDD[LabeledPoint] : RDD[LabeledPoint])((x, y) =>
+        if (x.isEmpty) {
+          y
+        } else if (y.isEmpty) {
+          x
+        } else {
+          val tmp = x.union(y)
+          tmp.persist(StorageLevel.MEMORY_AND_DISK_SER)
+          tmp
+        }
+      )
 
-      (for (subset <- 1 until NUM_TRAINING_PARTITIONS) yield {
+      val result = (for (subset <- 1 until NUM_TRAINING_PARTITIONS) yield {
         // At some future point, we will have fit a model
         Future {
           val dataPortion = subset.toDouble / NUM_TRAINING_PARTITIONS
-          val dataSet = (0 until subset).map(x => splits(x)).fold(trainingSet.sparkContext.emptyRDD[LabeledPoint])((x, y) => x.union(y))
+          val dataSet = trainSets(subset)
           val models = modelFactory(dataSet)
           val metricsTest = models.map(x => (x._1, Evaluation.evaluate(x._2, holdOut))).toMap
           val metricsTrain = models.map(x => (x._1, Evaluation.evaluate(x._2, dataSet))).toMap
+          dataSet.unpersist(false)
           (dataPortion, metricsTest, metricsTrain)
         } (ec)
       })
@@ -90,6 +104,9 @@ class FittingDiagnostic(numConcurrentFits:Int=4) extends TrainingDiagnostic[Gene
           })
           (lambda, new FittingReport(byMetric, ""))
         })
+
+      splits.map(_.unpersist(false))
+      result
     } else {
       Map.empty
     }
