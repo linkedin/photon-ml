@@ -3,6 +3,7 @@ package com.linkedin.photon.ml.diagnostics.reporting.reports.combined
 import java.text.SimpleDateFormat
 import java.util.{Date, TimeZone, Calendar}
 
+import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.{ModelDiagnosticReport, ModelDiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemToPhysicalReportTransformer
@@ -54,16 +55,22 @@ object DiagnosticToPhysicalReportTransformer {
     val metrics = metricsByLambda.keys.toSeq.sorted
     val bestModelByMetric = new BulletedListPhysicalReport(
       metrics.flatMap(metric => {
-        metricsByLambda.get(metric).toSeq.flatMap(values => {
-          val sorted = values.toSeq.sortBy(_._2)
-          val minLambda = sorted.head
-          val maxLambda = sorted.last
+        val metadata = Evaluation.metricMetadata.get(metric).get
 
-          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} min ${minLambda._2} @ lambda = ${minLambda._1}, max ${maxLambda._2} @ lambda = ${maxLambda._1}")).iterator
+        metricsByLambda.get(metric).toSeq.flatMap(values => {
+          val ordering = new Ordering[(Double, Double)]() {
+            override def compare(x: (Double, Double), y: (Double, Double)): Int = metadata.worstToBestOrdering.compare(x._2, y._2)
+          }
+          val sorted = values.toSeq.sorted(ordering)
+          val bestLambda = sorted.last
+
+          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} best: ${bestLambda._2} @ lambda = ${bestLambda._1}")).iterator
         }).iterator
       }))
 
       val modelMetricPlots = metrics.flatMap(metric => {
+        val metadata = Evaluation.metricMetadata.get(metric).get
+
         metricsByLambda.get(metric).toSeq.flatMap(lambdaToMetric => {
           val sortedByLambda = lambdaToMetric.toSeq.sortBy(_._1)
           val builder = new ChartBuilder()
@@ -73,9 +80,17 @@ object DiagnosticToPhysicalReportTransformer {
             .title(metric)
             .width(PlotUtils.PLOT_WIDTH)
             .build()
+
           sortedByLambda.foreach(x => {
             chart.addSeries(s"Lambda = ${x._1}", Array(1.0), Array(x._2))
           })
+
+          metadata.rangeOption match {
+            case Some((minV, maxV)) =>
+              chart.getStyleManager.setYAxisMin(minV)
+              chart.getStyleManager.setYAxisMax(maxV)
+            case None =>
+          }
           Seq(new PlotPhysicalReport(chart)).iterator
         }).iterator
       })
@@ -83,3 +98,4 @@ object DiagnosticToPhysicalReportTransformer {
     new SectionPhysicalReport(Seq(bestModelByMetric) ++ modelMetricPlots, MODEL_SUMMARY_CHAPTER)
   }
 }
+

@@ -1,5 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.fitting
 
+import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import org.testng.annotations.Test
 
@@ -30,8 +31,8 @@ class FittingToPhysicalReportTransformerTest {
 }
 
 object FittingToPhysicalReportTransformerTest {
-  val FIRST_METRIC = "FIRST METRIC"
-  val SECOND_METRIC = "SECOND METRIC"
+  val FIRST_METRIC = Evaluation.MEAN_ABSOLUTE_ERROR
+  val SECOND_METRIC = Evaluation.MEAN_SQUARE_ERROR
   val NUM_SAMPLES = 10
   val EXPECTED_SECTIONS = 2
 
