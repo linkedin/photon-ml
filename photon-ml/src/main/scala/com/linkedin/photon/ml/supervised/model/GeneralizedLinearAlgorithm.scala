@@ -74,7 +74,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @param regularizationContext The type of regularization to construct the objective function
    * @param regularizationWeight The weight of the regularization term in the objective function
    */
-  protected def createObjectiveFunction(normalizationContext: NormalizationContext, regularizationContext: RegularizationContext, regularizationWeight: Double): Function
+  protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext], regularizationContext: RegularizationContext, regularizationWeight: Double): Function
 
   /**
    * Create a model given the coefficients and intercept
@@ -189,13 +189,15 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     } else {
       input
     }
+    val broadcastedNormalizationContext = input.sparkContext.broadcast(normalizationContext)
+    val normalizationContextProvider = new BroadcastedObjectProvider[NormalizationContext](broadcastedNormalizationContext)
 
     /* Find the path of solutions with different regularization coefficients */
     var initialCoefficientsWithIntercept =
       if (enableIntercept) prepend(initialModel.coefficients, initialModel.intercept.getOrElse(0.0))
       else initialModel.coefficients
     val models = regularizationWeights.map { regularizationWeight =>
-      val objectiveFunction = createObjectiveFunction(normalizationContext, regularizationContext, regularizationWeight)
+      val objectiveFunction = createObjectiveFunction(normalizationContextProvider, regularizationContext, regularizationWeight)
       val (coefficientsWithIntercept, _) = optimizer.optimize(dataPoints, objectiveFunction, initialCoefficientsWithIntercept)
       initialCoefficientsWithIntercept = coefficientsWithIntercept
       logInfo(s"Training model with regularization weight $regularizationWeight finished")
@@ -208,6 +210,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       }
       createModel(normalizationContext, coefficientsWithIntercept)
     }
+    broadcastedNormalizationContext.unpersist()
     models
   }
 }
