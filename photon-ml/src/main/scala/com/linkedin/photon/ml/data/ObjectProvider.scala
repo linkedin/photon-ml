@@ -8,6 +8,10 @@ import org.apache.spark.broadcast.Broadcast
  * A wrapper for normal object and broadcast object. This approach simplifies logic for classes/methods that deal with
  * both iterable and RDD data.
  *
+ * This trait hides the logic whether the data are local or from remote. Probably it will be better if Iterable and
+ * RDD data are separated out in [[com.linkedin.photon.ml.function.DiffFunction]] and [[com.linkedin.photon.ml.function.TwiceDiffFunction]]
+ * classes.
+ *
  * @author dpeng
  */
 trait ObjectProvider[T <: Serializable] extends Serializable {
