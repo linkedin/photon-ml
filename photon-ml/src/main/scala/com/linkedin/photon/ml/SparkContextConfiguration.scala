@@ -3,6 +3,7 @@ package com.linkedin.photon.ml
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.data.{BroadcastedObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{GeneralizedLinearModelLossFunction, HessianVectorAggregator, ValueAndGradientAggregator}
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
@@ -24,7 +25,7 @@ object SparkContextConfiguration {
     classOf[ValueAndGradientAggregator],
     classOf[HessianVectorAggregator],
     classOf[GeneralizedLinearModelLossFunction],
-    classOf[BroadcastedObjectProvider])
+    classOf[NormalizationContext])
 
   /**
    * Configure the Spark context as a Yarn client
