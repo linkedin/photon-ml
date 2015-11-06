@@ -58,8 +58,8 @@ class NaiveHosmerLemeshowToPhysicalReportTransformerTest {
 
   private def checkPlotSection(sec: SectionPhysicalReport): Unit = {
     assertEquals(sec.title, NaiveHosmerLemeshowToPhysicalReportTransformer.PLOT_HEADER)
-    assertEquals(sec.items.length, 1)
-    assertTrue(sec.items(0).isInstanceOf[PlotPhysicalReport])
+    assertEquals(sec.items.length, 4)
+    sec.items.foreach(x => assertTrue(x.isInstanceOf[PlotPhysicalReport]))
   }
 
   private def checkAnalysisSection(sec: SectionPhysicalReport): Unit = {
