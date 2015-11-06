@@ -36,4 +36,5 @@ object DriverStage extends Enumeration {
   val PREPROCESSED = new DriverStage("PREPROCESSED", 1)
   val TRAINED = new DriverStage("TRAINED", 2)
   val VALIDATED = new DriverStage("VALIDATED", 3)
+  val DIAGNOSED = new DriverStage("DIAGNOSED", 4)
 }

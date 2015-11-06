@@ -223,7 +223,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
       expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -249,7 +249,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += true.toString()
 
     MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
       expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -282,7 +282,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += optimizer.toString
     MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
       expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
   }
 
@@ -341,7 +341,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     FileUtils.deleteDirectory(new File(outputDir))
 
     MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED),
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
       expectedNumFeatures = numFeatures, expectedNumTrainingData = numTrainingSamples, expectedIsSummarized = true)
   }
 }
