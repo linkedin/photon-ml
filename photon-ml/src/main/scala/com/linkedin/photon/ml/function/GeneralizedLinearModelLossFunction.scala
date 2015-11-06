@@ -3,7 +3,7 @@ package com.linkedin.photon.ml.function
 
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -33,7 +33,7 @@ import org.apache.spark.rdd.RDD
  *
  * @author dpeng
  */
-class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext) extends TwiceDiffFunction[LabeledPoint] {
+class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFunction, normalizationContext: ObjectProvider[NormalizationContext]) extends TwiceDiffFunction[LabeledPoint] {
 
 
   /**
@@ -61,7 +61,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
   override protected[ml] def hessianVector(data: RDD[LabeledPoint],
                                               broadcastedCoefficients: Broadcast[Vector[Double]],
                                               multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
-    HessianVectorAggregator.calcHessianVector(data, broadcastedCoefficients.value, multiplyVector.value, singleLossFunction, normalizationContext)
+    HessianVectorAggregator.calcHessianVector(data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext)
   }
 
   /**
@@ -73,7 +73,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
    */
   override protected[ml] def calculate(data: RDD[LabeledPoint],
                                           broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
-    ValueAndGradientAggregator.calculateValueAndGradient(data, broadcastedCoefficients.value, singleLossFunction, normalizationContext)
+    ValueAndGradientAggregator.calculateValueAndGradient(data, broadcastedCoefficients, singleLossFunction, normalizationContext)
   }
 
   /**

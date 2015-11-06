@@ -1,5 +1,7 @@
 package com.linkedin.photon.ml.function
 
+
+import com.linkedin.photon.ml.data.{SimpleObjectProvider, ObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 
 
@@ -11,7 +13,7 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
  * @author dpeng
  */
 
-class SquaredLossFunction(normalizationContext: NormalizationContext = NoNormalization) extends
+class SquaredLossFunction(normalizationContext: ObjectProvider[NormalizationContext] = new SimpleObjectProvider[NormalizationContext](NoNormalization)) extends
   GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext)
 
 /**

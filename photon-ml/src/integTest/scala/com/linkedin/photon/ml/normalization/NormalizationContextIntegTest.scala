@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{BroadcastedObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, TRON}
@@ -113,6 +113,8 @@ class NormalizationContextIntegTest extends SparkTestUtils {
       NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(dim - 1))
     }
 
+    val broadcast = sc.broadcast(normalizationContext)
+    val normalizationContextProvider = new BroadcastedObjectProvider[NormalizationContext](broadcast)
     // Build the transformed rdd for validation
     val transformedRDD: RDD[LabeledPoint] = {
       val transformedRDD = heartDataRDD.map {
@@ -132,11 +134,11 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
     val (plainLossFunction, lossFunctionWithNormalization) = taskType match {
       case TaskType.LOGISTIC_REGRESSION =>
-        (new LogisticLossFunction, new LogisticLossFunction(normalizationContext))
+        (new LogisticLossFunction, new LogisticLossFunction(normalizationContextProvider))
       case TaskType.LINEAR_REGRESSION =>
-        (new SquaredLossFunction, new SquaredLossFunction(normalizationContext))
+        (new SquaredLossFunction, new SquaredLossFunction(normalizationContextProvider))
       case TaskType.POISSON_REGRESSION =>
-        (new PoissonLossFunction, new PoissonLossFunction(normalizationContext))
+        (new PoissonLossFunction, new PoissonLossFunction(normalizationContextProvider))
     }
     val optimizer = optimizerType match {
       case OptimizerType.LBFGS =>
@@ -147,6 +149,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
     optimizer.tolerance = 1.0E-6
     optimizer.maxNumIterations = 100
 
+    broadcast.unpersist()
     // Train the original data with a loss function binding normalization
     val (model1, objective1) = optimizer.optimize(heartDataRDD, lossFunctionWithNormalization)
     println("Optimization 1: Train the original data with a loss function binding standardization")

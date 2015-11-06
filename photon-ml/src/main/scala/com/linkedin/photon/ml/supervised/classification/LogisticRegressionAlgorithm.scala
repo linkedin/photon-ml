@@ -2,7 +2,7 @@ package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
 
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{LogisticLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
@@ -24,7 +24,9 @@ class LogisticRegressionAlgorithm extends GeneralizedLinearAlgorithm[LogisticReg
    *  Objective function = loss function + l2weight * regularization
    *  Only the L2 regularization part is implemented in the objective function. L1 part is implemented through the optimizer. See [[LBFGS]].
    */
-  override protected def createObjectiveFunction(normalizationContext: NormalizationContext, regularizationContext: RegularizationContext, regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
+  override protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext],
+                                                 regularizationContext: RegularizationContext,
+                                                 regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
     TwiceDiffFunction.withRegularization(new LogisticLossFunction(normalizationContext), regularizationContext, regularizationWeight)
   }
 
