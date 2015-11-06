@@ -62,6 +62,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
   private[this] val suite: GLMSuite = new GLMSuite(params.fieldsNameType, params.addIntercept, params.constraintString)
   protected var stage: DriverStage = DriverStage.INIT
   private[this] var trainingData: RDD[LabeledPoint] = null
+  private[this] var validatingData: RDD[LabeledPoint] = null
 
   private[this] val regularizationContext: RegularizationContext = new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
   private[this] var featureNum: Int = -1
@@ -72,8 +73,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
-  private[this] var lambdaFitMap:Map[Double, FittingReport] = Map()
-  private[this] var diagnostic:DiagnosticReport = null
+  private[this] var lambdaFitMap: Map[Double, FittingReport] = Map()
+  private[this] var diagnostic: DiagnosticReport = null
+  private[this] var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
 
   def numFeatures(): Int = {
     assertEqualOrAfterDriverStage(DriverStage.PREPROCESSED)
@@ -97,9 +99,18 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
     val startTime = System.currentTimeMillis()
 
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    val checkpointDir = new Path("/tmp")
+
+
+    sc.setCheckpointDir(checkpointDir.toString)
+
+    println(s"Checkpoint directory is ${sc.getCheckpointDir} / ${checkpointDir}")
+
     preprocess()
     train()
     validate()
+    diagnose()
 
     /* Store all the learned models and log messages to their corresponding directories */
     val elapsed = (System.currentTimeMillis() - startTime) * 0.001
@@ -120,8 +131,8 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
     val startTimeForPreprocessing = System.currentTimeMillis()
 
     trainingData = suite.readLabeledPointsFromAvro(sc, params.trainDir, params.minNumPartitions)
-      .setName("training data").persist(trainDataStorageLevel)
-
+      .setName("training data").repartition(params.minNumPartitions).cache
+    trainingData.checkpoint()
     featureNum = trainingData.first().features.size
     trainingDataNum = trainingData.count().toInt
 
@@ -199,32 +210,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       }
     }
 
-    if (params.validateDirOpt.isDefined) {
-      logger.println(s"Starting training diagnostics")
-      val startTrainingDiagnostics = System.currentTimeMillis
-      val diagnostic = new FittingDiagnostic()
-      val trainFunc = (x:RDD[LabeledPoint]) => {
-        ModelTraining.trainGeneralizedLinearModel(
-          trainingData = x,
-          taskType = params.taskType,
-          optimizerType = params.optimizerType,
-          regularizationContext = regularizationContext,
-          regularizationWeights = params.regularizationWeights,
-          normalizationContext = normalizationContext,
-          maxNumIter = params.maxNumIter,
-          tolerance = params.tolerance,
-          enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-          dataValidationType = DataValidationType.VALIDATE_DISABLED,
-          constraintMap = suite.constraintFeatureMap)._1
-      }
-      lambdaFitMap = diagnostic.diagnose(trainFunc, trainingData, summaryOption)
-
-      val diagnosticTime = (System.currentTimeMillis - startTimeForTraining) / 1000.0
-
-      logger.println(f"training diagnostics finished, time elapsed: $diagnosticTime%.03f(s)")
-    }
-    trainingData.unpersist()
-
     updateStage(DriverStage.TRAINED)
   }
 
@@ -235,11 +220,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       logger.println(s"\nRead validation data from $validateDir")
 
       // Read validation data after the training data are unpersisted.
-      val validatingData = suite.readLabeledPointsFromAvro(sc, validateDir, params.minNumPartitions)
-        .setName("validating data").persist(DEFAULT_STORAGE_LEVEL)
-
-
-      var perModelMetrics:Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
+      validatingData = suite.readLabeledPointsFromAvro(sc, validateDir, params.minNumPartitions)
+        .setName("validating data").repartition(params.minNumPartitions).cache
+      validatingData.checkpoint()
 
       /* Validating the learned models using the validating data set */
       logger.println("\nStart to validate the learned models with validating data")
@@ -250,80 +233,27 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
         lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
           weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
 
-            val msg = modelTracker.models.map(model => Evaluation.evaluate(model, validatingData)).zipWithIndex.map( x => {
+            val msg = modelTracker.models.map(model => Evaluation.evaluate(model, validatingData)).zipWithIndex.map(x => {
               val (m, idx) = x
-              m.keys.toSeq.sorted.map( y => {
+              m.keys.toSeq.sorted.map(y => {
                 f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}"
-              }).mkString("\n") }).mkString("\n")
+              }).mkString("\n")
+            }).mkString("\n")
 
             logger.println(s"Model with lambda = $lambda:\n$msg")
           }
         }
       } else {
         // Calculate metrics for all models
-        lambdaModelTuples.foreach { case (lambda:Double, model: GeneralizedLinearModel) =>
+        lambdaModelTuples.foreach { case (lambda: Double, model: GeneralizedLinearModel) =>
           val metrics = Evaluation.evaluate(model, validatingData)
           perModelMetrics += (lambda -> metrics)
-          val msg = metrics.keys.toSeq.sorted.map( y => {
+          val msg = metrics.keys.toSeq.sorted.map(y => {
             f"    Metric: [$y] value: ${metrics.get(y).get}"
           }).mkString("\n")
           logger.println(s"Model with lambda = $lambda:\n$msg")
         }
       }
-
-      if (null != diagnostic) {
-        val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
-        val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
-        val hlDiagnostic = new HosmerLemeshowDiagnostic()
-        val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
-
-        diagnostic.modelReports ++= lambdaModelTuples.map(x => {
-          val (lambda, model) = x
-          val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
-          val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
-          val predErrReport = predictionErrorDiagnostic.diagnose(model, validatingData, summaryOption)
-
-          val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
-          model match {
-            case lm: LogisticRegressionModel =>
-              new ModelDiagnosticReport[GeneralizedLinearModel](
-                model,
-                lambda,
-                lm.getClass.getName,
-                suite.featureKeyToIdMap,
-                metrics,
-                summaryOption,
-                predErrReport,
-                Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
-                varImportance,
-                meanImportance,
-                lambdaFitMap.get(lambda))
-
-            case glm: GeneralizedLinearModel =>
-              new ModelDiagnosticReport[GeneralizedLinearModel](
-                model,
-                lambda,
-                glm.getClass.getName,
-                suite.featureKeyToIdMap,
-                metrics,
-                summaryOption,
-                predErrReport,
-                None,
-                varImportance,
-                meanImportance,
-                lambdaFitMap.get(lambda))
-          }
-        })
-
-        writeDiagnostics(params.outputDir, REPORT_FILE, diagnostic)
-      }
-
-      logger.flush()
-
-      val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
-      logger.println(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
-      logger.flush()
-
 
       /* Select the best model using the validating data set and stores the best model as text file */
       val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
@@ -344,10 +274,79 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       suite.writeModelsInText(sc, List((bestModelWeight, bestModel)), bestModelDir.toString)
       logger.println(s"The best model is written to: $bestModelDir")
       logger.flush()
-      validatingData.unpersist()
+
+      val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
+      logger.println(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
+      logger.flush()
 
       updateStage(DriverStage.VALIDATED)
     }
+  }
+
+  protected def diagnose(): Unit = {
+    if (null != validatingData) {
+      assertDriverStage(DriverStage.VALIDATED)
+
+      val startTimeForDiagnostics = System.currentTimeMillis
+
+      val modelDiagnosticStart = System.currentTimeMillis
+      val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
+      val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
+      val hlDiagnostic = new HosmerLemeshowDiagnostic()
+      val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
+
+      diagnostic.modelReports ++= lambdaModelTuples.map(x => {
+        val (lambda, model) = x
+        val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
+        val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
+        val predErrReport = predictionErrorDiagnostic.diagnose(model, validatingData, summaryOption)
+
+        val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
+        model match {
+          case lm: LogisticRegressionModel =>
+            new ModelDiagnosticReport[GeneralizedLinearModel](
+              model,
+              lambda,
+              lm.getClass.getName,
+              suite.featureKeyToIdMap,
+              metrics,
+              summaryOption,
+              predErrReport,
+              Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
+              varImportance,
+              meanImportance,
+              None)
+
+          case glm: GeneralizedLinearModel =>
+            new ModelDiagnosticReport[GeneralizedLinearModel](
+              model,
+              lambda,
+              glm.getClass.getName,
+              suite.featureKeyToIdMap,
+              metrics,
+              summaryOption,
+              predErrReport,
+              None,
+              varImportance,
+              meanImportance,
+              None)
+        }
+      })
+
+      val modelDiagnosticTime = (System.currentTimeMillis - modelDiagnosticStart) / 1000.0
+      val totalDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
+
+      logger.println(f"Model diagnostic time: $modelDiagnosticTime%.03f (s)")
+      logger.println(f"Total diagnostic time: $totalDiagnosticTime%.03f (s)")
+      logger.println("Writing diagnostics")
+      logger.flush()
+
+      validatingData.unpersist()
+      writeDiagnostics(params.outputDir, REPORT_FILE, diagnostic)
+      updateStage(DriverStage.DIAGNOSED)
+    }
+
+    trainingData.unpersist()
   }
 
   protected def assertDriverStage(expectedStage: DriverStage): Unit = {
@@ -383,7 +382,7 @@ object Driver {
   val DEFAULT_STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK
   val LEARNED_MODELS_TEXT = "learned-models-text"
   val BEST_MODEL_TEXT = "best-model-text"
-  val REPORT_FILE = "diagnostic.html"
+  val REPORT_FILE = "model-diagnostic.html"
   val SUMMARY_CHAPTER = "Feature Summary"
   val MODEL_DIAGNOSTIC_CHAPTER = "Model Analysis"
 
@@ -394,14 +393,16 @@ object Driver {
   def main(args: Array[String]): Unit = {
     /* Parse the parameters from command line, should always be the 1st line in main*/
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
+
     /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
     val sc: SparkContext = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
 
+
     // A temporary solution to save log into HDFS.
     val logger = new LogWriter(params.outputDir, sc)
+
     val job = new Driver(params, sc, logger)
     job.run()
-
     logger.close()
     sc.stop()
   }
