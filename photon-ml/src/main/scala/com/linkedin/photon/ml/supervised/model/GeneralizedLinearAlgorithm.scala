@@ -116,12 +116,33 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
           regularizationWeights: List[Double],
           normalizationContext: NormalizationContext,
           dataValidationType: DataValidationType): List[GLM] = {
+    logInfo("Doing training without any warm start models")
+    run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType, Map.empty)
+  }
+
+  /**
+   * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
+   * @param input A RDD of input labeled data points in the original scale
+   * @param optimizer The optimizer
+   * @param regularizationContext The chosen type of regularization
+   * @param regularizationWeights An array of weights for the regularization term
+   * @param normalizationContext The normalization context
+   * @param warmStartModels Map of &lambda; &rarr; suggested warm start.
+   * @return The learned generalized linear models of each regularization weight and iteration.
+   */
+  def run(input: RDD[LabeledPoint],
+          optimizer: Optimizer[LabeledPoint, Function],
+          regularizationContext: RegularizationContext,
+          regularizationWeights: List[Double],
+          normalizationContext: NormalizationContext,
+          dataValidationType: DataValidationType,
+          warmStartModels:Map[Double, GeneralizedLinearModel]): List[GLM] = {
     val numFeatures = input.first().features.size
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
-    val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType)
+    val initialModel =  createModel(initialWeight, initialIntercept)
+    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType, warmStartModels)
     models
   }
 
@@ -134,15 +155,19 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
    * @param normalizationContext The normalization context
+   * @param warmStartModels Optional suggested models for warm start
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   protected def run(input: RDD[LabeledPoint],
-                    initialModel: GeneralizedLinearModel,
+                    initialModel:GLM,
                     optimizer: Optimizer[LabeledPoint, Function],
                     regularizationContext: RegularizationContext,
                     regularizationWeights: List[Double],
                     normalizationContext: NormalizationContext,
-                    dataValidationType: DataValidationType): List[GLM] = {
+                    dataValidationType: DataValidationType,
+                    warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
+
+    logInfo(s"Starting model fits with ${warmStartModels.size} warm start models for lambda = ${warmStartModels.keys.mkString(", ")}")
 
     if (input.getStorageLevel == StorageLevel.NONE) {
       logWarning("The input data is not directly cached, which may hurt performance if its"
@@ -192,10 +217,20 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     val broadcastedNormalizationContext = input.sparkContext.broadcast(normalizationContext)
     val normalizationContextProvider = new BroadcastedObjectProvider[NormalizationContext](broadcastedNormalizationContext)
 
+    val largestWarmStartLambda = if (warmStartModels.isEmpty) { 0.0 } else { warmStartModels.keys.max }
+    if (!warmStartModels.isEmpty) {
+      logInfo(s"Starting training using warm-start model with lambda = $largestWarmStartLambda")
+    } else {
+      logInfo(s"No warm start model found; falling back to all 0 as initial value")
+    }
+
     /* Find the path of solutions with different regularization coefficients */
-    var initialCoefficientsWithIntercept =
-      if (enableIntercept) prepend(initialModel.coefficients, initialModel.intercept.getOrElse(0.0))
-      else initialModel.coefficients
+    // If we can find a warm start model for the largest lambda, use that; otherwise, default to the provided initial
+    // model
+    val initModel = warmStartModels.getOrElse(largestWarmStartLambda, initialModel)
+    var initialCoefficientsWithIntercept:Vector[Double] =
+      if (enableIntercept) prepend(initModel.coefficients, initModel.intercept.getOrElse(0.0)) else initModel.coefficients
+
     val models = regularizationWeights.map { regularizationWeight =>
       val objectiveFunction = createObjectiveFunction(normalizationContextProvider, regularizationContext, regularizationWeight)
       val (coefficientsWithIntercept, _) = optimizer.optimize(dataPoints, objectiveFunction, initialCoefficientsWithIntercept)

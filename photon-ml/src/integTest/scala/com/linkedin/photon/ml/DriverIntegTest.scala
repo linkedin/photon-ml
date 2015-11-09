@@ -175,8 +175,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += NormalizationType.STANDARDIZATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
-                          expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.size, 4)
     // Verify lambdas
@@ -290,21 +290,24 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
     val base = "src/integTest/resources/DriverIntegTest/input/"
     val models = Map(
-      TaskType.LINEAR_REGRESSION -> ("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
+      TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
 
     val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
-    val regularizations = Map(RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
+    val regularizations = Map(
+      RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
       RegularizationType.L2 ->(OptimizerType.TRON, lambdas),
       RegularizationType.L1 ->(OptimizerType.LBFGS, lambdas),
       RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, lambdas))
 
-    (for (m <- models; r <- regularizations) yield {
-      (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
+    val trainEnabled = Seq(true)
+
+    (for (m <- models; r <- regularizations; trainDiagEnabled <- trainEnabled) yield {
+      (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4, trainDiagEnabled)
     }).map(x => {
-      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) = x
-      val outputDir = s"${taskType}_${regType}"
+      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp, trainEnabled) = x
+      val outputDir = s"${taskType}_${regType}_${trainEnabled}"
       val args = mutable.ArrayBuffer[String]()
       args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
       args += 1e-4.toString
@@ -332,6 +335,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += outputDir + "/summary"
       args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
       args += NormalizationType.STANDARDIZATION.toString
+      args += CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS)
+      args += trainEnabled.toString
       Array(outputDir, args.toArray, numDim, numSamp)
     }).toArray
   }
