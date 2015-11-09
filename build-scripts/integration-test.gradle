@@ -1,3 +1,7 @@
+// ATTENTION: this is a simple integration test set-up, scala.gradle (the cross build script) also contains a specific
+// configuration for its use cases.
+// When the cross-build script is applied, this script SHOULD NOT BE USED IN THE SAME TIME.
+
 // Set up integration test tasks
 sourceSets {
   integTest {

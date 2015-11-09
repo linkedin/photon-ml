@@ -1,0 +1,123 @@
+apply plugin: 'scala'
+
+class ScalaExtension {
+  Set targetVersions = new org.gradle.api.internal.DefaultDomainObjectSet(String)
+
+  void targetVersions(String... versions) {
+    targetVersions.addAll(versions as List)
+  }
+}
+project.extensions.create('scala', ScalaExtension)
+
+configurations {
+  integTestCompile {
+    description = "Integration test compilation"
+    extendsFrom testCompile
+  }
+
+  integTestRuntime {
+    description = "Integration test runtime"
+    extendsFrom testRuntime
+  }
+}
+
+classes.dependsOn = []
+testClasses.dependsOn = []
+check.dependsOn = []
+jar.dependsOn = []
+// A placeholder for integTest_${scalaVersion} tasks to depend upon
+task integTest(type: Test) {}
+
+scala.targetVersions.all { scalaVersion ->
+  def versions = scalaVersion.tokenize('.')
+  def baseVersion = "${versions[0]}.${versions[1]}"
+  def baseVersionUnderscore = baseVersion.replace(".", "_")
+
+
+  /* SourceSet & Dependencies configurations */
+  def sourceSet = sourceSets.create("scala${baseVersionUnderscore}") {
+    scala.srcDirs = ['src/main/scala']
+    resources.srcDirs = ['src/main/resources']
+  }
+
+  dependencies.add(sourceSet.compileConfigurationName, "org.scala-lang:scala-compiler:$scalaVersion")
+  dependencies.add(sourceSet.compileConfigurationName, "org.scala-lang:scala-library:$scalaVersion")
+  dependencies.add(sourceSet.compileConfigurationName, "org.scala-lang:scala-reflect:$scalaVersion")
+
+  def testSourceSet = sourceSets.create("scalaTest${baseVersionUnderscore}") {
+    compileClasspath += sourceSet.output
+    runtimeClasspath += sourceSet.output
+    scala.srcDirs = ['src/test/scala']
+    resources.srcDirs = ['src/test/resources']
+  }
+
+  dependencies.add(testSourceSet.compileConfigurationName, "org.scala-lang:scala-compiler:$scalaVersion")
+  dependencies.add(testSourceSet.compileConfigurationName, "org.scala-lang:scala-library:$scalaVersion")
+  dependencies.add(testSourceSet.compileConfigurationName, "org.scala-lang:scala-reflect:$scalaVersion")
+
+  def integTestSourceSet = sourceSets.create("scalaIntegTest${baseVersionUnderscore}") {
+    compileClasspath += sourceSet.output
+    runtimeClasspath += sourceSet.output
+    compileClasspath += testSourceSet.output
+    runtimeClasspath += testSourceSet.output
+    scala.srcDirs = ['src/integTest/scala']
+    resources.srcDirs = ['src/integTest/resources']
+  }
+
+  dependencies.add(integTestSourceSet.compileConfigurationName, "org.scala-lang:scala-compiler:$scalaVersion")
+  dependencies.add(integTestSourceSet.compileConfigurationName, "org.scala-lang:scala-library:$scalaVersion")
+  dependencies.add(integTestSourceSet.compileConfigurationName, "org.scala-lang:scala-reflect:$scalaVersion")
+
+  configureResolution(sourceSet.compileConfigurationName, configurations.compile, baseVersion)
+  configureResolution(sourceSet.runtimeConfigurationName, configurations.runtime, baseVersion)
+  configureResolution(testSourceSet.compileConfigurationName, configurations.testCompile, baseVersion)
+  configureResolution(testSourceSet.runtimeConfigurationName, configurations.testRuntime, baseVersion)
+  configureResolution(integTestSourceSet.compileConfigurationName, configurations.integTestCompile, baseVersion)
+  configureResolution(integTestSourceSet.runtimeConfigurationName, configurations.integTestRuntime, baseVersion)
+
+
+  /* Task Configurations */
+  def testTask = task("test_${baseVersionUnderscore}", type: Test) {
+    testClassesDir = testSourceSet.output.classesDir
+    classpath = testSourceSet.runtimeClasspath
+  }
+
+  def integTestTask = task("integTest_${baseVersionUnderscore}", type: Test) {
+    testClassesDir = integTestSourceSet.output.classesDir
+    classpath = integTestSourceSet.runtimeClasspath
+  }
+
+  // Generate jar in [name]-[appendix]_[scalaVersion]-[version]-[classifier].[extension] style
+  def jarTask = task("jar_${baseVersionUnderscore}", type: Jar) {
+    archiveName = baseName +
+        (appendix ? "-${appendix}" : "") +
+        "_${baseVersion}" +
+        (version ? "-${version}" : "") +
+        (classifier ? "-${classifier}" : "") +
+        ".${extension}"
+    from sourceSet.output
+  }
+
+  artifacts {
+    archives jarTask
+  }
+
+  // configure task dependencies
+  classes.dependsOn "scala${baseVersionUnderscore}Classes"
+  testClasses.dependsOn "scalaTest${baseVersionUnderscore}Classes"
+  test.dependsOn << [testTask, integTestTask]
+  check.dependsOn << [testTask, integTestTask]
+  integTest.dependsOn integTestTask
+  jar.dependsOn jarTask
+}
+
+def configureResolution(configurationName, parentConfiguration, baseVersion) {
+  def config = configurations[configurationName]
+  config.extendsFrom(parentConfiguration)
+  config.resolutionStrategy.eachDependency { details ->
+    def requested = details.requested
+    if (requested.name.endsWith('_*')) {
+      details.useTarget group: requested.group, name: requested.name.replace('_*', "_$baseVersion"), version: requested.version
+    }
+  }
+}

@@ -40,11 +40,16 @@ allprojects {
   }
 }
 
-apply from: file('scala.gradle')
-
 subprojects {
   // Put the build dir into the rootProject
   buildDir = "../build/$name"
+
+  // scala cross build script
+  apply from: "${rootDir}/build-scripts/scala.gradle"
+
+  scala {
+    targetVersions '2.10.4', '2.11.7'
+  }
 
   configurations.all {
     // Brought in by azkaban2, but not needed
@@ -58,7 +63,7 @@ subprojects {
   }
 
   plugins.withType(JavaPlugin) {
-    test {
+    tasks.withType(Test) {
       useTestNG()
 
       options {
@@ -71,6 +76,7 @@ subprojects {
           println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
         }
       }
+
       // Forward standard out from child JVMs to the console
       testLogging {
         showStackTraces = true
@@ -81,6 +87,8 @@ subprojects {
         exceptionFormat = 'full'
       }
 
+      outputs.upToDateWhen { false }
+
       systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
     }
 
@@ -88,15 +96,22 @@ subprojects {
       testCompile 'org.testng:testng:6.9.9'
     }
 
-    // TODO: Currently spark-shell on Nertz runs on Java 1.7, so 1.8 build doesn't run correctly on spark-shell.
-    // TODO: Ticket about Java version of Spark on Nertz:
-    // TODO: https://jira01.corp.linkedin.com:8443/browse/HADOOP-6994
-    // TODO: Should update to 1.8 after Spark on Java 1.8 is available.
-    sourceCompatibility = 1.7
+    sourceCompatibility = 1.8
   }
 
   tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-explaintypes", "-g:vars"]
+    scalaCompileOptions.fork = true
+
+    scalaCompileOptions.additionalParameters = [
+      "-feature",
+      "-deprecation",
+      "-verbose",  // Output what the compiler is doing
+      "-optimize",
+      "-explaintypes",  // Explain type errors in more detail.
+      "-g:vars",
+      "-language:reflectiveCalls", // Used for config structural typing
+      "-language:postfixOps"
+    ]
 
     scalaCompileOptions.useAnt = false
 

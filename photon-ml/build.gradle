@@ -1,43 +1,36 @@
-apply plugin: 'scala'
-
-apply from: file('../build-scripts/integration-test.gradle')
-
-compileScala {
-  scalaCompileOptions.fork = true
-  scalaCompileOptions.additionalParameters = [
-    "-feature",
-    "-language:reflectiveCalls", // used for config structural typing
-    "-language:postfixOps"
-  ]
-}
-
 dependencies {
-  compile("org.scala-lang:scala-compiler:${scalaVersion}")
-  compile("org.scala-lang:scala-library:${scalaVersion}")
-  compile("org.scala-lang:scala-reflect:${scalaVersion}")
-
   compile('org.apache.avro:avro:1.7.5')
   compile('org.apache.avro:avro-compiler:1.7.5')
   compile('org.apache.avro:avro-mapred:1.7.5')
   compile('com.xeiam.xchart:xchart:2.5.1')
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
-  compile("org.apache.spark:spark-core_${baseScalaVersion}:1.4.0")
-  compile("org.apache.spark:spark-mllib_${baseScalaVersion}:1.4.0")
-  compile("org.apache.spark:spark-sql_${baseScalaVersion}:1.4.0")
-  compile("org.apache.spark:spark-catalyst_${baseScalaVersion}:1.4.0")
+  // The build-script/scala.gradle script will take the wildcard * and cross build the dependencies using the specified
+  //  scala versions. (See build.gradle, scala.targetVersions for the current configuration)
+  compile("org.apache.spark:spark-core_*:1.4.0")
+  compile("org.apache.spark:spark-mllib_*:1.4.0")
+  compile("org.apache.spark:spark-sql_*:1.4.0")
+  compile("org.apache.spark:spark-catalyst_*:1.4.0")
 
   //this one is scala's option parsing library
-  compile("com.github.scopt:scopt_${baseScalaVersion}:3.2.0")
+  compile("com.github.scopt:scopt_*:3.2.0")
 
   compile('log4j:log4j:1.2.17')
 
   compile('com.linkedin.photon-schemas:photon-schemas:0.0.2')
 
 
-  // TODO cross build
+  // TODO: currently cannot do cross-build for this part
+  // photon-ml src/test is depending on photon-test src/test. This is problematic
+  // which requires hack-over-hack (combining cross-build and multiple testJar
+  // release scripts) to make it work. A better way is probably move photon-test
+  // src/test utils to src/main. They are utils and should be tested in the long
+  // term anyway.
   testCompile(project(":photon-test"))
+  testCompile(project(":photon-test").sourceSets.scalaTest2_10.output)
+  testCompile(project(":photon-test").sourceSets.scalaTest2_11.output)
 
-  testRuntime("org.scalanlp:breeze_${baseScalaVersion}:0.11.2")
-  testRuntime("org.scalanlp:breeze-macros_${baseScalaVersion}:0.11.2")
+
+  testRuntime("org.scalanlp:breeze_*:0.11.2")
+  testRuntime("org.scalanlp:breeze-macros_*:0.11.2")
 }
