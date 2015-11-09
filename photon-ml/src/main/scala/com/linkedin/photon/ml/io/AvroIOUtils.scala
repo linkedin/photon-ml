@@ -30,9 +30,9 @@ object AvroIOUtils {
    * @return A RDD of records
    */
   def readFromAvro[T <: GenericRecord : ClassTag](sc: SparkContext, inputDir: String, minNumPartitions: Int): RDD[T] = {
-    sc.hadoopFile[AvroWrapper[T], NullWritable, AvroInputFormat[T]](inputDir, minNumPartitions).map {
+    sc.hadoopFile[AvroWrapper[T], NullWritable, AvroInputFormat[T]](inputDir, minNumPartitions).map({
       case (k, v) => k.datum()
-    }
+    })
   }
 
   /**

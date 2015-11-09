@@ -15,22 +15,41 @@ import org.apache.spark.rdd.RDD
  * given a training set.
  *
  * @tparam M
- *           Input model type
+ * Input model type
  * @tparam D
- *           Output diagnostic type
+ * Output diagnostic type
  */
 trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
   /**
-   * Compute training-time diagnostics.
+   * Compute training-time diagnostics without warm-start models.
    *
    * @param modelFactory
-   *                     Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a data set, produces a set of (lambda, model) tuples
    *
    * @param trainingData
-   *                     Set of <em>training</em> data
+   * Set of <em>training</em> data
    *
    * @return
-   *         A logical report encapsulating this diagnostic's findings
+   * A logical report encapsulating this diagnostic's findings
    */
-  def diagnose(modelFactory:RDD[LabeledPoint]=>List[(Double, M)], trainingData:RDD[LabeledPoint], summary:Option[BasicStatisticalSummary]): Map[Double, D]
+  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
+               trainingData: RDD[LabeledPoint],
+               summary: Option[BasicStatisticalSummary]): Map[Double, D] = diagnose(modelFactory, Map.empty, trainingData, summary)
+
+  /**
+   * Compute training-time diagnostics, with (potentially empty) warm start models.
+   *
+   * @param modelFactory
+   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   *
+   * @param trainingData
+   * Set of <em>training</em> data
+   *
+   * @return
+   * A logical report encapsulating this diagnostic's findings
+   */
+  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
+               models:Map[Double, GeneralizedLinearModel],
+               trainingData: RDD[LabeledPoint],
+               summary: Option[BasicStatisticalSummary]): Map[Double, D]
 }

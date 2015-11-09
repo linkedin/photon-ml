@@ -59,7 +59,7 @@ class FittingToPhysicalReportTransformer extends LogicalToPhysicalReportTransfor
           chart.addSeries("Training set", xData, trainData)
           chart.addSeries("Holdout set", xData, testData)
           chart.getStyleManager.setXAxisMin(0.0)
-          chart.getStyleManager.setXAxisMax(1.0)
+          chart.getStyleManager.setXAxisMax(100.0)
           chart.getStyleManager.setYAxisMin(yMin)
           chart.getStyleManager.setYAxisMax(yMax)
           new PlotPhysicalReport(chart)
