@@ -93,7 +93,7 @@ class RatTask extends DefaultTask {
           out: htmlReport,
           classpath: ratClasspath)
     }
-    println('Rat report: ' + htmlReport)
+    println("Rat report: ${project.rootDir}/$htmlReport")
   }
 
   @TaskAction
@@ -128,7 +128,7 @@ class RatPlugin implements Plugin<Project> {
       mavenCentral()
     }
     project.dependencies {
-      rat 'org.apache.rat:apache-rat-tasks:0.8'
+      rat 'org.apache.rat:apache-rat-tasks:0.11'
     }
   }
 }
