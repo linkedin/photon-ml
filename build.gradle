@@ -40,6 +40,38 @@ allprojects {
   }
 }
 
+apply from: 'build-scripts/rat.gradle'
+
+rat {
+  excludes = [
+    '*.patch',
+    '**/*.iml',
+    '**/*.ipr',
+    '**/*.iws',
+    '**/*.json',
+    '**/*.avro',
+    '**/.classpath',
+    '**/.cache/**',
+    '**/.git/**',
+    '**/.gitignore',
+    '**/.gradle/**',
+    '**/.idea/**',
+    '**/.project',
+    '**/.settings/**',
+    '**/.DS_Store/**',
+    '**/build/**',
+    '.reviewboardrc',
+    'gradle/wrapper/**',
+    'gradlew',
+    'gradlew.bat',
+    'README.md',
+    'LICENSE',
+    'photon-ml/src/main/resources/**',
+    'photon-ml/src/test/resources/**',
+    'photon-test/src/test/resources/**'
+  ]
+}
+
 subprojects {
   // Put the build dir into the rootProject
   buildDir = "../build/$name"
