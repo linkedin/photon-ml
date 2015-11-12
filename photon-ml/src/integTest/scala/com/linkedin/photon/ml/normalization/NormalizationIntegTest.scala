@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.photon.ml.ModelTraining
+import com.linkedin.photon.ml.{DataValidationType, ModelTraining}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
 import com.linkedin.photon.ml.stat.BasicStatistics
@@ -113,6 +113,7 @@ class NormalizationIntegTest extends SparkTestUtils {
       _numIter,
       _tolerance,
       true,
+      DataValidationType.VALIDATE_DISABLED,
       None)
     assertEquals(models.size, 1)
     val model = models(0)._2.asInstanceOf[BinaryClassifier]

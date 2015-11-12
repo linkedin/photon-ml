@@ -23,6 +23,11 @@ import org.apache.spark.rdd.RDD
 /**
  * General interface for model diagnostics. In this case, all we require is a particular signature. We will expand
  * these later with more concrete tests.
+ *
+ * Model diagnostics are diagnostics that are intended to give us information about a particular model given a
+ * validation set. This is in contrast to training diagnostics, which are intended to tell us about a class of models
+ * given a training set.
+ *
  * @tparam M
  *           Input model type
  * @tparam D

@@ -16,7 +16,7 @@ This script converts a text file in libsvm format into TrainingExample avro.
 For each feature, the name is set as id, and the term is empty.
 
 [Usage]:
-python libsvm_text_to_trainingexample_avro.py [input_path] [output_schema_path] [output_path]
+python libsvm_text_to_trainingexample_avro.py [input_path] [output_schema_path] [output_path] (optional: -r for regression)
 """
 import os
 import sys
@@ -31,9 +31,11 @@ def main():
     print __doc__
     sys.exit(0)
 
+  reg = False
+
   # parse command line options
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "h:", ["help"])
+    opts, args = getopt.getopt(sys.argv[1:], "hr", ["help", "regression"])
   except getopt.error, msg:
     print msg
     print "for help use --help"
@@ -43,6 +45,9 @@ def main():
     if o in ("-h", "--help"):
       print __doc__
       sys.exit(0)
+    if o in ("-r", "--regression"):
+      reg = True
+
   # process arguments
   input_path = args[0]
   output_schema_path = args[1]
@@ -55,15 +60,22 @@ def main():
   writer = DataFileWriter(open(output_path, "w"), DatumWriter(), schema)
 
   with open(input_path, 'r') as f:
+    count = 0
     for line in f:
+      count += 1
       r = {}
       i = 0
       feature_arr = []
       for token in line.strip().split(' '):
         if i == 0:
-          r['label'] = int(token)
-          if r['label'] <= 0:
-            r['label'] = 0
+          if reg:
+            r['label'] = float(token)
+          else:
+            r['label'] = int(token)
+            if r['label'] <= 0:
+              r['label'] = 0
+            else:
+              r['label'] = 1
         else:
           t = token.split(':')
           ft = {}
@@ -74,6 +86,7 @@ def main():
         i += 1
       r['features'] = feature_arr
       writer.append(r)
+    print "converted " + str(count) + " examples"
   writer.close()
 
 if __name__ == "__main__":

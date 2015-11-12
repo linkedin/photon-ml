@@ -1,0 +1,55 @@
+package com.linkedin.photon.ml.diagnostics.independence
+
+import com.linkedin.photon.ml.diagnostics.reporting._
+import com.xeiam.xchart.{StyleManager, ChartBuilder}
+
+class PredictionErrorIndependencePhysicalReportTransformer extends LogicalToPhysicalReportTransformer[PredictionErrorIndependenceReport, SectionPhysicalReport] {
+  import PredictionErrorIndependencePhysicalReportTransformer._
+
+  override def transform(report: PredictionErrorIndependenceReport): SectionPhysicalReport = {
+    val plotSection = generatePlot(report.errorSample, report.predictionSample)
+    val kendallSection = generateKendall(report.kentallTau)
+    new SectionPhysicalReport(Seq(plotSection, kendallSection), SECTION_TITLE)
+  }
+}
+
+object PredictionErrorIndependencePhysicalReportTransformer {
+  val SECTION_TITLE = "Error / Prediction Independence Analysis"
+  val PARAMETRIC_TEST_SUBSECTION = "Parametric Tests of Independence"
+  val PLOT_SUBSECTION_TITLE = "Plot"
+  val CHI_SQUARE_SUBSECTION_TITLE = "Chi-square Independence Test"
+  val G_SUBSECTION_TITLE = "G Independence Test"
+  val KENDALL_TAU_SECTION_TITLE = "Kendall Tau Independence Test"
+  val CONTINGENCY_TABLE_SECTION_TITLE = "Contingency Table"
+
+  def generatePlot(error:Array[Double], prediction:Array[Double]): SectionPhysicalReport = {
+    val builder = new ChartBuilder
+    val chart = builder.chartType(StyleManager.ChartType.Scatter)
+                       .height(PlotUtils.PLOT_HEIGHT)
+                       .theme(StyleManager.ChartTheme.XChart)
+                       .title("Error v. Prediction")
+                       .width(PlotUtils.PLOT_WIDTH)
+                       .xAxisTitle("Prediction")
+                       .yAxisTitle("Label - Prediction")
+                       .build()
+    chart.addSeries("Prediction error", prediction, error)
+
+    new SectionPhysicalReport(Seq(new PlotPhysicalReport(chart)), PLOT_SUBSECTION_TITLE)
+  }
+
+  def generateKendall(report:KendallTauReport): SectionPhysicalReport = {
+    new SectionPhysicalReport(
+      Seq(new BulletedListPhysicalReport(
+        Seq(
+          new SimpleTextPhysicalReport(s"Concordant pairs: ${report.concordantPairs}"),
+          new SimpleTextPhysicalReport(s"Discordant pairs: ${report.discordantPairs}"),
+          new SimpleTextPhysicalReport(s"Effective pairs: ${report.effectivePairs}"),
+          new SimpleTextPhysicalReport(s"Number of samples: ${report.numSamples}"),
+          new SimpleTextPhysicalReport(s"Tau alpha: ${report.tauAlpha}"),
+          new SimpleTextPhysicalReport(s"Tau beta: ${report.tauBeta}"),
+          new SimpleTextPhysicalReport(s"Z alpha: ${report.zAlpha}"),
+          new SimpleTextPhysicalReport(s"Alpha p-value: ${report.pValueAlpha}")
+        )
+      )), KENDALL_TAU_SECTION_TITLE)
+  }
+}

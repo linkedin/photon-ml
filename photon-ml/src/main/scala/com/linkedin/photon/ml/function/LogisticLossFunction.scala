@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.function
 
+
+import com.linkedin.photon.ml.data.{SimpleObjectProvider, ObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.util.Utils
 
@@ -25,7 +27,7 @@ import com.linkedin.photon.ml.util.Utils
  * @author xazhang
  * @author dpeng
  */
-class LogisticLossFunction(normalizationContext: NormalizationContext = NoNormalization) extends
+class LogisticLossFunction(normalizationContext: ObjectProvider[NormalizationContext] = new SimpleObjectProvider[NormalizationContext](NoNormalization)) extends
   GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
 
 /**

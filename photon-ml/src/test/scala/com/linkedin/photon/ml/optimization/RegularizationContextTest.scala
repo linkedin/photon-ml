@@ -50,21 +50,6 @@ class RegularizationContextTest {
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testL1WithAlpha(): Unit = {
-    new RegularizationContext(RegularizationType.L1, Some(0.5))
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testL2WithAlpha(): Unit = {
-    new RegularizationContext(RegularizationType.L2, Some(0.5))
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testElasticNetWithoutAlpha(): Unit = {
-    new RegularizationContext(RegularizationType.ELASTIC_NET)
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testTooLargeAlpha(): Unit = {
     new RegularizationContext(RegularizationType.ELASTIC_NET, Some(1.1d))
   }

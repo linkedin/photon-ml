@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.io.FieldNamesType
 import FieldNamesType._
 import com.linkedin.photon.ml.optimization.{RegularizationType, OptimizerType}
@@ -53,6 +54,7 @@ import com.linkedin.photon.ml.normalization.NormalizationType
  * @param summarizationOutputDirOpt If summarization output dir is provided, basic statistics of features will be written to the given directory.
  * @param normalizationType Feature normalization method
  * @param jobName Job name of this spark application
+ * @param dataValidationType Type of validation to be performed
  * @param constraintString A JSON string containing an array of maps specifying the box constraints on certain
  *                         coefficients, if any. Only keys from
  *                         {@see com.linkedin.photon.ml.io.GLMSuite.ConstraintMapKeys} will be sought. Others if
@@ -82,4 +84,5 @@ case class Params(trainDir: String = null,
                   summarizationOutputDirOpt: Option[String] = None,
                   normalizationType: NormalizationType = NormalizationType.NONE,
                   jobName: String = s"Photon-ML-Training",
+                  dataValidationType: DataValidationType = DataValidationType.VALIDATE_FULL,
                   constraintString: Option[String] = None)

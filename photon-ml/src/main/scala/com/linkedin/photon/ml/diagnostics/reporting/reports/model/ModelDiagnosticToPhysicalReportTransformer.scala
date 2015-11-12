@@ -14,12 +14,12 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.reports.model
 
+import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceToPhysicalReportTransformer
+import com.linkedin.photon.ml.diagnostics.fitting.FittingToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.hl.NaiveHosmerLemeshowToPhysicalReportTransformer
+import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependencePhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.linkedin.photon.ml.diagnostics.reporting.reports.Utils
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
 /**
  * Convert model diagnostics into a presentable form.
@@ -30,14 +30,28 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
 
   def transform(model: ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
     val metricsSection:SectionPhysicalReport = transformMetrics(model)
-    val modelSection: SectionPhysicalReport = transformModel(model.model, model.modelDescription, model.nameIdxMap, model.summary)
-    model.hosmerLemeshow match {
+    val predErrSection:SectionPhysicalReport = PREDICTION_ERROR_TRANSFORMER.transform(model.predictionErrorIndependence)
+    val modelSection: SectionPhysicalReport = new SectionPhysicalReport(
+      Seq(
+        FEATURE_IMPORTANCE_TRANSFORMER.transform(model.meanImpactFeatureImportance),
+        FEATURE_IMPORTANCE_TRANSFORMER.transform(model.varianceImpactFeatureImportance)),
+      FEATURE_IMPORTANCE_TITLE)
+
+    val hlSection = model.hosmerLemeshow match {
       case Some(hl) =>
-        val hlSection: SectionPhysicalReport = HOSMER_LEMESHOW_TRANSFORMER.transform(hl)
-        new SectionPhysicalReport(Seq(metricsSection, modelSection, hlSection), f"Model, lambda=${model.lambda}%.03g")
+        Some(HOSMER_LEMESHOW_TRANSFORMER.transform(hl))
       case None =>
-        new SectionPhysicalReport(Seq(metricsSection, modelSection), f"Model, lambda=${model.lambda}%.03g")
+        None
     }
+
+    val fitSection = model.fitReport match {
+      case Some(fr) =>
+        Some(FIT_TRANSFORMER.transform(fr))
+      case None =>
+        None
+    }
+
+    new SectionPhysicalReport(metricsSection :: predErrSection :: modelSection :: fitSection.toList ++ hlSection.toList, s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
   }
 
   private def transformMetrics(model:ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
@@ -46,70 +60,13 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
         new BulletedListPhysicalReport(model.metrics.map(x => s"Metric: [${x._1}, value: [${x._2}]").toSeq.sorted.map(x => new SimpleTextPhysicalReport(x)))),
       "Validation Set Metrics")
   }
-
-  private def transformModel(m: GLM, desc: String, nameIdx: Map[String, Int], summary: Option[BasicStatisticalSummary]): SectionPhysicalReport = {
-    summary match {
-      case Some(sum) =>
-        transformModel(m, desc, nameIdx, sum)
-      case None =>
-        transformModel(m, desc, nameIdx)
-    }
-  }
-
-  private def transformModel(m: GLM, desc: String, nameIdx: Map[String, Int], summary: BasicStatisticalSummary): SectionPhysicalReport = {
-    val coefficientImportance = (for {coeff <- m.coefficients.valuesIterator.zipWithIndex} yield (coeff._2, math.abs(coeff._1 * summary.meanAbs(coeff._2)), coeff._1, summary.mean(coeff._2))).toArray.sortBy(x => x._1)
-
-    val coefficientImportanceMap = nameIdx.map(x => {
-      (x._1, coefficientImportance(x._2))
-    })
-
-    val sortedImportance = coefficientImportanceMap.toArray.sortBy(x => x._2._2)
-
-    renderImportance("Magnitude of expected inner product contribution", sortedImportance)
-  }
-
-  private def transformModel(m: GLM, desc: String, nameIdx: Map[String, Int]): SectionPhysicalReport = {
-    val coefficientImportance = (for {coeff <- m.coefficients.valuesIterator.zipWithIndex} yield (coeff._2, math.abs(coeff._1), coeff._1, 1.0)).toArray.sortBy(x => x._1)
-
-    val coefficientImportanceMap = nameIdx.map(x => {
-      (x._1, coefficientImportance(x._2))
-    })
-
-    val sortedImportance = coefficientImportanceMap.toArray.sortBy(x => x._2._2)
-
-    renderImportance("Magnitude of coefficient", sortedImportance)
-  }
-
-  private def renderImportance(coeffImportDesc: String, sortedImportance: Array[(String, (Int, Double, Double, Double))]): SectionPhysicalReport = {
-    // Thing 1: draw importance at 1% increments
-    val featImportanceIdx = (1 until 99).map(x => x * sortedImportance.length / 100)
-    val featImportanceY = featImportanceIdx.map(x => sortedImportance(x)._2._2).toArray
-    val featImportanceX = featImportanceIdx.map(x => 100.0 * x / sortedImportance.length).toArray
-    val builder = new ChartBuilder()
-    val chart = builder
-      .chartType(StyleManager.ChartType.Line)
-      .theme(StyleManager.ChartTheme.XChart)
-      .title(MODEL_IMPORTANCE_TITLE)
-      .xAxisTitle("Rank (importance %-ile)")
-      .yAxisTitle("Importance")
-      .build()
-    chart.addSeries(coeffImportDesc, featImportanceX, featImportanceY)
-    val plot = new PlotPhysicalReport(chart)
-
-    // Thing 2: pull out description of most important features
-    val importantFeatures = new NumberedListPhysicalReport(sortedImportance.takeRight(MAX_IMPORTANT_FEATURES).reverse.map(x => {
-      val (name, term) = Utils.extractNameTerm(x._1)
-      val (coeffIdx, coeffImp, coeffVal, expFeat) = x._2
-      new SimpleTextPhysicalReport(f"Feature (N: [$name] T:[$term]) has importance $coeffImp%.04g (coefficient value: $coeffVal, expected feature value: $expFeat)")
-    }))
-
-    new SectionPhysicalReport(Seq(plot, importantFeatures), FEATURE_IMPORTANCE_TITLE)
-  }
 }
 
 object ModelDiagnosticToPhysicalReportTransformer {
+  val SECTION_TITLE = "Model Analysis"
   val HOSMER_LEMESHOW_TRANSFORMER = new NaiveHosmerLemeshowToPhysicalReportTransformer()
-  val MAX_IMPORTANT_FEATURES = 30
-  val MODEL_IMPORTANCE_TITLE = "Model Coefficient Importance"
+  val FEATURE_IMPORTANCE_TRANSFORMER = new FeatureImportanceToPhysicalReportTransformer()
+  val PREDICTION_ERROR_TRANSFORMER = new PredictionErrorIndependencePhysicalReportTransformer()
+  val FIT_TRANSFORMER = new FittingToPhysicalReportTransformer()
   val FEATURE_IMPORTANCE_TITLE = "Coefficient Importance Analysis"
 }
