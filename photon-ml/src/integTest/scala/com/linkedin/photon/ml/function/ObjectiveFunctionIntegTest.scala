@@ -28,37 +28,42 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     // List of functions that return a tuple containing an undecorated loss function and its corresponding local data
     // set
     val baseLossFunctions = Array(
-      () => ("Differentiable dummy objective to test optimizer, benign data", new IntegTestObjective(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable dummy objective to test optimizer, benign data", new TestObjective(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, benign data", new LogisticLossFunction(), generateBenignLocalDataSetBinaryClassification()),
-      () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable smoothed hinge loss, benign data", new SmoothedHingeLossFunction(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetLinearRegression()),
       () => ("Differentiable poisson loss, benign data", new PoissonLossFunction(), generateBenignLocalDataSetPoissonRegression()),
-      () => ("Differentiable dummy objective to test optimizer, outlier data", new IntegTestObjective(), generateOutlierLocalDataSetBinaryClassification()),
+      () => ("Differentiable dummy objective to test optimizer, outlier data", new TestObjective(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, outlier data", new LogisticLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
-      () => ("Differentiable squared loss, outlier data", new SquaredLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
+      () => ("Differentiable smoothed hinge loss, outlier data", new SmoothedHingeLossFunction(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable squared loss, outlier data", new SquaredLossFunction(), generateOutlierLocalDataSetLinearRegression()),
       () => ("Differentiable poisson loss, outlier data", new PoissonLossFunction(), generateOutlierLocalDataSetPoissonRegression()))
 
-    // List of regularization decorators. For each item in the base loss function list, we apply each decorator
-    val regularizationDecorators = Array(
-      (x:DiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction L2 regularization", DiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH)),
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction L1 regularization", DiffFunction.withRegularization(x, L1RegularizationContext, ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH)),
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction Elastic Net regularization", DiffFunction.withRegularization(x, new RegularizationContext(RegularizationType.ELASTIC_NET, Option(0.5)), ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH))
-    )
+    (for {base <- baseLossFunctions} yield {
+      val (desc, undecorated, data) = base()
+      val diffAdapted = undecorated match {
+        case df: DiffFunction[LabeledPoint] =>
+          Seq(
+            (desc, df, data),
+            (s"$desc with diff function L2 regularization", DiffFunction.withRegularization(df, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
+            (s"$desc with diff function L1 regularization", DiffFunction.withRegularization(df, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data))
+        case _ => Seq()
+      }
 
-    val tmp:ListBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])] = scala.collection.mutable.ListBuffer()
+      val twiceDiffAdapted = undecorated match {
+        case twiceDF: TwiceDiffFunction[LabeledPoint] =>
+          Seq(
+            (s"$desc with twice diff function L2 regularization", TwiceDiffFunction.withRegularization(twiceDF, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
+            (s"$desc with twice diff function L1 regularization", TwiceDiffFunction.withRegularization(twiceDF, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data)
+          )
 
-    // Generate cartesian product of all regularization types by all base loss functions
-    baseLossFunctions.map( { f =>
-      val undecorated = f()
-      tmp.append(undecorated)
+        case _ => Seq()
+      }
 
-      regularizationDecorators.map( { regularize =>
-        val decorated = regularize(undecorated._2, undecorated._1)
-        tmp.append( (decorated._1, decorated._2, undecorated._3))
-      })
-    })
-
-    tmp.map( { x => Array(x._1, x._2, x._3) }).toArray
+      diffAdapted ++ twiceDiffAdapted
+    }).flatMap(_.iterator).map(x => Array(x._1, x._2, x._3))
   }
+
 
   /**
    * List everything that conforms to TwiceDiffFunction here
@@ -67,46 +72,46 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
   def getTwiceDifferentiableFunctions: Array[Array[Object]] = {
     val baseLossFunctions = Array(
       () => ("Differentiable logistic loss, benign data", new LogisticLossFunction(), generateBenignLocalDataSetBinaryClassification()),
-      () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetLinearRegression()),
       () => ("Differentiable poisson loss, benign data", new PoissonLossFunction(), generateBenignLocalDataSetPoissonRegression()),
       () => ("Differentiable logistic loss, outlier data", new LogisticLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
-      () => ("Differentiable squared loss, outlier data", new SquaredLossFunction(), generateOutlierLocalDataSetBinaryClassification()),
+      () => ("Differentiable squared loss, outlier data", new SquaredLossFunction(), generateOutlierLocalDataSetLinearRegression()),
       () => ("Differentiable poisson loss, outlier data", new PoissonLossFunction(), generateOutlierLocalDataSetPoissonRegression()))
 
     // List of regularization decorators. For each item in the base loss function list, we apply each decorator
     val regularizationDecorators = Array(
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with TwiceDiffFunction L2 regularization", TwiceDiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH))
+      (x: TwiceDiffFunction[LabeledPoint], baseDesc: String) => (s"$baseDesc with TwiceDiffFunction L2 regularization", TwiceDiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH))
     )
 
-    val tmp:scala.collection.mutable.ListBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])] = scala.collection.mutable.ListBuffer()
+    val tmp: scala.collection.mutable.ListBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])] = scala.collection.mutable.ListBuffer()
 
     // Generate cartesian product of all regularization types by all base loss functions
-    baseLossFunctions.map( { f =>
+    baseLossFunctions.map({ f =>
       val undecorated = f()
       tmp.append(undecorated)
 
-      regularizationDecorators.map( { regularize =>
+      regularizationDecorators.map({ regularize =>
         val decorated = regularize(undecorated._2, undecorated._1)
-        tmp.append( (decorated._1, decorated._2, undecorated._3))
+        tmp.append((decorated._1, decorated._2, undecorated._3))
       })
     })
 
-    tmp.map( { x => Array(x._1, x._2, x._3) }).toArray
+    tmp.map({ x => Array(x._1, x._2, x._3) }).toArray
   }
 
   /**
    * Generate benign datasets with weights. The output contains 2 * TRAINING_SAMPLES
    * examples in total. Have of them have weight = 1, and have of them have random weights.
-   * @return a list of {@link  LabeledPoint}
+   * @return a list of { @link  LabeledPoint}
    */
   def generateBenignLocalDataSetBinaryClassification(): List[LabeledPoint] = {
     val tmp1: List[LabeledPoint] = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-        assertEquals(obj._2.length, ObjectiveFunctionTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
-      }).toList
+      assertEquals(obj._2.length, ObjectiveFunctionTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
+    }).toList
     //generate random points with random weights
     val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
     val tmp2: List[LabeledPoint] = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
@@ -114,38 +119,38 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
       assertEquals(obj._2.length, ObjectiveFunctionTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
-      }).toList
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
     tmp1 ::: tmp2
   }
 
   /**
    * Generate outliers with weights. The output contains 2 * TRAINING_SAMPLES
    * examples in total. Have of them have weight = 1, and have of them have random weights.
-   * @return a list of {@link  LabeledPoint}
+   * @return a list of { @link  LabeledPoint}
    */
   def generateOutlierLocalDataSetBinaryClassification(): List[LabeledPoint] = {
     val tmp1: List[LabeledPoint] = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
       ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-        assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
-      }).toList
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
+    }).toList
 
-  //generate random points with random weights
+    //generate random points with random weights
     val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
     val tmp2: List[LabeledPoint] = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
       ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-        assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
-      }).toList
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
     tmp1 ::: tmp2
-}
+  }
 
   def generateBenignLocalDataSetPoissonRegression(): List[LabeledPoint] = {
     val tmp1: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
@@ -163,9 +168,9 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
       assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
-      }).toList
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
     tmp1 ::: tmp2
   }
 
@@ -184,10 +189,54 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
       ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
       ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-        assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-        val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
-        new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
-      }).toList
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
+    tmp1 ::: tmp2
+  }
+
+  def generateBenignLocalDataSetLinearRegression(): List[LabeledPoint] = {
+    val tmp1: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
+      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
+      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
+    }).toList
+
+    //generate random points with random weights
+    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
+    val tmp2: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
+      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
+      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
+    tmp1 ::: tmp2
+  }
+
+  def generateOutlierLocalDataSetLinearRegression(): List[LabeledPoint] = {
+    val tmp1: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
+      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
+      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
+      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
+    }).toList
+
+    //generate random points with random weights
+    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
+    val tmp2: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
+      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
+      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
+      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+      new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
+    }).toList
     tmp1 ::: tmp2
   }
 
@@ -195,13 +244,17 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     val numericDeriv = (objectiveAfter - objectiveBefore) / (2.0 * ObjectiveFunctionIntegTest.DERIVATIVE_DELTA)
     val relativeErrorNum = Math.abs(numericDeriv - expected)
     val relativeErrorFactor = Math.min(Math.abs(numericDeriv), Math.abs(expected))
-    val relativeErrorDen = if (relativeErrorFactor > 0) { relativeErrorFactor } else { 1 }
+    val relativeErrorDen = if (relativeErrorFactor > 0) {
+      relativeErrorFactor
+    } else {
+      1
+    }
     val relativeError = relativeErrorNum / relativeErrorDen
 
     assertTrue(java.lang.Double.isFinite(objectiveBefore), s"Objective before step [$objectiveBefore] should be finite")
     assertTrue(java.lang.Double.isFinite(objectiveAfter), s"Objective after step [$objectiveAfter] should be finite")
 
-    if( !(numericDeriv.isInfinite || numericDeriv.isNaN) ) {
+    if (!(numericDeriv.isInfinite || numericDeriv.isNaN)) {
       assertTrue(
         relativeError < ObjectiveFunctionIntegTest.GRADIENT_TOLERANCE ||
           relativeErrorNum < ObjectiveFunctionIntegTest.GRADIENT_TOLERANCE,
@@ -216,7 +269,11 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     val numericDeriv = (gradAfter - gradBefore) / (2.0 * ObjectiveFunctionIntegTest.DERIVATIVE_DELTA)
     val relativeErrorNum = Math.abs(numericDeriv - expected)
     val relativeErrorFactor = Math.min(Math.abs(numericDeriv), Math.abs(expected))
-    val relativeErrorDen = if (relativeErrorFactor > 0) { relativeErrorFactor } else { 1 }
+    val relativeErrorDen = if (relativeErrorFactor > 0) {
+      relativeErrorFactor
+    } else {
+      1
+    }
     val relativeError = relativeErrorNum / relativeErrorDen
 
     assertTrue(
@@ -240,8 +297,8 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getDifferentiableFunctions",
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkGradientConsistentWithObjectiveSpark(description:String, function: DiffFunction[LabeledPoint], localData:Seq[LabeledPoint]): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
-    val data = sc.parallelize(localData)
+  def checkGradientConsistentWithObjectiveSpark(description: String, function: DiffFunction[LabeledPoint], localData: Seq[LabeledPoint]): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
+    val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
     val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
 
     for (iter <- 0 until ObjectiveFunctionIntegTest.SPARK_CONSISTENCY_CHECK_SAMPLES) {
@@ -272,8 +329,8 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getTwiceDifferentiableFunctions",
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkHessianConsistentWithObjectiveSpark(description:String, function: TwiceDiffFunction[LabeledPoint], localData: Seq[LabeledPoint]): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
-    val data = sc.parallelize(localData)
+  def checkHessianConsistentWithObjectiveSpark(description: String, function: TwiceDiffFunction[LabeledPoint], localData: Seq[LabeledPoint]): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
+    val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
     val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
 
     for (iter <- 0 until ObjectiveFunctionIntegTest.SPARK_CONSISTENCY_CHECK_SAMPLES) {
