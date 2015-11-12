@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.function
 
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -47,7 +47,7 @@ import org.apache.spark.rdd.RDD
  *
  * @author dpeng
  */
-class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFunction, normalizationContext: NormalizationContext) extends TwiceDiffFunction[LabeledPoint] {
+class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFunction, normalizationContext: ObjectProvider[NormalizationContext]) extends TwiceDiffFunction[LabeledPoint] {
 
 
   /**
@@ -61,12 +61,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
   override protected[ml] def hessianVector(data: Iterable[LabeledPoint],
                                               coefficients: Vector[Double],
                                               multiplyVector: Vector[Double]): Vector[Double] = {
-    val aggregator = new HessianVectorAggregator(coefficients, multiplyVector, singleLossFunction, normalizationContext)
-    val resultAggregator = data.aggregate(aggregator)(
-      seqop = (ag, datum) => ag.add(datum),
-      combop = (ag1, ag2) => ag1.merge(ag2)
-    )
-    resultAggregator.getVector
+    HessianVectorAggregator.calcHessianVector(data, coefficients, multiplyVector, singleLossFunction, normalizationContext)
   }
 
   /**
@@ -80,13 +75,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
   override protected[ml] def hessianVector(data: RDD[LabeledPoint],
                                               broadcastedCoefficients: Broadcast[Vector[Double]],
                                               multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
-    val aggregator = new HessianVectorAggregator(broadcastedCoefficients.value, multiplyVector.value,
-                                                 singleLossFunction, normalizationContext)
-    val resultAggregator = data.aggregate(aggregator)(
-      seqOp = (ag, datum) => ag.add(datum),
-      combOp = (ag1, ag2) => ag1.merge(ag2)
-    )
-    resultAggregator.getVector
+    HessianVectorAggregator.calcHessianVector(data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext)
   }
 
   /**
@@ -98,13 +87,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
    */
   override protected[ml] def calculate(data: RDD[LabeledPoint],
                                           broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
-    val aggregator = new ValueAndGradientAggregator(broadcastedCoefficients.value, singleLossFunction,
-                                                    normalizationContext)
-    val resultAggregator = data.aggregate(aggregator)(
-      seqOp = (ag, datum) => ag.add(datum),
-      combOp = (ag1, ag2) => ag1.merge(ag2)
-    )
-    (resultAggregator.getValue, resultAggregator.getVector)
+    ValueAndGradientAggregator.calculateValueAndGradient(data, broadcastedCoefficients, singleLossFunction, normalizationContext)
   }
 
   /**
@@ -116,12 +99,7 @@ class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFuncti
    */
   override protected[ml] def calculate(data: Iterable[LabeledPoint],
                                           coefficients: Vector[Double]): (Double, Vector[Double]) = {
-    val aggregator = new ValueAndGradientAggregator(coefficients, singleLossFunction, normalizationContext)
-    val resultAggregator = data.aggregate(aggregator)(
-      seqop = (ag, datum) => ag.add(datum),
-      combop = (ag1, ag2) => ag1.merge(ag2)
-    )
-    (aggregator.getValue, aggregator.getVector)
+    ValueAndGradientAggregator.calculateValueAndGradient(data, coefficients, singleLossFunction, normalizationContext)
   }
 
   /**

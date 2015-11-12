@@ -59,6 +59,7 @@ class BasicStatisticsIntegTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     val normL1 = items.map(_._1)
     val normL2 = items.map(_._2)
+    val meanAbs = normL1.map(_ / labeledPoints.size)
     val max = items.map(_._3)
     val min = items.map(_._4)
     val mean = items.map(_._5)
@@ -72,5 +73,7 @@ class BasicStatisticsIntegTest extends SparkTestUtils with TestTemplateWithTmpDi
     assertIterableEqualsWithTolerance(summary.normL1.toArray, normL1, DELTA)
     assertIterableEqualsWithTolerance(summary.normL2.toArray, normL2, DELTA)
     assertIterableEqualsWithTolerance(summary.numNonzeros.toArray, numNonzeros, DELTA)
+    assertIterableEqualsWithTolerance(summary.meanAbs.toArray, meanAbs, DELTA)
+
   }
 }

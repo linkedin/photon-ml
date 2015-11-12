@@ -15,12 +15,13 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{PoissonLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
 import com.linkedin.photon.ml.util.DataValidators
+import org.apache.spark.rdd.RDD
 
 
 /**
@@ -29,11 +30,12 @@ import com.linkedin.photon.ml.util.DataValidators
  * @author dpeng
  */
 class PoissonRegressionAlgorithm extends GeneralizedLinearAlgorithm[PoissonRegressionModel, TwiceDiffFunction[LabeledPoint]] {
-
-  override protected val validators = List(DataValidators.finiteFeaturesValidator, DataValidators.finiteLabelValidator, DataValidators.nonNegativeLabelValidator)
+  override protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.poissonRegressionValidator)
 
   /* Objective function = loss function + l2weight * regularization */
-  override protected def createObjectiveFunction(normalizationContext: NormalizationContext, regularizationContext: RegularizationContext, regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
+  override protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext],
+                                                 regularizationContext: RegularizationContext,
+                                                 regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
     TwiceDiffFunction.withRegularization(new PoissonLossFunction(normalizationContext), regularizationContext, regularizationWeight)
   }
 

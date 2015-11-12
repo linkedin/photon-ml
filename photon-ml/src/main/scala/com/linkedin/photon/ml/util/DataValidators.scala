@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.util
 
+import breeze.linalg.{DenseVector, SparseVector}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import org.apache.spark.Logging
@@ -23,63 +24,60 @@ import org.apache.spark.rdd.RDD
  * A collection of methods used to validate data before applying ML algorithms.
  */
 object DataValidators extends Logging {
-
-  private val epsilon = 1e-15
-
-  /**
-   * Function to check if labels used for classification are either zero or one.
-   *
-   * @return True if labels are all zero or one, false otherwise.
-   */
-  val binaryLabelValidator: RDD[LabeledPoint] => Boolean = { data =>
-    val numInvalid = data.filter(x => math.abs(x.label - BinaryClassifier.positiveClassLabel) > epsilon
-      && math.abs(x.label - BinaryClassifier.negativeClassLabel) > epsilon).count()
-    if (numInvalid != 0) {
-      logError(s"Classification labels should be ${BinaryClassifier.negativeClassLabel.toInt} or" +
-        s"${BinaryClassifier.positiveClassLabel.toInt}. Found $numInvalid invalid labels")
-    }
-    numInvalid == 0
+  val linearRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
+    validateFeatures(data, Map("Finite features" -> finiteFeatures, "Finite labels" -> finiteLabel, "Finite offset" -> finiteOffset))
   }
 
-  /**
-   * Function to check if labels used for Poisson Regression are non-negative.
-   *
-   * @return True if labels are all non-negative, false otherwise.
-   */
-  val nonNegativeLabelValidator: RDD[LabeledPoint] => Boolean = { data =>
-    val numInvalid = data.filter(x =>  x.label < 0).count()
-    if (numInvalid != 0) {
-      logError(s"Labels should be non-negative. Found $numInvalid invalid labels")
-    }
-    numInvalid == 0
+  val logisticRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
+    validateFeatures(data, Map("Finite label" -> finiteLabel, "Binary label" -> binaryLabel, "Finite features" -> finiteFeatures, "Finite offset" -> finiteOffset))
   }
 
-  /**
-   * Check that all labels are finite (Double.isFinite)
-   */
-  val finiteLabelValidator: RDD[LabeledPoint] => Boolean = { data =>
-    val numInvalid = data.filter(x => !java.lang.Double.isFinite(x.label)).count()
-
-    if (numInvalid != 0) {
-      logError(s"Labels should be finite (_not_ NaN / Inf / -Inf). Found $numInvalid invalid labels")
-    }
-    numInvalid == 0
+  val poissonRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
+    validateFeatures(data, Map("Finite label" -> finiteLabel, "Nonnegative label" -> nonnegativeLabels, "Finite features" -> finiteFeatures, "Finite offset" -> finiteOffset))
   }
 
-  /**
-   * Check all present feature values are finite
-   */
-  val finiteFeaturesValidator: RDD[LabeledPoint] => Boolean = { data =>
-    val numInvalid = data.filter( x => {
-      val featureCount:Int = x.features.mapActiveValues( y => { if (java.lang.Double.isFinite(y)) 0 else 1 }).sum
-      val offsetCount:Int = if (java.lang.Double.isFinite(x.offset)) { 0 } else { 1 }
-      val nonFiniteCount = featureCount + offsetCount
-      nonFiniteCount > 0
-    }).count
+  def nonnegativeLabels(labeledPoint: LabeledPoint): Boolean = {
+    labeledPoint.label >= 0
+  }
 
-    if (numInvalid != 0) {
-      logError(s"Feature values should should be finite (_not_ NaN / Inf / -Inf). Found $numInvalid invalid labels")
+  def finiteLabel(labeledPoint: LabeledPoint): Boolean = {
+    !(labeledPoint.label.isNaN || labeledPoint.label.isInfinite)
+  }
+
+  def finiteOffset(labeledPoint: LabeledPoint): Boolean = {
+    !(labeledPoint.offset.isNaN || labeledPoint.offset.isInfinite)
+  }
+
+  def binaryLabel(labeledPoint: LabeledPoint): Boolean = {
+    BinaryClassifier.positiveClassLabel == labeledPoint.label || BinaryClassifier.negativeClassLabel == labeledPoint.label
+  }
+
+  def finiteFeatures(labeledPoint: LabeledPoint): Boolean = {
+    var result = true
+    var idx = 0
+    while (idx < labeledPoint.features.activeSize && result) {
+      val value = labeledPoint.features match {
+        case d:DenseVector[Double] => d.valueAt(idx)
+        case s:SparseVector[Double] => s.valueAt(idx)
+      }
+      result = result && !(value.isNaN || value.isInfinite)
+      idx += 1
     }
-    numInvalid == 0
+
+    result
+  }
+
+  def validateFeatures(dataSet:RDD[LabeledPoint], perSampleValidators:Map[String, LabeledPoint=>Boolean]): Boolean = {
+    dataSet.mapPartitions(x => {
+      Seq(x.forall(item => {
+        perSampleValidators.map( validator => {
+          val valid = validator._2(item)
+          if (!valid) {
+            logError(s"Validation ${validator._1} failed on item: ${item}")
+          }
+          valid
+        }).forall(x => x)
+      })).iterator
+    }).fold(true)(_ && _)
   }
 }

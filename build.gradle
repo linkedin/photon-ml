@@ -141,6 +141,9 @@ subprojects {
       outputs.upToDateWhen { false }
 
       systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
+
+      minHeapSize = "2G"
+      maxHeapSize = "8G"
     }
 
     dependencies {

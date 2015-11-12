@@ -15,6 +15,9 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
+import com.linkedin.photon.ml.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.RegularizationContext
@@ -45,7 +48,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   /**
    * The list of data validators to check the properties of the input data, e.g., the format of the input data
    */
-  protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.finiteFeaturesValidator, DataValidators.finiteLabelValidator)
+  protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.linearRegressionValidator)
 
   /**
    * Optimization state trackers
@@ -72,11 +75,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   }
 
   /**
-   * Whether to validate the input data or not (default: true)
-   */
-  var validateData: Boolean = true
-
-  /**
    * Whether to enable intercept (default: false).
    * A better practice would be adding the intercept during data preparation stage, adding the intercept here will
    * create unnecessary temp memory allocation that is proportional to the input data size.
@@ -90,7 +88,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @param regularizationContext The type of regularization to construct the objective function
    * @param regularizationWeight The weight of the regularization term in the objective function
    */
-  protected def createObjectiveFunction(normalizationContext: NormalizationContext, regularizationContext: RegularizationContext, regularizationWeight: Double): Function
+  protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext], regularizationContext: RegularizationContext, regularizationWeight: Double): Function
 
   /**
    * Create a model given the coefficients and intercept
@@ -130,13 +128,14 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
           optimizer: Optimizer[LabeledPoint, Function],
           regularizationContext: RegularizationContext,
           regularizationWeights: List[Double],
-          normalizationContext: NormalizationContext): List[GLM] = {
+          normalizationContext: NormalizationContext,
+          dataValidationType: DataValidationType): List[GLM] = {
     val numFeatures = input.first().features.size
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
     val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext)
+    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType)
     models
   }
 
@@ -156,7 +155,8 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
                     optimizer: Optimizer[LabeledPoint, Function],
                     regularizationContext: RegularizationContext,
                     regularizationWeights: List[Double],
-                    normalizationContext: NormalizationContext): List[GLM] = {
+                    normalizationContext: NormalizationContext,
+                    dataValidationType: DataValidationType): List[GLM] = {
 
     if (input.getStorageLevel == StorageLevel.NONE) {
       logWarning("The input data is not directly cached, which may hurt performance if its"
@@ -164,8 +164,25 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     }
 
     /* Check the data properties before running the optimizer */
-    if (validateData && !validators.forall(func => func(input))) {
-      throw new IllegalArgumentException("Input validation failed.")
+    dataValidationType match {
+      case DataValidationType.VALIDATE_FULL =>
+        val valid = validators.map(x => x(input)).fold(true)(_ && _)
+        if (!valid) {
+          logError("Data validation failed.")
+          throw new IllegalArgumentException("Data validation failed")
+        }
+
+      case DataValidationType.VALIDATE_SAMPLE =>
+        logWarning("Doing a partial validation on ~10% of the training data")
+        val subset = input.sample(false, 0.10)
+        val valid = validators.map(x => x(subset)).fold(true)(_ && _)
+        if (!valid) {
+          logError("Data validation failed.")
+          throw new IllegalArgumentException("Data validation failed")
+        }
+
+      case DataValidationType.VALIDATE_DISABLED =>
+        logWarning("Data validation disabled.")
     }
 
     optimizer.isTrackingState = isTrackingState
@@ -186,13 +203,15 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     } else {
       input
     }
+    val broadcastedNormalizationContext = input.sparkContext.broadcast(normalizationContext)
+    val normalizationContextProvider = new BroadcastedObjectProvider[NormalizationContext](broadcastedNormalizationContext)
 
     /* Find the path of solutions with different regularization coefficients */
     var initialCoefficientsWithIntercept =
       if (enableIntercept) prepend(initialModel.coefficients, initialModel.intercept.getOrElse(0.0))
       else initialModel.coefficients
     val models = regularizationWeights.map { regularizationWeight =>
-      val objectiveFunction = createObjectiveFunction(normalizationContext, regularizationContext, regularizationWeight)
+      val objectiveFunction = createObjectiveFunction(normalizationContextProvider, regularizationContext, regularizationWeight)
       val (coefficientsWithIntercept, _) = optimizer.optimize(dataPoints, objectiveFunction, initialCoefficientsWithIntercept)
       initialCoefficientsWithIntercept = coefficientsWithIntercept
       logInfo(s"Training model with regularization weight $regularizationWeight finished")
@@ -205,6 +224,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       }
       createModel(normalizationContext, coefficientsWithIntercept)
     }
+    broadcastedNormalizationContext.unpersist()
     models
   }
 }

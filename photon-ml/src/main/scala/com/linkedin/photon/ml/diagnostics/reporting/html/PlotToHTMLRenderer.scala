@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.{SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport}
+import com.linkedin.photon.ml.diagnostics.reporting.{SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport, PlotUtils}
 import scala.xml._
 
 class PlotToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node],
@@ -37,6 +37,13 @@ class PlotToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node],
 
   private def getAttributes(id: Long): MetaData = {
     val idAttr = new PrefixedAttribute(htmlPrefix, "id", id.toString, Null)
-    new PrefixedAttribute(htmlPrefix, "class", "section_header", idAttr)
+
+    // Add width and height constraints to force containing figure to be large enough to contain
+    // the inner SVG diagram
+    val styleAttr = new PrefixedAttribute(htmlPrefix, "style",
+      s"min-width:${PlotUtils.PLOT_WIDTH}px; " +
+      s"min-height:${PlotUtils.PLOT_HEIGHT}px", idAttr)
+
+    new PrefixedAttribute(htmlPrefix, "class", "section_header", styleAttr)
   }
 }

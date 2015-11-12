@@ -14,21 +14,18 @@
  */
 package com.linkedin.photon.ml.function
 
-import com.linkedin.photon.ml.optimization._
-
 import java.util.Random
 
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.test.SparkTestUtils
-
-import scala.collection.mutable.ListBuffer
-
-import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.broadcast.Broadcast
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
+
+import scala.collection.mutable.ListBuffer
 
 /**
  * Unit tests to verify functions have gradients / Hessians to be consistent with each other.

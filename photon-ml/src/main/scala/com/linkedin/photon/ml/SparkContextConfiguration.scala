@@ -16,10 +16,11 @@ package com.linkedin.photon.ml
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.{GeneralizedLinearModelLossFunction, HessianVectorAggregator, ValueAndGradientAggregator}
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
-
 /**
  * Factory for creating SparkContext instances. This handles the tricky details of things like setting up serialization,
  * resource negotiation, logging, etc.
@@ -34,7 +35,11 @@ object SparkContextConfiguration {
   val KRYO_CLASSES_TO_REGISTER = Array[Class[_]](classOf[LabeledPoint],
     classOf[Vector[Double]],
     classOf[SparseVector[Double]],
-    classOf[DenseVector[Double]])
+    classOf[DenseVector[Double]],
+    classOf[ValueAndGradientAggregator],
+    classOf[HessianVectorAggregator],
+    classOf[GeneralizedLinearModelLossFunction],
+    classOf[NormalizationContext])
 
   /**
    * Configure the Spark context as a Yarn client

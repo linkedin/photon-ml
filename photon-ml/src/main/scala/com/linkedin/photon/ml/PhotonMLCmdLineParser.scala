@@ -100,7 +100,7 @@ object PhotonMLCmdLineParser {
               s"regularization weight will be ignored. Default: ${defaultParams.regularizationType}")
         .action((x, c) => c.copy(regularizationType = RegularizationType.withName(x.toUpperCase)))
       opt[Double](ELASTIC_NET_ALPHA_OPTION)
-        .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and alpha = 0 is L2. Required for elastic net regularization.")
+        .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and alpha = 0 is L2. Required for elastic net regularization. Default is 0.5")
         .validate(x => if (x >= 0.0 && x <= 1.0) success else failure("alpha must be in the range [0, 1]."))
         .action((x, c) => c.copy(elasticNetAlpha = Some(x)))
       opt[Int](MAX_NUM_ITERATIONS_OPTION)
@@ -147,6 +147,9 @@ object PhotonMLCmdLineParser {
       opt[String](NORMALIZATION_TYPE)
         .text(s"The normalization type to use in the training. Options: [${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
         .action((x, c) => c.copy(normalizationType = NormalizationType.valueOf(x.toUpperCase)))
+      opt[String](DATA_VALIDATION_TYPE)
+        .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. Default: ${defaultParams.dataValidationType}")
+        .action((x, c) => c.copy(dataValidationType = DataValidationType.withName(x.toUpperCase())))
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
           .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be an array " +
           s"of maps with the map containing keys only from {" + ConstraintMapKeys.values.mkString(s",") + "} (other " +
