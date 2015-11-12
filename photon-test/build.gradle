@@ -13,6 +13,8 @@
  * under the License.
  */
 dependencies {
+  compile("org.testng:testng:6.9.9")
+
   compile("org.apache.spark:spark-core_*:1.4.0")
   compile("org.scalanlp:breeze_*:0.11.2")
   compile("org.scalanlp:breeze-macros_*:0.11.2")
