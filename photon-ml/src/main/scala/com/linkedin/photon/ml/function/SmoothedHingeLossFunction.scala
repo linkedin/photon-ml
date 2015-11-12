@@ -11,11 +11,11 @@ class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
 
   override protected[ml] def calculateAt(datum: LabeledPoint, coefficients: linalg.Vector[Double], cumGradient: linalg.Vector[Double]): Double = {
     val actualLabel = if (datum.label < 0.5) -1 else 1
-    val margin = datum.features.dot(coefficients)
+    val margin = datum.computeMargin(coefficients)
     val z = actualLabel * margin
 
     // Eq: 2, page 2
-    val loss = if (z < 0) {
+    val loss = if (z <= 0) {
       0.5 - z
     } else if (z < 1) {
       0.5 * (1.0 - z) * (1.0 - z)
@@ -33,7 +33,8 @@ class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
     }
 
     // Eq. 4, page 2
-    cumGradient += datum.weight * actualLabel * deriv * datum.features
+    // cumGradient += datum.weight * actualLabel * deriv * datum.features
+    breeze.linalg.axpy(datum.weight * actualLabel * deriv, datum.features, cumGradient)
     datum.weight * loss
   }
 }

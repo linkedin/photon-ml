@@ -7,7 +7,7 @@ import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionAlgorithm, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, SmoothedHingeLossLinearSVMAlgorithm, LogisticRegressionAlgorithm, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearAlgorithm, GeneralizedLinearModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, LinearRegressionModel, PoissonRegressionAlgorithm, PoissonRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
@@ -63,13 +63,25 @@ class BaseGLMIntegTest extends SparkTestUtils {
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LinearRegressionModel](new PredictionFiniteValidator(),
           new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMIntegTest.MAXIMUM_ERROR_MAGNITUDE))),
+      Tuple4("Poisson regression, easy problem",
+        new PoissonRegressionAlgorithm,
+        drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+          new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator, new NonNegativePredictionValidator[PoissonRegressionModel])),
       Tuple4("Logistic regression, easy problem",
         new LogisticRegressionAlgorithm(),
         drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(),
           new BinaryPredictionValidator[LogisticRegressionModel](),
-          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
+          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC))),
+        Tuple4("Linear SVM, easy problem",
+          new SmoothedHingeLossLinearSVMAlgorithm(),
+          drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
+            BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+          new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
+            new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
+            new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
     )
   }
 
@@ -86,7 +98,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         x._3,                                // data
         x._4                                 // validator
       )
-    }).toArray
+    })
   }
 
   @Test(dataProvider = "generateHappyPathCases")
@@ -130,7 +142,14 @@ class BaseGLMIntegTest extends SparkTestUtils {
         new LogisticRegressionAlgorithm(),
         drawBalancedSampleFromInvalidDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())))
+        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())),
+      Tuple4("Linear SVM, easy problem",
+        new SmoothedHingeLossLinearSVMAlgorithm(),
+        drawBalancedSampleFromInvalidDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
+          new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
+          new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC))))
   }
 
   @DataProvider
@@ -190,6 +209,16 @@ class BaseGLMIntegTest extends SparkTestUtils {
         drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
         new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())),
+      Tuple4("Linear SVM, NaN/Inf labels",
+        new SmoothedHingeLossLinearSVMAlgorithm(),
+        drawSampleFromInvalidLabels(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
+        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel]())),
+      Tuple4("Linear SVM, non-binary labels",
+        new SmoothedHingeLossLinearSVMAlgorithm(),
+        drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
+        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel]())),
       Tuple4("Poisson regression, negative labels",
         new PoissonRegressionAlgorithm(),
         drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
@@ -243,7 +272,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
-    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList)
+    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList).repartition(4)
 
     // Step 2: actually run
     val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
@@ -279,7 +308,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
-    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList)
+    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList).repartition(4)
 
     // Step 2: actually run
     val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
