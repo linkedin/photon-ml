@@ -33,17 +33,9 @@ dependencies {
 
   compile('com.linkedin.photon-schemas:photon-schemas:0.0.2')
 
-
-  // TODO: currently cannot do cross-build for this part
-  // photon-ml src/test is depending on photon-test src/test. This is problematic
-  // which requires hack-over-hack (combining cross-build and multiple testJar
-  // release scripts) to make it work. A better way is probably move photon-test
-  // src/test utils to src/main. They are utils and should be tested in the long
-  // term anyway.
-  testCompile(project(":photon-test"))
-  testCompile(project(":photon-test").sourceSets.scalaTest2_10.output)
-  testCompile(project(":photon-test").sourceSets.scalaTest2_11.output)
-
+  // TODO: this is still a temp solution, not a true cross build. See issue: OFFREL-799.
+  testCompile(project(":photon-test").sourceSets.scala2_10.output)
+  testCompile(project(":photon-test").sourceSets.scala2_11.output)
 
   testRuntime("org.scalanlp:breeze_*:0.11.2")
   testRuntime("org.scalanlp:breeze-macros_*:0.11.2")
