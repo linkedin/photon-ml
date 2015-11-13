@@ -33,7 +33,7 @@ object Evaluation {
   def evaluate(model:GeneralizedLinearModel, dataSet:RDD[LabeledPoint]):Map[String, Double] = {
     val scoredSet = dataSet.map(x => x match {
       case LabeledPoint(label, features, offset, _) => (label, (features, offset))
-    }).map(x => (x._1, model.computeMeanFunctionWithOffset(x._2._1, x._2._2)))
+    }).map(x => (x._1, model.computeMeanFunctionWithOffset(x._2._1, x._2._2))).cache
 
     var metrics = Map[String, Double]()
 
@@ -62,6 +62,7 @@ object Evaluation {
 
     // Additional metrics (e.g. loss, log loss) go here
 
+    scoredSet.unpersist(false)
     metrics
   }
 

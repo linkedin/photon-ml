@@ -66,7 +66,8 @@ class ParamsTest {
         normalizationType: NormalizationType,
         jobName: String,
         dataValidationType: DataValidationType,
-        constraintString: Option[String]) = params
+        constraintString: Option[String],
+        trainingDiagnosticsEnabled: Boolean) = params
 
     assertEquals(validateDirOpt, None)
     assertEquals(maxNumIter, 80)
@@ -85,6 +86,7 @@ class ParamsTest {
     assertEquals(jobName, s"Photon-ML-Training")
     assertEquals(dataValidationType, DataValidationType.VALIDATE_FULL)
     assertEquals(constraintString, None)
+    assertEquals(trainingDiagnosticsEnabled, false)
   }
 
   @Test

@@ -45,7 +45,7 @@ subprojects {
   }
 
   tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-explaintypes", "-g:vars"]
+    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-unchecked", "-Yinline-warnings", "-g:vars"]
 
     scalaCompileOptions.useAnt = false
 

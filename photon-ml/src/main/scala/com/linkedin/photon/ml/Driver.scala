@@ -15,7 +15,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosti
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
-import com.linkedin.photon.ml.optimization.RegularizationContext
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationContext}
 import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
@@ -73,7 +73,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
-  private[this] var lambdaFitMap: Map[Double, FittingReport] = Map()
   private[this] var diagnostic: DiagnosticReport = null
   private[this] var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
 
@@ -99,14 +98,6 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
     val startTime = System.currentTimeMillis()
 
-    val fs = FileSystem.get(sc.hadoopConfiguration)
-    val checkpointDir = new Path("/tmp")
-
-
-    sc.setCheckpointDir(checkpointDir.toString)
-
-    println(s"Checkpoint directory is ${sc.getCheckpointDir} / ${checkpointDir}")
-
     preprocess()
     train()
     validate()
@@ -131,8 +122,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
     val startTimeForPreprocessing = System.currentTimeMillis()
 
     trainingData = suite.readLabeledPointsFromAvro(sc, params.trainDir, params.minNumPartitions)
-      .setName("training data").repartition(params.minNumPartitions).cache
-    trainingData.checkpoint()
+      .persist(trainDataStorageLevel).setName("training data")
     featureNum = trainingData.first().features.size
     trainingDataNum = trainingData.count().toInt
 
@@ -221,8 +211,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
       // Read validation data after the training data are unpersisted.
       validatingData = suite.readLabeledPointsFromAvro(sc, validateDir, params.minNumPartitions)
-        .setName("validating data").repartition(params.minNumPartitions).cache
-      validatingData.checkpoint()
+        .persist(trainDataStorageLevel).setName("validating data")
 
       /* Validating the learned models using the validating data set */
       logger.println("\nStart to validate the learned models with validating data")
@@ -289,18 +278,48 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
       val startTimeForDiagnostics = System.currentTimeMillis
 
-      val modelDiagnosticStart = System.currentTimeMillis
+      val trainDiagnosticStart = System.currentTimeMillis
       val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
       val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
       val hlDiagnostic = new HosmerLemeshowDiagnostic()
       val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
+      val trainingDiagnostic = new FittingDiagnostic()
+
+      logger.println(s"Starting training diagnostics")
+
+      val lambdaFitMap: Map[Double, FittingReport] = if (params.trainingDiagnosticsEnabled) {
+        val diagnostic = new FittingDiagnostic()
+        val trainFunc = (x: RDD[LabeledPoint], y: Map[Double, GeneralizedLinearModel]) => {
+          ModelTraining.trainGeneralizedLinearModel(
+            trainingData = x,
+            taskType = params.taskType,
+            optimizerType = params.optimizerType,
+            regularizationContext = regularizationContext,
+            regularizationWeights = params.regularizationWeights,
+            normalizationContext = normalizationContext,
+            maxNumIter = math.max(50, params.maxNumIter),
+            tolerance = 100 * params.tolerance,
+            enableOptimizationStateTracker = params.enableOptimizationStateTracker,
+            dataValidationType = DataValidationType.VALIDATE_DISABLED,
+            constraintMap = suite.constraintFeatureMap,
+            warmStartModels = y)._1
+        }
+        diagnostic.diagnose(trainFunc, lambdaModelTuples.toMap, trainingData, summaryOption)
+      } else {
+        Map.empty
+      }
+
+      val trainDiagnosticTime = (System.currentTimeMillis - trainDiagnosticStart) / 1000.0
+      logger.println(f"Training diagnostic time elapsed: $trainDiagnosticTime%.03f(s)")
+
+      val modelDiagnosticStart = System.currentTimeMillis
 
       diagnostic.modelReports ++= lambdaModelTuples.map(x => {
         val (lambda, model) = x
         val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
         val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
         val predErrReport = predictionErrorDiagnostic.diagnose(model, validatingData, summaryOption)
-
+        val fitReport = lambdaFitMap.get(x._1)
         val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
         model match {
           case lm: LogisticRegressionModel =>
@@ -315,7 +334,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
               Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
               varImportance,
               meanImportance,
-              None)
+              fitReport)
 
           case glm: GeneralizedLinearModel =>
             new ModelDiagnosticReport[GeneralizedLinearModel](
@@ -329,7 +348,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
               None,
               varImportance,
               meanImportance,
-              None)
+              fitReport)
         }
       })
 
