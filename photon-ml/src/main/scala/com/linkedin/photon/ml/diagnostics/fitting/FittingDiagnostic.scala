@@ -1,32 +1,24 @@
 package com.linkedin.photon.ml.diagnostics.fitting
 
-import java.util.concurrent.Executors
-
-import com.google.common.base.Preconditions
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import org.apache.commons.math3.distribution.UniformIntegerDistribution
+import org.apache.commons.math3.random.MersenneTwister
+import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, ExecutionContext}
 
 /**
  * Try to diagnose under/over-fit and label bias problems in a data set. The idea here is that by computing metrics
  * on both a training set and a hold-out set, we can show how the metrics move as a function of the training set size
  *
- * @param numConcurrentFits
- *                          Number of model trainings to launch in parallel
  */
-class FittingDiagnostic(numConcurrentFits:Int=4) extends TrainingDiagnostic[GeneralizedLinearModel, FittingReport] {
-  import FittingDiagnostic._
+class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, FittingReport] with Logging {
 
-  Preconditions.checkArgument(numConcurrentFits > 0 && numConcurrentFits <= MAX_CONCURRENT_FITS,
-                              s"Number of concurrent fits [%s] must be in the range (0, $MAX_CONCURRENT_FITS]",
-                              numConcurrentFits : java.lang.Integer)
+  import FittingDiagnostic._
 
   /**
    *
@@ -39,73 +31,71 @@ class FittingDiagnostic(numConcurrentFits:Int=4) extends TrainingDiagnostic[Gene
    * A map of (lambda &rarr; fitting report). If there is not enough information to produce a reasonable report, we
    * return an empty map.
    */
-  def diagnose(modelFactory:RDD[LabeledPoint]=>List[(Double, GeneralizedLinearModel)], trainingSet:RDD[LabeledPoint], summary:Option[BasicStatisticalSummary]): Map[Double, FittingReport] = {
-    val dimension:Long = trainingSet.first.features.length
+  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
+               warmStart: Map[Double, GeneralizedLinearModel],
+               trainingSet: RDD[LabeledPoint], summary: Option[BasicStatisticalSummary]): Map[Double, FittingReport] = {
     val numSamples = trainingSet.count
+    val dimension = trainingSet.first.features.size
     val minSamples = dimension * MIN_SAMPLES_PER_PARTITION_PER_DIMENSION
 
     if (numSamples > minSamples) {
-      val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(numConcurrentFits))
+      val tagged = trainingSet.mapPartitions(partition => {
+        val prng = new MersenneTwister(System.nanoTime)
+        val dist = new UniformIntegerDistribution(prng, 0, NUM_TRAINING_PARTITIONS)
+        partition.map(x => (dist.sample(), x))
+      }).cache.setName("Tagged samples for learning curves")
 
-      val splits = trainingSet.randomSplit((0 to NUM_TRAINING_PARTITIONS).map(x => 1.0 / NUM_TRAINING_PARTITIONS).toArray, System.nanoTime())
-      val holdOut = splits.head
-      holdOut.persist(StorageLevel.MEMORY_AND_DISK_SER_2)
-      val trainSets = splits.tail.scanLeft(trainingSet.sparkContext.emptyRDD[LabeledPoint] : RDD[LabeledPoint])((x, y) =>
-        if (x.isEmpty) {
-          y
-        } else if (y.isEmpty) {
-          x
-        } else {
-          val tmp = x.union(y)
-          tmp.persist(StorageLevel.MEMORY_AND_DISK_SER)
-          tmp
-        }
-      )
+      val holdOut = tagged.filter(_._1 == NUM_TRAINING_PARTITIONS - 1).map(_._2).cache.setName("Hold out for learning curves")
 
-      val result = (for (subset <- 1 until NUM_TRAINING_PARTITIONS) yield {
-        // At some future point, we will have fit a model
-        Future {
-          val dataPortion = subset.toDouble / NUM_TRAINING_PARTITIONS
-          val dataSet = trainSets(subset)
-          val models = modelFactory(dataSet)
-          val metricsTest = models.map(x => (x._1, Evaluation.evaluate(x._2, holdOut))).toMap
-          val metricsTrain = models.map(x => (x._1, Evaluation.evaluate(x._2, dataSet))).toMap
-          dataSet.unpersist(false)
-          (dataPortion, metricsTest, metricsTrain)
-        } (ec)
+      val result = (0 until (NUM_TRAINING_PARTITIONS - 1)).scanLeft((0.0, warmStart, Map[Double, Map[String, Double]](), Map[Double, Map[String, Double]]()))( (prev, maxTag) => {
+        // Do the model fits, feeding the models from each training subset to the next for warm start
+        val dataSet = tagged.filter(_._1 <= maxTag).map(_._2)
+        val startTime = System.currentTimeMillis
+        val samples = dataSet.count
+        val dataPortion = 100.0 * samples / numSamples
+        logInfo(s"Data portion: ${dataPortion} ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
+        val models = modelFactory(dataSet, prev._2)
+
+        val metricsTest = models.map(x => (x._1, Evaluation.evaluate(x._2, holdOut))).toMap
+        val metricsTrain = models.map(x => (x._1, Evaluation.evaluate(x._2, dataSet))).toMap
+        val elapsedTime = (System.currentTimeMillis - startTime) / 1000.0
+        logInfo(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
+
+        (dataPortion, models.toMap, metricsTest, metricsTrain)
       })
-        // Now wait for the parallel fits to finish
-      .map(Await.result(_, Duration.Inf))
-        // Convert into (lambda, metric, portion, test, train) tuples
+        // Project away the warm start models
+      .map(x => (x._1, x._3, x._4))
+        // convert into (lambda, metric, train %, test set value, train set value) tuples
       .flatMap(x => {
-        val (portion, testMetrics, trainMetrics) = x
-
-        (for { lambdaTestMetrics <- testMetrics} yield {
-          val (lambda, test) = lambdaTestMetrics
-          val train = trainMetrics.getOrElse(lambda, Map.empty)
-          for { metricTypeTestValue <- test } yield {
-            val (metric, testValue) = metricTypeTestValue
-            (lambda, metric, portion, testValue, train.get(metric).get)
-          }
+      val (portion, testMetrics, trainMetrics) = x
+      (for { lambdaTestMetrics <- testMetrics} yield {
+        val (lambda, test) = lambdaTestMetrics
+        val train = trainMetrics.getOrElse(lambda, Map.empty)
+        for { metricTypeTestValue <- test } yield {
+          val (metric, testValue) = metricTypeTestValue
+          (lambda, metric, portion, testValue, train.get(metric).get)
+        }
+      }).iterator
+    })
+    .flatMap(_.iterator)
+     // gather results by lambda
+    .groupBy(_._1)
+     // generate the per-lambda reports
+    .map(x => {
+        val (lambda, tuplesByLambda) = x
+        val byMetric = tuplesByLambda.map(x => (x._2, x._3, x._4, x._5)).groupBy(_._1).map(x => {
+          val (metric, data) = x
+          val sorted = data.sortBy(_._2)
+          val portions = sorted.map(_._2).toArray
+          val test = sorted.map(_._3).toArray
+          val train = sorted.map(_._4).toArray
+          (metric, (portions, train, test))
         })
+        (lambda, new FittingReport(byMetric, ""))
       })
-      .flatMap(_.iterator)
-        // Gather by lambda
-      .groupBy(_._1)
-        .map(x => {
-          val (lambda, tuplesByLambda) = x
-          val byMetric = tuplesByLambda.map(x => (x._2, x._3, x._4, x._5)).groupBy(_._1).map(x => {
-            val (metric, data) = x
-            val sorted = data.sortBy(_._2)
-            val portions = sorted.map(_._2).toArray
-            val test = sorted.map(_._3).toArray
-            val train = sorted.map(_._4).toArray
-            (metric, (portions, train, test))
-          })
-          (lambda, new FittingReport(byMetric, ""))
-        })
 
-      splits.map(_.unpersist(false))
+      holdOut.unpersist(false)
+      tagged.unpersist(false)
       result
     } else {
       Map.empty
@@ -114,7 +104,7 @@ class FittingDiagnostic(numConcurrentFits:Int=4) extends TrainingDiagnostic[Gene
 }
 
 object FittingDiagnostic {
-  def MAX_CONCURRENT_FITS = 4
   def NUM_TRAINING_PARTITIONS = 10
+
   def MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 100
 }

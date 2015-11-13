@@ -136,6 +136,9 @@ object PhotonMLCmdLineParser {
       opt[String](DATA_VALIDATION_TYPE)
         .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. Default: ${defaultParams.dataValidationType}")
         .action((x, c) => c.copy(dataValidationType = DataValidationType.withName(x.toUpperCase())))
+      opt[Boolean](TRAINING_DIAGNOSTICS)
+        .text(s"Whether or not to enable training diagnostics. These can be slow but are very informative. Only relevant if you provide a validation set.")
+        .action((x, c) => c.copy(trainingDiagnosticsEnabled = x))
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
           .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be an array " +
           s"of maps with the map containing keys only from {" + ConstraintMapKeys.values.mkString(s",") + "} (other " +

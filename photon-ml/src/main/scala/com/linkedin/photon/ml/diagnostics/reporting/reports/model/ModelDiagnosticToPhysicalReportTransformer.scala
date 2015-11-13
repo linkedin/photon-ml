@@ -34,6 +34,7 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
       case Some(fr) =>
         Some(FIT_TRANSFORMER.transform(fr))
       case None =>
+        println("Did not get a matching model fit report!")
         None
     }
 

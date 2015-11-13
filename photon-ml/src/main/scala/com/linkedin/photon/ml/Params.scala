@@ -48,6 +48,8 @@ import com.linkedin.photon.ml.normalization.NormalizationType
  *                         are applied to all features with the specified name irrespective of the term. The name cannot
  *                         be a wildcard except for the special case where both name and term are wildcards so that one
  *                         wants to apply the same bound to all coefficients
+ * @param trainingDiagnosticsEnabled Control whether training diagnostics like bootstrapping, etc. should be run. Since these
+ *                                   tend to be more computationally demanding, this should default to false.
  * @author xazhang
  * @author dpeng
  */
@@ -71,4 +73,5 @@ case class Params(trainDir: String = null,
                   normalizationType: NormalizationType = NormalizationType.NONE,
                   jobName: String = s"Photon-ML-Training",
                   dataValidationType: DataValidationType = DataValidationType.VALIDATE_FULL,
-                  constraintString: Option[String] = None)
+                  constraintString: Option[String] = None,
+                  trainingDiagnosticsEnabled: Boolean = false)
