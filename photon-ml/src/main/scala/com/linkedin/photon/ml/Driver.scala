@@ -298,7 +298,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
             regularizationWeights = params.regularizationWeights,
             normalizationContext = normalizationContext,
             maxNumIter = math.max(50, params.maxNumIter),
-            tolerance = 100 * params.tolerance,
+            tolerance = params.tolerance,
             enableOptimizationStateTracker = params.enableOptimizationStateTracker,
             dataValidationType = DataValidationType.VALIDATE_DISABLED,
             constraintMap = suite.constraintFeatureMap,
