@@ -20,13 +20,15 @@ class DiagnosticToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
   def transform(diag: DiagnosticReport): DocumentPhysicalReport = {
     val formatter = new SimpleDateFormat()
     val now = new Date()
-    val summary = transformSummary(diag.modelReports)
+    val lambdaReports = diag.modelReports.sortBy(_.lambda).map(x => (x.lambda, (x, MODEL_SECTION_TRANSFORMER.transform(x)))).toMap
+    val summary = transformSummary(lambdaReports)
+
     new DocumentPhysicalReport(
       Seq(
         new ChapterPhysicalReport(Seq(summary), "Summary"),
         SYSTEM_CHAPTER_TRANSFORMER.transform(diag.systemReport),
         new ChapterPhysicalReport
-        (diag.modelReports.toArray.sortBy(x => x.lambda).map(x => MODEL_SECTION_TRANSFORMER.transform(x)).toSeq, MODEL_CHAPTER_TITLE)),
+        (lambdaReports.toSeq.sortBy(_._1).map(_._2._2) , MODEL_CHAPTER_TITLE)),
       s"Modeling run ${formatter.format(now)}")
   }
 }
@@ -45,8 +47,8 @@ object DiagnosticToPhysicalReportTransformer {
    * @param models
    * @return
    */
-  private def transformSummary(models:Seq[ModelDiagnosticReport[GeneralizedLinearModel]]): SectionPhysicalReport = {
-    val metricsByLambda = models.flatMap(x => {
+  private def transformSummary(reports:Map[Double, (ModelDiagnosticReport[GeneralizedLinearModel], SectionPhysicalReport)]): SectionPhysicalReport = {
+    val metricsByLambda = reports.map(_._2._1).flatMap(x => {
       x.metrics.map(y => {
         (y._1, (x.lambda, y._2))
       }).iterator
@@ -95,7 +97,11 @@ object DiagnosticToPhysicalReportTransformer {
         }).iterator
       })
 
-    new SectionPhysicalReport(Seq(bestModelByMetric) ++ modelMetricPlots, MODEL_SUMMARY_CHAPTER)
+    val links = new BulletedListPhysicalReport(reports.toSeq.sortBy(_._1).map(x => {
+      new ReferencePhysicalReport(x._2._2, s"Jump to model with lambda = ${x._1}")
+    }))
+
+    new SectionPhysicalReport(Seq(links, bestModelByMetric) ++ modelMetricPlots, MODEL_SUMMARY_CHAPTER)
   }
 }
 
