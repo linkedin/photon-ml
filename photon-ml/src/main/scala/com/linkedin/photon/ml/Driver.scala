@@ -27,7 +27,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{Logging, SparkConf, SparkContext}
 
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
@@ -54,7 +54,7 @@ import scala.xml.PrettyPrinter
  * @author dpeng
  * @author bdrew
  */
-protected[ml] class Driver(protected val params: Params, protected val sc: SparkContext, protected val logger: LogWriter) {
+protected[ml] class Driver(protected val params: Params, protected val sc: SparkContext, protected val logger: LogWriter) extends Logging {
 
   import com.linkedin.photon.ml.Driver._
 

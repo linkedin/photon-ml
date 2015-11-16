@@ -291,7 +291,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val base = "src/integTest/resources/DriverIntegTest/input/"
     val models = Map(
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
-      TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
+      TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
+      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636))
 
     val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
@@ -310,7 +311,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       val outputDir = s"${taskType}_${regType}_${trainEnabled}"
       val args = mutable.ArrayBuffer[String]()
       args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
-      args += 1e-4.toString
+      args += 1e-6.toString
       args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
       args += 200.toString
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
@@ -324,7 +325,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
       args += taskType.toString
       args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
-      args += FieldNamesType.TRAINING_EXAMPLE.toString
+      if (TaskType.POISSON_REGRESSION == taskType) {
+        args += FieldNamesType.RESPONSE_PREDICTION.toString
+      } else {
+        args += FieldNamesType.TRAINING_EXAMPLE.toString
+      }
       args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
       args += s"$base/$testData"
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
