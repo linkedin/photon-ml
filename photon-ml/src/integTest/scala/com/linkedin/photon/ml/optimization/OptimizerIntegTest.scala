@@ -7,16 +7,16 @@ import breeze.optimize.FirstOrderMinimizer.{FunctionValuesConverged, GradientCon
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.test.SparkTestUtils
+import org.apache.spark.Logging
 import org.testng.Assert._
 import org.testng.annotations.{Test, DataProvider}
-
 
 
 /**
  * Verify that core optimizers do reasonable things on small test problems.
  * @author bdrew
  */
-class OptimizerIntegTest extends SparkTestUtils {
+class OptimizerIntegTest extends SparkTestUtils with Logging {
   @DataProvider(parallel = true)
   def optimizeEasyTestFunction(): Array[Array[Object]] = {
     Array(Array(new LBFGS[LabeledPoint]()),
@@ -25,32 +25,34 @@ class OptimizerIntegTest extends SparkTestUtils {
 
   @Test(dataProvider = "optimizeEasyTestFunction")
   def checkEasyTestFunctionLocalNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = {
-    optim.isTrackingState = true
-    optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
-    optim.tolerance = OptimizerIntegTest.CONVERGENCE_TOLERANCE
+    optim.setStateTrackingEnabled(true)
+    optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
+    optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     optim.optimize(Seq(pt), new IntegTestObjective())
-    OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
+    OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
     //test weight point
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 2.5)
     optim.optimize(Seq(pt2), new IntegTestObjective())
-    OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
+    OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
   def checkEasyTestFunctionLocalInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = {
-    optim.isTrackingState = true
-    optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
-    optim.tolerance = OptimizerIntegTest.CONVERGENCE_TOLERANCE
+    optim.setStateTrackingEnabled(true)
+    optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
+    optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     val r = new Random(OptimizerIntegTest.RANDOM_SEED)
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
       optim.optimize(Array(pt), new IntegTestObjective(), initParam)
-      OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
-      optim.cleanOptimizerState()
+      assertTrue(optim.stateTrackingEnabled)
+      assertTrue(optim.getStateTracker.isDefined)
+      assertTrue(optim.isDone)
+      OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
     }
 
     //test weighted sample
@@ -58,59 +60,59 @@ class OptimizerIntegTest extends SparkTestUtils {
     for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
       optim.optimize(Array(pt2), new IntegTestObjective(), initParam)
-      OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
-      optim.cleanOptimizerState()
+      OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
     }
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
   def checkEasyTestFunctionSparkNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
-    optim.isTrackingState = true
-    optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
-    optim.tolerance = OptimizerIntegTest.CONVERGENCE_TOLERANCE
+    optim.setStateTrackingEnabled(true)
+    optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
+    optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     val data = sc.parallelize(Seq(pt))
     optim.optimize(data, new IntegTestObjective())
-    OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
+    OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
 
     //test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 0.23)
     val data2 = sc.parallelize(Seq(pt2))
     optim.optimize(data2, new IntegTestObjective())
-    OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
+    OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
   def checkEasyTestFunctionSparkInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
-    optim.isTrackingState = true
-    optim.maxNumIterations = OptimizerIntegTest.MAX_ITERATIONS
-    optim.tolerance = OptimizerIntegTest.CONVERGENCE_TOLERANCE
+    optim.setStateTrackingEnabled(true)
+    optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
+    optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     var pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     var data = sc.parallelize(Seq(pt))
     var r = new Random(OptimizerIntegTest.RANDOM_SEED)
-    for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
+    for (iter <- 0 until OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
       optim.optimize(data, new IntegTestObjective(), initParam)
-      OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
-      optim.cleanOptimizerState()
+      assertTrue(optim.stateTrackingEnabled)
+      assertTrue(optim.getStateTracker.isDefined)
+      assertTrue(optim.isDone)
+      OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
     }
 
     //test weighted sample
     pt = new LabeledPoint(label = 1, features, offset = 0, weight = 0)
     data = sc.parallelize(Seq(pt))
     r = new Random(OptimizerIntegTest.RANDOM_SEED)
-    for (iter <- 0 to OptimizerIntegTest.RANDOM_SAMPLES) {
+    for (iter <- 0 until OptimizerIntegTest.RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](OptimizerIntegTest.PROBLEM_DIMENSION)(r.nextDouble())
       optim.optimize(data, new IntegTestObjective(), initParam)
-      OptimizerIntegTest.easyOptimizatonStatesChecks(optim.getStatesTracker.get)
-      optim.cleanOptimizerState()
+      OptimizerIntegTest.easyOptimizationStatesChecks(optim.getStateTracker.get)
     }
   }
 }
 
-object OptimizerIntegTest {
+object OptimizerIntegTest extends Logging {
   val PROBLEM_DIMENSION: Int = 10
   val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
   val CONVERGENCE_TOLERANCE: Double = 1e-12
@@ -131,17 +133,22 @@ object OptimizerIntegTest {
   }
 
   /**
-   *  Common checks for the easy test function:
-   *  <ul>
-   *  <li>Did we get the expected parameters?</li>
-   *  <li>Did we get the expected objective?</li>
-   *  <li>Did we see monotonic convergence?</li>
-   *  </ul>
+   * Common checks for the easy test function:
+   * <ul>
+   * <li>Did we get the expected parameters?</li>
+   * <li>Did we get the expected objective?</li>
+   * <li>Did we see monotonic convergence?</li>
+   * </ul>
    */
-  private def easyOptimizatonStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
+  private def easyOptimizationStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
+
+    logInfo(s"Optimizer state: ${optimizerStatesTracker}")
 
     // The optimizer should be converged
     assertTrue(optimizerStatesTracker.converged)
+    assertFalse(optimizerStatesTracker.getTrackedTimeHistory.isEmpty)
+    assertFalse(optimizerStatesTracker.getTrackedStates.isEmpty)
+    assertEquals(optimizerStatesTracker.getTrackedStates.length, optimizerStatesTracker.getTrackedTimeHistory.length)
 
     val optimizedObj = optimizerStatesTracker.getTrackedStates.last.value
     val optimizedGradientNorm = norm(optimizerStatesTracker.getTrackedStates.last.gradient, 2)

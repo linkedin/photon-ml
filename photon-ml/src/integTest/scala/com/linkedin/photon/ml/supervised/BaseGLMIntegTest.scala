@@ -280,8 +280,8 @@ class BaseGLMIntegTest extends SparkTestUtils {
     // Step 3: check convergence
     // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
     // TODO: be fixed.
-    assertTrue(None != solver.getStatesTracker, "State tracking was enabled")
-    OptimizerIntegTest.checkConvergence(solver.getStatesTracker.get)
+    assertTrue(None != solver.getStateTracker, "State tracking was enabled")
+    OptimizerIntegTest.checkConvergence(solver.getStateTracker.get)
 
     // Step 4: validate the models
     models.foreach( m => {
