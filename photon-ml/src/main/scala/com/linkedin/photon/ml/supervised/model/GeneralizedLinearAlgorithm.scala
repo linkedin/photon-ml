@@ -136,12 +136,12 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
           regularizationWeights: List[Double],
           normalizationContext: NormalizationContext,
           dataValidationType: DataValidationType,
-          warmStartModels:Map[Double, GeneralizedLinearModel]): List[GLM] = {
+          warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
     val numFeatures = input.first().features.size
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
-    val initialModel =  createModel(initialWeight, initialIntercept)
+    val initialModel = createModel(initialWeight, initialIntercept)
     val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType, warmStartModels)
     models
   }
@@ -159,7 +159,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   protected def run(input: RDD[LabeledPoint],
-                    initialModel:GLM,
+                    initialModel: GLM,
                     optimizer: Optimizer[LabeledPoint, Function],
                     regularizationContext: RegularizationContext,
                     regularizationWeights: List[Double],
@@ -196,7 +196,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         logWarning("Data validation disabled.")
     }
 
-    optimizer.isTrackingState = isTrackingState
+    optimizer.setStateTrackingEnabled(isTrackingState)
 
     /**
      * Prepend a scalar to a vector
@@ -217,7 +217,11 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     val broadcastedNormalizationContext = input.sparkContext.broadcast(normalizationContext)
     val normalizationContextProvider = new BroadcastedObjectProvider[NormalizationContext](broadcastedNormalizationContext)
 
-    val largestWarmStartLambda = if (warmStartModels.isEmpty) { 0.0 } else { warmStartModels.keys.max }
+    val largestWarmStartLambda = if (warmStartModels.isEmpty) {
+      0.0
+    } else {
+      warmStartModels.keys.max
+    }
     if (!warmStartModels.isEmpty) {
       logInfo(s"Starting training using warm-start model with lambda = $largestWarmStartLambda")
     } else {
@@ -228,7 +232,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     // If we can find a warm start model for the largest lambda, use that; otherwise, default to the provided initial
     // model
     val initModel = warmStartModels.getOrElse(largestWarmStartLambda, initialModel)
-    var initialCoefficientsWithIntercept:Vector[Double] =
+    var initialCoefficientsWithIntercept: Vector[Double] =
       if (enableIntercept) prepend(initModel.coefficients, initModel.intercept.getOrElse(0.0)) else initModel.coefficients
 
     val models = regularizationWeights.map { regularizationWeight =>
@@ -237,7 +241,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       initialCoefficientsWithIntercept = coefficientsWithIntercept
       logInfo(s"Training model with regularization weight $regularizationWeight finished")
       if (isTrackingState) {
-        val tracker = optimizer.getStatesTracker.get
+        val tracker = optimizer.getStateTracker.get
         logInfo(s"History tracker information:\n $tracker")
         val modelsPerIteration = tracker.getTrackedStates.map(x => createModel(normalizationContext, x.coefficients))
         modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)

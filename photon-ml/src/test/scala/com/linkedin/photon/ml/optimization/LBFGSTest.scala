@@ -33,7 +33,7 @@ class LBFGSTest {
   def testLBFGS(l1Weight: Double, constraintMap: Option[Map[Int, (Double, Double)]],
                 minimum: Array[Double], expectedValue: Double): Unit = {
     val lbfgs = new LBFGS[LabeledPoint]
-    lbfgs.constraintMap = constraintMap
+    lbfgs.setConstraintMap(constraintMap)
 
     var testFunc: DiffFunction[LabeledPoint] = null
     var dummyData: Array[LabeledPoint] = null
