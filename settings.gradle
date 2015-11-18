@@ -12,4 +12,16 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-include 'photon-ml', 'photon-test'
+apply plugin: 'scala-cross-build'
+
+scalaCrossBuild {
+  defaultScalaVersion '2.10.4'
+  targetScalaVersions '2.10.4', '2.11.7'
+  buildDefaultOnly false
+
+  projectsToCrossBuild(
+    [ 'photon-ml',
+      'photon-test'
+    ] as String []
+  )
+}

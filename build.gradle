@@ -95,13 +95,6 @@ subprojects {
   // Put the build dir into the rootProject
   buildDir = "../build/$name"
 
-  // scala cross build script
-  apply from: "${rootDir}/build-scripts/scala.gradle"
-
-  scala {
-    targetVersions '2.10.4', '2.11.7'
-  }
-
   configurations.all {
     // Brought in by azkaban2, but not needed
     exclude group: 'commons-dbutils'

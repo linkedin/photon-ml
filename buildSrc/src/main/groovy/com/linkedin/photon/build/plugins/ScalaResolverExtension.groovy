@@ -12,16 +12,18 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-apply plugin: 'scala'
-apply from: '../build-scripts/integration-test.gradle'
+package com.linkedin.photon.build.plugins
 
-dependencies {
-  compile("org.testng:testng:6.9.9")
+class ScalaResolverExtension {
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
-  compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
-  compile("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
+  Closure _initAction
 
-  compile('commons-io:commons-io:2.4')
-  compile('org.apache.commons:commons-math3:3.5')
+  ScalaResolverExtension(Closure initAction) {
+    _initAction = initAction
+  }
+
+  void targetScalaVersion(String targetVersion) {
+    _initAction.call(targetVersion)
+  }
+
 }

@@ -12,6 +12,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+apply plugin: 'scala'
+apply from: '../build-scripts/integration-test.gradle'
+
 dependencies {
   compile('org.apache.avro:avro:1.7.5')
   compile('org.apache.avro:avro-compiler:1.7.5')
@@ -19,24 +22,20 @@ dependencies {
   compile('com.xeiam.xchart:xchart:2.5.1')
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
-  // The build-script/scala.gradle script will take the wildcard * and cross build the dependencies using the specified
-  //  scala versions. (See build.gradle, scala.targetVersions for the current configuration)
-  compile("org.apache.spark:spark-core_*:1.4.0")
-  compile("org.apache.spark:spark-mllib_*:1.4.0")
-  compile("org.apache.spark:spark-sql_*:1.4.0")
-  compile("org.apache.spark:spark-catalyst_*:1.4.0")
+  compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-mllib$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-sql$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-catalyst$scalaSuffix:1.4.0")
 
   //this one is scala's option parsing library
-  compile("com.github.scopt:scopt_*:3.2.0")
+  compile("com.github.scopt:scopt$scalaSuffix:3.2.0")
 
   compile('log4j:log4j:1.2.17')
 
   compile('com.linkedin.photon-schemas:photon-schemas:0.0.2')
 
-  // TODO: this is still a temp solution, not a true cross build. See issue: OFFREL-799.
-  testCompile(project(":photon-test").sourceSets.scala2_10.output)
-  testCompile(project(":photon-test").sourceSets.scala2_11.output)
+  testCompile(project(":photon-test$scalaSuffix"))
 
-  testRuntime("org.scalanlp:breeze_*:0.11.2")
-  testRuntime("org.scalanlp:breeze-macros_*:0.11.2")
+  testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
+  testRuntime("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
 }
