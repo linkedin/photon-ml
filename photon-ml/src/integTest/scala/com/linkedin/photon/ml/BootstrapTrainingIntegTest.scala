@@ -21,9 +21,9 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   val seed = 0L
   val numSamples = 100
 
-  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double]): (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => Map[Double, LinearRegressionModel] = {
+  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double]): (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient, None))).toMap
+      lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient, None))).toList
     }
   }
 
@@ -81,7 +81,7 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   def checkBootstrapHappyPathRealAggregates(): Unit = sparkTest("checkBootstrapHappyPathRealAggregates") {
     // Return a different model each time fitFunction is called
     var count: Int = -BootstrapTrainingTest.HALF_NUM_SAMPLES
-    val fitFunction = (x: RDD[LabeledPoint], y:Map[Double, LinearRegressionModel]) => {
+    val fitFunction = (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
       val value = count / BootstrapTrainingTest.HALF_NUM_SAMPLES.toDouble
       count += 1
       val fn = regressionModelFitFunction(value, lambdas)

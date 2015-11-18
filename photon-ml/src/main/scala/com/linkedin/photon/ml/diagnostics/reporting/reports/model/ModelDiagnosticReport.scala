@@ -1,5 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.model
 
+import com.linkedin.photon.ml.diagnostics.bootstrap.BootstrapReport
 import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceReport
 import com.linkedin.photon.ml.diagnostics.fitting.FittingReport
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowReport
@@ -30,6 +31,8 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * Feature importance as computed by [[com.linkedin.photon.ml.diagnostics.featureimportance.ExpectedMagnitudeFeatureImportanceDiagnostic]]
  * @param varianceImpactFeatureImportance
  * Feature importance as computed by [[com.linkedin.photon.ml.diagnostics.featureimportance.VarianceFeatureImportanceDiagnostic]]
+ * @param bootstrapReport
+ * Bootstrap training diagnostic report
  * @tparam GLM
  * Model type
  */
@@ -44,4 +47,5 @@ case class ModelDiagnosticReport[GLM <: GeneralizedLinearModel](
                                                                  var hosmerLemeshow: Option[HosmerLemeshowReport],
                                                                  val meanImpactFeatureImportance:FeatureImportanceReport,
                                                                  val varianceImpactFeatureImportance:FeatureImportanceReport,
-                                                                 val fitReport:Option[FittingReport]) extends LogicalReport
+                                                                 val fitReport:Option[FittingReport],
+                                                                 val bootstrapReport:Option[BootstrapReport]) extends LogicalReport
