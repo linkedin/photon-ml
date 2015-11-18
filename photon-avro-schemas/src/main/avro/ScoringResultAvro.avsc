@@ -1,0 +1,48 @@
+{
+    "name": "ScoringResultAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "doc": "This schema store the scoring result. One training record X model pair generates one ScoringResultAvro record.",
+    "type": "record",
+    "fields": [
+        {
+            "default": null,
+            "doc": "A uid inherited from TrainingExampleAvro",
+            "name": "uid",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
+            "doc": "label/response of the event. The Scorer will not populate this field and will leave it null. ScorerForEvaluation will populate this with the known label of the instance",
+            "name": "label",
+            "type": [
+                "null",
+                "double"
+            ]
+        },
+        {
+            "doc": "model id",
+            "name": "modelId",
+            "type": "string"
+        },
+        {
+            "doc": "Score predicted by the model.",
+            "name": "predictionScore",
+            "type": "double"
+        },
+        {
+            "default": null,
+            "doc": "optional field to hold non-feature metadata to each event",
+            "name": "metadataMap",
+            "type": [
+                "null",
+                {
+                    "type": "map",
+                    "values": "string"
+                }
+            ]
+        }
+    ]
+}

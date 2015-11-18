@@ -19,7 +19,12 @@ dependencies {
   compile('org.apache.avro:avro:1.7.5')
   compile('org.apache.avro:avro-compiler:1.7.5')
   compile('org.apache.avro:avro-mapred:1.7.5')
-  compile('com.xeiam.xchart:xchart:2.5.1')
+
+  compile('com.xeiam.xchart:xchart:2.5.1') {
+    // Cannot find this jar from Maven central or jcenter, and supposedly xcharts should be usable
+    // even without this.
+    exclude group: 'de.erichseifert.vectorgraphics2d'
+  }
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
   compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
@@ -32,7 +37,7 @@ dependencies {
 
   compile('log4j:log4j:1.2.17')
 
-  compile('com.linkedin.photon-schemas:photon-schemas:0.0.2')
+  compile(project(':photon-avro-schemas'))
 
   testCompile(project(":photon-test$scalaSuffix"))
 

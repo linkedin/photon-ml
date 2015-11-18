@@ -1,0 +1,18 @@
+{
+    "name": "SegmentContextAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "This schema stores segment information. This information is used for per segment evaluation.",
+    "fields": [
+        {
+            "doc": "The name or type of the segment",
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "doc": "The value of the segment",
+            "name": "value",
+            "type": "string"
+        }
+    ]
+}

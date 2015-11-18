@@ -12,17 +12,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-apply plugin: 'scala-cross-build'
+apply plugin: 'java'
+apply plugin: 'com.commercehub.gradle.plugin.avro'
 
-scalaCrossBuild {
-  defaultScalaVersion '2.10.4'
-  targetScalaVersions '2.10.4', '2.11.7'
-  buildDefaultOnly false
+avro {
+  // TODO: the current photon-ml codes, assumes we are using CharSequence.
+  stringType = "CharSequence"
+}
 
-  projectsToCrossBuild(
-    'photon-ml',
-    'photon-test'
-  )
-
-  projectsToNotCrossBuild('photon-avro-schemas')
+dependencies {
+  compile 'org.apache.avro:avro:1.7.5'
 }
