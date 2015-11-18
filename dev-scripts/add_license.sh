@@ -21,7 +21,7 @@ function apply_license {
     files=("${@}") # array of files
     for i in ${files[@]};
     do
-        if ! grep -q "www.apache.org/licenses" $i # only apply license if a license does not already exist in the file
+        if (( $(grep -c "www.apache.org/licenses" $i) == 0 )) # only apply license if a license does not already exist in the file
         then
             echo "Adding license for file: $i"
             cat ${license} $i > $i.licensed && mv $i.licensed $i; # no restriction for package name to be the first line in the file
@@ -29,13 +29,13 @@ function apply_license {
     done
 }
 
-java_files=(`find . -regex '.*\.java\|.*\.gradle\|.*\.scala'`)
+java_files=(`find . -regex '.*\.java\|.*\.gradle\|.*\.scala\|.*\.groovy' -type f`)
 java_license=.java_apache_license.txt
 rm -f $java_license
 # Surround License with Java comment style
 sed -e 's/^/ * /' -e 's/ $//' -e '$a\ */' -e '1i /*' LICENSE > $java_license
 
-pyRsh_files=(`find . -regex '.*\.py\|.*\.sh\|.*\.R'`)
+pyRsh_files=(`find . -regex '.*\.py\|.*\.sh\|.*\.R' -type f`)
 pyRsh_license=.pyRsh_apache_license.txt
 rm -f $pyRsh_license
 # Surround License with Python/R comment style

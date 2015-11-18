@@ -12,16 +12,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-apply plugin: 'scala'
-apply from: '../build-scripts/integration-test.gradle'
+package com.linkedin.photon.build.plugins
 
-dependencies {
-  compile("org.testng:testng:6.9.9")
+class ScalaUtils {
+  static def getScalaVersionSuffix(scalaVersion) {
+    def tokens = scalaVersion.split('\\.')
+    if (tokens == null || tokens.length < 3) {
+      throw new RuntimeException ("Illegal scalaVersion string: [$scalaVersion]. " +
+          "A valid version string should in the format of [x].[y].[z] .");
+    }
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
-  compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
-  compile("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
-
-  compile('commons-io:commons-io:2.4')
-  compile('org.apache.commons:commons-math3:3.5')
+    if (tokens[0] == '2' && Integer.parseInt(tokens[1]) >= 10) {
+      return "_${tokens[0]}.${tokens[1]}"
+    } else {
+      return "_$scalaVersion"
+    }
+  }
 }
