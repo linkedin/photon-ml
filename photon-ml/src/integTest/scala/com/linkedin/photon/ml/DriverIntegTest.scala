@@ -292,7 +292,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val models = Map(
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
-      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636))
+      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636),
+      TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
 
     val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
@@ -304,16 +305,29 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val trainEnabled = Seq(true, false)
 
-    (for (m <- models; r <- regularizations; trainDiagEnabled <- trainEnabled) yield {
-      (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4, trainDiagEnabled)
+    (for (m <- models; r <- regularizations) yield {
+      (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
     }).map(x => {
-      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp, trainEnabled) = x
+      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) = x
+      val trainEnabled = (TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM != taskType)
+
       val outputDir = s"${taskType}_${regType}_${trainEnabled}"
+
       val args = mutable.ArrayBuffer[String]()
       args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
-      args += 1e-6.toString
+      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+        args += 1e-1.toString
+      } else {
+        args += 1e-6.toString
+      }
+
       args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-      args += 200.toString
+      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+        args += 10.toString
+      } else {
+        args += 200.toString
+      }
+
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
       args += regType.toString
       args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)

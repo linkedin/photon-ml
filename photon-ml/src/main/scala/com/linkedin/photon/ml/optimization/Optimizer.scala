@@ -32,6 +32,8 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
    */
   def getConstraintMap: Option[Map[Int, (Double, Double)]]
 
+  def setConstraintMap(constraintMap: Option[Map[Int, (Double, Double)]]): Unit
+
   /**
    * Initialize the context of the optimizer, e.g., the history of LBFGS and trust region size of Tron
    */

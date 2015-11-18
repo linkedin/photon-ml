@@ -80,7 +80,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
   @DataProvider(name = "generateStandardizationTestData")
   def generateStandardizationTestData(): Array[Array[Any]] = {
-    (for (x <- OptimizerType.values; y <- TaskType.values) yield Array[Any](x, y)).toArray
+    (for (x <- OptimizerType.values; y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)) yield Array[Any](x, y)).toArray
   }
 
   /**

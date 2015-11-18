@@ -3,15 +3,12 @@ package com.linkedin.photon.ml.supervised.model
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.normalization._
-import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization._
-import com.linkedin.photon.ml.optimization.{Optimizer, RegularizationContext}
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
+import com.linkedin.photon.ml.optimization.{OptimizerFactory, Optimizer, RegularizationContext}
 import com.linkedin.photon.ml.util.DataValidators
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
@@ -118,6 +115,24 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
           dataValidationType: DataValidationType): List[GLM] = {
     logInfo("Doing training without any warm start models")
     run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType, Map.empty)
+  }
+
+  def run(input:RDD[LabeledPoint],
+          optimizerType:OptimizerType,
+          regularizationContext: RegularizationContext,
+          regularizationWeights: List[Double],
+          normalizationContext: NormalizationContext,
+          dataValidationType: DataValidationType,
+          warmStartModels: Option[Map[Double, GeneralizedLinearModel]],
+          maxIterations:Int,
+          tolerance:Double,
+          constraintMap:Option[Map[Int, (Double, Double)]]): List[GLM] = {
+    val optimizer = OptimizerFactory.getOptimizer[Function](optimizerType)
+    optimizer.setConstraintMap(constraintMap)
+    optimizer.setTolerance(tolerance)
+    optimizer.setMaximumIterations(maxIterations)
+    optimizer.setStateTrackingEnabled(isTrackingState)
+    run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext, dataValidationType, warmStartModels.getOrElse(Map.empty))
   }
 
   /**

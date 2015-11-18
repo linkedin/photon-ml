@@ -9,19 +9,18 @@ import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFe
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
-import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
-import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationContext}
+import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
-import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel, Regression}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.Utils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -255,6 +254,9 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
           ModelSelection.selectBestPoissonRegressionModel(models, validatingData)
         case LOGISTIC_REGRESSION =>
           val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
+          ModelSelection.selectBestLinearClassifier(models, validatingData)
+        case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+          val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
           ModelSelection.selectBestLinearClassifier(models, validatingData)
       }
 
