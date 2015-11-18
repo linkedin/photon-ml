@@ -17,7 +17,7 @@ integTest {
   maxHeapSize = "8G"
 
   maxParallelForks = 4
-  forkEvery = 1
+  forkEvery = 0
 
   options {
     parallel = 'methods'
