@@ -14,18 +14,26 @@ import org.apache.spark.rdd.RDD
  * For optimization with L1 penalty term, the optimization algorithm is a modified Quasi-Newton algorithm called OWL-QN.
  * Reference: [[http://research.microsoft.com/en-us/downloads/b1eb1016-1738-4bd5-83a9-370c9d498a03/]]
  *
- * @param numCorrections
- * The number of corrections used in the LBFGS update. Default 10.
- * Values of numCorrections less than 3 are not recommended; large values
- * of numCorrections will result in excessive computing time.
- * 3 < numCorrections < 10 is recommended.
- * Restriction: numCorrections > 0
  * @tparam Datum Generic type of input data point
  * @author xazhang
  * @author dpeng
- * @author bdrew
  */
-class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS) extends AbstractOptimizer[Datum, DiffFunction[Datum]](maxNumIterations = LBFGS.DEFAULT_MAX_ITER, tolerance = LBFGS.DEFAULT_TOLERANCE) {
+class LBFGS[Datum <: DataPoint] extends Optimizer[Datum, DiffFunction[Datum]] with Logging {
+
+  /**
+   * The number of corrections used in the LBFGS update. Default 10.
+   * Values of numCorrections less than 3 are not recommended; large values
+   * of numCorrections will result in excessive computing time.
+   * 3 < numCorrections < 10 is recommended.
+   * Restriction: numCorrections > 0
+   */
+  var numCorrections = LBFGS.DEFAULT_NUM_CORRECTIONS
+
+  /**
+   * Customized maximum number of iterations and convergence tolerance parameter for L-BFGS
+   */
+  maxNumIterations = LBFGS.DEFAULT_MAX_ITER
+  tolerance = LBFGS.DEFAULT_TOLERANCE
 
   /**
    * Under the hood, this adaptor uses an LBFGS
@@ -85,18 +93,17 @@ class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORR
    * @param diffFunction The loss function to be optimized
    * @param initialCoef Initial coefficients for the optimization
    */
-  def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: DiffFunction[Datum], initialCoef: Vector[Double]) = {
+  override def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: DiffFunction[Datum], initialCoef: Vector[Double]) = {
     breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
   }
 
-  override def clear() = {
+  override def clean() = {
     breezeOptimization = null
-    clearOptimizerState()
   }
 
-  protected def runOneIteration(data: Either[RDD[Datum], Iterable[Datum]],
-                                objectiveFunction: DiffFunction[Datum],
-                                state: OptimizerState): OptimizerState = {
+  override protected def runOneIteration(data: Either[RDD[Datum], Iterable[Datum]],
+                                         objectiveFunction: DiffFunction[Datum],
+                                         state: OptimizerState): OptimizerState = {
     breezeOptimization.next(state)
   }
 }
