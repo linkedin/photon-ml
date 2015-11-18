@@ -1,0 +1,52 @@
+{
+    "name": "LinearModelAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "a generic schema to describe a linear model",
+    "fields": [
+        {
+            "name": "modelId",
+            "type": "string"
+        },
+        {
+            "name": "coefficients",
+            "type": {
+                "items": "FeatureAvro",
+                "type": "array"
+            }
+        },
+        {
+            "default": 0.0,
+            "name": "intercept",
+            "type": "double"
+        },
+        {
+            "default": null,
+            "doc": "an optional object to hold metadata related to the training and the model.",
+            "name": "trainingContext",
+            "type": [
+                "null",
+                "TrainingContextAvro"
+            ]
+        },
+        {
+            "name": "lossFunction",
+            "type": "string",
+            "doc": "The loss function used for training as the class name. E.g.: com.linkedin.photon.ml.function.LogisticLossFunction"
+        },
+        {
+            "name": "scoreFunction",
+            "type": "string",
+            "doc": "The score function used for training as the class name.n"
+        },
+        {
+            "default": null,
+            "name": "featureSummarization",
+            "doc": "Optional feature summarization result attached to this model.",
+            "type": [
+                "null",
+                "FeatureSummarizationResultAvro"
+            ]
+        }
+    ]
+}

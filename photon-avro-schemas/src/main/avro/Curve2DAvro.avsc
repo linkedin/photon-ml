@@ -1,0 +1,23 @@
+{
+    "name": "Curve2DAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "This schema represents a 2D curve",
+    "fields": [
+        {
+            "name": "xLabel",
+            "type": "string"
+        },
+        {
+            "name": "yLabel",
+            "type": "string"
+        },
+        {
+            "name": "points",
+            "type": {
+                "items": "Point2DAvro",
+                "type": "array"
+            }
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "name": "EvaluationResultAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "Generic model evaluation result.",
+    "fields": [
+        {
+            "name": "evaluationContext",
+            "type": "EvaluationContextAvro",
+            "doc": "The context of the evaluation, e.g. the model info, segment info, metrics calculator used."
+        },
+        {
+            "name": "scalarMetrics",
+            "doc": "Metrics as scalars for the evaluation, e.g. rocAUC value. Refer to the corresponding classes in metricsCalculators for keys.",
+            "type": {
+                "type": "map",
+                "values": "double"
+            }
+        },
+        {
+            "name": "curves",
+            "doc": "Curves for the evaluation, e.g. precision-recall curve. Refer to the corresponding classes in metricsCalculators for keys.",
+            "type": {
+                "type": "map",
+                "values": "Curve2DAvro"
+            }
+        }
+    ]
+}

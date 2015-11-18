@@ -1,0 +1,16 @@
+{
+    "name": "Point2DAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "A two-dimensional point.",
+    "fields": [
+        {
+            "name": "x",
+            "type": "double"
+        },
+        {
+            "name": "y",
+            "type": "double"
+        }
+    ]
+}

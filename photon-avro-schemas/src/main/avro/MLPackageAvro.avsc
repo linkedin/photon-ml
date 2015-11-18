@@ -1,0 +1,12 @@
+{
+    "name": "MLPackageAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "enum",
+    "doc": "A enum of different machine learning packages",
+    "symbols": [
+        "R",
+        "LIBLINEAR",
+        "ADMM",
+        "PHOTONML"
+    ]
+}

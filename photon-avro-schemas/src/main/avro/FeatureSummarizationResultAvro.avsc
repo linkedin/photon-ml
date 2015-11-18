@@ -1,0 +1,25 @@
+{
+    "name": "FeatureSummarizationResultAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "fields": [
+        {
+            "doc": "Feature name. Together with featureTerm, uniquely identifies a feature",
+            "name": "featureName",
+            "type": "string"
+        },
+        {
+            "doc": "Feature term. Together with featureName, uniquely identifies a feature",
+            "name": "featureTerm",
+            "type": "string"
+        },
+        {
+            "doc": "Map of [metric] -> [value].",
+            "name": "metrics",
+            "type": {
+                "type": "map",
+                "values": "double"
+            }
+        }
+    ]
+}

@@ -24,33 +24,24 @@ buildscript {
   // TODO: is this the right way to incluse gradle plugins?
   repositories {
     repositories {
-      // For license plugin.
       maven {
+        // For license plugin gradle-rat.
         url 'http://dl.bintray.com/content/netflixoss/external-gradle-plugins/'
+        // For avro compiler plugin gradle-avro-plugin
+        url 'https://plugins.gradle.org/m2/'
       }
     }
   }
 
+  dependencies {
+    classpath "com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0"
+  }
 }
 
 allprojects {
   apply plugin: 'idea'
   repositories {
     mavenCentral()
-
-    // TODO: Linkedin internal repo, should be cleaned out
-    ['SNA', 'DDS', 'ext-restricted'].each { repositoryName ->
-      ivy {
-        url "http://artifactory.corp.linkedin.com:8081/artifactory/${repositoryName}"
-
-        layout 'pattern', {
-          m2compatible = true
-
-          artifact '[organisation]/[module]/[revision]/[module]-[revision](.[ext])'
-          ivy '[organisation]/[module]/[revision]/[module]-[revision].ivy'
-        }
-      }
-    }
   }
 }
 
@@ -87,6 +78,8 @@ rat {
     'photon-ml/src/main/resources/**',
     'photon-ml/src/test/resources/**',
     'photon-ml/src/integTest/resources/**',
+    'photon-ml/LINEAR_REGRESSION*/**',
+    'photon-ml/LOGISTIC_REGRESSION*/**',
     'photon-test/src/test/resources/**'
   ]
 }
