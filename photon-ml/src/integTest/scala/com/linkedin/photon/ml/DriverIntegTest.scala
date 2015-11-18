@@ -301,7 +301,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       RegularizationType.L1 ->(OptimizerType.LBFGS, lambdas),
       RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, lambdas))
 
-    val trainEnabled = Seq(true)
+    val trainEnabled = Seq(true, false)
 
     (for (m <- models; r <- regularizations; trainDiagEnabled <- trainEnabled) yield {
       (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4, trainDiagEnabled)

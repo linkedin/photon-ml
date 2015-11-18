@@ -22,6 +22,7 @@ object SparkContextConfiguration {
     classOf[Vector[Double]],
     classOf[SparseVector[Double]],
     classOf[DenseVector[Double]],
+    classOf[Set[Int]],
     classOf[ValueAndGradientAggregator],
     classOf[HessianVectorAggregator],
     classOf[GeneralizedLinearModelLossFunction],
