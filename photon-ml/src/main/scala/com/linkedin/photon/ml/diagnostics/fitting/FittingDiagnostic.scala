@@ -48,24 +48,22 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       val holdOut = tagged.filter(_._1 == NUM_TRAINING_PARTITIONS - 1).map(_._2).cache.setName("Hold out for learning curves")
 
       val result = (0 until (NUM_TRAINING_PARTITIONS - 1)).scanLeft((0.0, warmStart, Map[Double, Map[String, Double]](), Map[Double, Map[String, Double]]()))( (prev, maxTag) => {
-        // Do the model fits, feeding the models from each training subset to the next for warm start
         val dataSet = tagged.filter(_._1 <= maxTag).map(_._2)
         val startTime = System.currentTimeMillis
         val samples = dataSet.count
         val dataPortion = 100.0 * samples / numSamples
         logInfo(s"Data portion: ${dataPortion} ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
-        val models = modelFactory(dataSet, prev._2)
+        val models = modelFactory(dataSet, prev._2).toMap
 
-        val metricsTest = models.map(x => (x._1, Evaluation.evaluate(x._2, holdOut))).toMap
-        val metricsTrain = models.map(x => (x._1, Evaluation.evaluate(x._2, dataSet))).toMap
+        val metricsTest = models.mapValues(x => Evaluation.evaluate(x, holdOut))
+        val metricsTrain = models.mapValues(x => Evaluation.evaluate(x, dataSet))
+        dataSet.unpersist(false)
         val elapsedTime = (System.currentTimeMillis - startTime) / 1000.0
         logInfo(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
 
-        (dataPortion, models.toMap, metricsTest, metricsTrain)
+        (dataPortion, models, metricsTest, metricsTrain)
       })
-        // Project away the warm start models
       .map(x => (x._1, x._3, x._4))
-        // convert into (lambda, metric, train %, test set value, train set value) tuples
       .flatMap(x => {
       val (portion, testMetrics, trainMetrics) = x
       (for { lambdaTestMetrics <- testMetrics} yield {
@@ -78,10 +76,8 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       }).iterator
     })
     .flatMap(_.iterator)
-     // gather results by lambda
     .groupBy(_._1)
-     // generate the per-lambda reports
-    .map(x => {
+      .map(x => {
         val (lambda, tuplesByLambda) = x
         val byMetric = tuplesByLambda.map(x => (x._2, x._3, x._4, x._5)).groupBy(_._1).map(x => {
           val (metric, data) = x
@@ -94,6 +90,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
         (lambda, new FittingReport(byMetric, ""))
       })
 
+
       holdOut.unpersist(false)
       tagged.unpersist(false)
       result
@@ -105,6 +102,5 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
 
 object FittingDiagnostic {
   def NUM_TRAINING_PARTITIONS = 10
-
   def MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 100
 }

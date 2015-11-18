@@ -4,6 +4,7 @@ package com.linkedin.photon.ml
 import java.io.{OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapTrainingDiagnostic, BootstrapReport}
 import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
@@ -278,33 +279,60 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
 
       val startTimeForDiagnostics = System.currentTimeMillis
 
-      val trainDiagnosticStart = System.currentTimeMillis
       val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
       val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
       val hlDiagnostic = new HosmerLemeshowDiagnostic()
       val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
-      val trainingDiagnostic = new FittingDiagnostic()
+      val fitDiagnostic = new FittingDiagnostic()
+
+
+      val lambdaVarianceImportanceMap = lambdaModelTuples.map(x =>
+        (x._1, varImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption))
+      ).toMap
+      val lambdaMeanImportanceMap = lambdaModelTuples.map(x =>
+        (x._1, meanImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption))
+      ).toMap
+
+      val lambdaPredErrorMap = lambdaModelTuples.map(x => {
+        (x._1, predictionErrorDiagnostic.diagnose(x._2, validatingData, summaryOption))
+      }).toMap
+
+      val varImportanceAggregated = lambdaVarianceImportanceMap.mapValues(_.featureImportance).mapValues(_.mapValues(_._1))
+      val meanImportanceAggregated = lambdaMeanImportanceMap.mapValues(_.featureImportance).mapValues(_.mapValues(_._1))
+
+      val modelDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
+      logger.println(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
+
+      val trainDiagnosticStart = System.currentTimeMillis
+      val bootstrapDiagnostic = new BootstrapTrainingDiagnostic(suite.featureKeyToIdMap)
+
+      val trainFunc = (x: RDD[LabeledPoint], y: Map[Double, GeneralizedLinearModel]) => {
+        ModelTraining.trainGeneralizedLinearModel(
+          trainingData = x,
+          taskType = params.taskType,
+          optimizerType = params.optimizerType,
+          regularizationContext = regularizationContext,
+          regularizationWeights = params.regularizationWeights,
+          normalizationContext = normalizationContext,
+          maxNumIter = params.maxNumIter,
+          tolerance = params.tolerance,
+          enableOptimizationStateTracker = params.enableOptimizationStateTracker,
+          dataValidationType = DataValidationType.VALIDATE_DISABLED,
+          constraintMap = suite.constraintFeatureMap,
+          warmStartModels = y)._1
+      }
 
       logger.println(s"Starting training diagnostics")
+      val lambdaModelMap: Map[Double, GeneralizedLinearModel] = lambdaModelTuples.toMap
 
       val lambdaFitMap: Map[Double, FittingReport] = if (params.trainingDiagnosticsEnabled) {
-        val diagnostic = new FittingDiagnostic()
-        val trainFunc = (x: RDD[LabeledPoint], y: Map[Double, GeneralizedLinearModel]) => {
-          ModelTraining.trainGeneralizedLinearModel(
-            trainingData = x,
-            taskType = params.taskType,
-            optimizerType = params.optimizerType,
-            regularizationContext = regularizationContext,
-            regularizationWeights = params.regularizationWeights,
-            normalizationContext = normalizationContext,
-            maxNumIter = math.max(50, params.maxNumIter),
-            tolerance = params.tolerance,
-            enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-            dataValidationType = DataValidationType.VALIDATE_DISABLED,
-            constraintMap = suite.constraintFeatureMap,
-            warmStartModels = y)._1
-        }
-        diagnostic.diagnose(trainFunc, lambdaModelTuples.toMap, trainingData, summaryOption)
+        fitDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption)
+      } else {
+        Map.empty
+      }
+
+      val lambdaBoostrapMap: Map[Double, BootstrapReport] = if (params.trainingDiagnosticsEnabled) {
+        bootstrapDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption)
       } else {
         Map.empty
       }
@@ -312,50 +340,38 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
       val trainDiagnosticTime = (System.currentTimeMillis - trainDiagnosticStart) / 1000.0
       logger.println(f"Training diagnostic time elapsed: $trainDiagnosticTime%.03f(s)")
 
-      val modelDiagnosticStart = System.currentTimeMillis
 
       diagnostic.modelReports ++= lambdaModelTuples.map(x => {
         val (lambda, model) = x
-        val varImportance = varImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
-        val meanImportance = meanImportanceDiagnostic.diagnose(model, validatingData, summaryOption)
-        val predErrReport = predictionErrorDiagnostic.diagnose(model, validatingData, summaryOption)
+        val varImportance = lambdaVarianceImportanceMap.get(lambda).get
+        val meanImportance = lambdaMeanImportanceMap.get(lambda).get
+        val predErrReport = lambdaPredErrorMap.get(lambda).get
         val fitReport = lambdaFitMap.get(x._1)
+        val bootstrapReport = lambdaBoostrapMap.get(x._1)
         val metrics = perModelMetrics.getOrElse(lambda, Map.empty)
-        model match {
+        val hlReport = model match {
           case lm: LogisticRegressionModel =>
-            new ModelDiagnosticReport[GeneralizedLinearModel](
-              model,
-              lambda,
-              lm.getClass.getName,
-              suite.featureKeyToIdMap,
-              metrics,
-              summaryOption,
-              predErrReport,
-              Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption)),
-              varImportance,
-              meanImportance,
-              fitReport)
-
-          case glm: GeneralizedLinearModel =>
-            new ModelDiagnosticReport[GeneralizedLinearModel](
-              model,
-              lambda,
-              glm.getClass.getName,
-              suite.featureKeyToIdMap,
-              metrics,
-              summaryOption,
-              predErrReport,
-              None,
-              varImportance,
-              meanImportance,
-              fitReport)
+            Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption))
+          case _ => None
         }
+
+        ModelDiagnosticReport[GeneralizedLinearModel](
+        model,
+        lambda,
+        s"${model.getClass.getName} @ lambda = $lambda",
+        suite.featureKeyToIdMap,
+        metrics,
+        summaryOption,
+        predErrReport,
+        hlReport,
+        meanImportance,
+        varImportance,
+        fitReport,
+        bootstrapReport)
       })
 
-      val modelDiagnosticTime = (System.currentTimeMillis - modelDiagnosticStart) / 1000.0
       val totalDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
 
-      logger.println(f"Model diagnostic time: $modelDiagnosticTime%.03f (s)")
       logger.println(f"Total diagnostic time: $totalDiagnosticTime%.03f (s)")
       logger.println("Writing diagnostics")
       logger.flush()

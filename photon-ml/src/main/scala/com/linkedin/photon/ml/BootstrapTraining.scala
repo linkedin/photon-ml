@@ -123,7 +123,7 @@ object BootstrapTraining {
   def bootstrap[GLM <: GeneralizedLinearModel](numBootstrapSamples: Int,
                                                populationPortionPerBootstrapSample: Double,
                                                warmStart: Map[Double, GLM],
-                                               trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => Map[Double, GLM],
+                                               trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => List[(Double, GLM)],
                                                aggregations: Map[String, Seq[(GLM, Map[String, Double])] => Any],
                                                trainingSamples: RDD[LabeledPoint]): Map[Double, Map[String, Any]] = {
 
@@ -136,14 +136,15 @@ object BootstrapTraining {
       "Portion of training samples used for training must be in the range (0, 1.0], got [%s]",
       populationPortionPerBootstrapSample: java.lang.Double)
 
+
     val numSplits = 1000
     val targetSplits = math.min(900, (populationPortionPerBootstrapSample * numSplits).toInt) // regardless of what users tell us, never more than 90% for training
-    val tagged = trainingSamples.mapPartitions(partition => {
-      val prng = new MersenneTwister(System.nanoTime())
-      val dist = new UniformIntegerDistribution(prng, 0, numSplits)
+    val tagged = trainingSamples.mapPartitions(x => {
+        val prng = new MersenneTwister(System.nanoTime())
+        val dist = new UniformIntegerDistribution(prng, 0, numSplits)
 
-      partition.map(sample => (dist.sample, sample))
-    }).cache.setName("Tagged training splits")
+        x.map(y => (dist.sample, y))
+      }).cache.setName("Tagged training splits")
 
     val tags = (0 until numSplits).toList
     val prng = new MersenneTwister(System.nanoTime())
@@ -154,9 +155,8 @@ object BootstrapTraining {
 
       val holdoutTags = shuffled.slice(targetSplits, numSplits).toSet
       val holdoutSet = tagged.filter(x => holdoutTags.contains(x._1)).map(_._2)
-      val models = trainModel(trainSet, warmStart)
-
-      models.mapValues(model => (model, Evaluation.evaluate(model, holdoutSet)))
+      val models = trainModel(trainSet, warmStart).toMap
+      models.mapValues(x => (x, Evaluation.evaluate(x, holdoutSet)))
     })
       .flatMap(_.iterator)
       .toSeq

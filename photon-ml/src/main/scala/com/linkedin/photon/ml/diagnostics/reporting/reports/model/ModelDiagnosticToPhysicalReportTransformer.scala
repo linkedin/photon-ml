@@ -1,5 +1,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.model
 
+import com.linkedin.photon.ml.diagnostics.bootstrap.BootstrapToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.fitting.FittingToPhysicalReportTransformer
 import com.linkedin.photon.ml.diagnostics.hl.NaiveHosmerLemeshowToPhysicalReportTransformer
@@ -38,7 +39,12 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] 
         None
     }
 
-    new SectionPhysicalReport(metricsSection :: predErrSection :: modelSection :: fitSection.toList ++ hlSection.toList, s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
+    val bootstrapSection = model.bootstrapReport match {
+      case Some(b) => Some(BOOTSTRAP_TRANSFORMER.transform(b))
+      case None => None
+    }
+
+    new SectionPhysicalReport(metricsSection :: predErrSection :: modelSection :: fitSection.toList ++ bootstrapSection.toList ++ hlSection.toList, s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
   }
 
   private def transformMetrics(model:ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
@@ -55,5 +61,6 @@ object ModelDiagnosticToPhysicalReportTransformer {
   val FEATURE_IMPORTANCE_TRANSFORMER = new FeatureImportanceToPhysicalReportTransformer()
   val PREDICTION_ERROR_TRANSFORMER = new PredictionErrorIndependencePhysicalReportTransformer()
   val FIT_TRANSFORMER = new FittingToPhysicalReportTransformer()
+  val BOOTSTRAP_TRANSFORMER = new BootstrapToPhysicalReportTransformer()
   val FEATURE_IMPORTANCE_TITLE = "Coefficient Importance Analysis"
 }
