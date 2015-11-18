@@ -1,16 +1,14 @@
 package com.linkedin.photon.ml
 
-import java.util.Collections
+import java.util.concurrent.Executors
 
 import com.google.common.base.Preconditions
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.{CoefficientSummary, GeneralizedLinearModel}
-import org.apache.commons.math3.distribution.UniformIntegerDistribution
-import org.apache.commons.math3.random.{MersenneTwister, RandomAdaptor}
 import org.apache.spark.rdd.RDD
 
-import scala.util.Random
-
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, ExecutionContext}
 
 /**
  * General framework for bootstrap training.
@@ -103,10 +101,15 @@ object BootstrapTraining {
    * a model trained on the full data set, while one could just as easily use an aggregator that binds the underlying
    * models to a bootstrap aggregating adapter to get model bagging.
    *
+   * @param concurrency
+   * Maximum number of bootstrap samples to draw concurrently
    * @param numBootstrapSamples
    * How many bootstrap samples to draw
+   * @param seed
+   * Base PRNG seed used for drawing samples. For sample i, we use seed + i as the actual seed to avoid
+   * producing duplicate draws
    * @param trainModel
-   * A closure that maps (RDD, warm start models) to (regularization &rarr; model) maps
+   * A closure that maps RDDs to (regularization &rarr; model) maps
    * @param aggregations
    * A map of (name &rarr; closure that implements aggregation operation)
    * @param trainingSamples
@@ -120,14 +123,17 @@ object BootstrapTraining {
    * A two level map of (regularization &rarr; aggregate name &rarr; aggregate) computed aggregates,
    * broken down by regularization.
    */
-  def bootstrap[GLM <: GeneralizedLinearModel](numBootstrapSamples: Int,
+  def bootstrap[GLM <: GeneralizedLinearModel](concurrency: Int,
+                                               numBootstrapSamples: Int,
+                                               seed: Long,
                                                populationPortionPerBootstrapSample: Double,
-                                               warmStart: Map[Double, GLM],
-                                               trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => Map[Double, GLM],
+                                               trainModel: RDD[LabeledPoint] => Map[Double, GLM],
                                                aggregations: Map[String, Seq[(GLM, Map[String, Double])] => Any],
                                                trainingSamples: RDD[LabeledPoint]): Map[Double, Map[String, Any]] = {
 
-
+    Preconditions.checkArgument(
+      concurrency > 1,
+      "Concurrency must be at least 1, got %s", concurrency: java.lang.Integer)
     Preconditions.checkArgument(
       numBootstrapSamples > 1,
       "Number of bootstrap samples must be at least 1, got [%s]",
@@ -136,28 +142,14 @@ object BootstrapTraining {
       "Portion of training samples used for training must be in the range (0, 1.0], got [%s]",
       populationPortionPerBootstrapSample: java.lang.Double)
 
-    val numSplits = 1000
-    val targetSplits = math.min(900, (populationPortionPerBootstrapSample * numSplits).toInt) // regardless of what users tell us, never more than 90% for training
-    val tagged = trainingSamples.mapPartitions(partition => {
-      val prng = new MersenneTwister(System.nanoTime())
-      val dist = new UniformIntegerDistribution(prng, 0, numSplits)
+    implicit val execContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(concurrency))
 
-      partition.map(sample => (dist.sample, sample))
-    }).cache.setName("Tagged training splits")
-
-    val tags = (0 until numSplits).toList
-    val prng = new MersenneTwister(System.nanoTime())
-    (1 to numBootstrapSamples).map(x => {
-      val shuffled = Random.javaRandomToRandom(RandomAdaptor.createAdaptor(prng)).shuffle(tags).toArray
-      val trainTags = shuffled.slice(0, targetSplits).toSet
-      val trainSet = tagged.filter(x => trainTags.contains(x._1)).map(_._2)
-
-      val holdoutTags = shuffled.slice(targetSplits, numSplits).toSet
-      val holdoutSet = tagged.filter(x => holdoutTags.contains(x._1)).map(_._2)
-      val models = trainModel(trainSet, warmStart)
-
-      models.mapValues(model => (model, Evaluation.evaluate(model, holdoutSet)))
-    })
+    // Train a model for each sample
+    Await.result(Future.traverse(1 to numBootstrapSamples)(x => Future {
+      val split = trainingSamples.randomSplit(Array(0.7, 0.3), System.nanoTime)
+      val models = trainModel(split(0))
+      models.mapValues(x => (x, Evaluation.evaluate(x, split(1))))
+    }(execContext)), Duration.Inf)
       .flatMap(_.iterator)
       .toSeq
       .groupBy(_._1)

@@ -2,7 +2,7 @@ package com.linkedin.photon.ml
 
 import breeze.linalg.DenseVector
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, CoefficientSummary}
+import com.linkedin.photon.ml.supervised.model.CoefficientSummary
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
@@ -21,8 +21,8 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   val seed = 0L
   val numSamples = 100
 
-  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double]): (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => Map[Double, LinearRegressionModel] = {
-    (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
+  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double]): RDD[LabeledPoint] => Map[Double, LinearRegressionModel] = {
+    x: RDD[LabeledPoint] => {
       lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient, None))).toMap
     }
   }
@@ -43,9 +43,10 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
     val data: RDD[LabeledPoint] = sc.parallelize(drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(seed.toInt, numSamples, BootstrapTrainingTest.NUM_DIMENSIONS).toSeq).map(x => new LabeledPoint(x._1, x._2))
 
     val result: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
+      numWorkers,
       BootstrapTrainingTest.NUM_SAMPLES,
+      seed,
       samplePct,
-      Map[Double, LinearRegressionModel](),
       regressionModelFitFunction(0, lambdas),
       aggregations,
       data)
@@ -81,11 +82,11 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   def checkBootstrapHappyPathRealAggregates(): Unit = sparkTest("checkBootstrapHappyPathRealAggregates") {
     // Return a different model each time fitFunction is called
     var count: Int = -BootstrapTrainingTest.HALF_NUM_SAMPLES
-    val fitFunction = (x: RDD[LabeledPoint], y:Map[Double, LinearRegressionModel]) => {
+    val fitFunction = (x: RDD[LabeledPoint]) => {
       val value = count / BootstrapTrainingTest.HALF_NUM_SAMPLES.toDouble
       count += 1
       val fn = regressionModelFitFunction(value, lambdas)
-      fn(x, y)
+      fn(x)
     }
 
 
@@ -124,12 +125,13 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
       metricsIntervalsKey -> validateMetricsIntervals
     )
 
-    val data: RDD[LabeledPoint] = sc.parallelize(drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(seed.toInt, numSamples, BootstrapTrainingTest.NUM_DIMENSIONS).toSeq).map(x => new LabeledPoint(x._1, x._2)).coalesce(4)
+    val data: RDD[LabeledPoint] = sc.parallelize(drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(seed.toInt, numSamples, BootstrapTrainingTest.NUM_DIMENSIONS).toSeq).map(x => new LabeledPoint(x._1, x._2))
 
     val aggregates: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
+      numWorkers,
       BootstrapTrainingTest.NUM_SAMPLES,
+      0L,
       samplePct,
-      Map[Double, LinearRegressionModel](),
       fitFunction,
       aggregations,
       data)
