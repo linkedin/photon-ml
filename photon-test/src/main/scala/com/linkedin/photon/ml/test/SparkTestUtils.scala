@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 LinkedIn Corp. All rights reserved.
+ * Copyright 2015 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -269,7 +269,7 @@ object SparkTestUtils {
       items.next()
 
       // Assign a label
-      val classLabel = 2*prng.nextDouble() - 1  
+      val classLabel = 2*prng.nextDouble() - 1
       val xAttribute = classLabel + prng.nextGaussian() * INLIER_STANDARD_DEVIATION
       result += generateNumericallyBenignSparseVector(classLabel, xAttribute, desiredDimensionality, prng, negBinomial)
     }
