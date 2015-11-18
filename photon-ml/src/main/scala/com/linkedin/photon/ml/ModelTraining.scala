@@ -81,9 +81,9 @@ object ModelTraining {
       case optType =>
         throw new IllegalArgumentException(s"Optimizer type unrecognized: $optType.");
     }
-    optimizer.setMaximumIterations(maxNumIter)
-    optimizer.setTolerance(tolerance)
-    optimizer.setConstraintMap(constraintMap)
+    optimizer.maxNumIterations = maxNumIter
+    optimizer.tolerance = tolerance
+    optimizer.constraintMap = constraintMap
 
     /* Choose the generalized linear algorithm */
     val algorithm = taskType match {

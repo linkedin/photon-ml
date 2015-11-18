@@ -18,20 +18,10 @@ import org.apache.spark.rdd.RDD
  * bugs, 3. code reviews (the source code here can be compared to Spark Liblinear).
  *
  * @tparam Datum Generic type of input data point
- *
- * @param maxNumImprovementFailures
- * The maximum allowed number of times in a row the objective hasn't improved.
- * For most optimizers using line search, like L-BFGS, the improvement failure is not supposed to happen,
- * because any improvement failure should be captured during the line search step.
- * And here we are trying to capture the improvement failure after the gradient step. As a result,
- * any improvement failure in this cases should be resulted by some bug and we should not tolerate it.
- * However, for optimizers like TRON, maxNumImprovementFailures is set to 5, because occasional improvement failure is acceptable.
-
  * @author xazhang
  * @author dpeng
- * @author bdrew
  */
-class TRON[Datum <: DataPoint](var maxNumImprovementFailures: Int = TRON.DEFAULT_MAX_NUM_FAILURE) extends AbstractOptimizer[Datum, TwiceDiffFunction[Datum]](tolerance = TRON.DEFAULT_TOLERANCE, maxNumIterations = TRON.DEFAULT_MAX_ITER) {
+class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]] with Logging {
 
   /**
    * Customized optimization parameter for Tron
@@ -39,6 +29,15 @@ class TRON[Datum <: DataPoint](var maxNumImprovementFailures: Int = TRON.DEFAULT
   maxNumIterations = TRON.DEFAULT_MAX_ITER
   tolerance = TRON.DEFAULT_TOLERANCE
 
+  /**
+   * The maximum allowed number of times in a row the objective hasn't improved.
+   * For most optimizers using line search, like L-BFGS, the improvement failure is not supposed to happen,
+   * because any improvement failure should be captured during the line search step.
+   * And here we are trying to capture the improvement failure after the gradient step. As a result,
+   * any improvement failure in this cases should be resulted by some bug and we should not tolerate it.
+   * However, for optimizers like TRON, maxNumImprovementFailures is set to 5, because occasional improvement failure is acceptable.
+   */
+  var maxNumImprovementFailures = TRON.DEFAULT_MAX_NUM_FAILURE
 
   /**
    * Initialize the hyper-parameters for Tron. See the Reference2 for more details on the hyper-parameters.
@@ -51,18 +50,17 @@ class TRON[Datum <: DataPoint](var maxNumImprovementFailures: Int = TRON.DEFAULT
    */
   private var delta = Double.MaxValue
 
-  def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: TwiceDiffFunction[Datum], initialCoef: Vector[Double]) = {
+  override def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: TwiceDiffFunction[Datum], initialCoef: Vector[Double]) = {
     delta = norm(state.gradient, 2)
   }
 
-  override def clear() = {
+  override def clean() = {
     delta = Double.MaxValue
-    clearOptimizerState()
   }
 
-  def runOneIteration(dataPoints: Either[RDD[Datum], Iterable[Datum]],
-                      objectiveFunction: TwiceDiffFunction[Datum],
-                      state: OptimizerState): OptimizerState = {
+  override def runOneIteration(dataPoints: Either[RDD[Datum], Iterable[Datum]],
+                               objectiveFunction: TwiceDiffFunction[Datum],
+                               state: OptimizerState): OptimizerState = {
     val distributedOptimization = dataPoints.isLeft
     val lastCoefficients =
       if (distributedOptimization) {
