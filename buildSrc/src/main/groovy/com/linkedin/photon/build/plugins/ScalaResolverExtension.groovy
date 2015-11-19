@@ -14,6 +14,11 @@
  */
 package com.linkedin.photon.build.plugins
 
+/**
+ * An extension to configure ScalaResolverPlugin
+ *
+ * @author cfreeman
+ */
 class ScalaResolverExtension {
 
   Closure _initAction

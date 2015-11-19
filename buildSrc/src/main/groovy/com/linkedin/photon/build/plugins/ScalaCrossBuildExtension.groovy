@@ -17,6 +17,11 @@ package com.linkedin.photon.build.plugins
 import org.gradle.api.file.FileTree
 import org.gradle.api.internal.DefaultDomainObjectSet
 
+/**
+ * Provides confiugrable extension for ScalaCrossBuildPlugin.
+ *
+ * @author cfreeman
+ */
 class ScalaCrossBuildExtension {
 
   private String _defaultScalaVersion

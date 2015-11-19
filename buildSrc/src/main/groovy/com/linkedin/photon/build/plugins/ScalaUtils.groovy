@@ -14,6 +14,16 @@
  */
 package com.linkedin.photon.build.plugins
 
+/**
+ * This class provides utils to resolve Scala version string into the suffix string
+ * used for cross-build purpose.
+ *  The resolution rule is:
+ *   'x.y.z' -->  '_x.y'   (if x == 2 and y >= 10)
+ *                '_x.y.z' (otherwise)
+ *
+ * @author cfreeman
+ * @author yizhou
+ */
 class ScalaUtils {
   static def getScalaVersionSuffix(scalaVersion) {
     def tokens = scalaVersion.split('\\.')
