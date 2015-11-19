@@ -12,8 +12,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-// TODO: codecoverage plugin apply plugin: 'li-jacoco-product'
-// TODO: checkstyle plugin apply plugin: 'li-checkstyle-product'
+// TODO: codecoverage plugin
+// TODO: checkstyle plugin
 
 buildscript {
   repositories {
@@ -68,11 +68,13 @@ rat {
     '**/.DS_Store/**',
     '**/build/**',
     '.reviewboardrc',
+    'dev-scripts/license_template.txt',
     'gradle/wrapper/**',
     'gradlew',
     'gradlew.bat',
     'README.md',
     'LICENSE',
+    'NOTICE',
     'gradle.properties',
     'log4j.properties',
     'photon-ml/src/main/resources/**',
