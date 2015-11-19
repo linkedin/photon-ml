@@ -33,13 +33,13 @@ java_files=(`find . -regex '.*\.java\|.*\.gradle\|.*\.scala\|.*\.groovy' -type f
 java_license=.java_apache_license.txt
 rm -f $java_license
 # Surround License with Java comment style
-sed -e 's/^/ * /' -e 's/ $//' -e '$a\ */' -e '1i /*' LICENSE > $java_license
+sed -e 's/^/ * /' -e 's/ $//' -e '$a\ */' -e '1i /*' dev-scripts/license_template.txt > $java_license
 
 pyRsh_files=(`find . -regex '.*\.py\|.*\.sh\|.*\.R' -type f`)
 pyRsh_license=.pyRsh_apache_license.txt
 rm -f $pyRsh_license
 # Surround License with Python/R comment style
-sed -e 's/^/# /' -e 's/ $//' LICENSE > $pyRsh_license
+sed -e 's/^/# /' -e 's/ $//' dev-scripts/license_template.txt > $pyRsh_license
 
 # Apply license to java files
 apply_license ${java_license} ${java_files[@]}
