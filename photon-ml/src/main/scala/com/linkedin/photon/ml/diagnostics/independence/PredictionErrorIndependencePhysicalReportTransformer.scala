@@ -32,7 +32,15 @@ object PredictionErrorIndependencePhysicalReportTransformer {
                        .xAxisTitle("Prediction")
                        .yAxisTitle("Label - Prediction")
                        .build()
+
+    val xRange = PlotUtils.getRange(prediction)
+    val yRange = PlotUtils.getRange(error)
+
     chart.addSeries("Prediction error", prediction, error)
+    chart.getStyleManager.setXAxisMin(xRange._1)
+    chart.getStyleManager.setXAxisMax(xRange._2)
+    chart.getStyleManager.setYAxisMin(yRange._1)
+    chart.getStyleManager.setYAxisMax(yRange._2)
 
     new SectionPhysicalReport(Seq(new PlotPhysicalReport(chart)), PLOT_SUBSECTION_TITLE)
   }

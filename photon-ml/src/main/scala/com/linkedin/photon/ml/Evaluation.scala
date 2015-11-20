@@ -26,6 +26,7 @@ object Evaluation extends Logging {
   val PEAK_F1_SCORE = "Peak F1 score"
   val DATA_LOG_LIKELIHOOD = "Per-datum log likelihood"
   val AIKAKE_INFORMATION_CRITERION = "Aikake information criterion"
+  val EPSILON = 1e-9
 
   /**
    * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
@@ -128,8 +129,11 @@ object Evaluation extends Logging {
   private def logisticRegressionLogLikelihood(scored: RDD[(Double, Double)]): Double = {
     val logLikelihood = scored.map(x => {
       val (y, p) = x
-
-      y * math.log(p) + (1.0 - y) * math.log1p(-p)
+      val logP = if (p > EPSILON) math.log(p) else math.log(EPSILON)
+      val log1mP = if (p > 1 - EPSILON) math.log1p(1 - EPSILON) else math.log1p(-p)
+      val result =  y * logP + (1.0 - y) * log1mP
+      assert(!result.isInfinite && !result.isNaN, s"y = $y, p = $p, result is not finite")
+      result
     })
 
     averageRDD(logLikelihood)
@@ -171,6 +175,6 @@ object Evaluation extends Logging {
     AREA_UNDER_PRECISION_RECALL -> MetricMetadata(AREA_UNDER_PRECISION_RECALL, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
     AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> MetricMetadata(AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
     DATA_LOG_LIKELIHOOD -> MetricMetadata(DATA_LOG_LIKELIHOOD, "Model selection metric", sortIncreasing, None),
-    AIKAKE_INFORMATION_CRITERION -> MetricMetadata(AIKAKE_INFORMATION_CRITERION, "Model selection metric", sortIncreasing, None),
+    AIKAKE_INFORMATION_CRITERION -> MetricMetadata(AIKAKE_INFORMATION_CRITERION, "Model selection metric", sortDecreasing, None),
     PEAK_F1_SCORE -> MetricMetadata(PEAK_F1_SCORE, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))))
 }

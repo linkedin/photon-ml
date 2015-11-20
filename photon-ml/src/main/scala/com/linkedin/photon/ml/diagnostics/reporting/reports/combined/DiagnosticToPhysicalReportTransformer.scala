@@ -44,7 +44,7 @@ object DiagnosticToPhysicalReportTransformer {
    * Generate a summary section which includes a quick description of which lambdas did best/worst on a particular
    * metric and a visual summary of models by metric.
    *
-   * @param models
+   * @param reports Map of &lambda; &rarr; model diagnostic for that lambda
    * @return
    */
   private def transformSummary(reports:Map[Double, (ModelDiagnosticReport[GeneralizedLinearModel], SectionPhysicalReport)]): SectionPhysicalReport = {
@@ -87,12 +87,10 @@ object DiagnosticToPhysicalReportTransformer {
             chart.addSeries(s"Lambda = ${x._1}", Array(1.0), Array(x._2))
           })
 
-          metadata.rangeOption match {
-            case Some((minV, maxV)) =>
-              chart.getStyleManager.setYAxisMin(minV)
-              chart.getStyleManager.setYAxisMax(maxV)
-            case None =>
-          }
+          val yRange = PlotUtils.getRangeForMetric(metric, sortedByLambda.map(_._2))
+          chart.getStyleManager.setYAxisMin(yRange._1)
+          chart.getStyleManager.setYAxisMax(yRange._2)
+
           Seq(new PlotPhysicalReport(chart)).iterator
         }).iterator
       })

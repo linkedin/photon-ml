@@ -30,13 +30,13 @@ class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransf
       plot.addSeries(s"Q3: ${x._2._4}", Array(0.0), Array(x._2._4))
       plot.addSeries(s"Max: ${x._2._5}", Array(0.0), Array(x._2._5))
       plot.getStyleManager.setXAxisTicksVisible(false)
+      plot.getStyleManager.setXAxisMin(0.9)
+      plot.getStyleManager.setXAxisMax(1.1)
 
-      Evaluation.metricMetadata.get(x._1).get.rangeOption match {
-        case Some((minV, maxV)) =>
-          plot.getStyleManager.setYAxisMin(minV)
-          plot.getStyleManager.setYAxisMax(maxV)
-        case _ =>
-      }
+      val range = PlotUtils.getRangeForMetric(x._1, Seq(x._2._1, x._2._5))
+
+      plot.getStyleManager.setYAxisMin(range._1)
+      plot.getStyleManager.setYAxisMax(range._2)
 
       new PlotPhysicalReport(plot)
     }).toSeq, METRICS_DISTRIBUTION_SECTION_TITLE)
@@ -53,12 +53,16 @@ class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransf
           .yAxisTitle("Coefficient value")
           .width(PlotUtils.PLOT_WIDTH)
           .build()
+
+        val yRange = PlotUtils.getRange(Seq(summary.getMin, summary.getMax))
+
         plot.addSeries(s"Minimum ${summary.getMin}", Array(0.0), Array(summary.getMin))
         plot.addSeries(s"First quartile ${summary.estimateFirstQuartile()}", Array(0.0), Array(summary.estimateFirstQuartile()))
         plot.addSeries(s"Median ${summary.estimateMedian()}", Array(0.0), Array(summary.estimateMedian()))
         plot.addSeries(s"Third quartile ${summary.estimateThirdQuartile()}", Array(0.0), Array(summary.estimateThirdQuartile()))
         plot.addSeries(s"Maximum ${summary.getMax}", Array(0.0), Array(summary.getMax))
-
+        plot.getStyleManager.setYAxisMin(yRange._1)
+        plot.getStyleManager.setYAxisMax(yRange._2)
         new PlotPhysicalReport(plot)
       }).toSeq, IMPORTANT_FEATURES_SECTION_TITLE)
 
