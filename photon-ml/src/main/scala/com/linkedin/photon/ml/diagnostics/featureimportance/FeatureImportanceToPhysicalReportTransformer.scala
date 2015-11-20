@@ -30,6 +30,7 @@ class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalRepo
     val sorted = report.rankToImportance.toList.sortBy(_._1)
     val xSeries = sorted.map(_._1).toArray
     val ySeries = sorted.map(_._2).toArray
+
     chart.addSeries(report.importanceDescription, xSeries, ySeries)
     chart.getStyleManager.setXAxisMin(0)
     chart.getStyleManager.setXAxisMax(100)
