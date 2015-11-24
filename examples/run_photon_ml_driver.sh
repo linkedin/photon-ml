@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright 2015 LinkedIn Corp. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain a
@@ -10,26 +12,123 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-#!/bin/bash
-# #####################
+
+# ###############################################################
+#
 # This is a script that demonstrates how to run photon ml from command line.
 # It is only recommended to be used for dev purpose and please be aware a different user/app potentially need to adjust
 # almost all the parameters to make the job running.
 #
-# ######################
+# ################################################################
+DEFAULT_JOB_NAME="run-photon-ml-driver"
+JOB_NAME=$DEFAULT_JOB_NAME
+ADMIN_ACLS="$USER"
 
-JOB_NAME="run-photon-ml-driver"
+function usage() {
+  echo "Usage: $0 [option...] hdfs_working_root" >&2
+  echo
+  echo "hdfs_working_root: The HDFS working root for the Photon driver. This script assumes the following structure: "
+  echo "    train dataset input: [hdfs_working_root]/input/train"
+  echo "    test dataset input: [hdfs_working_root]/input/test"
+  echo "  And it will output towards: "
+  echo "    model output: [hdfs_working_root]/results"
+  echo "    model/feature summary: [hdfs_working_root]/summary"
+  echo
+  echo "Options:"
+  echo "  -h, --help        Display the help message"
+  echo "  -n, --job-name    Set the job name, default: $DEFAULT_JOB_NAME"
+  echo "  -u, --admin-acls  The admin-acls of the Spark job, default is current user"
+  echo "  -l, --jar-lib     The local directory that holds all jars needed for running the job. default: ./"
+  echo
+}
 
-WORKING_ROOT_DIR="/user/yizhou/run_photon_ml_driver"
+JAR_DIR="."
+PHOTON_MAIN_JAR=""
+LIBJARS=""
+
+# Check if parameters options are given on the commandline
+while :
+do
+    case "$1" in
+      -h | --help)
+          usage
+          exit 0
+          ;;
+      -n | --job-name)
+          JOB_NAME="$2"
+          shift 2
+          ;;
+      -u | --admin-acls)
+          ADMIN_ACLS="$2"
+          shift 2
+          ;;
+      -l | --jar-lib)
+          JAR_DIR="$2"
+          shift 2
+          ;;
+      --) # End of all options
+          shift
+          break
+          ;;
+      -*)
+          echo "Error: Unknown option: $1" >&2
+          usage
+          exit 1
+          ;;
+      *)  # No more options
+          break
+          ;;
+    esac
+done
+
+WORKING_ROOT_DIR="$1"
+
+REQUIRED_JARS=("joda-time-2.7.jar" "avro-1.7.5.jar" "avro-mapred-1.7.5.jar" "scopt_2.10-3.2.0.jar" "photon-schemas-0.0.2.jar" "xchart-2.5.1.jar" "batik-util-1.7.jar" "batik-awt-util-1.7.jar" "batik-svggen-1.7.jar" )
+function resolveAllJars() {
+  # Set main jar
+  main_jar_count=`ls $JAR_DIR | grep photon-ml* | wc -l`
+  if [[ $main_jar_count < 1 ]]
+  then
+    echo "Error: Cannot find photon-ml main jar in $JAR_DIR" >&2
+    exit 1
+  fi
+
+  if [[ $main_jar_count > 1 ]]
+  then
+    echo "Error: Multiple photon-ml jars found in [$JAR_DIR]. Cannot decide which one to use" >&2
+    exit 1
+  fi
+
+  PHOTON_MAIN_JAR="${JAR_DIR}/`ls $JAR_DIR | grep photon-ml*`"
+
+  # Include all dependencies jar
+  c=0
+  for jar in ${REQUIRED_JARS[@]}
+  do
+    if [[ -f "$JAR_DIR/$jar" ]]
+    then
+      c=$((c+1))
+    else
+      echo "Error: expected dependency jar [$jar] not found in lib jar directory [$JAR_DIR]. Please download and put then in the jar lib." >&2
+    fi
+  done
+
+  if [[ ${#REQUIRED_JARS[@]} != $c ]]
+  then
+    exit 1
+  fi
+
+  LIBJARS=$(printf ",${JAR_DIR}/%s" "${REQUIRED_JARS[@]}")
+  LIBJARS=${LIBJARS:1}
+}
+resolveAllJars
+
 TRAIN_ROOT="${WORKING_ROOT_DIR}/input"
 TRAIN_INPUT_DIRS="${TRAIN_ROOT}/train"
 VALIDATE_INPUT_DIRS="${TRAIN_ROOT}/test"
 SUMMARY_OUTPUT_PATH="${WORKING_ROOT_DIR}/summary"
 OUTPUT_DIR="${WORKING_ROOT_DIR}/results"
 
-PHOTON_MAIN_JAR=photon-ml_2.10-1.1.7-SNAPSHOT.jar
-LIBJARS="joda-time-2.7.jar,avro-1.7.5.jar,avro-mapred-1.7.5.jar,scopt_2.10-3.2.0.jar,photon-schemas-0.0.2.jar,xchart-2.5.1.jar,batik-util-1.7.jar,batik-awt-util-1.7.jar,batik-svggen-1.7.jar"
-ADMIN_ACLS="$USER"
 QUEUE="default"
 
 EXECUTOR_MEMORY_MB=$((2 * 1024))
@@ -58,6 +157,7 @@ NORMALIZATION_TYPE="NONE"
 VALIDATE_PER_ITERATION=true
 USE_OPTIMIZATION_TRACKER=true
 USE_INTERCEPT=true
+
 # UNCOMMENT to use different options:
 # ELASTIC_NET_ALPHA=0.1
 # BOX_CONSTRAINTS=
