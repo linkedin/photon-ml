@@ -38,16 +38,15 @@ object Evaluation extends Logging {
    * @return Map of (metricName &rarr; value)
    */
   def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): Map[String, Double] = {
-    val scoredSet = dataSet.map(x => x match {
-      case LabeledPoint(label, features, offset, _) => (label, (features, offset))
-    }).map(x => (x._1, model.computeMeanFunctionWithOffset(x._2._1, x._2._2))).cache
+    val scoreAndLabel = dataSet.map(labeledPoint =>
+         (model.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset), labeledPoint.label)).cache()
 
     var metrics = Map[String, Double]()
 
     // Compute regression facet metrics
     model match {
       case r: Regression =>
-        val regressionMetrics = new RegressionMetrics(scoredSet)
+        val regressionMetrics = new RegressionMetrics(scoreAndLabel)
         metrics ++= Map[String, Double](MEAN_ABSOLUTE_ERROR -> regressionMetrics.meanAbsoluteError,
                                         MEAN_SQUARE_ERROR -> regressionMetrics.meanSquaredError,
                                         ROOT_MEAN_SQUARE_ERROR -> regressionMetrics.rootMeanSquaredError)
@@ -59,7 +58,7 @@ object Evaluation extends Logging {
     // Compute binary classifier metrics
     model match {
       case b: BinaryClassifier =>
-        val binaryMetrics = new BinaryClassificationMetrics(scoredSet)
+        val binaryMetrics = new BinaryClassificationMetrics(scoreAndLabel)
         metrics ++= Map[String, Double](AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR,
                                         AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC,
                                         PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold.map(x => x._2).max)
@@ -73,14 +72,14 @@ object Evaluation extends Logging {
         metrics ++= Map[String, Double](DATA_LOG_LIKELIHOOD -> poissonRegressionLogLikelihood(dataSet, p))
 
       case _: LogisticRegressionModel =>
-        metrics ++= Map[String, Double](DATA_LOG_LIKELIHOOD -> logisticRegressionLogLikelihood(scoredSet))
+        metrics ++= Map[String, Double](DATA_LOG_LIKELIHOOD -> logisticRegressionLogLikelihood(scoreAndLabel))
 
       case _ =>
       // do nothing
     }
 
     val aikakeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
-      val n = scoredSet.count
+      val n = scoreAndLabel.count
       val logLikelihood = n * x
       val effectiveParameters = model.coefficients.activeValuesIterator.foldLeft(0)((count, coeff) => {
         if (math.abs(coeff) > 1e-9) {
@@ -102,7 +101,7 @@ object Evaluation extends Logging {
 
     logInfo(s"Generated metrics with keys ${metrics.keys.mkString(", ")}")
 
-    scoredSet.unpersist(false)
+    scoreAndLabel.unpersist(false)
     metrics
   }
 
@@ -126,9 +125,9 @@ object Evaluation extends Logging {
   }
 
   // See https://en.wikipedia.org/wiki/Logistic_regression
-  private def logisticRegressionLogLikelihood(scored: RDD[(Double, Double)]): Double = {
-    val logLikelihood = scored.map(x => {
-      val (y, p) = x
+  private def logisticRegressionLogLikelihood(scoreAndLabel: RDD[(Double, Double)]): Double = {
+    val logLikelihood = scoreAndLabel.map(x => {
+      val (p, y) = x
       val logP = if (p > EPSILON) math.log(p) else math.log(EPSILON)
       val log1mP = if (p > 1 - EPSILON) math.log1p(1 - EPSILON) else math.log1p(-p)
       val result =  y * logP + (1.0 - y) * log1mP
