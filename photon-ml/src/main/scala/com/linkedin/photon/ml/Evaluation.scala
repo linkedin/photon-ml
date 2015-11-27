@@ -126,14 +126,13 @@ object Evaluation extends Logging {
 
   // See https://en.wikipedia.org/wiki/Logistic_regression
   private def logisticRegressionLogLikelihood(scoreAndLabel: RDD[(Double, Double)]): Double = {
-    val logLikelihood = scoreAndLabel.map(x => {
-      val (p, y) = x
-      val logP = if (p > EPSILON) math.log(p) else math.log(EPSILON)
-      val log1mP = if (p > 1 - EPSILON) math.log1p(1 - EPSILON) else math.log1p(-p)
-      val result =  y * logP + (1.0 - y) * log1mP
-      assert(!result.isInfinite && !result.isNaN, s"y = $y, p = $p, result is not finite")
+    val logLikelihood = scoreAndLabel.map{ case (score, label) =>
+      val logP = if (score > EPSILON) math.log(score) else math.log(EPSILON)
+      val log1mP = if (score > 1 - EPSILON) math.log1p(1 - EPSILON) else math.log1p(-score)
+      val result =  label * logP + (1.0 - label) * log1mP
+      assert(!result.isInfinite && !result.isNaN, s"label = $label, score = $score, result is not finite")
       result
-    })
+    }
 
     averageRDD(logLikelihood)
   }
