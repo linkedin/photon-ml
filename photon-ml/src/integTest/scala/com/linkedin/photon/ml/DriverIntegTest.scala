@@ -288,7 +288,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @DataProvider
   def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
-    val base = "src/integTest/resources/DriverIntegTest/input/"
+    val base = getClass.getClassLoader.getResource("DriverIntegTest/input").getPath
     val models = Map(
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
