@@ -231,11 +231,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Verify lambdas
     assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
 
-    // The selected best model is supposed to be of lambda 0.1
+    // The selected best model is supposed to be of lambda 100.0 with features scaling with standard deviation
     val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
     assertEquals(bestModel.size, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 1.0)
+    assertEquals(bestModel(0)._1, 100.0)
   }
 
   @Test
