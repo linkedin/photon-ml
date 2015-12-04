@@ -39,6 +39,7 @@ buildscript {
 }
 
 allprojects {
+  apply plugin: 'eclipse'
   apply plugin: 'idea'
   repositories {
     mavenCentral()
@@ -162,4 +163,14 @@ subprojects {
     }
     configurations.zinc.transitive = true
   }
+}
+
+// Task to generate the Gradle wrapper scripts
+task wrapper(type: Wrapper) {
+  gradleVersion = '2.8'
+}
+
+// For LinkedIn internal builds, apply the LinkedIn-specific build file
+if (project.hasProperty('overrideBuildEnvironment')) {
+  apply from: project.overrideBuildEnvironment
 }
