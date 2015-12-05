@@ -94,7 +94,7 @@ protected[ml] class Driver(protected val params: Params, protected val sc: Spark
   }
 
   def run(): Unit = {
-    logger.println(s"Input parameters: $params\n")
+    logger.println(s"Input parameters: \n$params\n")
 
     val startTime = System.currentTimeMillis()
 

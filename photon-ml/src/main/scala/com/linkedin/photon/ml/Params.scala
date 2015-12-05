@@ -117,4 +117,11 @@ class Params {
    * tend to be more computationally demanding, this should default to false.
    */
   var trainingDiagnosticsEnabled: Boolean = false
+
+  override def toString(): String = {
+    getClass.getDeclaredFields.map(field => {
+      field.setAccessible(true)
+      field.getName + ": " + field.get(this)
+    }).mkString("\n")
+  }
 }
