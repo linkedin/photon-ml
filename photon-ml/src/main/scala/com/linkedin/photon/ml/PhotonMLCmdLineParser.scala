@@ -166,8 +166,9 @@ object PhotonMLCmdLineParser {
     }
     if (!parser.parse(args)) {
       throw new IllegalArgumentException(s"Parsing the command line arguments failed.\n" +
-                                                 s"Input arguments are: ${args.mkString(", ")}).")
+                                         s"Input arguments are: ${args.mkString(", ")}).")
     }
+    params.validate()
     postProcess(params)
     params
   }
@@ -178,17 +179,6 @@ object PhotonMLCmdLineParser {
    * @return Post processed params
    */
   private def postProcess(inputParams: Params): Unit = {
-    if ((inputParams.regularizationType == RegularizationType.L1 ||
-         inputParams.regularizationType == RegularizationType.ELASTIC_NET) && inputParams.optimizerType == OptimizerType.TRON) {
-      throw new IllegalArgumentException(s"Combination of (${inputParams.regularizationType}, ${inputParams.optimizerType}) is not allowed")
-    }
-    if (inputParams.constraintString.nonEmpty && inputParams.normalizationType != NormalizationType.NONE) {
-      throw new IllegalArgumentException(s"Normalization and box constraints should not be used together since we cannot guarantee the " +
-                                         s"satisfaction of the coefficient constraints after normalization")
-    }
-    if (inputParams.normalizationType == NormalizationType.STANDARDIZATION && !inputParams.addIntercept) {
-      throw new IllegalArgumentException(s"Intercept must be used to enable feature standardization. Normalization type: ${inputParams.normalizationType}, add intercept: ${inputParams.addIntercept}")
-    }
     // Append zero regularization weight if there is no regularization set
     if (inputParams.regularizationType == RegularizationType.NONE) {
       inputParams.regularizationWeights = List(0.0)
