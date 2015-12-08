@@ -5,8 +5,12 @@ import com.linkedin.photon.ml.DataValidationType._
 import com.linkedin.photon.ml.io.FieldNamesType._
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.supervised.TaskType._
+
+import scala.collection.mutable.ArrayBuffer
+
 
 /**
  *  A bean class for PhotonML parameters to replace the original case class for input parameters.
@@ -117,6 +121,27 @@ class Params {
    * tend to be more computationally demanding, this should default to false.
    */
   var trainingDiagnosticsEnabled: Boolean = false
+
+  /**
+   * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
+   */
+  def validate(): Unit = {
+    val messages = new ArrayBuffer[String]
+    if ((regularizationType == RegularizationType.L1 ||
+            regularizationType == RegularizationType.ELASTIC_NET) && optimizerType == OptimizerType.TRON) {
+      messages += s"Combination of (${regularizationType}, ${optimizerType}) is not allowed."
+    }
+    if (constraintString.nonEmpty && normalizationType != NormalizationType.NONE) {
+      messages += (s"Normalization and box constraints should not be used together since we cannot guarantee the " +
+                   s"satisfaction of the coefficient constraints after normalization.")
+    }
+    if (normalizationType == NormalizationType.STANDARDIZATION && !addIntercept) {
+      messages += s"Intercept must be used to enable feature standardization. Normalization type: ${normalizationType}, add intercept: ${addIntercept}."
+    }
+    if (messages.nonEmpty) {
+      throw new IllegalArgumentException(messages.mkString("\n"))
+    }
+  }
 
   override def toString(): String = {
     getClass.getDeclaredFields.map(field => {
