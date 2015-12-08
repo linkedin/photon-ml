@@ -121,7 +121,7 @@ class Params {
   override def toString(): String = {
     getClass.getDeclaredFields.map(field => {
       field.setAccessible(true)
-      field.getName + ": " + field.get(this)
+      field.getName + "=" + field.get(this)
     }).mkString("\n")
   }
 }
