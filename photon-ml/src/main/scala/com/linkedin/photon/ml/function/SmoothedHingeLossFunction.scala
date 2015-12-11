@@ -4,12 +4,16 @@ import breeze.linalg
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an optimizer-friendly
- * approximation for linear SVMs
+ * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
+ * optimizer-friendly approximation for linear SVMs
  */
 class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
 
-  override protected[ml] def calculateAt(datum: LabeledPoint, coefficients: linalg.Vector[Double], cumGradient: linalg.Vector[Double]): Double = {
+  override protected[ml] def calculateAt(
+      datum: LabeledPoint,
+      coefficients: linalg.Vector[Double],
+      cumGradient: linalg.Vector[Double]): Double = {
+
     val actualLabel = if (datum.label < 0.5) -1 else 1
     val margin = datum.computeMargin(coefficients)
     val z = actualLabel * margin

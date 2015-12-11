@@ -22,36 +22,50 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
    * given vector
    * @param datum The given datum at which point to compute the hessian multiplied by a given vector
    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
-   *                       this multiplyVector would correspond to the gradient multiplyVector.
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-  protected[ml] def hessianVectorAt(datum: Datum, coefficients: Vector[Double], multiplyVector: Vector[Double]): Vector[Double] = {
+  protected[ml] def hessianVectorAt(
+      datum: Datum,
+      coefficients: Vector[Double],
+      multiplyVector: Vector[Double]): Vector[Double] = {
+
     val cumHessianVector = Utils.initializeZerosVectorOfSameType(coefficients)
     hessianVectorAt(datum, coefficients, multiplyVector, cumHessianVector)
     cumHessianVector
   }
 
   /**
-   * First calculate the Hessian of the function under given one data point and model coefficients, then multiply it with a
-   * given multiplyVector and add to cumGradient in place.
+   * First calculate the Hessian of the function under given one data point and model coefficients, then multiply it
+   * with a given multiplyVector and add to cumGradient in place.
    * @param datum The given datum at which point to compute the hessian multiplied by a given vector
    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
-   *                       this multiplyVector would correspond to the gradient multiplyVector.
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
    * @param cumHessianVector The cumulative sum of the previously computed Hessian multiplyVector
    */
-  protected[ml] def hessianVectorAt(datum: Datum, coefficients: Vector[Double], multiplyVector: Vector[Double], cumHessianVector: Vector[Double]): Unit
+  protected[ml] def hessianVectorAt(
+    datum: Datum,
+    coefficients: Vector[Double],
+    multiplyVector: Vector[Double],
+    cumHessianVector: Vector[Double]): Unit
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given multiplyVector.
+   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
+   * multiplyVector.
    * @param data The given data at which point to compute the hessian multiplied by a given vector
-   * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
-   *                       this multiplyVector would correspond to the gradient multiplyVector.
+   * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a given
+   *                                vector
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-  protected[ml] def hessianVector(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]], multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
+  protected[ml] def hessianVector(
+      data: RDD[Datum],
+      broadcastedCoefficients: Broadcast[Vector[Double]],
+      multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
+
     val initialCumHessianVector = Utils.initializeZerosVectorOfSameType(broadcastedCoefficients.value)
     data.aggregate(initialCumHessianVector)(
       seqOp = (cumHessianVector, datum) => {
@@ -63,14 +77,19 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given multiplyVector.
+   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
+   * multiplyVector.
    * @param data The given data at which point to compute the hessian multiplied by a given vector
    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
-   *                       this multiplyVector would correspond to the gradient multiplyVector.
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-  protected[ml] def hessianVector(data: Iterable[Datum], coefficients: Vector[Double], multiplyVector: Vector[Double]): Vector[Double] = {
+  protected[ml] def hessianVector(
+      data: Iterable[Datum],
+      coefficients: Vector[Double],
+      multiplyVector: Vector[Double]): Vector[Double] = {
+
     val initialCumHessianVector = Utils.initializeZerosVectorOfSameType(coefficients)
     data.aggregate(initialCumHessianVector)(
       seqop = (cumHessianVector, datum) => {
@@ -90,34 +109,55 @@ object TwiceDiffFunction {
    * @tparam Datum The generic type of the datum
    * @return An anonymous class for the twice differentiable function with L2 regularization
    */
-  private def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) = new TwiceDiffFunction[Datum] {
+  private def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) =
+      new TwiceDiffFunction[Datum] {
 
-    override protected[ml] def calculateAt(datum: Datum, coefficients: Vector[Double], cumGradient: Vector[Double]): Double = {
+    override protected[ml] def calculateAt(
+        datum: Datum,
+        coefficients: Vector[Double],
+        cumGradient: Vector[Double]): Double = {
+
       val v = func.calculateAt(datum, coefficients, cumGradient)
       cumGradient += gradientOfL2Reg(coefficients)
       v + valueOfL2Reg(coefficients)
     }
 
-    override protected[ml] def hessianVectorAt(datum: Datum, coefficients: Vector[Double], multiplyVector: Vector[Double], cumHessianVector: Vector[Double]): Unit = {
+    override protected[ml] def hessianVectorAt(
+        datum: Datum,
+        coefficients: Vector[Double],
+        multiplyVector: Vector[Double],
+        cumHessianVector: Vector[Double]): Unit = {
       func.hessianVectorAt(datum, coefficients, multiplyVector, cumHessianVector)
       cumHessianVector += hessianVectorOfL2Reg(multiplyVector)
     }
 
-    override protected[ml] def calculate(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+
       val (v, grad) = func.calculate(data, broadcastedCoefficients)
       (v + valueOfL2Reg(broadcastedCoefficients.value), grad + gradientOfL2Reg(broadcastedCoefficients.value))
     }
 
-    override protected[ml] def calculate(data: Iterable[Datum], coefficients: Vector[Double]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: Iterable[Datum],
+        coefficients: Vector[Double]): (Double, Vector[Double]) = {
+
       val (v, grad) = func.calculate(data, coefficients)
       (v + valueOfL2Reg(coefficients), grad + gradientOfL2Reg(coefficients))
     }
 
-    override protected[ml] def hessianVector(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]], multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
+    override protected[ml] def hessianVector(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]],
+        multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
       func.hessianVector(data, broadcastedCoefficients, multiplyVector) + hessianVectorOfL2Reg(multiplyVector.value)
     }
 
-    override protected[ml] def hessianVector(data: Iterable[Datum], coefficients: Vector[Double], multiplyVector: Vector[Double]): Vector[Double] = {
+    override protected[ml] def hessianVector(
+        data: Iterable[Datum],
+        coefficients: Vector[Double],
+        multiplyVector: Vector[Double]): Vector[Double] = {
       func.hessianVector(data, coefficients, multiplyVector) + hessianVectorOfL2Reg(multiplyVector)
     }
 
@@ -142,34 +182,49 @@ object TwiceDiffFunction {
    * @tparam Datum The generic type of the datum
    * @return An anonymous class for the twice differentiable function with L1 regularization
    */
-  private def withL1Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double): TwiceDiffFunction[Datum] with L1RegularizationTerm = new TwiceDiffFunction[Datum] with L1RegularizationTerm {
+  private def withL1Regularization[Datum <: DataPoint](
+      func: TwiceDiffFunction[Datum],
+      regWeight: Double): TwiceDiffFunction[Datum]
+    with L1RegularizationTerm = new TwiceDiffFunction[Datum] with L1RegularizationTerm {
 
-    override protected[ml] def calculateAt(datum: Datum,
-                                              coefficients: Vector[Double],
-                                              cumGradient: Vector[Double]): Double = {
+    override protected[ml] def calculateAt(
+        datum: Datum,
+        coefficients: Vector[Double],
+        cumGradient: Vector[Double]): Double = {
       func.calculateAt(datum, coefficients, cumGradient)
     }
 
-    override protected[ml] def hessianVectorAt(datum: Datum,
-                                                  coefficients: Vector[Double],
-                                                  multiplyVector: Vector[Double],
-                                                  cumHessianVector: Vector[Double]): Unit = {
+    override protected[ml] def hessianVectorAt(
+        datum: Datum,
+        coefficients: Vector[Double],
+        multiplyVector: Vector[Double],
+        cumHessianVector: Vector[Double]): Unit = {
       func.hessianVectorAt(datum, coefficients, multiplyVector, cumHessianVector)
     }
 
-    override protected[ml] def calculate(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
       func.calculate(data, broadcastedCoefficients)
     }
 
-    override protected[ml] def calculate(data: Iterable[Datum], coefficients: Vector[Double]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: Iterable[Datum],
+        coefficients: Vector[Double]): (Double, Vector[Double]) = {
       func.calculate(data, coefficients)
     }
 
-    override protected[ml] def hessianVector(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]], multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
+    override protected[ml] def hessianVector(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]],
+        multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
       func.hessianVector(data, broadcastedCoefficients, multiplyVector)
     }
 
-    override protected[ml] def hessianVector(data: Iterable[Datum], coefficients: Vector[Double], multiplyVector: Vector[Double]): Vector[Double] = {
+    override protected[ml] def hessianVector(
+        data: Iterable[Datum],
+        coefficients: Vector[Double],
+        multiplyVector: Vector[Double]): Vector[Double] = {
       func.hessianVector(data, coefficients, multiplyVector)
     }
 
@@ -188,8 +243,15 @@ object TwiceDiffFunction {
    * @tparam Datum Datum type
    * @return The twice differentiable function with necessary decorations
    */
-  def withRegularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regularizationContext: RegularizationContext, regWeight: Double): TwiceDiffFunction[Datum] = {
-    val (l1Weight, l2Weight) = (regularizationContext.getL1RegularizationWeight(regWeight), regularizationContext.getL2RegularizationWeight(regWeight))
+  def withRegularization[Datum <: DataPoint](
+      func: TwiceDiffFunction[Datum],
+      regularizationContext: RegularizationContext,
+      regWeight: Double): TwiceDiffFunction[Datum] = {
+
+    val (l1Weight, l2Weight) = (
+      regularizationContext.getL1RegularizationWeight(regWeight),
+      regularizationContext.getL2RegularizationWeight(regWeight))
+
     (l1Weight,  l2Weight) match {
       case (0.0, 0.0) =>
         // No regularization

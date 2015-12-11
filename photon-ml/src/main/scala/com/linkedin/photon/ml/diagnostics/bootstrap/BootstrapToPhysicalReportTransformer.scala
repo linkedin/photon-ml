@@ -5,14 +5,16 @@ import com.linkedin.photon.ml.diagnostics.reporting._
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
 
-class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[BootstrapReport, SectionPhysicalReport] {
+class BootstrapToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[BootstrapReport, SectionPhysicalReport] {
 
   import BootstrapToPhysicalReportTransformer._
 
   override def transform(logical: BootstrapReport): SectionPhysicalReport = {
-    val bootstrapMetrics = new SectionPhysicalReport(Seq(new BulletedListPhysicalReport(logical.bootstrappedModelMetrics.map(item => {
-      new SimpleTextPhysicalReport(s"Metric: ${item._1}, value: ${item._2}")
-    }).toSeq)), BAGGED_MODEL_METRICS_SECTION_TITLE)
+    val bootstrapMetrics = new SectionPhysicalReport(Seq(new BulletedListPhysicalReport(
+      logical.bootstrappedModelMetrics.map(item => {
+        new SimpleTextPhysicalReport(s"Metric: ${item._1}, value: ${item._2}")
+      }).toSeq)), BAGGED_MODEL_METRICS_SECTION_TITLE)
 
     val metricsDistribution = new SectionPhysicalReport(logical.metricDistributions.map(x => {
       val builder = new ChartBuilder
@@ -49,7 +51,9 @@ class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransf
         val plot = builder.chartType(StyleManager.ChartType.Bar)
           .height(PlotUtils.PLOT_HEIGHT)
           .theme(StyleManager.ChartTheme.XChart)
-          .title(s"Coefficient distribution for N=$name, T=$term (mean = ${summary.getMean()}, st.dev = ${summary.getStdDev()})")
+          .title(
+            s"Coefficient distribution for N=$name, T=$term (mean = ${summary.getMean()}, " +
+            s"st.dev = ${summary.getStdDev()})")
           .yAxisTitle("Coefficient value")
           .width(PlotUtils.PLOT_WIDTH)
           .build()
@@ -57,9 +61,11 @@ class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransf
         val yRange = PlotUtils.getRange(Seq(summary.getMin, summary.getMax))
 
         plot.addSeries(s"Minimum ${summary.getMin}", Array(0.0), Array(summary.getMin))
-        plot.addSeries(s"First quartile ${summary.estimateFirstQuartile()}", Array(0.0), Array(summary.estimateFirstQuartile()))
+        plot.addSeries(
+          s"First quartile ${summary.estimateFirstQuartile()}", Array(0.0), Array(summary.estimateFirstQuartile()))
         plot.addSeries(s"Median ${summary.estimateMedian()}", Array(0.0), Array(summary.estimateMedian()))
-        plot.addSeries(s"Third quartile ${summary.estimateThirdQuartile()}", Array(0.0), Array(summary.estimateThirdQuartile()))
+        plot.addSeries(
+          s"Third quartile ${summary.estimateThirdQuartile()}", Array(0.0), Array(summary.estimateThirdQuartile()))
         plot.addSeries(s"Maximum ${summary.getMax}", Array(0.0), Array(summary.getMax))
         plot.getStyleManager.setYAxisMin(yRange._1)
         plot.getStyleManager.setYAxisMax(yRange._2)
@@ -68,13 +74,15 @@ class BootstrapToPhysicalReportTransformer extends LogicalToPhysicalReportTransf
 
     val straddlingZeroSection = new SectionPhysicalReport(
       Seq(
-        new SimpleTextPhysicalReport(s"Total features with interquartile range straddling zero: ${logical.zeroCrossingFeatures.size}"),
+        new SimpleTextPhysicalReport(
+          s"Total features with interquartile range straddling zero: ${logical.zeroCrossingFeatures.size}"),
         new BulletedListPhysicalReport(logical.zeroCrossingFeatures.toSeq.sortBy(_._2._2).reverse.map(x => {
           val ((name, term), (index, importance, coeff)) = x
           new SimpleTextPhysicalReport(s"Feature N=$name, T=$term with importance $importance ==> $coeff")
         }))), FEATURES_STRADDLING_ZERO_TITLE)
 
-    new SectionPhysicalReport(Seq(metricsDistribution, bootstrapMetrics, importantFeatures, straddlingZeroSection), BOOTSTRAP_SECTION_TITLE)
+    new SectionPhysicalReport(
+      Seq(metricsDistribution, bootstrapMetrics, importantFeatures, straddlingZeroSection), BOOTSTRAP_SECTION_TITLE)
   }
 }
 

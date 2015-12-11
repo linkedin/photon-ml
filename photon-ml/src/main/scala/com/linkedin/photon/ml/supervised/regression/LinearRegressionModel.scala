@@ -29,7 +29,11 @@ class LinearRegressionModel(override val coefficients: Vector[Double], override 
    * @param offset the input data point's offset
    * @return
    */
-  override protected def computeMean(coefficients: Vector[Double], intercept: Option[Double], features: Vector[Double], offset: Double): Double = {
+  override protected def computeMean(
+      coefficients: Vector[Double],
+      intercept: Option[Double],
+      features: Vector[Double],
+      offset: Double): Double = {
     coefficients.dot(features) + intercept.getOrElse(0.0) + offset
   }
 }

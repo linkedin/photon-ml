@@ -11,24 +11,31 @@ import org.apache.spark.rdd.RDD
  * @param intercept The generalized linear model's intercept parameter (Optional)
  * @author xazhang
  */
-abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val intercept: Option[Double]) extends Serializable {
+abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val intercept: Option[Double])
+  extends Serializable {
 
   /**
    * If the generalized linear model has intercept estimated
    */
   def hasIntercept: Boolean = intercept.isDefined
 
-  protected def computeMean(coefficients: Vector[Double], intercept: Option[Double], features: Vector[Double], offset: Double): Double
+  protected def computeMean(
+    coefficients: Vector[Double],
+    intercept: Option[Double],
+    features: Vector[Double],
+    offset: Double): Double
 
   /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated coefficients and intercept
+   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+   * coefficients and intercept
    * @param features vector representing a single data point's features
    * @return Computed mean function value
    */
   def computeMeanFunction(features: Vector[Double]): Double = computeMeanFunctionWithOffset(features, 0.0)
 
   /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated coefficients and intercept
+   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+   * coefficients and intercept
    * @param features vector representing a single data point's features
    * @param offset offset of the data point
    * @return Computed mean function value
@@ -38,7 +45,8 @@ abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val inte
   }
 
   /**
-   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the estimated coefficients and intercept
+   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
+   * estimated coefficients and intercept
    * @param features RDD representing data points' features
    * @return Computed mean function value
    */
@@ -47,7 +55,8 @@ abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val inte
   }
 
   /**
-   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the estimated coefficients and intercept
+   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
+   * estimated coefficients and intercept
    * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
    * @return Computed mean function value
    */
@@ -87,7 +96,8 @@ abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val inte
   }
 
   /**
-   * Use String interpolation over format. It's a bit more concise and is checked at compile time (e.g. forgetting an argument would be a compile error).
+   * Use String interpolation over format. It's a bit more concise and is checked at compile time (e.g. forgetting an
+   * argument would be a compile error).
    * @author cfreeman
    */
   override def toString: String = {
