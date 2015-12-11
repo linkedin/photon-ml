@@ -20,16 +20,13 @@ import com.linkedin.photon.ml.diagnostics.reporting._
  *           Output type
  */
 abstract class BaseSequencePhysicalReportRender[-P <: PhysicalReport, R](
-    strategy: RenderStrategy[P, R],
-    numberingContext: NumberingContext)
-  extends SpecificRenderer[SequencePhysicalReport[P], R] {
-
+                                                                      strategy:RenderStrategy[P, R],
+                                                                      numberingContext:NumberingContext) extends SpecificRenderer[SequencePhysicalReport[P], R] {
+ 
   def render(report:SequencePhysicalReport[P]) : R = {
     numberingContext.enterContext()
     try {
-      coalesce(
-        report.items
-          .map( x => (numberingContext.nextItem(), x, strategy.locateRenderer(x).render(x))))
+      coalesce(report.items.map( x => (numberingContext.nextItem(), x, strategy.locateRenderer(x).render(x))))
     } finally {
       numberingContext.exitContext()
     }

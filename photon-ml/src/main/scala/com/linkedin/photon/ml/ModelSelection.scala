@@ -23,9 +23,7 @@ object ModelSelection extends Logging
    * @param validatingData The validating data
    * @return A tuple of the key and the best binary classifier model according to the evaluation metric
    */
-  def selectBestLinearClassifier[M <: GeneralizedLinearModel with BinaryClassifier](
-      binaryClassifiers: Iterable[(Double, M)],
-      validatingData: RDD[LabeledPoint]): (Double, M) = {
+  def selectBestLinearClassifier[M <: GeneralizedLinearModel with BinaryClassifier](binaryClassifiers: Iterable[(Double, M)], validatingData: RDD[LabeledPoint]): (Double, M) = {
     selectModelByKey(binaryClassifiers, validatingData, Evaluation.AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS)
   }
 
@@ -35,9 +33,8 @@ object ModelSelection extends Logging
    * @param validatingData The validating data
    * @return A tuple of the key and the best linear regression model according to the evaluation metric
    */
-  def selectBestLinearRegressionModel(
-      linearRegressionModels: Iterable[(Double, LinearRegressionModel)],
-      validatingData: RDD[LabeledPoint]): (Double, LinearRegressionModel) = {
+  def selectBestLinearRegressionModel(linearRegressionModels: Iterable[(Double, LinearRegressionModel)], validatingData: RDD[LabeledPoint]): (Double, LinearRegressionModel) =
+  {
     selectModelByKey(linearRegressionModels, validatingData, Evaluation.ROOT_MEAN_SQUARE_ERROR)
   }
 
@@ -47,27 +44,21 @@ object ModelSelection extends Logging
    * @param validatingData The validating data
    * @return A tuple of the key and the best poisson regression model according to the evaluation metric
    */
-  def selectBestPoissonRegressionModel(
-      poissonRegressionModels: Iterable[(Double, PoissonRegressionModel)],
-      validatingData: RDD[LabeledPoint]): (Double, PoissonRegressionModel) = {
+  def selectBestPoissonRegressionModel(poissonRegressionModels: Iterable[(Double, PoissonRegressionModel)], validatingData: RDD[LabeledPoint]): (Double, PoissonRegressionModel) =
+  {
     selectModelByKey(poissonRegressionModels, validatingData, Evaluation.DATA_LOG_LIKELIHOOD)
   }
 
 
-  private def selectModelByKey[M <: GeneralizedLinearModel](
-      models:Iterable[(Double, M)],
-      validatingData:RDD[LabeledPoint],
-      metric:String): (Double, M) = {
-
-    val metricMetadata = Evaluation.metricMetadata.getOrElse(
-      metric, MetricMetadata(metric, metric, Evaluation.sortIncreasing, None))
+  private def selectModelByKey[M <: GeneralizedLinearModel](models:Iterable[(Double, M)], validatingData:RDD[LabeledPoint], metric:String): (Double, M) = {
+    val metricMetadata = Evaluation.metricMetadata.getOrElse(metric, MetricMetadata(metric, metric, Evaluation.sortIncreasing, None))
     val sortedByMetric = models.map(x => {
       (Evaluation.evaluate(x._2, validatingData).getOrElse(metric, -1.0), x._1, x._2)
     }).toArray.sortBy(_._1)(metricMetadata.worstToBestOrdering)
     val (bestMetricValue, bestLambda, bestModel) = sortedByMetric.last
     val (worstMetricValue, worstLambda, worstModel) = sortedByMetric.head
-      logInfo(s"Selecting model with lambda = $bestLambda ($metric = $bestMetricValue) v. worst @ " +
-              s"lambda = $worstLambda ($metric = $worstMetricValue)")
+      logInfo(s"Selecting model with lambda = $bestLambda ($metric = $bestMetricValue) v. worst @ lambda = $worstLambda ($metric = $worstMetricValue)")
     (bestLambda, bestModel)
   }
 }
+

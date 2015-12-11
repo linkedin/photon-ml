@@ -170,12 +170,9 @@ object Evaluation extends Logging {
     MEAN_ABSOLUTE_ERROR -> MetricMetadata(MEAN_ABSOLUTE_ERROR, "Regression metric", sortDecreasing, None),
     MEAN_SQUARE_ERROR -> MetricMetadata(MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None),
     ROOT_MEAN_SQUARE_ERROR -> MetricMetadata(ROOT_MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None),
-    AREA_UNDER_PRECISION_RECALL -> MetricMetadata(
-      AREA_UNDER_PRECISION_RECALL, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
-    AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> MetricMetadata(
-      AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
+    AREA_UNDER_PRECISION_RECALL -> MetricMetadata(AREA_UNDER_PRECISION_RECALL, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
+    AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> MetricMetadata(AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
     DATA_LOG_LIKELIHOOD -> MetricMetadata(DATA_LOG_LIKELIHOOD, "Model selection metric", sortIncreasing, None),
-    AIKAKE_INFORMATION_CRITERION -> MetricMetadata(
-      AIKAKE_INFORMATION_CRITERION, "Model selection metric", sortDecreasing, None),
+    AIKAKE_INFORMATION_CRITERION -> MetricMetadata(AIKAKE_INFORMATION_CRITERION, "Model selection metric", sortDecreasing, None),
     PEAK_F1_SCORE -> MetricMetadata(PEAK_F1_SCORE, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))))
 }

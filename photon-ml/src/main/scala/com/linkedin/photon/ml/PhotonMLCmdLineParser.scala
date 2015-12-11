@@ -70,28 +70,23 @@ object PhotonMLCmdLineParser {
               .foreach(x => params.taskType = TaskType.withName(x.toUpperCase))
       opt[String](VALIDATE_DIR_OPTION)
               .text(s"Input directory of validating data. Default: ${defaultParams.validateDirOpt}. Note that\n" +
-                      s"1. Validation is optional\n" +
-                      s"2. If validation data set is provided, then model validating will be performed and " +
-                        s"best model will be provided\n" +
-                      s"3. No matter 1 or 2, all learned models will be provided, so users can always peform " +
-                        s"an independent model selection job")
+                            s"1. Validation is optional\n" +
+                            s"2. If validation data set is provided, then model validating will be performed and best model will be provided\n" +
+                            s"3. No matter 1 or 2, all learned models will be provided, so users can always peform an independent model selection job")
               .foreach(x => params.validateDirOpt = Some(x))
       opt[Boolean](INTERCEPT_OPTION)
               .text(s"Whether to learn the intercept. Default ${defaultParams.addIntercept}.")
               .foreach(x => params.addIntercept = x)
       opt[String](REGULARIZATION_WEIGHTS_OPTION)
-              .text(s"Comma separated list of regularization weights. The regularization weight will be ignored if " +
-                      s"$REGULARIZATION_TYPE_OPTION is set ${RegularizationType.NONE}. " +
-                      s"Default ${defaultParams.regularizationWeights.mkString(",")}.")
+              .text(s"Comma separated list of regularization weights. The regularization weight will be ignored if $REGULARIZATION_TYPE_OPTION is set ${RegularizationType.NONE}. " +
+                            s"Default ${defaultParams.regularizationWeights.mkString(",")}.")
               .foreach(x => params.regularizationWeights = x.split(",").map(_.toDouble).toList)
       opt[String](REGULARIZATION_TYPE_OPTION)
-              .text(s"The type of regularization that will be used to train the model. Options: " +
-                      s"[${RegularizationType.values.mkString("|")}}]. If ${RegularizationType.NONE} is used, " +
-                      s"regularization weight will be ignored. Default: ${defaultParams.regularizationType}")
+              .text(s"The type of regularization that will be used to train the model. Options: [${RegularizationType.values.mkString("|")}}]. If ${RegularizationType.NONE} is used, " +
+                            s"regularization weight will be ignored. Default: ${defaultParams.regularizationType}")
               .foreach(x => params.regularizationType = RegularizationType.withName(x.toUpperCase))
       opt[Double](ELASTIC_NET_ALPHA_OPTION)
-              .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and " +
-                      s"alpha = 0 is L2. Required for elastic net regularization. Default is 0.5")
+              .text(s"The alpha value in the range of [0, 1] for elastic net regularization. alpha = 1 is L1 and alpha = 0 is L2. Required for elastic net regularization. Default is 0.5")
               .validate(x => if (x >= 0.0 && x <= 1.0) success else failure("alpha must be in the range [0, 1]."))
               .foreach(x => params.elasticNetAlpha = Some(x))
       opt[Int](MAX_NUM_ITERATIONS_OPTION)
@@ -99,75 +94,69 @@ object PhotonMLCmdLineParser {
               .foreach(x => params.maxNumIter = x)
       opt[Double](TOLERANCE_OPTION)
               .text(s"The optimizer's convergence tolerance. Default ${defaultParams.tolerance}. " +
-                      s"Smaller value will lead to higher accuracy with the cost of more iterations.")
+                            s"Smaller value will lead to higher accuracy with the cost of more iterations.")
               .foreach(x => params.tolerance = x)
       opt[String](JOB_NAME_OPTION)
               .text(s"Job name of this spark application. Default: ${defaultParams.jobName}")
               .foreach(x => params.jobName = x)
       opt[String](OPTIMIZER_TYPE_OPTION)
-              .text(s"The type of optimizer that will be used to train the model. Options: " +
-                      s"[${OptimizerType.values.mkString("|")}}]. Default: ${defaultParams.optimizerType}}.")
+              .text(s"The type of optimizer that will be used to train the model. Options: [${OptimizerType.values.mkString("|")}}]. " +
+                            s"Default: ${defaultParams.optimizerType}}.")
               .foreach(x => params.optimizerType = OptimizerType.withName(x.toUpperCase))
       opt[Boolean](OPTIMIZATION_STATE_TRACKER_OPTION)
-              .text(s"Whether to enable the optimization tracker, which tracks and stores the per-iteration log " +
-                      s"information of the running optimizer Default: ${defaultParams.enableOptimizationStateTracker}")
+              .text(s"Whether to enable the optimization tracker, which tracks and stores the per-iteration log information " +
+                            s"of the running optimizer Default: ${defaultParams.enableOptimizationStateTracker}")
               .foreach(x => params.enableOptimizationStateTracker = x)
       opt[Boolean](KRYO_OPTION)
               .text(s"Whether to use kryo to serialize the intermediate result, which is generally a good idea. " +
-                      s"More information on serialization method used in Spark can be found through " +
-                      s"the following link: https://spark.apache.org/docs/latest/tuning.html#data-serialization. " +
-                        s"Default: ${defaultParams.kryo}")
+                            s"More information on serialization method used in Spark can be found through " +
+                            s"the following link: https://spark.apache.org/docs/latest/tuning.html#data-serialization. Default: ${defaultParams.kryo}")
               .foreach(x => params.kryo = x)
       opt[String](FORMAT_TYPE_OPTION)
               .text(s"Input Avro file's format, which contains the information of each field's name. " +
-                      s"Options: [${FieldNamesType.values.mkString("|")}]. Default: ${defaultParams.fieldsNameType}")
+                            s"Options: [${FieldNamesType.values.mkString("|")}]. Default: ${defaultParams.fieldsNameType}")
               .foreach(x => params.fieldsNameType = FieldNamesType.withName(x.toUpperCase))
       opt[Int](MIN_NUM_PARTITIONS_OPTION)
               .text(s"The minimum number of Hadoop splits to generate.. Default: ${defaultParams.minNumPartitions}. " +
-                      s"This would be potentially helpful when the number of default Hadoop splits is small. Note " +
-                      s"that when the default number of Hadoop splits (from HDFS) is larger than min-partitions, " +
-                      s"then min-partitions will be ignored and the number of partitions of the resulting RDD will " +
-                      s"be same as the default number of Hadoop splits. In short, min-partitions will *only* be able " +
-                      s"to increase the number of partitions.")
+                            s"This would be potentially helpful when the number of default Hadoop splits is small. Note that when " +
+                            s"the default number of Hadoop splits (from HDFS) is larger than min-partitions, then min-partitions " +
+                            s"will be ignored and the number of partitions of the resulting RDD will be same as the default number " +
+                            s"of Hadoop splits. In short, min-partitions will *only* be able to increase the number of partitions.")
               .foreach(x => params.minNumPartitions = x)
       opt[Boolean](VALIDATE_PER_ITERATION)
               .text(s"If validating data is provided, and optimization tracker is enabled, " +
-                      s"whether to compute the evaluation metrics on validating data per iteration")
+                            s"whether to compute the evaluation metrics on validating data per iteration")
               .foreach(x => params.validatePerIteration = x)
       opt[String](SUMMARIZATION_OUTPUT_DIR)
               .text("An optional directory for summarization output")
               .foreach(x => params.summarizationOutputDirOpt = Some(x))
       opt[String](NORMALIZATION_TYPE)
-              .text(s"The normalization type to use in the training. Options: " +
-                      s"[${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
+              .text(s"The normalization type to use in the training. Options: [${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
               .foreach(x => params.normalizationType = NormalizationType.valueOf(x.toUpperCase))
       opt[String](DATA_VALIDATION_TYPE)
-              .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. " +
-                      s"Default: ${defaultParams.dataValidationType}")
+              .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. Default: ${defaultParams.dataValidationType}")
               .foreach(x => params.dataValidationType = DataValidationType.withName(x.toUpperCase()))
       opt[Boolean](TRAINING_DIAGNOSTICS)
-              .text(s"Whether or not to enable training diagnostics. These can be slow but are very informative. " +
-                      s"Only relevant if you provide a validation set.")
+              .text(s"Whether or not to enable training diagnostics. These can be slow but are very informative. Only relevant if you provide a validation set.")
               .foreach(x => params.trainingDiagnosticsEnabled = x)
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
-              .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be " +
-                      s"an array of maps with the map containing keys only from {" +
-                        ConstraintMapKeys.values.mkString(s",") + "} (other " +
-                      s"keys will be ignored")
+              .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be an array " +
+                            s"of maps with the map containing keys only from {" + ConstraintMapKeys.values.mkString(s",") + "} (other " +
+                            s"keys will be ignored")
               .validate(x => if (checkConstraintStringValidity(x)) {
                   success
                 } else {
                   failure(s"Could not parse the input constraint string [" + x + "]. The input is expected "
-                            + s"to be an array of maps with the map containing keys only from {"
-                            + ConstraintMapKeys.values.mkString(",") + "}. An example input string would be: "
-                            + """
-                                [
-                                  {"name": "ageInHour", "term": "", "lowerBound": -1, "upperBound": 0},
-                                  {"name": "ageInHour:lv", "term": "4", "lowerBound": -1},
-                                  {"name": "ageInHour:lv", "term": "12", "upperBound": 0},
-                                  {"name": "actor_rawclicksw.gt.0", "term": "*", "lowerBound": -0.01}
-                                ]
-                            """
+                                  + s"to be an array of maps with the map containing keys only from {"
+                                  + ConstraintMapKeys.values.mkString(",") + "}. An example input string would be: "
+                                  + """
+                                                     [
+                                                       {"name": "ageInHour", "term": "", "lowerBound": -1, "upperBound": 0},
+                                                       {"name": "ageInHour:lv", "term": "4", "lowerBound": -1},
+                                                       {"name": "ageInHour:lv", "term": "12", "upperBound": 0},
+                                                       {"name": "actor_rawclicksw.gt.0", "term": "*", "lowerBound": -0.01}
+                                                     ]
+                                    """
                   )
                 }
               )

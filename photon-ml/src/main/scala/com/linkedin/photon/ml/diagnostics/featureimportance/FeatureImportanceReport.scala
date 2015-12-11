@@ -14,9 +14,7 @@ import scala.collection.SortedMap
  * @param rankToImportance
  * Map of importance percentile / rank &rarr; importance @ that rank
  */
-case class FeatureImportanceReport(
-    importanceType: String,
-    importanceDescription: String,
-    featureImportance: Map[(String, String), (Int, Double, String)],
-    rankToImportance: Map[Double, Double])
-  extends LogicalReport
+case class FeatureImportanceReport(importanceType: String,
+                                   importanceDescription: String,
+                                   featureImportance: Map[(String, String), (Int, Double, String)],
+                                   rankToImportance: Map[Double, Double]) extends LogicalReport

@@ -11,11 +11,10 @@ import com.linkedin.photon.ml.function.DiffFunction
  *
  * @author bdrew
  */
-abstract class AbstractOptimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]](
-    protected var tolerance: Double = 1e-6,
-    protected var maxNumIterations: Int = 80,
-    protected var constraintMap: Option[Map[Int, (Double, Double)]] = None,
-    protected var isTrackingState: Boolean = true)
+abstract class AbstractOptimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]](protected var tolerance: Double = 1e-6,
+                                                                                       protected var maxNumIterations: Int = 80,
+                                                                                       protected var constraintMap: Option[Map[Int, (Double, Double)]] = None,
+                                                                                       protected var isTrackingState: Boolean = true)
   extends Optimizer[Datum, Function] {
 
   protected var initialState: Option[OptimizerState] = None
@@ -24,28 +23,23 @@ abstract class AbstractOptimizer[Datum <: DataPoint, -Function <: DiffFunction[D
 
   protected var previousState: Option[OptimizerState] = None
 
-  protected var statesTracker: Option[OptimizationStatesTracker] = if (isTrackingState) {
-    Some(new OptimizationStatesTracker())
-  } else {
-    None
-  }
+  protected var statesTracker: Option[OptimizationStatesTracker] = if (isTrackingState) Some(new OptimizationStatesTracker()) else None
 
   def isDone: Boolean = convergenceReason.nonEmpty
 
   def convergenceReason: Option[ConvergenceReason] = {
-    if (initialState.isEmpty || currentState.isEmpty || previousState.isEmpty) {
+    if (initialState.isEmpty || currentState.isEmpty || previousState.isEmpty)
       None
-    } else if (currentState.get.iter >= maxNumIterations) {
+    else if (currentState.get.iter >= maxNumIterations)
       Some(MaxIterations)
-    } else if (currentState.get.iter == previousState.get.iter) {
+    else if (currentState.get.iter == previousState.get.iter)
       Some(ObjectiveNotImproving)
-    } else if (abs(currentState.get.value - previousState.get.value) <= tolerance * initialState.get.value) {
+    else if (abs(currentState.get.value - previousState.get.value) <= tolerance * initialState.get.value)
       Some(FunctionValuesConverged)
-    } else if (norm(currentState.get.gradient, 2) <= tolerance * norm(initialState.get.gradient, 2)) {
+    else if (norm(currentState.get.gradient, 2) <= tolerance * norm(initialState.get.gradient, 2))
       Some(GradientConverged)
-    } else {
+    else
       None
-    }
   }
 
   def getTolerance(): Double = tolerance

@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml.util
 
-import java.lang.{
-  Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
+import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.io
@@ -106,15 +105,12 @@ protected[ml] object Utils {
    * Parse String to Double
    */
   private def atod(string: String): Double = {
-    if (string.length() < 1) {
+    if (string.length() < 1)
       throw new IllegalArgumentException("Can't convert empty string to double")
-    }
-
     val double = string.toDouble
     if (JDouble.isNaN(double) || JDouble.isInfinite(double)) {
       throw new IllegalArgumentException(s"NaN or Infinity in input: $string")
     }
-
     double
   }
 
@@ -137,15 +133,12 @@ protected[ml] object Utils {
    * Parse String to Float
    */
   private def atof(string: String): Float = {
-    if (string.length() < 1) {
+    if (string.length() < 1)
       throw new IllegalArgumentException("Can't convert empty string to float")
-    }
-
     val float = string.toFloat
     if (JFloat.isNaN(float) || JFloat.isInfinite(float)) {
       throw new IllegalArgumentException(s"NaN or Infinity in input: $string")
     }
-
     float
   }
 
@@ -247,8 +240,7 @@ protected[ml] object Utils {
   def initializeZerosVectorOfSameType(prototypeVector: Vector[Double]): Vector[Double] = {
     prototypeVector match {
       case dense: DenseVector[Double] => DenseVector.zeros[Double](dense.length)
-      case sparse: SparseVector[Double] =>
-        new SparseVector[Double](sparse.array.index, Array.fill(sparse.array.index.length)(0.0), sparse.length)
+      case sparse: SparseVector[Double] => new SparseVector[Double](sparse.array.index, Array.fill(sparse.array.index.length)(0.0), sparse.length)
       case _ => throw new IllegalArgumentException("Vector types other than " + classOf[DenseVector[Double]]
           + " and " + classOf[SparseVector[Double]] + " is not supported. Current class type: "
           + prototypeVector.getClass.getName + ".")

@@ -26,23 +26,16 @@ import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
  * @param histogram
  * Observed positive rate binned by expected positive rate
  */
-class HosmerLemeshowReport(
-    val binningMsg: String,
-    val chiSquareCalculationMsg: String,
-    val chiSquaredScore: Double,
-    val degreesOfFreedom: Int,
-    val chiSquaredProb: Double,
-    val standardConfidencesAndCutoffs: List[(Double, Double)],
-    val histogram: Array[PredictedProbabilityVersusObservedFrequencyHistogramBin])
-  extends LogicalReport {
+class HosmerLemeshowReport(val binningMsg: String,
+                           val chiSquareCalculationMsg: String,
+                           val chiSquaredScore: Double,
+                           val degreesOfFreedom: Int,
+                           val chiSquaredProb: Double,
+                           val standardConfidencesAndCutoffs: List[(Double, Double)],
+                           val histogram: Array[PredictedProbabilityVersusObservedFrequencyHistogramBin]) extends LogicalReport {
 
   override def toString(): String = {
-    s"${getTestDescription}\n" +
-    s"${getPointProbabilityAnalysis}\n" +
-    s"Cutoffs:\n" +
-    s"${getCutoffAnalysis.mkString("\n")}\n" +
-    s"Histogram:\n" +
-    s"    ${histogram.mkString("\n    ")}"
+    s"${getTestDescription}\n${getPointProbabilityAnalysis}\nCutoffs:\n${getCutoffAnalysis.mkString("\n")}\nHistogram:\n    ${histogram.mkString("\n    ")}"
   }
 
   def getTestDescription(): String = {
@@ -56,8 +49,7 @@ class HosmerLemeshowReport(
   def getCutoffAnalysis(): List[String] = {
     standardConfidencesAndCutoffs.map(x => {
       val reject = if (chiSquaredScore > x._2) "accept" else "reject"
-      f"  Pr[X <= ${x._2}%12.09f] <===> ${100.0 * (1.0 - x._1)}%.09f%% H0 " +
-      f"(Ill-specified model with Chi^2 <= ${x._2} by chance alone): $reject"
+      f"  Pr[X <= ${x._2}%12.09f] <===> ${100.0 * (1.0 - x._1)}%.09f%% H0 (Ill-specified model with Chi^2 <= ${x._2} by chance alone): $reject"
     })
   }
 }
