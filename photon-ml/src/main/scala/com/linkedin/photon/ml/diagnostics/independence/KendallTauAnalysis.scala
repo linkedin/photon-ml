@@ -21,7 +21,7 @@ class KendallTauAnalysis {
     val sampled = data.sample(false, rate, System.nanoTime()).persist(StorageLevel.MEMORY_AND_DISK_SER)
     val pairTypes = sampled.cartesian(sampled).map(x => {
       checkConcordance(x._1, x._2)
-    }).aggregateByKey(0L)(seqOp = _ + _, combOp = _ + _).collect.toMap
+    }).aggregateByKey(0L)(seqOp=_+_, combOp=_+_).collect.toMap
 
     sampled.unpersist(false)
     analyze(pairTypes, sampled.count)
@@ -54,21 +54,17 @@ class KendallTauAnalysis {
     val b = 9.0 * numItems * (numItems - 1)
     val d = if (b > 0) { math.sqrt(a / b) } else { 1.0 }
     val zAlpha = tauAlpha / d
-    val pValue = GAUSSIAN_DENSITY.cumulativeProbability(math.abs(zAlpha)) -
-      GAUSSIAN_DENSITY.cumulativeProbability(-math.abs(zAlpha))
-
+    val pValue = GAUSSIAN_DENSITY.cumulativeProbability(math.abs(zAlpha)) - GAUSSIAN_DENSITY.cumulativeProbability(-math.abs(zAlpha))
     val msg = if (numTiesA + numTiesB > 0) {
       s"""
-         |Note: detected ties (ties in first variable: ${numTiesA}, ties in second variable: ${numTiesB}). This means
-         |that the computed z score / p value for tau-alpha over-estimates the degree of independence between A and B.
+         |Note: detected ties (ties in first variable: ${numTiesA}, ties in second variable: ${numTiesB}). This means that
+         |the computed z score / p value for tau-alpha over-estimates the degree of independence between A and B.
        """.stripMargin
     } else {
       ""
     }
 
-    new KendallTauReport(
-      numConcordant, numDiscordant, numItems, numPairs, numConcordant + numDiscordant,
-      tauAlpha, tauBeta, zAlpha, pValue, msg)
+    new KendallTauReport(numConcordant, numDiscordant, numItems, numPairs, numConcordant + numDiscordant, tauAlpha, tauBeta, zAlpha, pValue, msg)
   }
 
   private [this] def analyze(pairTypes:Map[String, Long], count:Long): KendallTauReport = {

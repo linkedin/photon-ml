@@ -13,7 +13,6 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param modelReports
  *                     Model-level information to include in the report
  */
-case class DiagnosticReport(
-    val systemReport: SystemReport,
-    val modelReports: scala.collection.mutable.ListBuffer[ModelDiagnosticReport[GeneralizedLinearModel]])
-  extends LogicalReport
+case class DiagnosticReport(val systemReport: SystemReport,
+                            val modelReports: scala.collection.mutable.ListBuffer[ModelDiagnosticReport[GeneralizedLinearModel]]) extends LogicalReport
+

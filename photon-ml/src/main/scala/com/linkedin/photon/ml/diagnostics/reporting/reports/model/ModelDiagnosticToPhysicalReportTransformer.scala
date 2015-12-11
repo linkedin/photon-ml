@@ -11,15 +11,13 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * Convert model diagnostics into a presentable form.
  */
-class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel]
-  extends LogicalToPhysicalReportTransformer[ModelDiagnosticReport[GLM], SectionPhysicalReport] {
+class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel] extends LogicalToPhysicalReportTransformer[ModelDiagnosticReport[GLM], SectionPhysicalReport] {
 
   import ModelDiagnosticToPhysicalReportTransformer._
 
   def transform(model: ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
     val metricsSection:SectionPhysicalReport = transformMetrics(model)
-    val predErrSection:SectionPhysicalReport = PREDICTION_ERROR_TRANSFORMER
-      .transform(model.predictionErrorIndependence)
+    val predErrSection:SectionPhysicalReport = PREDICTION_ERROR_TRANSFORMER.transform(model.predictionErrorIndependence)
     val modelSection: SectionPhysicalReport = new SectionPhysicalReport(
       Seq(
         FEATURE_IMPORTANCE_TRANSFORMER.transform(model.meanImpactFeatureImportance),
@@ -46,21 +44,13 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel]
       case None => None
     }
 
-    new SectionPhysicalReport(
-      metricsSection :: predErrSection :: modelSection ::
-      fitSection.toList ++ bootstrapSection.toList ++ hlSection.toList,
-      s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
+    new SectionPhysicalReport(metricsSection :: predErrSection :: modelSection :: fitSection.toList ++ bootstrapSection.toList ++ hlSection.toList, s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
   }
 
   private def transformMetrics(model:ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
     new SectionPhysicalReport(
       Seq(
-        new BulletedListPhysicalReport(
-          model.metrics
-            .map(x => s"Metric: [${x._1}, value: [${x._2}]")
-            .toSeq
-            .sorted
-            .map(x => new SimpleTextPhysicalReport(x)))),
+        new BulletedListPhysicalReport(model.metrics.map(x => s"Metric: [${x._1}, value: [${x._2}]").toSeq.sorted.map(x => new SimpleTextPhysicalReport(x)))),
       "Validation Set Metrics")
   }
 }

@@ -17,9 +17,7 @@ class RendererWrapper[P <: PhysicalReport : ClassTag, +R](val wrapped: SpecificR
     p match {
       case asP: P => wrapped.render(asP)
       case _ =>
-        throw new ClassCastException(
-          s"Wrapper could not cast instance of ${p.getClass.getName} to target type " +
-          s"${implicitly[ClassTag[P]].runtimeClass.getName}")
+        throw new ClassCastException(s"Wrapper could not cast instance of ${p.getClass.getName} to target type ${implicitly[ClassTag[P]].runtimeClass.getName}")
     }
   }
 }

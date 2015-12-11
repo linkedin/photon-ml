@@ -1,8 +1,8 @@
 package com.linkedin.photon.ml.function
 
 /**
- * The function to calculate l(z, y) with z = theta^T^x + offset for generalized linear model loss functions, where
- * theta is the coefficient, x is the feature vector, z is the margin, y is the label. It is the negative
+ * The function to calculate l(z, y) with z = theta^T^x + offset for generalized linear model loss functions, where theta is the coefficient,
+ * x is the feature vector, z is the margin, y is the label. It is the negative
  * of the log-likelihood for one data point, except for an irrelevant constant term.
  * For example, for linear regression, l(z, y) = 1/2 (z - y)^2^.
  */

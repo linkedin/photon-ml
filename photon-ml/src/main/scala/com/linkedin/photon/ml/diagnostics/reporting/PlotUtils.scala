@@ -44,10 +44,6 @@ object PlotUtils {
 
     require(!mid.isInfinite && !mid.isNaN, s"Computed midpoint of ${values.mkString(", ")} must be finite")
 
-    if (math.abs(max - min) < EPSILON) {
-      (0.99 * mid - EPSILON, 1.01 * mid + EPSILON)
-    } else {
-      (min - 0.01 * diff, max + 0.01 * diff)
-    }
+    if (math.abs(max - min) < EPSILON) (0.99 * mid - EPSILON, 1.01 * mid + EPSILON) else (min - 0.01 * diff, max + 0.01 * diff)
   }
 }

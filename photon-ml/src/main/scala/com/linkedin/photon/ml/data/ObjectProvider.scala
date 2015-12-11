@@ -9,8 +9,8 @@ import org.apache.spark.broadcast.Broadcast
  * both iterable and RDD data.
  *
  * This trait hides the logic whether the data are local or from remote. Probably it will be better if Iterable and
- * RDD data are separated out in [[com.linkedin.photon.ml.function.DiffFunction]] and
- * [[com.linkedin.photon.ml.function.TwiceDiffFunction]] classes.
+ * RDD data are separated out in [[com.linkedin.photon.ml.function.DiffFunction]] and [[com.linkedin.photon.ml.function.TwiceDiffFunction]]
+ * classes.
  *
  * @author dpeng
  */

@@ -23,8 +23,8 @@ import org.apache.spark.rdd.RDD
  *
  * All generalized linear model loss function should inherite from this class.
  *
- * TODO: Note that calculateAt and hessianVectorAt methods has been annotated as deprecated and will throw an exception
- * TODO  if called. The segregation of calculateAt and hessianVectorAt with calculate and hessianVector has happen in
+ * TODO: Note that calculateAt and hessianVectorAt methods has been annotated as deprecated and will throw an exception if
+ * TODO  called. The segregation of calculateAt and hessianVectorAt with calculate and hessianVector has happen in
  * TODO  DiffFunction.withRegularization and TwiceDiffFunction.withRegularization. This will be fixed at the redesign
  * TODO  ticket: https://jira01.corp.linkedin.com:8443/browse/OFFREL-489
  *
@@ -33,78 +33,59 @@ import org.apache.spark.rdd.RDD
  *
  * @author dpeng
  */
-class GeneralizedLinearModelLossFunction(
-    singleLossFunction: PointwiseLossFunction,
-    normalizationContext: ObjectProvider[NormalizationContext])
-  extends TwiceDiffFunction[LabeledPoint] {
+class GeneralizedLinearModelLossFunction(singleLossFunction: PointwiseLossFunction, normalizationContext: ObjectProvider[NormalizationContext]) extends TwiceDiffFunction[LabeledPoint] {
+
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients in the normalization context, then
-   * multiply it with a given multiplyVector.
+   * Compute the Hessian of the function under the given data and coefficients in the normalization context, then multiply it with a given multiplyVector.
    * @param data The given data at which point to compute the hessian multiplied by a given vector
    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
+   *                       this multiplyVector would correspond to the gradient multiplyVector.
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-  override protected[ml] def hessianVector(
-      data: Iterable[LabeledPoint],
-      coefficients: Vector[Double],
-      multiplyVector: Vector[Double]): Vector[Double] = {
-
-    HessianVectorAggregator.calcHessianVector(
-      data, coefficients, multiplyVector, singleLossFunction, normalizationContext)
+  override protected[ml] def hessianVector(data: Iterable[LabeledPoint],
+                                              coefficients: Vector[Double],
+                                              multiplyVector: Vector[Double]): Vector[Double] = {
+    HessianVectorAggregator.calcHessianVector(data, coefficients, multiplyVector, singleLossFunction, normalizationContext)
   }
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients in the normalization context, then
-   * multiply it with a given multiplyVector.
+   * Compute the Hessian of the function under the given data and coefficients in the normalization context, then multiply it with a given multiplyVector.
    * @param data The given data at which point to compute the hessian multiplied by a given vector
-   * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a given
-   *                                vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+   * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a given vector
+   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate gradient method
+   *                       this multiplyVector would correspond to the gradient multiplyVector.
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-  override protected[ml] def hessianVector(
-      data: RDD[LabeledPoint],
-      broadcastedCoefficients: Broadcast[Vector[Double]],
-      multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
-
-    HessianVectorAggregator.calcHessianVector(
-      data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext)
+  override protected[ml] def hessianVector(data: RDD[LabeledPoint],
+                                              broadcastedCoefficients: Broadcast[Vector[Double]],
+                                              multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
+    HessianVectorAggregator.calcHessianVector(data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext)
   }
 
   /**
    * Calculate both the value and the gradient of the function given a RDD of data points and model coefficients
-   * in the normalization context (compute value and gradient at once is sometimes more efficient than computing them
-   * sequentially)
+   * in the normalization context (compute value and gradient at once is sometimes more efficient than computing them sequentially)
    * @param data The given data at which point to compute the function's value and gradient
    * @param broadcastedCoefficients The broadcasted model coefficients used to compute the function's value and gradient
    * @return The computed value and gradient of the function
    */
-  override protected[ml] def calculate(
-      data: RDD[LabeledPoint],
-      broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
-
-    ValueAndGradientAggregator.calculateValueAndGradient(
-      data, broadcastedCoefficients, singleLossFunction, normalizationContext)
+  override protected[ml] def calculate(data: RDD[LabeledPoint],
+                                          broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+    ValueAndGradientAggregator.calculateValueAndGradient(data, broadcastedCoefficients, singleLossFunction, normalizationContext)
   }
 
   /**
    * Calculate both the value and the gradient of the function given a sequence of data points and model coefficients
-   * in the normalization context (compute value and gradient at once is sometimes more efficient than computing them
-   * sequentially)
+   * in the normalization context (compute value and gradient at once is sometimes more efficient than computing them sequentially)
    * @param data The given data at which point to compute the function's value and gradient
    * @param coefficients The given model coefficients used to compute the function's value and gradient
    * @return The computed value and gradient of the function
    */
-  override protected[ml] def calculate(
-      data: Iterable[LabeledPoint],
-      coefficients: Vector[Double]): (Double, Vector[Double]) = {
-
-    ValueAndGradientAggregator.calculateValueAndGradient(
-      data, coefficients, singleLossFunction, normalizationContext)
+  override protected[ml] def calculate(data: Iterable[LabeledPoint],
+                                          coefficients: Vector[Double]): (Double, Vector[Double]) = {
+    ValueAndGradientAggregator.calculateValueAndGradient(data, coefficients, singleLossFunction, normalizationContext)
   }
 
   /**
@@ -112,12 +93,10 @@ class GeneralizedLinearModelLossFunction(
    * This legacy method is implemented just to comply TwiceDiffFunction trait.
    */
   @Deprecated
-  override protected[ml] def hessianVectorAt(
-      datum: LabeledPoint,
-      coefficients: Vector[Double],
-      multiplyVector: Vector[Double],
-      cumHessianVector: Vector[Double]): Unit = {
-
+  override protected[ml] def hessianVectorAt(datum: LabeledPoint,
+                                                coefficients: Vector[Double],
+                                                multiplyVector: Vector[Double],
+                                                cumHessianVector: Vector[Double]): Unit = {
     throw new UnsupportedOperationException("Do not call GeneralizedLinearModelLossFunction.hessianVectorAt")
   }
 
@@ -126,11 +105,11 @@ class GeneralizedLinearModelLossFunction(
    * This legacy method is implemented just to comply DiffFunction trait.
    */
   @Deprecated
-  override protected[ml] def calculateAt(
-      datum: LabeledPoint,
-      coefficients: Vector[Double],
-      cumGradient: Vector[Double]): Double = {
-
+  override protected[ml] def calculateAt(datum: LabeledPoint,
+                                            coefficients: Vector[Double],
+                                            cumGradient: Vector[Double]): Double = {
     throw new UnsupportedOperationException("Do not call GeneralizedLinearModelLossFunction.calculateAt")
   }
 }
+
+

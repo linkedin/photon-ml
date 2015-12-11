@@ -6,16 +6,13 @@ import com.linkedin.photon.ml.diagnostics.reporting._
 
 import scala.xml._
 
-class ChapterToHTMLRenderer(
-    renderStrategy: RenderStrategy[SectionPhysicalReport, Node],
-    numberingContext: NumberingContext,
-    namespaceBinding: NamespaceBinding,
-    htmlPrefix: String,
-    svgPrefix: String)
-  extends SpecificRenderer[ChapterPhysicalReport, Node] {
+class ChapterToHTMLRenderer(renderStrategy: RenderStrategy[SectionPhysicalReport, Node],
+                            numberingContext: NumberingContext,
+                            namespaceBinding: NamespaceBinding,
+                            htmlPrefix: String,
+                            svgPrefix: String) extends SpecificRenderer[ChapterPhysicalReport, Node] {
 
-  private val baseRenderer =
-    new BaseSequencePhysicalReportRender[SectionPhysicalReport, Node](renderStrategy, numberingContext) {
+  private val baseRenderer = new BaseSequencePhysicalReportRender[SectionPhysicalReport, Node](renderStrategy, numberingContext) {
 
     protected def coalesce(partiallyRendered: Seq[(List[Int], SectionPhysicalReport, Node)]): Node = {
       new Group(partiallyRendered.map(x => x._3))
@@ -24,10 +21,7 @@ class ChapterToHTMLRenderer(
 
   def render(chapter: ChapterPhysicalReport): Node = {
     val children = baseRenderer.render(chapter)
-    val anchor = new Elem(
-      htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", chapter.getId.toString, Null),
-      namespaceBinding, true, new Text(chapter.title))
-
+    val anchor = new Elem(htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", chapter.getId.toString, Null), namespaceBinding, true, new Text(chapter.title))
     val heading = new Elem(htmlPrefix, "h1", Null, namespaceBinding, true, anchor)
 
     new Elem(htmlPrefix, "div", getAttributes(chapter.getId), namespaceBinding, true, heading, children)
