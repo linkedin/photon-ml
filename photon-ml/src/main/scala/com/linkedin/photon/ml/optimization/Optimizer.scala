@@ -37,11 +37,7 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
   /**
    * Initialize the context of the optimizer, e.g., the history of LBFGS and trust region size of Tron
    */
-  protected def init(
-    state: OptimizerState,
-    data: Either[RDD[Datum], Iterable[Datum]],
-    function: Function,
-    coefficients: Vector[Double]): Unit
+  protected def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], function: Function, coefficients: Vector[Double]): Unit
 
   /**
    * Clear the optimizer, e.g., the history of LBFGS and trust region size of Tron

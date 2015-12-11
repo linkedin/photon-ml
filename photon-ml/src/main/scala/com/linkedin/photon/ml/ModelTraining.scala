@@ -6,8 +6,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.{
-  LogisticRegressionAlgorithm, SmoothedHingeLossLinearSVMAlgorithm}
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionAlgorithm, SmoothedHingeLossLinearSVMAlgorithm}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, PoissonRegressionAlgorithm}
 import org.apache.spark.rdd.RDD
@@ -29,30 +28,22 @@ object ModelTraining {
    * @param regularizationWeights An array of regularization weights used to train the model
    * @param normalizationContext Normalization context for feature normalization
    * @param maxNumIter Maximum number of iterations to run
-   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
-   *                  more iterations
-   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
-   *                                       per-iteration log information of the running optimizer
-   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
-   *   regularization weight used to train the model
+   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of more iterations
+   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the per-iteration log information of the running optimizer
+   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding regularization weight used to train the model
    */
-  def trainGeneralizedLinearModel(
-      trainingData: RDD[LabeledPoint],
-      taskType: TaskType,
-      optimizerType: OptimizerType,
-      regularizationContext: RegularizationContext,
-      regularizationWeights: List[Double],
-      normalizationContext: NormalizationContext,
-      maxNumIter: Int,
-      tolerance: Double,
-      enableOptimizationStateTracker: Boolean,
-      dataValidationType: DataValidationType,
-      constraintMap: Option[Map[Int, (Double, Double)]]):
-        (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
-
-    trainGeneralizedLinearModel(
-      trainingData, taskType, optimizerType, regularizationContext, regularizationWeights, normalizationContext,
-      maxNumIter, tolerance, enableOptimizationStateTracker, dataValidationType, constraintMap, Map.empty)
+  def trainGeneralizedLinearModel(trainingData: RDD[LabeledPoint],
+                                  taskType: TaskType,
+                                  optimizerType: OptimizerType,
+                                  regularizationContext: RegularizationContext,
+                                  regularizationWeights: List[Double],
+                                  normalizationContext: NormalizationContext,
+                                  maxNumIter: Int,
+                                  tolerance: Double,
+                                  enableOptimizationStateTracker: Boolean,
+                                  dataValidationType: DataValidationType,
+                                  constraintMap: Option[Map[Int, (Double, Double)]]): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+    trainGeneralizedLinearModel(trainingData, taskType, optimizerType, regularizationContext, regularizationWeights, normalizationContext, maxNumIter, tolerance, enableOptimizationStateTracker, dataValidationType, constraintMap, Map.empty)
   }
 
   /**
@@ -64,28 +55,23 @@ object ModelTraining {
    * @param regularizationWeights An array of regularization weights used to train the model
    * @param normalizationContext Normalization context for feature normalization
    * @param maxNumIter Maximum number of iterations to run
-   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
-   *                  more iterations
-   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
-   *                                       per-iteration log information of the running optimizer
+   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of more iterations
+   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the per-iteration log information of the running optimizer
    * @param warmStartModels Map of &lambda; &rarr; model to use for warm start
-   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
-   *   regularization weight used to train the model
+   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding regularization weight used to train the model
    */
-  def trainGeneralizedLinearModel(
-      trainingData: RDD[LabeledPoint],
-      taskType: TaskType,
-      optimizerType: OptimizerType,
-      regularizationContext: RegularizationContext,
-      regularizationWeights: List[Double],
-      normalizationContext: NormalizationContext,
-      maxNumIter: Int,
-      tolerance: Double,
-      enableOptimizationStateTracker: Boolean,
-      dataValidationType: DataValidationType,
-      constraintMap: Option[Map[Int, (Double, Double)]],
-      warmStartModels:Map[Double, GeneralizedLinearModel]):
-        (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+  def trainGeneralizedLinearModel(trainingData: RDD[LabeledPoint],
+                                  taskType: TaskType,
+                                  optimizerType: OptimizerType,
+                                  regularizationContext: RegularizationContext,
+                                  regularizationWeights: List[Double],
+                                  normalizationContext: NormalizationContext,
+                                  maxNumIter: Int,
+                                  tolerance: Double,
+                                  enableOptimizationStateTracker: Boolean,
+                                  dataValidationType: DataValidationType,
+                                  constraintMap: Option[Map[Int, (Double, Double)]],
+                                  warmStartModels:Map[Double, GeneralizedLinearModel]): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     /* Choose the generalized linear algorithm */
     val algorithm = taskType match {
@@ -97,20 +83,13 @@ object ModelTraining {
     }
     algorithm.isTrackingState = enableOptimizationStateTracker
 
-    /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence
-     * time */
+    /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence time */
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
-
     /* Model training with the chosen optimizer and algorithm */
-    val models = algorithm.run(
-      trainingData, optimizerType, regularizationContext, sortedRegularizationWeights, normalizationContext,
-      dataValidationType, Some(warmStartModels), maxNumIter, tolerance, constraintMap)
-
+    val models = algorithm.run(trainingData, optimizerType, regularizationContext, sortedRegularizationWeights, normalizationContext, dataValidationType, Some(warmStartModels), maxNumIter, tolerance, constraintMap)
     val weightModelTuples = sortedRegularizationWeights.zip(models)
 
-    val modelTrackersMapOption = algorithm.getStateTracker
-      .map(modelTrackers => sortedRegularizationWeights.zip(modelTrackers))
-
+    val modelTrackersMapOption = algorithm.getStateTracker.map(modelTrackers => sortedRegularizationWeights.zip(modelTrackers))
     (weightModelTuples, modelTrackersMapOption)
   }
 }

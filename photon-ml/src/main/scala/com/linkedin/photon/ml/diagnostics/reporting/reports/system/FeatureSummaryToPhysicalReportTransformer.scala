@@ -1,14 +1,12 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 
 import com.linkedin.photon.ml.diagnostics.reporting.reports.Utils
-import com.linkedin.photon.ml.diagnostics.reporting.{
-  SimpleTextPhysicalReport, BulletedListPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, BulletedListPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
 
 /**
  * Convert a feature summary into presentable form.
  */
-class FeatureSummaryToPhysicalReportTransformer
-  extends LogicalToPhysicalReportTransformer[FeatureSummaryReport, SectionPhysicalReport] {
+class FeatureSummaryToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[FeatureSummaryReport, SectionPhysicalReport] {
 
   import FeatureSummaryToPhysicalReportTransformer._
 
@@ -23,9 +21,7 @@ class FeatureSummaryToPhysicalReportTransformer
         val nnz = sum.summary.numNonzeros(x._2)
         val count = sum.summary.count
 
-        new SimpleTextPhysicalReport(
-          s"(N: [$featureName], T:[$featureTerm]) min: $min, mean: $mean, max: $max, variance: $variance, " +
-          s"# non-zero: $nnz / $count")
+        new SimpleTextPhysicalReport(s"(N: [$featureName], T:[$featureTerm]) min: $min, mean: $mean, max: $max, variance: $variance, # non-zero: $nnz / $count")
       }).toSeq
     )
 

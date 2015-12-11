@@ -2,8 +2,7 @@ package com.linkedin.photon.ml
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.{
-  GeneralizedLinearModelLossFunction, HessianVectorAggregator, ValueAndGradientAggregator}
+import com.linkedin.photon.ml.function.{GeneralizedLinearModelLossFunction, HessianVectorAggregator, ValueAndGradientAggregator}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.serializer.KryoSerializer

@@ -5,8 +5,8 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 
 /**
- * The normalization approach for the optimization problem, especially for generalized linear model. This gives concrete
- * approach for normalization, given the [[NormalizationType]] and the input data.
+ * The normalization approach for the optimization problem, especially for generalized linear model. This gives concrete approach for
+ * normalization, given the [[NormalizationType]] and the input data.
  *
  * The transformation consists of two part, the factors and the shifts. The transformation of a feature is
  *
@@ -14,13 +14,12 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  *
  * where .* is a point wise multiplication.
  *
- * Note that if the shift is enabled, there must be an intercept provided. One typical transformation is the feature
- * standardization, i.e. shifts are feature means the factors are the reciprocal of the feature standard deviations.
- * After feature standardization, the features become zero-mean unit-variance distributed. Normalization is very
- * important in the context of regularization.
+ * Note that if the shift is enabled, there must be an intercept provided. One typical transformation is the feature standardization,
+ * i.e. shifts are feature means the factors are the reciprocal of the feature standard deviations. After feature standardization,
+ * the features become zero-mean unit-variance distributed. Normalization is very important in the context of regularization.
  *
- * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the
- * intercept should be 0, and the factor for the intercept should be 1.
+ * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the intercept should be 0,
+ * and the factor for the intercept should be 1.
  *
  * Also note that this normalization context class covers all affine transformations without rotation.
  *

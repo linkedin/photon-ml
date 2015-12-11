@@ -5,8 +5,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.{ChapterPhysicalReport, Logi
 /**
  * Convert a system report into a presentable form.
  */
-class SystemToPhysicalReportTransformer
-  extends LogicalToPhysicalReportTransformer[SystemReport, ChapterPhysicalReport] {
+class SystemToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[SystemReport, ChapterPhysicalReport] {
 
   import SystemToPhysicalReportTransformer._
 
@@ -15,8 +14,7 @@ class SystemToPhysicalReportTransformer
       case SystemReport(nameIdx, null, _) =>
         throw new IllegalStateException("System report should, at least, include non-null command line parameters")
       case SystemReport(nameIdx, params, None) =>
-        new ChapterPhysicalReport(
-          Seq(PARAMETERS_TRANSFORMER.transform(new ParametersReport(params))), SYSTEM_CHAPTER_HEADER)
+        new ChapterPhysicalReport(Seq(PARAMETERS_TRANSFORMER.transform(new ParametersReport(params))), SYSTEM_CHAPTER_HEADER)
       case SystemReport(nameIdx, params, Some(summary)) =>
         new ChapterPhysicalReport(
           Seq(

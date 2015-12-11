@@ -8,11 +8,11 @@ import org.apache.spark.rdd.RDD
 
 
 /**
- * An aggregator to perform calculation on Hessian vector multiplication for generalized linear model loss function,
- * especially in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
+ * An aggregator to perform calculation on Hessian vector multiplication for generalized linear model loss function, especially
+ * in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
  *
- * Refer to ***REMOVED*** for a better
- * understanding of the algorithm.
+ * Refer to ***REMOVED*** for a better understanding
+ * of the algorithm.
  *
  * Some logic of Hessian vector multiplication is the same for gradient aggregation, so this class inherits
  * ValueAndGradientAggregator.
@@ -23,8 +23,8 @@ import org.apache.spark.rdd.RDD
  * @author dpeng
  */
 @SerialVersionUID(2L)
-protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: Int)
-  extends ValueAndGradientAggregator(func, dim) {
+protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: Int) extends
+     ValueAndGradientAggregator(func, dim) {
 
   // effectiveMultiplyVector_j = factor_j * multiplyVector
   // This intermediate vector helps to facilitate calculating
@@ -40,12 +40,7 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
   // This value is data point independent.
   @transient var featureVectorProductShift: Double = _
 
-  def init(
-      datum: LabeledPoint,
-      coef: Vector[Double],
-      multiplyVector: Vector[Double],
-      normalizationContext: NormalizationContext): Unit = {
-
+  def init(datum: LabeledPoint, coef: Vector[Double], multiplyVector: Vector[Double], normalizationContext: NormalizationContext): Unit = {
     super.init(datum, coef, normalizationContext)
     require(multiplyVector.size == dim)
     val NormalizationContext(factorsOption, shiftsOption, interceptIdOption) = normalizationContext
@@ -73,12 +68,7 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
    * @param datum a data point
    * @return The aggregator
    */
-  def add(
-      datum: LabeledPoint,
-      coef: Vector[Double],
-      multiplyVector: Vector[Double],
-      normalizationContext: NormalizationContext): this.type = {
-
+  def add(datum: LabeledPoint, coef: Vector[Double], multiplyVector: Vector[Double], normalizationContext: NormalizationContext): this.type = {
     if (!initialized) {
       this.synchronized {
         init(datum, coef, multiplyVector, normalizationContext)
@@ -102,13 +92,11 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
 }
 
 object HessianVectorAggregator {
-  def calcHessianVector(
-      rdd: RDD[LabeledPoint],
-      coef: Broadcast[Vector[Double]],
-      multiplyVector: Broadcast[Vector[Double]],
-      singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext]): Vector[Double] = {
-
+  def calcHessianVector(rdd: RDD[LabeledPoint],
+                        coef: Broadcast[Vector[Double]],
+                        multiplyVector: Broadcast[Vector[Double]],
+                        singleLossFunction: PointwiseLossFunction,
+                        normalizationContext: ObjectProvider[NormalizationContext]): Vector[Double] = {
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.value.size)
 
     val resultAggregator = rdd.aggregate(aggregator)(
@@ -119,13 +107,11 @@ object HessianVectorAggregator {
     result
   }
 
-  def calcHessianVector(
-      data: Iterable[LabeledPoint],
-      coef: Vector[Double],
-      multiplyVector: Vector[Double],
-      singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext]): Vector[Double] = {
-
+  def calcHessianVector(data: Iterable[LabeledPoint],
+                        coef: Vector[Double],
+                        multiplyVector: Vector[Double],
+                        singleLossFunction: PointwiseLossFunction,
+                        normalizationContext: ObjectProvider[NormalizationContext]): Vector[Double] = {
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.size)
     val resultAggregator = data.aggregate(aggregator)(
       seqop = (ag, datum) => ag.add(datum, coef, multiplyVector, normalizationContext.get),

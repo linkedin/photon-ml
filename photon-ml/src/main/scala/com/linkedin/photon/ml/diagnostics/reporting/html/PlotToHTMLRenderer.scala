@@ -1,16 +1,12 @@
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.{
-  SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport, PlotUtils}
+import com.linkedin.photon.ml.diagnostics.reporting.{SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport, PlotUtils}
 import scala.xml._
 
-class PlotToHTMLRenderer(
-    renderStrategy: RenderStrategy[PhysicalReport, Node],
-    namespaceBinding: NamespaceBinding,
-    htmlPrefix: String,
-    svgPrefix: String)
-  extends SpecificRenderer[PlotPhysicalReport, Node] {
-
+class PlotToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node],
+                         namespaceBinding: NamespaceBinding,
+                         htmlPrefix: String,
+                         svgPrefix: String) extends SpecificRenderer[PlotPhysicalReport, Node] {
   def render(plot: PlotPhysicalReport): Node = {
     val svg = plot.asSVG()
     val comment = new Comment(plot.toString)
@@ -22,8 +18,7 @@ class PlotToHTMLRenderer(
       case None =>
         new Elem(htmlPrefix, "figure", getAttributes(plot.getId), namespaceBinding, true, comment, svg)
     }
-    new Elem(
-      htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", plot.getId.toString, Null), namespaceBinding, true, fig)
+    new Elem(htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", plot.getId.toString, Null), namespaceBinding, true, fig)
   }
 
   private def getAttributes(id: Long): MetaData = {

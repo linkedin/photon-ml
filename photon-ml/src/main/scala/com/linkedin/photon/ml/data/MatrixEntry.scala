@@ -10,11 +10,9 @@ import breeze.linalg.Vector
  * @param offset offset
  * @param weight weight
  */
-case class MatrixEntry(
-    rowId: String,
-    colId: String,
-    override val label: Double,
-    override val features: Vector[Double],
-    override val offset: Double = 0,
-    override val weight: Double = 0)
-  extends LabeledPoint(label, features, offset, weight)
+case class MatrixEntry(rowId: String,
+                       colId: String,
+                       override val label: Double,
+                       override val features: Vector[Double],
+                       override val offset: Double = 0,
+                       override val weight: Double = 0) extends LabeledPoint(label, features, offset, weight)

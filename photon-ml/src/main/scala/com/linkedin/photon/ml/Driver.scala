@@ -5,14 +5,12 @@ import java.io.{OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapTrainingDiagnostic, BootstrapReport}
-import com.linkedin.photon.ml.diagnostics.featureimportance.{
-  ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
+import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{
-  DiagnosticReport, DiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
@@ -35,8 +33,7 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.PrettyPrinter
 
 /**
- * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main
- * components:
+ * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main components:
  * <ul>
  * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
  * internal data structure </li>
@@ -56,11 +53,7 @@ import scala.xml.PrettyPrinter
  * @author dpeng
  * @author bdrew
  */
-protected[ml] class Driver(
-    protected val params: Params,
-    protected val sc: SparkContext,
-    protected val logger: LogWriter)
-  extends Logging {
+protected[ml] class Driver(protected val params: Params, protected val sc: SparkContext, protected val logger: LogWriter) extends Logging {
 
   import com.linkedin.photon.ml.Driver._
 
@@ -71,8 +64,7 @@ protected[ml] class Driver(
   private[this] var trainingData: RDD[LabeledPoint] = null
   private[this] var validatingData: RDD[LabeledPoint] = null
 
-  private[this] val regularizationContext: RegularizationContext =
-    new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
+  private[this] val regularizationContext: RegularizationContext = new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
   private[this] var featureNum: Int = -1
   private[this] var trainingDataNum: Int = -1
 
@@ -179,8 +171,8 @@ protected[ml] class Driver(
     val startTimeForTraining = System.currentTimeMillis()
     logger.println("model training started...")
 
-    // The sole purpose of optimizationStateTrackersMapOption is used for logging. When we have better logging support,
-    // we should remove stop returning optimizationStateTrackerMapOption
+    // The sole purpose of optimizationStateTrackersMapOption is used for logging. When we have better logging support, we should
+    // remove stop returning optimizationStateTrackerMapOption
     val (_lambdaModelTuples, _lambdaModelTrackerTuplesOption) = ModelTraining.trainGeneralizedLinearModel(
       trainingData = trainingData,
       taskType = params.taskType,
@@ -230,15 +222,12 @@ protected[ml] class Driver(
         lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
           weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
 
-            val msg = modelTracker.models
-              .map(model => Evaluation.evaluate(model, validatingData))
-              .zipWithIndex
-              .map(x => {
-                val (m, idx) = x
-                m.keys.toSeq.sorted.map(y => {
-                  f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}"
-                }).mkString("\n")
+            val msg = modelTracker.models.map(model => Evaluation.evaluate(model, validatingData)).zipWithIndex.map(x => {
+              val (m, idx) = x
+              m.keys.toSeq.sorted.map(y => {
+                f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}"
               }).mkString("\n")
+            }).mkString("\n")
 
             logger.println(s"Model with lambda = $lambda:\n$msg")
           }
@@ -310,13 +299,8 @@ protected[ml] class Driver(
         (x._1, predictionErrorDiagnostic.diagnose(x._2, validatingData, summaryOption))
       }).toMap
 
-      val varImportanceAggregated = lambdaVarianceImportanceMap
-        .mapValues(_.featureImportance)
-        .mapValues(_.mapValues(_._1))
-
-      val meanImportanceAggregated = lambdaMeanImportanceMap
-        .mapValues(_.featureImportance)
-        .mapValues(_.mapValues(_._1))
+      val varImportanceAggregated = lambdaVarianceImportanceMap.mapValues(_.featureImportance).mapValues(_.mapValues(_._1))
+      val meanImportanceAggregated = lambdaMeanImportanceMap.mapValues(_.featureImportance).mapValues(_.mapValues(_._1))
 
       val modelDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
       logger.println(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
@@ -425,8 +409,7 @@ protected[ml] class Driver(
  * which in turn is to be consumed by the main Driver class.
  *
  * An example of running Photon-ML
- * through command line arguments can be found at
- * [[***REMOVED***]],
+ * through command line arguments can be found at [[***REMOVED***]],
  * however, please note that our plan is to not have Driver or the command line as the user-facing interface for Photon,
  * instead, the template library should be.
  *
