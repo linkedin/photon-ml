@@ -13,7 +13,9 @@ import com.linkedin.photon.ml.diagnostics.reporting.{RenderStrategy, NumberingCo
  *
  * @param nc
  */
-class SequenceToStringRenderer[-P <: PhysicalReport](strategy: RenderStrategy[P, String], nc: NumberingContext) extends BaseSequencePhysicalReportRender[P, String](strategy, nc) {
+class SequenceToStringRenderer[-P <: PhysicalReport](strategy: RenderStrategy[P, String], nc: NumberingContext)
+  extends BaseSequencePhysicalReportRender[P, String](strategy, nc) {
+
   protected def coalesce(partialRendered: Seq[(List[Int], P, String)]): String = {
     partialRendered.map(x => {
       val number = x._1.mkString(".")

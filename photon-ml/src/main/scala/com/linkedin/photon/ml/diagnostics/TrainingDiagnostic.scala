@@ -32,9 +32,11 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
    * @return
    * A logical report encapsulating this diagnostic's findings
    */
-  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
-               trainingData: RDD[LabeledPoint],
-               summary: Option[BasicStatisticalSummary]): Map[Double, D] = diagnose(modelFactory, Map.empty, trainingData, summary)
+  def diagnose(
+      modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
+      trainingData: RDD[LabeledPoint],
+      summary: Option[BasicStatisticalSummary]): Map[Double, D] =
+    diagnose(modelFactory, Map.empty, trainingData, summary)
 
   /**
    * Compute training-time diagnostics, with (potentially empty) warm start models.
@@ -48,8 +50,9 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
    * @return
    * A logical report encapsulating this diagnostic's findings
    */
-  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
-               models:Map[Double, GeneralizedLinearModel],
-               trainingData: RDD[LabeledPoint],
-               summary: Option[BasicStatisticalSummary]): Map[Double, D]
+  def diagnose(
+      modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
+      models:Map[Double, GeneralizedLinearModel],
+      trainingData: RDD[LabeledPoint],
+      summary: Option[BasicStatisticalSummary]): Map[Double, D]
 }

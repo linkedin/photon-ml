@@ -15,14 +15,18 @@ import org.apache.spark.rdd.RDD
  * @author asaha
  * @author dpeng
  */
-class PoissonRegressionAlgorithm extends GeneralizedLinearAlgorithm[PoissonRegressionModel, TwiceDiffFunction[LabeledPoint]] {
+class PoissonRegressionAlgorithm
+  extends GeneralizedLinearAlgorithm[PoissonRegressionModel, TwiceDiffFunction[LabeledPoint]] {
+
   override protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.poissonRegressionValidator)
 
   /* Objective function = loss function + l2weight * regularization */
-  override protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext],
-                                                 regularizationContext: RegularizationContext,
-                                                 regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
-    TwiceDiffFunction.withRegularization(new PoissonLossFunction(normalizationContext), regularizationContext, regularizationWeight)
+  override protected def createObjectiveFunction(
+      normalizationContext: ObjectProvider[NormalizationContext],
+      regularizationContext: RegularizationContext,
+      regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
+    TwiceDiffFunction.withRegularization(
+      new PoissonLossFunction(normalizationContext), regularizationContext, regularizationWeight)
   }
 
   /**

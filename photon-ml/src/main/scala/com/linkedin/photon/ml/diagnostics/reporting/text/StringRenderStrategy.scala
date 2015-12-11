@@ -13,11 +13,21 @@ class StringRenderStrategy extends RenderStrategy[PhysicalReport, String] {
 
   def locateRenderer(itemToRender: PhysicalReport): SpecificRenderer[PhysicalReport, String] = {
     itemToRender match {
-      case _: DocumentPhysicalReport => new RendererWrapper[DocumentPhysicalReport, String](new DocumentToStringRenderer(this, chapterSectionNumberingContext))
-      case _: ChapterPhysicalReport => new RendererWrapper[ChapterPhysicalReport, String](new ChapterToStringRenderer(this, chapterSectionNumberingContext))
-      case _: SectionPhysicalReport => new RendererWrapper[SectionPhysicalReport, String](new SectionToStringRenderer(this, chapterSectionNumberingContext))
-      case _: BulletedListPhysicalReport => new RendererWrapper[BulletedListPhysicalReport, String](new SequenceToStringRenderer(this, listNumberingContext))
-      case _: NumberedListPhysicalReport => new RendererWrapper[NumberedListPhysicalReport, String](new SequenceToStringRenderer(this, listNumberingContext))
+      case _: DocumentPhysicalReport => new RendererWrapper[DocumentPhysicalReport, String](
+        new DocumentToStringRenderer(this, chapterSectionNumberingContext))
+
+      case _: ChapterPhysicalReport => new RendererWrapper[ChapterPhysicalReport, String](
+        new ChapterToStringRenderer(this, chapterSectionNumberingContext))
+
+      case _: SectionPhysicalReport => new RendererWrapper[SectionPhysicalReport, String](
+        new SectionToStringRenderer(this, chapterSectionNumberingContext))
+
+      case _: BulletedListPhysicalReport => new RendererWrapper[BulletedListPhysicalReport, String](
+        new SequenceToStringRenderer(this, listNumberingContext))
+
+      case _: NumberedListPhysicalReport => new RendererWrapper[NumberedListPhysicalReport, String](
+        new SequenceToStringRenderer(this, listNumberingContext))
+
       case _: PhysicalReport => new RendererWrapper[PhysicalReport, String](new AnyToStringRenderer[PhysicalReport]())
     }
   }

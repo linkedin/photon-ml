@@ -5,7 +5,8 @@ import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
 /**
  * See [[https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient]]
  * @param concordantPairs Count of concordant pairs. Pairs are concordant if ordering by _1 is consistent with _2
- * @param discordantPairs Count of discordant pairs. Pairs are discordant if ordering by _1 is the reverse of ordering by _2
+ * @param discordantPairs Count of discordant pairs. Pairs are discordant if ordering by _1 is the reverse of ordering
+ *   by _2
  * @param numSamples Total number of samples
  * @param totalPairs Total number of pairs (concordant + discordant + other)
  * @param effectivePairs Number of concordant + discordant pairs
