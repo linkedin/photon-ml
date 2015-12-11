@@ -23,13 +23,7 @@ import com.google.common.base.Preconditions
  * @param observedNegCount
  * How many negative samples have been observed in this bin
  */
-class PredictedProbabilityVersusObservedFrequencyHistogramBin(
-    val lowerBound: Double,
-    val upperBound: Double,
-    var observedPosCount: Long = 0L,
-    var observedNegCount: Long = 0L)
-  extends Serializable {
-
+class PredictedProbabilityVersusObservedFrequencyHistogramBin(val lowerBound: Double, val upperBound: Double, var observedPosCount: Long = 0L, var observedNegCount: Long = 0L) extends Serializable {
   Preconditions.checkArgument(lowerBound >= 0 && lowerBound <= 1.0)
   Preconditions.checkArgument(upperBound >= 0 && upperBound <= 1.0)
   Preconditions.checkArgument(lowerBound < upperBound)
@@ -51,15 +45,13 @@ class PredictedProbabilityVersusObservedFrequencyHistogramBin(
     observedNegCount + observedPosCount - expectedPosCount
   }
 
-  def accumulate(other: PredictedProbabilityVersusObservedFrequencyHistogramBin):
-      PredictedProbabilityVersusObservedFrequencyHistogramBin = {
+  def accumulate(other: PredictedProbabilityVersusObservedFrequencyHistogramBin): PredictedProbabilityVersusObservedFrequencyHistogramBin = {
     observedNegCount += other.observedNegCount
     observedPosCount += other.observedPosCount
     this
   }
 
   override def toString(): String = {
-    f"Range [$lowerBound%.012f, $upperBound%.012f) counts: [+/O $observedPosCount, +/E $expectedPosCount, " +
-      f"-/O $observedNegCount, -/E $expectedNegCount]"
+    f"Range [$lowerBound%.012f, $upperBound%.012f) counts: [+/O $observedPosCount, +/E $expectedPosCount, -/O $observedNegCount, -/E $expectedNegCount]"
   }
 }

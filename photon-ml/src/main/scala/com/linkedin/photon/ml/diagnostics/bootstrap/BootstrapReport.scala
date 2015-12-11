@@ -10,9 +10,7 @@ import com.linkedin.photon.ml.supervised.model.CoefficientSummary
  * @param bootstrappedModelMetrics Map of metric &rarr; value for the bagged / bootstrapped model (simple averaging)
  * @param importantFeatureCoefficientDistributions Map of (name, term) &rarr; coefficient summary
  */
-case class BootstrapReport(
-    metricDistributions: Map[String, (Double, Double, Double, Double, Double)],
-    bootstrappedModelMetrics: Map[String, Double],
-    importantFeatureCoefficientDistributions: Map[(String, String), CoefficientSummary],
-    zeroCrossingFeatures: Map[(String, String), (Int, Double, CoefficientSummary)])
-  extends LogicalReport
+case class BootstrapReport(metricDistributions: Map[String, (Double, Double, Double, Double, Double)],
+                           bootstrappedModelMetrics: Map[String, Double],
+                           importantFeatureCoefficientDistributions: Map[(String, String), CoefficientSummary],
+                           zeroCrossingFeatures: Map[(String, String), (Int, Double, CoefficientSummary)]) extends LogicalReport

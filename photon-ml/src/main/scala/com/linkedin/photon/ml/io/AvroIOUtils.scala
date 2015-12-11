@@ -56,18 +56,15 @@ object AvroIOUtils {
   }
 
   /**
-   * Read data from a single Avro file. It will return a list so do not use this method if data are large. According to
-   * the class tag, this method will return generic or specific records.
+   * Read data from a single Avro file. It will return a list so do not use this method if data are large. According to the class tag,
+   * this method will return generic or specific records.
    * @param sc Spark context
    * @param path The path to a single Avro file (not the parent directory)
    * @param schemaString Optional schema string for reading
    * @tparam T The record type
    * @return List of records
    */
-  def readFromSingleAvro[T <: GenericRecord : ClassTag](
-      sc: SparkContext,
-      path: String, schemaString: String = null): Seq[T] = {
-
+  def readFromSingleAvro[T <: GenericRecord : ClassTag](sc: SparkContext, path: String, schemaString: String = null): Seq[T] = {
     val classTag = implicitly[ClassTag[T]]
     val schema = if (schemaString == null) null else new Parser().parse(schemaString)
     val reader = if (classOf[SpecificRecord].isAssignableFrom(classTag.runtimeClass)) {
@@ -78,10 +75,7 @@ object AvroIOUtils {
     val fs = FileSystem.get(sc.hadoopConfiguration)
     val inputPath = new Path(path)
     val fileSize = fs.getContentSummary(inputPath).getLength
-
-    require(fileSize < READ_SINGLE_AVRO_FILE_SIZE_LIMIT,
-      s"The file $path is too large for readFromSingleAvro. Please use readFromAvro.")
-
+    require(fileSize < READ_SINGLE_AVRO_FILE_SIZE_LIMIT, s"The file $path is too large for readFromSingleAvro. Please use readFromAvro.")
     val inputStream = fs.open(inputPath)
 
     val dataFileReader = new DataFileStream[T](inputStream, reader)
@@ -96,7 +90,7 @@ object AvroIOUtils {
   }
 
   /**
-   * Write data to a single Avro file. It will only write to one Avro file so do not use this method if data are large.
+   * Write data to a single Avro file. It will only write to one Avro file so do not use this method if data are larege.
    * @param sc Spark context
    * @param data The Avro data to write
    * @param path The path to a single Avro file (not the parent directory)
@@ -104,13 +98,7 @@ object AvroIOUtils {
    * @param forceOverwrite Optional parameter to force overwrite
    * @tparam T The record type
    */
-  def saveAsSingleAvro[T <: GenericRecord : ClassTag](
-      sc: SparkContext,
-      data: Seq[T],
-      path: String,
-      schemaString: String,
-      forceOverwrite: Boolean = false): Unit = {
-
+  def saveAsSingleAvro[T <: GenericRecord : ClassTag](sc: SparkContext, data: Seq[T], path: String, schemaString: String, forceOverwrite: Boolean = false): Unit = {
     val fs = FileSystem.get(sc.hadoopConfiguration)
     val outputPath = new Path(path)
     val outputStream = fs.create(outputPath, forceOverwrite)
