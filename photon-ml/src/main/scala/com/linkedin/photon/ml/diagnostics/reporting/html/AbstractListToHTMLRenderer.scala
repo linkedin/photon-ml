@@ -5,14 +5,17 @@ import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalRep
 
 import scala.xml._
 
-class AbstractListToHTMLRenderer[-L <: SequencePhysicalReport[PhysicalReport]](listTag:String,
-                                                                              renderStrategy: RenderStrategy[PhysicalReport, Node],
-                                                                              numberingContext: NumberingContext,
-                                                                              namespaceBinding: NamespaceBinding,
-                                                                              htmlPrefix: String,
-                                                                              svgPrefix: String) extends SpecificRenderer[L, Node] {
+class AbstractListToHTMLRenderer[-L <: SequencePhysicalReport[PhysicalReport]](
+    listTag: String,
+    renderStrategy: RenderStrategy[PhysicalReport, Node],
+    numberingContext: NumberingContext,
+    namespaceBinding: NamespaceBinding,
+    htmlPrefix: String,
+    svgPrefix: String)
+  extends SpecificRenderer[L, Node] {
 
-  private val baseRenderer = new BaseSequencePhysicalReportRender[PhysicalReport, Node](renderStrategy, numberingContext) {
+  private val baseRenderer =
+    new BaseSequencePhysicalReportRender[PhysicalReport, Node](renderStrategy, numberingContext) {
 
     protected def coalesce(partiallyRendered: Seq[(List[Int], PhysicalReport, Node)]): Node = {
       new Group(partiallyRendered.map(x =>
@@ -32,7 +35,8 @@ class AbstractListToHTMLRenderer[-L <: SequencePhysicalReport[PhysicalReport]](l
   def render(lst: L): Node = {
     val children = baseRenderer.render(lst)
     val list = new Elem(htmlPrefix, listTag, getAttributes(lst.getId), namespaceBinding, true, children)
-    new Elem(htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", lst.getId.toString, Null), namespaceBinding, true, list)
+    new Elem(
+      htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", lst.getId.toString, Null), namespaceBinding, true, list)
   }
 
   private def getAttributes(id: Long): MetaData = {

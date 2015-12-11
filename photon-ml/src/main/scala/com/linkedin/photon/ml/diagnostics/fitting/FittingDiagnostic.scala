@@ -31,9 +31,12 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
    * A map of (lambda &rarr; fitting report). If there is not enough information to produce a reasonable report, we
    * return an empty map.
    */
-  def diagnose(modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
-               warmStart: Map[Double, GeneralizedLinearModel],
-               trainingSet: RDD[LabeledPoint], summary: Option[BasicStatisticalSummary]): Map[Double, FittingReport] = {
+  def diagnose(
+      modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
+      warmStart: Map[Double, GeneralizedLinearModel],
+      trainingSet: RDD[LabeledPoint],
+      summary: Option[BasicStatisticalSummary]): Map[Double, FittingReport] = {
+
     val numSamples = trainingSet.count
     val dimension = trainingSet.first.features.size
     val minSamples = dimension * MIN_SAMPLES_PER_PARTITION_PER_DIMENSION
@@ -45,9 +48,16 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
         partition.map(x => (dist.sample(), x))
       }).cache.setName("Tagged samples for learning curves")
 
-      val holdOut = tagged.filter(_._1 == NUM_TRAINING_PARTITIONS - 1).map(_._2).cache.setName("Hold out for learning curves")
+      val holdOut = tagged
+        .filter(_._1 == NUM_TRAINING_PARTITIONS - 1)
+        .map(_._2)
+        .cache
+        .setName("Hold out for learning curves")
 
-      val result = (0 until (NUM_TRAINING_PARTITIONS - 1)).scanLeft((0.0, warmStart, Map[Double, Map[String, Double]](), Map[Double, Map[String, Double]]()))( (prev, maxTag) => {
+      val result = (0 until (NUM_TRAINING_PARTITIONS - 1))
+        .scanLeft(
+          (0.0, warmStart, Map[Double, Map[String, Double]](), Map[Double, Map[String, Double]]()))( (prev, maxTag) => {
+
         val dataSet = tagged.filter(_._1 <= maxTag).map(_._2)
         val startTime = System.currentTimeMillis
         val samples = dataSet.count

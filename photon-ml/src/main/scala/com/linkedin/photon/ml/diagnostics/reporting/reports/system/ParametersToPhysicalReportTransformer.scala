@@ -3,12 +3,14 @@ package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 import java.util.Date
 
 import com.linkedin.photon.ml.Params
-import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, SimpleTextPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.{
+  BulletedListPhysicalReport, SimpleTextPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
 
 /**
  * Convert parameters into a presentable form.
  */
-class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[ParametersReport, SectionPhysicalReport] {
+class ParametersToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[ParametersReport, SectionPhysicalReport] {
 
   import ParametersToPhysicalReportTransformer._
 
@@ -41,7 +43,8 @@ class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
             new SimpleTextPhysicalReport(s"Field name type: ${params.fieldsNameType}")
           )
             ++ params.validateDirOpt.toSeq.map(x => new SimpleTextPhysicalReport(s"Validation data directory: $x"))
-            ++ params.summarizationOutputDirOpt.toSeq.map(x => new SimpleTextPhysicalReport(s"Summarization output directory: $x"))
+            ++ params.summarizationOutputDirOpt.toSeq
+                .map(x => new SimpleTextPhysicalReport(s"Summarization output directory: $x"))
         )
       )
     )

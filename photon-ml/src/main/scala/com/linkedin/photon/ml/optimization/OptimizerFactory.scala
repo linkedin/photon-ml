@@ -5,7 +5,7 @@ import com.linkedin.photon.ml.function.{TwiceDiffFunction, DiffFunction}
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import org.apache.spark.Logging
 
-protected [ml] object OptimizerFactory {
+protected[ml] object OptimizerFactory {
 
   def getOptimizer[F <: DiffFunction[LabeledPoint]](optimizerType:OptimizerType)(implicit ev:Optimizable[F]) = {
     ev.getOptimizer(optimizerType)

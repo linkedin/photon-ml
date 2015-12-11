@@ -15,17 +15,22 @@ import org.apache.spark.rdd.RDD
  * @author xazhang
  * @author dpeng
  */
-class LinearRegressionAlgorithm extends GeneralizedLinearAlgorithm[LinearRegressionModel, TwiceDiffFunction[LabeledPoint]] {
+class LinearRegressionAlgorithm
+  extends GeneralizedLinearAlgorithm[LinearRegressionModel, TwiceDiffFunction[LabeledPoint]] {
+
   override protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.linearRegressionValidator)
 
   /**
    *  Objective function = loss function + l2weight * regularization
-   *  Only the L2 regularization part is implemented in the objective function. L1 part is implemented through the optimizer. See [[LBFGS]].
+   *  Only the L2 regularization part is implemented in the objective function. L1 part is implemented through the
+   *    optimizer. See [[LBFGS]].
    */
-  override protected def createObjectiveFunction(normalizationContext: ObjectProvider[NormalizationContext],
-                                                 regularizationContext: RegularizationContext,
-                                                 regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
-    TwiceDiffFunction.withRegularization(new SquaredLossFunction(normalizationContext), regularizationContext, regularizationWeight)
+  override protected def createObjectiveFunction(
+      normalizationContext: ObjectProvider[NormalizationContext],
+      regularizationContext: RegularizationContext,
+      regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
+    TwiceDiffFunction.withRegularization(
+      new SquaredLossFunction(normalizationContext), regularizationContext, regularizationWeight)
   }
 
   override protected def createModel(coefficients: Vector[Double], intercept: Option[Double]) = {

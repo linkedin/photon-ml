@@ -17,15 +17,15 @@ import org.apache.spark.rdd.RDD
  * computing the function value and gradient for a RDD of input data points?
  * A: In the optimization procedure, the gradient/value/calculate function might be called repeatedly several times
  * given the same input coefficients (e.g., during conjugate gradient method). As a result, if the input
- * coefficients type is Vector, we need to re-broadcast the input vector every time to make it accessible in the function,
- * even when the value of the input vector itself is unchanged. This would potentially cause some network I/O problem
- * if this function is called frequently, and would result in a waste of computation as well. However, if the input
- * coefficients is of type BroadCast[ Vector[Double] ], we can re-use it for different function calls as long as the
- * underlying vector hasn't changed.
+ * coefficients type is Vector, we need to re-broadcast the input vector every time to make it accessible in the
+ * function, even when the value of the input vector itself is unchanged. This would potentially cause some network I/O
+ * problem if this function is called frequently, and would result in a waste of computation as well. However, if the
+ * input coefficients is of type BroadCast[ Vector[Double] ], we can re-use it for different function calls as long as
+ * the underlying vector hasn't changed.
  *
  * FAQ 2: Why use cumGradient (cumulative gradient)?
- * A: Using cumGradient would allow the functions to modify and then return cumGradient instead of creating a new gradient
- * vector to avoid memory allocation.
+ * A: Using cumGradient would allow the functions to modify and then return cumGradient instead of creating a new
+ * gradient vector to avoid memory allocation.
  *
  * @tparam Datum Generic type of data point
  * @author xazhang
@@ -102,7 +102,10 @@ trait DiffFunction[Datum <: DataPoint] extends Serializable {
    * @param broadcastedCoefficients The broadcasted model coefficients used to compute the function's value and gradient
    * @return The computed value and gradient of the function
    */
-  protected[ml] def calculate(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+  protected[ml] def calculate(
+    data: RDD[Datum],
+    broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+
     val initialCumGradient = Utils.initializeZerosVectorOfSameType(broadcastedCoefficients.value)
     data.aggregate((0.0, initialCumGradient))(
       seqOp = {
@@ -177,20 +180,32 @@ object DiffFunction {
    * @tparam Datum Generic type of data point
    * @return An anonymous class for differentiable function with L2 regularization
    */
-  private def withL2Regularization[Datum <: DataPoint](func: DiffFunction[Datum], regWeight: Double) = new DiffFunction[Datum] {
+  private def withL2Regularization[Datum <: DataPoint](
+      func: DiffFunction[Datum],
+      regWeight: Double) = new DiffFunction[Datum] {
 
-    override protected[ml] def calculateAt(data: Datum, coefficients: Vector[Double], cumGradient: Vector[Double]): Double = {
+    override protected[ml] def calculateAt(
+        data: Datum,
+        coefficients: Vector[Double],
+        cumGradient: Vector[Double]): Double = {
+
       val v = func.calculateAt(data, coefficients, cumGradient)
       cumGradient += gradientOfL2Reg(coefficients)
       v + valueOfL2Reg(coefficients)
     }
 
-    override protected[ml] def calculate(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+
       val (v, grad) = func.calculate(data, broadcastedCoefficients)
       (v + valueOfL2Reg(broadcastedCoefficients.value), grad + gradientOfL2Reg(broadcastedCoefficients.value))
     }
 
-    override protected[ml] def calculate(data: Iterable[Datum], coefficients: Vector[Double]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: Iterable[Datum],
+        coefficients: Vector[Double]): (Double, Vector[Double]) = {
+
       val (v, grad) = func.calculate(data, coefficients)
       (v + valueOfL2Reg(coefficients), grad + gradientOfL2Reg(coefficients))
     }
@@ -212,21 +227,34 @@ object DiffFunction {
    * @tparam Datum The generic type of the datum
    * @return An anonymous class for the twice differentiable function with L1 regularization
    */
-  private def withL1Regularization[Datum <: DataPoint](func: DiffFunction[Datum], regWeight: Double): DiffFunction[Datum] with L1RegularizationTerm = new DiffFunction[Datum] with L1RegularizationTerm {
+  private def withL1Regularization[Datum <: DataPoint](
+      func: DiffFunction[Datum],
+      regWeight: Double): DiffFunction[Datum]
+    with L1RegularizationTerm =
+      new DiffFunction[Datum] with L1RegularizationTerm {
 
-    override protected[ml] def calculateAt(datum: Datum,
-                                              coefficients: Vector[Double],
-                                              cumGradient: Vector[Double]): Double = {
+    override protected[ml] def calculateAt(
+        datum: Datum,
+        coefficients: Vector[Double],
+        cumGradient: Vector[Double]): Double = {
+
       func.calculateAt(datum, coefficients, cumGradient)
     }
 
-    override protected[ml] def calculate(data: RDD[Datum], broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: RDD[Datum],
+        broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
+
       func.calculate(data, broadcastedCoefficients)
     }
 
-    override protected[ml] def calculate(data: Iterable[Datum], coefficients: Vector[Double]): (Double, Vector[Double]) = {
+    override protected[ml] def calculate(
+        data: Iterable[Datum],
+        coefficients: Vector[Double]): (Double, Vector[Double]) = {
+
       func.calculate(data, coefficients)
     }
+
     override def getL1RegularizationParam: Double = regWeight
   }
 
@@ -242,8 +270,15 @@ object DiffFunction {
    * @tparam Datum Datum type
    * @return The differentiable function with necessary decorations
    */
-  def withRegularization[Datum <: DataPoint](func: DiffFunction[Datum], regularizationContext: RegularizationContext, regWeight: Double): DiffFunction[Datum] = {
-    val (l1Weight, l2Weight) = (regularizationContext.getL1RegularizationWeight(regWeight), regularizationContext.getL2RegularizationWeight(regWeight))
+  def withRegularization[Datum <: DataPoint](
+      func: DiffFunction[Datum],
+      regularizationContext: RegularizationContext,
+      regWeight: Double): DiffFunction[Datum] = {
+
+    val (l1Weight, l2Weight) = (
+      regularizationContext.getL1RegularizationWeight(regWeight),
+      regularizationContext.getL2RegularizationWeight(regWeight))
+
     (l1Weight,  l2Weight) match {
       case (0.0, 0.0) =>
         // No regularization
@@ -261,4 +296,3 @@ object DiffFunction {
     }
   }
 }
-
