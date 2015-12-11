@@ -3,7 +3,9 @@ package com.linkedin.photon.ml.diagnostics.independence
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
-class PredictionErrorIndependencePhysicalReportTransformer extends LogicalToPhysicalReportTransformer[PredictionErrorIndependenceReport, SectionPhysicalReport] {
+class PredictionErrorIndependencePhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[PredictionErrorIndependenceReport, SectionPhysicalReport] {
+
   import PredictionErrorIndependencePhysicalReportTransformer._
 
   override def transform(report: PredictionErrorIndependenceReport): SectionPhysicalReport = {

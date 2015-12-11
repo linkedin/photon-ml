@@ -5,7 +5,8 @@ import java.util.{Date, TimeZone, Calendar}
 
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.linkedin.photon.ml.diagnostics.reporting.reports.model.{ModelDiagnosticReport, ModelDiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.model.{
+  ModelDiagnosticReport, ModelDiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemToPhysicalReportTransformer
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
@@ -13,14 +14,17 @@ import com.xeiam.xchart.{StyleManager, ChartBuilder}
 /**
  * Transform diagnostic reports into their physical report representation
  */
-class DiagnosticToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[DiagnosticReport, DocumentPhysicalReport] {
+class DiagnosticToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[DiagnosticReport, DocumentPhysicalReport] {
 
   import DiagnosticToPhysicalReportTransformer._
 
   def transform(diag: DiagnosticReport): DocumentPhysicalReport = {
     val formatter = new SimpleDateFormat()
     val now = new Date()
-    val lambdaReports = diag.modelReports.sortBy(_.lambda).map(x => (x.lambda, (x, MODEL_SECTION_TRANSFORMER.transform(x)))).toMap
+    val lambdaReports = diag.modelReports
+      .sortBy(_.lambda)
+      .map(x => (x.lambda, (x, MODEL_SECTION_TRANSFORMER.transform(x)))).toMap
     val summary = transformSummary(lambdaReports)
 
     new DocumentPhysicalReport(
@@ -47,7 +51,10 @@ object DiagnosticToPhysicalReportTransformer {
    * @param reports Map of &lambda; &rarr; model diagnostic for that lambda
    * @return
    */
-  private def transformSummary(reports:Map[Double, (ModelDiagnosticReport[GeneralizedLinearModel], SectionPhysicalReport)]): SectionPhysicalReport = {
+  private def transformSummary(
+      reports: Map[Double, (ModelDiagnosticReport[GeneralizedLinearModel], SectionPhysicalReport)]):
+        SectionPhysicalReport = {
+
     val metricsByLambda = reports.map(_._2._1).flatMap(x => {
       x.metrics.map(y => {
         (y._1, (x.lambda, y._2))
@@ -61,12 +68,14 @@ object DiagnosticToPhysicalReportTransformer {
 
         metricsByLambda.get(metric).toSeq.flatMap(values => {
           val ordering = new Ordering[(Double, Double)]() {
-            override def compare(x: (Double, Double), y: (Double, Double)): Int = metadata.worstToBestOrdering.compare(x._2, y._2)
+            override def compare(x: (Double, Double), y: (Double, Double)): Int =
+              metadata.worstToBestOrdering.compare(x._2, y._2)
           }
           val sorted = values.toSeq.sorted(ordering)
           val bestLambda = sorted.last
 
-          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} best: ${bestLambda._2} @ lambda = ${bestLambda._1}")).iterator
+          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} best: ${bestLambda._2} @ lambda = ${bestLambda._1}"))
+            .iterator
         }).iterator
       }))
 
@@ -102,4 +111,3 @@ object DiagnosticToPhysicalReportTransformer {
     new SectionPhysicalReport(Seq(links, bestModelByMetric) ++ modelMetricPlots, MODEL_SUMMARY_CHAPTER)
   }
 }
-

@@ -6,13 +6,16 @@ import com.linkedin.photon.ml.diagnostics.reporting._
 
 import scala.xml._
 
-class DocumentToHTMLRenderer(renderStrategy: RenderStrategy[ChapterPhysicalReport, Node],
-                             numberingContext: NumberingContext,
-                             namespaceBinding: NamespaceBinding,
-                             htmlPrefix: String,
-                             svgPrefix: String) extends SpecificRenderer[DocumentPhysicalReport, Node] {
+class DocumentToHTMLRenderer(
+    renderStrategy: RenderStrategy[ChapterPhysicalReport, Node],
+    numberingContext: NumberingContext,
+    namespaceBinding: NamespaceBinding,
+    htmlPrefix: String,
+    svgPrefix: String)
+  extends SpecificRenderer[DocumentPhysicalReport, Node] {
 
-  private val baseRenderer = new BaseSequencePhysicalReportRender[ChapterPhysicalReport, Node](renderStrategy, numberingContext) {
+  private val baseRenderer =
+    new BaseSequencePhysicalReportRender[ChapterPhysicalReport, Node](renderStrategy, numberingContext) {
 
     protected def coalesce(partiallyRendered: Seq[(List[Int], ChapterPhysicalReport, Node)]): Node = {
       new Group(partiallyRendered.map(x => x._3))

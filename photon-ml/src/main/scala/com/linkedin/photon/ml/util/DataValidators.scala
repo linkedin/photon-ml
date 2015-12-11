@@ -11,15 +11,29 @@ import org.apache.spark.rdd.RDD
  */
 object DataValidators extends Logging {
   val linearRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
-    validateFeatures(data, Map("Finite features" -> finiteFeatures, "Finite labels" -> finiteLabel, "Finite offset" -> finiteOffset))
+    validateFeatures(
+      data, Map(
+        "Finite features" -> finiteFeatures,
+        "Finite labels" -> finiteLabel,
+        "Finite offset" -> finiteOffset))
   }
 
   val logisticRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
-    validateFeatures(data, Map("Finite label" -> finiteLabel, "Binary label" -> binaryLabel, "Finite features" -> finiteFeatures, "Finite offset" -> finiteOffset))
+    validateFeatures(
+      data, Map(
+        "Finite label" -> finiteLabel,
+        "Binary label" -> binaryLabel,
+        "Finite features" -> finiteFeatures,
+        "Finite offset" -> finiteOffset))
   }
 
   val poissonRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
-    validateFeatures(data, Map("Finite label" -> finiteLabel, "Nonnegative label" -> nonnegativeLabels, "Finite features" -> finiteFeatures, "Finite offset" -> finiteOffset))
+    validateFeatures(
+      data, Map(
+        "Finite label" -> finiteLabel,
+        "Nonnegative label" -> nonnegativeLabels,
+        "Finite features" -> finiteFeatures,
+        "Finite offset" -> finiteOffset))
   }
 
   def nonnegativeLabels(labeledPoint: LabeledPoint): Boolean = {
@@ -35,7 +49,8 @@ object DataValidators extends Logging {
   }
 
   def binaryLabel(labeledPoint: LabeledPoint): Boolean = {
-    BinaryClassifier.positiveClassLabel == labeledPoint.label || BinaryClassifier.negativeClassLabel == labeledPoint.label
+    BinaryClassifier.positiveClassLabel == labeledPoint.label ||
+      BinaryClassifier.negativeClassLabel == labeledPoint.label
   }
 
   def finiteFeatures(labeledPoint: LabeledPoint): Boolean = {
