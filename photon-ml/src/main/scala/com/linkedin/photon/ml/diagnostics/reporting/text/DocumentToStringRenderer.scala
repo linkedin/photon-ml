@@ -7,8 +7,14 @@ import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalRep
 /**
  * Created by bdrew on 10/12/15.
  */
-class DocumentToStringRenderer(renderStrategy: RenderStrategy[ChapterPhysicalReport, String], numberingContext: NumberingContext) extends SpecificRenderer[DocumentPhysicalReport, String] {
-  private val baseRenderer = new BaseSequencePhysicalReportRender[ChapterPhysicalReport, String](renderStrategy, numberingContext) {
+class DocumentToStringRenderer(
+    renderStrategy: RenderStrategy[ChapterPhysicalReport, String],
+    numberingContext: NumberingContext)
+  extends SpecificRenderer[DocumentPhysicalReport, String] {
+
+  private val baseRenderer =
+    new BaseSequencePhysicalReportRender[ChapterPhysicalReport, String](renderStrategy, numberingContext) {
+
     protected def coalesce(partialRendered: Seq[(List[Int], ChapterPhysicalReport, String)]): String = {
       partialRendered.map(x => {
         val number = x._1.mkString(".")

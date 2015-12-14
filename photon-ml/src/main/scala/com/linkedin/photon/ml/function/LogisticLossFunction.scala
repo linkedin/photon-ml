@@ -6,15 +6,18 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 import com.linkedin.photon.ml.util.Utils
 
 /**
- * Class for the logistic loss function: sum_i (w_i*(y_i*log(1 + exp(-(theta'x_i + o_i))) + (1-y_i)*log(1 + exp(theta'x_i + o_i)))),
+ * Class for the logistic loss function:
+ *   sum_i (w_i*(y_i*log(1 + exp(-(theta'x_i + o_i))) + (1-y_i)*log(1 + exp(theta'x_i + o_i)))),
  * where \theta is the coefficients of the data features to be estimated, (y_i, x_i, o_i, w_i) are the tuple
  * for label, features, offset, and weight of the i'th labeled data point, respectively.
- * Note that the above equation assumes the label y_i \in {0, 1}. However, the code below would also work when y_i \in {-1, 1}.
+ * Note that the above equation assumes the label y_i \in {0, 1}. However, the code below would also work when
+ * y_i \in {-1, 1}.
  * @author xazhang
  * @author dpeng
  */
-class LogisticLossFunction(normalizationContext: ObjectProvider[NormalizationContext] = new SimpleObjectProvider[NormalizationContext](NoNormalization)) extends
-  GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
+class LogisticLossFunction(normalizationContext: ObjectProvider[NormalizationContext] =
+    new SimpleObjectProvider[NormalizationContext](NoNormalization))
+  extends GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
 
 /**
  * A single logistic loss function

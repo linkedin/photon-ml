@@ -10,8 +10,12 @@ import org.apache.spark.rdd.RDD
  * @param intercept Intercept computed for this model (Option)
  * @author asaha
  */
-class PoissonRegressionModel(override val coefficients: Vector[Double], override val intercept: Option[Double])
-        extends GeneralizedLinearModel(coefficients, intercept) with Regression with Serializable {
+class PoissonRegressionModel(
+    override val coefficients: Vector[Double],
+    override val intercept: Option[Double])
+  extends GeneralizedLinearModel(coefficients, intercept)
+  with Regression
+  with Serializable {
 
   override def predictWithOffset(features: Vector[Double], offset: Double): Double = {
     computeMeanFunctionWithOffset(features, offset)
@@ -29,7 +33,11 @@ class PoissonRegressionModel(override val coefficients: Vector[Double], override
    * @param offset the input data point's offset
    * @return
    */
-  override protected def computeMean(coefficients: Vector[Double], intercept: Option[Double], features: Vector[Double], offset: Double): Double = {
+  override protected def computeMean(
+      coefficients: Vector[Double],
+      intercept: Option[Double],
+      features: Vector[Double],
+      offset: Double): Double = {
     math.exp(coefficients.dot(features) + intercept.getOrElse(0.0) + offset)
   }
 }

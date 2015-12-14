@@ -37,7 +37,9 @@ object OptimizationUtils {
    * @param constraintMap map of feature index to the bounds that are to be enforced on that particular feature
    * @return projected value of coefficients
    */
-  def projectCoefficientsToHypercube(coefficients: Vector[Double], constraintMap: Option[Map[Int, (Double, Double)]]): Vector[Double] = {
+  def projectCoefficientsToHypercube(
+      coefficients: Vector[Double],
+      constraintMap: Option[Map[Int, (Double, Double)]]): Vector[Double] = {
     constraintMap match {
       case Some(x: Map[Int, (Double, Double)]) =>
         val projectedCoefficients = Utils.initializeZerosVectorOfSameType(coefficients)

@@ -6,7 +6,8 @@ import com.xeiam.xchart.{StyleManager, ChartBuilder}
 /**
  * Prepare a feature importance report for presentation
  */
-class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[FeatureImportanceReport, SectionPhysicalReport] {
+class FeatureImportanceToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[FeatureImportanceReport, SectionPhysicalReport] {
 
   import FeatureImportanceToPhysicalReportTransformer._
 
@@ -38,7 +39,12 @@ class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalRepo
   }
 
   def generateDescription(report: FeatureImportanceReport): BulletedListPhysicalReport = {
-    new BulletedListPhysicalReport(report.featureImportance.toList.sortBy(_._2._2).reverse.map(x => new SimpleTextPhysicalReport(x._2._3)))
+    new BulletedListPhysicalReport(
+      report.featureImportance
+        .toList
+        .sortBy(_._2._2)
+        .reverse
+        .map(x => new SimpleTextPhysicalReport(x._2._3)))
   }
 }
 
