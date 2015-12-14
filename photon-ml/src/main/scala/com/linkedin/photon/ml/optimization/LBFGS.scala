@@ -25,7 +25,10 @@ import org.apache.spark.rdd.RDD
  * @author dpeng
  * @author bdrew
  */
-class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS) extends AbstractOptimizer[Datum, DiffFunction[Datum]](maxNumIterations = LBFGS.DEFAULT_MAX_ITER, tolerance = LBFGS.DEFAULT_TOLERANCE) {
+class LBFGS[Datum <: DataPoint](
+    var numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS)
+  extends AbstractOptimizer[Datum, DiffFunction[Datum]](
+    maxNumIterations = LBFGS.DEFAULT_MAX_ITER, tolerance = LBFGS.DEFAULT_TOLERANCE) {
 
   /**
    * Under the hood, this adaptor uses an LBFGS
@@ -37,7 +40,11 @@ class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORR
    * The L1 penalty is implemented in the optimizer level. See
    * [[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.OWLQN breeze.optimize.OWLQN]].
    */
-  protected[ml] class BreezeOptimization(data: Either[RDD[Datum], Iterable[Datum]], diffFunction: DiffFunction[Datum], initialCoef: Vector[Double]) {
+  protected[ml] class BreezeOptimization(
+      data: Either[RDD[Datum], Iterable[Datum]],
+      diffFunction: DiffFunction[Datum],
+      initialCoef: Vector[Double]) {
+
     private val lbfgs = diffFunction match {
       case diffFunc: DiffFunction[Datum] with L1RegularizationTerm =>
         val l1Weight = diffFunc.getL1RegularizationParam
@@ -67,8 +74,9 @@ class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORR
       if (breezeStates.hasNext) {
         val breezeState = breezeStates.next()
         /* project coefficients into constrained space, if any, before updating the state */
-        OptimizerState(OptimizationUtils.projectCoefficientsToHypercube(breezeState.x, constraintMap), breezeState.adjustedValue,
-          breezeState.adjustedGradient, state.iter + 1)
+        OptimizerState(
+          OptimizationUtils.projectCoefficientsToHypercube(breezeState.x, constraintMap), breezeState.adjustedValue,
+            breezeState.adjustedGradient, state.iter + 1)
       } else {
         //lbfgs is converged
         state
@@ -85,7 +93,11 @@ class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORR
    * @param diffFunction The loss function to be optimized
    * @param initialCoef Initial coefficients for the optimization
    */
-  def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: DiffFunction[Datum], initialCoef: Vector[Double]) = {
+  def init(
+      state: OptimizerState,
+      data: Either[RDD[Datum], Iterable[Datum]],
+      diffFunction: DiffFunction[Datum],
+      initialCoef: Vector[Double]) = {
     breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
   }
 
@@ -94,9 +106,10 @@ class LBFGS[Datum <: DataPoint](var numCorrections: Int = LBFGS.DEFAULT_NUM_CORR
     clearOptimizerState()
   }
 
-  protected def runOneIteration(data: Either[RDD[Datum], Iterable[Datum]],
-                                objectiveFunction: DiffFunction[Datum],
-                                state: OptimizerState): OptimizerState = {
+  protected def runOneIteration(
+      data: Either[RDD[Datum], Iterable[Datum]],
+      objectiveFunction: DiffFunction[Datum],
+      state: OptimizerState): OptimizerState = {
     breezeOptimization.next(state)
   }
 }

@@ -27,7 +27,8 @@ class Params {
    * Validating data directory. Note that
    *    1. Validation is optional
    *    2. If validation data set is provided, the best model will be provided;
-   *    3. No matter 1 or 2, all learned models will be provided, so users can always perform an independent model selection job
+   *    3. No matter 1 or 2, all learned models will be provided, so users can always perform an independent model
+   *       selection job
    */
   var validateDirOpt: Option[String] = None
   /**
@@ -136,7 +137,8 @@ class Params {
                    s"satisfaction of the coefficient constraints after normalization.")
     }
     if (normalizationType == NormalizationType.STANDARDIZATION && !addIntercept) {
-      messages += s"Intercept must be used to enable feature standardization. Normalization type: ${normalizationType}, add intercept: ${addIntercept}."
+      messages += s"Intercept must be used to enable feature standardization. Normalization type: " +
+                  s"${normalizationType}, add intercept: ${addIntercept}."
     }
     if (messages.nonEmpty) {
       throw new IllegalArgumentException(messages.mkString("\n"))

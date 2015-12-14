@@ -30,12 +30,12 @@ object BootstrapTraining {
    * </ul>
    * @param modelsAndMetrics
    * @tparam GLM
-   * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the coefficient
-   *         vector. The optional second part contains information about the intercept (if available).
+   * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the
+   *   coefficient vector. The optional second part contains information about the intercept (if available).
    */
-  def aggregateCoefficientConfidenceIntervals[GLM <: GeneralizedLinearModel](modelsAndMetrics: Seq[(GLM, Map[String, Double])]): (Array[CoefficientSummary], Option[CoefficientSummary]) = {
-    var resultCoeff: Array[CoefficientSummary] = null
-    var resultIntercept: Option[CoefficientSummary] = null
+  def aggregateCoefficientConfidenceIntervals[GLM <: GeneralizedLinearModel](
+      modelsAndMetrics: Seq[(GLM, Map[String, Double])]): (Array[CoefficientSummary], Option[CoefficientSummary]) = {
+
     val initState = (x: Double) => {
       val coeff = new CoefficientSummary
       coeff.accumulate(x)
@@ -73,10 +73,12 @@ object BootstrapTraining {
    * </ul>
    * @param modelsAndMetrics
    * @tparam GLM
-   * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the coefficient
-   *         vector. The optional second part contains information about the intercept (if available).
+   * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the
+   *   coefficient vector. The optional second part contains information about the intercept (if available).
    */
-  def aggregateMetricsConfidenceIntervals[GLM <: GeneralizedLinearModel](modelsAndMetrics: Seq[(GLM, Map[String, Double])]): Map[String, CoefficientSummary] = {
+  def aggregateMetricsConfidenceIntervals[GLM <: GeneralizedLinearModel](
+      modelsAndMetrics: Seq[(GLM, Map[String, Double])]): Map[String, CoefficientSummary] = {
+
     modelsAndMetrics.map(_._2).flatMap(_.iterator).groupBy(_._1).mapValues(x => {
       val values = x.map(_._2)
       values.foldLeft(new CoefficientSummary)((sum, sample) => {
@@ -120,13 +122,13 @@ object BootstrapTraining {
    * A two level map of (regularization &rarr; aggregate name &rarr; aggregate) computed aggregates,
    * broken down by regularization.
    */
-  def bootstrap[GLM <: GeneralizedLinearModel](numBootstrapSamples: Int,
-                                               populationPortionPerBootstrapSample: Double,
-                                               warmStart: Map[Double, GLM],
-                                               trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => List[(Double, GLM)],
-                                               aggregations: Map[String, Seq[(GLM, Map[String, Double])] => Any],
-                                               trainingSamples: RDD[LabeledPoint]): Map[Double, Map[String, Any]] = {
-
+  def bootstrap[GLM <: GeneralizedLinearModel](
+      numBootstrapSamples: Int,
+      populationPortionPerBootstrapSample: Double,
+      warmStart: Map[Double, GLM],
+      trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => List[(Double, GLM)],
+      aggregations: Map[String, Seq[(GLM, Map[String, Double])] => Any],
+      trainingSamples: RDD[LabeledPoint]): Map[Double, Map[String, Any]] = {
 
     Preconditions.checkArgument(
       numBootstrapSamples > 1,
@@ -138,7 +140,10 @@ object BootstrapTraining {
 
 
     val numSplits = 1000
-    val targetSplits = math.min(900, (populationPortionPerBootstrapSample * numSplits).toInt) // regardless of what users tell us, never more than 90% for training
+
+    // regardless of what users tell us, never more than 90% for training
+    val targetSplits = math.min(900, (populationPortionPerBootstrapSample * numSplits).toInt)
+
     val tagged = trainingSamples.mapPartitions(x => {
         val prng = new MersenneTwister(System.nanoTime())
         val dist = new UniformIntegerDistribution(prng, 0, numSplits)

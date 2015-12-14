@@ -11,5 +11,6 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  * @param summary
  *                Feature summary
  */
-case class FeatureSummaryReport(nameToIndex: Map[String, Int],
-                                summary:BasicStatisticalSummary) extends LogicalReport
+case class FeatureSummaryReport(
+  nameToIndex: Map[String, Int],
+  summary:BasicStatisticalSummary) extends LogicalReport

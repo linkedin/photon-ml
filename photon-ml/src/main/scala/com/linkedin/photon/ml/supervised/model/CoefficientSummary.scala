@@ -37,7 +37,8 @@ class CoefficientSummary extends Serializable {
   def getCount(): Long = summary.getN
 
   override def toString():String = {
-    f"Range: [Min: $getMin%.03f, Q1: $estimateFirstQuartile%.03f, Med: $estimateMedian%.03f, Q3: $estimateThirdQuartile%.03f, Max: $getMax%.03f) " +
+    f"Range: [Min: $getMin%.03f, Q1: $estimateFirstQuartile%.03f, Med: $estimateMedian%.03f, " +
+      f"Q3: $estimateThirdQuartile%.03f, Max: $getMax%.03f) " +
     f"Mean: [$getMean%.03f], Std. Dev.[$getStdDev%.03f], # samples = [$getCount]"
   }
 }
