@@ -42,19 +42,31 @@ object BootstrapTraining {
       coeff
     }
 
-    modelsAndMetrics.foldLeft(null: (Array[CoefficientSummary], Option[CoefficientSummary]))((state, sample) => {
-      if (null == state) {
-        (sample._1.coefficients.toArray.map(initState(_)),
-          sample._1.intercept.map(initState(_)))
-      } else {
-        (state._1.zip(sample._1.coefficients.toArray).map(x => {
-          x._1.accumulate(x._2)
-          x._1
-        }),
-          state._2.map(x => {
-            x.accumulate(sample._1.intercept.get)
-            x
-          }))
+    // Initialize summary state with the first model in the sequence
+    val firstGLM = modelsAndMetrics.head._1
+    val firstState = (
+      firstGLM.coefficients.toArray.map(initState),
+      firstGLM.intercept.map(initState))
+
+    // Reduce the remaining models into a full summary
+    modelsAndMetrics.tail.foldLeft(firstState)({
+      case ((coeffs, intercept), (glm, _)) => {
+
+        // Accumulate coefficients
+        coeffs.zip(glm.coefficients.toArray).map({
+          case (accCoeff, currCoeff) => {
+            accCoeff.accumulate(currCoeff)
+            accCoeff
+          }
+        })
+
+        // Accumulate intercept
+        intercept.map(accIntercept => {
+          accIntercept.accumulate(glm.intercept.get)
+          accIntercept
+        })
+
+        (coeffs, intercept)
       }
     })
   }
