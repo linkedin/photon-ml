@@ -1,0 +1,63 @@
+// build script for compiling Avro schemas - ximeng
+// ----
+// instructions:
+// 0) define multiproduct metronome-avro-tools/metronome-avro-compiler in product-spec.json
+// 1) copy this file to your subproject folder
+// 2) insert line "apply from: 'avro-code-gen.gradle'" to build.gradle
+// 3) put Avro schema files (*.avsc) under src/main/avro
+// 4) if external type references are used, add dependencies to dependencies.avroCodeGen
+
+configurations {
+  avroCodeGenConf
+}
+
+dependencies {
+  compile spec.external.avro
+  avroCodeGenConf spec.product.'metronome-avro-tools'.'metronome-avro-compiler'
+  // add dependencies containing external type references here
+}
+
+ext {
+  avroSchemasDir = "${projectDir}/schemas/avro-schemas"
+  avroGeneratedSrcDir = "${projectDir}/src/main/avro"
+}
+
+sourceSets {
+  main {
+    java {
+      srcDirs avroGeneratedSrcDir
+    }
+  }
+}
+
+task avroCodeGen {
+  inputs.dir avroSchemasDir
+  outputs.dir avroGeneratedSrcDir
+
+  doLast {
+    delete avroGeneratedSrcDir
+    mkdir avroGeneratedSrcDir
+
+    if((new File(avroSchemasDir)).exists()) {
+      javaexec {
+        classpath configurations.avroCodeGenConf
+        setMain 'com.linkedin.metronome.avro.SchemaCompiler'
+        args = [ avroSchemasDir, avroGeneratedSrcDir ]
+      }
+    }
+  }
+}
+
+clean {
+  delete avroGeneratedSrcDir
+}
+
+compileJava.dependsOn avroCodeGen
+
+plugins.withType(EclipsePlugin) {
+  tasks.eclipse.dependsOn avroCodeGen
+}
+
+plugins.withType(IdeaPlugin) {
+  tasks.idea.dependsOn avroCodeGen
+}

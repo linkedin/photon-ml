@@ -1,0 +1,63 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "game-full-on-jymbii-1-week-scoring"
+
+def dataInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
+def dateRange = "20151104-20151110"
+
+def outputDir = "/tmp/liar/jobs/liar/$flowName" as String
+
+def gameModelInputDir = "/tmp/liar/jobs/liar/new-game-full-on-jymbii-1-day-parameter-tuning/member-eff-10-job-eff-30-ratio-20-pro-100/best"
+
+def featureNameAndTermSetInputPath = "/jobs/liar/jymbii-glmm/glmix/feature-lists/" +
+    "globalFeatures-memberFeatures-jobFeatures-memberJobCrossFeatures-20150707-20151103"
+
+def featureShardIdToFeatureSectionKeysMap = "shard1:globalFeatures,memberFeatures,jobFeatures,memberJobCrossFeatures|" +
+    "shard2:globalFeatures,jobFeatures|shard3:globalFeatures,memberFeatures"
+
+def randomEffectIdSet = "memberId,jobId"
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    def scoringJobName = "standalone-job"
+    job(scoringJobName) {
+
+      def executorMemoryInMB=10000
+      def executorMemory="${executorMemoryInMB}m" as String
+      def numExecutors=50
+      def driverMemoryInMB=10000
+      def driverMemory="${driverMemoryInMB}m" as String
+      def maxResultSize="${driverMemoryInMB/2}m" as String
+      def parallelism=numExecutors*3
+
+      baseProperties 'sparkCommon'
+      set properties: [
+        'class'                                   : 'com.linkedin.mlease.spark.avro.scoring.Driver',
+        'num-executors'                           : numExecutors,
+        'driver-memory'                           : driverMemory,
+        'executor-memory'                         : executorMemory,
+        'conf.spark.driver.maxResultSize'         : maxResultSize,
+        'conf.spark.default.parallelism'          : parallelism,
+        'params' : "--input-data-dirs $dataInputDirs " +
+            "--date-range $dateRange " +
+            "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
+            "--feature-shard-id-to-feature-section-keys-map $featureShardIdToFeatureSectionKeysMap " +
+            "--random-effect-id-set $randomEffectIdSet " +
+            "--game-model-input-dir $gameModelInputDir " +
+            "--output-dir $outputDir " +
+            "--num-files 1 " +
+            "--application-name $scoringJobName " +
+            "--task-type binary_classification"
+      ]
+      targets scoringJobName
+    }
+  }
+}
