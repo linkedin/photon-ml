@@ -38,26 +38,24 @@ dependencies {
   compile(spec.external."scalaCompiler$scalaSuffix")
   compile(spec.external."scalaLibrary$scalaSuffix")
   compile(spec.external."scalaReflect$scalaSuffix")
-  compile(spec.external.avro)
-  compile(spec.external.avroCompiler)
-  compile(spec.external.avroMapred)
-  compile(spec.external.xchart)
-  compile(spec.external.batik)
 
+  compile(spec.external."spark-catalyst$scalaSuffix")
   compile(spec.external."spark-core$scalaSuffix")
   compile(spec.external."spark-mllib$scalaSuffix")
   compile(spec.external."spark-sql$scalaSuffix")
-  compile(spec.external."spark-catalyst$scalaSuffix")
 
-  //this one is scala's option parsing library
+  compile(spec.external.avro)
+  compile(spec.external.avroCompiler)
+  compile(spec.external.avroMapred)
+  compile(spec.external.batik)
+  compile(spec.external.log4j)
   compile(spec.external."scopt$scalaSuffix")
-
-  compile(spec.external."log4j")
-
+  compile(spec.external.xchart)
   compile(spec.product."photon-schemas"."photon-schemas")
 
-
   testCompile(project(":photon-test$scalaSuffix"))
+
   testRuntime(spec.external."breeze-core$scalaSuffix")
   testRuntime(spec.external."breeze-macro$scalaSuffix")
 }
+
