@@ -13,6 +13,7 @@
 */out
 bin
 build
+ligradle
 out
 photon-ml/LOGISTIC*
 photon-ml/LINEAR*

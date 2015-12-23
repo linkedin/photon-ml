@@ -1,3 +1,11 @@
+// The shadow plugin has a jar conflict with a zip library also present in ligradle, but we can
+// work around the problem by adding the buildscript dependency to the top-level build.gradle.
+buildscript {
+  dependencies {
+    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.2'
+  }
+}
+
 apply plugin: 'li-product'
 apply plugin: 'li-jacoco-product'
 apply plugin: 'li-findbugs-product'
@@ -10,17 +18,6 @@ buildscript {
 }
 
 subprojects {
-  configurations.all {
-    // Brought in by azkaban2, but not needed
-    exclude group: 'commons-dbutils'
-    exclude group: 'commons-fileupload'
-    exclude group: 'commons-pool'
-    exclude group: 'com.h2database'
-    exclude group: 'mysql'
-    exclude group: 'com.google.collections', module: 'google-collections'
-    exclude group: 'kafka', module: 'kafka'
-  }
-
   plugins.withType(JavaPlugin) {
     test {
       useTestNG()
@@ -52,7 +49,6 @@ subprojects {
 
   tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-unchecked", "-Yinline-warnings", "-g:vars"]
-
     scalaCompileOptions.useAnt = false
 
     configure(scalaCompileOptions.forkOptions) {
