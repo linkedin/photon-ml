@@ -5,13 +5,14 @@ clean {
   delete jobDir
 }
 
-def flowName = "game-on-jymbii-1-day-parameter-tuning"
+def flowName = "game-on-jymbii-4-month-parameter-tuning"
 
-def trainInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
+def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
+    "glmix_data_20000"
 def validateInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
 
-def trainDateRange = "20151103-20151103"
-def validateDateRange = "20151104-20151104"
+def trainDateRange = "20150707-20151103"
+def validateDateRange = "20151104-20151110"
 
 
 def featureNameAndTermSetInputPath = "/jobs/liar/jymbii-glmm/glmix/feature-lists/" +
@@ -23,15 +24,13 @@ def featureShardIdToFeatureSectionKeysMap = "shard1:globalFeatures,memberFeature
 def outputDir = "/tmp/liar/jobs/liar/$flowName" as String
 
 
-def numIterations = 1
+def numIterations = 4
 def updatingSequence = "global,per-member,per-job"
 def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,0.5,tron,l2"
 def fixedEffectDataConfigurations = "global:shard1"
 
-def perMemberRandomEffectRegularizationWeights = [5, 10]
-def perJobRandomEffectRegularizationWeights = [10, 30]
-
-def randomEffectProjectorConfigurations = "per-member:index|per-job:index"
+def perMemberRandomEffectRegularizationWeights = [10, 30]
+def perJobRandomEffectRegularizationWeights = [30, 50]
 
 def numFeaturesToNumObservationsRatios = [20]
 
@@ -48,8 +47,8 @@ hadoop {
             continue
           }
 
-          def randomEffectDataConfigurations = "per-member:memberId,shard2,-1,0,$numFeaturesToNumObservationsRatio|" +
-              "per-job:jobId,shard3,-1,0,$numFeaturesToNumObservationsRatio"
+          def randomEffectDataConfigurations = "per-member:memberId,shard2,-1,0,$numFeaturesToNumObservationsRatio,index_map|" +
+              "per-job:jobId,shard3,-1,0,$numFeaturesToNumObservationsRatio,index_map"
 
           def randomEffectOptimizationConfigurations =
               "per-member:10,1e-5,$perMemberRandomEffectRegularizationWeight,1,tron,l2|" +
@@ -91,7 +90,6 @@ hadoop {
                                  "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
                                  "--random-effect-optimization-configurations $randomEffectOptimizationConfigurations " +
                                  "--random-effect-data-configurations $randomEffectDataConfigurations " +
-                                 "--random-effect-projector-configurations $randomEffectProjectorConfigurations " +
                                  "--application-name $applicationName "
             ]
           }

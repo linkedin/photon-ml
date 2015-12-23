@@ -8,10 +8,12 @@ azkabanZip.dependsOn buildAzkabanFlows
 
 apply from: 'src/main/gradle/config/properties.gradle'
 
-//newgame
+//jymbii
 apply from: 'src/main/gradle/jymbii/GenerateFeatureList.gradle'
 apply from: 'src/main/gradle/jymbii/GameParameterTuningOnNertzrm02.gradle'
 apply from: 'src/main/gradle/jymbii/GameRPParameterTuningOnNertzrm02.gradle'
+apply from: 'src/main/gradle/jymbii/LatentFactorGameParameterTuningOnNertzrm02.gradle'
+apply from: 'src/main/gradle/jymbii/ToyLatentFactorGameParameterTuningOnNertzrm02.gradle'
 apply from: 'src/main/gradle/jymbii/GameScoringOnNertzrm02.gradle'
 
 

@@ -5,7 +5,7 @@ clean {
   delete jobDir
 }
 
-def flowName = "game-full-on-jymbii-4-month-parameter-tuning-pro-50"
+def flowName = "latent-facor-game-on-jymbii-4-month-parameter-tuning-50"
 
 def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
     "glmix_data_20000"
@@ -25,17 +25,19 @@ def outputDir = "/tmp/liar/jobs/liar/$flowName" as String
 
 
 def numIterations = 4
-def updatingSequence = "global,per-member-rp,per-member,per-job-rp,per-job"
+def updatingSequence = "global,per-member-factor,per-member,per-job-factor,per-job"
 def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,0.5,tron,l2"
 def fixedEffectDataConfigurations = "global:shard1"
 
-def perMemberRandomEffectRegularizationWeights = [30, 50, 100]
-def perJobRandomEffectRegularizationWeights = [30, 50, 100]
+def perMemberRandomEffectRegularizationWeights = [50]
+def perJobRandomEffectRegularizationWeights = [50]
 
-def rpRegularizationWeightRatios = [2, 5]
+def factorRegularizationWeightRatios = [1]
 
 def numFeaturesToNumObservationsRatios = [20]
-def numProjectedDimensions = [50]
+def numLatentDimensions = [50]
+def numLatentFactorGameInnerIterations = 1
+def downSamplingRateForLatentFactorMatrixUpdate = 0.2
 
 
 hadoop {
@@ -43,8 +45,8 @@ hadoop {
 
   workflow(flowName) {
 
-    for (rpRegularizationWeightRatio in rpRegularizationWeightRatios) {
-      for (numProjectedDimension in numProjectedDimensions) {
+    for (factorRegularizationWeightRatio in factorRegularizationWeightRatios) {
+      for (numLatentDimension in numLatentDimensions) {
         for (numFeaturesToNumObservationsRatio in numFeaturesToNumObservationsRatios) {
           for (perMemberRandomEffectRegularizationWeight in perMemberRandomEffectRegularizationWeights) {
             for (perJobRandomEffectRegularizationWeight in perJobRandomEffectRegularizationWeights) {
@@ -53,21 +55,26 @@ hadoop {
                 continue
               }
 
-              def perMemberRPRandomEffectRegularizationWeight = perMemberRandomEffectRegularizationWeight / rpRegularizationWeightRatio
-              def perJobPRandomEffectRegularizationWeight = perJobRandomEffectRegularizationWeight / rpRegularizationWeightRatio
+              def perMemberFactorRandomEffectRegularizationWeight = perMemberRandomEffectRegularizationWeight / factorRegularizationWeightRatio
+              def perJobFactorRandomEffectRegularizationWeight = perJobRandomEffectRegularizationWeight / factorRegularizationWeightRatio
 
-              def randomEffectDataConfigurations = "per-member-rp:memberId,shard2,-1,-1,-1,random=$numProjectedDimension" +
+              def factoredRandomEffectOptimizationConfigurations = "" +
+                  "per-member-factor:10,1e-5,$perMemberFactorRandomEffectRegularizationWeight,1,tron,l2" +
+                  ":5,1e-4,10,$downSamplingRateForLatentFactorMatrixUpdate,tron,l2:$numLatentFactorGameInnerIterations,$numLatentDimension" +
+                  "|per-job-factor:5,1e-5,$perJobFactorRandomEffectRegularizationWeight,1,tron,l2" +
+                  ":5,1e-4,10,$downSamplingRateForLatentFactorMatrixUpdate,tron,l2" +
+                  ":$numLatentFactorGameInnerIterations,$numLatentDimension"
+
+              def randomEffectDataConfigurations = "per-member-factor:memberId,shard2,-1,-1,-1,identity" +
                   "|per-member:memberId,shard2,-1,-1,$numFeaturesToNumObservationsRatio,index_map" +
-                  "|per-job-rp:jobId,shard3,-1,-1,-1,random=$numProjectedDimension" +
+                  "|per-job-factor:jobId,shard3,-1,-1,-1,identity" +
                   "|per-job:jobId,shard3,-1,-1,$numFeaturesToNumObservationsRatio,index_map"
 
               def randomEffectOptimizationConfigurations =
-                  "per-member-rp:10,1e-5,$perMemberRPRandomEffectRegularizationWeight,1,tron,l2" +
-                      "|per-member:10,1e-5,$perMemberRandomEffectRegularizationWeight,1,tron,l2" +
-                      "|per-job-rp:10,1e-5,$perJobPRandomEffectRegularizationWeight,1,tron,l2" +
+                  "per-member:10,1e-5,$perMemberRandomEffectRegularizationWeight,1,tron,l2" +
                       "|per-job:10,1e-5,$perJobRandomEffectRegularizationWeight,1,tron,l2"
 
-              def applicationName = "member-$perMemberRandomEffectRegularizationWeight-member-pro-$perMemberRPRandomEffectRegularizationWeight-job-$perJobRandomEffectRegularizationWeight-job-pro-$perJobPRandomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio-pro-$numProjectedDimension"
+              def applicationName = "member-$perMemberRandomEffectRegularizationWeight-member-fac-$perMemberFactorRandomEffectRegularizationWeight-job-$perJobRandomEffectRegularizationWeight-job-fac-$perJobFactorRandomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio-dim-$numLatentDimension"
                   .replaceAll("\\.|_|,", "-") as String
 
               job(applicationName) {
@@ -75,10 +82,11 @@ hadoop {
                 def executorMemoryInMB = 8000
                 def executorMemory = "${executorMemoryInMB}m" as String
                 def executorMemoryOverhead = executorMemoryInMB / 4
-                def numExecutors = 150
-                def driverMemoryInMB = 8000
+                def numExecutors = 300
+                def driverMemoryInMB = 10000
                 def driverMemory = "${driverMemoryInMB}m" as String
                 def parallelism = numExecutors * 4
+                def maxResultSize = "${driverMemoryInMB/2}m" as String
 
                 def jobOutputDir = "$outputDir/$applicationName" as String
 
@@ -89,6 +97,7 @@ hadoop {
                                  'executor-memory'                        : executorMemory,
                                  'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
                                  'conf.spark.default.parallelism'         : parallelism,
+                                 'conf.spark.driver.maxResultSize'        : maxResultSize,
                                  'params'                                 : "--train-input-dirs $trainInputDirs " +
                                      "--task-type binary_classification " +
                                      "--validate-input-dirs $validateInputDirs " +
@@ -102,6 +111,7 @@ hadoop {
                                      "--fixed-effect-optimization-configurations $fixedEffectOptimizationConfigurations " +
                                      "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
                                      "--random-effect-optimization-configurations $randomEffectOptimizationConfigurations " +
+                                     "--factored-random-effect-optimization-configurations $factoredRandomEffectOptimizationConfigurations " +
                                      "--random-effect-data-configurations $randomEffectDataConfigurations " +
                                      "--application-name $applicationName "]
               }
