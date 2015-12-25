@@ -5,7 +5,7 @@ clean {
   delete jobDir
 }
 
-def flowName = "latent-facor-game-on-jymbii-4-month-parameter-tuning-50"
+def flowName = "latent-facor-game-on-jymbii-4-month-data"
 
 def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
     "glmix_data_20000"
@@ -29,15 +29,15 @@ def updatingSequence = "global,per-member-factor,per-member,per-job-factor,per-j
 def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,0.5,tron,l2"
 def fixedEffectDataConfigurations = "global:shard1"
 
-def perMemberRandomEffectRegularizationWeights = [50]
-def perJobRandomEffectRegularizationWeights = [50]
+def perMemberRandomEffectRegularizationWeights = [50, 100, 200]
+def perJobRandomEffectRegularizationWeights = [50, 100, 200]
 
-def factorRegularizationWeightRatios = [1]
+def factorRegularizationWeightRatios = [1, 2]
 
 def numFeaturesToNumObservationsRatios = [20]
-def numLatentDimensions = [50]
-def numLatentFactorGameInnerIterations = 1
-def downSamplingRateForLatentFactorMatrixUpdate = 0.2
+def numLatentDimensions = [10]
+def numLatentFactorGameInnerIterations = 2
+def downSamplingRateForLatentFactorMatrixUpdate = 1
 
 
 hadoop {
@@ -82,7 +82,7 @@ hadoop {
                 def executorMemoryInMB = 8000
                 def executorMemory = "${executorMemoryInMB}m" as String
                 def executorMemoryOverhead = executorMemoryInMB / 4
-                def numExecutors = 300
+                def numExecutors = 200
                 def driverMemoryInMB = 10000
                 def driverMemory = "${driverMemoryInMB}m" as String
                 def parallelism = numExecutors * 4
