@@ -3,6 +3,12 @@ apply plugin: 'li-jacoco-product'
 apply plugin: 'li-findbugs-product'
 apply plugin: 'li-checkstyle-product'
 
+buildscript {
+  dependencies {
+    classpath spec.external.scalaStyle
+  }
+}
+
 subprojects {
   configurations.all {
     // Brought in by azkaban2, but not needed
@@ -53,6 +59,19 @@ subprojects {
       memoryMaximumSize = '1g'
     }
     configurations.zinc.transitive = true
+  }
+
+  apply plugin: 'scalaStyle'
+
+  // scalaStyle config. This evals after ScalaPlugin so that it will have access to sourceSets
+  plugins.withType(ScalaPlugin) {
+    afterEvaluate {
+      scalaStyle {
+        configLocation = 'scalastyle-config.xml'
+        includeTestSourceDirectory = false
+        source = sourceSets.main.scala
+      }
+    }
   }
 }
 
