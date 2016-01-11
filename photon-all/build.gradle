@@ -1,10 +1,14 @@
 apply plugin: 'li-scala'
 apply plugin: 'com.github.johnrengelman.shadow'
 
+dependencies {
+  compile project(":photon-ml$scalaSuffix")
+}
+
 // Configure the shadow plugin to contain all the runtime dependencies except
 // those which already live on the grid (such as Spark and Scala)
-dependencies {
-  compile(project(":photon-ml$scalaSuffix")) {
+configurations {
+  runtime {
     exclude group: 'log4j'
     exclude group: 'org.apache.spark'
     exclude group: 'org.scala-lang'
