@@ -17,6 +17,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * @author xazhang
  * @author dpeng
+ * @author nkatariy
  */
 class Params {
   /**
@@ -122,7 +123,11 @@ class Params {
    * tend to be more computationally demanding, this should default to false.
    */
   var trainingDiagnosticsEnabled: Boolean = false
-
+  /**
+   * A file containing selected features. The file is expected to contain avro records that have
+   * the "name" and "term" fields
+   */
+  var selectedFeaturesFile: Option[String] = None
   /**
    * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
    */
