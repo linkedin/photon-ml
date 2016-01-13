@@ -1,7 +1,7 @@
 package com.linkedin.photon.ml
 
 
-import java.io.{OutputStreamWriter, PrintWriter}
+import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapTrainingDiagnostic, BootstrapReport}
@@ -55,6 +55,7 @@ import scala.xml.PrettyPrinter
  * @author yizhou
  * @author dpeng
  * @author bdrew
+ * @author nkatariy
  */
 protected[ml] class Driver(
     protected val params: Params,
@@ -123,19 +124,27 @@ protected[ml] class Driver(
     logger.println(s"Final models are written to: $finalModelsDir")
   }
 
+  @throws(classOf[IOException])
   protected def preprocess(): Unit = {
     assertDriverStage(DriverStage.INIT)
+    params.selectedFeaturesFile.foreach(file => {
+      val path = new Path(file)
+      if (! path.getFileSystem(sc.hadoopConfiguration).exists(path)) {
+        throw new IOException("Could not find [" + file + "]. Check that the file exists")
+      }
+    })
 
     /* Preprocess the data for the following model training and validating procedure using the chosen suite */
     val startTimeForPreprocessing = System.currentTimeMillis()
 
-    trainingData = suite.readLabeledPointsFromAvro(sc, params.trainDir, params.minNumPartitions)
+    trainingData = suite.readLabeledPointsFromAvro(sc, params.trainDir, params.selectedFeaturesFile, params.minNumPartitions)
       .persist(trainDataStorageLevel).setName("training data")
     featureNum = trainingData.first().features.size
     trainingDataNum = trainingData.count().toInt
 
     /* Print out the basic statistics of the training data */
-    logger.println(s"number of training data points: $trainingDataNum, number of features: $featureNum.")
+    logger.println(s"number of training data points: $trainingDataNum, " +
+      s"number of features in each training example including intercept (if any) $featureNum.")
     logger.println(s"Input RDD persisted in storage level $trainDataStorageLevel")
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001
@@ -218,8 +227,9 @@ protected[ml] class Driver(
       logger.println(s"\nRead validation data from $validateDir")
 
       // Read validation data after the training data are unpersisted.
-      validatingData = suite.readLabeledPointsFromAvro(sc, validateDir, params.minNumPartitions)
-        .persist(trainDataStorageLevel).setName("validating data")
+      validatingData =
+        suite.readLabeledPointsFromAvro(sc, validateDir, params.selectedFeaturesFile, params.minNumPartitions)
+          .persist(trainDataStorageLevel).setName("validating data")
 
       /* Validating the learned models using the validating data set */
       logger.println("\nStart to validate the learned models with validating data")
