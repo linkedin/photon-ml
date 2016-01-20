@@ -7,8 +7,10 @@ import org.apache.spark.Logging
 
 protected[ml] object OptimizerFactory {
 
+  @Deprecated
   def getOptimizer[F <: DiffFunction[LabeledPoint]](optimizerType:OptimizerType)(implicit ev:Optimizable[F]) = {
     ev.getOptimizer(optimizerType)
+    throw new RuntimeException(s"This method is deprecated. No one should ever trigger this. See OFFREL-934 for why.")
   }
 
   trait Optimizable[-T <: DiffFunction[LabeledPoint]] {
