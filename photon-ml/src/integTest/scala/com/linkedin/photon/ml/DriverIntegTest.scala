@@ -42,6 +42,50 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithTRON(): Unit = sparkTestSelfServeContext("testRunWithTRON") {
+    val tmpDir = getTmpDir + "/testRunWithTRON"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += OptimizerType.TRON.toString()
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithLBFGS(): Unit = sparkTestSelfServeContext("testRunWithLBFGS") {
+    val tmpDir = getTmpDir + "/testRunWithLBFGS"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += OptimizerType.LBFGS.toString()
 
     MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
@@ -292,8 +336,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val models = Map(
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
-      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636),
-      TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
+      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636)
+
+      // Note: temporarily disabled due to OFFREL-934. Details explained in the ticket.
+      //      , TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561)
+    )
 
     val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
