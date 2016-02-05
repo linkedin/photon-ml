@@ -5,34 +5,47 @@ clean {
   delete jobDir
 }
 
-def flowName = "game-on-jymbii-4-month-parameter-tuning"
+def flowName = "glmix-on-jymbii-parameter-tuning"
 
+
+// Spark parameters
+def executorMemoryInMB = 8000
+def executorMemory = "${executorMemoryInMB}m" as String
+def executorMemoryOverhead = executorMemoryInMB / 4
+def numExecutors = 150
+def driverMemoryInMB = 8000
+def driverMemory = "${driverMemoryInMB}m" as String
+def parallelism = numExecutors * 4
+
+
+// Game input data parameters
 def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
     "glmix_data_20000"
 def validateInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
-
 def trainDateRange = "20150707-20151103"
 def validateDateRange = "20151104-20151110"
+def featureNameAndTermSetInputPath = "/jobs/fastrain/glmix_data/JYMBII/feature-lists/globalFeatures-memberFeatures-jobFeatures-memberJobCrossFeatures-20150707-20151103"
+
+def outputDir = "/jobs/fastrain/glmix_results/JYMBII/$flowName" as String
 
 
-def featureNameAndTermSetInputPath = "/jobs/liar/jymbii-glmm/glmix/feature-lists/" +
-    "globalFeatures-memberFeatures-jobFeatures-memberJobCrossFeatures-20150707-20151103"
-
+// Game data configuration parameters
 def featureShardIdToFeatureSectionKeysMap = "shard1:globalFeatures,memberFeatures,jobFeatures,memberJobCrossFeatures|" +
     "shard2:globalFeatures,jobFeatures|shard3:globalFeatures,memberFeatures"
+def numPartitionsForFixedEffectDataSet = numExecutors * 10
+def fixedEffectDataConfigurations = "global:shard1,$numPartitionsForFixedEffectDataSet" as String
+def numPartitionsForRandomEffectDataSet = numExecutors * 4
+def minPartitionsForValidation = numExecutors * 8
+def numFeaturesToNumObservationsRatios = [20]
 
-def outputDir = "/tmp/liar/jobs/liar/$flowName" as String
 
-
+// Game optimization parameters
 def numIterations = 4
 def updatingSequence = "global,per-member,per-job"
 def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,0.5,tron,l2"
-def fixedEffectDataConfigurations = "global:shard1"
-
 def perMemberRandomEffectRegularizationWeights = [10, 30]
 def perJobRandomEffectRegularizationWeights = [30, 50]
 
-def numFeaturesToNumObservationsRatios = [20]
 
 hadoop {
   buildPath jobDir
@@ -47,8 +60,9 @@ hadoop {
             continue
           }
 
-          def randomEffectDataConfigurations = "per-member:memberId,shard2,-1,0,$numFeaturesToNumObservationsRatio,index_map|" +
-              "per-job:jobId,shard3,-1,0,$numFeaturesToNumObservationsRatio,index_map"
+          def randomEffectDataConfigurations =
+              "per-member:memberId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map|" +
+              "per-job:jobId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map"
 
           def randomEffectOptimizationConfigurations =
               "per-member:10,1e-5,$perMemberRandomEffectRegularizationWeight,1,tron,l2|" +
@@ -58,14 +72,6 @@ hadoop {
               .replaceAll("\\.|_|,", "-") as String
 
           job(applicationName) {
-
-            def executorMemoryInMB = 8000
-            def executorMemory = "${executorMemoryInMB}m" as String
-            def executorMemoryOverhead = executorMemoryInMB / 4
-            def numExecutors = 150
-            def driverMemoryInMB = 8000
-            def driverMemory = "${driverMemoryInMB}m" as String
-            def parallelism = numExecutors * 4
 
             def jobOutputDir = "$outputDir/$applicationName" as String
 
@@ -77,9 +83,10 @@ hadoop {
                              'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
                              'conf.spark.default.parallelism'         : parallelism,
                              'params'                                 : "--train-input-dirs $trainInputDirs " +
+                                 "--train-date-range $trainDateRange " +
                                  "--task-type binary_classification " +
                                  "--validate-input-dirs $validateInputDirs " +
-                                 "--train-date-range $trainDateRange " +
+                                 "--min-partitions-for-validation $minPartitionsForValidation " +
                                  "--validate-date-range $validateDateRange " +
                                  "--output-dir $jobOutputDir " +
                                  "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
@@ -90,6 +97,7 @@ hadoop {
                                  "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
                                  "--random-effect-optimization-configurations $randomEffectOptimizationConfigurations " +
                                  "--random-effect-data-configurations $randomEffectDataConfigurations " +
+                                 "--save-models-to-hdfs false " +
                                  "--application-name $applicationName "
             ]
           }

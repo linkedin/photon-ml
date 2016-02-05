@@ -17,6 +17,17 @@ apply from: 'src/main/gradle/jymbii/ToyLatentFactorGameParameterTuningOnNertzrm0
 apply from: 'src/main/gradle/jymbii/GameScoringOnNertzrm02.gradle'
 
 
+//ads
+apply from: 'src/main/gradle/ads/GenerateFeatureList.gradle'
+apply from: 'src/main/gradle/ads/GameParameterTuningOnNertzrm02.gradle'
+
+
+//yahoo-music
+apply from: 'src/main/gradle/yahoo-music/GenerateFeatureList.gradle'
+apply from: 'src/main/gradle/yahoo-music/GameParameterTuningOnNertzrm02.gradle'
+
+
+
 compileScala {
   scalaCompileOptions.fork = true
   scalaCompileOptions.additionalParameters = [
@@ -35,17 +46,19 @@ dependencies {
   compile(spec.external.avroMapred)
 
   compile(spec.external."spark-core$scalaSuffix")
-  compile(spec.external."spark-mllib$scalaSuffix")
+  compile(spec.external."spark-mllib$scalaSuffix") {
+    exclude group: 'com.github.fommil.netlib'
+  }
 
   //for time processing
   compile(spec.external."joda")
 
-  //this one is scala's option parsing library
+  //this one is Scala's option parsing library
   compile(spec.external."scopt$scalaSuffix")
 
   compile(spec.external."log4j")
 
-//  runtime fileTree(dir: '../compile-libs', include: '*.jar')
+  compile fileTree(dir: '/Users/xazhang/Downloads', include: 'core-1.1.2.jar')
 
   // Photon
   compile(spec.product.photon.'mlease_2.10') {

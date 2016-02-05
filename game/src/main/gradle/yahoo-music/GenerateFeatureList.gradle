@@ -5,15 +5,12 @@ clean {
   delete jobDir
 }
 
-def flowName = "generate-all-feature-lists-on-jymbii-data-nertzrm02"
-def outputRoot = "/jobs/fastrain/glmix_data/JYMBII/feature-lists"
-
+def flowName = "generate-all-feature-lists-on-yahoo-music-data-nertzrm02"
 
 // For generating feature list
-def featureSectionKeys = "globalFeatures,memberFeatures,jobFeatures,memberJobCrossFeatures"
-def dateRange = "20150707-20151103"
-def featureNameAndTermSetOutputPath = "$outputRoot/${featureSectionKeys.replaceAll(",", "-")}-$dateRange" as String
-def inputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
+def featureSectionKeys = "features,userFeatures,songFeatures"
+def featureNameAndTermSetOutputPath = "/jobs/fastrain/glmix_data/extended-yahoo-music/feature-lists"
+def inputDirs = "/jobs/fastrain/glmix_data/extended-yahoo-music/train"
 
 hadoop {
   buildPath jobDir
@@ -22,7 +19,7 @@ hadoop {
 
     job("standalone-job") {
 
-      def numExecutors = 50
+      def numExecutors = 10
       def executorMemory= '10G'
       def driverMemory= '10G'
       def parallelism=numExecutors*4
@@ -35,7 +32,6 @@ hadoop {
         'executor-memory'                : executorMemory,
         'conf.spark.default.parallelism' : parallelism,
         'params' : "--data-input-directory $inputDirs " +
-            "--date-range $dateRange " +
             "--feature-name-and-term-set-output-dir $featureNameAndTermSetOutputPath " +
             "--feature-section-keys $featureSectionKeys " +
             "--application-name generate-all-feature-lists "

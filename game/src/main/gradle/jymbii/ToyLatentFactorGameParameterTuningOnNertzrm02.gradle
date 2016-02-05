@@ -37,7 +37,7 @@ def factorRegularizationWeightRatios = [1]
 def numFeaturesToNumObservationsRatios = [20]
 def numLatentDimensions = [10]
 def numLatentFactorGameInnerIterations = 5
-def downSamplingRateForLatentFactorMatrixUpdate = 1
+def downSamplingRateForLatentFactorMatrixUpdate = 0.5
 
 
 hadoop {
