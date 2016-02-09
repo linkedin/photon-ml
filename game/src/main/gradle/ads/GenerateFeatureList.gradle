@@ -30,7 +30,7 @@ hadoop {
 
       baseProperties 'sparkCommon'
       set properties: [
-        'class'                          : 'com.linkedin.mlease.spark.avro.data.NameAndTermFeatureSetContainer',
+        'class'                          : 'com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer',
         'num-executors'                  : numExecutors,
         'driver-memory'                  : driverMemory,
         'executor-memory'                : executorMemory,

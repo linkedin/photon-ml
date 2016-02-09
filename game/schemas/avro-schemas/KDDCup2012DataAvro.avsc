@@ -1,6 +1,6 @@
 {
     "name": "KDDCup2012DataAvro",
-    "namespace": "com.linkedin.mlease.avro.generated",
+    "namespace": "com.linkedin.photon.ml.avro.generated",
     "type": "record",
     "doc": "a generic schema to describe the KDD-Cup 2012 data format for Game modeling",
     "fields": [

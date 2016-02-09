@@ -76,7 +76,7 @@ hadoop {
             def jobOutputDir = "$outputDir/$applicationName" as String
 
             baseProperties 'sparkCommon'
-            set properties: ['class'                                  : 'com.linkedin.mlease.spark.avro.training.Driver',
+            set properties: ['class'                                  : 'com.linkedin.photon.ml.avro.training.Driver',
                              'num-executors'                          : numExecutors,
                              'driver-memory'                          : driverMemory,
                              'executor-memory'                        : executorMemory,

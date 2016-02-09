@@ -1,6 +1,6 @@
 {
     "name": "BayesianLinearModelAvro",
-    "namespace": "com.linkedin.mlease.avro.generated",
+    "namespace": "com.linkedin.photon.ml.avro.generated",
     "type": "record",
     "doc": "a generic schema to describe a Bayesian linear model with means and variances",
     "fields": [
@@ -33,7 +33,7 @@
                 "null",
                 "string"
              ],
-            "doc": "The loss function used for training as the class name. E.g.: com.linkedin.mlease.spark.function.LogisticLossFunction"
+            "doc": "The loss function used for training as the class name. E.g.: com.linkedin.photon.ml.function.LogisticLossFunction"
         }
     ]
 }

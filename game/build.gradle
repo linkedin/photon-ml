@@ -77,7 +77,7 @@ dependencies {
   compile fileTree(dir: '/Users/xazhang/Downloads', include: 'core-1.1.2.jar')
 
   // Photon
-  compile(spec.product.photon.'mlease_2.10') {
+  compile(spec.product.photon.'photon-ml_2.10') {
     transitive = false
   }
 
