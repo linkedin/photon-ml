@@ -203,7 +203,7 @@ protected[ml] class Driver(
       logger.println(s"optimization state tracker information:")
       modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
         logger.println(s"model with regularization weight $regularizationWeight:")
-        logger.println(s"${modelTracker.optimizationStateTracker}")
+        logger.println(s"${modelTracker.optimizationStateTrackerString}")
         logger.flush()
       }
     }
