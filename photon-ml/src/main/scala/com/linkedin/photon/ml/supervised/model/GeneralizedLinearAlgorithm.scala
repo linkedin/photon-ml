@@ -269,7 +269,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         val tracker = optimizer.getStateTracker.get
         logInfo(s"History tracker information:\n $tracker")
         val modelsPerIteration = tracker.getTrackedStates.map(x => createModel(normalizationContext, x.coefficients))
-        modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
+        modelTrackerBuilder += new ModelTracker(tracker.toString, modelsPerIteration)
         logInfo(s"Models number: ${modelsPerIteration.size}")
       }
       createModel(normalizationContext, coefficientsWithIntercept)

@@ -19,5 +19,5 @@ import scala.language.existentials
  * @author dpeng
  */
 case class ModelTracker(
-  optimizationStateTracker: OptimizationStatesTracker,
+  optimizationStateTrackerString: String,
   models: Array[_ <: GeneralizedLinearModel])
