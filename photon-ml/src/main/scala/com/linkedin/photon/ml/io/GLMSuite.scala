@@ -31,7 +31,7 @@ import scala.util.parsing.json.JSON
  * @author xazhang
  * @author nkatariy
  */
-@SerialVersionUID(1L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
+@SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
 class GLMSuite(
     fieldNamesType: FieldNamesType,
     addIntercept: Boolean,
@@ -57,23 +57,32 @@ class GLMSuite(
   /* Map of feature indices to their (lowerBound, upperBound) constraints */
   @transient var constraintFeatureMap: Option[Map[Int, (Double, Double)]] = None
 
+  /* set of selected features. If empty, all features are used */
+  @transient var selectedFeatures: Set[String] = Set.empty[String]
+
   /**
    * Read the [[data.LabeledPoint]] from a directory of Avro files
    * @param sc The Spark context
    * @param inputDir Input directory of the Avro files
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
    * @param minNumPartitions Set the minimum number of Hadoop splits to generate. This would be potentially helpful when
    *                         the number of default Hadoop splits is small. Note that when the default number of Hadoop
    *                         splits (from HDFS) is larger than minNumPartitions, then minNumPartitions will be ignored
    *                         and the number of partitions of the resulting RDD will be same as the default number of
    *                         Hadoop splits. In short, minNumPartitions will *only* be able to increase the number of
    *                         partitions.
-   * @return A RDD of [[data.LabeledPoint]]
+   * @return Tuple of (number of features in dataset, number of selected features, A RDD of [[data.LabeledPoint]])
    */
-  def readLabeledPointsFromAvro(sc: SparkContext, inputDir: String, minNumPartitions: Int): RDD[LabeledPoint] = {
+  def readLabeledPointsFromAvro(sc: SparkContext, inputDir: String,
+                                selectedFeaturesFile: Option[String], minNumPartitions: Int): RDD[LabeledPoint] = {
     val avroRDD = AvroIOUtils.readFromAvro[GenericRecord](sc, inputDir, minNumPartitions)
+    if (selectedFeatures.isEmpty) {
+      selectedFeatures = getSelectedFeatureSetFromFile(sc, selectedFeaturesFile)
+    }
     /*Only load the featureKeyToIdMap once*/
     if (featureKeyToIdMap.isEmpty) {
-      featureKeyToIdMap = loadFeatureKeyToIdMap(avroRDD)
+      featureKeyToIdMap = loadFeatureKeyToIdMap(avroRDD, selectedFeatures)
     }
     if (constraintFeatureMap.isEmpty) {
       constraintFeatureMap = createConstraintFeatureMap()
@@ -82,11 +91,33 @@ class GLMSuite(
   }
 
   /**
-   * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids
-   * @param avroRDD The avro files that contains feature information
-   * @return The Map that maps String based features keys to Integer based feature Ids
+   * Takes the selected features file and returns the set of keys corresponding to the these features
+   *
+   * @param sc The spark context
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
+   * @return set of selected features
    */
-  private def loadFeatureKeyToIdMap[T <: GenericRecord](avroRDD: RDD[T]): Map[String, Int] = {
+  def getSelectedFeatureSetFromFile(sc: SparkContext, selectedFeaturesFile: Option[String]): Set[String] = {
+    selectedFeaturesFile match {
+      case Some(filename: String) =>  AvroIOUtils.readFromAvro[GenericRecord](sc, filename, 1)
+        .map(x => Utils.getFeatureKey(x, "name", "term", GLMSuite.DELIMITER))
+        .collect().toSet
+      case _ => Set.empty[String]
+    }
+  }
+
+  /**
+   * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids. Only
+   * use features provided by the given selected features set. If the set is empty however, all features will
+   * be used.
+   *
+   * @param avroRDD The avro files that contains feature information
+   * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
+   * @return Tuple of (number of distinct features, map that maps String based features keys to integer based featureIds)
+   */
+  private def loadFeatureKeyToIdMap[T <: GenericRecord](avroRDD: RDD[T],
+                                                        selectedFeatures: Set[String]): Map[String, Int] = {
     def getFeatures(avroRecord: GenericRecord): Array[String] = {
       avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
@@ -97,7 +128,10 @@ class GLMSuite(
           throw new IOException(s"Avro field [${fieldNames.features}] (val = ${other.toString()}) is not a list")
       }
     }
-    val featureSet = avroRDD.flatMap { k => getFeatures(k) }.distinct().collect().toSet
+
+    val featureRDD = avroRDD.flatMap { k => getFeatures(k) }.distinct()
+    val featureSet = if (selectedFeatures.isEmpty) featureRDD.collect().toSet
+                     else featureRDD.filter(selectedFeatures.contains).collect().toSet
     if (addIntercept) {
       (featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap
     } else {
@@ -212,7 +246,8 @@ class GLMSuite(
     val broadcastedFeatureKeyToIdMap = avroRDD.sparkContext.broadcast(featureKeyToIdMap)
     val numFeatures = featureKeyToIdMap.values.max + 1
 
-    def parseAvroRecord(avroRecord: GenericRecord, localFeatureKeyToIdMap: Map[String, Int]): LabeledPoint = {
+    // Returns None if no features in the record are in the featureKeyToIdMap
+    def parseAvroRecord(avroRecord: GenericRecord, localFeatureKeyToIdMap: Map[String, Int]): Option[LabeledPoint] = {
       val features = avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
           val nnz =
@@ -245,22 +280,26 @@ class GLMSuite(
         case other =>
           throw new IOException(s"Avro field [${fieldNames.features}] (val = ${String.valueOf(other)}) is not a list")
       }
-      val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
-      val offset =
-        if (avroRecord.get(fieldNames.offset) != null) {
-          Utils.getDoubleAvro(avroRecord, fieldNames.offset)
-        } else {
-          0
-        }
-      val weight =
-        if (avroRecord.get(fieldNames.weight) != null) {
-          Utils.getDoubleAvro(avroRecord, fieldNames.weight)
-        } else {
-          1
-        }
-      new LabeledPoint(response, features, offset, weight)
+      if (features.activeSize == 0 || (addIntercept && features.activeSize == 1)) {
+        None
+      } else {
+        val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
+        val offset =
+          if (avroRecord.get(fieldNames.offset) != null) {
+            Utils.getDoubleAvro(avroRecord, fieldNames.offset)
+          } else {
+            0
+          }
+        val weight =
+          if (avroRecord.get(fieldNames.weight) != null) {
+            Utils.getDoubleAvro(avroRecord, fieldNames.weight)
+          } else {
+            1
+          }
+        Some(new LabeledPoint(response, features, offset, weight))
+      }
     }
-    avroRDD.map { k => parseAvroRecord(k, broadcastedFeatureKeyToIdMap.value) }
+    avroRDD.flatMap { k => parseAvroRecord(k, broadcastedFeatureKeyToIdMap.value) }
   }
 
   /**
@@ -385,7 +424,6 @@ protected[ml] object GLMSuite {
    */
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_NAME_TERM = INTERCEPT_NAME + DELIMITER + INTERCEPT_TERM
-
+  val INTERCEPT_NAME_TERM = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
   val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
 }
