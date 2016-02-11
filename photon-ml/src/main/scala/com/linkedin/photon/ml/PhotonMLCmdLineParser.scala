@@ -172,9 +172,6 @@ object PhotonMLCmdLineParser {
                 }
               )
               .foreach(x => params.constraintString = Some(x))
-      opt[String](SELECTED_FEATURES_FILE)
-              .text(s"Path to the file containing the features to be selected for training")
-              .foreach(x => params.selectedFeaturesFile = Some(x))
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
     }
