@@ -66,7 +66,8 @@ object AvroIOUtils {
    */
   def readFromSingleAvro[T <: GenericRecord : ClassTag](
       sc: SparkContext,
-      path: String, schemaString: String = null): Seq[T] = {
+      path: String,
+      schemaString: String = null): Seq[T] = {
 
     val classTag = implicitly[ClassTag[T]]
     val schema = if (schemaString == null) null else new Parser().parse(schemaString)

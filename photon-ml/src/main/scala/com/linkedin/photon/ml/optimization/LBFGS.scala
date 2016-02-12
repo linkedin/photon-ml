@@ -97,12 +97,12 @@ class LBFGS[Datum <: DataPoint](
       state: OptimizerState,
       data: Either[RDD[Datum], Iterable[Datum]],
       diffFunction: DiffFunction[Datum],
-      initialCoef: Vector[Double]) = {
+      initialCoef: Vector[Double]) {
     breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
   }
 
-  override def clear() = {
-    breezeOptimization = null
+  override def clear() {
+    breezeOptimization = _:BreezeOptimization
     clearOptimizerState()
   }
 

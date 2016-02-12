@@ -60,11 +60,11 @@ class TRON[Datum <: DataPoint](
       state: OptimizerState,
       data: Either[RDD[Datum], Iterable[Datum]],
       diffFunction: TwiceDiffFunction[Datum],
-      initialCoef: Vector[Double]) = {
+      initialCoef: Vector[Double]) {
     delta = norm(state.gradient, 2)
   }
 
-  override def clear() = {
+  override def clear() {
     delta = Double.MaxValue
     clearOptimizerState()
   }
@@ -149,8 +149,12 @@ class TRON[Datum <: DataPoint](
         // if the actual function value reduction is greater than eta0 times the predicted function value reduction,
         // we accept the updated coefficients and move forward with the updated optimizer state
         val coefficients =
-          if (distributedOptimization) updatedCoefficients.left.get.value
-          else updatedCoefficients.right.get
+          if (distributedOptimization) {
+            updatedCoefficients.left.get.value
+          } else {
+            updatedCoefficients.right.get
+          }
+
         improved = true
         /* project coefficients into constrained space, if any, after the optimization step */
         val projectedCoefficients = OptimizationUtils.projectCoefficientsToHypercube(coefficients, constraintMap)

@@ -10,13 +10,15 @@ class BootstrapToPhysicalReportTransformer
 
   import BootstrapToPhysicalReportTransformer._
 
-  override def transform(logical: BootstrapReport): SectionPhysicalReport = {
-    val bootstrapMetrics = new SectionPhysicalReport(Seq(new BulletedListPhysicalReport(
+  private def getBootstrapMetrics(logical: BootstrapReport): SectionPhysicalReport = {
+    new SectionPhysicalReport(Seq(new BulletedListPhysicalReport(
       logical.bootstrappedModelMetrics.map(item => {
         new SimpleTextPhysicalReport(s"Metric: ${item._1}, value: ${item._2}")
       }).toSeq)), BAGGED_MODEL_METRICS_SECTION_TITLE)
+  }
 
-    val metricsDistribution = new SectionPhysicalReport(logical.metricDistributions.map(x => {
+  private def getMetricsDistribution(logical: BootstrapReport): SectionPhysicalReport = {
+    new SectionPhysicalReport(logical.metricDistributions.map(x => {
       val builder = new ChartBuilder
       val plot = builder.chartType(StyleManager.ChartType.Bar)
         .height(PlotUtils.PLOT_HEIGHT)
@@ -42,8 +44,10 @@ class BootstrapToPhysicalReportTransformer
 
       new PlotPhysicalReport(plot)
     }).toSeq, METRICS_DISTRIBUTION_SECTION_TITLE)
+  }
 
-    val importantFeatures = new SectionPhysicalReport(
+  private def getImportantFeatures(logical: BootstrapReport): SectionPhysicalReport = {
+    new SectionPhysicalReport(
       logical.importantFeatureCoefficientDistributions.map(x => {
         val ((name, term), summary) = x
 
@@ -71,8 +75,10 @@ class BootstrapToPhysicalReportTransformer
         plot.getStyleManager.setYAxisMax(yRange._2)
         new PlotPhysicalReport(plot)
       }).toSeq, IMPORTANT_FEATURES_SECTION_TITLE)
+  }
 
-    val straddlingZeroSection = new SectionPhysicalReport(
+  private def getStraddlingZeroSection(logical: BootstrapReport): SectionPhysicalReport = {
+    new SectionPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport(
           s"Total features with interquartile range straddling zero: ${logical.zeroCrossingFeatures.size}"),
@@ -80,9 +86,16 @@ class BootstrapToPhysicalReportTransformer
           val ((name, term), (index, importance, coeff)) = x
           new SimpleTextPhysicalReport(s"Feature N=$name, T=$term with importance $importance ==> $coeff")
         }))), FEATURES_STRADDLING_ZERO_TITLE)
+  }
 
+  override def transform(logical: BootstrapReport): SectionPhysicalReport = {
     new SectionPhysicalReport(
-      Seq(metricsDistribution, bootstrapMetrics, importantFeatures, straddlingZeroSection), BOOTSTRAP_SECTION_TITLE)
+      Seq(
+        getMetricsDistribution(logical),
+        getBootstrapMetrics(logical),
+        getImportantFeatures(logical),
+        getStraddlingZeroSection(logical)),
+      BOOTSTRAP_SECTION_TITLE)
   }
 }
 

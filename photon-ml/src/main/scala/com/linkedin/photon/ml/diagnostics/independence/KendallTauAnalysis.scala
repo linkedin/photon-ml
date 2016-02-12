@@ -71,7 +71,7 @@ class KendallTauAnalysis {
       tauAlpha, tauBeta, zAlpha, pValue, msg)
   }
 
-  private [this] def analyze(pairTypes:Map[String, Long], count:Long): KendallTauReport = {
+  private[this] def analyze(pairTypes:Map[String, Long], count:Long): KendallTauReport = {
     val numConcordant = pairTypes.getOrElse(CONCORDANT, 0L)
     val numDiscordant = pairTypes.getOrElse(DISCORDANT, 0L)
     val numTiesA = pairTypes.getOrElse(TIES_IN_A, 0L)

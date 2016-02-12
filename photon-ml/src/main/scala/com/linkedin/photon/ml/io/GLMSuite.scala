@@ -308,7 +308,11 @@ class GLMSuite(
    * @param models The map of (Model Id -> [[GeneralizedLinearModel]])
    * @param modelDir The directory for the output text files
    */
-  def writeModelsInText(sc: SparkContext, models: Iterable[(Double, GeneralizedLinearModel)], modelDir: String) = {
+  def writeModelsInText(
+      sc: SparkContext,
+      models: Iterable[(Double, GeneralizedLinearModel)],
+      modelDir: String) {
+
     val broadCastedIdToFeatureKeyMap = sc.broadcast(featureKeyToIdMap.map { case (str, int) => (int, str) })
     sc.parallelize(models.toSeq, models.size).map { case (regWeight, model) =>
       val builder = new mutable.ArrayBuffer[String]()

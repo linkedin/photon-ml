@@ -44,6 +44,56 @@ object DiagnosticToPhysicalReportTransformer {
   val MODEL_SUMMARY_CHAPTER = "Summary"
   val MODEL_METRICS_SUMMARY = "Model Metrics"
 
+  private def getBestModelByMetric(metricsByLambda: Map[String, Map[Double, Double]]) = {
+    val metrics = metricsByLambda.keys.toSeq.sorted
+
+    new BulletedListPhysicalReport(
+      metrics.flatMap(metric => {
+        val metadata = Evaluation.metricMetadata.get(metric).get
+
+        metricsByLambda.get(metric).toSeq.flatMap(values => {
+          val ordering = new Ordering[(Double, Double)]() {
+            override def compare(x: (Double, Double), y: (Double, Double)): Int =
+              metadata.worstToBestOrdering.compare(x._2, y._2)
+          }
+          val sorted = values.toSeq.sorted(ordering)
+          val bestLambda = sorted.last
+
+          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} best: ${bestLambda._2} @ lambda = ${bestLambda._1}"))
+            .iterator
+        }).iterator
+      }))
+  }
+
+  private def getModelMetricPlots(metricsByLambda: Map[String, Map[Double, Double]]) = {
+    val metrics = metricsByLambda.keys.toSeq.sorted
+
+    metrics.flatMap(metric => {
+      val metadata = Evaluation.metricMetadata.get(metric).get
+
+      metricsByLambda.get(metric).toSeq.flatMap(lambdaToMetric => {
+        val sortedByLambda = lambdaToMetric.toSeq.sortBy(_._1)
+        val builder = new ChartBuilder()
+        val chart = builder.chartType(StyleManager.ChartType.Bar)
+          .height(PlotUtils.PLOT_HEIGHT)
+          .theme(StyleManager.ChartTheme.XChart)
+          .title(metric)
+          .width(PlotUtils.PLOT_WIDTH)
+          .build()
+
+        sortedByLambda.foreach(x => {
+          chart.addSeries(s"Lambda = ${x._1}", Array(1.0), Array(x._2))
+        })
+
+        val yRange = PlotUtils.getRangeForMetric(metric, sortedByLambda.map(_._2))
+        chart.getStyleManager.setYAxisMin(yRange._1)
+        chart.getStyleManager.setYAxisMax(yRange._2)
+
+        Seq(new PlotPhysicalReport(chart)).iterator
+      }).iterator
+    })
+  }
+
   /**
    * Generate a summary section which includes a quick description of which lambdas did best/worst on a particular
    * metric and a visual summary of models by metric.
@@ -61,48 +111,8 @@ object DiagnosticToPhysicalReportTransformer {
       }).iterator
     }).groupBy(_._1).mapValues(_.map(_._2).toMap)
 
-    val metrics = metricsByLambda.keys.toSeq.sorted
-    val bestModelByMetric = new BulletedListPhysicalReport(
-      metrics.flatMap(metric => {
-        val metadata = Evaluation.metricMetadata.get(metric).get
-
-        metricsByLambda.get(metric).toSeq.flatMap(values => {
-          val ordering = new Ordering[(Double, Double)]() {
-            override def compare(x: (Double, Double), y: (Double, Double)): Int =
-              metadata.worstToBestOrdering.compare(x._2, y._2)
-          }
-          val sorted = values.toSeq.sorted(ordering)
-          val bestLambda = sorted.last
-
-          Seq(new SimpleTextPhysicalReport(s"Metric ${metric} best: ${bestLambda._2} @ lambda = ${bestLambda._1}"))
-            .iterator
-        }).iterator
-      }))
-
-      val modelMetricPlots = metrics.flatMap(metric => {
-        val metadata = Evaluation.metricMetadata.get(metric).get
-
-        metricsByLambda.get(metric).toSeq.flatMap(lambdaToMetric => {
-          val sortedByLambda = lambdaToMetric.toSeq.sortBy(_._1)
-          val builder = new ChartBuilder()
-          val chart = builder.chartType(StyleManager.ChartType.Bar)
-            .height(PlotUtils.PLOT_HEIGHT)
-            .theme(StyleManager.ChartTheme.XChart)
-            .title(metric)
-            .width(PlotUtils.PLOT_WIDTH)
-            .build()
-
-          sortedByLambda.foreach(x => {
-            chart.addSeries(s"Lambda = ${x._1}", Array(1.0), Array(x._2))
-          })
-
-          val yRange = PlotUtils.getRangeForMetric(metric, sortedByLambda.map(_._2))
-          chart.getStyleManager.setYAxisMin(yRange._1)
-          chart.getStyleManager.setYAxisMax(yRange._2)
-
-          Seq(new PlotPhysicalReport(chart)).iterator
-        }).iterator
-      })
+    val bestModelByMetric = getBestModelByMetric(metricsByLambda)
+    val modelMetricPlots = getModelMetricPlots(metricsByLambda)
 
     val links = new BulletedListPhysicalReport(reports.toSeq.sortBy(_._1).map(x => {
       new ReferencePhysicalReport(x._2._2, s"Jump to model with lambda = ${x._1}")

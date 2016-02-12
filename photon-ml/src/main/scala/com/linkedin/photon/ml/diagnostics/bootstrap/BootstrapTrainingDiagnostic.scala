@@ -17,6 +17,71 @@ class BootstrapTrainingDiagnostic(
 
   import BootstrapTrainingDiagnostic._
 
+  private def getImportances(
+      coefficients: Map[Double, (Array[CoefficientSummary], Option[CoefficientSummary])],
+      indexToNameTerm: Map[Int, (String, String)],
+      summary: Option[BasicStatisticalSummary],
+      models: Map[Double, GeneralizedLinearModel]) = {
+
+    coefficients.map(x => {
+      val (lambda, (coeff, interept)) = x
+      (lambda, coeff.zipWithIndex.map(x => {
+        val (sumary, idx) = x
+        val value = summary match {
+          case Some(sum: BasicStatisticalSummary) =>
+            sum.meanAbs(idx)
+          case None =>
+            1
+        }
+        val model = models.get(lambda)
+        val c = model match {
+          case Some(g: GeneralizedLinearModel) => math.abs(g.coefficients(idx))
+          case _ => 1.0
+        }
+        val importance = value * c
+        (indexToNameTerm.get(idx).get, (idx, importance, coeff(idx)))
+      }).toMap)
+    })
+  }
+
+  private def getBootstrapMetrics(
+      metrics: Map[Double, Map[String, CoefficientSummary]],
+      coefficients: Map[Double, (Array[CoefficientSummary], Option[CoefficientSummary])],
+      importances: Map[Double, Map[(String, String), (Int, Double, CoefficientSummary)]]) = {
+
+    metrics.map(item => {
+      val (lambda, metricSummary) = item
+
+      // should always have the same lambdas as keys in both these containers.
+      val coefficientSummary = coefficients.get(lambda).get
+
+      val numStraddlingZero = coefficientSummary._1
+        .filter(x => x.estimateFirstQuartile() < 0 && x.estimateThirdQuartile() > 0).size
+
+      val m = metricSummary
+        .mapValues(
+          x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
+
+      val c = coefficientSummary._1
+        .map(x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
+
+      val straddlingZero = importances
+        .getOrElse(lambda, Map.empty[(String, String), (Int, Double, CoefficientSummary)])
+        .toSeq
+        .filter(x => x._2._3.estimateFirstQuartile < 0 && x._2._3.estimateThirdQuartile > 0)
+        .sortBy(x => x._2._2).toMap
+
+      val importantFeatures = importances
+        .get(lambda).get
+        .toSeq
+        .sortBy(_._2._2)
+        .takeRight(NUM_IMPORTANT_FEATURES)
+        .map(x => (x._1, x._2._3)).toMap
+
+      (lambda, BootstrapReport(m, Map.empty[String, Double], importantFeatures, straddlingZero))
+    })
+  }
+
   override def diagnose(
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       models: Map[Double, GeneralizedLinearModel],
@@ -57,57 +122,9 @@ class BootstrapTrainingDiagnostic(
     })
 
     // lambda -> (name, term) -> (index, importance, coefficient)
-    val importances = coefficients.map(x => {
-      val (lambda, (coeff, interept)) = x
-      (lambda, coeff.zipWithIndex.map(x => {
-        val (sumary, idx) = x
-        val value = summary match {
-          case Some(sum: BasicStatisticalSummary) =>
-            sum.meanAbs(idx)
-          case None =>
-            1
-        }
-        val model = models.get(lambda)
-        val c = model match {
-          case Some(g: GeneralizedLinearModel) => math.abs(g.coefficients(idx))
-          case _ => 1.0
-        }
-        val importance = value * c
-        (indexToNameTerm.get(idx).get, (idx, importance, coeff(idx)))
-      }).toMap)
-    })
+    val importances = getImportances(coefficients, indexToNameTerm, summary, models)
 
-    metrics.map(item => {
-      val (lambda, metricSummary) = item
-
-      // should always have the same lambdas as keys in both these containers.
-      val coefficientSummary = coefficients.get(lambda).get
-
-      val numStraddlingZero = coefficientSummary._1
-        .filter(x => x.estimateFirstQuartile() < 0 && x.estimateThirdQuartile() > 0).size
-
-      val m = metricSummary
-        .mapValues(
-          x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
-
-      val c = coefficientSummary._1
-        .map(x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
-
-      val straddlingZero = importances
-        .getOrElse(lambda, Map.empty[(String, String), (Int, Double, CoefficientSummary)])
-        .toSeq
-        .filter(x => x._2._3.estimateFirstQuartile < 0 && x._2._3.estimateThirdQuartile > 0)
-        .sortBy(x => x._2._2).toMap
-
-      val importantFeatures = importances
-        .get(lambda).get
-        .toSeq
-        .sortBy(_._2._2)
-        .takeRight(NUM_IMPORTANT_FEATURES)
-        .map(x => (x._1, x._2._3)).toMap
-
-      (lambda, BootstrapReport(m, Map.empty[String, Double], importantFeatures, straddlingZero))
-    })
+    getBootstrapMetrics(metrics, coefficients, importances)
   }
 }
 

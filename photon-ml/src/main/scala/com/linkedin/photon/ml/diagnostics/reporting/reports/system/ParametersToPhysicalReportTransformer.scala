@@ -19,8 +19,8 @@ class ParametersToPhysicalReportTransformer
     new SectionPhysicalReport(Seq(contents), PARAMETERS_SECTION_HEADER)
   }
 
-  private def render(params: Params): BulletedListPhysicalReport = {
-    val jobParameters = new BulletedListPhysicalReport(
+  private def getJobParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("Job parameters"),
         new BulletedListPhysicalReport(
@@ -32,8 +32,10 @@ class ParametersToPhysicalReportTransformer
         )
       )
     )
+  }
 
-    val ioParameters = new BulletedListPhysicalReport(
+  private def getIoParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("I/O parameters"),
         new BulletedListPhysicalReport(
@@ -48,8 +50,10 @@ class ParametersToPhysicalReportTransformer
         )
       )
     )
+  }
 
-    val modelParameters = new BulletedListPhysicalReport(
+  private def getModelParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("Modeling parameters"),
         new BulletedListPhysicalReport(
@@ -68,8 +72,14 @@ class ParametersToPhysicalReportTransformer
         )
       )
     )
+  }
 
-    new BulletedListPhysicalReport(Seq(jobParameters, ioParameters, modelParameters))
+  private def render(params: Params): BulletedListPhysicalReport = {
+    new BulletedListPhysicalReport(
+      Seq(
+        getJobParameters(params),
+        getIoParameters(params),
+        getModelParameters(params)))
   }
 }
 
