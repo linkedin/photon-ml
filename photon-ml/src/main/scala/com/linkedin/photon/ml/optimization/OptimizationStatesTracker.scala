@@ -25,11 +25,12 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
   var convergenceReason: Option[ConvergenceReason] = None
 
   /** True if the optimizer is done because either function values converged or gradient converged  */
-  def converged = convergenceReason == Some(FunctionValuesConverged) || convergenceReason == Some(GradientConverged)
+  def converged: Boolean =
+    convergenceReason == Some(FunctionValuesConverged) || convergenceReason == Some(GradientConverged)
 
   private var numStates = 0
 
-  def clear() = {
+  def clear() {
     _startTime = System.currentTimeMillis()
     _times.clear()
     _states.clear()
