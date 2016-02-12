@@ -50,25 +50,25 @@ abstract class AbstractOptimizer[Datum <: DataPoint, -Function <: DiffFunction[D
 
   def getTolerance(): Double = tolerance
 
-  def setTolerance(tol: Double) = {
+  def setTolerance(tol: Double) {
     require(!(tol.isInfinite || tol.isNaN) && tol > 0.0)
     tolerance = tol
   }
 
   def getMaximumIterations(): Int = maxNumIterations
 
-  def setMaximumIterations(maxIter: Int) = {
+  def setMaximumIterations(maxIter: Int) {
     require(maxIter > 0)
     maxNumIterations = maxIter
   }
 
   def getConstraintMap(): Option[Map[Int, (Double, Double)]] = constraintMap
 
-  def setConstraintMap(constraints: Option[Map[Int, (Double, Double)]]) = {
+  def setConstraintMap(constraints: Option[Map[Int, (Double, Double)]]) {
     constraintMap = constraints
   }
 
-  def setStateTrackingEnabled(enabled: Boolean) = {
+  def setStateTrackingEnabled(enabled: Boolean) {
     isTrackingState = enabled
     statesTracker = if (isTrackingState) Some(new OptimizationStatesTracker()) else None
   }

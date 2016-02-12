@@ -23,7 +23,7 @@ class Params {
   /**
    * Training data directory
    */
-  var trainDir: String = null
+  var trainDir: String = _
   /**
    * Validating data directory. Note that
    *    1. Validation is optional
@@ -35,11 +35,11 @@ class Params {
   /**
    * Photon-ML's output directory
    */
-  var outputDir: String = null
+  var outputDir: String = _
   /**
    * Learning task type, e.g., LINEAR_REGRESSION, POISSON_REGRESSION or LOGISTIC_REGRESSION
    */
-  var taskType: TaskType = null
+  var taskType: TaskType = _
   /**
    * Maximum number of iterations to run
    */

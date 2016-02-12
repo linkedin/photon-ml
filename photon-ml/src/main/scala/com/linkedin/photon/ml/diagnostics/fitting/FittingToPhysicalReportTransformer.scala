@@ -49,9 +49,9 @@ class FittingToPhysicalReportTransformer
 }
 
 object FittingToPhysicalReportTransformer {
-  def SECTION_NAME = "Fit Analysis"
+  val SECTION_NAME = "Fit Analysis"
 
-  def PLOTS_SECTION_NAME = "Metric Plots"
+  val PLOTS_SECTION_NAME = "Metric Plots"
 
-  def MESSAGE_SECTION_NAME = "Messages"
+  val MESSAGE_SECTION_NAME = "Messages"
 }

@@ -111,6 +111,6 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
 }
 
 object FittingDiagnostic {
-  def NUM_TRAINING_PARTITIONS = 10
-  def MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 100
+  val NUM_TRAINING_PARTITIONS = 10
+  val MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 100
 }
