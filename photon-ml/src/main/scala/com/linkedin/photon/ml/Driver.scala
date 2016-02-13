@@ -3,16 +3,14 @@ package com.linkedin.photon.ml
 
 import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
-import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapTrainingDiagnostic, BootstrapReport}
-import com.linkedin.photon.ml.diagnostics.featureimportance.{
-  ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
+import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
+import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
+import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{
-  DiagnosticReport, DiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
@@ -20,7 +18,7 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.Utils
@@ -125,6 +123,7 @@ protected[ml] class Driver(
   }
 
   @throws(classOf[IOException])
+  @throws(classOf[IllegalArgumentException])
   protected def preprocess(): Unit = {
     assertDriverStage(DriverStage.INIT)
     params.selectedFeaturesFile.foreach(file => {
@@ -146,6 +145,23 @@ protected[ml] class Driver(
     logger.println(s"number of training data points: $trainingDataNum, " +
       s"number of features in each training example including intercept (if any) $featureNum.")
     logger.println(s"Input RDD persisted in storage level $trainDataStorageLevel")
+
+    if (! DataValidators.sanityCheckData(trainingData, params.taskType, params.dataValidationType)) {
+      throw new IllegalArgumentException("Training data has issues")
+    }
+
+    if (params.validateDirOpt.isDefined) {
+      val validateDir = params.validateDirOpt.get
+      logger.println(s"\nRead validation data from $validateDir")
+
+      // Read validation data after the training data are unpersisted.
+      validatingData =
+        suite.readLabeledPointsFromAvro(sc, validateDir, params.selectedFeaturesFile, params.minNumPartitions)
+          .persist(trainDataStorageLevel).setName("validating data")
+      if (! DataValidators.sanityCheckData(validatingData, params.taskType, params.dataValidationType)) {
+        throw new IllegalArgumentException("Validation data has issues")
+      }
+    }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001
     logger.println(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
@@ -200,7 +216,6 @@ protected[ml] class Driver(
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-      dataValidationType = params.dataValidationType,
       constraintMap = suite.constraintFeatureMap)
     lambdaModelTuples = _lambdaModelTuples
     lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
@@ -223,14 +238,6 @@ protected[ml] class Driver(
   protected def validate(): Unit = {
     assertDriverStage(DriverStage.TRAINED)
     if (params.validateDirOpt.isDefined) {
-      val validateDir = params.validateDirOpt.get
-      logger.println(s"\nRead validation data from $validateDir")
-
-      // Read validation data after the training data are unpersisted.
-      validatingData =
-        suite.readLabeledPointsFromAvro(sc, validateDir, params.selectedFeaturesFile, params.minNumPartitions)
-          .persist(trainDataStorageLevel).setName("validating data")
-
       /* Validating the learned models using the validating data set */
       logger.println("\nStart to validate the learned models with validating data")
       logger.flush()
@@ -345,7 +352,6 @@ protected[ml] class Driver(
           maxNumIter = params.maxNumIter,
           tolerance = params.tolerance,
           enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-          dataValidationType = DataValidationType.VALIDATE_DISABLED,
           constraintMap = suite.constraintFeatureMap,
           warmStartModels = y)._1
       }

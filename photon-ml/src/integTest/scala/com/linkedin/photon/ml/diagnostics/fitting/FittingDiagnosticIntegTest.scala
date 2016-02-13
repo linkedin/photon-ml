@@ -35,7 +35,6 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         NUM_ITERATIONS,
         TOLERANCE,
         false,
-        DataValidationType.VALIDATE_DISABLED,
         None,
         warmStart)._1
     }

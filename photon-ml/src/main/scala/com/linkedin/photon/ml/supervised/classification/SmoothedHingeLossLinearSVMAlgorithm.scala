@@ -1,22 +1,17 @@
 package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
-import com.linkedin.photon.ml.function.{SmoothedHingeLossFunction, DiffFunction}
+import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
+import com.linkedin.photon.ml.function.{DiffFunction, SmoothedHingeLossFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
-import com.linkedin.photon.ml.util.DataValidators
-import org.apache.spark.rdd.RDD
 
 /**
  * Approximate linear SVM via soft hinge loss
  */
 class SmoothedHingeLossLinearSVMAlgorithm
   extends GeneralizedLinearAlgorithm[SmoothedHingeLossLinearSVMModel, DiffFunction[LabeledPoint]] {
-
-  override protected val validators: Seq[RDD[LabeledPoint] => Boolean] =
-    List(DataValidators.logisticRegressionValidator)
 
   /**
    * TODO: enable feature specific regularization / disable regularizing intercept

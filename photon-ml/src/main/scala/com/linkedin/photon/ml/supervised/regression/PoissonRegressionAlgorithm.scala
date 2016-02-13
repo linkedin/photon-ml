@@ -1,12 +1,11 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
+import com.linkedin.photon.ml.data.{DataValidators, ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{PoissonLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
-import com.linkedin.photon.ml.util.DataValidators
 import org.apache.spark.rdd.RDD
 
 
@@ -17,8 +16,6 @@ import org.apache.spark.rdd.RDD
  */
 class PoissonRegressionAlgorithm
   extends GeneralizedLinearAlgorithm[PoissonRegressionModel, TwiceDiffFunction[LabeledPoint]] {
-
-  override protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.poissonRegressionValidator)
 
   /* Objective function = loss function + l2weight * regularization */
   override protected def createObjectiveFunction(

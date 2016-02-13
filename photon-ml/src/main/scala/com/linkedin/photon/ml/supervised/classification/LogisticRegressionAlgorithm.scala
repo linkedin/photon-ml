@@ -1,14 +1,11 @@
 package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
-
-import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
+import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.{LogisticLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
-import com.linkedin.photon.ml.util.DataValidators
-import org.apache.spark.rdd.RDD
 
 /**
  * Train a classification model for Logistic Regression.
@@ -18,9 +15,6 @@ import org.apache.spark.rdd.RDD
  */
 class LogisticRegressionAlgorithm
   extends GeneralizedLinearAlgorithm[LogisticRegressionModel, TwiceDiffFunction[LabeledPoint]] {
-
-  override protected val validators: Seq[RDD[LabeledPoint] => Boolean] =
-    List(DataValidators.logisticRegressionValidator)
 
   /**
    *  Objective function = loss function + l2weight * regularization
