@@ -45,13 +45,12 @@ object ModelTraining {
       maxNumIter: Int,
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
-      dataValidationType: DataValidationType,
       constraintMap: Option[Map[Int, (Double, Double)]]):
         (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     trainGeneralizedLinearModel(
       trainingData, taskType, optimizerType, regularizationContext, regularizationWeights, normalizationContext,
-      maxNumIter, tolerance, enableOptimizationStateTracker, dataValidationType, constraintMap, Map.empty)
+      maxNumIter, tolerance, enableOptimizationStateTracker, constraintMap, Map.empty)
   }
 
   /**
@@ -81,7 +80,6 @@ object ModelTraining {
       maxNumIter: Int,
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
-      dataValidationType: DataValidationType,
       constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels:Map[Double, GeneralizedLinearModel]):
         (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
@@ -120,7 +118,7 @@ object ModelTraining {
 
     /* Model training with the chosen optimizer and algorithm */
     val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights,
-        normalizationContext, dataValidationType, warmStartModels)
+        normalizationContext, warmStartModels)
 
     val weightModelTuples = sortedRegularizationWeights.zip(models)
 

@@ -8,7 +8,6 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.{Optimizer, RegularizationContext}
-import com.linkedin.photon.ml.util.DataValidators
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -28,11 +27,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     Function <: DiffFunction[LabeledPoint]]
   extends Logging
   with Serializable {
-
-  /**
-   * The list of data validators to check the properties of the input data, e.g., the format of the input data
-   */
-  protected val validators: Seq[RDD[LabeledPoint] => Boolean] = List(DataValidators.linearRegressionValidator)
 
   /**
    * Optimization state trackers
@@ -123,11 +117,9 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       optimizer: Optimizer[LabeledPoint, Function],
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
-      normalizationContext: NormalizationContext,
-      dataValidationType: DataValidationType): List[GLM] = {
+      normalizationContext: NormalizationContext): List[GLM] = {
     logInfo("Doing training without any warm start models")
-    run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext,
-        dataValidationType, Map.empty)
+    run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext, Map.empty)
   }
 
   /**
@@ -146,7 +138,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
       normalizationContext: NormalizationContext,
-      dataValidationType: DataValidationType,
       warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
 
     val numFeatures = input.first().features.size
@@ -154,8 +145,8 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
     val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights, normalizationContext,
-                     dataValidationType, warmStartModels)
+    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights,
+      normalizationContext, warmStartModels)
     models
   }
 
@@ -178,7 +169,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
       normalizationContext: NormalizationContext,
-      dataValidationType: DataValidationType,
       warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
 
     logInfo(s"Starting model fits with ${warmStartModels.size} warm start models for " +
@@ -187,28 +177,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     if (input.getStorageLevel == StorageLevel.NONE) {
       logWarning("The input data is not directly cached, which may hurt performance if its"
         + " parent RDDs are also uncached.")
-    }
-
-    /* Check the data properties before running the optimizer */
-    dataValidationType match {
-      case DataValidationType.VALIDATE_FULL =>
-        val valid = validators.map(x => x(input)).fold(true)(_ && _)
-        if (!valid) {
-          logError("Data validation failed.")
-          throw new IllegalArgumentException("Data validation failed")
-        }
-
-      case DataValidationType.VALIDATE_SAMPLE =>
-        logWarning("Doing a partial validation on ~10% of the training data")
-        val subset = input.sample(false, 0.10)
-        val valid = validators.map(x => x(subset)).fold(true)(_ && _)
-        if (!valid) {
-          logError("Data validation failed.")
-          throw new IllegalArgumentException("Data validation failed")
-        }
-
-      case DataValidationType.VALIDATE_DISABLED =>
-        logWarning("Data validation disabled.")
     }
 
     optimizer.setStateTrackingEnabled(isTrackingState)

@@ -99,7 +99,6 @@ class NormalizationIntegTest extends SparkTestUtils {
       _numIter,
       _tolerance,
       true,
-      DataValidationType.VALIDATE_DISABLED,
       None)
     assertEquals(models.size, 1)
     val model = models(0)._2.asInstanceOf[BinaryClassifier]

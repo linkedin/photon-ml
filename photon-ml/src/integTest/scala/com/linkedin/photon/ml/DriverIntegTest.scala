@@ -1,30 +1,25 @@
 package com.linkedin.photon.ml
 
-import OptionNames._
-import com.linkedin.photon.ml.optimization.OptimizerType
-import OptimizerType.OptimizerType
-import com.linkedin.photon.ml.optimization.RegularizationType
-import RegularizationType.RegularizationType
-import com.linkedin.photon.ml.supervised.TaskType
-import TaskType.TaskType
-import breeze.linalg.Vector
 import java.io.File
 
-import com.linkedin.photon.ml.io.{GLMSuite, FieldNamesType}
+import breeze.linalg.{DenseVector, Vector, norm}
+import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
+import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.test.{SparkTestUtils, CommonTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import org.apache.commons.io.FileUtils
+import org.testng.Assert._
+import org.testng.annotations.{DataProvider, Test}
 
 import scala.collection.mutable
 import scala.io.Source
-
-import breeze.linalg.{norm, DenseVector}
-import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
 
 /**
  * This class tests Driver with a set of important configuration parameters

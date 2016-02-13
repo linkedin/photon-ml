@@ -1,7 +1,10 @@
-package com.linkedin.photon.ml.util
+package com.linkedin.photon.ml.data
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
+import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
@@ -13,30 +16,29 @@ object DataValidators extends Logging {
   val linearRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
     validateFeatures(
       data, Map(
-        "Finite features" -> finiteFeatures,
         "Finite labels" -> finiteLabel,
-        "Finite offset" -> finiteOffset))
+        "Finite features" -> finiteFeatures,
+        "Finite offsets" -> finiteOffset))
   }
 
   val logisticRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
     validateFeatures(
       data, Map(
-        "Finite label" -> finiteLabel,
-        "Binary label" -> binaryLabel,
+        "Binary labels" -> binaryLabel,
         "Finite features" -> finiteFeatures,
-        "Finite offset" -> finiteOffset))
+        "Finite offsets" -> finiteOffset))
   }
 
   val poissonRegressionValidator: RDD[LabeledPoint] => Boolean = { data =>
     validateFeatures(
       data, Map(
-        "Finite label" -> finiteLabel,
-        "Nonnegative label" -> nonnegativeLabels,
+        "Finite labels" -> finiteLabel,
+        "Non-negative labels" -> nonNegativeLabels,
         "Finite features" -> finiteFeatures,
-        "Finite offset" -> finiteOffset))
+        "Finite offsets" -> finiteOffset))
   }
 
-  def nonnegativeLabels(labeledPoint: LabeledPoint): Boolean = {
+  def nonNegativeLabels(labeledPoint: LabeledPoint): Boolean = {
     labeledPoint.label >= 0
   }
 
@@ -80,5 +82,41 @@ object DataValidators extends Logging {
         }).forall(x => x)
       })).iterator
     }).fold(true)(_ && _)
+  }
+
+  def sanityCheckData(inputData: RDD[LabeledPoint], taskType: TaskType,
+                      dataValidationType: DataValidationType): Boolean = {
+    if (! dataValidationType.equals(DataValidationType.VALIDATE_DISABLED)) {
+      /* Check the data properties */
+      val validators: Seq[RDD[LabeledPoint] => Boolean] = taskType match {
+        case TaskType.LINEAR_REGRESSION => List(DataValidators.linearRegressionValidator)
+        case TaskType.LOGISTIC_REGRESSION => List(DataValidators.logisticRegressionValidator)
+        case TaskType.POISSON_REGRESSION => List(DataValidators.poissonRegressionValidator)
+        case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => List(DataValidators.logisticRegressionValidator)
+      }
+      dataValidationType match {
+        case DataValidationType.VALIDATE_FULL =>
+          val valid = validators.map(x => x(inputData)).forall(x => x)
+          if (valid) {
+            true
+          } else {
+            logError("Data validation failed.")
+            false
+          }
+        case DataValidationType.VALIDATE_SAMPLE =>
+          logWarning("Doing a partial validation on ~10% of the training data")
+          val subset = inputData.sample(false, 0.10)
+          val valid = validators.map(x => x(subset)).forall(x => x)
+          if (valid) {
+            true
+          } else {
+            logError("Data validation failed.")
+            false
+          }
+      }
+    } else {
+      logWarning("Data validation disabled.")
+      true
+    }
   }
 }
