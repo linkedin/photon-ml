@@ -1,0 +1,99 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "game-on-kdd-cup-2012-track2-private-global-and-per-keyword"
+
+
+// Spark parameters
+def executorMemoryInMB = 8000
+def executorMemory = "${executorMemoryInMB}m" as String
+def executorMemoryOverhead = executorMemoryInMB / 4
+def numExecutors = 100
+def driverMemoryInMB = 10000
+def driverMemory = "${driverMemoryInMB}m" as String
+def maxResultSize = "${3*driverMemoryInMB/4}m" as String
+def parallelism = numExecutors * 4
+
+
+// Game input data parameters
+def trainInputDirs = "/jobs/fastrain/glmix_data/KDDCup2012-Track2/training"
+def validateInputDirs = "/jobs/fastrain/glmix_data/KDDCup2012-Track2/privateTesting"
+def featureNameAndTermSetInputPath = "/jobs/fastrain/glmix_data/KDDCup2012-Track2/feature-lists"
+
+def outputDir = "/jobs/fastrain/glmix_results/KDDCup2012-Track2/$flowName" as String
+
+
+// Game data configuration parameters
+def featureShardIdToFeatureSectionKeysMap =
+    "globalModelFeatures:globalFeatures,queryTokensFeatures,userProfileFeatures|" +
+        "perKeywordFeatures:globalFeatures,queryTokensFeatures,userProfileFeatures"
+
+def numPartitionsForFixedEffectDataSet = numExecutors * 4
+def fixedEffectDataConfigurations = "globalModel:globalModelFeatures,$numPartitionsForFixedEffectDataSet" as String
+def numPartitionsForRandomEffectDataSet = numExecutors * 3
+def minPartitionsForValidation = numExecutors * 4
+
+def numActiveDataPointsToKeepUpperBound = 2000000
+
+
+// Game optimization parameters
+def numIterations = 3
+def updatingSequence = "globalModel,perKeywordIdModel"
+def fixedEffectOptimizationConfigurations = "globalModel:10,1e-5,10,1,tron,l2"
+
+def randomEffectRegularizationWeights = [5, 10, 15]
+def numFeaturesToNumObservationsRatios = [-1]
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    for (numFeaturesToNumObservationsRatio in numFeaturesToNumObservationsRatios) {
+      for (randomEffectRegularizationWeight in randomEffectRegularizationWeights) {
+
+        def randomEffectDataConfigurations = "perKeywordIdModel:KeywordID,perKeywordFeatures,$numPartitionsForRandomEffectDataSet,$numActiveDataPointsToKeepUpperBound,0,$numFeaturesToNumObservationsRatio,index_map" as String
+
+        def randomEffectOptimizationConfigurations = "perKeywordIdModel:10,1e-5,$randomEffectRegularizationWeight,1,tron,l2|" as String
+
+        def applicationName = "ran-eff-reg-$randomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio".
+            replaceAll("\\.|_|,", "-") as String
+
+        job(applicationName) {
+
+          def jobOutputDir = "$outputDir/$applicationName" as String
+
+          baseProperties 'sparkCommon'
+          set properties: ['class'                                  : 'com.linkedin.mlease.spark.avro.training.Driver',
+                           'num-executors'                          : numExecutors,
+                           'driver-memory'                          : driverMemory,
+                           'executor-memory'                        : executorMemory,
+                           'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
+                           'conf.spark.driver.maxResultSize'        : maxResultSize,
+                           'conf.spark.default.parallelism'         : parallelism,
+                           'params'                                 : "--train-input-dirs $trainInputDirs " +
+                               "--task-type binary_classification " +
+                               "--validate-input-dirs $validateInputDirs " +
+                               "--min-partitions-for-validation $minPartitionsForValidation " +
+                               "--output-dir $jobOutputDir " +
+                               "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
+                               "--feature-shard-id-to-feature-section-keys-map $featureShardIdToFeatureSectionKeysMap " +
+                               "--num-iterations $numIterations " +
+                               "--updating-sequence $updatingSequence " +
+                               "--fixed-effect-optimization-configurations $fixedEffectOptimizationConfigurations " +
+                               "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
+                               "--random-effect-optimization-configurations $randomEffectOptimizationConfigurations " +
+                               "--random-effect-data-configurations $randomEffectDataConfigurations " +
+                               "--save-models-to-hdfs false " +
+                               "--application-name $applicationName "
+          ]
+        }
+        targets applicationName
+      }
+    }
+  }
+}

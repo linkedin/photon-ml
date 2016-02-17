@@ -1,0 +1,38 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "generate-data-for-kddcup-2012"
+
+// For generating feature list
+def inputDir = "/tmp/KDDCup2012Data/track2"
+def outputDir = "/jobs/fastrain/glmix_data/KDDCup2012-Track2"
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    job("standalone-job") {
+
+      def numExecutors = 100
+      def executorMemory = '20G'
+      def driverMemory = '30G'
+      def parallelism=numExecutors*3
+
+      baseProperties 'sparkCommon'
+      set properties: [
+        'class'                          : 'com.linkedin.mlease.spark.avro.kddcup2012.GenerateGameData',
+        'num-executors'                  : numExecutors,
+        'driver-memory'                  : driverMemory,
+        'executor-memory'                : executorMemory,
+        'conf.spark.default.parallelism' : parallelism,
+        'params' : "$inputDir $outputDir"
+      ]
+    }
+    targets "standalone-job"
+  }
+}
