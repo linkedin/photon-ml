@@ -10,33 +10,49 @@ apply from: 'src/main/gradle/config/properties.gradle'
 
 //jymbii
 apply from: 'src/main/gradle/jymbii/GenerateFeatureList.gradle'
-apply from: 'src/main/gradle/jymbii/GameParameterTuningOnNertzrm02.gradle'
-apply from: 'src/main/gradle/jymbii/GameRPParameterTuningOnNertzrm02.gradle'
-apply from: 'src/main/gradle/jymbii/LatentFactorGameParameterTuningOnNertzrm02.gradle'
-apply from: 'src/main/gradle/jymbii/ToyLatentFactorGameParameterTuningOnNertzrm02.gradle'
-apply from: 'src/main/gradle/jymbii/GameScoringOnNertzrm02.gradle'
+apply from: 'src/main/gradle/jymbii/FullModel.gradle'
+apply from: 'src/main/gradle/jymbii/PerJobModel.gradle'
+apply from: 'src/main/gradle/jymbii/PerMemberModel.gradle'
+apply from: 'src/main/gradle/jymbii/ScaleUpExperiment.gradle'
+apply from: 'src/main/gradle/jymbii/SpeedUpExperiment.gradle'
 
 
 //ads
 apply from: 'src/main/gradle/ads/GenerateFeatureList.gradle'
-apply from: 'src/main/gradle/ads/GameParameterTuningOnNertzrm02.gradle'
+apply from: 'src/main/gradle/ads/FullModel.gradle'
 
 
 //yahoo-music
 apply from: 'src/main/gradle/yahoo-music/GenerateFeatureList.gradle'
-apply from: 'src/main/gradle/yahoo-music/GameParameterTuningOnNertzrm02.gradle'
+apply from: 'src/main/gradle/yahoo-music/FullModel.gradle'
+apply from: 'src/main/gradle/yahoo-music/PerMemberModel.gradle'
+apply from: 'src/main/gradle/yahoo-music/PerSongModel.gradle'
+apply from: 'src/main/gradle/yahoo-music/PerArtistModel.gradle'
+
+
+//kdd-cup 2012
+apply from: 'src/main/gradle/kddcup2012-track2/GenerateData.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GenerateFeatureList.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/FullModelWithSimplerGlobalAllIds.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/FullModelWithSimplerGlobalAllIdsV2.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerAd.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerAdvertiser.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerDescription.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerKeyword.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerMember.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerQuery.gradle'
+apply from: 'src/main/gradle/kddcup2012-track2/GlobalAndPerTitle.gradle'
 
 
 
 compileScala {
   scalaCompileOptions.fork = true
   scalaCompileOptions.additionalParameters = [
-    "-feature",
-    "-language:reflectiveCalls", // used for config structural typing
-    "-language:postfixOps"
+      "-feature",
+      "-language:reflectiveCalls", // used for config structural typing
+      "-language:postfixOps"
   ]
 }
-
 dependencies {
   compile(spec.external."scalaCompiler$scalaSuffix")
   compile(spec.external."scalaLibrary$scalaSuffix")

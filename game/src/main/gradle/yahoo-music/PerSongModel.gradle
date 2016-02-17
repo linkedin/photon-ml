@@ -1,0 +1,92 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "game-on-yahoo-music-per-song-model"
+
+
+// Spark parameters
+def executorMemoryInMB = 8000
+def executorMemory = "${executorMemoryInMB}m" as String
+def executorMemoryOverhead = executorMemoryInMB / 4
+def numExecutors = 80
+def driverMemoryInMB = 8000
+def driverMemory = "${driverMemoryInMB}m" as String
+def parallelism = numExecutors * 4
+
+
+// Game input data parameters
+def trainInputDirs = "/jobs/fastrain/glmix_data/extended-yahoo-music/train"
+def validateInputDirs = "/jobs/fastrain/glmix_data/extended-yahoo-music/test"
+def featureNameAndTermSetInputPath = "/jobs/fastrain/glmix_data/extended-yahoo-music/feature-lists"
+
+def outputDir = "/jobs/fastrain/glmix_results/extended-yahoo-music/$flowName" as String
+
+
+// Game data configuration parameters
+def featureShardIdToFeatureSectionKeysMap = "shard1:features,userFeatures,songFeatures|shard3:userFeatures"
+def numPartitionsForFixedEffectDataSet = numExecutors * 10
+def fixedEffectDataConfigurations = "global:shard1,$numPartitionsForFixedEffectDataSet" as String
+def numPartitionsForRandomEffectDataSet = numExecutors * 4
+def minPartitionsForValidation = numExecutors * 8
+
+
+// Game optimization parameters
+def numIterations = 4
+def updatingSequence = "global,per-song"
+def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,1,tron,l2"
+
+def randomEffectRegularizationWeights = [1, 3, 5, 10, 20]
+def numFeaturesToNumObservationsRatios = [-1]
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    for (numFeaturesToNumObservationsRatio in numFeaturesToNumObservationsRatios) {
+      for (randomEffectRegularizationWeight in randomEffectRegularizationWeights) {
+
+        def randomEffectDataConfigurations = "per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map" as String
+
+        def randomEffectOptimizationConfigurations = "per-song:10,1e-5,$randomEffectRegularizationWeight,1,tron,l2" as String
+
+        def applicationName = "ran-eff-reg-$randomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio".
+            replaceAll("\\.|_|,", "-") as String
+
+        job(applicationName) {
+
+          def jobOutputDir = "$outputDir/$applicationName" as String
+
+          baseProperties 'sparkCommon'
+          set properties: ['class'                                  : 'com.linkedin.mlease.spark.avro.training.Driver',
+                           'num-executors'                          : numExecutors,
+                           'driver-memory'                          : driverMemory,
+                           'executor-memory'                        : executorMemory,
+                           'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
+                           'conf.spark.default.parallelism'         : parallelism,
+                           'params'                                 : "--train-input-dirs $trainInputDirs " +
+                               "--task-type linear_regression " +
+                               "--validate-input-dirs $validateInputDirs " +
+                               "--min-partitions-for-validation $minPartitionsForValidation " +
+                               "--output-dir $jobOutputDir " +
+                               "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
+                               "--feature-shard-id-to-feature-section-keys-map $featureShardIdToFeatureSectionKeysMap " +
+                               "--num-iterations $numIterations " +
+                               "--updating-sequence $updatingSequence " +
+                               "--fixed-effect-optimization-configurations $fixedEffectOptimizationConfigurations " +
+                               "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
+                               "--random-effect-optimization-configurations $randomEffectOptimizationConfigurations " +
+                               "--random-effect-data-configurations $randomEffectDataConfigurations " +
+                               "--save-models-to-hdfs false " +
+                               "--application-name $applicationName "
+          ]
+        }
+        targets applicationName
+      }
+    }
+  }
+}

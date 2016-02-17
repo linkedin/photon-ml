@@ -9,7 +9,7 @@ propertySet('sparkCommon') {
     'conf.spark.locality.wait.process' : '120s',
     'conf.spark.eventLog.enabled' : true,
     'conf.spark.scheduler.maxRegisteredResourcesWaitingTime' : '3600s',
-    'conf.spark.scheduler.minRegisteredResourcesRatio' : 0.9,
+    'conf.spark.scheduler.minRegisteredResourcesRatio' : 0.95,
     'conf.spark.yarn.maxAppAttempts' : 1,
     'conf.spark.akka.frameSize' : 32,
     'conf.spark.network.timeout' : '600s',

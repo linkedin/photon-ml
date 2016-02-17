@@ -5,14 +5,14 @@ clean {
   delete jobDir
 }
 
-def flowName = "game-on-yahoo-music-parameter-tuning"
+def flowName = "game-on-yahoo-music-per-member-model"
 
 
 // Spark parameters
 def executorMemoryInMB = 8000
 def executorMemory = "${executorMemoryInMB}m" as String
 def executorMemoryOverhead = executorMemoryInMB / 4
-def numExecutors = 100
+def numExecutors = 80
 def driverMemoryInMB = 8000
 def driverMemory = "${driverMemoryInMB}m" as String
 def parallelism = numExecutors * 4
@@ -27,7 +27,7 @@ def outputDir = "/jobs/fastrain/glmix_results/extended-yahoo-music/$flowName" as
 
 
 // Game data configuration parameters
-def featureShardIdToFeatureSectionKeysMap = "shard1:features,userFeatures,songFeatures|shard2:features,songFeatures|shard3:userFeatures"
+def featureShardIdToFeatureSectionKeysMap = "shard1:features,userFeatures,songFeatures|shard2:features,songFeatures"
 def numPartitionsForFixedEffectDataSet = numExecutors * 10
 def fixedEffectDataConfigurations = "global:shard1,$numPartitionsForFixedEffectDataSet" as String
 def numPartitionsForRandomEffectDataSet = numExecutors * 4
@@ -36,10 +36,10 @@ def minPartitionsForValidation = numExecutors * 8
 
 // Game optimization parameters
 def numIterations = 4
-def updatingSequence = "global,per-user,per-song"
+def updatingSequence = "global,per-user"
 def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,1,tron,l2"
 
-def randomEffectRegularizationWeights = [3, 5, 8, 10, 20]
+def randomEffectRegularizationWeights = [1, 3, 5, 10, 20]
 def numFeaturesToNumObservationsRatios = [-1]
 
 hadoop {
@@ -51,11 +51,9 @@ hadoop {
       for (randomEffectRegularizationWeight in randomEffectRegularizationWeights) {
 
         def randomEffectDataConfigurations =
-            "per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map|" +
-            "per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map" as String
+            "per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,$numFeaturesToNumObservationsRatio,index_map" as String
 
-        def randomEffectOptimizationConfigurations = "per-user:10,1e-5,$randomEffectRegularizationWeight,1,tron,l2|" +
-            "per-song:10,1e-5,$randomEffectRegularizationWeight,1,tron,l2" as String
+        def randomEffectOptimizationConfigurations = "per-user:10,1e-5,$randomEffectRegularizationWeight,1,tron,l2" as String
 
         def applicationName = "ran-eff-reg-$randomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio".
             replaceAll("\\.|_|,", "-") as String

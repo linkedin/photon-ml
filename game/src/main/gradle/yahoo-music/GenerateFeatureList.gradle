@@ -9,8 +9,8 @@ def flowName = "generate-all-feature-lists-on-yahoo-music-data-nertzrm02"
 
 // For generating feature list
 def featureSectionKeys = "features,userFeatures,songFeatures"
-def featureNameAndTermSetOutputPath = "/jobs/fastrain/glmix_data/extended-yahoo-music/feature-lists"
-def inputDirs = "/jobs/fastrain/glmix_data/extended-yahoo-music/train"
+def featureNameAndTermSetOutputPath = "/jobs/fastrain/glmix_data/extended-yahoo-music-rank100-lambda0.05/feature-lists"
+def inputDirs = "/jobs/fastrain/glmix_data/extended-yahoo-music-rank100-lambda0.05/train"
 
 hadoop {
   buildPath jobDir
@@ -19,7 +19,7 @@ hadoop {
 
     job("standalone-job") {
 
-      def numExecutors = 10
+      def numExecutors = 50
       def executorMemory= '10G'
       def driverMemory= '10G'
       def parallelism=numExecutors*4

@@ -5,7 +5,7 @@ clean {
   delete jobDir
 }
 
-def flowName = "glmix-on-jymbii-parameter-tuning"
+def flowName = "glmix-on-jymbii-full-model"
 
 
 // Spark parameters
@@ -22,8 +22,8 @@ def parallelism = numExecutors * 4
 def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
     "glmix_data_20000"
 def validateInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
-def trainDateRange = "20150707-20151103"
-def validateDateRange = "20151104-20151110"
+def trainDateRange = "20150707-20151106"
+def validateDateRange = "20151107-20151114"
 def featureNameAndTermSetInputPath = "/jobs/fastrain/glmix_data/JYMBII/feature-lists/globalFeatures-memberFeatures-jobFeatures-memberJobCrossFeatures-20150707-20151103"
 
 def outputDir = "/jobs/fastrain/glmix_results/JYMBII/$flowName" as String

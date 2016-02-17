@@ -1,0 +1,77 @@
+{
+    "name": "KDDCup2012DataAvro",
+    "namespace": "com.linkedin.mlease.avro.generated",
+    "type": "record",
+    "doc": "a generic schema to describe the KDD-Cup 2012 data format for Game modeling",
+    "fields": [
+        {
+            "name": "response",
+            "type": "int"
+        },
+        {
+            "name" : "weight",
+            "type" : "float"
+        }, {
+            "name" : "offset",
+            "type" : "float"
+        },
+        {
+            "name" : "AdID",
+            "type" : "int"
+        }, {
+            "name" : "AdvertiserID",
+            "type" : "int"
+        }, {
+            "name" : "QueryID",
+            "type" : "int"
+        }, {
+            "name" : "KeywordID",
+            "type" : "int"
+        }, {
+            "name" : "TitleID",
+            "type" : "int"
+        }, {
+            "name" : "DescriptionID",
+            "type" : "int"
+        }, {
+            "name" : "UserID",
+            "type" : "int"
+        }, {
+            "name" : "globalFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+            }
+        }, {
+            "name" : "queryTokensFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+           }
+        }, {
+            "name" : "purchasedKeywordTokensFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+            }
+        }, {
+            "name" : "titleTokensFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+            }
+        }, {
+            "name" : "descriptionTokensFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+            }
+        }, {
+            "name" : "userProfileFeatures",
+            "type" : {
+                "type" : "array",
+                "items" : "NameTermValueAvro"
+            }
+        }
+    ]
+}
