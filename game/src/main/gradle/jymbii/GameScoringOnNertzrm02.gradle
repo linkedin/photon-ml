@@ -55,7 +55,7 @@ hadoop {
             "--output-dir $outputDir " +
             "--num-files 1 " +
             "--application-name $scoringJobName " +
-            "--task-type binary_classification"
+            "--task-type logistic_regression"
       ]
       targets scoringJobName
     }

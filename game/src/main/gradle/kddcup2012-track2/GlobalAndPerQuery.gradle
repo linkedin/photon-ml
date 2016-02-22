@@ -76,7 +76,7 @@ hadoop {
                            'conf.spark.driver.maxResultSize'        : maxResultSize,
                            'conf.spark.default.parallelism'         : parallelism,
                            'params'                                 : "--train-input-dirs $trainInputDirs " +
-                               "--task-type binary_classification " +
+                               "--task-type logistic_regression " +
                                "--validate-input-dirs $validateInputDirs " +
                                "--min-partitions-for-validation $minPartitionsForValidation " +
                                "--output-dir $jobOutputDir " +

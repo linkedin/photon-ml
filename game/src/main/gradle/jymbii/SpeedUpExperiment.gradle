@@ -70,7 +70,7 @@ hadoop {
                          'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
                          'conf.spark.default.parallelism'         : parallelism,
                          'params'                                 : "--train-input-dirs $trainInputDirs " + "--train-date-range $trainDateRange " +
-                             "--task-type binary_classification "+
+                             "--task-type logistic_regression "+
                              "--output-dir $jobOutputDir " + "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
                              "--feature-shard-id-to-feature-section-keys-map $featureShardIdToFeatureSectionKeysMap " +
                              "--num-iterations $numIterations " + "--updating-sequence $updatingSequence " + "--fixed-effect-optimization-configurations $fixedEffectOptimizationConfigurations " +

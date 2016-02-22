@@ -90,7 +90,7 @@ hadoop {
                                  'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
                                  'conf.spark.default.parallelism'         : parallelism,
                                  'params'                                 : "--train-input-dirs $trainInputDirs " +
-                                     "--task-type binary_classification " +
+                                     "--task-type logistic_regression " +
                                      "--validate-input-dirs $validateInputDirs " +
                                      "--train-date-range $trainDateRange " +
                                      "--validate-date-range $validateDateRange " +
