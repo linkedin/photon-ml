@@ -129,6 +129,10 @@ class Params {
    */
   var selectedFeaturesFile: Option[String] = None
   /**
+   * The depth used in tree aggregate
+   */
+  var treeAggregateDepth: Int = 1
+  /**
    * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
    */
   def validate(): Unit = {

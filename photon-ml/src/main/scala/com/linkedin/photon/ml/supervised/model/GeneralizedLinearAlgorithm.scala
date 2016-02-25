@@ -1,8 +1,6 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import com.linkedin.photon.ml.DataValidationType
-import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
@@ -37,6 +35,11 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * Whether to track the optimization state (for validating and debugging purpose). Default: True.
    */
   var isTrackingState: Boolean = true
+
+  /**
+   * The depth for treeAggregate. Depth 1 indicates normal linear aggregate.
+   */
+  var treeAggregateDepth: Int = 1
 
   /**
    * The target storage level if the input data get normalized.

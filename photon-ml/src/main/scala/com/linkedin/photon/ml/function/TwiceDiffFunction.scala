@@ -67,12 +67,13 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
       multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
 
     val initialCumHessianVector = Utils.initializeZerosVectorOfSameType(broadcastedCoefficients.value)
-    data.aggregate(initialCumHessianVector)(
+    data.treeAggregate(initialCumHessianVector)(
       seqOp = (cumHessianVector, datum) => {
         hessianVectorAt(datum, broadcastedCoefficients.value, multiplyVector.value, cumHessianVector)
         cumHessianVector
       },
-      combOp = _ += _
+      combOp = _ += _,
+      depth = treeAggregateDepth
     )
   }
 

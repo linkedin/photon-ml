@@ -25,8 +25,9 @@ class LogisticRegressionAlgorithm
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
-    TwiceDiffFunction.withRegularization(
-      new LogisticLossFunction(normalizationContext), regularizationContext, regularizationWeight)
+    val basicFunction = new LogisticLossFunction(normalizationContext)
+    basicFunction.treeAggregateDepth = treeAggregateDepth
+    TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
   }
 
   /**
