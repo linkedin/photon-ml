@@ -86,8 +86,6 @@ object FixedEffectCoordinate {
     val trainingData = sampler.downSample(fixedEffectDataSet.labeledPoints)
         .setName("In memory fixed effect training data set")
         .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    println(s"In memory fixed effect training data set summary:" +
-        s"\n${new FixedEffectDataSet(trainingData, "").toSummaryString}")
     val coefficients = fixedEffectModel.coefficients
     val (updatedCoefficients, _) = optimizationProblem.updatedCoefficientsMeans(trainingData.values, coefficients)
     val updatedCoefficientsBroadcast = fixedEffectDataSet.sparkContext.broadcast(updatedCoefficients)

@@ -62,9 +62,6 @@ class FactoredRandomEffectCoordinate[F <: EnhancedTwiceDiffFunction[LabeledPoint
           updatedCoefficientsRDD.unpersist()
           updatedCoefficientsRDD = updatedRandomEffectModel.coefficientsRDD
 
-          println(s"Finished updating random effect model in iteration $iteration, " +
-              s"model summary:\n${updatedRandomEffectModel.toSummaryString}")
-
           // Then update the latent projection matrix
           val latentProjectionMatrix = updatedProjectionMatrixBroadcast.projectionMatrix
           val (updatedLatentProjectionMatrix, updatedOptimizationProblem) = FactoredRandomEffectCoordinate
@@ -76,8 +73,6 @@ class FactoredRandomEffectCoordinate[F <: EnhancedTwiceDiffFunction[LabeledPoint
           //Note that the optimizationProblem will memorize the current state of optimization,
           //and the next round of updating latent factors will share the same convergence criteria as previous one.
           latentFactorOptimizationProblem = updatedOptimizationProblem
-
-          println(s"Finished updating latent projection matrix in iteration $iteration")
 
           val latentProjectionMatrixOptimizationStateTracker =
             new FixedEffectOptimizationTracker(latentFactorOptimizationProblem.optimizer.getStateTracker.get)
@@ -166,7 +161,6 @@ object FactoredRandomEffectCoordinate {
         .setName("Generated training data for latent projection matrix")
         .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val fixedEffectDataSet = new FixedEffectDataSet(downSampledTrainingData, featureShardId = "")
-    println(s"Generated training data set summary:\n${fixedEffectDataSet.toSummaryString}")
 
     val flattenedLatentProjectionMatrix = latentProjectionMatrix.flatten()
     val latentProjectionMatrixAsCoefficients = Coefficients(flattenedLatentProjectionMatrix, variancesOption = None)
