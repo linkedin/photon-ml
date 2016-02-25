@@ -1,6 +1,5 @@
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -45,12 +44,13 @@ object ModelTraining {
       maxNumIter: Int,
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
-      constraintMap: Option[Map[Int, (Double, Double)]]):
+      constraintMap: Option[Map[Int, (Double, Double)]],
+      treeAggregateDepth: Int):
         (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     trainGeneralizedLinearModel(
       trainingData, taskType, optimizerType, regularizationContext, regularizationWeights, normalizationContext,
-      maxNumIter, tolerance, enableOptimizationStateTracker, constraintMap, Map.empty)
+      maxNumIter, tolerance, enableOptimizationStateTracker, constraintMap, Map.empty, treeAggregateDepth)
   }
 
   /**
@@ -81,7 +81,8 @@ object ModelTraining {
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
-      warmStartModels:Map[Double, GeneralizedLinearModel]):
+      warmStartModels:Map[Double, GeneralizedLinearModel],
+      treeAggregateDepth: Int):
         (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     /* Choose the optimizer */
@@ -111,6 +112,7 @@ object ModelTraining {
       case _ => throw new IllegalArgumentException(s"unrecognized task type $taskType")
     }
     algorithm.isTrackingState = enableOptimizationStateTracker
+    algorithm.treeAggregateDepth = treeAggregateDepth
 
     /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence
      * time */

@@ -67,6 +67,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.summarizationOutputDirOpt, None)
     assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.constraintString, None)
+    assertEquals(params.treeAggregateDepth, 1)
   }
 
   @Test
@@ -79,7 +80,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.outputDir, "value")
     assertEquals(params.taskType, TaskType.LINEAR_REGRESSION)
 
-    // Verify optional parameters values, should be default values
+    // Verify optional parameters values
     assertEquals(params.validateDirOpt, Some("validate_dir"))
     assertEquals(params.maxNumIter, 3)
     assertEquals(params.regularizationWeights, List(0.5, 0.7))
@@ -96,6 +97,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.summarizationOutputDirOpt, Some("summarization_output_dir"))
     assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.constraintString, Some(constraintString))
+    assertEquals(params.treeAggregateDepth, 2)
 
     val params2 = PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ optionalArgs(booleanOptionValue = false))
 
@@ -105,7 +107,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params2.outputDir, "value")
     assertEquals(params2.taskType, TaskType.LINEAR_REGRESSION)
 
-    // Verify optional parameters values, should be default values
+    // Verify optional parameters values
     assertEquals(params2.validateDirOpt, Some("validate_dir"))
     assertEquals(params2.maxNumIter, 3)
     assertEquals(params2.regularizationWeights, List(0.5, 0.7))
@@ -121,6 +123,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params2.summarizationOutputDirOpt, Some("summarization_output_dir"))
     assertEquals(params2.normalizationType, NormalizationType.NONE)
     assertEquals(params2.constraintString, Some(constraintString))
+    assertEquals(params2.treeAggregateDepth, 2)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -193,6 +196,15 @@ class PhotonMLCmdLineParserTest {
     )
     PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
   }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidTreeAggregateDepth(): Unit = {
+    val args = Array(
+      CommonTestUtils.fromOptionNameToArg(TREE_AGGREGATE_DEPTH),
+      0.toString
+    )
+    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
+  }
 }
 
 object PhotonMLCmdLineParserTest {
@@ -211,7 +223,8 @@ object PhotonMLCmdLineParserTest {
     MIN_NUM_PARTITIONS_OPTION,
     SUMMARIZATION_OUTPUT_DIR,
     NORMALIZATION_TYPE,
-    COEFFICIENT_BOX_CONSTRAINTS
+    COEFFICIENT_BOX_CONSTRAINTS,
+    TREE_AGGREGATE_DEPTH
   )
 
   // Boolean options are unary instead of binary options
@@ -264,6 +277,7 @@ object PhotonMLCmdLineParserTest {
         case SUMMARIZATION_OUTPUT_DIR => "summarization_output_dir"
         case NORMALIZATION_TYPE => NormalizationType.NONE.toString()
         case COEFFICIENT_BOX_CONSTRAINTS => constraintString
+        case TREE_AGGREGATE_DEPTH => 2.toString
         case _ => "dummy-value"
       }
       i += 2

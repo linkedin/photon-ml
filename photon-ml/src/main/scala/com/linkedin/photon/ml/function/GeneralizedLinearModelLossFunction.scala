@@ -21,7 +21,7 @@ import org.apache.spark.rdd.RDD
  * [[PointwiseLossFunction]]. Since the loss function could be changed in different normalization type,
  * a normalization context object is used to indicate the normalization strategy to evaluate this loss function.
  *
- * All generalized linear model loss function should inherite from this class.
+ * All generalized linear model loss function should inherit from this class.
  *
  * TODO: Note that calculateAt and hessianVectorAt methods has been annotated as deprecated and will throw an exception
  * TODO  if called. The segregation of calculateAt and hessianVectorAt with calculate and hessianVector has happen in
@@ -72,7 +72,7 @@ class GeneralizedLinearModelLossFunction(
       multiplyVector: Broadcast[Vector[Double]]): Vector[Double] = {
 
     HessianVectorAggregator.calcHessianVector(
-      data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext)
+      data, broadcastedCoefficients, multiplyVector, singleLossFunction, normalizationContext, treeAggregateDepth)
   }
 
   /**
@@ -88,7 +88,7 @@ class GeneralizedLinearModelLossFunction(
       broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
 
     ValueAndGradientAggregator.calculateValueAndGradient(
-      data, broadcastedCoefficients, singleLossFunction, normalizationContext)
+      data, broadcastedCoefficients, singleLossFunction, normalizationContext, treeAggregateDepth)
   }
 
   /**

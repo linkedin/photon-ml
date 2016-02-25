@@ -192,12 +192,14 @@ object ValueAndGradientAggregator {
       rdd: RDD[LabeledPoint],
       coef: Broadcast[Vector[Double]],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext]): (Double, Vector[Double]) = {
+      normalizationContext: ObjectProvider[NormalizationContext],
+      treeAggregateDepth: Int): (Double, Vector[Double]) = {
 
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.value.size)
-    val resultAggregator = rdd.aggregate(aggregator)(
+    val resultAggregator = rdd.treeAggregate(aggregator)(
       seqOp = (ag, datum) => ag.add(datum, coef.value, normalizationContext.get),
-      combOp = (ag1, ag2) => ag1.merge(ag2)
+      combOp = (ag1, ag2) => ag1.merge(ag2),
+      depth = treeAggregateDepth
     )
     val result = (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.get))
     result

@@ -34,6 +34,13 @@ import org.apache.spark.rdd.RDD
 trait DiffFunction[Datum <: DataPoint] extends Serializable {
 
   /**
+   * The depth used in treeAggregate. Depth 1 indicates normal linear aggregate.
+   * Using depth > 1 can reduce memory consumption in driver and may also speed up.
+   * It is experimental so far because treeAggregate is unstable in Spark 1.4 and 1.5.
+   */
+  var treeAggregateDepth: Int = 1
+
+  /**
    * Calculate the gradient of the function given one data point and the model coefficients
    * @param datum The given datum at which point to compute the gradient
    * @param coefficients The given model coefficients used to compute the gradient
@@ -107,7 +114,7 @@ trait DiffFunction[Datum <: DataPoint] extends Serializable {
     broadcastedCoefficients: Broadcast[Vector[Double]]): (Double, Vector[Double]) = {
 
     val initialCumGradient = Utils.initializeZerosVectorOfSameType(broadcastedCoefficients.value)
-    data.aggregate((0.0, initialCumGradient))(
+    data.treeAggregate((0.0, initialCumGradient))(
       seqOp = {
         case ((value, cumGradient), datum) =>
           val v = calculateAt(datum, broadcastedCoefficients.value, cumGradient)
@@ -116,7 +123,9 @@ trait DiffFunction[Datum <: DataPoint] extends Serializable {
       combOp = {
         case ((loss1, grad1), (loss2, grad2)) =>
           (loss1 + loss2, grad1 += grad2)
-      })
+      },
+      depth = treeAggregateDepth
+    )
   }
 
   /**

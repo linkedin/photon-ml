@@ -36,7 +36,8 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         TOLERANCE,
         false,
         None,
-        warmStart)._1
+        warmStart,
+        1)._1
     }
 
     val diagnostic = new FittingDiagnostic()
