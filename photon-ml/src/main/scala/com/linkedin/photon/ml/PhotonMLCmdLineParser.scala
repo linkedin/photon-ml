@@ -175,6 +175,17 @@ object PhotonMLCmdLineParser {
       opt[String](SELECTED_FEATURES_FILE)
               .text(s"Path to the file containing the features to be selected for training")
               .foreach(x => params.selectedFeaturesFile = Some(x))
+      opt[Int](TREE_AGGREGATE_DEPTH)
+        .text("The depth of the aggregate tree used in treeAggregate for the loss function. When the depth is 1, it works as normal linear aggregate. " +
+              "A depth larger than 1 consumes less memory in driver side and is potentially faster. Be aware that treeAggregate with depth > 1 " +
+              s"is unstable and may be slow in Spark 1.4 and 1.5. Default: ${defaultParams.treeAggregateDepth}")
+        .validate(x => if (x>0) {
+            success
+          } else {
+            failure(s"$TREE_AGGREGATE_DEPTH has to be a positive integer. Your input is $x")
+          }
+        )
+        .foreach(x => params.treeAggregateDepth = x)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
     }

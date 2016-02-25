@@ -226,6 +226,28 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
+  def testRuntWithTreeAggregate(): Unit = sparkTestSelfServeContext("testRuntWithTreeAggregate") {
+    val tmpDir = getTmpDir + "/testRuntWithTreeAggregate"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+
+    args += CommonTestUtils.fromOptionNameToArg(TREE_AGGREGATE_DEPTH)
+    args += 2.toString
+
+    MockDriver.runLocally(args = args.toArray,
+                          expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
   def testRunWithSummarization(): Unit = sparkTestSelfServeContext("testRunWithSummarization") {
     val tmpDir = getTmpDir + "/testRunWithSummarization"
     val args = mutable.ArrayBuffer[String]()

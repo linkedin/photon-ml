@@ -27,7 +27,9 @@ class SmoothedHingeLossLinearSVMAlgorithm
       regularizationWeight: Double): DiffFunction[LabeledPoint] = {
     // Ignore normalization for now -- not clear what refactoring is necessary / appropriate to make this fit within
     // Degao's normalization framework.
-    DiffFunction.withRegularization(new SmoothedHingeLossFunction(), regularizationContext, regularizationWeight)
+    val basicFunction = new SmoothedHingeLossFunction()
+    basicFunction.treeAggregateDepth = treeAggregateDepth
+    DiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
   }
 
   /**

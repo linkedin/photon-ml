@@ -216,7 +216,8 @@ protected[ml] class Driver(
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-      constraintMap = suite.constraintFeatureMap)
+      constraintMap = suite.constraintFeatureMap,
+      treeAggregateDepth = params.treeAggregateDepth)
     lambdaModelTuples = _lambdaModelTuples
     lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
 
@@ -353,7 +354,8 @@ protected[ml] class Driver(
           tolerance = params.tolerance,
           enableOptimizationStateTracker = params.enableOptimizationStateTracker,
           constraintMap = suite.constraintFeatureMap,
-          warmStartModels = y)._1
+          warmStartModels = y,
+          treeAggregateDepth = params.treeAggregateDepth)._1
       }
 
       logger.println(s"Starting training diagnostics")

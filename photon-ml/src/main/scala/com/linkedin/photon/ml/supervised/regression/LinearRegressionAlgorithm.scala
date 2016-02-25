@@ -26,8 +26,9 @@ class LinearRegressionAlgorithm
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
-    TwiceDiffFunction.withRegularization(
-      new SquaredLossFunction(normalizationContext), regularizationContext, regularizationWeight)
+    val basicFunction = new SquaredLossFunction(normalizationContext)
+    basicFunction.treeAggregateDepth = treeAggregateDepth
+    TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
   }
 
   override protected def createModel(coefficients: Vector[Double], intercept: Option[Double]) = {

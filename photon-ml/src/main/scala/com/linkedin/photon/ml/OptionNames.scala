@@ -29,6 +29,7 @@ object OptionNames {
   val NORMALIZATION_TYPE = "normalization-type"
   val COEFFICIENT_BOX_CONSTRAINTS = "coefficient-box-constraints"
   val DATA_VALIDATION_TYPE = "data-validation-type"
+  val TREE_AGGREGATE_DEPTH = "tree-aggregate-depth"
   val TRAINING_DIAGNOSTICS = "training-diagnostics"
   val SELECTED_FEATURES_FILE = "selected-features-file"
 }

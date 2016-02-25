@@ -22,8 +22,9 @@ class PoissonRegressionAlgorithm
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
-    TwiceDiffFunction.withRegularization(
-      new PoissonLossFunction(normalizationContext), regularizationContext, regularizationWeight)
+    val basicFunction = new PoissonLossFunction(normalizationContext)
+    basicFunction.treeAggregateDepth = treeAggregateDepth
+    TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
   }
 
   /**

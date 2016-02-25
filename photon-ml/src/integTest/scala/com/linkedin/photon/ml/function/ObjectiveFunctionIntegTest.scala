@@ -24,7 +24,7 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    * List everything that conforms to DiffFunction here
    */
   @DataProvider(parallel = true)
-  def getDifferentiableFunctions: Array[Array[Object]] = {
+  def getDifferentiableFunctions: Array[Array[Any]] = {
     // List of functions that return a tuple containing an undecorated loss function and its corresponding local data
     // set
     val baseLossFunctions = Array(
@@ -61,7 +61,7 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       }
 
       diffAdapted ++ twiceDiffAdapted
-    }).flatMap(_.iterator).map(x => Array(x._1, x._2, x._3))
+    }).flatMap(_.iterator).flatMap(x => Array(Array(x._1, x._2, x._3, 1), Array(x._1, x._2, x._3, 2))).toArray
   }
 
 
@@ -69,7 +69,7 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    * List everything that conforms to TwiceDiffFunction here
    */
   @DataProvider(parallel = true)
-  def getTwiceDifferentiableFunctions: Array[Array[Object]] = {
+  def getTwiceDifferentiableFunctions: Array[Array[Any]] = {
     val baseLossFunctions = Array(
       () => ("Differentiable logistic loss, benign data", new LogisticLossFunction(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetLinearRegression()),
@@ -96,13 +96,13 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       })
     })
 
-    tmp.map({ x => Array(x._1, x._2, x._3) }).toArray
+    tmp.flatMap(x => Array(Array(x._1, x._2, x._3, 1), Array(x._1, x._2, x._3, 2))).toArray
   }
 
   /**
    * Generate benign datasets with weights. The output contains 2 * TRAINING_SAMPLES
    * examples in total. Have of them have weight = 1, and have of them have random weights.
-   * @return a list of { @link  LabeledPoint}
+   * @return a list of [[LabeledPoint]]
    */
   def generateBenignLocalDataSetBinaryClassification(): List[LabeledPoint] = {
     val tmp1: List[LabeledPoint] = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
@@ -128,7 +128,7 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
   /**
    * Generate outliers with weights. The output contains 2 * TRAINING_SAMPLES
    * examples in total. Have of them have weight = 1, and have of them have random weights.
-   * @return a list of { @link  LabeledPoint}
+   * @return a list of [[LabeledPoint]]
    */
   def generateOutlierLocalDataSetBinaryClassification(): List[LabeledPoint] = {
     val tmp1: List[LabeledPoint] = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
@@ -297,7 +297,8 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getDifferentiableFunctions",
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkGradientConsistentWithObjectiveSpark(description: String, function: DiffFunction[LabeledPoint], localData: Seq[LabeledPoint]): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
+  def checkGradientConsistentWithObjectiveSpark(description: String, function: DiffFunction[LabeledPoint], localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
+    function.treeAggregateDepth = treeAggregateDepth
     val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
     val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
 
@@ -329,7 +330,8 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getTwiceDifferentiableFunctions",
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkHessianConsistentWithObjectiveSpark(description: String, function: TwiceDiffFunction[LabeledPoint], localData: Seq[LabeledPoint]): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
+  def checkHessianConsistentWithObjectiveSpark(description: String, function: TwiceDiffFunction[LabeledPoint], localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
+    function.treeAggregateDepth = treeAggregateDepth
     val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
     val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
 

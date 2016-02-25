@@ -99,7 +99,8 @@ class NormalizationIntegTest extends SparkTestUtils {
       _numIter,
       _tolerance,
       true,
-      None)
+      None,
+      1)
     assertEquals(models.size, 1)
     val model = models(0)._2.asInstanceOf[BinaryClassifier]
     // For all types of normalization, the unregularized trained model should predictClass the same label.

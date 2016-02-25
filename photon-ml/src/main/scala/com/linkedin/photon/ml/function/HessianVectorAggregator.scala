@@ -107,13 +107,15 @@ object HessianVectorAggregator {
       coef: Broadcast[Vector[Double]],
       multiplyVector: Broadcast[Vector[Double]],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext]): Vector[Double] = {
+      normalizationContext: ObjectProvider[NormalizationContext],
+      treeAggregateDepth: Int): Vector[Double] = {
 
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.value.size)
 
-    val resultAggregator = rdd.aggregate(aggregator)(
+    val resultAggregator = rdd.treeAggregate(aggregator)(
       seqOp = (ag, datum) => ag.add(datum, coef.value, multiplyVector.value, normalizationContext.get),
-      combOp = (ag1, ag2) => ag1.merge(ag2)
+      combOp = (ag1, ag2) => ag1.merge(ag2),
+      depth = treeAggregateDepth
     )
     val result = resultAggregator.getVector(normalizationContext.get)
     result
