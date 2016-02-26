@@ -6,6 +6,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
 import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, SmoothedHingeLossLinearSVMAlgorithm, LogisticRegressionAlgorithm, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearAlgorithm, GeneralizedLinearModel}
@@ -14,6 +15,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.testng.Assert.assertTrue
+import org.testng.Assert.fail
 import org.testng.annotations.{DataProvider, Test}
 
 /**
@@ -55,33 +57,40 @@ class BaseGLMIntegTest extends SparkTestUtils {
   /**
    * Enumerate valid sets of (description, generalized linear algorithm, data set) tuples.
    */
-  private def getGeneralizedLinearAlgorithms() : Array[Tuple4[Object, Object, Object, Object]] = {
+  private def getGeneralizedLinearAlgorithms() : Array[Tuple5[Object, Object, Object, Object, Object]] = {
     Array(
-      Tuple4("Linear regression, easy problem",
+      Tuple5("Linear regression, easy problem",
         new LinearRegressionAlgorithm(),
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
         drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LinearRegressionModel](new PredictionFiniteValidator(),
           new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMIntegTest.MAXIMUM_ERROR_MAGNITUDE))),
-      Tuple4("Poisson regression, easy problem",
+
+      Tuple5("Poisson regression, easy problem",
         new PoissonRegressionAlgorithm,
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
         drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
           new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator, new NonNegativePredictionValidator[PoissonRegressionModel])),
-      Tuple4("Logistic regression, easy problem",
+
+      Tuple5("Logistic regression, easy problem",
         new LogisticRegressionAlgorithm(),
+        OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),
         drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(),
           new BinaryPredictionValidator[LogisticRegressionModel](),
           new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC))),
-        Tuple4("Linear SVM, easy problem",
-          new SmoothedHingeLossLinearSVMAlgorithm(),
-          drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
-            BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-          new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
-            new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
-            new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
+
+      Tuple5("Linear SVM, easy problem",
+        new SmoothedHingeLossLinearSVMAlgorithm(),
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
+        drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
+          new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
+          new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
     )
   }
 
@@ -93,23 +102,23 @@ class BaseGLMIntegTest extends SparkTestUtils {
       Array(
         s"Happy path [$x._1]", // Description
         x._2,                                // Algorithm
-        new LBFGS(),                         // Solver
+        x._3,                                // Solver
         L2RegularizationContext,             // Regularization
-        x._3,                                // data
-        x._4                                 // validator
+        x._4,                                // data
+        x._5                                 // validator
       )
     })
   }
 
   @Test(dataProvider = "generateHappyPathCases")
   def checkHappyPath[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
-                     desc:String,
-                     algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                     solver:Optimizer[LabeledPoint, Function],
-                     reg:RegularizationContext,
-                     data:Iterator[(Double, Vector[Double])],
-                     validator:ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
+      desc: String,
+      algorithm: GeneralizedLinearAlgorithm[GLM, Function],
+      optimizerConfig: OptimizerConfig,
+      reg: RegularizationContext,
+      data: Iterator[(Double, Vector[Double])],
+      validator: ModelValidator[GLM]) = {
+    runGeneralizedLinearAlgorithmScenario(desc, algorithm, optimizerConfig, reg, List(1.0), None, NoNormalization, data, validator)
   }
 
   /**
@@ -117,37 +126,49 @@ class BaseGLMIntegTest extends SparkTestUtils {
    * data providers to exercise different paths) -- hopefully the majority of tests can be constructed by creating
    * the right bindings.
    */
-  def runGeneralizedLinearAlgorithmScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
-                                                                                                                   algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                                                   solver:Optimizer[LabeledPoint, Function],
-                                                                                                                   reg:RegularizationContext,
-                                                                                                                   lambdas:List[Double],
-                                                                                                                   summary:Option[BasicStatisticalSummary],
-                                                                                                                   norm:NormalizationContext,
-                                                                                                                   data:Iterator[(Double, Vector[Double])],
-                                                                                                                   validator:ModelValidator[GLM]) = sparkTest(desc) {
+  def runGeneralizedLinearAlgorithmScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
+      desc: String,
+      algorithm: GeneralizedLinearAlgorithm[GLM, Function],
+      optimizerConfig: OptimizerConfig,
+      reg: RegularizationContext,
+      lambdas: List[Double],
+      summary: Option[BasicStatisticalSummary],
+      norm: NormalizationContext,
+      data: Iterator[(Double, Vector[Double])],
+      validator: ModelValidator[GLM]) = sparkTest(desc) {
+
     // Step 0: configure the algorithm
     algorithm.enableIntercept = true
     algorithm.isTrackingState = true
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
-    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList).repartition(4)
+    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList).repartition(4)
 
     // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm)
+    val (models, optimizer) = algorithm.run(trainingSet, optimizerConfig, reg, lambdas, norm)
 
     // Step 3: check convergence
     // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
     // TODO: be fixed.
-    assertTrue(None != solver.getStateTracker, "State tracking was enabled")
-    OptimizerIntegTest.checkConvergence(solver.getStateTracker.get)
+    assertTrue(None != optimizer.getStateTracker, "State tracking was enabled")
+    OptimizerIntegTest.checkConvergence(optimizer.getStateTracker.get)
 
     // Step 4: validate the models
     models.foreach( m => {
       m.validateCoefficients
       validator.validateModelPredictions(m, trainingSet)
     })
+
+    // Step 5: did it really use the optimizer I specified?
+    optimizer match {
+      case _: LBFGS[_] => if (optimizerConfig.optimizerType != OptimizerType.LBFGS) {
+        fail("Wrong optimizer selected at runtime: $optimizerConfig.optimizerType (should be LBFGS)")
+      }
+      case _: TRON[_] => if (optimizerConfig.optimizerType != OptimizerType.TRON) {
+        fail("Wrong optimizer selected at runtime: $optimizerConfig.optimizerType (should be TRON)")
+      }
+    }
   }
 }
 

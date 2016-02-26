@@ -5,7 +5,7 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization._
-import com.linkedin.photon.ml.optimization.{Optimizer, RegularizationContext}
+import com.linkedin.photon.ml.optimization.{Optimizer, OptimizerConfig, RegularizationContext}
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -79,6 +79,14 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     regularizationWeight: Double): Function
 
   /**
+   * Create an appropriate Optimizer according to the config.
+   *
+   * @param optimizerConfig Optimizer configuration
+   * @return A new Optimizer created according to the configuration
+   */
+  protected def createOptimizer(optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, Function]
+
+  /**
    * Create a model given the coefficients and intercept
    * @param coefficients The coefficients parameter of each feature
    * @param intercept The intercept of the generalized linear model
@@ -117,12 +125,12 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    */
   def run(
       input: RDD[LabeledPoint],
-      optimizer: Optimizer[LabeledPoint, Function],
+      optimizerConfig: OptimizerConfig,
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
-      normalizationContext: NormalizationContext): List[GLM] = {
+      normalizationContext: NormalizationContext): (List[GLM], Optimizer[LabeledPoint, Function]) = {
     logInfo("Doing training without any warm start models")
-    run(input, optimizer, regularizationContext, regularizationWeights, normalizationContext, Map.empty)
+    run(input, optimizerConfig, regularizationContext, regularizationWeights, normalizationContext, Map.empty)
   }
 
   /**
@@ -137,20 +145,19 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    */
   def run(
       input: RDD[LabeledPoint],
-      optimizer: Optimizer[LabeledPoint, Function],
+      optimizerConfig: OptimizerConfig,
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
       normalizationContext: NormalizationContext,
-      warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
+      warmStartModels: Map[Double, GeneralizedLinearModel]): (List[GLM], Optimizer[LabeledPoint, Function]) = {
 
     val numFeatures = input.first().features.size
 
     val initialWeight = Vector.zeros[Double](numFeatures)
     val initialIntercept = if (enableIntercept) Some(1.0) else None
     val initialModel = createModel(initialWeight, initialIntercept)
-    val models = run(input, initialModel, optimizer, regularizationContext, regularizationWeights,
+    run(input, initialModel, optimizerConfig, regularizationContext, regularizationWeights,
       normalizationContext, warmStartModels)
-    models
   }
 
   /**
@@ -168,11 +175,11 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   protected def run(
       input: RDD[LabeledPoint],
       initialModel: GLM,
-      optimizer: Optimizer[LabeledPoint, Function],
+      optimizerConfig: OptimizerConfig,
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
       normalizationContext: NormalizationContext,
-      warmStartModels: Map[Double, GeneralizedLinearModel]): List[GLM] = {
+      warmStartModels: Map[Double, GeneralizedLinearModel]): (List[GLM], Optimizer[LabeledPoint, Function]) = {
 
     logInfo(s"Starting model fits with ${warmStartModels.size} warm start models for " +
             s"lambda = ${warmStartModels.keys.mkString(", ")}")
@@ -182,6 +189,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         + " parent RDDs are also uncached.")
     }
 
+    val optimizer = createOptimizer(optimizerConfig)
     optimizer.setStateTrackingEnabled(isTrackingState)
 
     /**
@@ -246,6 +254,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       createModel(normalizationContext, coefficientsWithIntercept)
     }
     broadcastedNormalizationContext.unpersist()
-    models
+
+    (models, optimizer)
   }
 }

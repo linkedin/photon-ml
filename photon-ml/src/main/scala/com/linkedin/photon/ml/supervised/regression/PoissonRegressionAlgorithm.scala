@@ -4,7 +4,7 @@ import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{DataValidators, ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{PoissonLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.RegularizationContext
+import com.linkedin.photon.ml.optimization.{Optimizer, OptimizerConfig, OptimizerFactory, RegularizationContext}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
 import org.apache.spark.rdd.RDD
 
@@ -25,6 +25,17 @@ class PoissonRegressionAlgorithm
     val basicFunction = new PoissonLossFunction(normalizationContext)
     basicFunction.treeAggregateDepth = treeAggregateDepth
     TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
+  }
+
+  /**
+   * Create an Optimizer according to the config.
+   *
+   * @param optimizerConfig Optimizer configuration
+   * @return A new Optimizer created according to the configuration
+   */
+  override protected def createOptimizer(
+      optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = {
+    OptimizerFactory.twiceDiffOptimizer(optimizerConfig)
   }
 
   /**

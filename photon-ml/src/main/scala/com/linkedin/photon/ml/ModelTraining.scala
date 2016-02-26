@@ -5,11 +5,11 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.LogisticRegressionAlgorithm
+import com.linkedin.photon.ml.supervised.classification.{
+  LogisticRegressionAlgorithm, SmoothedHingeLossLinearSVMAlgorithm}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, PoissonRegressionAlgorithm}
 import org.apache.spark.rdd.RDD
-
 
 /**
  * Collection of functions for model training
@@ -85,29 +85,14 @@ object ModelTraining {
       treeAggregateDepth: Int):
         (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
-    /* Choose the optimizer */
-    val optimizer = optimizerType match {
-      case OptimizerType.LBFGS =>
-        new LBFGS[LabeledPoint]
-      case OptimizerType.TRON =>
-        new TRON[LabeledPoint]
-      case optType =>
-        throw new IllegalArgumentException(s"Optimizer type unrecognized: $optType.");
-    }
-    optimizer.setMaximumIterations(maxNumIter)
-    optimizer.setTolerance(tolerance)
-    optimizer.setConstraintMap(constraintMap)
+    val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
 
     /* Choose the generalized linear algorithm */
     val algorithm = taskType match {
       case LINEAR_REGRESSION => new LinearRegressionAlgorithm
       case POISSON_REGRESSION => new PoissonRegressionAlgorithm
       case LOGISTIC_REGRESSION => new LogisticRegressionAlgorithm
-
-      /* Note: this is to temporarily resolve OFFREL-934 by not allowing a different typed algorithm class to appear
-       * in this case switch block. A more proper solution should be a refactoring of the algorithm/optimizer structure.
-       */
-      // case SMOOTHED_HINGE_LOSS_LINEAR_SVM => new SmoothedHingeLossLinearSVMAlgorithm
+      case SMOOTHED_HINGE_LOSS_LINEAR_SVM => new SmoothedHingeLossLinearSVMAlgorithm
 
       case _ => throw new IllegalArgumentException(s"unrecognized task type $taskType")
     }
@@ -119,7 +104,7 @@ object ModelTraining {
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
 
     /* Model training with the chosen optimizer and algorithm */
-    val models = algorithm.run(trainingData, optimizer, regularizationContext, sortedRegularizationWeights,
+    val (models, _) = algorithm.run(trainingData, optimizerConfig, regularizationContext, sortedRegularizationWeights,
         normalizationContext, warmStartModels)
 
     val weightModelTuples = sortedRegularizationWeights.zip(models)
