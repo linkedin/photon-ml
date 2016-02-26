@@ -4,7 +4,7 @@ import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.{DiffFunction, SmoothedHingeLossFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.RegularizationContext
+import com.linkedin.photon.ml.optimization.{Optimizer, OptimizerConfig, OptimizerFactory, RegularizationContext}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
 
 /**
@@ -30,6 +30,17 @@ class SmoothedHingeLossLinearSVMAlgorithm
     val basicFunction = new SmoothedHingeLossFunction()
     basicFunction.treeAggregateDepth = treeAggregateDepth
     DiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
+  }
+
+  /**
+   * Create an Optimizer according to the config.
+   *
+   * @param optimizerConfig Optimizer configuration
+   * @return A new Optimizer created according to the configuration
+   */
+  override protected def createOptimizer(
+      optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, DiffFunction[LabeledPoint]] = {
+    OptimizerFactory.diffOptimizer(optimizerConfig)
   }
 
   /**

@@ -4,7 +4,7 @@ import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{DataValidators, ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.{SquaredLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
+import com.linkedin.photon.ml.optimization.{LBFGS, Optimizer, OptimizerConfig, OptimizerFactory, RegularizationContext}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
 import org.apache.spark.rdd.RDD
 
@@ -29,6 +29,17 @@ class LinearRegressionAlgorithm
     val basicFunction = new SquaredLossFunction(normalizationContext)
     basicFunction.treeAggregateDepth = treeAggregateDepth
     TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
+  }
+
+  /**
+   * Create an Optimizer according to the config.
+   *
+   * @param optimizerConfig Optimizer configuration
+   * @return A new Optimizer created according to the configuration
+   */
+  override protected def createOptimizer(
+      optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = {
+    OptimizerFactory.twiceDiffOptimizer(optimizerConfig)
   }
 
   override protected def createModel(coefficients: Vector[Double], intercept: Option[Double]) = {
