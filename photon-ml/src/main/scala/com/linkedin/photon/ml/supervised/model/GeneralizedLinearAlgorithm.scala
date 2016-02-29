@@ -117,7 +117,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   /**
    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
    * @param input A RDD of input labeled data points in the original scale
-   * @param optimizer The optimizer
+   * @param optimizerConfig The optimizer config used to construct the optimizer
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
    * @param normalizationContext The normalization context
@@ -136,7 +136,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   /**
    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
    * @param input A RDD of input labeled data points in the original scale
-   * @param optimizer The optimizer
+   * @param optimizerConfig The optimizer config used to construct the optimizer
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
    * @param normalizationContext The normalization context
@@ -165,7 +165,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
    * starting from the initial model provided.
    * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
    * @param initialModel The initial model
-   * @param optimizer The optimizer container to learn the models
+   * @param optimizerConfig The optimizer config used to construct the optimizer
    * @param regularizationContext The chosen type of regularization
    * @param regularizationWeights An array of weights for the regularization term
    * @param normalizationContext The normalization context
@@ -188,9 +188,6 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       logWarning("The input data is not directly cached, which may hurt performance if its"
         + " parent RDDs are also uncached.")
     }
-
-    val optimizer = createOptimizer(optimizerConfig)
-    optimizer.setStateTrackingEnabled(isTrackingState)
 
     /**
      * Prepend a scalar to a vector
@@ -220,7 +217,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     } else {
       warmStartModels.keys.max
     }
-    if (!warmStartModels.isEmpty) {
+    if (warmStartModels.nonEmpty) {
       logInfo(s"Starting training using warm-start model with lambda = $largestWarmStartLambda")
     } else {
       logInfo(s"No warm start model found; falling back to all 0 as initial value")
@@ -229,6 +226,12 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     /* Find the path of solutions with different regularization coefficients */
     // If we can find a warm start model for the largest lambda, use that; otherwise, default to the provided initial
     // model
+    val optimizer = createOptimizer(optimizerConfig)
+    optimizer.setStateTrackingEnabled(isTrackingState)
+    // Reuse the previous initial state in order for consistent convergence check for different runs in the grid-search
+    // based hyper-parameter tuning procedure
+    optimizer.isReusingPreviousInitialState = true
+
     val initModel = warmStartModels.getOrElse(largestWarmStartLambda, initialModel)
     var initialCoefficientsWithIntercept: Vector[Double] =
       if (enableIntercept) {
@@ -249,7 +252,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         logInfo(s"History tracker information:\n $tracker")
         val modelsPerIteration = tracker.getTrackedStates.map(x => createModel(normalizationContext, x.coefficients))
         modelTrackerBuilder += new ModelTracker(tracker.toString, modelsPerIteration)
-        logInfo(s"Models number: ${modelsPerIteration.size}")
+        logInfo(s"Number of iterations: ${modelsPerIteration.length}")
       }
       createModel(normalizationContext, coefficientsWithIntercept)
     }
