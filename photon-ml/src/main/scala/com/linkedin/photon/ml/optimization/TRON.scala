@@ -64,9 +64,8 @@ class TRON[Datum <: DataPoint](
     delta = norm(state.gradient, 2)
   }
 
-  override def clear() {
+  override def clearOptimizerInnerState() {
     delta = Double.MaxValue
-    clearOptimizerState()
   }
 
   def runOneIteration(

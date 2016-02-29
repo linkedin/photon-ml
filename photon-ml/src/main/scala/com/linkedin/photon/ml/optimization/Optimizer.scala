@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, norm}
-import breeze.numerics.abs
+import breeze.linalg.Vector
 import breeze.optimize.FirstOrderMinimizer._
 import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.function.DiffFunction
@@ -20,7 +19,7 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
   /**
    * Maximum iterations
    */
-  def getMaximumIterations(): Int
+  def getMaximumIterations: Int
 
   /**
    * Set maximum iterations
@@ -44,14 +43,26 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
     coefficients: Vector[Double]): Unit
 
   /**
+   * @note This function should be protected and not exposed
    * Clear the optimizer, e.g., the history of LBFGS and trust region size of Tron
    */
-  def clear(): Unit
+  def clearOptimizerInnerState(): Unit
+
+  /**
+   * Clear the [[OptimizationStatesTracker]]
+   */
+  protected def clearOptimizationStatesTracker(): Unit
+
+  /**
+   * Whether to reuse the previous initial state or not. When warm-start training is desired, i.e. in grid-search
+   * based hyper-parameter tuning, this field is recommended to set to true for consistent convergence check.
+   */
+  protected[ml] var isReusingPreviousInitialState: Boolean = false
 
   /**
    * The initial state of the optimizer, used for checking convergence
    */
-  def getInitialState(): Option[OptimizerState]
+  def getInitialState: Option[OptimizerState]
 
   /**
    * The current state of the optimizer
@@ -65,20 +76,19 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
 
   /**
    * Set the initial state for the optimizer
-   * @param state
+   * @param state The initial state
    */
   protected def setInitialState(state: Option[OptimizerState]): Unit
 
   /**
    * Set the current state for the optimizer
-   *
-   * @param state
+   * @param state The current state
    */
   protected def setCurrentState(state: Option[OptimizerState]): Unit
 
   /**
    * Set the previous state for the optimizer
-   * @param state
+   * @param state The previous sate
    */
   protected def setPreviousState(state: Option[OptimizerState]): Unit
 
@@ -97,7 +107,7 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
   def isDone: Boolean
 
   /** True if state tracking is enabled */
-  def stateTrackingEnabled(): Boolean
+  def stateTrackingEnabled: Boolean
 
   /** Set state tracking */
   def setStateTrackingEnabled(enabled: Boolean): Unit
@@ -168,10 +178,12 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
   protected def optimize(data: Either[RDD[Datum], Iterable[Datum]],
                          objectiveFunction: Function,
                          initialCoefficients: Vector[Double]): (Vector[Double], Double) = {
-    clear()
+    clearOptimizerInnerState()
+    clearOptimizationStatesTracker()
     setCurrentState(Some(getState(data, objectiveFunction, initialCoefficients)))
-    // initialize the optimizer state if it's not being initialized yet
-    if (getInitialState.isEmpty) {
+    // Initialize the optimizer state if it's not being initialized yet, or if we don't need to reuse the existing
+    // initial state for consistent convergence check across multiple runs.
+    if (getInitialState.isEmpty || !isReusingPreviousInitialState) {
       setInitialState(getCurrentState)
     }
     init(getCurrentState.get, data, objectiveFunction, initialCoefficients)
@@ -180,7 +192,6 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
       setPreviousState(getCurrentState)
       setCurrentState(Some(updatedState))
     } while (!isDone)
-
     val currentState = getCurrentState
     logInfo(s"After optimizing, current state: $currentState")
     (currentState.get.coefficients, currentState.get.value)

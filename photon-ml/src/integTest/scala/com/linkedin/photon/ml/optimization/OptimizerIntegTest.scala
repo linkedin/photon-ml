@@ -24,7 +24,8 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
-  def checkEasyTestFunctionLocalNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = {
+  def checkEasyTestFunctionLocalNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]])
+  : Unit = {
     optim.setStateTrackingEnabled(true)
     optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
     optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
@@ -43,6 +44,7 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
     optim.setStateTrackingEnabled(true)
     optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
     optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
+    optim.isReusingPreviousInitialState = false
     val features = new SparseVector[Double](Array(), Array(), OptimizerIntegTest.PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
     val r = new Random(OptimizerIntegTest.RANDOM_SEED)
@@ -65,7 +67,8 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
-  def checkEasyTestFunctionSparkNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
+  def checkEasyTestFunctionSparkNoInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]])
+  : Unit = sparkTest("checkEasyTestFunctionSpark") {
     optim.setStateTrackingEnabled(true)
     optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
     optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
@@ -83,7 +86,8 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
   }
 
   @Test(dataProvider = "optimizeEasyTestFunction")
-  def checkEasyTestFunctionSparkInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]): Unit = sparkTest("checkEasyTestFunctionSpark") {
+  def checkEasyTestFunctionSparkInitialValue(optim: Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]])
+  : Unit = sparkTest("checkEasyTestFunctionSpark") {
     optim.setStateTrackingEnabled(true)
     optim.setMaximumIterations(OptimizerIntegTest.MAX_ITERATIONS)
     optim.setTolerance(OptimizerIntegTest.CONVERGENCE_TOLERANCE)
@@ -127,7 +131,8 @@ object OptimizerIntegTest extends Logging {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value + "], previous=[" + lastValue + "])")
+      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
+          "], previous=[" + lastValue + "])")
       lastValue = state.value
     }
   }
@@ -142,7 +147,7 @@ object OptimizerIntegTest extends Logging {
    */
   private def easyOptimizationStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
 
-    logInfo(s"Optimizer state: ${optimizerStatesTracker}")
+    logInfo(s"Optimizer state: $optimizerStatesTracker")
 
     // The optimizer should be converged
     assertTrue(optimizerStatesTracker.converged)
@@ -156,15 +161,18 @@ object OptimizerIntegTest extends Logging {
 
     if (optimizerStatesTracker.convergenceReason == Some(FunctionValuesConverged)) {
       // Expected answer in terms of optimal objective
-      assertEquals(optimizedObj, 0, OBJECTIVE_TOLERANCE, "Optimized objective should be very close to zero (eps=[" + OBJECTIVE_TOLERANCE + "])")
+      assertEquals(optimizedObj, 0, OBJECTIVE_TOLERANCE, "Optimized objective should be very close to zero (eps=[" +
+          OBJECTIVE_TOLERANCE + "])")
     } else if (optimizerStatesTracker.convergenceReason == Some(GradientConverged)) {
       // Expected answer in terms of optimal gradient
-      assertEquals(optimizedGradientNorm, 0, GRADIENT_TOLERANCE, "Optimized gradient norm should be very close to zero (eps=[" + GRADIENT_TOLERANCE + "])")
+      assertEquals(optimizedGradientNorm, 0, GRADIENT_TOLERANCE, "Optimized gradient norm should be very close to " +
+          "zero (eps=[" + GRADIENT_TOLERANCE + "])")
     }
 
     // Expected answer in terms of optimal parameters
     optimizedParam.foreachPair { (idx, x) =>
-      assertEquals(x, TestObjective.CENTROID, PARAMETER_TOLERANCE, "Optimized parameter for index [" + idx + "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
+      assertEquals(x, TestObjective.CENTROID, PARAMETER_TOLERANCE, "Optimized parameter for index [" + idx +
+          "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
     }
 
     // Monotonic convergence
