@@ -4,7 +4,6 @@ import breeze.linalg.Vector
 import breeze.optimize.{DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS, OWLQN => BreezeOWLQN}
 import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.function.{DiffFunction, L1RegularizationTerm}
-import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
 /**
@@ -101,9 +100,8 @@ class LBFGS[Datum <: DataPoint](
     breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
   }
 
-  override def clear() {
+  override def clearOptimizerInnerState() {
     breezeOptimization = _:BreezeOptimization
-    clearOptimizerState()
   }
 
   protected def runOneIteration(
