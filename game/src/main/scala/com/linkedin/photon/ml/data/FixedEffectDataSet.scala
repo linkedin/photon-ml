@@ -49,7 +49,6 @@ class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featu
     val numSamples = labeledPoints.count()
     val weightSum = labeledPoints.values.map(_.weight).sum()
     val responseSum = labeledPoints.values.map(_.label).sum()
-    val numFeatures = labeledPoints.first()._2.features.length
     val featureStats = labeledPoints.values.map(_.features.activeSize).stats()
     s"numSamples: $numSamples\nweightSum: $weightSum\nresponseSum: $responseSum" +
         s"\nnumFeatures: $numFeatures\nfeatureStats: $featureStats"

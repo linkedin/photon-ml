@@ -88,10 +88,14 @@ object OptimizationProblem {
       case OptimizerType.LBFGS =>
         new LBFGS[LabeledPoint]
       case OptimizerType.TRON =>
-        if (regularizationType == RegularizationType.L2) new TRON[LabeledPoint] else new LBFGS[LabeledPoint]
+        if (regularizationType == RegularizationType.L2) new TRON[LabeledPoint]
+        else throw new IllegalArgumentException(s"For regularization of type $regularizationType, optimizer of " +
+            s"type ${OptimizerType.TRON} is not supported!")
       case any =>
-        throw new UnsupportedOperationException(s"optimizer of type $any is not supported")
+        throw new UnsupportedOperationException(s"Optimizer of type $any is not supported")
     }
+    // For warm start model training
+    optimizer.isReusingPreviousInitialState = true
     val sampler = taskType match {
       case LOGISTIC_REGRESSION => new BinaryClassificationSampler(downSamplingRate)
       case LINEAR_REGRESSION => new DefaultSampler(downSamplingRate)

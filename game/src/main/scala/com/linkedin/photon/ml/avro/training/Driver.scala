@@ -228,8 +228,13 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
         val coordinate = dataSets(coordinateId) match {
           case fixedEffectDataSet: FixedEffectDataSet =>
             val optimizationConfiguration = fixedEffectOptimizationConfiguration(coordinateId)
+            // If number of features is from moderate to large (>200000), then use tree aggregate,
+            // otherwise use aggregate.
+            val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < 200000) 1 else 2
             val optimizationProblem =
               OptimizationProblem.buildOptimizationProblem(taskType, optimizationConfiguration)
+            optimizationProblem.lossFunction.treeAggregateDepth = treeAggregateDepth
+            println(s"Set treeAggregateDepth to ${optimizationProblem.objectiveFunction.treeAggregateDepth}")
             new FixedEffectCoordinate(fixedEffectDataSet, optimizationProblem)
 
           case randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace =>
