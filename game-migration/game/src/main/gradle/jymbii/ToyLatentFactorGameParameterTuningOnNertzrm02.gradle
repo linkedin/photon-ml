@@ -1,0 +1,118 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "pure-latent-facor-game-on-jymbii-4-month-data"
+
+def trainInputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/" +
+    "glmix_data_20000"
+def validateInputDirs = "/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
+
+def trainDateRange = "20150707-20151103"
+def validateDateRange = "20151104-20151110"
+
+
+def featureNameAndTermSetInputPath = "/jobs/liar/jymbii-glmm/glmix/feature-lists/" +
+    "globalFeatures-memberFeatures-jobFeatures-memberJobCrossFeatures-20150707-20151103"
+
+def featureShardIdToFeatureSectionKeysMap = "shard1:globalFeatures,memberFeatures,jobFeatures,memberJobCrossFeatures|" +
+    "shard2:globalFeatures,jobFeatures|shard3:globalFeatures,memberFeatures"
+
+def outputDir = "/tmp/liar/jobs/liar/$flowName" as String
+
+
+def numIterations = 2
+def updatingSequence = "global,per-member-factor,per-job-factor"
+def fixedEffectOptimizationConfigurations = "global:10,1e-5,10,0.5,tron,l2"
+def fixedEffectDataConfigurations = "global:shard1"
+
+def perMemberRandomEffectRegularizationWeights = [5, 10, 30, 50]
+def perJobRandomEffectRegularizationWeights = [5, 10, 30, 50]
+
+def factorRegularizationWeightRatios = [1]
+
+def numFeaturesToNumObservationsRatios = [20]
+def numLatentDimensions = [10]
+def numLatentFactorGameInnerIterations = 5
+def downSamplingRateForLatentFactorMatrixUpdate = 0.5
+
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    for (factorRegularizationWeightRatio in factorRegularizationWeightRatios) {
+      for (numLatentDimension in numLatentDimensions) {
+        for (numFeaturesToNumObservationsRatio in numFeaturesToNumObservationsRatios) {
+          for (perMemberRandomEffectRegularizationWeight in perMemberRandomEffectRegularizationWeights) {
+            for (perJobRandomEffectRegularizationWeight in perJobRandomEffectRegularizationWeights) {
+
+              if (perMemberRandomEffectRegularizationWeight > perJobRandomEffectRegularizationWeight) {
+                continue
+              }
+
+              def perMemberFactorRandomEffectRegularizationWeight = perMemberRandomEffectRegularizationWeight / factorRegularizationWeightRatio
+              def perJobFactorRandomEffectRegularizationWeight = perJobRandomEffectRegularizationWeight / factorRegularizationWeightRatio
+
+              def factoredRandomEffectOptimizationConfigurations = "" +
+                  "per-member-factor:10,1e-5,$perMemberFactorRandomEffectRegularizationWeight,1,tron,l2" +
+                  ":5,1e-4,10,$downSamplingRateForLatentFactorMatrixUpdate,tron,l2:$numLatentFactorGameInnerIterations,$numLatentDimension" +
+                  "|per-job-factor:5,1e-5,$perJobFactorRandomEffectRegularizationWeight,1,tron,l2" +
+                  ":5,1e-4,10,$downSamplingRateForLatentFactorMatrixUpdate,tron,l2" +
+                  ":$numLatentFactorGameInnerIterations,$numLatentDimension"
+
+              def randomEffectDataConfigurations = "per-member-factor:memberId,shard2,-1,-1,-1,identity" +
+                  "|per-job-factor:jobId,shard3,-1,-1,-1,identity"
+
+              def applicationName = "member-fac-$perMemberFactorRandomEffectRegularizationWeight-job-fac-$perJobFactorRandomEffectRegularizationWeight-ratio-$numFeaturesToNumObservationsRatio-dim-$numLatentDimension"
+                  .replaceAll("\\.|_|,", "-") as String
+
+              job(applicationName) {
+
+                def executorMemoryInMB = 8000
+                def executorMemory = "${executorMemoryInMB}m" as String
+                def executorMemoryOverhead = executorMemoryInMB / 4
+                def numExecutors = 200
+                def driverMemoryInMB = 10000
+                def driverMemory = "${driverMemoryInMB}m" as String
+                def parallelism = numExecutors * 4
+                def maxResultSize = "${driverMemoryInMB/2}m" as String
+
+                def jobOutputDir = "$outputDir/$applicationName" as String
+
+                baseProperties 'sparkCommon'
+                set properties: ['class'                                  : 'com.linkedin.photon.ml.avro.training.Driver',
+                                 'num-executors'                          : numExecutors,
+                                 'driver-memory'                          : driverMemory,
+                                 'executor-memory'                        : executorMemory,
+                                 'conf.spark.yarn.executor.memoryOverhead': executorMemoryOverhead,
+                                 'conf.spark.default.parallelism'         : parallelism,
+                                 'conf.spark.driver.maxResultSize'        : maxResultSize,
+                                 'params'                                 : "--train-input-dirs $trainInputDirs " +
+                                     "--task-type logistic_regression " +
+                                     "--validate-input-dirs $validateInputDirs " +
+                                     "--train-date-range $trainDateRange " +
+                                     "--validate-date-range $validateDateRange " +
+                                     "--output-dir $jobOutputDir " +
+                                     "--feature-name-and-term-set-path $featureNameAndTermSetInputPath " +
+                                     "--feature-shard-id-to-feature-section-keys-map $featureShardIdToFeatureSectionKeysMap " +
+                                     "--num-iterations $numIterations " +
+                                     "--updating-sequence $updatingSequence " +
+                                     "--fixed-effect-optimization-configurations $fixedEffectOptimizationConfigurations " +
+                                     "--fixed-effect-data-configurations $fixedEffectDataConfigurations " +
+                                     "--factored-random-effect-optimization-configurations $factoredRandomEffectOptimizationConfigurations " +
+                                     "--random-effect-data-configurations $randomEffectDataConfigurations " +
+                                     "--application-name $applicationName "]
+              }
+              targets applicationName
+            }
+          }
+        }
+      }
+    }
+  }
+}

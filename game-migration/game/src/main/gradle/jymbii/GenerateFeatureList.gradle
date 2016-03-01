@@ -1,0 +1,46 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "generate-all-feature-lists-on-jymbii-data-nertzrm02"
+def outputRoot = "/jobs/fastrain/glmix_data/JYMBII/feature-lists"
+
+
+// For generating feature list
+def featureSectionKeys = "globalFeatures,memberFeatures,jobFeatures,memberJobCrossFeatures"
+def dateRange = "20150707-20151103"
+def featureNameAndTermSetOutputPath = "$outputRoot/${featureSectionKeys.replaceAll(",", "-")}-$dateRange" as String
+def inputDirs = "/jobs/liar/yma/jymbii-batch-wk/v2_data/glmix_data_20000,/jobs/liar/yma/jymbii-batch/v2_data/glmix_data_20000"
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    job("standalone-job") {
+
+      def numExecutors = 50
+      def executorMemory= '10G'
+      def driverMemory= '10G'
+      def parallelism=numExecutors*4
+
+      baseProperties 'sparkCommon'
+      set properties: [
+        'class'                          : 'com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer',
+        'num-executors'                  : numExecutors,
+        'driver-memory'                  : driverMemory,
+        'executor-memory'                : executorMemory,
+        'conf.spark.default.parallelism' : parallelism,
+        'params' : "--data-input-directory $inputDirs " +
+            "--date-range $dateRange " +
+            "--feature-name-and-term-set-output-dir $featureNameAndTermSetOutputPath " +
+            "--feature-section-keys $featureSectionKeys " +
+            "--application-name generate-all-feature-lists "
+      ]
+    }
+    targets "standalone-job"
+  }
+}
