@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.avro.scoring
+package com.linkedin.photon.ml.cli.game.scoring
 
 import scala.collection.{Map, Set}
 

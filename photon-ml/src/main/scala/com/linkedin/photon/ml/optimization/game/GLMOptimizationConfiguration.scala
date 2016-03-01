@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.optimization
+package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType

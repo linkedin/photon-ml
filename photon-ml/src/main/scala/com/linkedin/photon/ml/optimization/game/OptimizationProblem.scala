@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.optimization
+package com.linkedin.photon.ml.optimization.game
 
 import org.apache.spark.rdd.RDD
 

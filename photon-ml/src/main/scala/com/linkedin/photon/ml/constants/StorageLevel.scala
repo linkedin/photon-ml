@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.contants
+package com.linkedin.photon.ml.constants
 
 import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
 
