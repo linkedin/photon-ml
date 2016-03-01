@@ -170,7 +170,7 @@ object TwiceDiffFunction {
    * @tparam Datum The generic type of the datum
    * @return An anonymous class for the twice differentiable function with L2 regularization
    */
-  private def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) =
+  private[ml] def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) =
       new TwiceDiffFunction[Datum] {
 
     override protected[ml] def calculateAt(
@@ -270,7 +270,7 @@ object TwiceDiffFunction {
    * @tparam Datum The generic type of the datum
    * @return An anonymous class for the twice differentiable function with L1 regularization
    */
-  private def withL1Regularization[Datum <: DataPoint](
+  private[ml] def withL1Regularization[Datum <: DataPoint](
       func: TwiceDiffFunction[Datum],
       regWeight: Double): TwiceDiffFunction[Datum]
     with L1RegularizationTerm = new TwiceDiffFunction[Datum] with L1RegularizationTerm {

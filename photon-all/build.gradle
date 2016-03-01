@@ -71,6 +71,7 @@ shadowJar {
   relocate 'org.tukaani', 'photonml.shaded.org.tukaani'
   relocate 'org.xerial.snappy', 'photonml.shaded.org.xerial.snappy'
   relocate 'scopt', 'photonml.shaded.scopt'
+  relocate 'org.joda.time', 'photonml.shaded.org.joda.time'
 }
 
 artifacts {

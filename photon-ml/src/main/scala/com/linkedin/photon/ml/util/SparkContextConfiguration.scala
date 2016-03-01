@@ -5,11 +5,11 @@ import scala.collection.mutable
 import breeze.linalg.{DenseVector, SparseVector, Vector, DenseMatrix, Matrix}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.jblas.DoubleMatrix
 
 import com.linkedin.photon.ml.data.{GameData, KeyValueScore, LabeledPoint, LocalDataSet}
 import com.linkedin.photon.ml.function.{LogisticLossFunction, SquaredLossFunction}
-import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, MFOptimizationConfiguration, OptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{
+  GLMOptimizationConfiguration, MFOptimizationConfiguration, OptimizationProblem}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.{LBFGS, TRON}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
@@ -34,7 +34,6 @@ object SparkContextConfiguration {
     sparkConf.registerKryoClasses(Array(
       classOf[mutable.BitSet],
       classOf[KeyValueScore],
-      classOf[DoubleMatrix],
       classOf[LogisticLossFunction],
       classOf[SquaredLossFunction],
       classOf[OptimizationProblem[_]],

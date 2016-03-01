@@ -2,7 +2,7 @@ package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.data.{KeyValueScore, DataSet}
 import com.linkedin.photon.ml.model.Model
-import com.linkedin.photon.ml.optimization.OptimizationTracker
+import com.linkedin.photon.ml.optimization.game.OptimizationTracker
 
 
 /**

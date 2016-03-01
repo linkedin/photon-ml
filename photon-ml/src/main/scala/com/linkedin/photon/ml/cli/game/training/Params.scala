@@ -4,7 +4,7 @@ import scala.collection.{Map, Set}
 
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.optimization.{MFOptimizationConfiguration, GLMOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.game.{MFOptimizationConfiguration, GLMOptimizationConfiguration}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.TaskType._
@@ -73,7 +73,7 @@ object Params {
         .action((x, c) => c.copy(trainDirs = x.split(",")))
       opt[String]("task-type")
         .required()
-        .text("Task type. Examples include binary_classification and linear_regression.")
+        .text("Task type. Examples include logistic_regression and linear_regression.")
         .action((x, c) => c.copy(taskType = TaskType.withName(x.toUpperCase)))
       opt[String]("train-date-range")
         .text(s"Date range for the training data represented in the form start.date-end.date, " +

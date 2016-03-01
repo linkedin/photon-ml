@@ -87,7 +87,7 @@ object Params {
         .action((x, c) => c.copy(applicationName = x))
       opt[String]("task-type")
         .required()
-        .text("Task type. Examples include binary_classification and linear_regression.")
+        .text("Task type. Examples include logistic_regression and linear_regression.")
         .action((x, c) => c.copy(taskType = TaskType.withName(x.toUpperCase)))
       help("help")
         .text("Prints usage text")

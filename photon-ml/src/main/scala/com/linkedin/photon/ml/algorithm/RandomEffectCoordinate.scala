@@ -6,17 +6,18 @@ import scala.collection.Set
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.contants.StorageLevel
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{KeyValueScore, RandomEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.{Coefficients, RandomEffectModel, Model}
-import com.linkedin.photon.ml.optimization.{RandomEffectOptimizationTracker, OptimizationTracker, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{
+  RandomEffectOptimizationTracker, OptimizationTracker, RandomEffectOptimizationProblem}
 
 
 /**
  * @author xazhang
  */
-abstract class RandomEffectCoordinate[F <: EnhancedTwiceDiffFunction[LabeledPoint], R <:RandomEffectCoordinate[F, R] ](
+abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:RandomEffectCoordinate[F, R] ](
     randomEffectDataSet: RandomEffectDataSet,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
     extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[F, R]](randomEffectDataSet) {
@@ -102,7 +103,7 @@ object RandomEffectCoordinate {
     passiveScores
   }
 
-  protected[algorithm] def updateModel[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+  protected[algorithm] def updateModel[F <: TwiceDiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
       randomEffectModel: RandomEffectModel)

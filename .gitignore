@@ -19,3 +19,4 @@ photon-ml/LOGISTIC*
 photon-ml/LINEAR*
 photon-ml/POISSON*
 photon-ml/SOFT*
+photon-ml/src/main/avro

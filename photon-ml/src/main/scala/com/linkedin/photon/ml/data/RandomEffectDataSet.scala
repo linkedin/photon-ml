@@ -9,7 +9,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
 
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
-import com.linkedin.photon.ml.contants.StorageLevel
+import com.linkedin.photon.ml.constants.StorageLevel
 
 
 /**

@@ -2,10 +2,11 @@ package com.linkedin.photon.ml.optimization.game
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.sampler.{DefaultSampler, BinaryClassificationSampler, Sampler}
 import com.linkedin.photon.ml.supervised.TaskType._
 
@@ -20,7 +21,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @tparam F The type of objective/loss function
  * @author xazhang
  */
-case class OptimizationProblem[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     optimizer: AbstractOptimizer[LabeledPoint, F],
     objectiveFunction: F,
     lossFunction: F,
@@ -66,7 +67,7 @@ object OptimizationProblem {
 
   //TODO: build optimization problem with more general type of functions
   def buildOptimizationProblem(taskType: TaskType, configuration: GLMOptimizationConfiguration)
-  : OptimizationProblem[EnhancedTwiceDiffFunction[LabeledPoint]] = {
+  : OptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
 
     val maxNumberIterations = configuration.maxNumberIterations
     val convergenceTolerance = configuration.convergenceTolerance
@@ -75,13 +76,13 @@ object OptimizationProblem {
     val optimizerType = configuration.optimizerType
     val regularizationType = configuration.regularizationType
     val lossFunction = taskType match {
-      case LOGISTIC_REGRESSION => new EnhancedLogisticLossFunction
-      case LINEAR_REGRESSION => new EnhancedSquaredLossFunction
+      case LOGISTIC_REGRESSION => new LogisticLossFunction
+      case LINEAR_REGRESSION => new SquaredLossFunction
       case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
     }
     val objectiveFunction = regularizationType match {
-      case RegularizationType.L2 => EnhancedTwiceDiffFunction.withL2Regularization(lossFunction, regularizationWeight)
-      case RegularizationType.L1 => EnhancedTwiceDiffFunction.withL1Regularization(lossFunction, regularizationWeight)
+      case RegularizationType.L2 => TwiceDiffFunction.withL2Regularization(lossFunction, regularizationWeight)
+      case RegularizationType.L1 => TwiceDiffFunction.withL1Regularization(lossFunction, regularizationWeight)
       case other => throw new UnsupportedOperationException(s"Regularization of type $other is not supported.")
     }
     val optimizer = optimizerType match {

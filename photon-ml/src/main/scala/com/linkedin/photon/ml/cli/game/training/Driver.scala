@@ -4,7 +4,7 @@ package com.linkedin.photon.ml.cli.game.training
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.avro.AvroUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.contants.StorageLevel
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import org.apache.spark.rdd.RDD
 
@@ -17,7 +17,8 @@ import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.avro.data.{NameAndTerm, DataProcessingUtils, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.Model
-import com.linkedin.photon.ml.optimization.{FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem, OptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{
+  FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem, OptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._

@@ -5,7 +5,7 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.TaskType.TaskType
 
@@ -17,7 +17,7 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
  *         Why sharding the objective functions? Because the regularization weight for each sharded optimization
  *         problem may be different, which leads to different objective functions.
  */
-class RandomEffectOptimizationProblem[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val optimizationProblems: RDD[(String, OptimizationProblem[F])]) extends RDDLike {
 
   def sparkContext = optimizationProblems.sparkContext
@@ -61,7 +61,7 @@ object RandomEffectOptimizationProblem {
       taskType: TaskType,
       configuration: GLMOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet)
-  : RandomEffectOptimizationProblem[EnhancedTwiceDiffFunction[LabeledPoint]] = {
+  : RandomEffectOptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
 
     val optimizationProblems = randomEffectDataSet.activeData.mapValues(_ =>
       OptimizationProblem.buildOptimizationProblem(taskType, configuration)

@@ -6,7 +6,7 @@ import breeze.linalg.{SparseVector, Vector}
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 
 
 class LocalDataSetTest {

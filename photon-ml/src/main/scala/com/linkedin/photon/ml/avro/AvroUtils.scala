@@ -13,7 +13,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.contants.{AvroFieldNames, MathConst}
+import com.linkedin.photon.ml.constants.{AvroFieldNames, MathConst}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.util.Utils
 
