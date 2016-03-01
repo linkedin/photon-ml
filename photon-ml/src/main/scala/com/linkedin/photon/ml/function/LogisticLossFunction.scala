@@ -1,5 +1,6 @@
 package com.linkedin.photon.ml.function
 
+import breeze.linalg.{Vector, axpy}
 
 import com.linkedin.photon.ml.data.{SimpleObjectProvider, ObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
@@ -17,7 +18,21 @@ import com.linkedin.photon.ml.util.Utils
  */
 class LogisticLossFunction(normalizationContext: ObjectProvider[NormalizationContext] =
     new SimpleObjectProvider[NormalizationContext](NoNormalization))
-  extends GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
+  extends GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext) {
+
+  override protected[ml] def hessianDiagonalAt(
+      dataPoint: LabeledPoint,
+      coefficients: Vector[Double],
+      cumHessianDiagonal: Vector[Double]): Unit = {
+
+    val LabeledPoint(_, features, _, weight) = dataPoint
+    val margin = computeMargin(dataPoint, coefficients)
+    val sigma = 1.0 / (1.0 + math.exp(-margin))
+    val D = sigma * (1 - sigma)
+    axpy(weight * D, features :* features, cumHessianDiagonal)
+  }
+
+}
 
 /**
  * A single logistic loss function
