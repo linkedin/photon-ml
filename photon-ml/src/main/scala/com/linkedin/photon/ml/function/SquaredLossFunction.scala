@@ -1,8 +1,6 @@
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{Vector, axpy}
-
-import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider, SimpleObjectProvider}
+import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 
 
@@ -17,17 +15,7 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 class SquaredLossFunction(
     normalizationContext: ObjectProvider[NormalizationContext] =
       new SimpleObjectProvider[NormalizationContext](NoNormalization))
-  extends GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext) {
-
-  override protected[ml] def hessianDiagonalAt(
-      dataPoint: LabeledPoint,
-      coefficients: Vector[Double],
-      cumHessianDiagonal: Vector[Double]): Unit = {
-    val LabeledPoint(_, features, _, weight) = dataPoint
-    axpy(weight, features.map(feature => feature * feature), cumHessianDiagonal)
-  }
-
-}
+  extends GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext)
 
 /**
  * A single square loss function to represent

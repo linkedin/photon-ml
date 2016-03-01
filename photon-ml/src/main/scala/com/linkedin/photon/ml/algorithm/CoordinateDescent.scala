@@ -5,7 +5,7 @@ import scala.collection.Map
 
 import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
-import com.linkedin.photon.ml.contants.{StorageLevel, MathConst}
+import com.linkedin.photon.ml.constants.{StorageLevel, MathConst}
 import com.linkedin.photon.ml.data.{DataSet, GameData}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.Model

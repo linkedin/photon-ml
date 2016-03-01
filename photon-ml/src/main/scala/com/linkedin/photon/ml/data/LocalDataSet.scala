@@ -7,7 +7,7 @@ import scala.reflect.ClassTag
 
 import breeze.linalg.{SparseVector, Vector}
 
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
 
 

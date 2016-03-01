@@ -9,7 +9,7 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.contants.AvroFieldNames
+import com.linkedin.photon.ml.constants.AvroFieldNames
 import com.linkedin.photon.ml.data.GameData
 import com.linkedin.photon.ml.util.{Utils, VectorUtils}
 

@@ -10,7 +10,7 @@ import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.avro.AvroUtils
 import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTermFeatureSetContainer, NameAndTerm}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.contants.StorageLevel
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameData
 import com.linkedin.photon.ml.evaluation.{RMSEEvaluator, BinaryClassificationEvaluator}
 import com.linkedin.photon.ml.supervised.TaskType._

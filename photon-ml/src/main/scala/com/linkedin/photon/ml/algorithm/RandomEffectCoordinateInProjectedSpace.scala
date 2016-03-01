@@ -1,16 +1,17 @@
 package com.linkedin.photon.ml.algorithm
 
 
-import com.linkedin.photon.ml.data.{KeyValueScore, RandomEffectDataSet, LabeledPoint, RandomEffectDataSetInProjectedSpace}
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.data.{
+  KeyValueScore, RandomEffectDataSet, LabeledPoint, RandomEffectDataSetInProjectedSpace}
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.{RandomEffectModelInProjectedSpace, Coefficients, RandomEffectModel, Model}
-import com.linkedin.photon.ml.optimization.{OptimizationTracker, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem}
 
 
 /**
  * @author xazhang
  */
-class RandomEffectCoordinateInProjectedSpace[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
     extends RandomEffectCoordinate[F, RandomEffectCoordinateInProjectedSpace[F]](
