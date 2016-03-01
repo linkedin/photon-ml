@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.contants
+package com.linkedin.photon.ml.constants
 
 /**
  * @author xazhang

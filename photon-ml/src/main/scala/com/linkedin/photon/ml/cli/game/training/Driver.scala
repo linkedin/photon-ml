@@ -1,4 +1,4 @@
-package com.linkedin.photon.ml.avro.training
+package com.linkedin.photon.ml.cli.game.training
 
 
 import com.linkedin.photon.ml.RDDLike
