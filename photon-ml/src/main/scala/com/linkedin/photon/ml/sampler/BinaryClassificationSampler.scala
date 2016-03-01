@@ -6,7 +6,7 @@ import org.apache.spark.rdd.RDD
 
 import scala.util.hashing.byteswap64
 
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 

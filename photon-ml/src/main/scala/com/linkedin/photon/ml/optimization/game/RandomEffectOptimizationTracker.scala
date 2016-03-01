@@ -5,7 +5,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
-
+import com.linkedin.photon.ml.optimization._
 
 /**
  * @author xazhang

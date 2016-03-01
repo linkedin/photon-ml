@@ -1,5 +1,7 @@
 package com.linkedin.photon.ml.optimization.game
 
+import com.linkedin.photon.ml.optimization._
+
 /**
  * @author xazhang
  */

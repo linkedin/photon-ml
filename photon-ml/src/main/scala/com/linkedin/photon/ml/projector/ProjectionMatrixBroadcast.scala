@@ -5,7 +5,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.BroadcastLike
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
 import com.linkedin.photon.ml.model.Coefficients
 

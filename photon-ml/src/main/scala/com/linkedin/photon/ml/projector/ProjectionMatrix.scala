@@ -6,7 +6,7 @@ import java.util.Random
 import breeze.stats.meanAndVariance
 import breeze.linalg.{norm, Vector, DenseMatrix, Matrix}
 
-import com.linkedin.photon.ml.contants.MathConst
+import com.linkedin.photon.ml.constants.MathConst
 
 
 /**

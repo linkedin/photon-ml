@@ -1,18 +1,19 @@
 package com.linkedin.photon.ml.algorithm
 
 
-import com.linkedin.photon.ml.contants.StorageLevel
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{KeyValueScore, FixedEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, Model}
-import com.linkedin.photon.ml.optimization.{FixedEffectOptimizationTracker, OptimizationTracker, OptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{
+  FixedEffectOptimizationTracker, OptimizationTracker, OptimizationProblem}
 import com.linkedin.photon.ml.util.PhotonLogger
 
 
 /**
  * @author xazhang
  */
-class FixedEffectCoordinate [F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
     fixedEffectDataSet: FixedEffectDataSet,
     private var optimizationProblem: OptimizationProblem[F])
     extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[F]](fixedEffectDataSet) {
@@ -77,7 +78,7 @@ object FixedEffectCoordinate {
     new FixedEffectModel(coefficientsBroadcast, featureShardId)
   }
 
-  private def updateModel[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+  private def updateModel[F <: TwiceDiffFunction[LabeledPoint]](
       fixedEffectDataSet: FixedEffectDataSet,
       optimizationProblem: OptimizationProblem[F],
       fixedEffectModel: FixedEffectModel): (FixedEffectModel, OptimizationProblem[F]) = {

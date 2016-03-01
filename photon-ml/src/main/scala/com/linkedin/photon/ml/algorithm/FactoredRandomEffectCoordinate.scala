@@ -4,11 +4,11 @@ package com.linkedin.photon.ml.algorithm
 import breeze.linalg.Matrix
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.contants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{ProjectionMatrixBroadcast, ProjectionMatrix}
 import com.linkedin.photon.ml.util.VectorUtils
 
@@ -16,7 +16,7 @@ import com.linkedin.photon.ml.util.VectorUtils
 /**
  * @author xazhang
  */
-class FactoredRandomEffectCoordinate[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
     factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[F])
     extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[F]](randomEffectDataSet) {
@@ -143,7 +143,7 @@ object FactoredRandomEffectCoordinate {
     new FactoredRandomEffectModel(randomEffectModel, latentProjectionMatrix, randomEffectId, featureShardId)
   }
 
-  private def updateLatentProjectionMatrix[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+  private def updateLatentProjectionMatrix[F <: TwiceDiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectModel: RandomEffectModel,
       projectionMatrix: ProjectionMatrix,

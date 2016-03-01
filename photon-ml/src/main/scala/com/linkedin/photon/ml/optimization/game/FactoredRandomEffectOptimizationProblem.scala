@@ -5,7 +5,7 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.EnhancedTwiceDiffFunction
+import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.projector.ProjectionMatrix
 import com.linkedin.photon.ml.supervised.TaskType._
@@ -14,7 +14,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
 /**
  * @author xazhang
  */
-class FactoredRandomEffectOptimizationProblem[F <: EnhancedTwiceDiffFunction[LabeledPoint]](
+class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
     val latentFactorOptimizationProblem: OptimizationProblem[F],
     val numIterations: Int,
@@ -59,7 +59,7 @@ object FactoredRandomEffectOptimizationProblem {
       latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
       mfOptimizationConfiguration: MFOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet)
-  : FactoredRandomEffectOptimizationProblem[EnhancedTwiceDiffFunction[LabeledPoint]] = {
+  : FactoredRandomEffectOptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
 
     val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(taskType,
       randomEffectOptimizationConfiguration, randomEffectDataSet)
