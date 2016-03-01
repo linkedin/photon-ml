@@ -1,0 +1,18 @@
+apply plugin: com.linkedin.ligradle.scala.LiScalaCrossBuildPlugin // can't be applied by id because of GRADLE-2914
+
+def modulesToNotCrossBuild = []
+def modulesToCrossBuild = ['game']
+scalaCrossBuild {
+  defaultScalaVersion '2.10.4'
+  targetScalaVersions '2.10.4'
+  projectsToCrossBuild modulesToCrossBuild
+  projectsToNotCrossBuild modulesToNotCrossBuild
+}
+
+// need rum plugins on the classpath
+buildscript {
+  gradle.ext.addArtifactory(repositories)
+  dependencies {
+    classpath "com.linkedin.rum:product-plugins:$gradle.ext.rumVersion"
+  }
+}

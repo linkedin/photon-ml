@@ -1,0 +1,43 @@
+def jobDir = "conf/jobs"
+
+// Have this script clean up the jobDir on ligradle clean.
+clean {
+  delete jobDir
+}
+
+def flowName = "generate-all-feature-lists-on-kdd-cup-2012-track2-data-nertzrm02"
+
+// For generating feature list
+def featureSectionKeys = "globalFeatures,queryTokensFeatures,purchasedKeywordTokensFeatures,titleTokensFeatures," +
+    "descriptionTokensFeatures,userProfileFeatures"
+def featureNameAndTermSetOutputPath = "/jobs/fastrain/glmix_data/KDDCup2012-Track2/feature-lists"
+def inputDirs = "/jobs/fastrain/glmix_data/KDDCup2012-Track2/training"
+
+hadoop {
+  buildPath jobDir
+
+  workflow(flowName) {
+
+    job("standalone-job") {
+
+      def numExecutors = 50
+      def executorMemory= '10G'
+      def driverMemory= '10G'
+      def parallelism=numExecutors*4
+
+      baseProperties 'sparkCommon'
+      set properties: [
+        'class'                          : 'com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer',
+        'num-executors'                  : numExecutors,
+        'driver-memory'                  : driverMemory,
+        'executor-memory'                : executorMemory,
+        'conf.spark.default.parallelism' : parallelism,
+        'params' : "--data-input-directory $inputDirs " +
+            "--feature-name-and-term-set-output-dir $featureNameAndTermSetOutputPath " +
+            "--feature-section-keys $featureSectionKeys " +
+            "--application-name generate-all-feature-lists "
+      ]
+    }
+    targets "standalone-job"
+  }
+}
