@@ -61,8 +61,24 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       case None => trainDirs.toSeq
     }
     logger.logDebug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
-    val numPartitions = math.max(fixedEffectDataConfigurations.values.map(_.numPartitions).max,
-      randomEffectDataConfigurations.values.map(_.numPartitions).max)
+
+    // Determine the number of fixed effect partitions. Default to 0 if we have no fixed effects.
+    val numFixedEffectPartitions = if (fixedEffectDataConfigurations.nonEmpty) {
+      fixedEffectDataConfigurations.values.map(_.numPartitions).max
+    } else {
+      0
+    }
+
+    // Determine the number of random effect partitions. Default to 0 if we have no random effects.
+    val numRandomEffectPartitions = if (randomEffectDataConfigurations.nonEmpty) {
+      randomEffectDataConfigurations.values.map(_.numPartitions).max
+    } else {
+      0
+    }
+
+    val numPartitions = math.max(numFixedEffectPartitions, numRandomEffectPartitions)
+    require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
+
     val records = AvroUtils.readAvroFiles(sparkContext, trainingRecordsPath, numPartitions)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
