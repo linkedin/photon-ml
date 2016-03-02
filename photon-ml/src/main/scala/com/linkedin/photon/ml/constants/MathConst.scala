@@ -1,6 +1,8 @@
 package com.linkedin.photon.ml.constants
 
 /**
+ * Math constants
+ *
  * @author xazhang
  */
 object MathConst {

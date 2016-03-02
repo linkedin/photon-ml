@@ -38,13 +38,22 @@ trait RandomEffectProjector {
 
 object RandomEffectProjector {
 
+  /**
+   * Builds a random effect projector instance
+   *
+   * @param randomEffectDataSet the dataset
+   * @param projectorType
+   * @return the projector
+   */
   def buildRandomEffectProjector(
       randomEffectDataSet: RandomEffectDataSet,
       projectorType: ProjectorType): RandomEffectProjector = {
+
     projectorType match {
       case RandomProjection(projectedSpaceDimension) =>
-        ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(randomEffectDataSet, projectedSpaceDimension,
-          isKeepingInterceptTerm = true)
+        ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
+          randomEffectDataSet, projectedSpaceDimension, isKeepingInterceptTerm = true)
+
       case IndexMapProjection => IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
       case _ => throw new UnsupportedOperationException(s"Projector type $projectorType for random effect data set " +
           s"is not supported!")

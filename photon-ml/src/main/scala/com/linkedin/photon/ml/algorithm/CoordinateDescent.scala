@@ -1,9 +1,8 @@
 package com.linkedin.photon.ml.algorithm
 
-
 import scala.collection.Map
-
 import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.constants.{StorageLevel, MathConst}
 import com.linkedin.photon.ml.data.{DataSet, GameData}
@@ -11,8 +10,13 @@ import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.Model
 import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
 
-
 /**
+ * Coordinate descent implementation
+ *
+ * @param coordinates the individual optimization problem coordinates
+ * @param trainingLossFunctionEvaluator training loss function evaluator
+ * @param validatingDataAndEvaluatorOption optional validation data evaluator
+ * @param logger logger instance
  * @author xazhang
  */
 class CoordinateDescent(
@@ -21,6 +25,12 @@ class CoordinateDescent(
     validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)],
     logger: PhotonLogger) {
 
+  /**
+   * Run coordinate descent
+   *
+   * @param numIterations number of iterations
+   * @return trained models
+   */
   def run(numIterations: Int): Map[String, Model] = {
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
       val initializedModel = coordinate.initializeModel(seed = MathConst.RANDOM_SEED)
@@ -33,9 +43,17 @@ class CoordinateDescent(
           s"ID $coordinateId:\n${initializedModel.toSummaryString}\n")
       (coordinateId, initializedModel)
     }.toMap
+
     run(numIterations, initializedModelContainer)
   }
 
+  /**
+   * Run coordinate descent
+   *
+   * @param numIterations number of iterations
+   * @param modelContainer existing models
+   * @return trained models
+   */
   def run(numIterations: Int, modelContainer: Map[String, Model]): Map[String, Model] = {
 
     var updatedModelContainer = modelContainer
@@ -148,6 +166,7 @@ class CoordinateDescent(
       val elapsedTime = (System.nanoTime() - iterationStartTime) * 1e-9
       logger.logInfo(s"Iteration $iteration of coordinate descent finished, time elapsed: $elapsedTime (s)\n\n")
     }
+
     updatedModelContainer
   }
 }

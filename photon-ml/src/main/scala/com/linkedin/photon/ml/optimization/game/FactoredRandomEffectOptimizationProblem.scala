@@ -10,15 +10,21 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.projector.ProjectionMatrix
 import com.linkedin.photon.ml.supervised.TaskType._
 
-
 /**
+ * An optimization problem for factored random effect datasets
+ *
+ * @param randomEffectOptimizationProblem the random effect optimization problem
+ * @param latentFactorOptimizationProblem the latent factor optimization problem
+ * @param numIterations number of iterations
+ * @param latentSpaceDimension dimensionality of latent space
  * @author xazhang
  */
 class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
     val latentFactorOptimizationProblem: OptimizationProblem[F],
     val numIterations: Int,
-    val latentSpaceDimension: Int) extends RDDLike {
+    val latentSpaceDimension: Int)
+  extends RDDLike {
 
   override def sparkContext = randomEffectOptimizationProblem.sparkContext
 
@@ -42,6 +48,12 @@ class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoin
     this
   }
 
+  /**
+   * Compute the regularization term value
+   *
+   * @param model the model
+   * @return regularization term value
+   */
   def getRegularizationTermValue(
       coefficientsRDD: RDD[(String, Coefficients)],
       projectionMatrix: ProjectionMatrix): Double = {
@@ -53,6 +65,17 @@ class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoin
 }
 
 object FactoredRandomEffectOptimizationProblem {
+
+  /**
+   * Builds a factored random effect optimization problem
+   *
+   * @param taskType the task type
+   * @param randomEffectOptimizationConfiguration random effect configuration
+   * @param latentFactorOptimizationConfiguration latent factor configuration
+   * @param mfOptimizationConfiguration MF configuration
+   * @param randomEffectDataSet the dataset
+   * @return the new optimization problem
+   */
   def buildFactoredRandomEffectOptimizationProblem(
       taskType: TaskType,
       randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,

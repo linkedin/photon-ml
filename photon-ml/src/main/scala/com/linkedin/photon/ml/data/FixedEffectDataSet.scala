@@ -8,13 +8,22 @@ import com.linkedin.photon.ml.RDDLike
 
 
 /**
+ * DataSet implementation for fixed effect data sets
+ *
+ * @param labeledPoints the input data
+ * @param featureShardId the feature shard id
  * @author xazhang
  */
 class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: String)
-    extends DataSet[FixedEffectDataSet] with RDDLike {
+  extends DataSet[FixedEffectDataSet] with RDDLike {
 
   lazy val numFeatures = labeledPoints.first()._2.features.length
 
+  /**
+   * Add scores to data offsets
+   *
+   * @param keyScore the scores
+   */
   def addScoresToOffsets(scores: KeyValueScore): FixedEffectDataSet = {
     val updatedLabeledPoints = labeledPoints.leftOuterJoin(scores.scores)
         .mapValues { case (LabeledPoint(label, features, offset, weight), scoreOption) =>
@@ -45,6 +54,11 @@ class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featu
     this
   }
 
+  /**
+   * Build a summary string for the dataset
+   *
+   * @return string representation
+   */
   override def toSummaryString: String = {
     val numSamples = labeledPoints.count()
     val weightSum = labeledPoints.values.map(_.weight).sum()
@@ -57,6 +71,13 @@ class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featu
 
 object FixedEffectDataSet {
 
+  /**
+   * Build an instance of fixed effect dataset with the given configuration
+   *
+   * @param gameDataSet the input dataset
+   * @param fixedEffectDataConfiguration the data configuration
+   * @return new dataset with given configuration
+   */
   def buildWithConfiguration(
       gameDataSet: RDD[(Long, GameData)],
       fixedEffectDataConfiguration: FixedEffectDataConfiguration): FixedEffectDataSet = {

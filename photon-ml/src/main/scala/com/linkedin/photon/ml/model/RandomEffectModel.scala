@@ -8,14 +8,19 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
 
-
 /**
+ * Representation of a random effect model
+ *
+ * @param coefficientsRDD the coefficients
+ * @param randomEffectId the random effect type id
+ * @param featureShardId the feature shard id
  * @author xazhang
  */
 class RandomEffectModel(
     val coefficientsRDD: RDD[(String, Coefficients)],
     val randomEffectId: String,
-    val featureShardId: String) extends Model with RDDLike {
+    val featureShardId: String)
+  extends Model with RDDLike {
 
   override def sparkContext: SparkContext = coefficientsRDD.sparkContext
 
@@ -39,10 +44,21 @@ class RandomEffectModel(
     this
   }
 
+  /**
+   * Compute the score for the dataset
+   *
+   * @param dataPoints the dataset
+   * @return the score
+   */
   override def score(dataPoints: RDD[(Long, GameData)]): KeyValueScore = {
     RandomEffectModel.score(dataPoints, coefficientsRDD, randomEffectId, featureShardId)
   }
 
+  /**
+   * Build a summary string for the model
+   *
+   * @return string representation
+   */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model of randomEffectId $randomEffectId, " +
         s"featureShardId $featureShardId summary:")
@@ -54,6 +70,12 @@ class RandomEffectModel(
     stringBuilder.toString()
   }
 
+  /**
+   * Update the random effect model
+   *
+   * @param updatedCoefficientsRDD the coefficients
+   * @return the updated model
+   */
   def updateRandomEffectModel(updatedCoefficientsRDD: RDD[(String, Coefficients)]): RandomEffectModel = {
     new RandomEffectModel(updatedCoefficientsRDD, randomEffectId, featureShardId)
   }
@@ -61,6 +83,14 @@ class RandomEffectModel(
 
 object RandomEffectModel {
 
+  /**
+   * Compute the score for the dataset
+   *
+   * @param dataPoints the dataset
+   * @param randomEffectId the random effect type id
+   * @param featureShardId the feature shard id
+   * @return the score
+   */
   protected def score(
       dataPoints: RDD[(Long, GameData)],
       coefficientsRDD: RDD[(String, Coefficients)],

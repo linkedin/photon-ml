@@ -5,13 +5,15 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 
-
 /**
+ * Optimization tracker for factored randon effects
+ *
+ * @param optimizationStatesTrackers state trackers for random effect and fixed effect problems
  * @author xazhang
  */
 protected[ml] class FactoredRandomEffectOptimizationTracker(
     optimizationStatesTrackers: Array[(RandomEffectOptimizationTracker, FixedEffectOptimizationTracker)])
-    extends OptimizationTracker with RDDLike {
+  extends OptimizationTracker with RDDLike {
 
   override def sparkContext: SparkContext = {
     assert(optimizationStatesTrackers.nonEmpty, "optimizationStatesTrackers is empty!")
@@ -40,6 +42,11 @@ protected[ml] class FactoredRandomEffectOptimizationTracker(
     this
   }
 
+  /**
+   * Build a summary string for the tracker
+   *
+   * @return string representation
+   */
   override def toSummaryString: String = {
     optimizationStatesTrackers.zipWithIndex
         .map { case ((randomEffectOptimizationTracker, fixedEffectOptimizationTracker), idx) =>

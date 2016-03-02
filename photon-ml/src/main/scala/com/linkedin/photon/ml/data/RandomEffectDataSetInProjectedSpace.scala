@@ -5,8 +5,11 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.projector.{ProjectorType, RandomEffectProjector}
 
-
 /**
+ * Dataset implementation for random effect datasets in projected space
+ *
+ * @param randomEffectDataSetInProjectedSpace input random effect dataset
+ * @param randomEffectProjector the random effect projector
  * @author xazhang
  */
 class RandomEffectDataSetInProjectedSpace(
@@ -59,6 +62,13 @@ class RandomEffectDataSetInProjectedSpace(
 
 object RandomEffectDataSetInProjectedSpace {
 
+  /**
+   * Build an instance of random effect dataset in projected space with the given projector type
+   *
+   * @param randomEffectDataSet the input dataset
+   * @param projectorType the projector type
+   * @return new dataset projected with the given projector
+   */
   def buildWithProjectorType(
       randomEffectDataSet: RandomEffectDataSet,
       projectorType: ProjectorType): RandomEffectDataSetInProjectedSpace = {
