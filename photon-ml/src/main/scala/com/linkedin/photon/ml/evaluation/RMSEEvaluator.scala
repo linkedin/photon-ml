@@ -4,6 +4,10 @@ import org.apache.spark.rdd.RDD
 
 
 /**
+ * Evaluator for root mean squared error
+ *
+ * @param labelAndOffsetAndWeights label and offset weights
+ * @param defaultScore default score
  * @author xazhang
  */
 class RMSEEvaluator(
@@ -12,6 +16,12 @@ class RMSEEvaluator(
 
   val squaredLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights, defaultScore)
 
+  /**
+   * Evaluate scores
+   *
+   * @param score the scores to evaluate
+   * @return score metric value
+   */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {
     math.sqrt(squaredLossEvaluator.evaluate(scores) / labelAndOffsetAndWeights.count())
   }

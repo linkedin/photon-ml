@@ -18,6 +18,8 @@ import com.linkedin.photon.ml.util._
 
 
 /**
+ * Driver for GAME full model scoring
+ *
  * @author xazhang
  */
 class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
@@ -30,6 +32,11 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
   protected val isAddingIntercept = true
 
+  /**
+   * Builds feature name-and-term to index maps according to configuration
+   *
+   * @return a map of shard id to feature map
+   */
   def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
 
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
@@ -48,7 +55,12 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     featureShardIdToFeatureMapMap
   }
 
-
+  /**
+   * Builds a GAME dataset according to input data configuration
+   *
+   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
+   * @return the prepared GAME dataset
+   */
   def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): RDD[(Long, GameData)] = {
 
     val recordsPath = dateRangeOpt match {
@@ -92,7 +104,13 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     gameDataSet
   }
 
-
+  /**
+   * Score and write results to HDFS
+   *
+   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
+   * @param gameDataSet the input dataset
+   * @return the scores
+   */
   def scoreAndWriteScoreToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       gameDataSet: RDD[(Long, GameData)]): RDD[(Long, Double)] = {
@@ -124,8 +142,13 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     scores
   }
 
-
-  def evaluateAndLog(gameDataSet: RDD[(Long, GameData)], scores: RDD[(Long, Double)]): Unit = {
+  /**
+   * Evaluate and log metrics for the GAME dataset
+   *
+   * @param gameDataSet the input dataset
+   * @param scores the scores
+   */
+  def evaluateAndLog(gameDataSet: RDD[(Long, GameData)], scores: RDD[(Long, Double)]) {
 
     val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
     val metric =  taskType match {
@@ -143,7 +166,9 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.logInfo(s"Evaluation metric: $metric")
   }
 
-
+  /**
+   * Run the driver
+   */
   def run(): Unit = {
 
     var startTime = System.nanoTime()
@@ -176,6 +201,9 @@ object Driver {
   private val SCORES = "scores"
   private val LOGS = "logs"
 
+  /**
+   * Main entry point
+   */
   def main(args: Array[String]): Unit = {
 
     val startTime = System.nanoTime()

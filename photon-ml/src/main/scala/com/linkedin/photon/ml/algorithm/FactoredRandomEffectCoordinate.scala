@@ -14,18 +14,33 @@ import com.linkedin.photon.ml.util.VectorUtils
 
 
 /**
+ * The optimization problem coordinate for a factored random effect model
+ *
+ * @param randomEffectDataSet the training dataset
+ * @param factoredRandomEffectOptimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
 class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
     factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[F])
-    extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[F]](randomEffectDataSet) {
+  extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[F]](randomEffectDataSet) {
 
+  /**
+   * Initialize the model
+   *
+   * @param seed random seed
+   */
   override def initializeModel(seed: Long): Model = {
     val latentSpaceDimension = factoredRandomEffectOptimizationProblem.latentSpaceDimension
     FactoredRandomEffectCoordinate.initializeModel(randomEffectDataSet, latentSpaceDimension, seed)
   }
 
+  /**
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param model the model
+   * @return tuple of updated model and optimization tracker
+   */
   override protected def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
@@ -79,6 +94,7 @@ class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
           factoredRandomEffectOptimizationTracker(iteration) = (randomEffectOptimizationTracker,
               latentProjectionMatrixOptimizationStateTracker)
         }
+
         // Return the updated model
         val updatedFactoredRandomEffectModel = factoredRandomEffectModel
             .updateFactoredRandomEffectModel(updatedCoefficientsRDD, updatedProjectionMatrixBroadcast)
@@ -91,6 +107,12 @@ class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     }
   }
 
+  /**
+   * Score the model
+   *
+   * @param model the model to score
+   * @return scores
+   */
   override def score(model: Model): KeyValueScore = {
     model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
@@ -105,6 +127,12 @@ class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     }
   }
 
+  /**
+   * Compute the regularization term value
+   *
+   * @param model the model
+   * @return regularization term value
+   */
   override def computeRegularizationTermValue(model: Model): Double = {
     model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
@@ -117,8 +145,14 @@ class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     }
   }
 
-  override protected def updateCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
-  : FactoredRandomEffectCoordinate[F] = {
+  /**
+   * Update the coordinate with a dataset
+   *
+   * @param updatedRandomEffectDataSet the updated dataset
+   * @return the updated coordinate
+   */
+  override protected def updateCoordinateWithDataSet(
+      updatedRandomEffectDataSet: RandomEffectDataSet) : FactoredRandomEffectCoordinate[F] = {
 
     new FactoredRandomEffectCoordinate(updatedRandomEffectDataSet, factoredRandomEffectOptimizationProblem)
   }
@@ -127,6 +161,13 @@ class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
 
 object FactoredRandomEffectCoordinate {
 
+  /**
+   * Initialize the model
+   *
+   * @param randomEffectDataSet the training dataset
+   * @param latentSpaceDimension dimensionality of the latent space
+   * @param seed random seed
+   */
   private def initializeModel(
       randomEffectDataSet: RandomEffectDataSet,
       latentSpaceDimension: Int,
@@ -143,6 +184,15 @@ object FactoredRandomEffectCoordinate {
     new FactoredRandomEffectModel(randomEffectModel, latentProjectionMatrix, randomEffectId, featureShardId)
   }
 
+  /**
+   * Update the latent projection matrix
+   *
+   * @param randomEffectDataSet the dataset
+   * @param randomEffectModel the model
+   * @param projectionMatrix the projection matrix
+   * @param optimizationProblem the optimization problem
+   * @return updated projection matrix
+   */
   private def updateLatentProjectionMatrix[F <: TwiceDiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectModel: RandomEffectModel,
@@ -173,6 +223,14 @@ object FactoredRandomEffectCoordinate {
     (new ProjectionMatrix(updatedLatentProjectionMatrix), optimizationProblem)
   }
 
+  /**
+   * Computes the feature and coefficient cross product
+   *
+   * @param localDataSetRDD the dataset
+   * @param coefficientsRDD the coefficients
+   * @param threshold the threshold
+   * @return cross product result
+   */
   private def crossProductFeaturesAndCoefficients(
       localDataSetRDD: RDD[(String, LocalDataSet)],
       coefficientsRDD: RDD[(String, Coefficients)],
@@ -183,6 +241,7 @@ object FactoredRandomEffectCoordinate {
         val generatedFeatures = VectorUtils.kroneckerProduct(labeledPoint.features, coefficients.means, threshold)
         val generatedLabeledPoint =
           new LabeledPoint(labeledPoint.label, generatedFeatures, labeledPoint.offset, labeledPoint.weight)
+
         (globalId, generatedLabeledPoint)
       }
     }

@@ -8,10 +8,13 @@ import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.optimization._
 
 /**
+ * Optimization tracker for random effect optimization problems
+ *
+ * @param optimizationStatesTrackers state trackers for the inidividual optimization problems
  * @author xazhang
  */
 class RandomEffectOptimizationTracker(val optimizationStatesTrackers: RDD[OptimizationStatesTracker])
-    extends OptimizationTracker with RDDLike {
+  extends OptimizationTracker with RDDLike {
 
   override def sparkContext: SparkContext = optimizationStatesTrackers.sparkContext
 
@@ -35,6 +38,11 @@ class RandomEffectOptimizationTracker(val optimizationStatesTrackers: RDD[Optimi
     this
   }
 
+  /**
+   * Build a summary string for the tracker
+   *
+   * @return string representation
+   */
   override def toSummaryString: String = {
     val convergenceReasons = optimizationStatesTrackers.map { optimizationStatesTracker =>
       if (optimizationStatesTracker.convergenceReason.isDefined) {

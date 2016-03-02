@@ -1,6 +1,5 @@
 package com.linkedin.photon.ml.projector
 
-
 import java.util.Random
 
 import breeze.stats.meanAndVariance
@@ -8,11 +7,11 @@ import breeze.linalg.{norm, Vector, DenseMatrix, Matrix}
 
 import com.linkedin.photon.ml.constants.MathConst
 
-
 /**
- * A class for projection matrix that implements
- * is used to project the features from their original space to a different
- * (usually with lower dimension) space
+ * A class for projection matrix that is used to project the features from their original space to a different (usually
+ * with lower dimension) space
+ *
+ * @param matrix projection matrix
  * @author xazhang
  */
 case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
@@ -20,6 +19,12 @@ case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
   override val projectedSpaceDimension = matrix.rows
   override val originalSpaceDimension = matrix.cols
 
+  /**
+   * Project features into the new space
+   *
+   * @param features the features
+   * @return projected features
+   */
   override def projectFeatures(features: Vector[Double]): Vector[Double] = {
     matrix match {
       case denseMatrix: DenseMatrix[Double] =>
@@ -29,6 +34,12 @@ case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
     }
   }
 
+  /**
+   * Project coefficients into the new space
+   *
+   * @param coefficients the coefficients
+   * @return projected coefficients
+   */
   override def projectCoefficients(coefficients: Vector[Double]): Vector[Double] = {
     matrix match {
       case denseMatrix: DenseMatrix[Double] => denseMatrix.t * coefficients
@@ -37,6 +48,11 @@ case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
     }
   }
 
+  /**
+   * Build a summary string for the coefficients
+   *
+   * @return string representation
+   */
   def toSummaryString: String = {
     val stringBuilder = new StringBuilder()
     stringBuilder.append(s"meanAndVarianceAndCount of the flattened matrix: ${meanAndVariance(matrix.flatten())}")
@@ -52,6 +68,7 @@ object ProjectionMatrix {
   /**
    * Creating a randomly generated matrix where components are drawn from the normal distribution
    * N(0, 1/projectedSpaceDimension).
+   *
    * @param projectedSpaceDimension The dimension of the projected space, and within our context, this equals to the
    *                                number of rows of the random projection matrix
    * @param originalSpaceDimension The dimension of the original space, and within our context, this equals to the
@@ -67,11 +84,14 @@ object ProjectionMatrix {
       originalSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,
       seed: Long = MathConst.RANDOM_SEED): ProjectionMatrix = {
+
     val random = new Random(seed)
+
     // A more conventional way to construct the Gaussian random projection matrix is to set
     // std = math.sqrt(projectedSpaceDimension), here we wish the magnitude of the matrix entries to be smaller, thus
     // adopt the following way
     val std = projectedSpaceDimension
+
     val matrix = if (isKeepingInterceptTerm) {
       Matrix.tabulate[Double](projectedSpaceDimension + 1, originalSpaceDimension){(row, col) =>
         if (row < projectedSpaceDimension) {
@@ -86,6 +106,7 @@ object ProjectionMatrix {
         random.nextGaussian() / std
       )
     }
+
     new ProjectionMatrix(matrix)
   }
 }

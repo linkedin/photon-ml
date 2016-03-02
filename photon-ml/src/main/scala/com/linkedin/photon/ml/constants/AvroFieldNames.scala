@@ -1,6 +1,8 @@
 package com.linkedin.photon.ml.constants
 
 /**
+ * Avro field names
+ *
  * @author xazhang
  * @todo Unify the field names for different applications (feed, jymbii)
  */

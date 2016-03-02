@@ -9,18 +9,33 @@ import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffe
 
 
 /**
+ * The optimization problem coordinate for a random effect model in projected space
+ *
+ * @param randomEffectDataSetInProjectedSpace the training dataset
+ * @param randomEffectOptimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
 class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
-    extends RandomEffectCoordinate[F, RandomEffectCoordinateInProjectedSpace[F]](
-      randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
+  extends RandomEffectCoordinate[F, RandomEffectCoordinateInProjectedSpace[F]](
+    randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
 
+  /**
+   * Initialize the model
+   *
+   * @param seed random seed
+   */
   override def initializeModel(seed: Long): Model = {
     RandomEffectCoordinateInProjectedSpace.initializeZeroModel(randomEffectDataSetInProjectedSpace)
   }
 
+  /**
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param model the model
+   * @return tuple of updated model and optimization tracker
+   */
   override protected def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
@@ -36,6 +51,12 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
     }
   }
 
+  /**
+   * Score the model
+   *
+   * @param model the model to score
+   * @return scores
+   */
   override def score(model: Model): KeyValueScore = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
@@ -47,6 +68,12 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
     }
   }
 
+  /**
+   * Compute the regularization term value
+   *
+   * @param model the model
+   * @return regularization term value
+   */
   override def computeRegularizationTermValue(model: Model): Double = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
@@ -58,8 +85,15 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
     }
   }
 
-  override protected def updateRandomEffectCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
-  : RandomEffectCoordinateInProjectedSpace[F] = {
+  /**
+   * Update the coordinate with a dataset
+   *
+   * @param updatedRandomEffectDataSet the updated dataset
+   * @return the updated coordinate
+   */
+  override protected def updateRandomEffectCoordinateWithDataSet(
+      updatedRandomEffectDataSet: RandomEffectDataSet) : RandomEffectCoordinateInProjectedSpace[F] = {
+
     val updatedRandomEffectDataSetInProjectedSpace = new RandomEffectDataSetInProjectedSpace(updatedRandomEffectDataSet,
       randomEffectDataSetInProjectedSpace.randomEffectProjector)
     new RandomEffectCoordinateInProjectedSpace(updatedRandomEffectDataSetInProjectedSpace,
@@ -68,8 +102,14 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
 }
 
 object RandomEffectCoordinateInProjectedSpace {
-  private def initializeZeroModel(randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace)
-  : RandomEffectModelInProjectedSpace = {
+
+  /**
+   * Initialize a zero model
+   *
+   * @param randomEffectDataSetInProjectedSpace the dataset
+   */
+  private def initializeZeroModel(
+      randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace) : RandomEffectModelInProjectedSpace = {
 
     val randomEffectModel = randomEffectDataSetInProjectedSpace.activeData.mapValues(localDataSet =>
       Coefficients.initializeZeroCoefficients(localDataSet.numFeatures)

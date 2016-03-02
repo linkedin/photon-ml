@@ -10,8 +10,9 @@ import breeze.linalg.{SparseVector, Vector}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
 
-
 /**
+ * Local dataset implementation
+ *
  * @param dataPoints Local data points consists of (uniqueId, labeledPoint) pairs
  * @author xazhang
  * @todo Use Array or Map to represent the local data structure?
@@ -33,7 +34,8 @@ case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   def getGlobalIds: Array[Long] = dataPoints.map(_._1)
 
   /**
-   * Add the residual scores to the offsets.
+   * Add the residual scores to the offsets
+   *
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
@@ -49,6 +51,7 @@ case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   /**
    * Project the features of the underlying [[dataPoints]] from the original space to the projected
    * (usually with lower dimension) space
+   *
    * @param projector The projector
    * @return The [[LocalDataSet]] with projected features
    */
@@ -69,37 +72,61 @@ case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
       .map { case (index, counts) => (index, counts.map(_._2).sum) }
   }
 
+  /**
+   * Filter features by support
+   *
+   * @param minNumSupportThreshold minimum support threshold
+   * @return filtered dataset
+   */
   def filterFeaturesBySupport(minNumSupportThreshold: Int): LocalDataSet = {
     if (minNumSupportThreshold > 0) {
       val filteredFeaturesIndexSet = featureIndexCountMap
           .filter { case (_, count) => count >= minNumSupportThreshold }
           .keySet
+
       val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
         val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
         (id, LabeledPoint(label, filteredFeatures, offset, weight))
       }
+
       LocalDataSet(filteredActivities)
     } else {
       this
     }
   }
 
+  /**
+   * Filter features by Pearson correlation score
+   *
+   * @param numFeaturesToKeep number of features to keep
+   * @return filtered dataset
+   */
   def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet = {
     if (numFeaturesToKeep < numActiveFeatures) {
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
       val pearsonScores = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures.iterator)
-      val filteredFeaturesIndexSet = pearsonScores.toArray.sortBy { case (key, score) => math.abs(score) }
+
+      val filteredFeaturesIndexSet = pearsonScores.toArray
+        .sortBy { case (key, score) => math.abs(score) }
         .takeRight(numFeaturesToKeep).map(_._1).toSet
+
       val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
         val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
         (id, LabeledPoint(label, filteredFeatures, offset, weight))
       }
+
       LocalDataSet(filteredActivities)
     } else {
       this
     }
   }
 
+  /**
+   * Reservoir sampling on all samples
+   *
+   * @param numSamplesToKeep number of samples to keep
+   * @return sampled dataset
+   */
   protected[ml] def reservoirSamplingOnAllSamples(numSamplesToKeep: Int): LocalDataSet = {
     if (numSamplesToKeep == 0) {
       LocalDataSet(Array())
@@ -122,8 +149,16 @@ object LocalDataSet {
     else LocalDataSet(dataPoints.sortBy(_._1))
   }
 
-  private def filterFeaturesWithFeatureIndexSet(features: Vector[Double], featureIndexSet: Set[Int])
-  : SparseVector[Double] = {
+  /**
+   * Filter features by feature index
+   *
+   * @param features the original feature set
+   * @param featureIndexSet feature index set
+   * @return filtered feature vector
+   */
+  private def filterFeaturesWithFeatureIndexSet(
+      features: Vector[Double],
+      featureIndexSet: Set[Int]): SparseVector[Double] = {
 
     val filteredIndexBuilder = new mutable.ArrayBuilder.ofInt
     val filteredDataBuilder = new mutable.ArrayBuilder.ofDouble
@@ -133,11 +168,18 @@ object LocalDataSet {
         filteredDataBuilder += value
       }
     }
+
     new SparseVector(filteredIndexBuilder.result(), filteredDataBuilder.result(), features.length)
   }
 
-  protected[ml] def computePearsonCorrelationScore(labelAndFeatures: Iterator[(Double, Vector[Double])])
-  : Map[Int, Double] = {
+  /**
+   * Compute Pearson correlation scores
+   *
+   * @param labelAndFeatures iterator over label, feature tuples
+   * @return correlation scores
+   */
+  protected[ml] def computePearsonCorrelationScore(
+      labelAndFeatures: Iterator[(Double, Vector[Double])]): Map[Int, Double] = {
 
     val featureLabelProductSums = mutable.Map[Int, Double]()
     val featureFirstOrderSums = mutable.Map[Int, Double]()
@@ -146,6 +188,7 @@ object LocalDataSet {
     var labelSecondOrderSum = 0.0
     var numSamples = 0
     var interceptAdded = false
+
     labelAndFeatures.foreach { case (label, features) =>
       numSamples += 1
       labelFirstOrderSum += label
@@ -158,6 +201,7 @@ object LocalDataSet {
         featureLabelProductSums.update(key, featureLabelProductSums.getOrElse(key, 0.0) + value * label)
       }
     }
+
     featureFirstOrderSums.keySet.map { key =>
       val featureFirstOrderSum = featureFirstOrderSums(key)
       val featureSecondOrderSum = featureSecondOrderSums(key)
@@ -179,6 +223,7 @@ object LocalDataSet {
         } else {
           numerator / (denominator + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
         }
+
       assert(math.abs(score) <= 1 + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD,
         s"Computed pearson correlation score is $score, " +
         s"while the score's magnitude should be less than 1. " +
@@ -191,24 +236,35 @@ object LocalDataSet {
         s"featureLabelProductSum=$featureLabelProductSum\n" +
         s"labelFirstOrderSum=$labelFirstOrderSum\n" +
         s"labelSecondOrderSum=$labelSecondOrderSum)")
+
       (key, score)
     }.toMap
   }
 
+  /**
+   * Reservoir sampling
+   *
+   * @param dataPoints input data points
+   * @param numDataPointsToKeep number of data points to keep
+   * @return filtered data points
+   */
   protected[ml] def reservoirSampling[T: ClassTag](dataPoints: Iterator[T], numDataPointsToKeep: Int): Array[T] = {
     val reservoir = new Array[T](numDataPointsToKeep)
+
     // Put the first k elements in the reservoir.
     var i = 0
     while (i < numDataPointsToKeep && dataPoints.hasNext) {
       reservoir(i) = dataPoints.next()
       i += 1
     }
+
     // If we have consumed all the elements, return them. Otherwise do the replacement.
     if (i < numDataPointsToKeep) {
       // If input size < k, trim the array to return only an array of input size.
       val trimReservoir = new Array[T](i)
       System.arraycopy(reservoir, 0, trimReservoir, 0, i)
       trimReservoir
+
     } else {
       // If input size > k, continue the sampling process.
       val rand = new Random(MathConst.RANDOM_SEED)
@@ -220,6 +276,7 @@ object LocalDataSet {
         }
         i += 1
       }
+
       reservoir
     }
   }

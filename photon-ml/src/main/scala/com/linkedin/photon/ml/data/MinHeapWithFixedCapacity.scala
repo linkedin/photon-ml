@@ -6,8 +6,11 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-
 /**
+ * Implementation of a min heap datastructure that defers heapification until the given buffer capacity has been
+ * reached
+ *
+ * @param capacity buffer capacity
  * @author xazhang
  */
 class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) extends Serializable {
@@ -16,6 +19,12 @@ class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) ext
   var cumCount = 0
   private var minHeap: Jutil.PriorityQueue[T] = _
 
+  /**
+   * Add value to the heap
+   *
+   * @param value the value to add
+   * @return the updated heap
+   */
   def +=(value: T): this.type = {
     if (cumCount < capacity) {
       arrayBuffer.add(value)
@@ -33,6 +42,12 @@ class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) ext
     this
   }
 
+  /**
+   * Add contents of another heap to the heap
+   *
+   * @param minHeapWithFixedCapacity the other heap
+   * @return the updated heap
+   */
   def ++=(minHeapWithFixedCapacity: MinHeapWithFixedCapacity[T]): this.type = {
     if (cumCount + minHeapWithFixedCapacity.cumCount < capacity) {
       arrayBuffer.addAll(minHeapWithFixedCapacity.arrayBuffer)
@@ -76,11 +91,19 @@ class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) ext
     this
   }
 
+  /**
+   * Activate (i.e. heapify) the heap
+   */
   private def activateMinHeap() = {
     minHeap = new Jutil.PriorityQueue(arrayBuffer)
     arrayBuffer.clear()
   }
 
+  /**
+   * Return iterable of the heap data
+   *
+   * @return heap data
+   */
   def getData: Iterable[T] = {
     if (cumCount < capacity) arrayBuffer
     else minHeap

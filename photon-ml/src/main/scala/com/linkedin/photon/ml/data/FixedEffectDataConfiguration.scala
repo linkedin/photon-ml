@@ -1,6 +1,8 @@
 package com.linkedin.photon.ml.data
 
 /**
+ * Configuration for a fixed effect dataset
+ *
  * @author xazhang
  */
 case class FixedEffectDataConfiguration(featureShardId: String, numPartitions: Int) {
@@ -11,6 +13,12 @@ object FixedEffectDataConfiguration {
 
   private val SPLITTER = ","
 
+  /**
+   * Parse and build the configuration object from a string representation
+   *
+   * @param string the string representation
+   * @return the configuration object
+   */
   def parseAndBuildFromString(string: String): FixedEffectDataConfiguration = {
 
     val expectedTokenLength = 2
