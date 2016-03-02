@@ -133,6 +133,13 @@ class GeneralizedLinearModelLossFunction(
     throw new UnsupportedOperationException("Do not call GeneralizedLinearModelLossFunction.calculateAt")
   }
 
+  /**
+   * Compute the diagonal of the hessian matrix
+   *
+   * @param dataPoint the given data at which point to compute the hessian diagonal
+   * @param coefficients the coefficients
+   * @param cumHessianDiagonal the hessian diagonal accumulator
+   */
   override protected[ml] def hessianDiagonalAt(
       dataPoint: LabeledPoint,
       coefficients: Vector[Double],

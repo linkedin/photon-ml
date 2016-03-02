@@ -1,6 +1,8 @@
 package com.linkedin.photon.ml.projector
 
-
+/**
+ * Represents a projector type
+ */
 trait ProjectorType
 
 object ProjectorType extends Enumeration {

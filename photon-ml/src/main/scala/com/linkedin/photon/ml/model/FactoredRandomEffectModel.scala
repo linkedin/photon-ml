@@ -1,13 +1,13 @@
 package com.linkedin.photon.ml.model
 
-
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.BroadcastLike
 import com.linkedin.photon.ml.projector.ProjectionMatrixBroadcast
 
-
 /**
+ * Representation for a factored random effect model
+ *
  * @author xazhang
  */
 class FactoredRandomEffectModel(
@@ -23,6 +23,11 @@ class FactoredRandomEffectModel(
     this
   }
 
+  /**
+   * Build a summary string for the model
+   *
+   * @return string representation
+   */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(super.toSummaryString)
     stringBuilder.append("\nprojectionMatrix:")
@@ -30,6 +35,13 @@ class FactoredRandomEffectModel(
     stringBuilder.toString()
   }
 
+  /**
+   * Update the factored model
+   *
+   * @param updatedCoefficientsRDDInProjectedSpace updated coefficients in projected space
+   * @param updatedProjectionMatrixBroadcast updated projection matrix
+   * @return updated model
+   */
   def updateFactoredRandomEffectModel(
       updatedCoefficientsRDDInProjectedSpace: RDD[(String, Coefficients)],
       updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {

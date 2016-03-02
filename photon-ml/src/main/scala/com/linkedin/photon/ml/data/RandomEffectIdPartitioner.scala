@@ -1,14 +1,15 @@
 package com.linkedin.photon.ml.data
 
-
 import scala.collection.{Map, immutable, mutable}
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.{HashPartitioner, Partitioner}
 import org.apache.spark.rdd.RDD
 
-
 /**
+ * Spark partitioner implementation for random effect datasets
+ *
+ * @param idToPartitionMap random effect id to partition map
  * @author xazhang
  */
 class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
@@ -37,12 +38,20 @@ class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) e
 
 object RandomEffectIdPartitioner {
 
+  /**
+   * Generate a partitioner from the random effect dataset
+   *
+   * @param numPartitions number of partitions
+   * @param randomEffectId the random effect type id (e.g. "memberId")
+   * @param gameDataSet the dataset
+   * @param partitionerCapacity partitioner capacity
+   * @return the partitioner
+   */
   def generateRandomEffectIdPartitionerFromGameDataSet(
       numPartitions: Int,
       randomEffectId: String,
       gameDataSet: RDD[(Long, GameData)],
-      partitionerCapacity: Int = 10000)
-  : RandomEffectIdPartitioner = {
+      partitionerCapacity: Int = 10000): RandomEffectIdPartitioner = {
 
     assert(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")
     val sortedRandomEffectIds =
@@ -58,15 +67,18 @@ object RandomEffectIdPartitioner {
     val ordering = new Ordering[(Int, Int)] {
       def compare(pair1: (Int, Int), pair2: (Int, Int)) = pair2._2 compare pair1._2
     }
+
     val minHeap = mutable.PriorityQueue.newBuilder[(Int, Int)](ordering)
     minHeap ++= Array.tabulate[(Int, Int)](numPartitions)(i => (i, 0))
     val idToPartitionMapBuilder = immutable.Map.newBuilder[String, Int]
     idToPartitionMapBuilder.sizeHint(numPartitions)
+
     sortedRandomEffectIds.foreach { case (id, size) =>
       val (partition, currentSize) = minHeap.dequeue()
       idToPartitionMapBuilder += id -> partition
       minHeap.enqueue((partition, currentSize + size))
     }
+
     new RandomEffectIdPartitioner(gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
   }
 }

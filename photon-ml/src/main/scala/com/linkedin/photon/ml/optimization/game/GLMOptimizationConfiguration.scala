@@ -4,8 +4,15 @@ import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 
-
 /**
+ * Configuration object for GLM optimization
+ *
+ * @param maxNumberIterations maximum number of iterations
+ * @param convergenceTolerance convergence tolerance
+ * @param regularizationWeight regularization weight
+ * @param downSamplingRate downsampling rate
+ * @param optimizerType optimizer type (e.g. LBFGS, TRON)
+ * @param regularizationType regularization type
  * @author xazhang
  */
 case class GLMOptimizationConfiguration(
@@ -28,7 +35,12 @@ case class GLMOptimizationConfiguration(
 
 object GLMOptimizationConfiguration {
 
-  //TODO: Add assert and meaningful parsing error message here
+  /**
+   * Parse and build the configuration object from a string representation
+   *
+   * @param string the string representation
+   * @todo Add assert and meaningful parsing error message here
+   */
   def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
     val Array(maxNumberIterationsStr, convergenceToleranceStr, regularizationWeightStr, downSamplingRateStr,
     optimizerTypeStr, regularizationTypeStr) = string.split(",")

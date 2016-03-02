@@ -7,8 +7,10 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 
-
 /**
+ * Key value score accumulator representation
+ *
+ * @param scores the scores
  * @author xazhang
  */
 class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
@@ -35,6 +37,12 @@ class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
     this
   }
 
+  /**
+   * Accumulate key value score values
+   *
+   * @param that the other key value score instance
+   * @return a new key value score instance encapsulating the accumulated values
+   */
   def +(that: KeyValueScore): KeyValueScore = {
     val addedScores =
       this.scores
@@ -43,6 +51,12 @@ class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
     new KeyValueScore(addedScores)
   }
 
+  /**
+   * Remove key value score values
+   *
+   * @param that the other key value score instance
+   * @return a new key value score instance encapsulating the accumulated values
+   */
   def -(that: KeyValueScore): KeyValueScore = {
     val subtractedScores =
       this.scores

@@ -1,13 +1,13 @@
 package com.linkedin.photon.ml.model
 
-
 import breeze.linalg.{Vector, norm}
 import breeze.stats.meanAndVariance
 
-
 /**
- * @param means The mean of the model coefficients
- * @param variancesOption The option of variance of the model coefficients
+ * Representation of model coefficients
+ *
+ * @param means the mean of the model coefficients
+ * @param variancesOption optional variance of the model coefficients
  * @author xazhang
  */
 case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]]) {
@@ -15,12 +15,23 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
   lazy val meansL2Norm: Double = norm(means, 2)
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
 
+  /**
+   * Compute the score for the given features
+   *
+   * @param features features to score
+   * @return the score
+   */
   def computeScore(features: Vector[Double]): Double = {
     assert(means.length == features.length,
       s"Coefficients length (${means.length}}) != features length (${features.length}})")
     means.dot(features)
   }
 
+  /**
+   * Build a summary string for the coefficients
+   *
+   * @return string representation
+   */
   def toSummaryString: String = {
     val stringBuilder = new StringBuilder()
     stringBuilder.append(s"meanAndVarianceAndCount of the mean: ${meanAndVariance(means)}")
@@ -31,6 +42,13 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
 }
 
 object Coefficients {
+
+  /**
+   * Create a zero coefficient vector
+   *
+   * @param dimension dimensionality of the coefficient vector
+   * @return zero coefficient vector
+   */
   def initializeZeroCoefficients(dimension: Int): Coefficients = {
     Coefficients(Vector.zeros[Double](dimension), variancesOption = None)
   }

@@ -3,9 +3,9 @@ package com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjection, RandomProjection, ProjectorType}
 import com.linkedin.photon.ml.projector.ProjectorType._
 
-
 /**
  * Configurations needed in order to generate a [[RandomEffectDataSet]]
+ *
  * @param randomEffectId The corresponding random effect Id of the data set
  * @param featureShardId Key of the feature shard used to generate the data set
  * @param numActiveDataPointsToKeepUpperBound The upper bound on the number of samples to keep (via reservoir sampling)
