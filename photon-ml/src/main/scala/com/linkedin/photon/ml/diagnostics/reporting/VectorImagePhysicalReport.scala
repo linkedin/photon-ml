@@ -20,8 +20,10 @@ import scala.xml.Node
  * @param caption
  * @param title
  */
-abstract class VectorImagePhysicalReport(caption:Option[String] = None, title:Option[String] = None) extends GraphicPhysicalReport(caption, title) {
-    /**
+abstract class VectorImagePhysicalReport(caption:Option[String] = None, title:Option[String] = None)
+  extends GraphicPhysicalReport(caption, title) {
+
+  /**
    * Generate a rasterized (i.e. rendered as pixels) version of this image.
    *
    * @param height

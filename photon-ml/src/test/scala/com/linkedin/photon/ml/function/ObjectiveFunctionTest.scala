@@ -48,6 +48,8 @@ class ObjectiveFunctionTest extends SparkTestUtils {
       () => ("Differentiable dummy objective to test optimizer, benign data, weighted examples", new TestObjective(), generateBenignLocalWeightedDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, benign data", new LogisticLossFunction(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable logistic loss, benign data, weighted examples", new LogisticLossFunction(), generateBenignLocalWeightedDataSetBinaryClassification()),
+      () => ("Differentiable smoothed hinge loss, benign data", new SmoothedHingeLossFunction(), generateBenignLocalDataSetBinaryClassification()),
+      () => ("Differentiable smoothed hinge loss, benign data, weighted examples", new SmoothedHingeLossFunction(), generateBenignLocalWeightedDataSetBinaryClassification()),
       () => ("Differentiable squared loss, benign data", new SquaredLossFunction(), generateBenignLocalDataSetBinaryClassification()),
       () => ("Differentiable squared loss, benign data, weighted examples", new SquaredLossFunction(), generateBenignLocalWeightedDataSetBinaryClassification()),
       () => ("Differentiable poisson loss, benign data", new PoissonLossFunction(), generateBenignLocalDataSetPoissonRegression()),
@@ -59,30 +61,29 @@ class ObjectiveFunctionTest extends SparkTestUtils {
       () => ("Differentiable poisson loss, outlier data", new PoissonLossFunction(), generateOutlierLocalDataSetPoissonRegression()),
       () => ("Differentiable poisson loss, outlier data, weighted examples", new PoissonLossFunction(), generateOutlierLocalWeightedDataSetPoissonRegression()))
 
-    // List of regularization decorators. For each item in the base loss function list, we apply each decorator
-    val regularizationDecorators = Array(
-      (x:DiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction L2 regularization", DiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH)),
-      (x:DiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction L1 regularization", DiffFunction.withRegularization(x, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH)),
-      (x:DiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with DiffFunction elastic net regularization", DiffFunction.withRegularization(x, new RegularizationContext(RegularizationType.ELASTIC_NET, Option(0.5)), ObjectiveFunctionTest.REGULARIZATION_STRENGTH)),
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with TwiceDiffFunction L2 regularization", TwiceDiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH)),
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with TwiceDiffFunction L1 regularization", TwiceDiffFunction.withRegularization(x, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH)),
-      (x:TwiceDiffFunction[LabeledPoint], baseDesc:String) => (s"$baseDesc with TwiceDiffFunction elastic net regularization", TwiceDiffFunction.withRegularization(x, new RegularizationContext(RegularizationType.ELASTIC_NET, Option(0.5)), ObjectiveFunctionTest.REGULARIZATION_STRENGTH))
-    )
+    (for { base <- baseLossFunctions } yield {
+      val (desc, undecorated, data) = base()
+      val diffAdapted = undecorated match {
+        case df:DiffFunction[LabeledPoint] =>
+          Seq(
+            (desc, df, data),
+            (s"$desc with diff function L2 regularization", DiffFunction.withRegularization(df, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
+            (s"$desc with diff function L1 regularization", DiffFunction.withRegularization(df, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data))
+        case _ =>  Seq()
+      }
 
-    val tmp:ListBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])] = scala.collection.mutable.ListBuffer()
+      val twiceDiffAdapted = undecorated match {
+        case twiceDF:TwiceDiffFunction[LabeledPoint] =>
+          Seq(
+            (s"$desc with twice diff function L2 regularization", TwiceDiffFunction.withRegularization(twiceDF, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
+            (s"$desc with twice diff function L1 regularization", TwiceDiffFunction.withRegularization(twiceDF, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data)
+          )
 
-    // Generate cartesian product of all regularization types by all base loss functions
-    baseLossFunctions.map( { f =>
-      val undecorated = f()
-      tmp.append(undecorated)
+        case _ => Seq()
+      }
 
-      regularizationDecorators.map( { regularize =>
-        val decorated = regularize(undecorated._2, undecorated._1)
-        tmp.append( (decorated._1, decorated._2, undecorated._3))
-      })
-    })
-
-    tmp.map( { x => Array(x._1, x._2, x._3) }).toArray
+      diffAdapted ++ twiceDiffAdapted
+    }).flatMap(_.iterator).map(x => Array(x._1, x._2, x._3))
   }
 
   /**

@@ -25,8 +25,8 @@ import org.apache.spark.rdd.RDD
  * An aggregator to perform calculation on value and gradient for generalized linear model loss function, especially
  * in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
  *
- * Refer to ***REMOVED*** for a better understanding
- * of the algorithm.
+ * Refer to ***REMOVED*** for a better
+ * understanding of the algorithm.
  *
  * @param func A single loss function for the generalized linear model
  * @param dim Dimension of the aggregator (# of features)
@@ -64,12 +64,14 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
   //     gradient_j = \sum_i l'(z_i, y_i) (x_{ji} - shift_j) * factor_j
   //                = factor_j * [\sum_i l'(z_i, y_i) x_{ji} - shift_j * \sum_i l'(z_i, y_i)]
   //                = factor_j * [vectorSum - shift_j * \sum_i l'(z_i, y_i)]
-  // For TwiceDiffFunction, this is \sum l''[(x-shift) * factor v] x, which sums up to the principal part of the Hessian vector product
+  // For TwiceDiffFunction, this is \sum l''[(x-shift) * factor v] x, which sums up to the principal part of the Hessian
+  // vector product
   //     hv_j = \sum_ik (x_{ji} - shift_j) * factor_j * l''(z_i, y_i) * (x_{ki} - shift_k) * factor_k * v_k
   //          = \sum_i (x_{ji} - shift_j) * factor_j * l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k
   //          = factor_j * [\sum_i x_{ji} * l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k
   //                      - shift_j * \sum_i x_{ji} * l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k]
-  //          = factor_j * [vectorSum - shift_j * \sum_i x_{ji} * l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k]
+  //          = factor_j *
+  //              [vectorSum - shift_j * \sum_i x_{ji} * l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k]
   protected var vectorSum: Vector[Double] = _
 
   // The accumulator to calculate the prefactor of the vector shift.
@@ -99,7 +101,8 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
     marginShift = shiftsOption match {
       case Some(shifts) =>
         interceptIdOption.foreach(id =>
-                                    require(shifts(id) == 0.0, s"The intercept should not be transformed. Intercept shift: ${shifts(shifts.length- 1)}"))
+          require(shifts(id) == 0.0,
+            s"The intercept should not be transformed. Intercept shift: ${shifts(shifts.length- 1)}"))
         - effectiveCoefficients.dot(shifts)
       case None =>
         0.0
@@ -122,7 +125,8 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
       }
     }
     val LabeledPoint(label, features, _, weight) = datum
-    require(features.size == effectiveCoefficients.size, s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
+    require(features.size == effectiveCoefficients.size,
+      s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
     totalCnt += 1
     val margin = datum.computeMargin(effectiveCoefficients) + marginShift
 
@@ -167,9 +171,10 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
   def getValue: Double = valueSum
 
   /**
-   * Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator, especially
-   * in the context of normalization.
-   * @return Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator
+   * Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator,
+   * especially in the context of normalization.
+   * @return Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for
+   *   HessianVectorAggregator
    */
   def getVector(normalizationContext: NormalizationContext): Vector[Double] = {
     val NormalizationContext(factorsOption, shiftsOption, _) = normalizationContext
@@ -197,23 +202,29 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
 }
 
 object ValueAndGradientAggregator {
-  def calculateValueAndGradient(rdd: RDD[LabeledPoint],
-                                coef: Broadcast[Vector[Double]],
-                                singleLossFunction: PointwiseLossFunction,
-                                normalizationContext: ObjectProvider[NormalizationContext]): (Double, Vector[Double]) = {
+  def calculateValueAndGradient(
+      rdd: RDD[LabeledPoint],
+      coef: Broadcast[Vector[Double]],
+      singleLossFunction: PointwiseLossFunction,
+      normalizationContext: ObjectProvider[NormalizationContext],
+      treeAggregateDepth: Int): (Double, Vector[Double]) = {
+
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.value.size)
-    val resultAggregator = rdd.aggregate(aggregator)(
+    val resultAggregator = rdd.treeAggregate(aggregator)(
       seqOp = (ag, datum) => ag.add(datum, coef.value, normalizationContext.get),
-      combOp = (ag1, ag2) => ag1.merge(ag2)
+      combOp = (ag1, ag2) => ag1.merge(ag2),
+      depth = treeAggregateDepth
     )
     val result = (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.get))
     result
   }
 
-  def calculateValueAndGradient(data: Iterable[LabeledPoint],
-                                coef: Vector[Double],
-                                singleLossFunction: PointwiseLossFunction,
-                                normalizationContext: ObjectProvider[NormalizationContext]): (Double, Vector[Double]) = {
+  def calculateValueAndGradient(
+      data: Iterable[LabeledPoint],
+      coef: Vector[Double],
+      singleLossFunction: PointwiseLossFunction,
+      normalizationContext: ObjectProvider[NormalizationContext]): (Double, Vector[Double]) = {
+
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.size)
     val resultAggregator = data.aggregate(aggregator)(
       seqop = (ag, datum) => ag.add(datum, coef, normalizationContext.get),

@@ -14,6 +14,12 @@
  */
 package com.linkedin.photon.ml.test
 
+import breeze.linalg.Vector
+import breeze.linalg.DenseVector
+
+import scala.collection.mutable.ListBuffer
+import scala.util.Random
+
 /**
  * A collection of handy utils useful in tests
  *
@@ -59,5 +65,48 @@ object CommonTestUtils {
       case (None, _) => false
       case (_, None) => false
     }
+  }
+
+  /**
+   * Generates given number of valid and invalid dense feature vectors of given dimension
+   *
+   * @param numValidVectors number of valid vectors to generate
+   * @param numInvalidVectors number of invalid vectors to generate
+   * @param numDimensions the dimension of the generated feature vectors
+   * @return A sequence of generated dense feature vectors
+   */
+  def generateDenseFeatureVectors(numValidVectors: Int, numInvalidVectors: Int,
+                             numDimensions: Int): Seq[Vector[Double]] = {
+    val r = new Random(System.currentTimeMillis())
+    val result = new ListBuffer[Vector[Double]]
+
+    for (i <- 0 until numValidVectors) {
+      val v = new Array[Double](numDimensions)
+      for (j <- 0 until numDimensions) {
+        v(j) = r.nextDouble()
+      }
+      result +=  new DenseVector[Double](v)
+    }
+
+    for (i <- 0 until numInvalidVectors) {
+      val v = new Array[Double](numDimensions)
+      /* In the worst case, if all our coin tosses below fail, we might end up with a valid vector.
+         Hence setting the first element invalid to guarantee an invalid vector */
+      v(0) = Double.NaN
+      for (j <- 1 until numDimensions) {
+        v(j) = r.nextBoolean() match {
+          case true =>
+            r.nextInt(3) match {
+              case 0 => Double.NaN
+              case 1 => Double.PositiveInfinity
+              case 2 => Double.NegativeInfinity
+            }
+          case false => r.nextDouble()
+        }
+      }
+      result += new DenseVector[Double](v)
+    }
+
+    result
   }
 }

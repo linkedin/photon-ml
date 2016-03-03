@@ -58,11 +58,11 @@ object MockDriver {
       val actualStages = job.stages()
 
       assertEquals(actualStages, expectedStages,
-        "The actual stages Driver went through is inconsistent with the expected one.")
+        "The actual stages Driver went through, " + actualStages.mkString(",") + " is inconsistent with the expected one")
       assertEquals(job.numFeatures(), expectedNumFeatures,
-        "The number of features do not meet the expectation.")
+        "The number of features " + job.numFeatures() + " do not meet the expectation.")
       assertEquals(job.numTrainingData(), expectedNumTrainingData,
-        "The number of training data points do not meet the expectation")
+        "The number of training data points " + job.numTrainingData() + " do not meet the expectation")
       assertEquals(job.isSummarized, expectedIsSummarized)
 
       // Closing up

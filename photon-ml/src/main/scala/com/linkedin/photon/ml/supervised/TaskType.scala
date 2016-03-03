@@ -20,5 +20,5 @@ package com.linkedin.photon.ml.supervised
  */
 object TaskType extends Enumeration {
   type TaskType = Value
-  val LINEAR_REGRESSION, POISSON_REGRESSION, LOGISTIC_REGRESSION = Value
+  val LINEAR_REGRESSION, POISSON_REGRESSION, LOGISTIC_REGRESSION, SMOOTHED_HINGE_LOSS_LINEAR_SVM = Value
 }

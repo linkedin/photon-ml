@@ -20,7 +20,9 @@ package com.linkedin.photon.ml.diagnostics.reporting
  * @param contents
  * @param title
  */
-class SectionPhysicalReport(contents:Seq[PhysicalReport], val title:String) extends SequencePhysicalReport[PhysicalReport](contents) {
+class SectionPhysicalReport(contents:Seq[PhysicalReport], val title:String)
+  extends SequencePhysicalReport[PhysicalReport](contents) {
+
   override def toString():String = {
     s"SECTION [ID: ${getId} TITLE: $title]"
   }

@@ -20,14 +20,16 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
 import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionAlgorithm, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, SmoothedHingeLossLinearSVMAlgorithm, LogisticRegressionAlgorithm, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearAlgorithm, GeneralizedLinearModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, LinearRegressionModel, PoissonRegressionAlgorithm, PoissonRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.testng.Assert.assertTrue
+import org.testng.Assert.fail
 import org.testng.annotations.{DataProvider, Test}
 
 /**
@@ -69,21 +71,40 @@ class BaseGLMIntegTest extends SparkTestUtils {
   /**
    * Enumerate valid sets of (description, generalized linear algorithm, data set) tuples.
    */
-  private def getGeneralizedLinearAlgorithms() : Array[Tuple4[Object, Object, Object, Object]] = {
+  private def getGeneralizedLinearAlgorithms() : Array[Tuple5[Object, Object, Object, Object, Object]] = {
     Array(
-      Tuple4("Linear regression, easy problem",
+      Tuple5("Linear regression, easy problem",
         new LinearRegressionAlgorithm(),
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
         drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LinearRegressionModel](new PredictionFiniteValidator(),
           new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMIntegTest.MAXIMUM_ERROR_MAGNITUDE))),
-      Tuple4("Logistic regression, easy problem",
+
+      Tuple5("Poisson regression, easy problem",
+        new PoissonRegressionAlgorithm,
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
+        drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+          new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator, new NonNegativePredictionValidator[PoissonRegressionModel])),
+
+      Tuple5("Logistic regression, easy problem",
         new LogisticRegressionAlgorithm(),
+        OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),
         drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
         new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(),
           new BinaryPredictionValidator[LogisticRegressionModel](),
-          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
+          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC))),
+
+      Tuple5("Linear SVM, easy problem",
+        new SmoothedHingeLossLinearSVMAlgorithm(),
+        OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
+        drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
+          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
+        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
+          new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
+          new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
     )
   }
 
@@ -95,146 +116,23 @@ class BaseGLMIntegTest extends SparkTestUtils {
       Array(
         s"Happy path [$x._1]", // Description
         x._2,                                // Algorithm
-        new LBFGS(),                         // Solver
+        x._3,                                // Solver
         L2RegularizationContext,             // Regularization
-        x._3,                                // data
-        x._4                                 // validator
-      )
-    }).toArray
-  }
-
-  @Test(dataProvider = "generateHappyPathCases")
-  def checkHappyPath[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
-                     desc:String,
-                     algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                     solver:Optimizer[LabeledPoint, Function],
-                     reg:RegularizationContext,
-                     data:Iterator[(Double, Vector[Double])],
-                     validator:ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
-  }
-
-  @Test(dataProvider = "generateHappyPathCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def checkInvalidOffset[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
-                                                                                             desc:String,
-                                                                                             algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                             solver:Optimizer[LabeledPoint, Function],
-                                                                                             reg:RegularizationContext,
-                                                                                             data:Iterator[(Double, Vector[Double])],
-                                                                                             validator:ModelValidator[GLM]) = {
-    runInvalidOffsetScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
-  }
-
-  /**
-   * Enumerate sets of (description, generalized linear algorithm, invalid data set) tuples.
-   */
-  private def getGeneralizedLinearAlgorithmsInvalidFeatures() : Array[Tuple4[Object, Object, Object, Object]] = {
-    return Array(
-      Tuple4("Linear regression, NaN/Inf features",
-        new LinearRegressionAlgorithm(),
-        drawSampleFromInvalidDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new PredictionFiniteValidator()),
-      Tuple4("Poisson regression, NaN/Inf features",
-        new PoissonRegressionAlgorithm(),
-        drawSampleFromInvalidDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new PredictionFiniteValidator()),
-      Tuple4("Logistic regression, NaN/Inf features",
-        new LogisticRegressionAlgorithm(),
-        drawBalancedSampleFromInvalidDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())))
-  }
-
-  @DataProvider
-  def generateInvalidFeatureCases() : Array[Array[Object]] = {
-    val toGenerate = getGeneralizedLinearAlgorithmsInvalidFeatures
-
-    toGenerate.map( x => {
-      Array(
-        s"Invalid features [$x._1]", // Description
-        x._2,                        // Algorithm
-        new LBFGS(),                 // Solver
-        L2RegularizationContext,     // Regularization
-        x._3,                        // data
-        x._4                         // validator
-      )
-    }).toArray
-  }
-
-  @Test(dataProvider = "generateInvalidFeatureCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def checkInvalidFeatures[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
-                                                                                                  algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                                  solver:Optimizer[LabeledPoint, Function],
-                                                                                                  reg:RegularizationContext,
-                                                                                                  data:Iterator[(Double, Vector[Double])],
-                                                                                                  validator:ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
-  }
-
-  /**
-   * Enumerate sets of (description, generalized linear algorithm, invalid data set) tuples.
-   *
-   * <ul>
-   *   <li>Everything should detect NaN/+/-Inf labels</li>
-   *   <li>Binary regression should handle labels that are finite but not 0 or 1 (use linear regression data set for this)</li>
-   *   <li>Poisson regression should handle negative labels (again, believe linear regression can be used for this)</li>
-   * </ul>
-   */
-  private def getGeneralizedLinearAlgorithmsInvalidLabels() : Array[Tuple4[Object, Object, Object, Object]] = {
-    return Array(
-      Tuple4("Linear regression, NaN/Inf labels",
-        new LinearRegressionAlgorithm(),
-        drawSampleFromInvalidLabels(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new PredictionFiniteValidator()),
-      Tuple4("Poisson regression, NaN/Inf labels",
-        new PoissonRegressionAlgorithm(),
-        drawSampleFromInvalidLabels(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new PredictionFiniteValidator()),
-      Tuple4("Logistic regression, NaN/Inf labels",
-        new LogisticRegressionAlgorithm(),
-        drawSampleFromInvalidLabels(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())),
-      Tuple4("Logistic regression, non-binary labels",
-        new LogisticRegressionAlgorithm(),
-        drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(), new BinaryPredictionValidator[LogisticRegressionModel]())),
-      Tuple4("Poisson regression, negative labels",
-        new PoissonRegressionAlgorithm(),
-        drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLES, BaseGLMIntegTest.NUMBER_OF_INVALID_SAMPLE_DIMENSIONS),
-        new CompositeModelValidator[PoissonRegressionModel](new PredictionNonNegativeValidator(), new NonNegativePredictionValidator[PoissonRegressionModel]())))
-  }
-
-  @DataProvider
-  def generateInvalidLabelCases() : Array[Array[Object]] = {
-    val toGenerate = getGeneralizedLinearAlgorithmsInvalidLabels
-
-    toGenerate.map( x => {
-      Array(
-        s"Invalid features [$x._1]", // Description
-        x._2,                        // Algorithm
-        new LBFGS(),                 // Solver
-        L2RegularizationContext,     // Regularization
-        x._3,                        // data
-        x._4                         // validator
+        x._4,                                // data
+        x._5                                 // validator
       )
     })
   }
 
-  @Test(dataProvider = "generateInvalidLabelCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def checkInvalidLabels[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
-                                                                                                  algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                                  solver:Optimizer[LabeledPoint, Function],
-                                                                                                  reg:RegularizationContext,
-                                                                                                  data:Iterator[(Double, Vector[Double])],
-                                                                                                  validator:ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm , solver, reg, List(1.0), None, NoNormalization, data, validator)
+  @Test(dataProvider = "generateHappyPathCases")
+  def checkHappyPath[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
+      desc: String,
+      algorithm: GeneralizedLinearAlgorithm[GLM, Function],
+      optimizerConfig: OptimizerConfig,
+      reg: RegularizationContext,
+      data: Iterator[(Double, Vector[Double])],
+      validator: ModelValidator[GLM]) = {
+    runGeneralizedLinearAlgorithmScenario(desc, algorithm, optimizerConfig, reg, List(1.0), None, NoNormalization, data, validator)
   }
 
   /**
@@ -242,63 +140,50 @@ class BaseGLMIntegTest extends SparkTestUtils {
    * data providers to exercise different paths) -- hopefully the majority of tests can be constructed by creating
    * the right bindings.
    */
-  def runGeneralizedLinearAlgorithmScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
-                                                                                                                   algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                                                   solver:Optimizer[LabeledPoint, Function],
-                                                                                                                   reg:RegularizationContext,
-                                                                                                                   lambdas:List[Double],
-                                                                                                                   summary:Option[BasicStatisticalSummary],
-                                                                                                                   norm:NormalizationContext,
-                                                                                                                   data:Iterator[(Double, Vector[Double])],
-                                                                                                                   validator:ModelValidator[GLM]) = sparkTest(desc) {
+  def runGeneralizedLinearAlgorithmScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
+      desc: String,
+      algorithm: GeneralizedLinearAlgorithm[GLM, Function],
+      optimizerConfig: OptimizerConfig,
+      reg: RegularizationContext,
+      lambdas: List[Double],
+      summary: Option[BasicStatisticalSummary],
+      norm: NormalizationContext,
+      data: Iterator[(Double, Vector[Double])],
+      validator: ModelValidator[GLM]) = sparkTest(desc) {
+
     // Step 0: configure the algorithm
     algorithm.enableIntercept = true
     algorithm.isTrackingState = true
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
-    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList)
+    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList).repartition(4)
 
     // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
+    val (models, optimizer) = algorithm.run(trainingSet, optimizerConfig, reg, lambdas, norm)
 
     // Step 3: check convergence
     // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
     // TODO: be fixed.
-    assertTrue(None != solver.getStatesTracker, "State tracking was enabled")
-    OptimizerIntegTest.checkConvergence(solver.getStatesTracker.get)
+    assertTrue(None != optimizer.getStateTracker, "State tracking was enabled")
+    OptimizerIntegTest.checkConvergence(optimizer.getStateTracker.get)
 
     // Step 4: validate the models
     models.foreach( m => {
       m.validateCoefficients
       validator.validateModelPredictions(m, trainingSet)
     })
+
+    // Step 5: did it really use the optimizer I specified?
+    optimizer match {
+      case _: LBFGS[_] => if (optimizerConfig.optimizerType != OptimizerType.LBFGS) {
+        fail("Wrong optimizer selected at runtime: $optimizerConfig.optimizerType (should be LBFGS)")
+      }
+      case _: TRON[_] => if (optimizerConfig.optimizerType != OptimizerType.TRON) {
+        fail("Wrong optimizer selected at runtime: $optimizerConfig.optimizerType (should be TRON)")
+      }
+    }
   }
-
-  /**
-   * Check that validators looking for invalid offsets work
-   */
-  def runInvalidOffsetScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](desc:String,
-                                                                                                   algorithm:GeneralizedLinearAlgorithm[GLM, Function],
-                                                                                                   solver:Optimizer[LabeledPoint, Function],
-                                                                                                   reg:RegularizationContext,
-                                                                                                   lambdas:List[Double],
-                                                                                                   summary:Option[BasicStatisticalSummary],
-                                                                                                   norm:NormalizationContext,
-                                                                                                   data:Iterator[(Double, Vector[Double])],
-                                                                                                   validator:ModelValidator[GLM]) = sparkTest(desc) {
-    // Step 0: configure the algorithm
-    algorithm.enableIntercept = true
-    algorithm.isTrackingState = true
-    algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
-
-    // Step 1: generate our input RDD
-    val trainingSet:RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2, offset = Double.NaN)}).toList)
-
-    // Step 2: actually run
-    val models:List[GLM] = algorithm.run(trainingSet, solver, reg, lambdas, norm, DataValidationType.VALIDATE_FULL)
-  }
-
 }
 
 /**
@@ -308,13 +193,9 @@ object BaseGLMIntegTest {
   val RANDOM_SEED:Int = 0
   val NUMBER_OF_SAMPLES:Int = 100000
   val NUMBER_OF_DIMENSIONS:Int = 100
-  /** For invalid cases, we can use many fewer samples */
-  val NUMBER_OF_INVALID_SAMPLES:Int = 100
-  /** For invalid cases, we want much higher dimensionality */
-  val NUMBER_OF_INVALID_SAMPLE_DIMENSIONS = 10000
   /** Minimum required AUROC */
   val MINIMUM_CLASSIFIER_AUCROC:Double = 0.95
-  /** Maximum allowable magnitude difference between predictions and labels for regression problems (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)*/
+  /** Maximum allowable magnitude difference between predictions and labels for regression problems
+    * (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)*/
   val MAXIMUM_ERROR_MAGNITUDE:Double = 10 * SparkTestUtils.INLIER_STANDARD_DEVIATION
-
 }
