@@ -1,0 +1,20 @@
+{
+    "name": "NameTermValueAvro",
+    "namespace": "com.linkedin.photon.ml.avro.generated",
+    "type": "record",
+    "doc": "A tuple of name, term and value. Used as feature or model coefficient",
+    "fields": [
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "term",
+            "type": "string"
+        },
+        {
+            "name": "value",
+            "type": "double"
+        }
+    ]
+}

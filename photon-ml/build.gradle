@@ -1,6 +1,9 @@
 apply plugin: 'li-scala'
 apply plugin: 'li-integ-test'
 
+// avro codegen
+apply from: './avro-code-gen.gradle'
+
 integTest {
   useTestNG()
 
@@ -44,6 +47,9 @@ dependencies {
   compile(spec.external."spark-mllib$scalaSuffix")
   compile(spec.external."spark-sql$scalaSuffix")
 
+  //for time processing
+  compile(spec.external."joda")
+
   compile(spec.external.avro)
   compile(spec.external.avroCompiler)
   compile(spec.external.avroMapred)
@@ -58,4 +64,3 @@ dependencies {
   testRuntime(spec.external."breeze-core$scalaSuffix")
   testRuntime(spec.external."breeze-macro$scalaSuffix")
 }
-

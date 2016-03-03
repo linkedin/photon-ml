@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, sum}
+import breeze.linalg.{axpy, Vector, sum}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 
@@ -19,13 +19,23 @@ class IntegTestObjective extends TwiceDiffFunction[LabeledPoint] {
     sum(expDeltaSq) - expDeltaSq.length
   }
 
-  override def hessianVectorAt(dataPoint: LabeledPoint, parameter: Vector[Double],
-                               vector: Vector[Double], cumHessianVector: Vector[Double]): Unit = {
+  override def hessianVectorAt(
+      dataPoint: LabeledPoint,
+      parameter: Vector[Double],
+      vector: Vector[Double],
+      cumHessianVector: Vector[Double]): Unit = {
     val delta = parameter - IntegTestObjective.CENTROID
     val expDeltaSq = delta.mapValues { x => Math.exp(Math.pow(x, 2.0)) }
     val hess = expDeltaSq :* (delta :* delta :+ 1.0)
     cumHessianVector += hess :* vector :* 4.0
   }
+
+  override protected[ml] def hessianDiagonalAt(
+      dataPoint: LabeledPoint,
+      coefficients: Vector[Double],
+      cumHessianDiagonal: Vector[Double]) {
+  }
+
 }
 
 object IntegTestObjective {
