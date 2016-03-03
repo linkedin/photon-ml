@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
+import org.testng.annotations.Test
 
 /**
  * Integration tests for FittingDiagnostic
@@ -33,22 +34,24 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
   /**
    * Happy path
    */
+  @Test
   def checkHappyPath():Unit = sparkTest("checkHappyPath") {
-    val data = sc.parallelize(drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE, DIMENSION).map( x => new LabeledPoint(x._1, x._2)).toSeq)
+    val data = sc.parallelize(drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE, DIMENSION).map( x => new LabeledPoint(x._1, x._2)).toSeq).repartition(4).cache
 
-    val modelFit = (data:RDD[LabeledPoint]) => {
+    val modelFit = (data:RDD[LabeledPoint], warmStart:Map[Double, GeneralizedLinearModel]) => {
       ModelTraining.trainGeneralizedLinearModel(
         data,
         TaskType.LOGISTIC_REGRESSION,
         OptimizerType.TRON,
         L2RegularizationContext,
-        List(1.0),
+        LAMBDAS,
         NoNormalization,
         NUM_ITERATIONS,
         TOLERANCE,
         false,
-        DataValidationType.VALIDATE_DISABLED,
-        None)._1
+        None,
+        warmStart,
+        1)._1
     }
 
     val diagnostic = new FittingDiagnostic()
@@ -56,28 +59,31 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
     val reports = diagnostic.diagnose(modelFit, data, None)
 
     assertFalse(reports.isEmpty)
-    assertEquals(reports.size, 1)
-    assertTrue(reports.contains(1.0))
+    assertEquals(reports.size, LAMBDAS.length)
+    LAMBDAS.map(lambda => assertTrue(reports.contains(lambda), s"Report contains lambda $lambda"))
 
-    val report = reports.get(1.0).get
+    reports.map(x => {
+      val (_, report) = x
 
-    assertFalse(report.metrics.isEmpty)
-    val expectedKeys = List(Evaluation.ROOT_MEAN_SQUARE_ERROR, Evaluation.MEAN_ABSOLUTE_ERROR, Evaluation.MEAN_SQUARE_ERROR)
-    expectedKeys.map(x => {
-      assertTrue(report.metrics.contains(x))
-      assertEquals(report.metrics.get(x).get._1.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-      assertEquals(report.metrics.get(x).get._2.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-      assertEquals(report.metrics.get(x).get._3.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-      // Make sure that training set fraction is monotonically increasing
-      assertTrue(report.metrics.get(x).get._1.foldLeft((0.0, true))((prev, current) => (current, prev._2 && current > prev._1))._2)
+      assertFalse(report.metrics.isEmpty)
+      val expectedKeys = List(Evaluation.ROOT_MEAN_SQUARE_ERROR, Evaluation.MEAN_ABSOLUTE_ERROR, Evaluation.MEAN_SQUARE_ERROR)
+      expectedKeys.map(y => {
+        assertTrue(report.metrics.contains(y))
+        assertEquals(report.metrics.get(y).get._1.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics.get(y).get._2.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics.get(y).get._3.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        // Make sure that training set fraction is monotonically increasing
+        assertTrue(report.metrics.get(y).get._1.foldLeft((0.0, true))((prev, current) => (current, prev._2 && current > prev._1))._2)
+      })
     })
   }
 }
 
 object FittingDiagnosticIntegTest {
-  val SEED = 0
-  val SIZE = 100000
+  val SEED = 0xdeadbeef
+  val SIZE = 500000
   val DIMENSION = 100
-  val NUM_ITERATIONS = 1000
-  val TOLERANCE = 1e-5
+  val NUM_ITERATIONS = 100
+  val TOLERANCE = 1e-2
+  val LAMBDAS = List(1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5)
 }

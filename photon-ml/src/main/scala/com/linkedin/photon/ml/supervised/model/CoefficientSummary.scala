@@ -15,25 +15,23 @@
 package com.linkedin.photon.ml.supervised.model
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics
-import org.apache.commons.math3.stat.descriptive.rank.PSquarePercentile
+
+import scala.collection.mutable.ArrayBuffer
+
 
 /**
  * Miscellaneous things that describe a GLM coefficient.
  *
- * Notes for testing:
- * <ul>
- *   <li>Tests should assume that the Apache Commons stuff is correct -- really just need to establish that
- *   things have been reasonably wired.</li>
- * </ul>
+ * Note: this code assumes that a relatively small number of samples (less than thousands) are being provided.
+ * If this is not the case, the quantile estimation will need to be revisited.
  */
 class CoefficientSummary extends Serializable {
   private val summary:SummaryStatistics = new SummaryStatistics()
-  private val quantiles:Array[PSquarePercentile] = Array[PSquarePercentile](new PSquarePercentile(0.25),
-    new PSquarePercentile(0.50), new PSquarePercentile(0.75))
+  private val quantiles = new ArrayBuffer[Double]()
 
   def accumulate(x:Double): Unit = {
     summary.addValue(x)
-    quantiles.foreach { y => y.increment(x) }
+    quantiles += x
   }
 
   def getMean(): Double = summary.getMean
@@ -44,16 +42,17 @@ class CoefficientSummary extends Serializable {
 
   def getStdDev(): Double = summary.getStandardDeviation
 
-  def estimateFirstQuartile(): Double = quantiles(0).quantile()
+  def estimateFirstQuartile(): Double = quantiles.sortWith(_ < _)(1 * quantiles.size / 4)
 
-  def estimateMedian(): Double = quantiles(1).quantile()
+  def estimateMedian(): Double = quantiles.sortWith(_ < _)(2 * quantiles.size / 4)
 
-  def estimateThirdQuartile(): Double = quantiles(2).quantile()
+  def estimateThirdQuartile(): Double = quantiles.sortWith(_ < _)(3 * quantiles.size / 4)
 
   def getCount(): Long = summary.getN
 
   override def toString():String = {
-    f"Range: [Min: $getMin%.03f, Q1: $estimateFirstQuartile%.03f, Med: $estimateMedian%.03f, Q3: $estimateThirdQuartile%.03f, Max: $getMax%.03f) " +
+    f"Range: [Min: $getMin%.03f, Q1: $estimateFirstQuartile%.03f, Med: $estimateMedian%.03f, " +
+      f"Q3: $estimateThirdQuartile%.03f, Max: $getMax%.03f) " +
     f"Mean: [$getMean%.03f], Std. Dev.[$getStdDev%.03f], # samples = [$getCount]"
   }
 }

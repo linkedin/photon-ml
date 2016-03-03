@@ -29,4 +29,8 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  * @param summary
  *                Computed feature summary
  */
-case class SystemReport(val nameToIndex: Map[String, Int], var params: Params, var summary: Option[BasicStatisticalSummary] = None) extends LogicalReport
+case class SystemReport(
+    val nameToIndex: Map[String, Int],
+    var params: Params,
+    var summary: Option[BasicStatisticalSummary] = None)
+  extends LogicalReport

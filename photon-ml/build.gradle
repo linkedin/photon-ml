@@ -44,3 +44,4 @@ dependencies {
   testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
   testRuntime("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
 }
+

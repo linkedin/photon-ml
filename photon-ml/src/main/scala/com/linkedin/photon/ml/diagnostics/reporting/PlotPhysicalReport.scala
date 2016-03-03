@@ -41,8 +41,14 @@ import scala.xml.parsing.NoBindingFactoryAdapter
  * @param title
  *              Plot title
  */
-class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Option[String] = None) extends VectorImagePhysicalReport(caption, title) {
-  override def asRasterizedImage(height:Int=PlotUtils.PLOT_HEIGHT, width:Int=PlotUtils.PLOT_WIDTH, dpi:Int=300):RasterizedImagePhysicalReport = {
+class PlotPhysicalReport(val plot:Chart, caption:Option[String] = None, title:Option[String] = None)
+  extends VectorImagePhysicalReport(caption, title) {
+
+  override def asRasterizedImage(
+      height: Int = PlotUtils.PLOT_HEIGHT,
+      width: Int = PlotUtils.PLOT_WIDTH,
+      dpi: Int = 300): RasterizedImagePhysicalReport = {
+
     val resultImage: Image = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
     val graphics: Graphics2D = resultImage.getGraphics.asInstanceOf[Graphics2D]
     plot.paint(graphics, width, height)

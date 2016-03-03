@@ -101,7 +101,9 @@ subprojects {
     exclude group: 'com.google.collections', module: 'google-collections'
     exclude group: 'kafka', module: 'kafka'
   }
+}
 
+subprojects {
   plugins.withType(JavaPlugin) {
     tasks.withType(Test) {
       useTestNG()
@@ -143,25 +145,26 @@ subprojects {
   }
 
   tasks.withType(ScalaCompile) {
-    scalaCompileOptions.fork = true
-
-    scalaCompileOptions.additionalParameters = [
-      "-feature",
-      "-deprecation",
-      "-verbose",  // Output what the compiler is doing
-      "-optimize",
-      "-explaintypes",  // Explain type errors in more detail.
-      "-g:vars",
-      "-language:reflectiveCalls", // Used for config structural typing
-      "-language:postfixOps"
-    ]
-
+    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-unchecked", "-Yinline-warnings", "-g:vars"]
     scalaCompileOptions.useAnt = false
 
     configure(scalaCompileOptions.forkOptions) {
       memoryMaximumSize = '1g'
     }
     configurations.zinc.transitive = true
+  }
+
+  apply plugin: 'scalaStyle'
+
+  // scalaStyle config. This evals after ScalaPlugin so that it will have access to sourceSets
+  plugins.withType(ScalaPlugin) {
+    afterEvaluate {
+      scalaStyle {
+        configLocation = 'scalastyle-config.xml'
+        includeTestSourceDirectory = false
+        source = sourceSets.main.scala
+      }
+    }
   }
 }
 

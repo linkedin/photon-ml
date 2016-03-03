@@ -20,7 +20,8 @@ import com.xeiam.xchart.{StyleManager, ChartBuilder, QuickChart, Chart}
 /**
  * Simple, naive transformation (don't attempt to do anything clever with plots, for example) for HL test results
  */
-class NaiveHosmerLemeshowToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[HosmerLemeshowReport, SectionPhysicalReport] {
+class NaiveHosmerLemeshowToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[HosmerLemeshowReport, SectionPhysicalReport] {
 
   import NaiveHosmerLemeshowToPhysicalReportTransformer._
 
@@ -42,12 +43,17 @@ class NaiveHosmerLemeshowToPhysicalReportTransformer extends LogicalToPhysicalRe
 
   private def generateExplanatoryText(hlr: HosmerLemeshowReport): SectionPhysicalReport = {
     val binningMsg = new SectionPhysicalReport(Seq(new SimpleTextPhysicalReport(hlr.binningMsg)), BINNING_HEADER)
-    val chisquareCalcMsg = new SectionPhysicalReport(Seq(new SimpleTextPhysicalReport(hlr.chiSquareCalculationMsg)), CHI_SQUARE_HEADER)
-    val cutoffMsg = new BulletedListPhysicalReport(hlr.getCutoffAnalysis.map(x => new SimpleTextPhysicalReport(x)))
+    val chisquareCalcMsg = new SectionPhysicalReport(
+      Seq(new SimpleTextPhysicalReport(hlr.chiSquareCalculationMsg)), CHI_SQUARE_HEADER)
+
+    val cutoffMsg = new BulletedListPhysicalReport(
+      hlr.getCutoffAnalysis.map(x => new SimpleTextPhysicalReport(x)))
+
     val analysisMsg = new BulletedListPhysicalReport(Seq(
       new SimpleTextPhysicalReport(hlr.getTestDescription()),
       new SimpleTextPhysicalReport(hlr.getPointProbabilityAnalysis()),
       cutoffMsg))
+
     new SectionPhysicalReport(Seq(analysisMsg, binningMsg, chisquareCalcMsg), ANALYSIS_HEADER)
   }
 }
@@ -139,9 +145,9 @@ object NaiveHosmerLemeshowToPhysicalReportTransformer {
 
   private def plotCumulativeCounts(x:Array[PredictedProbabilityVersusObservedFrequencyHistogramBin]): Chart = {
     val xSeries = x.map(y => (y.lowerBound + y.upperBound)/2.0)
-    val posSamples = x.map(_.observedPosCount.toDouble).scanLeft(0.0)(_+_).tail
-    val negSamples = x.map(_.observedNegCount.toDouble).scanLeft(0.0)(_+_).tail
-    val totalSamples = x.map(y => (y.observedNegCount + y.observedPosCount).toDouble).scanLeft(0.0)(_+_).tail
+    val posSamples = x.map(_.observedPosCount.toDouble).scanLeft(0.0)(_ + _).tail
+    val negSamples = x.map(_.observedNegCount.toDouble).scanLeft(0.0)(_ + _).tail
+    val totalSamples = x.map(y => (y.observedNegCount + y.observedPosCount).toDouble).scanLeft(0.0)(_ + _).tail
 
 
     val builder = new ChartBuilder()

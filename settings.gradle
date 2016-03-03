@@ -20,6 +20,7 @@ scalaCrossBuild {
   buildDefaultOnly false
 
   projectsToCrossBuild(
+    'photon-all',
     'photon-ml',
     'photon-test'
   )

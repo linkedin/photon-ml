@@ -20,15 +20,17 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 
 
 /**
- * Class for the squared loss function: sum_i w_i/2*(theta'x_i + o_i - y_i)**2, where theta is the weight coefficients of
- * the data features to be estimated, (y_i, x_i, o_i, w_i) are the label, features, offset, and weight of
+ * Class for the squared loss function: sum_i w_i/2*(theta'x_i + o_i - y_i)**2, where theta is the weight coefficients
+ * of the data features to be estimated, (y_i, x_i, o_i, w_i) are the label, features, offset, and weight of
  * the i'th labeled data point, respectively.
  * @author xazhang
  * @author dpeng
  */
 
-class SquaredLossFunction(normalizationContext: ObjectProvider[NormalizationContext] = new SimpleObjectProvider[NormalizationContext](NoNormalization)) extends
-  GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext)
+class SquaredLossFunction(
+    normalizationContext: ObjectProvider[NormalizationContext] =
+      new SimpleObjectProvider[NormalizationContext](NoNormalization))
+  extends GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext)
 
 /**
  * A single square loss function to represent
@@ -61,4 +63,3 @@ object PointwiseSquareLossFunction extends PointwiseLossFunction {
    */
   override def d2lossdz2(margin: Double, label: Double): Double = 1d
 }
-

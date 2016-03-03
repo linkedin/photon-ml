@@ -17,12 +17,14 @@ package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 import java.util.Date
 
 import com.linkedin.photon.ml.Params
-import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, SimpleTextPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.{
+  BulletedListPhysicalReport, SimpleTextPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
 
 /**
  * Convert parameters into a presentable form.
  */
-class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[ParametersReport, SectionPhysicalReport] {
+class ParametersToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[ParametersReport, SectionPhysicalReport] {
 
   import ParametersToPhysicalReportTransformer._
 
@@ -31,8 +33,8 @@ class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
     new SectionPhysicalReport(Seq(contents), PARAMETERS_SECTION_HEADER)
   }
 
-  private def render(params: Params): BulletedListPhysicalReport = {
-    val jobParameters = new BulletedListPhysicalReport(
+  private def getJobParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("Job parameters"),
         new BulletedListPhysicalReport(
@@ -44,8 +46,10 @@ class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
         )
       )
     )
+  }
 
-    val ioParameters = new BulletedListPhysicalReport(
+  private def getIoParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("I/O parameters"),
         new BulletedListPhysicalReport(
@@ -55,12 +59,15 @@ class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
             new SimpleTextPhysicalReport(s"Field name type: ${params.fieldsNameType}")
           )
             ++ params.validateDirOpt.toSeq.map(x => new SimpleTextPhysicalReport(s"Validation data directory: $x"))
-            ++ params.summarizationOutputDirOpt.toSeq.map(x => new SimpleTextPhysicalReport(s"Summarization output directory: $x"))
+            ++ params.summarizationOutputDirOpt.toSeq
+                .map(x => new SimpleTextPhysicalReport(s"Summarization output directory: $x"))
         )
       )
     )
+  }
 
-    val modelParameters = new BulletedListPhysicalReport(
+  private def getModelParameters(params: Params) = {
+    new BulletedListPhysicalReport(
       Seq(
         new SimpleTextPhysicalReport("Modeling parameters"),
         new BulletedListPhysicalReport(
@@ -79,8 +86,14 @@ class ParametersToPhysicalReportTransformer extends LogicalToPhysicalReportTrans
         )
       )
     )
+  }
 
-    new BulletedListPhysicalReport(Seq(jobParameters, ioParameters, modelParameters))
+  private def render(params: Params): BulletedListPhysicalReport = {
+    new BulletedListPhysicalReport(
+      Seq(
+        getJobParameters(params),
+        getIoParameters(params),
+        getModelParameters(params)))
   }
 }
 

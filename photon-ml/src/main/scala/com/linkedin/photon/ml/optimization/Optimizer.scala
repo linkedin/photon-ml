@@ -14,11 +14,11 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, norm}
-import breeze.numerics.abs
+import breeze.linalg.Vector
 import breeze.optimize.FirstOrderMinimizer._
 import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.function.DiffFunction
+import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
 /**
@@ -26,49 +26,108 @@ import org.apache.spark.rdd.RDD
  * @tparam Datum Generic type of input data point
  * @tparam Function Generic type of the objective function to be optimized.
  * @author xazhang
+ * @author bdrew
  */
-trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Serializable {
+trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Serializable with Logging {
 
   /**
-   * The convergence tolerance of iterations for this optimizer. Smaller value will lead to higher
-   * accuracy with the cost of more iterations (Tron and L-BFGS have different default tolerance parameter value).
+   * Maximum iterations
    */
-  var tolerance: Double = 1e-6
+  def getMaximumIterations: Int
 
   /**
-   * The maximal number of iterations for the optimizer (Tron and L-BFGS have different default maxNumIterations parameter value).
+   * Set maximum iterations
    */
-  var maxNumIterations: Int = 80
+  def setMaximumIterations(maxIterations: Int): Unit
 
   /**
-   *  Map of feature index to bounds. Will be populated if the user specifies box constraints
+   * Map of feature index to bounds. Will be populated if the user specifies box constraints
    */
-  var constraintMap: Option[Map[Int, (Double, Double)]] = None
+  def getConstraintMap: Option[Map[Int, (Double, Double)]]
+
+  def setConstraintMap(constraintMap: Option[Map[Int, (Double, Double)]]): Unit
 
   /**
    * Initialize the context of the optimizer, e.g., the history of LBFGS and trust region size of Tron
    */
-  protected def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], function: Function, coefficients: Vector[Double]): Unit
+  protected def init(
+    state: OptimizerState,
+    data: Either[RDD[Datum], Iterable[Datum]],
+    function: Function,
+    coefficients: Vector[Double]): Unit
 
   /**
-   * Clean the context of the optimizer, e.g., the history of LBFGS and trust region size of Tron
+   * @note This function should be protected and not exposed
+   * Clear the optimizer, e.g., the history of LBFGS and trust region size of Tron
    */
-  protected def clean(): Unit
+  def clearOptimizerInnerState(): Unit
+
+  /**
+   * Clear the [[OptimizationStatesTracker]]
+   */
+  protected def clearOptimizationStatesTracker(): Unit
+
+  /**
+   * Whether to reuse the previous initial state or not. When warm-start training is desired, i.e. in grid-search
+   * based hyper-parameter tuning, this field is recommended to set to true for consistent convergence check.
+   */
+  protected[ml] var isReusingPreviousInitialState: Boolean = false
 
   /**
    * The initial state of the optimizer, used for checking convergence
    */
-  private var initialState: Option[OptimizerState] = None
+  def getInitialState: Option[OptimizerState]
 
   /**
    * The current state of the optimizer
    */
-  private var currentState: Option[OptimizerState] = None
+  def getCurrentState: Option[OptimizerState]
 
   /**
    * The previous state of the optimizer
    */
-  private var previousState: Option[OptimizerState] = None
+  def getPreviousState: Option[OptimizerState]
+
+  /**
+   * Set the initial state for the optimizer
+   * @param state The initial state
+   */
+  protected def setInitialState(state: Option[OptimizerState]): Unit
+
+  /**
+   * Set the current state for the optimizer
+   * @param state The current state
+   */
+  protected def setCurrentState(state: Option[OptimizerState]): Unit
+
+  /**
+   * Set the previous state for the optimizer
+   * @param state The previous sate
+   */
+  protected def setPreviousState(state: Option[OptimizerState]): Unit
+
+  /**
+   * Get the convergence tolerance
+   **/
+  def getTolerance: Double
+
+  /** Set the tolerance */
+  def setTolerance(tolerance: Double): Unit
+
+  /** Return our convergence reason */
+  def convergenceReason: Option[ConvergenceReason]
+
+  /** True if the optimizer thinks it's done. */
+  def isDone: Boolean
+
+  /** True if state tracking is enabled */
+  def stateTrackingEnabled: Boolean
+
+  /** Set state tracking */
+  def setStateTrackingEnabled(enabled: Boolean): Unit
+
+  /** Get the state tracker */
+  def getStateTracker: Option[OptimizationStatesTracker]
 
   /**
    * Get the optimizer's state
@@ -93,49 +152,6 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
     OptimizerState(coefficients, value, gradient, iter)
   }
 
-  /**
-   * Clean the states of this optimizer
-   */
-  def cleanOptimizerState() = {
-    clean()
-    constraintMap = None
-    initialState = None
-    currentState = None
-    previousState = None
-  }
-
-  def convergenceReason: Option[ConvergenceReason] = {
-    if (initialState.isEmpty || currentState.isEmpty || previousState.isEmpty)
-      None
-    else if (currentState.get.iter >= maxNumIterations)
-      Some(MaxIterations)
-    else if (currentState.get.iter == previousState.get.iter)
-      Some(ObjectiveNotImproving)
-    else if (abs(currentState.get.value - previousState.get.value) <= tolerance * initialState.get.value)
-      Some(FunctionValuesConverged)
-    else if (norm(currentState.get.gradient, 2) <= tolerance * norm(initialState.get.gradient, 2))
-      Some(GradientConverged)
-    else
-      None
-  }
-
-  /** True if the optimizer thinks it's done. */
-  private def done = convergenceReason.nonEmpty
-
-  /**
-   * Whether to track the optimization states (for validating and debugging purpose)
-   */
-  protected[ml] var isTrackingState: Boolean = true
-
-  /**
-   * Track down the optimizer's states trajectory
-   */
-  protected var statesTracker: OptimizationStatesTracker = _
-
-  protected[ml] def getStatesTracker: Option[OptimizationStatesTracker] = {
-    if (isTrackingState) Some(statesTracker)
-    else None
-  }
 
   /**
    * Run one iteration of the optimizer given the current state
@@ -176,21 +192,22 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
   protected def optimize(data: Either[RDD[Datum], Iterable[Datum]],
                          objectiveFunction: Function,
                          initialCoefficients: Vector[Double]): (Vector[Double], Double) = {
-    if (isTrackingState) statesTracker = new OptimizationStatesTracker()
-    currentState = Some(getState(data, objectiveFunction, initialCoefficients))
-    // initialize the optimizer state if it's not being initialized yet
-    if (initialState.isEmpty) {
-      initialState = currentState
+    clearOptimizerInnerState()
+    clearOptimizationStatesTracker()
+    setCurrentState(Some(getState(data, objectiveFunction, initialCoefficients)))
+    // Initialize the optimizer state if it's not being initialized yet, or if we don't need to reuse the existing
+    // initial state for consistent convergence check across multiple runs.
+    if (getInitialState.isEmpty || !isReusingPreviousInitialState) {
+      setInitialState(getCurrentState)
     }
-    init(currentState.get, data, objectiveFunction, initialCoefficients)
+    init(getCurrentState.get, data, objectiveFunction, initialCoefficients)
     do {
-      val updatedState = runOneIteration(data, objectiveFunction, currentState.get)
-      previousState = currentState
-      if (isTrackingState) statesTracker.track(updatedState)
-      currentState = Some(updatedState)
-    } while (!done)
-    if (isTrackingState) statesTracker.convergenceReason = convergenceReason
-    clean()
+      val updatedState = runOneIteration(data, objectiveFunction, getCurrentState.get)
+      setPreviousState(getCurrentState)
+      setCurrentState(Some(updatedState))
+    } while (!isDone)
+    val currentState = getCurrentState
+    logInfo(s"After optimizing, current state: $currentState")
     (currentState.get.coefficients, currentState.get.value)
   }
 

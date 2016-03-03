@@ -20,7 +20,8 @@ import com.xeiam.xchart.{StyleManager, ChartBuilder}
 /**
  * Prepare a feature importance report for presentation
  */
-class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalReportTransformer[FeatureImportanceReport, SectionPhysicalReport] {
+class FeatureImportanceToPhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[FeatureImportanceReport, SectionPhysicalReport] {
 
   import FeatureImportanceToPhysicalReportTransformer._
 
@@ -44,6 +45,7 @@ class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalRepo
     val sorted = report.rankToImportance.toList.sortBy(_._1)
     val xSeries = sorted.map(_._1).toArray
     val ySeries = sorted.map(_._2).toArray
+
     chart.addSeries(report.importanceDescription, xSeries, ySeries)
     chart.getStyleManager.setXAxisMin(0)
     chart.getStyleManager.setXAxisMax(100)
@@ -51,7 +53,12 @@ class FeatureImportanceToPhysicalReportTransformer extends LogicalToPhysicalRepo
   }
 
   def generateDescription(report: FeatureImportanceReport): BulletedListPhysicalReport = {
-    new BulletedListPhysicalReport(report.featureImportance.toList.sortBy(_._2._2).reverse.map(x => new SimpleTextPhysicalReport(x._2._3)))
+    new BulletedListPhysicalReport(
+      report.featureImportance
+        .toList
+        .sortBy(_._2._2)
+        .reverse
+        .map(x => new SimpleTextPhysicalReport(x._2._3)))
   }
 }
 

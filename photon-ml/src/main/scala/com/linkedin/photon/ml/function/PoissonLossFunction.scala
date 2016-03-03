@@ -26,8 +26,10 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
  * @author asaha
  * @author dpeng
  */
-class PoissonLossFunction(normalizationContext: ObjectProvider[NormalizationContext] = new SimpleObjectProvider[NormalizationContext](NoNormalization)) extends
-  GeneralizedLinearModelLossFunction(PointwisePoissonLossFunction, normalizationContext)
+class PoissonLossFunction(
+    normalizationContext: ObjectProvider[NormalizationContext] =
+      new SimpleObjectProvider[NormalizationContext](NoNormalization))
+  extends GeneralizedLinearModelLossFunction(PointwisePoissonLossFunction, normalizationContext)
 
 /**
  * Poisson regression single loss function

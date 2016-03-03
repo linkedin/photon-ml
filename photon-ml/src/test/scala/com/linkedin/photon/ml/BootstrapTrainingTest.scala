@@ -100,16 +100,15 @@ class BootstrapTrainingTest {
   @DataProvider
   def invalidArgumentCases(): Array[Array[Any]] = {
     Array(
-      Array("Bad concurrency", 0, 4, 0.66),
-      Array("Bad samples", 1, 0, 0.66),
-      Array("Bad sample rate", 1, 4, 0.00),
-      Array("Bad sample rate", 1, 4, 1.11)
+      Array("Bad samples", 0, 0.66),
+      Array("Bad sample rate", 4, 0.00),
+      Array("Bad sample rate", 4, 1.11)
     )
   }
 
   @Test(dataProvider = "invalidArgumentCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def checkInvalidArgumentCases(desc: String, numConc: Int, numSamp: Int, frac: Double) = {
-    BootstrapTraining.bootstrap(numConc, numSamp, 0L, frac, null, null, null)
+  def checkInvalidArgumentCases(desc: String, numSamp: Int, frac: Double) = {
+    BootstrapTraining.bootstrap(numSamp, frac, null, null, null, null)
   }
 }
 

@@ -64,10 +64,24 @@ import org.apache.spark.rdd.RDD
  * Reference1: [[http://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf]]
  * Reference2: [[http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/distributed-liblinear/spark/running_spark_liblinear.html]]
  * @tparam Datum Generic type of input data point
+ *
+ * @param maxNumImprovementFailures
+ * The maximum allowed number of times in a row the objective hasn't improved.
+ * For most optimizers using line search, like L-BFGS, the improvement failure is not supposed to happen,
+ * because any improvement failure should be captured during the line search step.
+ * And here we are trying to capture the improvement failure after the gradient step. As a result,
+ * any improvement failure in this cases should be resulted by some bug and we should not tolerate it.
+ * However, for optimizers like TRON, maxNumImprovementFailures is set to 5, because occasional improvement failure is
+ * acceptable.
+
  * @author xazhang
  * @author dpeng
+ * @author bdrew
  */
-class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]] with Logging {
+class TRON[Datum <: DataPoint](
+    var maxNumImprovementFailures: Int = TRON.DEFAULT_MAX_NUM_FAILURE)
+  extends AbstractOptimizer[Datum, TwiceDiffFunction[Datum]](
+    tolerance = TRON.DEFAULT_TOLERANCE, maxNumIterations = TRON.DEFAULT_MAX_ITER) {
 
   /**
    * Customized optimization parameter for Tron
@@ -75,15 +89,6 @@ class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]
   maxNumIterations = TRON.DEFAULT_MAX_ITER
   tolerance = TRON.DEFAULT_TOLERANCE
 
-  /**
-   * The maximum allowed number of times in a row the objective hasn't improved.
-   * For most optimizers using line search, like L-BFGS, the improvement failure is not supposed to happen,
-   * because any improvement failure should be captured during the line search step.
-   * And here we are trying to capture the improvement failure after the gradient step. As a result,
-   * any improvement failure in this cases should be resulted by some bug and we should not tolerate it.
-   * However, for optimizers like TRON, maxNumImprovementFailures is set to 5, because occasional improvement failure is acceptable.
-   */
-  var maxNumImprovementFailures = TRON.DEFAULT_MAX_NUM_FAILURE
 
   /**
    * Initialize the hyper-parameters for Tron. See the Reference2 for more details on the hyper-parameters.
@@ -96,17 +101,23 @@ class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]
    */
   private var delta = Double.MaxValue
 
-  override def init(state: OptimizerState, data: Either[RDD[Datum], Iterable[Datum]], diffFunction: TwiceDiffFunction[Datum], initialCoef: Vector[Double]) = {
+  def init(
+      state: OptimizerState,
+      data: Either[RDD[Datum], Iterable[Datum]],
+      diffFunction: TwiceDiffFunction[Datum],
+      initialCoef: Vector[Double]) {
     delta = norm(state.gradient, 2)
   }
 
-  override def clean() = {
+  override def clearOptimizerInnerState() {
     delta = Double.MaxValue
   }
 
-  override def runOneIteration(dataPoints: Either[RDD[Datum], Iterable[Datum]],
-                               objectiveFunction: TwiceDiffFunction[Datum],
-                               state: OptimizerState): OptimizerState = {
+  def runOneIteration(
+      dataPoints: Either[RDD[Datum], Iterable[Datum]],
+      objectiveFunction: TwiceDiffFunction[Datum],
+      state: OptimizerState): OptimizerState = {
+
     val distributedOptimization = dataPoints.isLeft
     val lastCoefficients =
       if (distributedOptimization) {
@@ -125,7 +136,9 @@ class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]
       //retry the Tron optimization with tne shrunken trust region boundary (delta) until either
       // 1. the function value is improved; or
       // 2. the maximum number of improvement failures reached.
-      val (cgIter, step, residual) = TRON.truncatedConjugateGradientMethod(dataPoints, objectiveFunction, lastCoefficients, lastFunctionGradient, delta)
+      val (cgIter, step, residual) = TRON.truncatedConjugateGradientMethod(
+        dataPoints, objectiveFunction, lastCoefficients, lastFunctionGradient, delta)
+
       val updatedCoefficients =
         if (distributedOptimization) {
           val updated = dataPoints.left.get.sparkContext.broadcast(lastCoefficients.left.get.value + step)
@@ -155,8 +168,11 @@ class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]
 
       /* Compute prediction alpha*stepNorm of the step. */
       val alpha =
-        if (updatedFunctionValue - lastFunctionValue - gs <= 0) sigma3
-        else math.max(sigma1, -0.5 * (gs / (updatedFunctionValue - lastFunctionValue - gs)))
+        if (updatedFunctionValue - lastFunctionValue - gs <= 0) {
+          sigma3
+        } else {
+          math.max(sigma1, -0.5 * (gs / (updatedFunctionValue - lastFunctionValue - gs)))
+        }
 
       /* Update the trust region bound according to the ratio of actual to predicted reduction. */
       if (actualReduction < eta0 * predictedReduction) {
@@ -177,14 +193,20 @@ class TRON[Datum <: DataPoint] extends Optimizer[Datum, TwiceDiffFunction[Datum]
         // if the actual function value reduction is greater than eta0 times the predicted function value reduction,
         // we accept the updated coefficients and move forward with the updated optimizer state
         val coefficients =
-          if (distributedOptimization) updatedCoefficients.left.get.value
-          else updatedCoefficients.right.get
+          if (distributedOptimization) {
+            updatedCoefficients.left.get.value
+          } else {
+            updatedCoefficients.right.get
+          }
+
         improved = true
         /* project coefficients into constrained space, if any, after the optimization step */
         val projectedCoefficients = OptimizationUtils.projectCoefficientsToHypercube(coefficients, constraintMap)
-        finalState = OptimizerState(projectedCoefficients, updatedFunctionValue, updatedFunctionGradient, state.iter + 1)
+        finalState = OptimizerState(projectedCoefficients, updatedFunctionValue, updatedFunctionGradient,
+          state.iter + 1)
       } else {
-        // otherwise, the updated coefficients will not be accepted, and the old state will be returned along with warning messages
+        // otherwise, the updated coefficients will not be accepted, and the old state will be returned along with
+        // warning messages
         logWarning(s"actual objective function value reduction is smaller than predicted " +
           s"(actualReduction = $actualReduction < eta0 = $eta0 * predictedReduction = $predictedReduction)")
         if (updatedFunctionValue < -1.0e+32) {
@@ -226,11 +248,12 @@ object TRON extends Logging {
    *                           In the case of Tron, this corresponds to the trust region size (delta).
    * @return Tuple3(number of CG iterations, solution, residual)
    */
-  private def truncatedConjugateGradientMethod[Datum <: DataPoint](dataPoints: Either[RDD[Datum], Iterable[Datum]],
-                                                                   objectiveFunction: TwiceDiffFunction[Datum],
-                                                                   coefficients: Either[Broadcast[Vector[Double]], Vector[Double]],
-                                                                   gradient: Vector[Double],
-                                                                   truncationBoundary: Double): (Int, Vector[Double], Vector[Double]) = {
+  private def truncatedConjugateGradientMethod[Datum <: DataPoint](
+      dataPoints: Either[RDD[Datum], Iterable[Datum]],
+      objectiveFunction: TwiceDiffFunction[Datum],
+      coefficients: Either[Broadcast[Vector[Double]], Vector[Double]],
+      gradient: Vector[Double],
+      truncationBoundary: Double): (Int, Vector[Double], Vector[Double]) = {
 
     val step = Utils.initializeZerosVectorOfSameType(gradient)
     val residual = gradient * -1.0
@@ -250,11 +273,13 @@ object TRON extends Logging {
             //The calculation is done in a distributed fashion
             case Left(dataPointsRDD) =>
               val broadcastedDirection = dataPointsRDD.sparkContext.broadcast(direction)
-              val hessianVector = objectiveFunction.hessianVector(dataPointsRDD, coefficients.left.get, broadcastedDirection)
+              val hessianVector = objectiveFunction.hessianVector(
+                dataPointsRDD, coefficients.left.get, broadcastedDirection)
               broadcastedDirection.unpersist()
               hessianVector
             //The calculation is done on a local machine
-            case Right(dataPointsIterable) => objectiveFunction.hessianVector(dataPointsIterable, coefficients.right.get, direction)
+            case Right(dataPointsIterable) =>
+              objectiveFunction.hessianVector(dataPointsIterable, coefficients.right.get, direction)
           }
         }
         var alpha = rTr / direction.dot(Hd)

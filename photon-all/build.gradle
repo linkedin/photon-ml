@@ -1,0 +1,78 @@
+apply plugin: 'li-scala'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+dependencies {
+  compile project(":photon-ml$scalaSuffix")
+}
+
+// Configure the shadow plugin to contain all the runtime dependencies except
+// those which already live on the grid (such as Spark and Scala)
+configurations {
+  runtime {
+    exclude group: 'log4j'
+    exclude group: 'org.apache.spark'
+    exclude group: 'org.scala-lang'
+    exclude group: 'org.slf4j'
+    exclude group: 'xml-apis'
+  }
+}
+
+// Disable the creation of an Ivy dependency file for the shaded fat jar. This
+// file lists all the dependencies, which defeats the point of the fat jar.
+ivyForArchives.enabled = false
+
+// Disable the regular JAR task. We only want to generate the shaded fat jar.
+jar.enabled = false
+
+// Setup the javadoc and sources jars for the shaded fat jar
+javadocJar {
+  dependsOn ":photon-ml$scalaSuffix:scaladoc"
+  from { project(":photon-ml$scalaSuffix").scaladoc.destinationDir }
+}
+
+sourcesJar {
+  dependsOn ":photon-ml$scalaSuffix:sourcesJar"
+  from { project(":photon-ml$scalaSuffix").sourceSets.main.allScala }
+}
+
+shadowJar {
+  // Remove the classifier as we want the shadow jar to be the main jar
+  classifier = ''
+  configurations = [project.configurations.runtime]
+
+  // Exclude digital signatures and various service files not setup to be merged
+  exclude 'license/'
+  exclude 'META-INF/*.DSA'
+  exclude 'META-INF/*.RSA'
+  exclude 'META-INF/*.SF'
+  exclude 'META-INF/ASL2.0'
+  exclude 'META-INF/COPYRIGHT*'
+  exclude 'META-INF/DEPENDENCIES'
+  exclude 'META-INF/LICENSE*'
+  exclude 'META-INF/NOTICE*'
+  exclude 'META-INF/README*'
+
+  // Merge the remaining META-INF files
+  mergeServiceFiles()
+
+  // Relocate the packages in the shadow jar that we want shaded
+  relocate 'com.linkedin.photon.avro', 'photonml.shaded.com.linkedin.photon.avro'
+  relocate 'com.thoughtworks.paranamer', 'photonml.shaded.com.thoughtworks.paranamer'
+  relocate 'com.xeiam.xchart', 'photonml.shaded.com.xeiam.xchart'
+  relocate 'de.erichseifert', 'photonml.shaded.de.erichseifert'
+  relocate 'org.apache.avro', 'photonml.shaded.org.apache.avro'
+  relocate 'org.apache.batik', 'photonml.shaded.org.apache.batik'
+  relocate 'org.apache.commons.collections', 'photonml.shaded.org.apache.commons.collections'
+  relocate 'org.apache.commons.compress', 'photonml.shaded.org.apache.commons.compress'
+  relocate 'org.apache.commons.lang', 'photonml.shaded.org.apache.commons.lang'
+  relocate 'org.apache.velocity', 'photonml.shaded.org.apache.velocity'
+  relocate 'org.apache.xmlcommons', 'photonml.shaded.org.apache.xmlcommons'
+  relocate 'org.codehaus.jackson', 'photonml.shaded.org.codehaus.jackson'
+  relocate 'org.tukaani', 'photonml.shaded.org.tukaani'
+  relocate 'org.xerial.snappy', 'photonml.shaded.org.xerial.snappy'
+  relocate 'scopt', 'photonml.shaded.scopt'
+}
+
+artifacts {
+  archives shadowJar
+}
