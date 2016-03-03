@@ -14,31 +14,26 @@
  */
 package com.linkedin.photon.ml
 
-import OptionNames._
-import com.linkedin.photon.ml.optimization.OptimizerType
-import OptimizerType.OptimizerType
-import com.linkedin.photon.ml.optimization.RegularizationType
-import RegularizationType.RegularizationType
-import com.linkedin.photon.ml.supervised.TaskType
-import TaskType.TaskType
-import breeze.linalg.Vector
 import java.io.File
 
-import com.linkedin.photon.ml.io.{GLMSuite, FieldNamesType}
+import breeze.linalg.{DenseVector, Vector, norm}
+import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
+import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.test.{SparkTestUtils, CommonTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import org.apache.commons.io.FileUtils
+import org.testng.Assert._
+import org.testng.annotations.{DataProvider, Test}
 
 import scala.collection.mutable
 import scala.io.Source
-
-import breeze.linalg.{norm, DenseVector}
-import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
 
 /**
  * This class tests Driver with a set of important configuration parameters
@@ -56,6 +51,50 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithTRON(): Unit = sparkTestSelfServeContext("testRunWithTRON") {
+    val tmpDir = getTmpDir + "/testRunWithTRON"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += OptimizerType.TRON.toString()
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithLBFGS(): Unit = sparkTestSelfServeContext("testRunWithLBFGS") {
+    val tmpDir = getTmpDir + "/testRunWithLBFGS"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += OptimizerType.LBFGS.toString()
 
     MockDriver.runLocally(args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
@@ -189,8 +228,30 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += NormalizationType.STANDARDIZATION.toString()
 
     MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRuntWithTreeAggregate(): Unit = sparkTestSelfServeContext("testRuntWithTreeAggregate") {
+    val tmpDir = getTmpDir + "/testRuntWithTreeAggregate"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+
+    args += CommonTestUtils.fromOptionNameToArg(TREE_AGGREGATE_DEPTH)
+    args += 2.toString
+
+    MockDriver.runLocally(args = args.toArray,
                           expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = true)
+                          expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.size, 4)
     // Verify lambdas
@@ -245,11 +306,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Verify lambdas
     assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
 
-    // The selected best model is supposed to be of lambda 0.1
+    // The selected best model is supposed to be of lambda 100.0 with features scaling with standard deviation
     val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
     assertEquals(bestModel.size, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 1.0)
+    assertEquals(bestModel(0)._1, 100.0)
   }
 
   @Test
@@ -302,14 +363,20 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @DataProvider
   def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
-    val base = "src/integTest/resources/DriverIntegTest/input/"
+    val base = getClass.getClassLoader.getResource("DriverIntegTest/input").getPath
     val models = Map(
-      TaskType.LINEAR_REGRESSION -> ("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
-      TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561))
+      TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
+      TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
+      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636)
+
+      // Note: temporarily disabled due to OFFREL-934. Details explained in the ticket.
+      //      , TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561)
+    )
 
     val lambdas = List(0, 1, 10, 100, 1000, 10000)
 
-    val regularizations = Map(RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
+    val regularizations = Map(
+      RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
       RegularizationType.L2 ->(OptimizerType.TRON, lambdas),
       RegularizationType.L1 ->(OptimizerType.LBFGS, lambdas),
       RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, lambdas))
@@ -318,12 +385,25 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
     }).map(x => {
       val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) = x
-      val outputDir = s"${taskType}_${regType}"
+      val trainEnabled = (TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM != taskType)
+
+      val outputDir = s"${taskType}_${regType}_${trainEnabled}"
+
       val args = mutable.ArrayBuffer[String]()
       args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
-      args += 1e-4.toString
+      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+        args += 1e-1.toString
+      } else {
+        args += 1e-6.toString
+      }
+
       args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-      args += 200.toString
+      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+        args += 10.toString
+      } else {
+        args += 200.toString
+      }
+
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
       args += regType.toString
       args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
@@ -335,7 +415,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
       args += taskType.toString
       args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
-      args += FieldNamesType.TRAINING_EXAMPLE.toString
+      if (TaskType.POISSON_REGRESSION == taskType) {
+        args += FieldNamesType.RESPONSE_PREDICTION.toString
+      } else {
+        args += FieldNamesType.TRAINING_EXAMPLE.toString
+      }
       args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
       args += s"$base/$testData"
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
@@ -346,6 +430,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += outputDir + "/summary"
       args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
       args += NormalizationType.STANDARDIZATION.toString
+      args += CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS)
+      args += trainEnabled.toString
       Array(outputDir, args.toArray, numDim, numSamp)
     }).toArray
   }

@@ -29,7 +29,8 @@ class SectionToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node]
                             htmlPrefix: String,
                             svgPrefix: String) extends SpecificRenderer[SectionPhysicalReport, Node] {
 
-  private val baseRenderer = new BaseSequencePhysicalReportRender[PhysicalReport, Node](renderStrategy, numberingContext) {
+  private val baseRenderer =
+    new BaseSequencePhysicalReportRender[PhysicalReport, Node](renderStrategy, numberingContext) {
 
     protected def coalesce(partiallyRendered: Seq[(List[Int], PhysicalReport, Node)]): Node = {
       new Group(partiallyRendered.map(x => x._3))
@@ -38,7 +39,9 @@ class SectionToHTMLRenderer(renderStrategy: RenderStrategy[PhysicalReport, Node]
 
   def render(section: SectionPhysicalReport): Node = {
     val children = baseRenderer.render(section).asInstanceOf[Group]
-    val anchor = new Elem(htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", section.getId.toString, Null), namespaceBinding, true, new Text(section.title))
+    val anchor = new Elem(
+      htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "id", section.getId.toString, Null), namespaceBinding,
+      true, new Text(section.title))
     val heading = new Elem(htmlPrefix, "h2", Null, namespaceBinding, true, anchor)
     new Elem(htmlPrefix, "div", getAttributes(section.getId), namespaceBinding, true, heading, children)
   }

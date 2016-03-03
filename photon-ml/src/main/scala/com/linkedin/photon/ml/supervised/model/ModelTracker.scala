@@ -18,7 +18,10 @@ import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
 import scala.language.existentials
 
 // existentials is imported to suppress the warning message:
-// photon_trunk/photon-ml/src/main/scala/com/linkedin/photon/ml/supervised/model/ModelTracker.scala:11: inferred existential type Option[(com.linkedin.photon.ml.optimization.OptimizationStatesTracker, Array[_$1])] forSome { type _$1 <: com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel }, which cannot be expressed by wildcards,  should be enabled
+// photon_trunk/photon-ml/src/main/scala/com/linkedin/photon/ml/supervised/model/ModelTracker.scala:11: inferred
+//   existential type Option[(com.linkedin.photon.ml.optimization.OptimizationStatesTracker, Array[_$1])] forSome
+//   { type _$1 <: com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel }, which cannot be expressed by
+//   wildcards,  should be enabled
 // by making the implicit value scala.language.existentials visible.
 // This can be achieved by adding the import clause 'import scala.language.existentials'
 // or by setting the compiler option -language:existentials.
@@ -29,4 +32,6 @@ import scala.language.existentials
  * A model tracker to include optimization state and per iteration models.
  * @author dpeng
  */
-case class ModelTracker(optimizationStateTracker: OptimizationStatesTracker, models: Array[_ <: GeneralizedLinearModel])
+case class ModelTracker(
+  optimizationStateTrackerString: String,
+  models: Array[_ <: GeneralizedLinearModel])

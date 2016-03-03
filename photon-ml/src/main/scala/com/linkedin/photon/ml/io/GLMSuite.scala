@@ -40,12 +40,17 @@ import scala.util.parsing.json.JSON
  * A suite responsible for transforming raw data into [[data.LabeledPoint]]
  * and write the learned [[GeneralizedLinearModel]] in text or avro files.
  * @param fieldNamesType Input Avro file's format, which contains the information of each field's name
- * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning purpose
+ * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning
+ *                     purpose
  * @author xazhang
  * @author nkatariy
  */
-@SerialVersionUID(1L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
-class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraintString: Option[String]) extends Serializable {
+@SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
+class GLMSuite(
+    fieldNamesType: FieldNamesType,
+    addIntercept: Boolean,
+    constraintString: Option[String])
+  extends Serializable {
 
   /**
    * The input avro files' field names
@@ -56,31 +61,42 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
     case _ => throw new IllegalArgumentException(s"Input training file's field name type cannot be ${fieldNamesType}")
   }
 
-  /*
-  Mapping the String based feature names to integer based Ids, for more efficient memory usage when persisting data into memory
-  Making it transient in order to avoid it being serialized to the executors, which could be expensive and is unnecessary.
-  */
+  /**
+   * Mapping the String based feature names to integer based Ids, for more efficient memory usage when persisting data
+   * into memory. Making it transient in order to avoid it being serialized to the executors, which could be expensive
+   * and is unnecessary.
+   */
   @transient var featureKeyToIdMap: Map[String, Int] = Map.empty
 
   /* Map of feature indices to their (lowerBound, upperBound) constraints */
   @transient var constraintFeatureMap: Option[Map[Int, (Double, Double)]] = None
 
+  /* set of selected features. If empty, all features are used */
+  @transient var selectedFeatures: Set[String] = Set.empty[String]
+
   /**
    * Read the [[data.LabeledPoint]] from a directory of Avro files
    * @param sc The Spark context
    * @param inputDir Input directory of the Avro files
-   * @param minNumPartitions Set the minimum number of Hadoop splits to generate. This would be potentially helpful when the
-   *                         number of default Hadoop splits is small. Note that when the default number of Hadoop splits
-   *                         (from HDFS) is larger than minNumPartitions, then minNumPartitions will be ignored and the
-   *                         number of partitions of the resulting RDD will be same as the default number of Hadoop splits.
-   *                         In short, minNumPartitions will *only* be able to increase the number of partitions.
-   * @return A RDD of [[data.LabeledPoint]]
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
+   * @param minNumPartitions Set the minimum number of Hadoop splits to generate. This would be potentially helpful when
+   *                         the number of default Hadoop splits is small. Note that when the default number of Hadoop
+   *                         splits (from HDFS) is larger than minNumPartitions, then minNumPartitions will be ignored
+   *                         and the number of partitions of the resulting RDD will be same as the default number of
+   *                         Hadoop splits. In short, minNumPartitions will *only* be able to increase the number of
+   *                         partitions.
+   * @return Tuple of (number of features in dataset, number of selected features, A RDD of [[data.LabeledPoint]])
    */
-  def readLabeledPointsFromAvro(sc: SparkContext, inputDir: String, minNumPartitions: Int): RDD[LabeledPoint] = {
+  def readLabeledPointsFromAvro(sc: SparkContext, inputDir: String,
+                                selectedFeaturesFile: Option[String], minNumPartitions: Int): RDD[LabeledPoint] = {
     val avroRDD = AvroIOUtils.readFromAvro[GenericRecord](sc, inputDir, minNumPartitions)
+    if (selectedFeatures.isEmpty) {
+      selectedFeatures = getSelectedFeatureSetFromFile(sc, selectedFeaturesFile)
+    }
     /*Only load the featureKeyToIdMap once*/
     if (featureKeyToIdMap.isEmpty) {
-      featureKeyToIdMap = loadFeatureKeyToIdMap(avroRDD)
+      featureKeyToIdMap = loadFeatureKeyToIdMap(avroRDD, selectedFeatures)
     }
     if (constraintFeatureMap.isEmpty) {
       constraintFeatureMap = createConstraintFeatureMap()
@@ -89,11 +105,33 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
   }
 
   /**
-   * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids
-   * @param avroRDD The avro files that contains feature information
-   * @return The Map that maps String based features keys to Integer based feature Ids
+   * Takes the selected features file and returns the set of keys corresponding to the these features
+   *
+   * @param sc The spark context
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
+   * @return set of selected features
    */
-  private def loadFeatureKeyToIdMap[T <: GenericRecord](avroRDD: RDD[T]): Map[String, Int] = {
+  def getSelectedFeatureSetFromFile(sc: SparkContext, selectedFeaturesFile: Option[String]): Set[String] = {
+    selectedFeaturesFile match {
+      case Some(filename: String) =>  AvroIOUtils.readFromAvro[GenericRecord](sc, filename, 1)
+        .map(x => Utils.getFeatureKey(x, "name", "term", GLMSuite.DELIMITER))
+        .collect().toSet
+      case _ => Set.empty[String]
+    }
+  }
+
+  /**
+   * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids. Only
+   * use features provided by the given selected features set. If the set is empty however, all features will
+   * be used.
+   *
+   * @param avroRDD The avro files that contains feature information
+   * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
+   * @return Tuple of (number of distinct features, map that maps String based features keys to integer based featureIds)
+   */
+  private def loadFeatureKeyToIdMap[T <: GenericRecord](avroRDD: RDD[T],
+                                                        selectedFeatures: Set[String]): Map[String, Int] = {
     def getFeatures(avroRecord: GenericRecord): Array[String] = {
       avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
@@ -104,9 +142,15 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
           throw new IOException(s"Avro field [${fieldNames.features}] (val = ${other.toString()}) is not a list")
       }
     }
-    val featureSet = avroRDD.flatMap { k => getFeatures(k) }.distinct().collect().toSet
-    if (addIntercept) (featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap
-    else featureSet.zipWithIndex.toMap
+
+    val featureRDD = avroRDD.flatMap { k => getFeatures(k) }.distinct()
+    val featureSet = if (selectedFeatures.isEmpty) featureRDD.collect().toSet
+                     else featureRDD.filter(selectedFeatures.contains).collect().toSet
+    if (addIntercept) {
+      (featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap
+    } else {
+      featureSet.zipWithIndex.toMap
+    }
   }
 
   /**
@@ -135,8 +179,8 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
         parsedConstraints match {
           case Some(parsed: List[Map[String, Any]]) =>
             parsed.foreach(entry => {
-              val message = s"Each map in the constraint map is expected to have the feature name field specified. The " +
-                  s"input constraint string was [$constraintString] and the malformed map was [$entry]"
+              val message = s"Each map in the constraint map is expected to have the feature name field specified. " +
+                  s"The input constraint string was [$constraintString] and the malformed map was [$entry]"
               val name = Utils.getKeyFromMapOrElse[String](entry, ConstraintMapKeys.name.toString, Left(message))
               val term = Utils.getKeyFromMapOrElse[String](entry, ConstraintMapKeys.term.toString, Left(message))
               val lowerBound = Utils.getKeyFromMapOrElse[Double](entry, ConstraintMapKeys.lowerBound.toString,
@@ -145,8 +189,8 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
                 Right(Double.PositiveInfinity))
 
               if (lowerBound > upperBound) {
-                throw new IllegalArgumentException(s"The lower bound [$lowerBound] is incorrectly specified as greater " +
-                    s"than the upper bound [$upperBound] for the feature with name [$name] and term [$term].")
+                throw new IllegalArgumentException(s"The lower bound [$lowerBound] is incorrectly specified as " +
+                    s"greater than the upper bound [$upperBound] for the feature with name [$name] and term [$term].")
               } else if (lowerBound == Double.NegativeInfinity && upperBound == Double.PositiveInfinity) {
                 println(s"The lower and upper bound are respectively -Inf and +Inf for the " +
                     s"feature with name [$name] and term [$term]. Ignoring bounds...")
@@ -216,12 +260,16 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
     val broadcastedFeatureKeyToIdMap = avroRDD.sparkContext.broadcast(featureKeyToIdMap)
     val numFeatures = featureKeyToIdMap.values.max + 1
 
-    def parseAvroRecord(avroRecord: GenericRecord, localFeatureKeyToIdMap: Map[String, Int]): LabeledPoint = {
+    // Returns None if no features in the record are in the featureKeyToIdMap
+    def parseAvroRecord(avroRecord: GenericRecord, localFeatureKeyToIdMap: Map[String, Int]): Option[LabeledPoint] = {
       val features = avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
           val nnz =
-            if (addIntercept) recordList.size() + 1
-            else recordList.size()
+            if (addIntercept) {
+              recordList.size() + 1
+            } else {
+              recordList.size()
+            }
           val pairsArr = new mutable.ArrayBuffer[(Int, Double)](nnz)
           val iter = recordList.iterator
           while (iter.hasNext) {
@@ -246,16 +294,26 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
         case other =>
           throw new IOException(s"Avro field [${fieldNames.features}] (val = ${String.valueOf(other)}) is not a list")
       }
-      val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
-      val offset =
-        if (avroRecord.get(fieldNames.offset) != null) Utils.getDoubleAvro(avroRecord, fieldNames.offset)
-        else 0
-      val weight =
-        if (avroRecord.get(fieldNames.weight) != null) Utils.getDoubleAvro(avroRecord, fieldNames.weight)
-        else 1
-      new LabeledPoint(response, features, offset, weight)
+      if (features.activeSize == 0 || (addIntercept && features.activeSize == 1)) {
+        None
+      } else {
+        val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
+        val offset =
+          if (avroRecord.get(fieldNames.offset) != null) {
+            Utils.getDoubleAvro(avroRecord, fieldNames.offset)
+          } else {
+            0
+          }
+        val weight =
+          if (avroRecord.get(fieldNames.weight) != null) {
+            Utils.getDoubleAvro(avroRecord, fieldNames.weight)
+          } else {
+            1
+          }
+        Some(new LabeledPoint(response, features, offset, weight))
+      }
     }
-    avroRDD.map { k => parseAvroRecord(k, broadcastedFeatureKeyToIdMap.value) }
+    avroRDD.flatMap { k => parseAvroRecord(k, broadcastedFeatureKeyToIdMap.value) }
   }
 
   /**
@@ -264,16 +322,24 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
    * @param models The map of (Model Id -> [[GeneralizedLinearModel]])
    * @param modelDir The directory for the output text files
    */
-  def writeModelsInText(sc: SparkContext, models: Iterable[(Double, GeneralizedLinearModel)], modelDir: String) = {
+  def writeModelsInText(
+      sc: SparkContext,
+      models: Iterable[(Double, GeneralizedLinearModel)],
+      modelDir: String) {
+
     val broadCastedIdToFeatureKeyMap = sc.broadcast(featureKeyToIdMap.map { case (str, int) => (int, str) })
     sc.parallelize(models.toSeq, models.size).map { case (regWeight, model) =>
       val builder = new mutable.ArrayBuffer[String]()
       model.intercept match {
         case Some(intercept) =>
           val tokens = GLMSuite.INTERCEPT_NAME_TERM.split(GLMSuite.DELIMITER)
-          if (tokens.length == 1) builder += s"${tokens(0)}\t${""}\t$intercept\t$regWeight"
-          else if (tokens.length == 2) builder += s"${tokens(0)}\t${tokens(1)}\t$intercept\t$regWeight"
-          else throw new IOException(s"unexpected intercept name: ${GLMSuite.INTERCEPT_NAME_TERM}")
+          if (tokens.length == 1) {
+            builder += s"${tokens(0)}\t${""}\t$intercept\t$regWeight"
+          } else if (tokens.length == 2) {
+            builder += s"${tokens(0)}\t${tokens(1)}\t$intercept\t$regWeight"
+          } else {
+            throw new IOException(s"unexpected intercept name: ${GLMSuite.INTERCEPT_NAME_TERM}")
+          }
         case None =>
       }
       val idToFeatureKeyMap = broadCastedIdToFeatureKeyMap.value
@@ -281,9 +347,13 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
         idToFeatureKeyMap.get(index) match {
           case Some(nameAndTerm) =>
             val tokens = nameAndTerm.split(GLMSuite.DELIMITER)
-            if (tokens.length == 1) builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
-            else if (tokens.length == 2) builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
-            else throw new IOException(s"unknown name and terms: $nameAndTerm")
+            if (tokens.length == 1) {
+              builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
+            } else if (tokens.length == 2) {
+              builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
+            } else {
+              throw new IOException(s"unknown name and terms: $nameAndTerm")
+            }
           case None =>
         }
       }
@@ -308,35 +378,51 @@ class GLMSuite(fieldNamesType: FieldNamesType, addIntercept: Boolean, constraint
         (splits(0), "")
       }
     }
-    val featureTuples = keyToIdMap.toArray.sortBy[Int] { case (key, id) => id }.map { case (key, id) => featureStringToTuple(key) }
+    val featureTuples = keyToIdMap.toArray
+      .sortBy[Int] { case (key, id) => id }
+      .map { case (key, id) => featureStringToTuple(key) }
 
-    val summaryList = List(summary.max.toArray, summary.min.toArray, summary.mean.toArray, summary.normL1.toArray, summary.normL2.toArray,
-      summary.numNonzeros.toArray, summary.variance.toArray).transpose.map {
-      case List(max, min, mean, normL1, normL2, numNonZeros, variance) => new BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
-    }
+    val summaryList = List(
+      summary.max.toArray, summary.min.toArray, summary.mean.toArray, summary.normL1.toArray, summary.normL2.toArray,
+      summary.numNonzeros.toArray, summary.variance.toArray)
+        .transpose
+        .map {
+          case List(max, min, mean, normL1, normL2, numNonZeros, variance) =>
+            new BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
+        }
 
     val outputAvro = featureTuples.zip(summaryList).map {
       case ((name, term), items) =>
-        val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(Map("max" -> items.max, "min" -> items.min, "mean" -> items.mean,
-          "normL1" -> items.normL1, "normL2" -> items.normL2,
-          "numNonzeros" -> items.numNonzeros, "variance" -> items.variance))
+        val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(
+          Map(
+            "max" -> items.max,
+            "min" -> items.min,
+            "mean" -> items.mean,
+            "normL1" -> items.normL1,
+            "normL2" -> items.normL2,
+            "numNonzeros" -> items.numNonzeros,
+            "variance" -> items.variance))
+
         FeatureSummarizationResultAvro.newBuilder()
           .setFeatureName(name)
           .setFeatureTerm(term)
           .setMetrics(jMap).build()
     }
     val outputFile = new Path(outputDir, GLMSuite.DEFAULT_AVRO_FILE_NAME).toString
-    AvroIOUtils.saveAsSingleAvro(sc, outputAvro, outputFile, FeatureSummarizationResultAvro.getClassSchema.toString, forceOverwrite = true)
+    AvroIOUtils.saveAsSingleAvro(
+      sc, outputAvro, outputFile, FeatureSummarizationResultAvro.getClassSchema.toString, forceOverwrite = true)
   }
 
   /**
-   * Get the intercept index. This is used especially for normalization because the intercept should be treated differently.
+   * Get the intercept index. This is used especially for normalization because the intercept should be treated
+   * differently.
    * @return The option for the intercept index value
    */
   def getInterceptId: Option[Int] = featureKeyToIdMap.get(GLMSuite.INTERCEPT_NAME_TERM)
 }
 
-private case class BasicSummaryItems(max: Double, min: Double, mean: Double, normL1: Double, normL2: Double, numNonzeros: Double, variance: Double)
+private case class BasicSummaryItems(
+  max: Double, min: Double, mean: Double, normL1: Double, normL2: Double, numNonzeros: Double, variance: Double)
 
 protected[ml] object GLMSuite {
   /**
@@ -356,7 +442,6 @@ protected[ml] object GLMSuite {
    */
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_NAME_TERM = INTERCEPT_NAME + DELIMITER + INTERCEPT_TERM
-
+  val INTERCEPT_NAME_TERM = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
   val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
 }

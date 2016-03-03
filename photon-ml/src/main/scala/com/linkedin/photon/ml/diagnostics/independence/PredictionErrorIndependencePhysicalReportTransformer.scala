@@ -17,7 +17,9 @@ package com.linkedin.photon.ml.diagnostics.independence
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
-class PredictionErrorIndependencePhysicalReportTransformer extends LogicalToPhysicalReportTransformer[PredictionErrorIndependenceReport, SectionPhysicalReport] {
+class PredictionErrorIndependencePhysicalReportTransformer
+  extends LogicalToPhysicalReportTransformer[PredictionErrorIndependenceReport, SectionPhysicalReport] {
+
   import PredictionErrorIndependencePhysicalReportTransformer._
 
   override def transform(report: PredictionErrorIndependenceReport): SectionPhysicalReport = {
@@ -46,7 +48,15 @@ object PredictionErrorIndependencePhysicalReportTransformer {
                        .xAxisTitle("Prediction")
                        .yAxisTitle("Label - Prediction")
                        .build()
+
+    val xRange = PlotUtils.getRange(prediction)
+    val yRange = PlotUtils.getRange(error)
+
     chart.addSeries("Prediction error", prediction, error)
+    chart.getStyleManager.setXAxisMin(xRange._1)
+    chart.getStyleManager.setXAxisMax(xRange._2)
+    chart.getStyleManager.setYAxisMin(yRange._1)
+    chart.getStyleManager.setYAxisMax(yRange._2)
 
     new SectionPhysicalReport(Seq(new PlotPhysicalReport(chart)), PLOT_SUBSECTION_TITLE)
   }

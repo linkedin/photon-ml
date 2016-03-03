@@ -43,7 +43,8 @@ class RegularizationContext(val regularizationType: RegularizationType, elasticN
     case (RegularizationType.L1, _) => 1.0d
     case (RegularizationType.L2, _) => 0.0d
     case (RegularizationType.NONE, _) => 0.0d
-    case _ => throw new IllegalArgumentException(s"Wrong input: RegularizationContext($regularizationType, $elasticNetParam)")
+    case _ => throw new IllegalArgumentException(
+      s"Wrong input: RegularizationContext($regularizationType, $elasticNetParam)")
   }
 
   /**

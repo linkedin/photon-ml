@@ -17,11 +17,12 @@ package com.linkedin.photon.ml.diagnostics.hl
 /**
  * Default score binning approach.
  *
- * The strategy is very simple: pick what appears to be a sensible number of bins given the volume of data. This means that
- * sometimes, we will pick a number of bins that is too small (i.e. less than dimension + 1) because there isn't enough data
- * to support a finer binning strategy.
+ * The strategy is very simple: pick what appears to be a sensible number of bins given the volume of data. This means
+ * that sometimes, we will pick a number of bins that is too small (i.e. less than dimension + 1) because there isn't
+ * enough data to support a finer binning strategy.
  */
-class DefaultPredictedProbabilityVersusObservedFrequencyBinner extends AbstractPredictedProbabilityVersusObservedFrequencyBinner {
+class DefaultPredictedProbabilityVersusObservedFrequencyBinner
+  extends AbstractPredictedProbabilityVersusObservedFrequencyBinner {
 
   import DefaultPredictedProbabilityVersusObservedFrequencyBinner._
 
@@ -30,10 +31,12 @@ class DefaultPredictedProbabilityVersusObservedFrequencyBinner extends AbstractP
     val desiredBinsBasedOnDimensions = estimateDesiredBinsFromDimension(numDimensions)
     val desiredBinsBasedOnData = estimateDesiredBinsFromData(numItems)
     val actualBins: Int = math.min(desiredBinsBasedOnData, desiredBinsBasedOnDimensions).toInt
-    val okBinsMsg: String = if (actualBins >= desiredBinsBasedOnDimensions)
+    val okBinsMsg: String = if (actualBins >= desiredBinsBasedOnDimensions) {
       "Sufficient bins for a discriminative test"
-    else
-      "Not enough bins for a discriminative test; please be careful when interpreting these results or rerun with more data"
+    } else {
+      "Not enough bins for a discriminative test; please be careful when interpreting these results or rerun with " +
+      "more data"
+    }
 
     msg.append(s"Number of test set samples: $numItems\n")
       .append(s"Sample dimensionality: $numDimensions\n")

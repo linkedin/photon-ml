@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
+
 /**
  * Test building NormalizationContext from summary.
  * A sophisticated test with the heart data set is also performed to verify the standardization
@@ -93,7 +94,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
   @DataProvider(name = "generateStandardizationTestData")
   def generateStandardizationTestData(): Array[Array[Any]] = {
-    (for (x <- OptimizerType.values; y <- TaskType.values) yield Array[Any](x, y)).toArray
+    (for (x <- OptimizerType.values; y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)) yield Array[Any](x, y)).toArray
   }
 
   /**
@@ -160,20 +161,20 @@ class NormalizationContextIntegTest extends SparkTestUtils {
       case OptimizerType.TRON =>
         new TRON[LabeledPoint]
     }
-    optimizer.tolerance = 1.0E-6
-    optimizer.maxNumIterations = 100
+    optimizer.setTolerance(1.0E-6)
+    optimizer.setMaximumIterations(100)
 
     broadcast.unpersist()
     // Train the original data with a loss function binding normalization
     val (model1, objective1) = optimizer.optimize(heartDataRDD, lossFunctionWithNormalization)
     println("Optimization 1: Train the original data with a loss function binding standardization")
-    println(optimizer.getStatesTracker.get.toString)
+    println(optimizer.getStateTracker.get.toString)
     println("Model 1: " + model1)
     println("Objective 1: " + objective1)
     // Train the transformed data with a normal loss function
     val (model2, objective2) = optimizer.optimize(transformedRDD, plainLossFunction)
     println("Optimization 2: Train the transformed data with a plain loss function")
-    println(optimizer.getStatesTracker.get.toString)
+    println(optimizer.getStateTracker.get.toString)
     println("Model 2: " + model2)
     println("Objective 2: " + objective2)
 

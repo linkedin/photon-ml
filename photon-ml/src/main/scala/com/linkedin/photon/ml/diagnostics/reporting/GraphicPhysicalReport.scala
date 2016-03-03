@@ -22,7 +22,9 @@ package com.linkedin.photon.ml.diagnostics.reporting
  * @param title
  *
  */
-abstract class GraphicPhysicalReport(caption:Option[String] = None, title:Option[String] = None) extends AbstractPhysicalReport {
+abstract class GraphicPhysicalReport(caption:Option[String] = None, title:Option[String] = None)
+  extends AbstractPhysicalReport {
+
   def getCaption():Option[String] = caption
   def getTitle():Option[String] = title
   override def toString():String = {
