@@ -1,8 +1,7 @@
 package com.linkedin.photon.ml.function
 
+import breeze.linalg.{axpy, Vector}
 
-
-import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{ObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.spark.broadcast.Broadcast
@@ -133,4 +132,23 @@ class GeneralizedLinearModelLossFunction(
 
     throw new UnsupportedOperationException("Do not call GeneralizedLinearModelLossFunction.calculateAt")
   }
+
+  /**
+   * Compute the diagonal of the hessian matrix
+   *
+   * @param dataPoint the given data at which point to compute the hessian diagonal
+   * @param coefficients the coefficients
+   * @param cumHessianDiagonal the hessian diagonal accumulator
+   */
+  override protected[ml] def hessianDiagonalAt(
+      dataPoint: LabeledPoint,
+      coefficients: Vector[Double],
+      cumHessianDiagonal: Vector[Double]): Unit = {
+
+    val LabeledPoint(label, features, _, weight) = dataPoint
+    val margin = computeMargin(dataPoint, coefficients)
+    val D = singleLossFunction.d2lossdz2(margin, label)
+    axpy(weight * D, features :* features, cumHessianDiagonal)
+  }
+
 }
