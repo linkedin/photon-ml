@@ -21,7 +21,7 @@ object ModelTraining {
   /**
    * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
-   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or BINARY_CLASSIFICATION or POISSON_REGRESSION
+   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
    * @param optimizerType The type of optimizer that will be used to train the model
    * @param regularizationContext The type of regularization that will be used to train the model
    * @param regularizationWeights An array of regularization weights used to train the model
@@ -56,7 +56,7 @@ object ModelTraining {
   /**
    * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
-   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or BINARY_CLASSIFICATION or POISSON_REGRESSION
+   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
    * @param optimizerType The type of optimizer that will be used to train the model
    * @param regularizationContext The type of regularization that will be used to train the model
    * @param regularizationWeights An array of regularization weights used to train the model

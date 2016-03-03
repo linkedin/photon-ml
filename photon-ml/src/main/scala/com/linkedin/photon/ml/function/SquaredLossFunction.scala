@@ -1,7 +1,6 @@
 package com.linkedin.photon.ml.function
 
-
-import com.linkedin.photon.ml.data.{SimpleObjectProvider, ObjectProvider}
+import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 
 
