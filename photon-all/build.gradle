@@ -1,4 +1,4 @@
-apply plugin: 'li-scala'
+apply plugin: 'scala'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 dependencies {
@@ -19,21 +19,24 @@ configurations {
 
 // Disable the creation of an Ivy dependency file for the shaded fat jar. This
 // file lists all the dependencies, which defeats the point of the fat jar.
-ivyForArchives.enabled = false
+// TODO disabled for open source
+// ivyForArchives.enabled = false
 
 // Disable the regular JAR task. We only want to generate the shaded fat jar.
 jar.enabled = false
 
 // Setup the javadoc and sources jars for the shaded fat jar
+// TODO disabled for open source
+/*
 javadocJar {
   dependsOn ":photon-ml$scalaSuffix:scaladoc"
   from { project(":photon-ml$scalaSuffix").scaladoc.destinationDir }
 }
-
 sourcesJar {
   dependsOn ":photon-ml$scalaSuffix:sourcesJar"
   from { project(":photon-ml$scalaSuffix").sourceSets.main.allScala }
 }
+*/
 
 shadowJar {
   // Remove the classifier as we want the shadow jar to be the main jar
