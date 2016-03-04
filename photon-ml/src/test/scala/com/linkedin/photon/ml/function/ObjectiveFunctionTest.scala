@@ -83,7 +83,7 @@ class ObjectiveFunctionTest extends SparkTestUtils {
       }
 
       diffAdapted ++ twiceDiffAdapted
-    }).flatMap(_.iterator).map(x => Array(x._1, x._2, x._3))
+    }).flatMap(_.iterator).map(x => Array[Object](x._1, x._2, x._3))
   }
 
   /**
