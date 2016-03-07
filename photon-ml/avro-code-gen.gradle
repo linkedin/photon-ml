@@ -13,7 +13,7 @@ configurations {
 
 dependencies {
   compile spec.external.avro
-  avroCodeGenConf spec.product.'metronome-avro-tools'.'metronome-avro-compiler'
+  avroCodeGenConf spec.external.avroTools
   // add dependencies containing external type references here
 }
 
@@ -30,6 +30,12 @@ sourceSets {
   }
 }
 
+// The avro tools avro compiler doesn't automatically resolve schema dependencies, so we must provide
+// priority ordering for parent schema
+def baseSchema = [
+  'NameTermValueAvro.avsc'
+].collect { new File(avroSchemasDir, it) }
+
 task avroCodeGen {
   inputs.dir avroSchemasDir
   outputs.dir avroGeneratedSrcDir
@@ -41,8 +47,8 @@ task avroCodeGen {
     if((new File(avroSchemasDir)).exists()) {
       javaexec {
         classpath configurations.avroCodeGenConf
-        setMain 'com.linkedin.metronome.avro.SchemaCompiler'
-        args = [ avroSchemasDir, avroGeneratedSrcDir ]
+        setMain 'org.apache.avro.tool.Main'
+        args = [ 'compile', 'schema' ] + baseSchema + [ avroSchemasDir, avroGeneratedSrcDir ]
       }
     }
   }
