@@ -29,11 +29,12 @@ class CoordinateDescent(
    * Run coordinate descent
    *
    * @param numIterations number of iterations
+   * @param seed random seed (default: MathConst.RANDOM_SEED)
    * @return trained models
    */
-  def run(numIterations: Int): Map[String, Model] = {
+  def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): Map[String, Model] = {
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
-      val initializedModel = coordinate.initializeModel(seed = MathConst.RANDOM_SEED)
+      val initializedModel = coordinate.initializeModel(seed)
       initializedModel match {
         case rddLike: RDDLike => rddLike.setName(s"Initialized model with coordinate id $coordinateId")
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
