@@ -173,7 +173,7 @@ object RandomEffectCoordinate {
       .mapValues {
         case (((localDataSet, optimizationProblem), localModel)) =>
           val trainingLabeledPoints = localDataSet.dataPoints.map(_._2)
-          val (updatedLocalModel, _) = optimizationProblem.updatedCoefficientsMeans(trainingLabeledPoints, localModel)
+          val (updatedLocalModel, _) = optimizationProblem.updateCoefficientMeans(trainingLabeledPoints, localModel)
 
           (updatedLocalModel, optimizationProblem)
       }
