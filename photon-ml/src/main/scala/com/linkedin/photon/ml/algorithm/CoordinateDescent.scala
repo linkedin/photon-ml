@@ -13,9 +13,12 @@ import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
 /**
  * Coordinate descent implementation
  *
- * @param coordinates the individual optimization problem coordinates
+ * @param coordinates the individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
+ *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator training loss function evaluator
- * @param validatingDataAndEvaluatorOption optional validation data evaluator
+ * @param validatingDataAndEvaluatorOption optional validation data evaluator. The validating data is a [[RDD]] consists
+ *                                         of (global Id, [[GameData]] object pairs), there the global Id is a unique
+ *                                         identifier for each [[GameData]] object.
  * @param logger logger instance
  * @author xazhang
  */
