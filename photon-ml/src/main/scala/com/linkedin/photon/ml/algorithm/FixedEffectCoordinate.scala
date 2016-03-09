@@ -139,7 +139,7 @@ object FixedEffectCoordinate {
         .setName("In memory fixed effect training data set")
         .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val coefficients = fixedEffectModel.coefficients
-    val (updatedCoefficients, _) = optimizationProblem.updatedCoefficientsMeans(trainingData.values, coefficients)
+    val (updatedCoefficients, _) = optimizationProblem.updateCoefficientMeans(trainingData.values, coefficients)
     val updatedCoefficientsBroadcast = fixedEffectDataSet.sparkContext.broadcast(updatedCoefficients)
     val updatedFixedEffectModel = fixedEffectModel.update(updatedCoefficientsBroadcast)
     trainingData.unpersist()
