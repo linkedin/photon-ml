@@ -60,7 +60,7 @@ case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
    * @param previousModel the previous model
    * @return updated coefficients
    */
-  def updateCoefficientMeans(
+  def updatedCoefficientsMeans(
       labeledPoints: Iterable[LabeledPoint],
       previousModel: Coefficients): (Coefficients, Double) = {
 
@@ -93,7 +93,7 @@ case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
    * @param previousModel the previous model
    * @return updated coefficients
    */
-  def updateCoefficientMeans(
+  def updatedCoefficientsMeans(
       labeledPoints: RDD[LabeledPoint],
       previousModel: Coefficients): (Coefficients, Double) = {
 

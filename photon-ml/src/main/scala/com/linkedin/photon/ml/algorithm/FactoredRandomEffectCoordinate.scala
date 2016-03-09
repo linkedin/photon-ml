@@ -214,7 +214,7 @@ object FactoredRandomEffectCoordinate {
 
     val flattenedLatentProjectionMatrix = latentProjectionMatrix.flatten()
     val latentProjectionMatrixAsCoefficients = Coefficients(flattenedLatentProjectionMatrix, variancesOption = None)
-    val (updatedCoefficients, _) = optimizationProblem.updateCoefficientMeans(downSampledTrainingData.values,
+    val (updatedCoefficients, _) = optimizationProblem.updatedCoefficientsMeans(downSampledTrainingData.values,
       latentProjectionMatrixAsCoefficients)
     downSampledTrainingData.unpersist()
     val numRows = latentProjectionMatrix.rows
