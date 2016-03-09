@@ -1,6 +1,6 @@
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, sum}
+import breeze.linalg.{axpy, Vector, sum}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 
