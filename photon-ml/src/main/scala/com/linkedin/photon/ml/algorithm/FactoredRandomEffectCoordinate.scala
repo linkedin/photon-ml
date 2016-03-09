@@ -204,13 +204,12 @@ object FactoredRandomEffectCoordinate {
     val latentProjectionMatrix = projectionMatrix.matrix
     val globalIdPartitioner = randomEffectDataSet.globalIdPartitioner
     val sampler = optimizationProblem.sampler
-    val generatedTrainingData = crossProductFeaturesAndCoefficients(localDataSetRDD, coefficientsRDD,
-      threshold = MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+    val generatedTrainingData = kroneckerProductFeaturesAndCoefficients(localDataSetRDD, coefficientsRDD,
+      sparsityToleranceThreshold = MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
     val downSampledTrainingData = sampler.downSample(generatedTrainingData)
         .partitionBy(globalIdPartitioner)
         .setName("Generated training data for latent projection matrix")
         .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    val fixedEffectDataSet = new FixedEffectDataSet(downSampledTrainingData, featureShardId = "")
 
     val flattenedLatentProjectionMatrix = latentProjectionMatrix.flatten()
     val latentProjectionMatrixAsCoefficients = Coefficients(flattenedLatentProjectionMatrix, variancesOption = None)
@@ -224,21 +223,26 @@ object FactoredRandomEffectCoordinate {
   }
 
   /**
-   * Computes the feature and coefficient cross product
+   * Computes the kronecker product between the dataset's features and the coefficients. Here the kronercker product is
+   * defined as in [[https://en.wikipedia.org/wiki/Kronecker_product]], which is sometimes used interchangeably with
+   * the terminology "cross product" or "outer product".
    *
    * @param localDataSetRDD the dataset
    * @param coefficientsRDD the coefficients
-   * @param threshold the threshold
-   * @return cross product result
+   * @param sparsityToleranceThreshold if the product between a certain feature and coefficient is smaller than
+   *                                   sparsityToleranceThreshold, then it will be stored as 0 for sparsity
+   *                                   consideration.
+   * @return kronecker product result
    */
-  private def crossProductFeaturesAndCoefficients(
+  private def kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD: RDD[(String, LocalDataSet)],
       coefficientsRDD: RDD[(String, Coefficients)],
-      threshold: Double): RDD[(Long, LabeledPoint)] = {
+      sparsityToleranceThreshold: Double = 0.0): RDD[(Long, LabeledPoint)] = {
 
     localDataSetRDD.join(coefficientsRDD).flatMap { case (_, (localDataSet, coefficients)) =>
       localDataSet.dataPoints.map { case (globalId, labeledPoint) =>
-        val generatedFeatures = VectorUtils.kroneckerProduct(labeledPoint.features, coefficients.means, threshold)
+        val generatedFeatures = VectorUtils.kroneckerProduct(labeledPoint.features, coefficients.means,
+          sparsityToleranceThreshold)
         val generatedLabeledPoint =
           new LabeledPoint(labeledPoint.label, generatedFeatures, labeledPoint.offset, labeledPoint.weight)
 

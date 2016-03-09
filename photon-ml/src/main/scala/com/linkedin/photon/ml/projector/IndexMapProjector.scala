@@ -76,6 +76,6 @@ object IndexMapProjector {
       .filter { case (key, _) => map.contains(key) }
       .map { case (key, value) => (map(key), value) }.toArray
 
-    VectorUtils.indexAndValueArrayToVector(indexAndData, dimension)
+    VectorUtils.convertIndexAndValuePairArrayToVector(indexAndData, dimension)
   }
 }
