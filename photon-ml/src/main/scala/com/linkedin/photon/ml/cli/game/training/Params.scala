@@ -80,8 +80,9 @@ object Params {
           s"e.g. 20150501-20150631, default: ${defaultParams.trainDateRangeOpt}.")
         .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
       opt[Int]("num-days-data-for-training")
-        .text(s"Number of days of data used for training. Currently this parameter is only used in the daily " +
-          s"training pipeline. Default: ${defaultParams.numDaysDataForTraining}.")
+        .text(s"Number of days of data used for training. Currently this parameter is used in the daily " +
+          s"training pipeline, which specifies the number of days of data (since Yesterday) used for training. " +
+          s"Default: ${defaultParams.numDaysDataForTraining}.")
         .action((x, c) => c.copy(numDaysDataForTraining = Some(x)))
       opt[String]("validate-input-dirs")
         .text(s"Input directories of validating data in response prediction AVRO format, " +

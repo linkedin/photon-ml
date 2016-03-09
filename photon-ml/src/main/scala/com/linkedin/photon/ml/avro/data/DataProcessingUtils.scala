@@ -101,10 +101,10 @@ protected[avro] object DataProcessingUtils {
     ).foldLeft(Array[(Int, Double)]())(_ ++ _)
     val isAddingInterceptToFeatureMap = featureNameAndTermToIndexMap.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
     if (isAddingInterceptToFeatureMap) {
-      VectorUtils.indexAndValueArrayToSparseVector(featuresAsIndexValueArray ++
+      VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray ++
           Array(featureNameAndTermToIndexMap(NameAndTerm.INTERCEPT_NAME_AND_TERM) -> 1.0), maxFeatureIndex + 1)
     } else {
-      VectorUtils.indexAndValueArrayToSparseVector(featuresAsIndexValueArray, maxFeatureIndex + 1)
+      VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray, maxFeatureIndex + 1)
     }
   }
 }

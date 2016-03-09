@@ -7,24 +7,44 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 
 
 /**
+ * A utility object that contains some operations on [[Vector]].
  * @author xazhang
  */
 protected[ml] object VectorUtils {
 
   val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
 
-  def indexAndValueArrayToVector(
+  /**
+   * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[Vector]].
+   * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs of indices and data to be converted to a [[Vector]]
+   * @param length The length of the resulting vector
+   * @param sparseVectorActiveSizeToSizeRatio The ratio used to determine whether a [[DenseVector]] or a
+   *                                          [[SparseVector]] should be used to represent the underlying [[Vector]],
+   *                                          for example, if the active size of the underlying vector is smaller than
+   *                                          the length * sparseVectorActiveSizeToSizeRatio, then the [[SparseVector]]
+   *                                          is chosen to represent the underlying [[Vector]], otherwise
+   *                                          [[DenseVector]] is chosen.
+   * @return The converted [[Vector]]
+   */
+  def convertIndexAndValuePairArrayToVector(
       indexAndData: Array[(Int, Double)],
       length: Int,
       sparseVectorActiveSizeToSizeRatio: Double = SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO): Vector[Double] = {
     if (length * SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO < indexAndData.length) {
-      indexAndValueArrayToDenseVector(indexAndData, length)
+      convertIndexAndValuePairArrayToDenseVector(indexAndData, length)
     } else {
-      indexAndValueArrayToSparseVector(indexAndData, length)
+      convertIndexAndValuePairArrayToSparseVector(indexAndData, length)
     }
   }
 
-  def indexAndValueArrayToSparseVector(indexAndData: Array[(Int, Double)], length: Int): SparseVector[Double] = {
+  /**
+   * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[SparseVector]]
+   * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs
+   * @param length The length of the resulting sparse vector
+   * @return The converted [[SparseVector]]
+   */
+  def convertIndexAndValuePairArrayToSparseVector(indexAndData: Array[(Int, Double)], length: Int)
+  : SparseVector[Double] = {
     val sortedIndexAndData = indexAndData.sortBy(_._1)
     val index = new Array[Int](sortedIndexAndData.length)
     val data = new Array[Double](sortedIndexAndData.length)
@@ -37,7 +57,15 @@ protected[ml] object VectorUtils {
     new SparseVector[Double](index, data, length)
   }
 
-  def indexAndValueArrayToDenseVector(indexAndData: Array[(Int, Double)], length: Int): DenseVector[Double] = {
+  /**
+   * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[DenseVector]]
+   * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs
+   * @param length The length of the resulting dense vector
+   * @return The converted [[DenseVector]]
+   */
+  def convertIndexAndValuePairArrayToDenseVector(indexAndData: Array[(Int, Double)], length: Int)
+  : DenseVector[Double] = {
+
     val dataArray = new Array[Double](length)
     var i = 0
     while (i < indexAndData.length) {
@@ -50,6 +78,7 @@ protected[ml] object VectorUtils {
 
   /**
    * The Kronecker product between two vectors: vector1 \otimes vector2
+   * Wiki reference on the Kronecker product: [[https://en.wikipedia.org/wiki/Kronecker_product]]
    * @param vector1 The left vector
    * @param vector2 The right vector
    * @param threshold Threshold of the cross value
