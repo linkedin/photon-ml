@@ -9,24 +9,28 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * Sampler implementation for binary classification problems
+ * Down-sampler implementation for binary classification problems
+ *
+ * The positive instances are left as is. The negatives are down-sampled as per the down-sampling rate and their
+ * weight is appropriate scaled
  *
  * @param downSamplingRate the down sampling rate
+ *
  * @author xazhang
+ * @author nkatariy
  */
-class BinaryClassificationSampler(downSamplingRate: Double) extends Sampler with Serializable {
+class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
 
-  val isDownSampling = math.abs(downSamplingRate - 1) < MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
-
+  // TODO nkatariy We should have an assert on downsampling rate being > 0 and < 1 at runtime
   /**
-   * Downsample the dataset
+   * Down-sample the negatives in the dataset
    *
    * @param labeledPoints the dataset
    * @param seed random seed
-   * @return downsampled dataset
+   * @return down-sampled dataset
    */
-  override def downSample(
-      labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = Sampler.getSeed): RDD[(Long, LabeledPoint)] = {
+  override def downSample(labeledPoints: RDD[(Long, LabeledPoint)],
+                          seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)] = {
 
     labeledPoints.mapPartitionsWithIndex({ case (partitionIdx, iterator) =>
       val random = new Random(byteswap64(partitionIdx ^ seed))
