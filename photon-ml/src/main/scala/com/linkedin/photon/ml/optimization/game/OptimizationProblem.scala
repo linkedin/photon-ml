@@ -7,7 +7,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.sampler.{DefaultSampler, BinaryClassificationSampler, Sampler}
+import com.linkedin.photon.ml.sampler.{DefaultDownSampler, BinaryClassificationDownSampler, DownSampler}
 import com.linkedin.photon.ml.supervised.TaskType._
 
 /**
@@ -26,7 +26,7 @@ case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     objectiveFunction: F,
     lossFunction: F,
     regularizationWeight: Double,
-    sampler: Sampler) {
+    sampler: DownSampler) {
 
   /**
    * Compute the regularization term value
@@ -150,8 +150,8 @@ object OptimizationProblem {
     optimizer.isReusingPreviousInitialState = true
 
     val sampler = taskType match {
-      case LOGISTIC_REGRESSION => new BinaryClassificationSampler(downSamplingRate)
-      case LINEAR_REGRESSION => new DefaultSampler(downSamplingRate)
+      case LOGISTIC_REGRESSION => new BinaryClassificationDownSampler(downSamplingRate)
+      case LINEAR_REGRESSION => new DefaultDownSampler(downSamplingRate)
       case _ => throw new Exception(s"Sampler for taskType $taskType is currently not supported.")
     }
 
