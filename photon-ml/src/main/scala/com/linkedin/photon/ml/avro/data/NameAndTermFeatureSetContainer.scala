@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.util._
  * @param nameAndTermFeatureSets A [[Map]] of feature section key to [[NameAndTerm]] feature sets
  * @author xazhang
  */
-protected[avro] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
+protected[photon] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
 
   def getFeatureNameAndTermToIndexMap(featureSectionKeys: Set[String], isAddingIntercept: Boolean)
   : Map[NameAndTerm, Int] = {
@@ -49,7 +49,7 @@ protected[avro] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map
   }
 }
 
-protected[avro] object NameAndTermFeatureSetContainer {
+protected[photon] object NameAndTermFeatureSetContainer {
 
   /**
    * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
