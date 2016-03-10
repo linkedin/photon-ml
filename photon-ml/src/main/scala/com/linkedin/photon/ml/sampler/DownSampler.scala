@@ -8,23 +8,24 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * Interface for sampler implementations
+ * Interface for down-sampler implementations
  *
  * @author xazhang
+ * @author nkatariy
  */
-trait Sampler {
+trait DownSampler {
 
   /**
-   * Downsample the dataset
+   * Down-sample the dataset
    *
    * @param labeledPoints the dataset
    * @param seed random seed
-   * @return downsampled dataset
+   * @return down-sampled dataset
    */
-  def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = Sampler.getSeed): RDD[(Long, LabeledPoint)]
+  def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)]
 }
 
-protected object Sampler {
+protected object DownSampler {
   val random = new Random(MathConst.RANDOM_SEED)
 
   def getSeed: Long = random.nextLong()
