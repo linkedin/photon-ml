@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.util.Utils
 /**
  * @author xazhang
  */
-protected[avro] object AvroUtils {
+protected[photon] object AvroUtils {
 
   /**
    * Read Avro files from a directory
