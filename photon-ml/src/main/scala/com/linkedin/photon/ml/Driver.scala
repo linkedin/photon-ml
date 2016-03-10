@@ -58,7 +58,7 @@ import scala.xml.PrettyPrinter
  * model given the validating results </li>
  * </ul>
  * More detailed documentation can be found either through the comments and notations in the source code, or at
- * [[***REMOVED***]].
+ * [[TODO: wiki URL]].
  * @param params: The Photon-ML parameters [[Params]]], containing essential information
  *              for the underlying model training tasks.
  * @param sc: The Spark context.
@@ -458,7 +458,7 @@ protected[ml] class Driver(
  *
  * An example of running Photon-ML
  * through command line arguments can be found at
- * [[***REMOVED***]],
+ * [[TODO: wiki URL]],
  * however, please note that our plan is to not have Driver or the command line as the user-facing interface for Photon,
  * instead, the template library should be.
  *

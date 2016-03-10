@@ -25,7 +25,7 @@ import org.apache.spark.rdd.RDD
  * An aggregator to perform calculation on value and gradient for generalized linear model loss function, especially
  * in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
  *
- * Refer to ***REMOVED*** for a better
+ * Refer to [TODO wiki url] for a better
  * understanding of the algorithm.
  *
  * @param func A single loss function for the generalized linear model
