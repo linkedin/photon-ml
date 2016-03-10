@@ -16,6 +16,8 @@ apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
+  compile('joda-time:joda-time:2.7')
+
   compile('org.apache.avro:avro:1.7.5')
   compile('org.apache.avro:avro-compiler:1.7.5')
   compile('org.apache.avro:avro-mapred:1.7.5')

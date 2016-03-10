@@ -18,7 +18,7 @@ import com.linkedin.photon.ml.util.{IOUtils, Utils}
 /**
  * @author xazhang
  */
-protected[avro] object ModelProcessingUtils {
+protected[photon] object ModelProcessingUtils {
   private val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
   private val ID_INFO = "id-info"
   private val COEFFICIENTS = "coefficients"

@@ -18,7 +18,7 @@ import com.linkedin.photon.ml.util.{Utils, VectorUtils}
  * A collection of utility functions on Avro formatted data
  * @author xazhang
  */
-protected[avro] object DataProcessingUtils {
+protected[photon] object DataProcessingUtils {
 
   def parseAndGenerateGameDataSetFromGenericRecords(
       records: RDD[GenericRecord],
