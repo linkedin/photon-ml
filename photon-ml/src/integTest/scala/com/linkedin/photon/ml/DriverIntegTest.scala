@@ -367,7 +367,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val models = Map(
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
-      TaskType.POISSON_REGRESSION ->("proprietary_poisson_train.avro", "proprietary_poisson_test.avro", 27, 180636)
+      TaskType.POISSON_REGRESSION ->("poisson_train.avro", "poisson_test.avro", 27, 13547)
 
       // Note: temporarily disabled due to OFFREL-934. Details explained in the ticket.
       //      , TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561)
