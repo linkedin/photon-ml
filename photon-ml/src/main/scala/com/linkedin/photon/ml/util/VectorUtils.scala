@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.util
 
 
-import scala.collection.mutable
-
 import breeze.linalg.{DenseVector, SparseVector, Vector}
+
+import scala.collection.mutable
 
 
 /**
