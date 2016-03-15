@@ -22,13 +22,20 @@ import breeze.linalg.{norm, Vector, DenseMatrix, Matrix}
 import com.linkedin.photon.ml.constants.MathConst
 
 /**
- * A class for projection matrix that is used to project the features from their original space to a different (usually
- * with lower dimension) space
+ * A class for projection matrix that is used to project the features from their original space to a different
+ * (usually, a lower dimensional) space
  *
- * @param matrix projection matrix
+ * @param matrix The projection matrix. Currently, only dense matrices are supported for projection. An exception
+ *               is thrown if any other type of matrix is passed
  * @author xazhang
+ * @author nkatariy
  */
-case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
+case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector {
+  matrix match {
+    case x: DenseMatrix[Double] =>
+    case _ => throw new UnsupportedOperationException(s"Projection matrix of class ${matrix.getClass} for features " +
+      s"projection operation is not supported")
+  }
 
   override val projectedSpaceDimension = matrix.rows
   override val originalSpaceDimension = matrix.cols
@@ -40,12 +47,7 @@ case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
    * @return projected features
    */
   override def projectFeatures(features: Vector[Double]): Vector[Double] = {
-    matrix match {
-      case denseMatrix: DenseMatrix[Double] =>
-        matrix * features
-      case _ => throw new UnsupportedOperationException(s"Projection matrix of class ${matrix.getClass} for features " +
-          s"projection operation is not supported")
-    }
+    matrix * features
   }
 
   /**
@@ -56,9 +58,8 @@ case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector{
    */
   override def projectCoefficients(coefficients: Vector[Double]): Vector[Double] = {
     matrix match {
-      case denseMatrix: DenseMatrix[Double] => denseMatrix.t * coefficients
-      case _ => throw new UnsupportedOperationException(s"Projection matrix of class ${matrix.getClass} for " +
-          s"coefficients projection operation is not supported")
+      case dm: DenseMatrix[Double] =>  dm.t * coefficients
+      case _ => throw new RuntimeException("Should never reach here! Matrix should already be validated to be dense")
     }
   }
 
