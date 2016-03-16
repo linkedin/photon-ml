@@ -100,7 +100,8 @@ class BootstrapTrainingDiagnostic(
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       models: Map[Double, GeneralizedLinearModel],
       trainingData: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): Map[Double, BootstrapReport] = {
+      summary: Option[BasicStatisticalSummary],
+      seed: Long = System.nanoTime): Map[Double, BootstrapReport] = {
 
     val aggregators: Map[String, Seq[(GeneralizedLinearModel, Map[String, Double])] => Any] = Map(
       COEFFICIENTS_AGGREGATION -> BootstrapTraining.aggregateCoefficientConfidenceIntervals,

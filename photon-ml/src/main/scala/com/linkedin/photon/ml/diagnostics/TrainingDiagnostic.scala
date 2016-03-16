@@ -68,5 +68,6 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
       models:Map[Double, GeneralizedLinearModel],
       trainingData: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): Map[Double, D]
+      summary: Option[BasicStatisticalSummary],
+      seed: Long = System.nanoTime): Map[Double, D]
 }

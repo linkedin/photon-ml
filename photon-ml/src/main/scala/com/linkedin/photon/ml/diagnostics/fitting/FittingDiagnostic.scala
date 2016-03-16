@@ -49,7 +49,8 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       warmStart: Map[Double, GeneralizedLinearModel],
       trainingSet: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): Map[Double, FittingReport] = {
+      summary: Option[BasicStatisticalSummary],
+      seed: Long = System.nanoTime): Map[Double, FittingReport] = {
 
     val numSamples = trainingSet.count
     val dimension = trainingSet.first.features.size
@@ -57,7 +58,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
 
     if (numSamples > minSamples) {
       val tagged = trainingSet.mapPartitions(partition => {
-        val prng = new MersenneTwister(System.nanoTime)
+        val prng = new MersenneTwister(seed)
         val dist = new UniformIntegerDistribution(prng, 0, NUM_TRAINING_PARTITIONS)
         partition.map(x => (dist.sample(), x))
       }).cache.setName("Tagged samples for learning curves")

@@ -72,7 +72,8 @@ import scala.xml.PrettyPrinter
 protected[ml] class Driver(
     protected val params: Params,
     protected val sc: SparkContext,
-    protected val logger: LogWriter)
+    protected val logger: LogWriter,
+    protected val seed: Long = System.nanoTime)
   extends Logging {
 
   import com.linkedin.photon.ml.Driver._
@@ -376,7 +377,7 @@ protected[ml] class Driver(
       val lambdaModelMap: Map[Double, GeneralizedLinearModel] = lambdaModelTuples.toMap
 
       val lambdaFitMap: Map[Double, FittingReport] = if (params.trainingDiagnosticsEnabled) {
-        fitDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption)
+        fitDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption, seed)
       } else {
         Map.empty
       }
