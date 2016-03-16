@@ -60,7 +60,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    *
    * @param model the model to update
    */
-  override protected def updateModel(model: Model): (Model, OptimizationTracker) = {
+  override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         val (updatedFixedEffectModel, updatedOptimizationProblem) =

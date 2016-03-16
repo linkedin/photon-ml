@@ -110,9 +110,18 @@ class CoordinateDescent(
 
         // Update the model
         val modelUpdatingStartTime = System.nanoTime()
-        val partialScore = updatedScoresContainer.filterKeys(_ != coordinateId).values.reduce(_ + _)
+
         val oldModel = updatedModelContainer(coordinateId)
-        val (updatedModel, optimizationTracker) = coordinate.updateModel(oldModel, partialScore)
+        val (updatedModel, optimizationTracker) = if (updatedScoresContainer.keys.size > 1) {
+          // If there are other coordinates, collect their scores into a partial score and optimize
+          val partialScore = updatedScoresContainer.filterKeys(_ != coordinateId).values.reduce(_ + _)
+          coordinate.updateModel(oldModel, partialScore)
+
+        } else {
+          // Otherwise, just optimize
+          coordinate.updateModel(oldModel)
+        }
+
         updatedModel match {
           case rddLike: RDDLike =>
             rddLike.setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
