@@ -49,7 +49,7 @@ abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
 
   protected def updateCoordinateWithDataSet(dataSet: D): C
 
-  protected def updateModel(model: Model): (Model, OptimizationTracker)
+  def updateModel(model: Model): (Model, OptimizationTracker)
 
   def computeRegularizationTermValue(model: Model): Double
 }
