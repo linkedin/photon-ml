@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.model.Coefficients
  *
  * @param indexMapProjectorRDD The projectors
  */
-class IndexMapProjectorRDD(indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
+class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
   extends RandomEffectProjector with RDDLike {
 
   /**

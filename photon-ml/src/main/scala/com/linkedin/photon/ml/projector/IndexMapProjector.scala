@@ -14,26 +14,39 @@
  */
 package com.linkedin.photon.ml.projector
 
-import scala.collection.Map
-
-import breeze.linalg.{SparseVector, Vector}
-
+import breeze.linalg.Vector
 import com.linkedin.photon.ml.util.VectorUtils
+
+import scala.collection.Map
 
 /**
  * A projection map that maintains the one-to-one mapping of indices between the original and projected space
  *
+ * This is expected to be used in cases where we are training models on a subset of features so that it would not make
+ * sense to deal with vectors of the size of the original dimension.
+ *
+ * e.g. If one is training a per-item model, the instances in the training set that is used for this task might only
+ *      have a small subset of the features active. In such a case, we can train a model in the smaller space for
+ *      better efficiency but we need to also map the coefficients back to the original space eventually. This class
+ *      does the projection of features to the smaller sub-space as well as projecting the features back to the
+ *      original dimensions
+ *
+ * Given the intended use case, no primary constructor is provided. It can only be constructed via the companion
+ * object's builder method
+ *
  * @param originalToProjectedSpaceMap map from original to projected space
  * @param originalSpaceDimension dimensionality of the original space
  * @param projectedSpaceDimension dimensionality of the projected space
+ *
  * @author xazhang
+ * @author nkatariy
  */
-class IndexMapProjector(
-    originalToProjectedSpaceMap: Map[Int, Int],
+class IndexMapProjector private (
+    val originalToProjectedSpaceMap: Map[Int, Int],
     override val originalSpaceDimension: Int,
     override val projectedSpaceDimension: Int) extends Projector {
 
-  private val projectedToOriginalSpaceMap = originalToProjectedSpaceMap.map(_.swap)
+  val projectedToOriginalSpaceMap = originalToProjectedSpaceMap.map(_.swap)
 
   assert(originalToProjectedSpaceMap.size == projectedToOriginalSpaceMap.size, s"The size of " +
       s"originalToProjectedSpaceMap (${originalToProjectedSpaceMap.size}) and the size of " +
