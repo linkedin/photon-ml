@@ -42,9 +42,9 @@ import scala.collection.Map
  * @author nkatariy
  */
 class IndexMapProjector private (
-                                  val originalToProjectedSpaceMap: Map[Int, Int],
-                                  override val originalSpaceDimension: Int,
-                                  override val projectedSpaceDimension: Int) extends Projector {
+  val originalToProjectedSpaceMap: Map[Int, Int],
+  override val originalSpaceDimension: Int,
+  override val projectedSpaceDimension: Int) extends Projector {
 
   val projectedToOriginalSpaceMap = originalToProjectedSpaceMap.map(_.swap)
 
