@@ -25,8 +25,13 @@ import org.testng.Assert._
  * @author yizhou
  * @author dpeng
  */
-class MockDriver(override val params: Params, override val sc: SparkContext, override val logger: LogWriter)
-    extends Driver(params: Params, sc: SparkContext, logger: LogWriter) {
+class MockDriver(
+    override val params: Params,
+    override val sc: SparkContext,
+    override val logger: LogWriter,
+    override val seed: Long)
+  extends Driver(params: Params, sc: SparkContext, logger: LogWriter, seed) {
+
   var isSummarized = false
 
   def stages(): Array[DriverStage] = {
@@ -42,6 +47,9 @@ class MockDriver(override val params: Params, override val sc: SparkContext, ove
 
 object MockDriver {
 
+  // Use a static random seed for deterministic test results
+  val seed = 3L
+
   def runLocally(args: Array[String], expectedStages: Array[DriverStage], expectedNumFeatures: Int,
       expectedNumTrainingData: Int, expectedIsSummarized: Boolean): Unit = {
     /* Parse the parameters from command line, should always be the 1st line in main*/
@@ -52,7 +60,7 @@ object MockDriver {
                                                                   params.kryo)
     try {
     val logger = new LogWriter(params.outputDir, sc)
-      val job = new MockDriver(params, sc, logger)
+      val job = new MockDriver(params, sc, logger, seed)
       job.run()
 
       val actualStages = job.stages()
