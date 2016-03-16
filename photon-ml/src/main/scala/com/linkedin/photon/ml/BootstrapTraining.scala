@@ -154,7 +154,8 @@ object BootstrapTraining {
       warmStart: Map[Double, GLM],
       trainModel: (RDD[LabeledPoint], Map[Double, GLM]) => List[(Double, GLM)],
       aggregations: Map[String, Seq[(GLM, Map[String, Double])] => Any],
-      trainingSamples: RDD[LabeledPoint]): Map[Double, Map[String, Any]] = {
+      trainingSamples: RDD[LabeledPoint],
+      seed: Long = System.nanoTime): Map[Double, Map[String, Any]] = {
 
     Preconditions.checkArgument(
       numBootstrapSamples > 1,
@@ -171,14 +172,14 @@ object BootstrapTraining {
     val targetSplits = math.min(900, (populationPortionPerBootstrapSample * numSplits).toInt)
 
     val tagged = trainingSamples.mapPartitions(x => {
-        val prng = new MersenneTwister(System.nanoTime())
+        val prng = new MersenneTwister(seed)
         val dist = new UniformIntegerDistribution(prng, 0, numSplits)
 
         x.map(y => (dist.sample, y))
       }).cache.setName("Tagged training splits")
 
     val tags = (0 until numSplits).toList
-    val prng = new MersenneTwister(System.nanoTime())
+    val prng = new MersenneTwister(seed)
     (1 to numBootstrapSamples).map(x => {
       val shuffled = Random.javaRandomToRandom(RandomAdaptor.createAdaptor(prng)).shuffle(tags).toArray
       val trainTags = shuffled.slice(0, targetSplits).toSet
