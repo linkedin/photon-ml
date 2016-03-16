@@ -27,6 +27,7 @@ import org.apache.spark.rdd.RDD
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.util._
 
 
@@ -187,7 +188,7 @@ protected[photon] object NameAndTermFeatureSetContainer {
     import params._
 
     println(params + "\n")
-    val sparkContext = SparkContextConfiguration.asYarnClient(applicationName)
+    val sparkContext = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
 
     println(s"Application applicationName: $applicationName")
 

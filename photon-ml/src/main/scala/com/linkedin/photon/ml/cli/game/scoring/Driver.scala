@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameData
 import com.linkedin.photon.ml.evaluation.{RMSEEvaluator, BinaryClassificationEvaluator}
+import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._
 
@@ -225,7 +226,7 @@ object Driver {
     val params = Params.parseFromCommandLine(args)
     import params._
 
-    val sc = SparkContextConfiguration.asYarnClient(applicationName)
+    val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
