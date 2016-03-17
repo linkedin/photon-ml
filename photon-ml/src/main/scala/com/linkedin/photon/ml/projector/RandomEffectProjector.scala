@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.model.Coefficients
  * </ul>
  * @author xazhang
  */
-trait RandomEffectProjector {
+protected[ml] trait RandomEffectProjector {
   /**
    * Project the sharded data set from the original space to the projected space
    * @param randomEffectDataSet The input sharded data set in the original space
@@ -59,7 +59,7 @@ object RandomEffectProjector {
    * @param projectorType
    * @return the projector
    */
-  def buildRandomEffectProjector(
+  protected[ml] def buildRandomEffectProjector(
       randomEffectDataSet: RandomEffectDataSet,
       projectorType: ProjectorType): RandomEffectProjector = {
 

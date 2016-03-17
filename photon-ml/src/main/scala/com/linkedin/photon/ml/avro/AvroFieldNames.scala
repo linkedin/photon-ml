@@ -12,21 +12,18 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.constants
+package com.linkedin.photon.ml.avro
 
 /**
- * Avro field names
+ * Field names in the Avro data set
  *
  * @author xazhang
- * @todo Unify the field names for different applications (feed, jymbii)
  */
 object AvroFieldNames {
-  val FEATURES: String = "features"
-  val NAME: String = "name"
-  val TERM: String = "term"
-  val VALUE: String = "value"
-  val RESPONSE: String = "response"
-  val OFFSET: String = "offset"
-  val WEIGHT: String = "weight"
-  val EMPTY_STRING: String = ""
+  protected[avro] val NAME: String = "name"
+  protected[avro] val TERM: String = "term"
+  protected[avro] val VALUE: String = "value"
+  protected[avro] val RESPONSE: String = "response"
+  protected[avro] val OFFSET: String = "offset"
+  protected[avro] val WEIGHT: String = "weight"
 }

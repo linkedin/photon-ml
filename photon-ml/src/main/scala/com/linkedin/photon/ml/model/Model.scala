@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
  *
  * @author xazhang
  */
-trait Model {
+protected[ml] trait Model {
 
   /**
    * Compute the score for the GAME data set.

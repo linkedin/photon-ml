@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * @author xazhang
  * @author nkatariy
  */
-class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
+protected[ml] class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
 
   // TODO nkatariy We should have an assert on downsampling rate being > 0 and < 1 at runtime
   /**

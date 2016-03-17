@@ -22,12 +22,15 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.RDDLike
 
 /**
- * Key value score accumulator representation
+ * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
+ * offsets and residuals computed during each iteration. In the current implementation, the scores are of form
+ * [[RDD]][([[Long]], [[Double]])], where the [[Long]] typed variable represents the unique ID of each data point,
+ * while the [[Double]] typed variable represents the score.
  *
  * @param scores the scores
  * @author xazhang
  */
-class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
+protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
 
   override def sparkContext: SparkContext = scores.sparkContext
 
@@ -52,7 +55,7 @@ class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
   }
 
   /**
-   * Accumulate key value score values
+   * The plus operation for the key value scores
    *
    * @param that the other key value score instance
    * @return a new key value score instance encapsulating the accumulated values
@@ -66,10 +69,10 @@ class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
   }
 
   /**
-   * Remove key value score values
+   * The minus operation for the key value scores
    *
    * @param that the other key value score instance
-   * @return a new key value score instance encapsulating the accumulated values
+   * @return a new key value score instance encapsulating the subtracted values
    */
   def -(that: KeyValueScore): KeyValueScore = {
     val subtractedScores =

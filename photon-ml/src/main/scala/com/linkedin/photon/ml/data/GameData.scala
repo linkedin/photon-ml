@@ -26,10 +26,10 @@ import breeze.linalg.Vector
  * @param weight the importance weight
  * @param featureShardContainer the sharded feature vectors
  * @param randomEffectIdToIndividualIdMap a map from random effect type id to actual individual id
- *   (e.g. "memberId" -> "abc123")
+ *   (e.g. "memberId" -> "1234" or "itemId" -> "abcd")
  * @author xazhang
  */
-class GameData(
+protected[ml] class GameData(
     val response: Double,
     val offset: Double,
     val weight: Double,

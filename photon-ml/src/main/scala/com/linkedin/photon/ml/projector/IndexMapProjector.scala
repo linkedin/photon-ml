@@ -41,7 +41,7 @@ import scala.collection.Map
  * @author xazhang
  * @author nkatariy
  */
-class IndexMapProjector private (
+protected[ml] class IndexMapProjector private (
     val originalToProjectedSpaceMap: Map[Int, Int],
     override val originalSpaceDimension: Int,
     override val projectedSpaceDimension: Int) extends Projector {
@@ -82,7 +82,7 @@ object IndexMapProjector {
    * @param features An [[Iterable]] of feature vectors
    * @return The generated projection map
    */
-  def buildIndexMapProjector(features: Iterable[Vector[Double]]): IndexMapProjector = {
+  protected[ml] def buildIndexMapProjector(features: Iterable[Vector[Double]]): IndexMapProjector = {
     val originalToProjectedSpaceMap = features.flatMap(_.activeKeysIterator).toSet[Int].zipWithIndex.toMap
     val originalSpaceDimension = features.head.length
     val projectedSpaceDimension = originalToProjectedSpaceMap.values.max + 1

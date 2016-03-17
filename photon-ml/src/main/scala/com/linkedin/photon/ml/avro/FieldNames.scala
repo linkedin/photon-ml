@@ -12,18 +12,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io
+package com.linkedin.photon.ml.avro
+
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
- * Metronome's TrainingExample format fields name
+ * Field names of the Avro formatted file used as input of [[GeneralizedLinearModel]]
  * @author xazhang
  */
-object TrainingExampleFieldNames extends FieldNames {
-  val features: String = "features"
-  val name: String = "name"
-  val term: String = "term"
-  val value: String = "value"
-  val response: String = "label"
-  val offset: String = "offset"
-  val weight: String = "weight"
+trait FieldNames extends Serializable {
+  val features: String
+  val name: String
+  val term: String
+  val value: String
+  val response: String
+  val offset: String
+  val weight: String
 }

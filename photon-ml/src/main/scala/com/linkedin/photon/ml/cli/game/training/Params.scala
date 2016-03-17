@@ -77,7 +77,7 @@ case class Params(
 }
 
 object Params {
-  def parseFromCommandLine(args: Array[String]): Params = {
+  protected[training] def parseFromCommandLine(args: Array[String]): Params = {
     val defaultParams = Params()
     val parser = new OptionParser[Params]("Photon-Game") {
       opt[String]("train-input-dirs")

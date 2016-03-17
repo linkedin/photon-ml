@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.model.Coefficients
  *
  * @param indexMapProjectorRDD The projectors
  */
-class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
+protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
   extends RandomEffectProjector with RDDLike {
 
   /**
@@ -115,7 +115,7 @@ object IndexMapProjectorRDD {
    * @param randomEffectDataSet The input random effect data set
    * @return The generated index map based RDD projectors
    */
-  def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
+  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
     val indexMapProjectors = randomEffectDataSet.activeData.mapValues(localDataSet =>
       IndexMapProjector.buildIndexMapProjector(localDataSet.dataPoints.map(_._2.features))
     )

@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.model.Coefficients
  * @param projectionMatrixBroadcast the projection matrix
  * @author xazhang
  */
-class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadcast[ProjectionMatrix])
+protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadcast[ProjectionMatrix])
     extends RandomEffectProjector with BroadcastLike with Serializable {
 
   val projectionMatrix = projectionMatrixBroadcast.value
@@ -85,7 +85,7 @@ object ProjectionMatrixBroadcast {
    * @param seed The seed of random number generator
    * @return The generated random projection based broadcast projector
    */
-  def buildRandomProjectionBroadcastProjector(
+  protected[ml] def buildRandomProjectionBroadcastProjector(
       randomEffectDataSet: RandomEffectDataSet,
       projectedSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,

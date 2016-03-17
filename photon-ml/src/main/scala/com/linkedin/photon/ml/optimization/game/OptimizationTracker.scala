@@ -19,7 +19,7 @@ package com.linkedin.photon.ml.optimization.game
  *
  * @author xazhang
  */
-trait OptimizationTracker {
+protected[ml] trait OptimizationTracker {
 
   /**
    * Build a summary string for the tracker

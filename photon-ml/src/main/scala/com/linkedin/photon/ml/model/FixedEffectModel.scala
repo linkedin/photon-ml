@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
  * @param featureShardId the feature shard id
  * @author xazhang
  */
-class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coefficients], val featureShardId: String)
+protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coefficients], val featureShardId: String)
   extends Model with BroadcastLike {
 
   def coefficients: Coefficients = coefficientsBroadcast.value

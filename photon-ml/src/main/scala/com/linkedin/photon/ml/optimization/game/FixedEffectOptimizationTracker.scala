@@ -19,10 +19,11 @@ import com.linkedin.photon.ml.optimization._
 /**
  * Optimization tracker for factored randon effect optimization problems
  *
- * @param optimizationStatesTracker original state tracker for the optimization problem
+ * @param optimizationStateTracker original state tracker for the optimization problem
  * @author xazhang
  */
-class FixedEffectOptimizationTracker(optimizationStateTracker: OptimizationStatesTracker) extends OptimizationTracker {
+protected[ml] class FixedEffectOptimizationTracker(optimizationStateTracker: OptimizationStatesTracker)
+    extends OptimizationTracker {
 
   /**
    * Build a summary string for the tracker

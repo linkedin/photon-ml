@@ -27,14 +27,14 @@ import com.linkedin.photon.ml.util.Utils
  * @param defaultScore default score
  * @author xazhang
  */
-class LogisticLossEvaluator(
+protected[ml] class LogisticLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   /**
-   * Evaluate scores
+   * Evaluate the scores of the model
    *
-   * @param score the scores to evaluate
+   * @param scores the scores to evaluate
    * @return score metric value
    */
   def evaluate(scores: RDD[(Long, Double)]): Double = {

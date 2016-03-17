@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.projector.ProjectionMatrixBroadcast
  *
  * @author xazhang
  */
-class FactoredRandomEffectModel(
+protected[ml] class FactoredRandomEffectModel(
     override val coefficientsRDDInProjectedSpace: RDD[(String, Coefficients)],
     val projectionMatrixBroadcast: ProjectionMatrixBroadcast,
     override val randomEffectId: String,

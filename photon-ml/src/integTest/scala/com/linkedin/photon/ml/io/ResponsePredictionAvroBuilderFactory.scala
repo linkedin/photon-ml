@@ -21,6 +21,9 @@ import com.linkedin.photon.avro.generated.FeatureAvro
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericRecordBuilder, GenericData, GenericRecord}
 
+import com.linkedin.photon.ml.avro.ResponsePredictionFieldNames
+
+
 /**
  * This class is a factory that provides builders for building ResponsePredictionAvroRecord.
  *

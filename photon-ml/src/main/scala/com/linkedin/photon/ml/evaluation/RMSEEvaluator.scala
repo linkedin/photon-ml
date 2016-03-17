@@ -24,16 +24,16 @@ import org.apache.spark.rdd.RDD
  * @param defaultScore default score
  * @author xazhang
  */
-class RMSEEvaluator(
+protected[ml] class RMSEEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   val squaredLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights, defaultScore)
 
   /**
-   * Evaluate scores
+   * Evaluate the scores of the model
    *
-   * @param score the scores to evaluate
+   * @param scores the scores to evaluate
    * @return score metric value
    */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {

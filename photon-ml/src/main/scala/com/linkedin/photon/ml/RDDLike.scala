@@ -22,7 +22,7 @@ import org.apache.spark.storage.StorageLevel
  * A trait to hold some simple operations on the RDDs
  * @author xazhang
  */
-trait RDDLike {
+protected[ml] trait RDDLike {
 
   /**
    * Get the Spark context

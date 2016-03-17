@@ -33,7 +33,8 @@ import com.linkedin.photon.ml.optimization.game.{
  * @param randomEffectOptimizationProblem the random effect optimization problem
  * @author xazhang
  */
-abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <: RandomEffectCoordinate[F, R]](
+protected[algorithm] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint],
+    R <: RandomEffectCoordinate[F, R]](
     randomEffectDataSet: RandomEffectDataSet,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
   extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[F, R]](randomEffectDataSet) {
@@ -44,7 +45,7 @@ abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:
    * @param model the model to score
    * @return scores
    */
-  override def score(model: Model): KeyValueScore = {
+  protected[algorithm] override def score(model: Model): KeyValueScore = {
     model match {
       case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(randomEffectDataSet, randomEffectModel)
       case _ => throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
@@ -57,7 +58,7 @@ abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:
    *
    * @param model the model to update
    */
-  override def updateModel(model: Model): (Model, OptimizationTracker) = {
+  protected[algorithm] override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case randomEffectModel: RandomEffectModel =>
         RandomEffectCoordinate.updateModel(randomEffectDataSet, randomEffectOptimizationProblem, randomEffectModel)
@@ -73,7 +74,7 @@ abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:
    * @param model the model
    * @return regularization term value
    */
-  override def computeRegularizationTermValue(model: Model): Double = {
+  protected[algorithm] override def computeRegularizationTermValue(model: Model): Double = {
     model match {
       case randomEffectModel: RandomEffectModel =>
         randomEffectOptimizationProblem.getRegularizationTermValue(randomEffectModel.coefficientsRDD)
@@ -91,6 +92,7 @@ abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:
    */
   override protected def updateCoordinateWithDataSet(
       updatedRandomEffectDataSet: RandomEffectDataSet): RandomEffectCoordinate[F, R] = {
+
     updateRandomEffectCoordinateWithDataSet(updatedRandomEffectDataSet)
   }
 
@@ -111,9 +113,8 @@ object RandomEffectCoordinate {
    * @param randomEffectModel the model
    * @return scores
    */
-  protected[algorithm] def score(
-      randomEffectDataSet: RandomEffectDataSet,
-      randomEffectModel: RandomEffectModel) : KeyValueScore = {
+  protected[algorithm] def score(randomEffectDataSet: RandomEffectDataSet, randomEffectModel: RandomEffectModel)
+  : KeyValueScore = {
 
     val activeScores = randomEffectDataSet.activeData.join(randomEffectModel.coefficientsRDD)
         .flatMap { case (individualId, (localDataSet, coefficients)) =>

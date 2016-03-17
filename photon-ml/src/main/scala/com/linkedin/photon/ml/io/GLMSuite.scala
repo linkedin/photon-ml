@@ -21,6 +21,8 @@ import java.util.{List => JList, Map => JMap}
 import breeze.linalg.SparseVector
 import FieldNamesType._
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
+import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, AvroIOUtils}
+import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
 import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary

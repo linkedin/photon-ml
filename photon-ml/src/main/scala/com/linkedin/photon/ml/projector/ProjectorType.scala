@@ -17,13 +17,13 @@ package com.linkedin.photon.ml.projector
 /**
  * Represents a projector type
  */
-trait ProjectorType
+protected[ml] trait ProjectorType
 
 object ProjectorType extends Enumeration {
-  val RANDOM, INDEX_MAP, IDENTITY = Value
+  protected[ml] val RANDOM, INDEX_MAP, IDENTITY = Value
 }
 
-case class RandomProjection(projectedSpaceDimension: Int) extends ProjectorType
+protected[ml] case class RandomProjection(projectedSpaceDimension: Int) extends ProjectorType
 
 case object IndexMapProjection extends ProjectorType
 

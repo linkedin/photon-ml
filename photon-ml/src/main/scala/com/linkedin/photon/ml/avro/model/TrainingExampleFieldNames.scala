@@ -12,18 +12,21 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io
+package com.linkedin.photon.ml.avro.model
+
+import com.linkedin.photon.ml.avro.FieldNames
+
 
 /**
- * ADMM's Response prediction format fields name
+ * Metronome's TrainingExample format fields name
  * @author xazhang
  */
-object ResponsePredictionFieldNames extends FieldNames {
+object TrainingExampleFieldNames extends FieldNames {
   val features: String = "features"
   val name: String = "name"
   val term: String = "term"
   val value: String = "value"
-  val response: String = "response"
+  val response: String = "label"
   val offset: String = "offset"
   val weight: String = "weight"
 }

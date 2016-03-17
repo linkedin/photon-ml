@@ -21,12 +21,12 @@ import org.apache.spark.rdd.RDD
  *
  * @author xazhang
  */
-trait Evaluator {
+protected[ml] trait Evaluator {
 
   /**
-   * Evaluate scores
+   * Evaluate the scores of the model
    *
-   * @param score the scores to evaluate
+   * @param scores the scores to evaluate
    * @return score metric value
    */
   def evaluate(scores: RDD[(Long, Double)]): Double

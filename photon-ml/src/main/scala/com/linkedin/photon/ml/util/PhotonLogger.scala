@@ -22,9 +22,10 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
 /**
+ * A temporary logger that persist the logs onto HDFS with different levels.
  * @author xazhang
  */
-class PhotonLogger(logDir: Path, configuration: Configuration) {
+protected[ml] class PhotonLogger(logDir: Path, configuration: Configuration) {
 
   def this(logDir: String, configuration: Configuration) = this(new Path(logDir), configuration)
 

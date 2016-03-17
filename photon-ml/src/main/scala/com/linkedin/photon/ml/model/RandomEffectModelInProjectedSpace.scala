@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.projector.RandomEffectProjector
  * @param featureShardId the feature shard id
  * @author xazhang
  */
-class RandomEffectModelInProjectedSpace(
+protected[ml] class RandomEffectModelInProjectedSpace(
     val coefficientsRDDInProjectedSpace: RDD[(String, Coefficients)],
     val randomEffectProjector: RandomEffectProjector,
     override val randomEffectId: String,
@@ -78,7 +78,7 @@ class RandomEffectModelInProjectedSpace(
    *
    * @return the random effect model
    */
-  protected[ml] def toRandomEffectModel: RandomEffectModel = {
+  def toRandomEffectModel: RandomEffectModel = {
     new RandomEffectModel(coefficientsRDDInProjectedSpace, randomEffectId, featureShardId)
   }
 

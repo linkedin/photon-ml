@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.constants.StorageLevel
 
 /**
- * Dataset implementation for random effect datasets. passiveData + activeData = full sharded data set
+ * Data set implementation for random effect datasets. passiveData + activeData = full sharded data set
  *
  * @param activeData Grouped data sets mostly to train the sharded model and score the whole data set.
  * @param globalIdToIndividualIds global id to individual id map
@@ -36,7 +36,7 @@ import com.linkedin.photon.ml.constants.StorageLevel
  * @param featureShardId the feature shard id
  * @author xazhang
  */
-class RandomEffectDataSet(
+protected[ml] class RandomEffectDataSet(
     val activeData: RDD[(String, LocalDataSet)],
     protected[data] val globalIdToIndividualIds: RDD[(Long, String)],
     val passiveDataOption: Option[RDD[(Long, (String, LabeledPoint))]],
@@ -169,7 +169,7 @@ object RandomEffectDataSet {
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return
    */
-  def buildWithConfiguration(
+  protected[ml] def buildWithConfiguration(
       gameDataSet: RDD[(Long, GameData)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner): RandomEffectDataSet = {

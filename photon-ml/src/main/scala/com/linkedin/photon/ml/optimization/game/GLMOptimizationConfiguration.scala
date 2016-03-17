@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
  * @param regularizationType regularization type
  * @author xazhang
  */
-case class GLMOptimizationConfiguration(
+protected[ml] case class GLMOptimizationConfiguration(
     maxNumberIterations: Int = 20,
     convergenceTolerance: Double = 1e-5,
     regularizationWeight: Double = 50,
@@ -55,7 +55,7 @@ object GLMOptimizationConfiguration {
    * @param string the string representation
    * @todo Add assert and meaningful parsing error message here
    */
-  def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
+  protected[ml] def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
     val Array(maxNumberIterationsStr, convergenceToleranceStr, regularizationWeightStr, downSamplingRateStr,
     optimizerTypeStr, regularizationTypeStr) = string.split(",")
     val maxNumberIterations = maxNumberIterationsStr.toInt

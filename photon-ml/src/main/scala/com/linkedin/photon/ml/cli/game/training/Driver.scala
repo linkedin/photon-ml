@@ -39,24 +39,24 @@ import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._
 
 /**
- * Driver for GAME full model training
+ * The driver class, which provides the main entrance to GAME model training
  *
  * @author xazhang
  */
-class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
+final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
 
   import params._
 
-  protected val hadoopConfiguration = sparkContext.hadoopConfiguration
+  private val hadoopConfiguration = sparkContext.hadoopConfiguration
 
-  protected val isAddingIntercept = true
+  private val isAddingIntercept = true
 
   /**
    * Builds feature name-and-term to index maps according to configuration
    *
    * @return a map of shard id to feature map
    */
-  def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
+  protected[training] def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.loadFromTextFiles(
       featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
@@ -79,7 +79,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param featureShardIdToFeatureMapMap a map of shard id to feature map
    * @return the prepared GAME dataset
    */
-  def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): RDD[(Long, GameData)] = {
+  protected[training] def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
+  : RDD[(Long, GameData)] = {
 
     val trainingRecordsPath = trainDateRangeOpt match {
       case Some(trainDateRange) =>
@@ -125,7 +126,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param gameDataSet the input dataset
    * @return the training dataset
    */
-  def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameData)]): Map[String, DataSet[_ <: DataSet[_]]] = {
+  protected[training] def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameData)])
+  : Map[String, DataSet[_ <: DataSet[_]]] = {
 
     val fixedEffectDataSets = fixedEffectDataConfigurations.map { case (id, fixedEffectDataConfiguration) =>
       val fixedEffectDataSet = FixedEffectDataSet.buildWithConfiguration(gameDataSet, fixedEffectDataConfiguration)
@@ -179,7 +181,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param gameDataSet the input dataset
    * @return the training evaluator
    */
-  def prepareTrainingEvaluator(gameDataSet: RDD[(Long, GameData)]): Evaluator = {
+  protected[training] def prepareTrainingEvaluator(gameDataSet: RDD[(Long, GameData)]): Evaluator = {
     val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
       (gameData.response, gameData.offset, gameData.weight)
     ).setName("Training label and offset and weights").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -197,79 +199,74 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   /**
    * Creates the validation evaluator
    *
-   * @param gameDataSet the input dataset
-   * @return the validation evaluator
+   * @param validatingDirs the input path for validating data set
+   * @return the validating game data sets and the companion evaluator
    */
-  def prepareValidatingEvaluator(
-      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): Option[(RDD[(Long, GameData)], Evaluator)] = {
+  protected[training] def prepareValidatingEvaluator(
+      validatingDirs: Seq[String],
+      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameData)], Evaluator) = {
 
-    validateDirsOpt match {
-      case Some(validatingDirs) =>
-        // Read and parse the validating activities
-        val validatingRecordsPath = validateDateRangeOpt match {
-          case Some(validateDateRange) =>
-            val Array(startDate, endDate) = validateDateRange.split("-")
-            IOUtils.getInputPathsWithinDateRange(validatingDirs, startDate, endDate, sparkContext.hadoopConfiguration,
-              errorOnMissing = false)
-          case None => validatingDirs.toSeq
-        }
-        logger.logDebug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
-        val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
-        val partitioner = new LongHashPartitioner(records.partitions.length)
-        // filter out features that validating data are included in the black list
-
-        val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-        val gameDataSet = DataProcessingUtils.parseAndGenerateGameDataSetFromGenericRecords(records,
-          featureShardIdToFeatureSectionKeysMap, featureShardIdToFeatureMapMap, randomEffectIdSet)
-            .partitionBy(partitioner)
-            .setName("Validating Game data set")
-            .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-
-        // Log some simple summary info on the Game data set
-        logger.logDebug(s"Summary for the validating Game data set")
-        val numSamples = gameDataSet.count()
-        logger.logDebug(s"numSamples: $numSamples")
-        val responseSum = gameDataSet.values.map(_.response).sum()
-        logger.logDebug(s"responseSum: $responseSum")
-        val weightSum = gameDataSet.values.map(_.weight).sum()
-        logger.logDebug(s"weightSum: $weightSum")
-        val randomEffectIdToIndividualIdMap = gameDataSet.values.first().randomEffectIdToIndividualIdMap
-        randomEffectIdToIndividualIdMap.keySet.foreach { randomEffectId =>
-          val dataStats = gameDataSet.values.map { gameData =>
-            val individualId = gameData.randomEffectIdToIndividualIdMap(randomEffectId)
-            (individualId, (gameData.response, 1))
-          }.reduceByKey { case ((responseSum1, numSample1), (responseSum2, numSample2)) =>
-            (responseSum1 + responseSum2, numSample1 + numSample2)
-          }.cache()
-          val responseSumStats = dataStats.values.map(_._1).stats()
-          val numSamplesStats = dataStats.values.map(_._2).stats()
-          logger.logDebug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
-          logger.logDebug(s"responseSumStats for $randomEffectId: $responseSumStats")
-        }
-
-        val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
-            .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-        validatingLabelAndOffsets.count()
-
-        val evaluator =
-          taskType match {
-            case LOGISTIC_REGRESSION =>
-              new BinaryClassificationEvaluator(validatingLabelAndOffsets)
-            case LINEAR_REGRESSION =>
-              val validatingLabelAndOffsetAndWeights = validatingLabelAndOffsets.mapValues { case (label, offset) =>
-                (label, offset, 1.0)
-              }
-              new RMSEEvaluator(validatingLabelAndOffsetAndWeights)
-            case _ =>
-              throw new UnsupportedOperationException(s"Task type: $taskType is not supported to create validating " +
-                  s"evaluator")
-          }
-        val randomScores = gameDataSet.mapValues(_ => math.random)
-        val metric = evaluator.evaluate(randomScores)
-        logger.logInfo(s"Random guessing based baseline evaluation metric: $metric")
-        Some((gameDataSet, evaluator))
-      case None => None
+    // Read and parse the validating activities
+    val validatingRecordsPath = validateDateRangeOpt match {
+      case Some(validateDateRange) =>
+        val Array(startDate, endDate) = validateDateRange.split("-")
+        IOUtils.getInputPathsWithinDateRange(validatingDirs, startDate, endDate, sparkContext.hadoopConfiguration,
+          errorOnMissing = false)
+      case None => validatingDirs.toSeq
     }
+    logger.logDebug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
+    val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
+    val partitioner = new LongHashPartitioner(records.partitions.length)
+    // filter out features that validating data are included in the black list
+    val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
+    val gameDataSet = DataProcessingUtils
+        .parseAndGenerateGameDataSetFromGenericRecords(records, featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapMap, randomEffectIdSet).partitionBy(partitioner).setName("Validating Game data set")
+        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
+    // Log some simple summary info on the Game data set
+    logger.logDebug(s"Summary for the validating Game data set")
+    val numSamples = gameDataSet.count()
+    logger.logDebug(s"numSamples: $numSamples")
+    val responseSum = gameDataSet.values.map(_.response).sum()
+    logger.logDebug(s"responseSum: $responseSum")
+    val weightSum = gameDataSet.values.map(_.weight).sum()
+    logger.logDebug(s"weightSum: $weightSum")
+    val randomEffectIdToIndividualIdMap = gameDataSet.values.first().randomEffectIdToIndividualIdMap
+    randomEffectIdToIndividualIdMap.keySet.foreach { randomEffectId =>
+      val dataStats = gameDataSet.values.map { gameData =>
+        val individualId = gameData.randomEffectIdToIndividualIdMap(randomEffectId)
+        (individualId, (gameData.response, 1))
+      }.reduceByKey { case ((responseSum1, numSample1), (responseSum2, numSample2)) =>
+        (responseSum1 + responseSum2, numSample1 + numSample2)
+      }.cache()
+      val responseSumStats = dataStats.values.map(_._1).stats()
+      val numSamplesStats = dataStats.values.map(_._2).stats()
+      logger.logDebug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
+      logger.logDebug(s"responseSumStats for $randomEffectId: $responseSumStats")
+    }
+
+    val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
+        .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    validatingLabelAndOffsets.count()
+
+    val evaluator =
+      taskType match {
+        case LOGISTIC_REGRESSION =>
+          new BinaryClassificationEvaluator(validatingLabelAndOffsets)
+        case LINEAR_REGRESSION =>
+          val validatingLabelAndOffsetAndWeights = validatingLabelAndOffsets.mapValues { case (label, offset) =>
+            (label, offset, 1.0)
+          }
+          new RMSEEvaluator(validatingLabelAndOffsetAndWeights)
+        case _ =>
+          throw new UnsupportedOperationException(s"Task type: $taskType is not supported to create validating " +
+              s"evaluator")
+      }
+    val randomScores = gameDataSet.mapValues(_ => math.random)
+    val metric = evaluator.evaluate(randomScores)
+    logger.logInfo(s"Random guessing based baseline evaluation metric: $metric")
+    (gameDataSet, evaluator)
   }
 
   /**
@@ -281,7 +278,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param validatingDataAndEvaluatorOption optional validation dataset and evaluator
    * @return trained GAME models
    */
-  def train(
+  protected[training] def train(
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)]): Map[String, Map[String, Model]] = {
@@ -362,7 +359,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param validatingDataAndEvaluatorOption optional validation dataset and evaluator
    * @param gameModelsMap GAME models
    */
-  def saveModelToHDFS(
+  protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)],
       gameModelsMap: Map[String, Map[String, Model]]) {
@@ -443,11 +440,16 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     gameDataSet.unpersist()
 
     startTime = System.nanoTime()
-    val validatingDataAndEvaluatorOption = prepareValidatingEvaluator(featureShardIdToFeatureMapMap)
-    if (validatingDataAndEvaluatorOption.isDefined) {
-      val validatingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
-      logger.logInfo(s"Time elapsed after validating evaluator preparation: $validatingEvaluatorPreparationTime (s)\n")
-      logger.flush()
+    val validatingDataAndEvaluatorOption = validateDirsOpt match {
+      case Some(validatingDirs) =>
+        val validatingDataAndEvaluator = prepareValidatingEvaluator(validatingDirs, featureShardIdToFeatureMapMap)
+        val validatingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
+        logger.logInfo("Time elapsed after validating data and evaluator preparation: " +
+            s"$validatingEvaluatorPreparationTime (s)\n")
+        logger.flush()
+        Option(validatingDataAndEvaluator)
+      case None =>
+        None
     }
 
     startTime = System.nanoTime()

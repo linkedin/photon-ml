@@ -21,7 +21,7 @@ package com.linkedin.photon.ml.optimization.game
  * @param numFactors number of factors
  * @author xazhang
  */
-case class MFOptimizationConfiguration(maxNumberIterations: Int, numFactors: Int) {
+protected[ml] case class MFOptimizationConfiguration(maxNumberIterations: Int, numFactors: Int) {
   override def toString: String = {
     s"maxNumberIterations: $maxNumberIterations\tnumFactors: $numFactors"
   }
@@ -35,7 +35,7 @@ object MFOptimizationConfiguration {
    * @param string the string representation
    * @todo Add assert and meaningful parsing error message here
    */
-  def parseAndBuildFromString(string: String): MFOptimizationConfiguration = {
+  protected[ml] def parseAndBuildFromString(string: String): MFOptimizationConfiguration = {
     val Array(maxNumberIterations, numFactors) = string.split(",").map(_.toInt)
     MFOptimizationConfiguration(maxNumberIterations, numFactors)
   }

@@ -19,9 +19,10 @@ import org.apache.spark.Partitioner
 
 
 /**
+ * The partitioner for [[Long]] typed keys with given number of partitions
  * @author xazhang
  */
-class LongHashPartitioner(partitions: Int) extends Partitioner {
+protected[ml] class LongHashPartitioner(partitions: Int) extends Partitioner {
   def getPartition(key: Any): Int = key match {
     case long: Long => (math.abs(long) % partitions).toInt
     case any =>

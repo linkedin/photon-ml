@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @param latentSpaceDimension dimensionality of latent space
  * @author xazhang
  */
-class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
     val latentFactorOptimizationProblem: OptimizationProblem[F],
     val numIterations: Int,
@@ -65,7 +65,8 @@ class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoin
   /**
    * Compute the regularization term value
    *
-   * @param model the model
+   * @param coefficientsRDD the coefficients
+   * @param projectionMatrix the projection matrix
    * @return regularization term value
    */
   def getRegularizationTermValue(
@@ -90,7 +91,7 @@ object FactoredRandomEffectOptimizationProblem {
    * @param randomEffectDataSet the dataset
    * @return the new optimization problem
    */
-  def buildFactoredRandomEffectOptimizationProblem(
+  protected[ml] def buildFactoredRandomEffectOptimizationProblem(
       taskType: TaskType,
       randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
       latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,

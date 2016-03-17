@@ -20,8 +20,8 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.testng.annotations.{BeforeMethod, AfterMethod, DataProvider, Test}
 import org.testng.Assert._
 
+import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.io.AvroIOUtils
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.TaskType.TaskType

@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
  * @param featureShardId the feature shard id
  * @author xazhang
  */
-class RandomEffectModel(
+protected[ml] class RandomEffectModel(
     val coefficientsRDD: RDD[(String, Coefficients)],
     val randomEffectId: String,
     val featureShardId: String)
