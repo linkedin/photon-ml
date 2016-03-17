@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffe
  * @param randomEffectOptimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
-class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
+protected[algorithm] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
   extends RandomEffectCoordinate[F, RandomEffectCoordinateInProjectedSpace[F]](
@@ -40,7 +40,7 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
    *
    * @param seed random seed
    */
-  override def initializeModel(seed: Long): Model = {
+  protected[algorithm] override def initializeModel(seed: Long): Model = {
     RandomEffectCoordinateInProjectedSpace.initializeZeroModel(randomEffectDataSetInProjectedSpace)
   }
 
@@ -50,7 +50,7 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
    * @param model the model
    * @return tuple of updated model and optimization tracker
    */
-  override def updateModel(model: Model): (Model, OptimizationTracker) = {
+  protected[algorithm] override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
@@ -71,7 +71,7 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
    * @param model the model to score
    * @return scores
    */
-  override def score(model: Model): KeyValueScore = {
+  protected[algorithm] override def score(model: Model): KeyValueScore = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
@@ -88,7 +88,7 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
    * @param model the model
    * @return regularization term value
    */
-  override def computeRegularizationTermValue(model: Model): Double = {
+  protected[algorithm] override def computeRegularizationTermValue(model: Model): Double = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel

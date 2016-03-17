@@ -26,14 +26,14 @@ import com.linkedin.photon.ml.util.Utils
  * @param defaultScore default score
  * @author xazhang
  */
-class SquaredLossEvaluator(
+protected[ml] class SquaredLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   /**
-   * Evaluate scores
+   * Evaluate the scores of the model
    *
-   * @param score the scores to evaluate
+   * @param scores the scores to evaluate
    * @return score metric value
    */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {

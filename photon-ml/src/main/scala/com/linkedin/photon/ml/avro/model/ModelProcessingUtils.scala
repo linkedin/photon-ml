@@ -22,24 +22,26 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.io.AvroIOUtils
 import com.linkedin.photon.ml.model.{Coefficients, RandomEffectModel, FixedEffectModel, Model}
 import com.linkedin.photon.ml.util.{IOUtils, Utils}
 
 
 /**
+ * Some basic functions to read/write GAME models from/to HDFS. The current implementaion assumes the models are stored
+ * using Avro format.
  * @author xazhang
  */
-protected[photon] object ModelProcessingUtils {
+//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+object ModelProcessingUtils {
   private val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
   private val ID_INFO = "id-info"
   private val COEFFICIENTS = "coefficients"
   private val FIXED_EFFECT = "fixed-effect"
   private val RANDOM_EFFECT = "random-effect"
 
-  def saveGameModelsToHDFS(
+  protected[ml] def saveGameModelsToHDFS(
       gameModel: Iterable[Model],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       outputDir: String,
@@ -89,7 +91,7 @@ protected[photon] object ModelProcessingUtils {
     }
   }
 
-  def loadGameModelFromHDFS(
+  protected[ml] def loadGameModelFromHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       inputDir: String,
       sparkContext: SparkContext): Iterable[Model] = {
@@ -196,7 +198,8 @@ protected[photon] object ModelProcessingUtils {
     Coefficients(combinedMeans, variancesOption = None)
   }
 
-  def collapseGameModel(gameModel: Map[String, Model], sparkContext: SparkContext): Map[(String, String), Model] = {
+  protected[ml] def collapseGameModel(gameModel: Map[String, Model], sparkContext: SparkContext)
+  : Map[(String, String), Model] = {
 
     gameModel.toArray.map {
       case (modelId, fixedEffectModel: FixedEffectModel) =>

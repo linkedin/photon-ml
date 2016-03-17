@@ -69,7 +69,3 @@ protected[ml] class FactoredRandomEffectOptimizationTracker(
     }.mkString("\n")
   }
 }
-
-object FactoredRandomEffectOptimizationTracker {
-
-}

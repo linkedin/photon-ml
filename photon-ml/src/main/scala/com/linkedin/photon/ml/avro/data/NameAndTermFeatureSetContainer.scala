@@ -36,7 +36,8 @@ import com.linkedin.photon.ml.util._
  * @param nameAndTermFeatureSets A [[Map]] of feature section key to [[NameAndTerm]] feature sets
  * @author xazhang
  */
-protected[photon] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
+//TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
 
   def getFeatureNameAndTermToIndexMap(featureSectionKeys: Set[String], isAddingIntercept: Boolean)
   : Map[NameAndTerm, Int] = {
@@ -64,7 +65,7 @@ protected[photon] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: M
   }
 }
 
-protected[photon] object NameAndTermFeatureSetContainer {
+object NameAndTermFeatureSetContainer {
 
   /**
    * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
@@ -72,7 +73,7 @@ protected[photon] object NameAndTermFeatureSetContainer {
    * @param featureSectionKeys The set of feature section keys of interest in the input generic records
    * @return The generated [[NameAndTermFeatureSetContainer]]
    */
-  def generateFromGenericRecords(
+  private def generateFromGenericRecords(
       genericRecords: RDD[GenericRecord],
       featureSectionKeys: Set[String]): NameAndTermFeatureSetContainer = {
 
@@ -110,7 +111,8 @@ protected[photon] object NameAndTermFeatureSetContainer {
    * @param configuration The Hadoop configuration
    * @return This [[NameAndTermFeatureSetContainer]] parsed from text files on HDFS
    */
-  def loadFromTextFiles(
+  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+  protected[ml] def loadFromTextFiles(
       nameAndTermFeatureSetContainerInputDir: String,
       featureSectionKeys: Set[String],
       configuration: Configuration): NameAndTermFeatureSetContainer = {

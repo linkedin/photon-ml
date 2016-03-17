@@ -20,9 +20,9 @@ package com.linkedin.photon.ml.constants
  * @author xazhang
  */
 object MathConst {
-  val HIGH_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-12
-  val MEDIUM_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-8
-  val LOW_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-4
-  val RANDOM_SEED: Long = 1234567890L
-  val POSITIVE_RESPONSE_THRESHOLD = 0.5
+  protected[ml] val HIGH_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-12
+  protected[ml] val MEDIUM_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-8
+  protected[ml] val LOW_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-4
+  protected[ml] val RANDOM_SEED: Long = 1234567890L
+  protected[ml] val POSITIVE_RESPONSE_THRESHOLD = 0.5
 }

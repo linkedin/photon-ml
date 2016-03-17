@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @tparam F The type of objective/loss function
  * @author xazhang
  */
-case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     optimizer: AbstractOptimizer[LabeledPoint, F],
     objectiveFunction: F,
     lossFunction: F,
@@ -126,7 +126,7 @@ object OptimizationProblem {
    * @return optimization problem instance
    * @todo build optimization problem with more general type of functions
    */
-  def buildOptimizationProblem(
+  protected[ml] def buildOptimizationProblem(
       taskType: TaskType,
       configuration: GLMOptimizationConfiguration): OptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
 

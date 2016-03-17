@@ -21,12 +21,13 @@ import org.apache.spark.{HashPartitioner, Partitioner}
 import org.apache.spark.rdd.RDD
 
 /**
- * Spark partitioner implementation for random effect datasets
+ * Spark partitioner implementation for random effect datasets, that takes the imbalanced data size across different
+ * random effects into account (e.g., a popular item may be associated with more data points than a less popular one)
  *
  * @param idToPartitionMap random effect id to partition map
  * @author xazhang
  */
-class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
+protected[ml] class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
 
   val partitions = idToPartitionMap.value.values.max + 1
 

@@ -12,20 +12,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io
+package com.linkedin.photon.ml.avro
 
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
- * Field names of the Avro formatted file used as input of [[GeneralizedLinearModel]]
+ * ADMM's Response prediction format fields name
  * @author xazhang
  */
-trait FieldNames extends Serializable {
-  val features: String
-  val name: String
-  val term: String
-  val value: String
-  val response: String
-  val offset: String
-  val weight: String
+object ResponsePredictionFieldNames extends FieldNames {
+  val features: String = "features"
+  val name: String = "name"
+  val term: String = "term"
+  val value: String = "value"
+  val response: String = "response"
+  val offset: String = "offset"
+  val weight: String = "weight"
 }

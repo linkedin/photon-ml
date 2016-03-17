@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.io
 
 import java.io.File
 
+import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.avro.generated.FeatureAvro
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}

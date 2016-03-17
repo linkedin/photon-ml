@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.projector.Projector
  *       Array: overhead in sorting the entries by key
  *       Map: overhead in accessing value by key
  */
-case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
+protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 
   val numDataPoints = dataPoints.length
   val numFeatures = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
@@ -141,7 +141,7 @@ case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param numSamplesToKeep number of samples to keep
    * @return sampled dataset
    */
-  protected[ml] def reservoirSamplingOnAllSamples(numSamplesToKeep: Int): LocalDataSet = {
+  def reservoirSamplingOnAllSamples(numSamplesToKeep: Int): LocalDataSet = {
     if (numSamplesToKeep == 0) {
       LocalDataSet(Array())
     } else if (numSamplesToKeep < numDataPoints) {
@@ -158,7 +158,7 @@ case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 
 object LocalDataSet {
 
-  def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
+  protected[ml] def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
     if (isSortedByFirstIndex) LocalDataSet(dataPoints)
     else LocalDataSet(dataPoints.sortBy(_._1))
   }

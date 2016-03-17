@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * @author xazhang
  * @author nkatariy
  */
-trait DownSampler {
+protected[ml] trait DownSampler {
 
   /**
    * Down-sample the dataset

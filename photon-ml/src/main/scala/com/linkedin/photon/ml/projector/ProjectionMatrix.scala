@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.constants.MathConst
  * @author xazhang
  * @author nkatariy
  */
-case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector {
+protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector {
   matrix match {
     case x: DenseMatrix[Double] =>
     case _ => throw new UnsupportedOperationException(s"Projection matrix of class ${matrix.getClass} for features " +
@@ -94,7 +94,7 @@ object ProjectionMatrix {
    * @param seed The seed of random number generator
    * @return The dense Gaussian random projection matrix
    */
-  def buildGaussianRandomProjectionMatrix(
+  protected[ml] def buildGaussianRandomProjectionMatrix(
       projectedSpaceDimension: Int,
       originalSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,

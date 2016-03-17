@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.RDDLike
  * @param featureShardId the feature shard id
  * @author xazhang
  */
-class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: String)
+protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: String)
   extends DataSet[FixedEffectDataSet] with RDDLike {
 
   lazy val numFeatures = labeledPoints.first()._2.features.length
@@ -36,7 +36,7 @@ class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featu
   /**
    * Add scores to data offsets
    *
-   * @param keyScore the scores
+   * @param scores the scores used throughout the coordinate descent algorithm
    */
   def addScoresToOffsets(scores: KeyValueScore): FixedEffectDataSet = {
     val updatedLabeledPoints = labeledPoints.leftOuterJoin(scores.scores)
@@ -92,7 +92,7 @@ object FixedEffectDataSet {
    * @param fixedEffectDataConfiguration the data configuration
    * @return new dataset with given configuration
    */
-  def buildWithConfiguration(
+  protected[ml] def buildWithConfiguration(
       gameDataSet: RDD[(Long, GameData)],
       fixedEffectDataConfiguration: FixedEffectDataConfiguration): FixedEffectDataSet = {
 

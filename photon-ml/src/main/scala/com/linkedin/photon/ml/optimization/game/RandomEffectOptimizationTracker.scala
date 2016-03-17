@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.optimization._
  * @param optimizationStatesTrackers state trackers for the inidividual optimization problems
  * @author xazhang
  */
-class RandomEffectOptimizationTracker(val optimizationStatesTrackers: RDD[OptimizationStatesTracker])
+protected[ml] class RandomEffectOptimizationTracker(val optimizationStatesTrackers: RDD[OptimizationStatesTracker])
   extends OptimizationTracker with RDDLike {
 
   override def sparkContext: SparkContext = optimizationStatesTrackers.sparkContext

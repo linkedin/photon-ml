@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
  * @param optimizationProblems the component optimization problems for each random effect type
  * @author xazhang
  */
-class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val optimizationProblems: RDD[(String, OptimizationProblem[F])])
   extends RDDLike {
 
@@ -70,7 +70,7 @@ class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
   /**
    * Compute the regularization term value
    *
-   * @param model the model
+   * @param coefficientsRDD the model coefficients
    * @return regularization term value
    */
   def getRegularizationTermValue(coefficientsRDD: RDD[(String, Coefficients)]): Double = {
@@ -94,7 +94,7 @@ object RandomEffectOptimizationProblem {
    * @param randomEffectDataSet the training dataset
    * @return a new optimization problem instance
    */
-  def buildRandomEffectOptimizationProblem(
+  protected[ml] def buildRandomEffectOptimizationProblem(
       taskType: TaskType,
       configuration: GLMOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet): RandomEffectOptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {

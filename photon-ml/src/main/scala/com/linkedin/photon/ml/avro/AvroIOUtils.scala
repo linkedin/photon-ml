@@ -12,7 +12,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io
+package com.linkedin.photon.ml.avro
+
+import scala.reflect.ClassTag
 
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Parser
@@ -25,8 +27,6 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-
-import scala.reflect.ClassTag
 
 /**
  * Utility to write Avro files

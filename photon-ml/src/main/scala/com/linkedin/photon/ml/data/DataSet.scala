@@ -20,7 +20,7 @@ package com.linkedin.photon.ml.data
  *
  * @author xazhang
  */
-trait DataSet[D] {
+protected[ml] trait DataSet[D] {
 
   /**
    * Add scores to data offsets

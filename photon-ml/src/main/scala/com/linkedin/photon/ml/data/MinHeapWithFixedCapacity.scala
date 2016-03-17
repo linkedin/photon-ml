@@ -27,7 +27,7 @@ import scala.reflect.ClassTag
  * @param capacity buffer capacity
  * @author xazhang
  */
-class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) extends Serializable {
+protected[ml] class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) extends Serializable {
 
   private val arrayBuffer = new mutable.ArrayBuffer[T](2)
   var cumCount = 0
@@ -80,6 +80,7 @@ class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) ext
       }
       val minSize = math.min(thisHeap.size(), thatHeap.size())
       val maxSize = math.max(thisHeap.size(), thatHeap.size())
+      // Determine which strategy to merge two heaps based on their corresponding heap size.
       if (capacity < minSize * (31 - Integer.numberOfLeadingZeros(maxSize))) {
         val thisArray = thisHeap.toArray.asInstanceOf[Array[T]]
         val thatArray = thatHeap.toArray.asInstanceOf[Array[T]]

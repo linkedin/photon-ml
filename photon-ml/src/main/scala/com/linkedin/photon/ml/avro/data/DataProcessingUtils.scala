@@ -22,8 +22,7 @@ import breeze.linalg.Vector
 import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.constants.AvroFieldNames
+import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroUtils}
 import com.linkedin.photon.ml.data.GameData
 import com.linkedin.photon.ml.util.{Utils, VectorUtils}
 
@@ -32,9 +31,10 @@ import com.linkedin.photon.ml.util.{Utils, VectorUtils}
  * A collection of utility functions on Avro formatted data
  * @author xazhang
  */
-protected[photon] object DataProcessingUtils {
+object DataProcessingUtils {
 
-  def parseAndGenerateGameDataSetFromGenericRecords(
+  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+  protected[ml] def parseAndGenerateGameDataSetFromGenericRecords(
       records: RDD[GenericRecord],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],

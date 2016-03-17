@@ -34,8 +34,9 @@ import com.linkedin.photon.ml.projector.ProjectorType._
  * @param numFeaturesToSamplesRatioUpperBound The upper bound on the ratio between number of features and number of
  *                                            samples used for feature selection for each individual-id level local
  *                                            data set in the random effect data set.
+ * @author xazhang
  */
-case class RandomEffectDataConfiguration(
+protected[ml] case class RandomEffectDataConfiguration(
     randomEffectId: String,
     featureShardId: String,
     numPartitions: Int,
@@ -62,13 +63,12 @@ object RandomEffectDataConfiguration {
   private val FIRST_LEVEL_SPLITTER = ","
   private val SECOND_LEVEL_SPLITTER = "="
 
-  //TODO: Need a better way to parse the configuration from a structured string, or better from a text/JSON file
   /**
    * Parse and build the [[RandomEffectDataConfiguration]] from the input [[String]]
    * @param string The input [[String]]
    * @return The parsed and built random effect data configuration
    */
-  def parseAndBuildFromString(string: String): RandomEffectDataConfiguration = {
+  protected[ml] def parseAndBuildFromString(string: String): RandomEffectDataConfiguration = {
 
     val expectedTokenLength = 7
     val configParams = string.split(FIRST_LEVEL_SPLITTER)

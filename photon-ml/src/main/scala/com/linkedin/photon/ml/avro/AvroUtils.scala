@@ -27,22 +27,24 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.constants.{AvroFieldNames, MathConst}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.util.Utils
 
 
 /**
+ * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
  * @author xazhang
  */
-protected[photon] object AvroUtils {
+//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+object AvroUtils {
 
   /**
    * Read Avro files from a directory
    */
-  def readAvroFiles(sc: SparkContext,
-                    inputPaths: Seq[String],
-                    minPartitions: Int): RDD[GenericRecord] = {
+  protected[ml] def readAvroFiles(sc: SparkContext, inputPaths: Seq[String], minPartitions: Int)
+  : RDD[GenericRecord] = {
+
     assert(inputPaths.nonEmpty, "The number of input paths is zero.")
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
     inputPaths.map { path =>
@@ -82,16 +84,17 @@ protected[photon] object AvroUtils {
     }
   }
 
-  def getNameAndTermFromAvroRecord(record: GenericRecord): NameAndTerm = {
+  protected[avro] def getNameAndTermFromAvroRecord(record: GenericRecord): NameAndTerm = {
     val name = Utils.getStringAvro(record, AvroFieldNames.NAME, isNullOK = false)
     val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = false)
     NameAndTerm(name, term)
   }
 
-  def modelToBayesianLinearModelAvro(
+  protected[avro] def modelToBayesianLinearModelAvro(
       model: Coefficients,
       modelId: String,
       intToNameAndTermMap: Map[Int, NameAndTerm]): BayesianLinearModelAvro = {
+
     val meansAvros = vectorToArrayOfNameTermValueAvros(model.means, intToNameAndTermMap)
     val variancesAvrosOption = model.variancesOption.map(variances => vectorToArrayOfNameTermValueAvros(variances,
       intToNameAndTermMap))
@@ -102,9 +105,10 @@ protected[photon] object AvroUtils {
   }
 
   // Here we only load means
-  def loadMeanVectorFromBayesianLinearModelAvro(
+  protected[avro] def loadMeanVectorFromBayesianLinearModelAvro(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
       nameAndTermToIntMap: Map[NameAndTerm, Int]): Vector[Double] = {
+
     val meansAvros = bayesianLinearModelAvro.getMeans
     val indexAndValueArray = new Array[Double](nameAndTermToIntMap.size)
     val iterator = meansAvros.iterator()

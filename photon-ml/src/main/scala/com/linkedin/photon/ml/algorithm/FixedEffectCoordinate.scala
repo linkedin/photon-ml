@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.util.PhotonLogger
  * @param optimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
-class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
+protected[algorithm] class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
     fixedEffectDataSet: FixedEffectDataSet,
     private var optimizationProblem: OptimizationProblem[F])
   extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[F]](fixedEffectDataSet) {
@@ -40,7 +40,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    *
    * @param seed random seed
    */
-  def initializeModel(seed: Long): FixedEffectModel = {
+  protected[algorithm] def initializeModel(seed: Long): FixedEffectModel = {
     FixedEffectCoordinate.initializeZeroModel(fixedEffectDataSet)
   }
 
@@ -60,7 +60,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    *
    * @param model the model to update
    */
-  override def updateModel(model: Model): (Model, OptimizationTracker) = {
+  protected[algorithm] override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         val (updatedFixedEffectModel, updatedOptimizationProblem) =
@@ -84,7 +84,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    * @param model the model to score
    * @return scores
    */
-  def score(model: Model): KeyValueScore = {
+  protected[algorithm] def score(model: Model): KeyValueScore = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         FixedEffectCoordinate.updateScore(fixedEffectDataSet, fixedEffectModel)
@@ -100,7 +100,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    * @param model the model
    * @return regularization term value
    */
-  def computeRegularizationTermValue(model: Model): Double = {
+  protected[algorithm] def computeRegularizationTermValue(model: Model): Double = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         optimizationProblem.getRegularizationTermValue(fixedEffectModel.coefficients)
@@ -115,7 +115,7 @@ class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
    *
    * @param logger a logger instance
    */
-  def summarize(logger: PhotonLogger): Unit = {
+  protected[algorithm] def summarize(logger: PhotonLogger): Unit = {
     logger.logDebug(s"Optimization stats: ${optimizationProblem.optimizer.getStateTracker.get}")
   }
 }
@@ -127,7 +127,7 @@ object FixedEffectCoordinate {
    *
    * @param fixedEffectDataSet the dataset
    */
-  def initializeZeroModel(fixedEffectDataSet: FixedEffectDataSet): FixedEffectModel = {
+  private def initializeZeroModel(fixedEffectDataSet: FixedEffectDataSet): FixedEffectModel = {
     val numFeatures = fixedEffectDataSet.numFeatures
     val coefficients = Coefficients.initializeZeroCoefficients(numFeatures)
     val coefficientsBroadcast = fixedEffectDataSet.sparkContext.broadcast(coefficients)

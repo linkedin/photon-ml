@@ -24,9 +24,11 @@ import org.joda.time.Days
 import org.joda.time.format.DateTimeFormat
 
 /**
+ * Some basic IO util functions to be merged with the other util functions
+ * @todo merge this class with the IOUtil function in Photon
  * @author xazhang
  */
-object IOUtils {
+protected[ml] object IOUtils {
 
   def getInputPathsWithinDateRange(
       inputDirs: Seq[String],

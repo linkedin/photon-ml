@@ -24,13 +24,14 @@ import org.apache.spark.rdd.RDD
  * @param defaultScore default score
  * @author xazhang
  */
-class BinaryClassificationEvaluator(labelAndOffsets: RDD[(Long, (Double, Double))], defaultScore: Double = 0.0)
-  extends Evaluator {
+protected[ml] class BinaryClassificationEvaluator(
+    labelAndOffsets: RDD[(Long, (Double, Double))],
+    defaultScore: Double = 0.0) extends Evaluator {
 
   /**
-   * Evaluate scores
+   * Evaluate the scores of the model
    *
-   * @param score the scores to evaluate
+   * @param scores the scores to evaluate
    * @return score metric value
    */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {

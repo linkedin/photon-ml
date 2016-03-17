@@ -19,7 +19,7 @@ package com.linkedin.photon.ml.data
  *
  * @author xazhang
  */
-case class FixedEffectDataConfiguration(featureShardId: String, numPartitions: Int) {
+protected[ml] case class FixedEffectDataConfiguration(featureShardId: String, numPartitions: Int) {
   override def toString: String = s"featureShardId: $featureShardId, numPartitions: $numPartitions"
 }
 
@@ -33,7 +33,7 @@ object FixedEffectDataConfiguration {
    * @param string the string representation
    * @return the configuration object
    */
-  def parseAndBuildFromString(string: String): FixedEffectDataConfiguration = {
+  protected[ml] def parseAndBuildFromString(string: String): FixedEffectDataConfiguration = {
 
     val expectedTokenLength = 2
     val configParams = string.split(SPLITTER)

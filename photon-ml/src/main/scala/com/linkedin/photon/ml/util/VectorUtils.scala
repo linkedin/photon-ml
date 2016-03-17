@@ -24,9 +24,9 @@ import scala.collection.mutable
  * A utility object that contains some operations on [[Vector]].
  * @author xazhang
  */
-protected[ml] object VectorUtils {
+object VectorUtils {
 
-  val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
+  private val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[Vector]].
@@ -40,10 +40,11 @@ protected[ml] object VectorUtils {
    *                                          [[DenseVector]] is chosen.
    * @return The converted [[Vector]]
    */
-  def convertIndexAndValuePairArrayToVector(
+  protected[ml] def convertIndexAndValuePairArrayToVector(
       indexAndData: Array[(Int, Double)],
       length: Int,
       sparseVectorActiveSizeToSizeRatio: Double = SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO): Vector[Double] = {
+
     if (length * SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO < indexAndData.length) {
       convertIndexAndValuePairArrayToDenseVector(indexAndData, length)
     } else {
@@ -57,8 +58,9 @@ protected[ml] object VectorUtils {
    * @param length The length of the resulting sparse vector
    * @return The converted [[SparseVector]]
    */
-  def convertIndexAndValuePairArrayToSparseVector(indexAndData: Array[(Int, Double)], length: Int)
+  protected[ml] def convertIndexAndValuePairArrayToSparseVector(indexAndData: Array[(Int, Double)], length: Int)
   : SparseVector[Double] = {
+
     val sortedIndexAndData = indexAndData.sortBy(_._1)
     val index = new Array[Int](sortedIndexAndData.length)
     val data = new Array[Double](sortedIndexAndData.length)
@@ -77,7 +79,7 @@ protected[ml] object VectorUtils {
    * @param length The length of the resulting dense vector
    * @return The converted [[DenseVector]]
    */
-  def convertIndexAndValuePairArrayToDenseVector(indexAndData: Array[(Int, Double)], length: Int)
+  protected[ml] def convertIndexAndValuePairArrayToDenseVector(indexAndData: Array[(Int, Double)], length: Int)
   : DenseVector[Double] = {
 
     val dataArray = new Array[Double](length)
@@ -98,7 +100,8 @@ protected[ml] object VectorUtils {
    * @param threshold Threshold of the cross value
    * @return The resulting Kronecker product between vector1 and vector2
    */
-  def kroneckerProduct(vector1: Vector[Double], vector2: Vector[Double], threshold: Double): Vector[Double] = {
+  protected[ml] def kroneckerProduct(vector1: Vector[Double], vector2: Vector[Double], threshold: Double)
+  : Vector[Double] = {
 
     assert(vector1.isInstanceOf[SparseVector[Double]] || vector2.isInstanceOf[SparseVector[Double]],
       "Kronecker product between two dense vectors is currently not supported!")

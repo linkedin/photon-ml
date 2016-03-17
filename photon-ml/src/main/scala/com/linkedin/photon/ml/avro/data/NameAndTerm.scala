@@ -15,9 +15,11 @@
 package com.linkedin.photon.ml.avro.data
 
 /**
+ * A compact way to represent the feature key as (name, term) pair.
  * @author xazhang
  */
-case class NameAndTerm(name: String, term: String) {
+//TODO: Change the scope of this class and all functions in the companion object to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+protected[ml] case class NameAndTerm(name: String, term: String) {
 
   override def hashCode: Int = {
     (name + NameAndTerm.DELIMITER + term).hashCode
@@ -28,8 +30,8 @@ case class NameAndTerm(name: String, term: String) {
   }
 }
 
-protected[avro] object NameAndTerm {
+object NameAndTerm {
   private val DELIMITER = "\u0000"
 
-  val INTERCEPT_NAME_AND_TERM = NameAndTerm("(INTERCEPT)", "")
+  protected[ml] val INTERCEPT_NAME_AND_TERM = NameAndTerm("(INTERCEPT)", "")
 }

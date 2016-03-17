@@ -24,7 +24,7 @@ import breeze.stats.meanAndVariance
  * @param variancesOption optional variance of the model coefficients
  * @author xazhang
  */
-case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]]) {
+protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]]) {
 
   lazy val meansL2Norm: Double = norm(means, 2)
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
@@ -55,7 +55,7 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
   }
 }
 
-object Coefficients {
+protected[ml] object Coefficients {
 
   /**
    * Create a zero coefficient vector
