@@ -109,4 +109,15 @@ object CommonTestUtils {
 
     result
   }
+
+  /**
+   * Convert the option -> value map into an argument array.
+   *
+   * @param map map of option to option setting
+   * @return array representation of arguments
+   */
+  def argArray(map: Map[String, String]): Array[String] = map.foldLeft(Array[String]()) {
+    case (array, (option, value)) =>
+      array :+ CommonTestUtils.fromOptionNameToArg(option) :+ value
+  }
 }

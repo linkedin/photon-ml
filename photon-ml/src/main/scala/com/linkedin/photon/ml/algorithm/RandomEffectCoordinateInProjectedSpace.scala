@@ -50,7 +50,7 @@ class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint
    * @param model the model
    * @return tuple of updated model and optimization tracker
    */
-  override protected def updateModel(model: Model): (Model, OptimizationTracker) = {
+  override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel

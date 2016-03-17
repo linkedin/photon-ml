@@ -57,7 +57,7 @@ abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint], R <:
    *
    * @param model the model to update
    */
-  override protected def updateModel(model: Model): (Model, OptimizationTracker) = {
+  override def updateModel(model: Model): (Model, OptimizationTracker) = {
     model match {
       case randomEffectModel: RandomEffectModel =>
         RandomEffectCoordinate.updateModel(randomEffectDataSet, randomEffectOptimizationProblem, randomEffectModel)

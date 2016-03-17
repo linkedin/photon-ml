@@ -34,9 +34,9 @@ import com.linkedin.photon.ml.model.Model
 import com.linkedin.photon.ml.optimization.game.{
   FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem, OptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
+import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._
-
 
 /**
  * Driver for GAME full model training
@@ -481,7 +481,7 @@ object Driver {
     val params = Params.parseFromCommandLine(args)
     import params._
 
-    val sc = SparkContextConfiguration.asYarnClient(applicationName)
+    val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
