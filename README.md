@@ -1,8 +1,8 @@
 ## Photon Machine Learning (ML)
-**Photon Machine Learning (ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed at the LinkedIn Offline Relevance Infrastructure team.
+**Photon Machine Learning (ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
 
 ### Motivation
-Photon ML is a complement to Spark ML/MLLIB. The development was started when there was only an early version of Spark MLLIB. Its original intention was to provide LinkedIn-specific learning functionalities needed by mutiple LinkedIn relevance teams. Over time, Photon ML has diveraged compared to Spark ML/MLLIB. It contains a few similar components but also a few distinct funcationalities. We'd like to open source Photon ML as an opportunity to bind more closely with Spark community, and also figure out ways of contributing those generally useful components back to Spark.
+Photon ML is a complement to Spark ML/MLLIB. The development started when there was only an early version of Spark MLLIB. Its original intention was to provide LinkedIn-specific learning functionalities needed by multiple LinkedIn relevance teams. Over time, Photon ML has diverged from Spark ML/MLLIB. It contains a few similar components but also a few distinct functionalities. We'd like to open source Photon ML as an opportunity to bind more closely with Spark community, and also figure out ways of contributing those generally useful components back to Spark.
 
 ### Functions
 **Photon ML** currently supports:
@@ -21,14 +21,14 @@ Photon ML is a complement to Spark ML/MLLIB. The development was started when th
 
 4. Offset training: a typical naive way of training multi-layer models. Offset is a special feature with a fixed model coefficient as 1. It's used to insert a smaller model's response into a global model. For example, when doing a typical binary classification problem, we could train a different model against a subset of all the features, and then set that model's response score as an offset of the global model training data. In this way, the global model will only learn against the residuals of the 1st layer model's response while having the benefits of combining the two models together.
 
-5. Feature summarization: **note** it's a direct wrapper of Spark MLLIB Feature summarizor, providing typical metrics (mean, min, max, std, variance and etc.) on a per feature basis
+5. Feature summarization: **note** it's a direct wrapper of Spark MLLIB Feature summarizer, providing typical metrics (mean, min, max, std, variance and etc.) on a per feature basis
 
-6. Model disgnostic tools: metrics, plots and summarization page for diagnosing model performance. The supported functions include:
+6. Model diagnostic tools: metrics, plots and summarization page for diagnosing model performance. The supported functions include:
   * rocAUC, prAUC, precision, recall, F1, RMSE plotted under different regularization weights
   * Error / Prediction Independence Analysis
   * [Kendall Tau Independence Test](http://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/kend_tau.htm)
   * Coefficient Importance Analysis
-  * Model fitting analysis, and boostrap analysis
+  * Model fitting analysis, and bootstrap analysis
   * [Hosmer-Lemeshow Goodness-of-Fit Test](https://en.wikipedia.org/wiki/Hosmer%E2%80%93Lemeshow_test) for Logistic Regression
 
 ### How to build
@@ -50,7 +50,7 @@ The below commands are for Linux/Mac users, for Windows, please use ```gradlew.b
 ```
 ### Example
 Upload ```example/run_photon_ml.driver.sh``` onto a Spark cluster.
-Run comamnd:
+Run command:
 ```bash
 sh run_photon_ml.driver.sh [..options] hdfs_working_dir
 ```
@@ -59,3 +59,11 @@ Get detailed usage help:
 sh run_photon_ml.driver.sh [-h|--help]
 ```
 **Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
+
+### Experimental Features
+
+Photon ML currently contains a number of experimental features that have not been fully tested, and as such should not be used in production. These features center mostly around the GAME (Generalized Additive Mixed Effect) modules, and can be found in the following namespaces:
+
+ * com.linkedin.photon.ml.algorithm
+ * com.linkedin.photon.ml.data
+ * com.linkedin.photon.ml.optimization.game
