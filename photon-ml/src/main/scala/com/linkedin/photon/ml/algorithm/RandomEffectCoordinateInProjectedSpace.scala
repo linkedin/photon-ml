@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffe
  * @param randomEffectOptimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
-protected[algorithm] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
   extends RandomEffectCoordinate[F, RandomEffectCoordinateInProjectedSpace[F]](

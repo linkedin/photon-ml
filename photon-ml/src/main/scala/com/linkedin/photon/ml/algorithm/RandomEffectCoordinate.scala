@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.optimization.game.{
  * @param randomEffectOptimizationProblem the random effect optimization problem
  * @author xazhang
  */
-protected[algorithm] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint],
+protected[ml] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint],
     R <: RandomEffectCoordinate[F, R]](
     randomEffectDataSet: RandomEffectDataSet,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])

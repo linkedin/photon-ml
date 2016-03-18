@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.util.VectorUtils
  * @param factoredRandomEffectOptimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
-protected[algorithm]  class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml]  class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
     factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[F])
   extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[F]](randomEffectDataSet) {

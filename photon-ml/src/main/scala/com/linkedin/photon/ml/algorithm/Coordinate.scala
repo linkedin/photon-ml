@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.game.OptimizationTracker
  * @param dataSet the training dataset
  * @author xazhang
  */
-protected[algorithm] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
+protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
 
   /**
    * Score the effect-specific data set in the coordinate with the input model
