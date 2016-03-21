@@ -22,6 +22,7 @@ import org.testng.Assert._
 
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
+import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.TaskType.TaskType
@@ -34,26 +35,10 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testFixedEffects = sparkTest("fixedEffects", useKryo = true) {
-    val outputDir = getTmpDir + "/fixedEffects"
-    val userRandomEffectRegularizationWeight = 1
-    val artistRandomEffectRegularizationWeight = 1
-    val songRandomEffectRegularizationWeight = 1
+    val outputDir = s"$getTmpDir/fixedEffects"
 
-    val args = argArray(defaultArgs ++ Map(
-      "output-dir" -> outputDir,
-      "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
-      "num-iterations" -> numIterations.toString,
-      "updating-sequence" -> "global",
-
-      // fixed-effect optimization config
-      "fixed-effect-optimization-configurations" ->
-        "global:10,1e-5,10,1,tron,l2",
-
-      // fixed-effect data config
-      "fixed-effect-data-configurations" ->
-        s"global:shard1,$numPartitionsForFixedEffectDataSet"))
-
-    runDriver(args)
+    runDriver(argArray(fixedEffectArgs ++ Map(
+      "output-dir" -> outputDir)))
 
     val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
 
@@ -63,32 +48,13 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testRandomEffects = sparkTest("randomEffects", useKryo = true) {
-    val outputDir = getTmpDir + "/randomEffects"
-    val userRandomEffectRegularizationWeight = 1
-    val artistRandomEffectRegularizationWeight = 1
-    val songRandomEffectRegularizationWeight = 1
+    val outputDir = s"$getTmpDir/randomEffects"
 
-    val args = argArray(defaultArgs ++ Map(
-      "output-dir" -> outputDir,
-      "feature-shard-id-to-feature-section-keys-map" ->
-        "shard1:userFeatures|shard2:songFeatures",
-      "num-iterations" -> numIterations.toString,
-      "updating-sequence" -> "per-user,per-song",
+    runDriver(argArray(randomEffectArgs ++ Map(
+      "output-dir" -> outputDir)))
 
-      // random-effect optimization config
-      "random-effect-optimization-configurations" ->
-        (s"per-user:10,1e-5,$userRandomEffectRegularizationWeight,1,tron,l2|" +
-         s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,tron,l2"),
-
-      // random-effect data config
-      "random-effect-data-configurations" ->
-        (s"per-user:userId,shard1,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
-         s"per-song:songId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map")))
-
-    runDriver(args)
-
-    val userModelPath = modelPath(outputDir, "random-effect", "userId-shard1")
-    val songModelPath = modelPath(outputDir, "random-effect", "songId-shard2")
+    val userModelPath = modelPath(outputDir, "random-effect", "userId-shard2")
+    val songModelPath = modelPath(outputDir, "random-effect", "songId-shard3")
 
     assertTrue(Files.exists(userModelPath))
     assertTrue(modelSane(userModelPath, expectedNumCoefficients = 21))
@@ -99,43 +65,13 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testFixedAndRandomEffects = sparkTest("fixedAndRandomEffects", useKryo = true) {
-    val outputDir = getTmpDir + "/fixedAndRandomEffects"
-    val userRandomEffectRegularizationWeight = 1
-    val artistRandomEffectRegularizationWeight = 1
-    val songRandomEffectRegularizationWeight = 1
+    val outputDir = s"$getTmpDir/fixedAndRandomEffects"
 
-    val args = argArray(defaultArgs ++ Map(
-      "output-dir" -> outputDir,
-      "feature-shard-id-to-feature-section-keys-map" ->
-        "shard1:features,userFeatures,songFeatures|shard2:features,songFeatures|shard3:userFeatures",
-      "num-iterations" -> numIterations.toString,
-      "updating-sequence" -> "global,per-user,per-artist,per-song",
-
-      // fixed-effect optimization config
-      "fixed-effect-optimization-configurations" ->
-        "global:10,1e-5,10,1,tron,l2",
-
-      // fixed-effect data config
-      "fixed-effect-data-configurations" ->
-        s"global:shard1,$numPartitionsForFixedEffectDataSet",
-
-      // random-effect optimization config
-      "random-effect-optimization-configurations" ->
-        (s"per-user:10,1e-5,$userRandomEffectRegularizationWeight,1,tron,l2|" +
-         s"per-artist:10,1e-5,$artistRandomEffectRegularizationWeight,1,tron,l2|" +
-         s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,tron,l2"),
-
-      // random-effect data config
-      "random-effect-data-configurations" ->
-        (s"per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
-         s"per-artist:artistId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
-         s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map")))
-
-    runDriver(args)
+    runDriver(argArray(fixedAndRandomEffectArgs ++ Map(
+      "output-dir" -> outputDir)))
 
     val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
     val userModelPath = modelPath(outputDir, "random-effect", "userId-shard2")
-    val artistModelPath = modelPath(outputDir, "random-effect", "artistId-shard3")
     val songModelPath = modelPath(outputDir, "random-effect", "songId-shard3")
 
     assertTrue(Files.exists(fixedEffectModelPath))
@@ -144,11 +80,90 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(Files.exists(userModelPath))
     assertTrue(modelSane(userModelPath, expectedNumCoefficients = 29))
 
-    assertTrue(Files.exists(artistModelPath))
-    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
-
     assertTrue(Files.exists(songModelPath))
     assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
+  }
+
+  @Test
+  def testPrepareFixedEffectTrainingDataSet = sparkTest("prepareFixedEffectTrainingDataSet", useKryo = true) {
+    val outputDir =  "$getTmpDir/prepareFixedEffectTrainingDataSet"
+
+    val args = argArray(fixedEffectArgs ++ Map(
+      "output-dir" -> outputDir))
+
+    val driver = new Driver(
+      Params.parseFromCommandLine(args), sc, new PhotonLogger(outputDir, sc.hadoopConfiguration))
+
+    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
+    val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
+    val trainingDataSet = driver.prepareTrainingDataSet(gameDataSet)
+
+    assertEquals(trainingDataSet.size, 1)
+
+    val fixedEffectDataSet = trainingDataSet("global") match {
+      case ds: FixedEffectDataSet =>
+        assertEquals(ds.labeledPoints.count, 34810)
+        assertEquals(ds.numFeatures, 30045)
+
+      case _ => fail("Wrong dataset type.")
+    }
+  }
+
+  @Test
+  def testPrepareFixedAndRandomEffectTrainingDataSet =
+      sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
+    val outputDir =  "$getTmpDir/prepareFixedEffectTrainingDataSet"
+
+    val args = argArray(fixedAndRandomEffectArgs ++ Map(
+      "output-dir" -> outputDir))
+
+    val driver = new Driver(
+      Params.parseFromCommandLine(args), sc, new PhotonLogger(outputDir, sc.hadoopConfiguration))
+
+    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
+    val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
+    val trainingDataSet = driver.prepareTrainingDataSet(gameDataSet)
+
+    assertEquals(trainingDataSet.size, 3)
+
+    // fixed effect data
+    trainingDataSet("global") match {
+      case ds: FixedEffectDataSet =>
+        assertEquals(ds.labeledPoints.count, 34810)
+        assertEquals(ds.numFeatures, 30085)
+
+      case _ => fail("Wrong dataset type.")
+    }
+
+    // per-user data
+    trainingDataSet("per-user") match {
+      case ds: RandomEffectDataSet =>
+        assertEquals(ds.activeData.count, 33110)
+
+        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        assertEquals(featureStats.count, 33110)
+        assertEquals(featureStats.mean, 24.12999, tol)
+        assertEquals(featureStats.stdev, 0.611194, tol)
+        assertEquals(featureStats.max, 40.0, tol)
+        assertEquals(featureStats.min, 24.0, tol)
+
+      case _ => fail("Wrong dataset type.")
+    }
+
+    // per-song data
+    trainingDataSet("per-song") match {
+      case ds: RandomEffectDataSet =>
+        assertEquals(ds.activeData.count, 23167)
+
+        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        assertEquals(featureStats.count, 23167)
+        assertEquals(featureStats.mean, 21.0, tol)
+        assertEquals(featureStats.stdev, 0.0, tol)
+        assertEquals(featureStats.max, 21.0, tol)
+        assertEquals(featureStats.min, 21.0, tol)
+
+      case _ => fail("Wrong dataset type.")
+    }
   }
 
   /**
@@ -211,6 +226,7 @@ object DriverIntegTest {
   val numExecutors = 1
   val numPartitionsForFixedEffectDataSet = numExecutors * 2
   val numPartitionsForRandomEffectDataSet = numExecutors * 2
+  val tol = 1e-5
 
   /**
    * Default arguments to the Game driver
@@ -222,6 +238,55 @@ object DriverIntegTest {
     "feature-name-and-term-set-path" -> featurePath,
     "num-iterations" -> numIterations.toString,
     "save-models-to-hdfs" -> true.toString)
+
+  /**
+   * Default fixed effect arguments
+   */
+  def fixedEffectArgs = defaultArgs ++ Map(
+    "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
+    "updating-sequence" -> "global",
+
+    // fixed-effect optimization config
+    "fixed-effect-optimization-configurations" ->
+      "global:10,1e-5,10,1,tron,l2",
+
+    // fixed-effect data config
+    "fixed-effect-data-configurations" ->
+      s"global:shard1,$numPartitionsForFixedEffectDataSet")
+
+  /**
+   * Default random effect arguments
+   */
+  def randomEffectArgs = {
+    val userRandomEffectRegularizationWeight = 1
+    val songRandomEffectRegularizationWeight = 1
+
+    defaultArgs ++ Map(
+      "feature-shard-id-to-feature-section-keys-map" ->
+        "shard2:userFeatures|shard3:songFeatures",
+      "updating-sequence" -> "per-user,per-song",
+
+      // random-effect optimization config
+      "random-effect-optimization-configurations" ->
+        (s"per-user:10,1e-5,$userRandomEffectRegularizationWeight,1,tron,l2|" +
+         s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,tron,l2"),
+
+      // random-effect data config
+      "random-effect-data-configurations" ->
+        (s"per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
+         s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map"))
+  }
+
+  /**
+   * Default fixed and random effect arguments
+   */
+  def fixedAndRandomEffectArgs = {
+    fixedEffectArgs ++ randomEffectArgs ++ Map(
+      "feature-shard-id-to-feature-section-keys-map" ->
+        "shard1:features,userFeatures,songFeatures|shard2:features,userFeatures|shard3:songFeatures",
+      "updating-sequence" -> "global,per-user,per-song"
+    )
+  }
 
   /**
    * Build the path to the model coefficients file, given some model properties
