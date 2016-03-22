@@ -55,12 +55,16 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val userModelPath = modelPath(outputDir, "random-effect", "userId-shard2")
     val songModelPath = modelPath(outputDir, "random-effect", "songId-shard3")
+    val artistModelPath = modelPath(outputDir, "random-effect", "artistId-shard3")
 
     assertTrue(Files.exists(userModelPath))
     assertTrue(modelSane(userModelPath, expectedNumCoefficients = 21))
 
     assertTrue(Files.exists(songModelPath))
     assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
+
+    assertTrue(Files.exists(artistModelPath))
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
   }
 
   @Test
@@ -73,6 +77,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
     val userModelPath = modelPath(outputDir, "random-effect", "userId-shard2")
     val songModelPath = modelPath(outputDir, "random-effect", "songId-shard3")
+    val artistModelPath = modelPath(outputDir, "random-effect", "artistId-shard3")
 
     assertTrue(Files.exists(fixedEffectModelPath))
     assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 15017))
@@ -82,11 +87,14 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertTrue(Files.exists(songModelPath))
     assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
+
+    assertTrue(Files.exists(artistModelPath))
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
   }
 
   @Test
   def testPrepareFixedEffectTrainingDataSet = sparkTest("prepareFixedEffectTrainingDataSet", useKryo = true) {
-    val outputDir =  "$getTmpDir/prepareFixedEffectTrainingDataSet"
+    val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
 
     val args = argArray(fixedEffectArgs ++ Map(
       "output-dir" -> outputDir))
@@ -112,7 +120,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test
   def testPrepareFixedAndRandomEffectTrainingDataSet =
       sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
-    val outputDir =  "$getTmpDir/prepareFixedEffectTrainingDataSet"
+    val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
 
     val args = argArray(fixedAndRandomEffectArgs ++ Map(
       "output-dir" -> outputDir))
@@ -124,7 +132,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
     val trainingDataSet = driver.prepareTrainingDataSet(gameDataSet)
 
-    assertEquals(trainingDataSet.size, 3)
+    assertEquals(trainingDataSet.size, 4)
 
     // fixed effect data
     trainingDataSet("global") match {
@@ -164,6 +172,37 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
       case _ => fail("Wrong dataset type.")
     }
+
+    // per-artist data
+    trainingDataSet("per-artist") match {
+      case ds: RandomEffectDataSet =>
+        assertEquals(ds.activeData.count, 4471)
+
+        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        assertEquals(featureStats.count, 4471)
+        assertEquals(featureStats.mean, 3.0, tol)
+        assertEquals(featureStats.stdev, 0.0, tol)
+        assertEquals(featureStats.max, 3.0, tol)
+        assertEquals(featureStats.min, 3.0, tol)
+
+      case _ => fail("Wrong dataset type.")
+    }
+  }
+
+  @Test
+  def testMultipleOptimizerConfigs = sparkTest("multipleOptimizerConfigs", useKryo = true) {
+    val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
+
+    runDriver(argArray(fixedEffectArgs ++ Map(
+      "output-dir" -> outputDir,
+      "fixed-effect-optimization-configurations" ->
+        ("global:10,1e-5,10,1,tron,l2;" +
+         "global:10,1e-5,10,1,lbfgs,l2"))))
+
+    val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
+
+    assertTrue(Files.exists(fixedEffectModelPath))
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14982))
   }
 
   /**
@@ -198,7 +237,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
     val means = modelAvro(0).getMeans()
-    (means.size() == expectedNumCoefficients) && means.exists(x => x.getValue() != 0)
+    means.filter(x => x.getValue != 0).size == expectedNumCoefficients
   }
 
   /**
@@ -264,17 +303,19 @@ object DriverIntegTest {
     defaultArgs ++ Map(
       "feature-shard-id-to-feature-section-keys-map" ->
         "shard2:userFeatures|shard3:songFeatures",
-      "updating-sequence" -> "per-user,per-song",
+      "updating-sequence" -> "per-user,per-song,per-artist",
 
       // random-effect optimization config
       "random-effect-optimization-configurations" ->
         (s"per-user:10,1e-5,$userRandomEffectRegularizationWeight,1,tron,l2|" +
-         s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,tron,l2"),
+         s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,tron,l2|" +
+         s"per-artist:10,1e-5,$userRandomEffectRegularizationWeight,1,tron,l2"),
 
       // random-effect data config
       "random-effect-data-configurations" ->
         (s"per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
-         s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map"))
+         s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
+         s"per-artist:artistId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,RANDOM=2"))
   }
 
   /**
@@ -284,7 +325,7 @@ object DriverIntegTest {
     fixedEffectArgs ++ randomEffectArgs ++ Map(
       "feature-shard-id-to-feature-section-keys-map" ->
         "shard1:features,userFeatures,songFeatures|shard2:features,userFeatures|shard3:songFeatures",
-      "updating-sequence" -> "global,per-user,per-song"
+      "updating-sequence" -> "global,per-user,per-song,per-artist"
     )
   }
 
