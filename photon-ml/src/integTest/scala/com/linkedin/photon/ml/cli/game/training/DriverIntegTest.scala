@@ -100,7 +100,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       "output-dir" -> outputDir))
 
     val driver = new Driver(
-      Params.parseFromCommandLine(args), sc, new PhotonLogger(outputDir, sc.hadoopConfiguration))
+      Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
 
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
@@ -126,7 +126,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       "output-dir" -> outputDir))
 
     val driver = new Driver(
-      Params.parseFromCommandLine(args), sc, new PhotonLogger(outputDir, sc.hadoopConfiguration))
+      Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
 
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
@@ -247,7 +247,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
    */
   def runDriver(args: Array[String]) {
     val params = Params.parseFromCommandLine(args)
-    val logger = new PhotonLogger(params.outputDir, sc.hadoopConfiguration)
+    val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(params, sc, logger)
 
     driver.run

@@ -57,7 +57,7 @@ class CoordinateDescent(
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
         case _ =>
       }
-      logger.logDebug(s"Summary of model (${initializedModel.getClass}}) initialized for coordinate with " +
+      logger.debug(s"Summary of model (${initializedModel.getClass}}) initialized for coordinate with " +
           s"ID $coordinateId:\n${initializedModel.toSummaryString}\n")
       (coordinateId, initializedModel)
     }.toMap
@@ -102,11 +102,11 @@ class CoordinateDescent(
 
     for (iteration <- 0 until numIterations) {
       val iterationStartTime = System.nanoTime()
-      logger.logDebug(s"Iteration $iteration of coordinate descent starts...\n")
+      logger.debug(s"Iteration $iteration of coordinate descent starts...\n")
       coordinates.foreach { case (coordinateId, coordinate) =>
 
         val coordinateStartTime = System.nanoTime()
-        logger.logDebug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
+        logger.debug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
 
         // Update the model
         val modelUpdatingStartTime = System.nanoTime()
@@ -140,10 +140,10 @@ class CoordinateDescent(
 
         // Summarize the current progress
         val modelUpdatingElapsedTime = (System.nanoTime() - modelUpdatingStartTime) * 1e-9
-        logger.logInfo(s"Finished training the model in coordinate $coordinateId, " +
+        logger.info(s"Finished training the model in coordinate $coordinateId, " +
             s"time elapsed: $modelUpdatingElapsedTime (s).")
-        logger.logDebug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
-        logger.logDebug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
+        logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
+        logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
         optimizationTracker match {
           case rddLike: RDDLike => rddLike.unpersistRDD()
           case _ =>
@@ -166,7 +166,7 @@ class CoordinateDescent(
         val lossFunctionValue = trainingLossFunctionEvaluator.evaluate(fullScore.scores)
         val regularizationTermValue = regularizationTermValueContainer.values.sum
         val objectiveFunctionValue = ObjectiveFunctionValue(lossFunctionValue, regularizationTermValue)
-        logger.logInfo(s"Training objective function value after updating coordinate with id $coordinateId at " +
+        logger.info(s"Training objective function value after updating coordinate with id $coordinateId at " +
             s"iteration $iteration is:\n$objectiveFunctionValue")
 
         // Update the validating score and evaluate the updated model on the validating data
@@ -182,16 +182,16 @@ class CoordinateDescent(
           val fullScore = validatingScoresContainer.values.reduce(_ + _)
           val evaluationMetric = evaluator.evaluate(fullScore.scores)
           val validationElapsedTime = (System.nanoTime() - validationStartTime) * 1e-9
-          logger.logDebug(s"Finished validating the model, time elapsed: $validationElapsedTime (s).")
-          logger.logInfo(s"Evaluation metric after updating coordinateId $coordinateId at iteration $iteration is " +
+          logger.debug(s"Finished validating the model, time elapsed: $validationElapsedTime (s).")
+          logger.info(s"Evaluation metric after updating coordinateId $coordinateId at iteration $iteration is " +
               s"$evaluationMetric")
           validatingScoresContainer
         }
         val elapsedTime = (System.nanoTime() - coordinateStartTime) * 1e-9
-        logger.logInfo(s"Updating coordinate $coordinateId finished, time elapsed: $elapsedTime (s)\n")
+        logger.info(s"Updating coordinate $coordinateId finished, time elapsed: $elapsedTime (s)\n")
       }
       val elapsedTime = (System.nanoTime() - iterationStartTime) * 1e-9
-      logger.logInfo(s"Iteration $iteration of coordinate descent finished, time elapsed: $elapsedTime (s)\n\n")
+      logger.info(s"Iteration $iteration of coordinate descent finished, time elapsed: $elapsedTime (s)\n\n")
     }
 
     updatedModelContainer

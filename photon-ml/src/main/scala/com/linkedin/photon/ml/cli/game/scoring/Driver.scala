@@ -65,7 +65,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
         (shardId, featureMap)
       }
     featureShardIdToFeatureMapMap.foreach { case (shardId, featureMap) =>
-      logger.logDebug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
+      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
     }
     featureShardIdToFeatureMapMap
   }
@@ -84,7 +84,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
         IOUtils.getInputPathsWithinDateRange(inputDirs, startDate, endDate, hadoopConfiguration, errorOnMissing = false)
       case None => inputDirs.toSeq
     }
-    logger.logDebug(s"Avro records paths:\n${recordsPath.mkString("\n")}")
+    logger.debug(s"Avro records paths:\n${recordsPath.mkString("\n")}")
     val records = AvroUtils.readAvroFiles(sparkContext, recordsPath, parallelism)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
@@ -95,13 +95,13 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
         .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     // Log some simple summary info on the Game data set
-    logger.logDebug(s"Summary for the validating Game data set")
+    logger.debug(s"Summary for the validating Game data set")
     val numSamples = gameDataSet.count()
-    logger.logDebug(s"numSamples: $numSamples")
+    logger.debug(s"numSamples: $numSamples")
     val responseSum = gameDataSet.values.map(_.response).sum()
-    logger.logDebug(s"responseSum: $responseSum")
+    logger.debug(s"responseSum: $responseSum")
     val weightSum = gameDataSet.values.map(_.weight).sum()
-    logger.logDebug(s"weightSum: $weightSum")
+    logger.debug(s"weightSum: $weightSum")
     val randomEffectIdToIndividualIdMap = gameDataSet.values.first().randomEffectIdToIndividualIdMap
     randomEffectIdToIndividualIdMap.keySet.foreach { randomEffectId =>
       val dataStats = gameDataSet.values.map { gameData =>
@@ -112,8 +112,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       }.cache()
       val responseSumStats = dataStats.values.map(_._1).stats()
       val numSamplesStats = dataStats.values.map(_._2).stats()
-      logger.logDebug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
-      logger.logDebug(s"responseSumStats for $randomEffectId: $responseSumStats")
+      logger.debug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
+      logger.debug(s"responseSumStats for $randomEffectId: $responseSumStats")
     }
 
     gameDataSet
@@ -137,7 +137,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       case rddLike: RDDLike => rddLike.persistRDD(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
       case _ =>
     }
-    logger.logDebug(s"Loaded game model summary:\n${gameModel.map(_.toSummaryString).mkString("\n")}")
+    logger.debug(s"Loaded game model summary:\n${gameModel.map(_.toSummaryString).mkString("\n")}")
 
     val scores = gameModel.map(_.score(gameDataSet)).reduce(_ + _).scores
         .setName("Scores").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -152,7 +152,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     Utils.deleteHDFSDir(scoresDir, hadoopConfiguration)
     // Should always materialize the scoredItems first (e.g., count()) before the coalesce happens
     scoredItems.coalesce(numFiles).saveAsTextFile(scoresDir)
-    logger.logDebug(s"Number of scored items: $numScoredItems")
+    logger.debug(s"Number of scored items: $numScoredItems")
 
     scores
   }
@@ -178,7 +178,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
         throw new UnsupportedOperationException(s"Task type: $taskType is not supported to create validating " +
             s"evaluator")
     }
-    logger.logInfo(s"Evaluation metric: $metric")
+    logger.info(s"Evaluation metric: $metric")
   }
 
   /**
@@ -189,26 +189,22 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     var startTime = System.nanoTime()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
     val initializationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
 
     startTime = System.nanoTime()
     val gameDataSet = prepareGameDataSet(featureShardIdToFeatureMapMap)
     val gameDataSetPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after game data set preparation: $gameDataSetPreparationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after game data set preparation: $gameDataSetPreparationTime (s)\n")
 
     startTime = System.nanoTime()
     val scores = scoreAndWriteScoreToHDFS(featureShardIdToFeatureMapMap, gameDataSet)
     val scoringTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed scoring and writing scores to HDFS: $scoringTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed scoring and writing scores to HDFS: $scoringTime (s)\n")
 
     startTime = System.nanoTime()
     evaluateAndLog(gameDataSet, scores)
     val postprocessingTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after evaluation: $postprocessingTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after evaluation: $postprocessingTime (s)\n")
   }
 }
 
@@ -230,16 +226,26 @@ object Driver {
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
-    val logger = new PhotonLogger(logsDir, sc.hadoopConfiguration)
-    logger.logDebug(params.toString + "\n")
-    logger.flush()
-    val job = new Driver(params, sc, logger)
-    job.run()
+    val logger = new PhotonLogger(logsDir, sc)
 
-    val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
-    logger.logInfo(s"Overall time elapsed $timeElapsed minutes")
+    try {
+      logger.debug(params.toString + "\n")
 
-    logger.close()
-    sc.stop()
+      val job = new Driver(params, sc, logger)
+      job.run()
+
+      val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
+      logger.info(s"Overall time elapsed $timeElapsed minutes")
+
+    } catch {
+      case e: Exception => {
+        logger.error("Failure while running the driver", e)
+        throw e
+      }
+
+    } finally {
+      logger.close()
+      sc.stop()
+    }
   }
 }
