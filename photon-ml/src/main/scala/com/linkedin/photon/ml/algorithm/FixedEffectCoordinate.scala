@@ -116,7 +116,7 @@ protected[ml] class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]]
    * @param logger a logger instance
    */
   protected[algorithm] def summarize(logger: PhotonLogger): Unit = {
-    logger.logDebug(s"Optimization stats: ${optimizationProblem.optimizer.getStateTracker.get}")
+    logger.debug(s"Optimization stats: ${optimizationProblem.optimizer.getStateTracker.get}")
   }
 }
 

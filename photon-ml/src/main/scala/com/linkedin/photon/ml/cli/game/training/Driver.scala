@@ -68,7 +68,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         (shardId, featureMap)
       }
     featureShardIdToFeatureMapMap.foreach { case (shardId, featureMap) =>
-      logger.logDebug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
+      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
     }
     featureShardIdToFeatureMapMap
   }
@@ -88,7 +88,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         IOUtils.getInputPathsWithinDateRange(trainDirs, startDate, endDate, hadoopConfiguration, errorOnMissing = false)
       case None => trainDirs.toSeq
     }
-    logger.logDebug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
+    logger.debug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
 
     // Determine the number of fixed effect partitions. Default to 0 if we have no fixed effects.
     val numFixedEffectPartitions = if (fixedEffectDataConfigurations.nonEmpty) {
@@ -133,7 +133,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       val fixedEffectDataSet = FixedEffectDataSet.buildWithConfiguration(gameDataSet, fixedEffectDataConfiguration)
         .setName(s"Fixed effect data set with id $id")
         .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-      logger.logDebug(s"Fixed effect data set with id $id summary:\n${fixedEffectDataSet.toSummaryString}\n")
+      logger.debug(s"Fixed effect data set with id $id summary:\n${fixedEffectDataSet.toSummaryString}\n")
       (id, fixedEffectDataSet)
     }
 
@@ -168,7 +168,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
           randomEffectDataSetInProjectedSpace
       }
-      logger.logDebug(s"Random effect data set with id $id summary:\n${randomEffectDataSet.toSummaryString}\n")
+      logger.debug(s"Random effect data set with id $id summary:\n${randomEffectDataSet.toSummaryString}\n")
       (id, randomEffectDataSet)
     }
 
@@ -214,7 +214,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           errorOnMissing = false)
       case None => validatingDirs.toSeq
     }
-    logger.logDebug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
+    logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
     val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
     val partitioner = new LongHashPartitioner(records.partitions.length)
     // filter out features that validating data are included in the black list
@@ -225,13 +225,13 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     // Log some simple summary info on the Game data set
-    logger.logDebug(s"Summary for the validating Game data set")
+    logger.debug(s"Summary for the validating Game data set")
     val numSamples = gameDataSet.count()
-    logger.logDebug(s"numSamples: $numSamples")
+    logger.debug(s"numSamples: $numSamples")
     val responseSum = gameDataSet.values.map(_.response).sum()
-    logger.logDebug(s"responseSum: $responseSum")
+    logger.debug(s"responseSum: $responseSum")
     val weightSum = gameDataSet.values.map(_.weight).sum()
-    logger.logDebug(s"weightSum: $weightSum")
+    logger.debug(s"weightSum: $weightSum")
     val randomEffectIdToIndividualIdMap = gameDataSet.values.first().randomEffectIdToIndividualIdMap
     randomEffectIdToIndividualIdMap.keySet.foreach { randomEffectId =>
       val dataStats = gameDataSet.values.map { gameData =>
@@ -242,8 +242,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       }.cache()
       val responseSumStats = dataStats.values.map(_._1).stats()
       val numSamplesStats = dataStats.values.map(_._2).stats()
-      logger.logDebug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
-      logger.logDebug(s"responseSumStats for $randomEffectId: $responseSumStats")
+      logger.debug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
+      logger.debug(s"responseSumStats for $randomEffectId: $responseSumStats")
     }
 
     val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
@@ -265,7 +265,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       }
     val randomScores = gameDataSet.mapValues(_ => math.random)
     val metric = evaluator.evaluate(randomScores)
-    logger.logInfo(s"Random guessing based baseline evaluation metric: $metric")
+    logger.info(s"Random guessing based baseline evaluation metric: $metric")
     (gameDataSet, evaluator)
   }
 
@@ -292,7 +292,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           randomEffectOptimizationConfiguration.mkString("\n") + "\n" +
           factoredRandomEffectOptimizationConfiguration.mkString("\n")
       val startTime = System.nanoTime()
-      logger.logInfo(s"Start to train the game model with the following config:\n$modelConfig\n")
+      logger.info(s"Start to train the game model with the following config:\n$modelConfig\n")
 
       // For each model, create optimization coordinates for the fixed effect, random effect, and factored random effect
       // models
@@ -343,9 +343,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         logger)
       val gameModel = coordinateDescent.run(numIterations)
       val timeElapsed = (System.nanoTime() - startTime) * 1e-9
-      logger.logInfo(s"Finished training model with the following config:\n$modelConfig\n" +
+      logger.info(s"Finished training model with the following config:\n$modelConfig\n" +
           s"Time elapsed: $timeElapsed (s)\n")
-      logger.flush()
+
       (modelConfig, gameModel)
     }
 
@@ -382,7 +382,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
               .reduce(_ + _).scores).mapValues(evaluator.evaluate)
               .reduce((result1, result2) => if (result1._2 > result2._2) result1 else result2)
         val bestGameModel = combinedGameModelsMap(bestModelConfig)
-        logger.logInfo(s"The selected model has the following config:\n$bestModelConfig\nModel summary:" +
+        logger.info(s"The selected model has the following config:\n$bestModelConfig\nModel summary:" +
             s"\n${bestGameModel.map(_.toSummaryString).mkString("\n")}\n\nEvaluation result is : $evaluationResult")
         val modelOutputDir = new Path(outputDir, "best").toString
         Utils.deleteHDFSDir(modelOutputDir, sparkContext.hadoopConfiguration)
@@ -415,26 +415,22 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     var startTime = System.nanoTime()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
     val initializationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
 
     startTime = System.nanoTime()
     val gameDataSet = prepareGameDataSet(featureShardIdToFeatureMapMap)
     val gameDataPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after game data set preparation: $gameDataPreparationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after game data set preparation: $gameDataPreparationTime (s)\n")
 
     startTime = System.nanoTime()
     val trainingDataSet = prepareTrainingDataSet(gameDataSet)
     val trainingDataSetPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after training data set preparation: $trainingDataSetPreparationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after training data set preparation: $trainingDataSetPreparationTime (s)\n")
 
     startTime = System.nanoTime()
     val trainingEvaluator = prepareTrainingEvaluator(gameDataSet)
     val trainingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after training evaluator preparation: $trainingEvaluatorPreparationTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after training evaluator preparation: $trainingEvaluatorPreparationTime (s)\n")
 
     // Get rid of the largest object, which is no longer needed in the following code
     gameDataSet.unpersist()
@@ -444,9 +440,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       case Some(validatingDirs) =>
         val validatingDataAndEvaluator = prepareValidatingEvaluator(validatingDirs, featureShardIdToFeatureMapMap)
         val validatingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
-        logger.logInfo("Time elapsed after validating data and evaluator preparation: " +
-            s"$validatingEvaluatorPreparationTime (s)\n")
-        logger.flush()
+        logger.info("Time elapsed after validating data and evaluator preparation: " +
+                    s"$validatingEvaluatorPreparationTime (s)\n")
+
         Option(validatingDataAndEvaluator)
       case None =>
         None
@@ -455,8 +451,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     startTime = System.nanoTime()
     val gameModelsMap = train(trainingDataSet, trainingEvaluator, validatingDataAndEvaluatorOption)
     val trainingTime = (System.nanoTime() - startTime) * 1e-9
-    logger.logInfo(s"Time elapsed after game model training: $trainingTime (s)\n")
-    logger.flush()
+    logger.info(s"Time elapsed after game model training: $trainingTime (s)\n")
 
     trainingDataSet.foreach { case (_, rddLike: RDDLike) => rddLike.unpersistRDD() }
 
@@ -464,8 +459,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       startTime = System.nanoTime()
       saveModelToHDFS(featureShardIdToFeatureMapMap, validatingDataAndEvaluatorOption, gameModelsMap)
       val savingModelTime = (System.nanoTime() - startTime) * 1e-9
-      logger.logInfo(s"Time elapsed after saving game models to HDFS: $savingModelTime (s)\n")
-      logger.flush()
+      logger.info(s"Time elapsed after saving game models to HDFS: $savingModelTime (s)\n")
     }
   }
 }
@@ -487,17 +481,26 @@ object Driver {
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
-    val logger = new PhotonLogger(logsDir, sc.hadoopConfiguration)
-    logger.logDebug(params.toString + "\n")
-    logger.flush()
-    val job = new Driver(params, sc, logger)
-    job.run()
+    val logger = new PhotonLogger(logsDir, sc)
 
-    val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
-    logger.logInfo(s"Overall time elapsed $timeElapsed minutes")
-    logger.flush()
+    try {
+      logger.debug(params.toString + "\n")
 
-    logger.close()
-    sc.stop()
+      val job = new Driver(params, sc, logger)
+      job.run()
+
+      val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
+      logger.info(s"Overall time elapsed $timeElapsed minutes")
+
+    } catch {
+      case e: Exception => {
+        logger.error("Failure while running the driver", e)
+        throw e
+      }
+
+    } finally {
+      logger.close()
+      sc.stop()
+    }
   }
 }

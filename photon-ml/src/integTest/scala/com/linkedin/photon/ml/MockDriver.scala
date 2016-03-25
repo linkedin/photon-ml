@@ -14,7 +14,8 @@
  */
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.io.LogWriter
+import com.linkedin.photon.ml.util.PhotonLogger
+import org.apache.hadoop.fs.Path
 import org.apache.spark.{SparkConf, SparkContext}
 import org.testng.Assert._
 
@@ -28,9 +29,9 @@ import org.testng.Assert._
 class MockDriver(
     override val params: Params,
     override val sc: SparkContext,
-    override val logger: LogWriter,
+    override val logger: PhotonLogger,
     override val seed: Long)
-  extends Driver(params: Params, sc: SparkContext, logger: LogWriter, seed) {
+  extends Driver(params: Params, sc: SparkContext, logger: PhotonLogger, seed) {
 
   var isSummarized = false
 
@@ -59,7 +60,8 @@ object MockDriver {
                                                                   params.jobName,
                                                                   params.kryo)
     try {
-    val logger = new LogWriter(params.outputDir, sc)
+      val logPath = new Path(params.outputDir, "log-message.txt")
+      val logger = new PhotonLogger(logPath, sc)
       val job = new MockDriver(params, sc, logger, seed)
       job.run()
 

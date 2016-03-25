@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
-import com.linkedin.photon.ml.io.{GLMSuite, LogWriter}
+import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
@@ -35,12 +35,13 @@ import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.slf4j.Logger
 
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
@@ -72,9 +73,8 @@ import scala.xml.PrettyPrinter
 protected[ml] class Driver(
     protected val params: Params,
     protected val sc: SparkContext,
-    protected val logger: LogWriter,
-    protected val seed: Long = System.nanoTime)
-  extends Logging {
+    protected val logger: Logger,
+    protected val seed: Long = System.nanoTime) {
 
   import com.linkedin.photon.ml.Driver._
 
@@ -116,7 +116,7 @@ protected[ml] class Driver(
   }
 
   def run(): Unit = {
-    logger.println(s"Input parameters: \n$params\n")
+    logger.info(s"Input parameters: \n$params\n")
 
     val startTime = System.currentTimeMillis()
 
@@ -127,14 +127,14 @@ protected[ml] class Driver(
 
     /* Store all the learned models and log messages to their corresponding directories */
     val elapsed = (System.currentTimeMillis() - startTime) * 0.001
-    logger.println(f"total time elapsed: $elapsed%.3f(s)")
+    logger.info(f"total time elapsed: $elapsed%.3f(s)")
 
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
     val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT).toString
     Utils.deleteHDFSDir(finalModelsDir, sc.hadoopConfiguration)
     suite.writeModelsInText(sc, lambdaModelTuples, finalModelsDir.toString)
 
-    logger.println(s"Final models are written to: $finalModelsDir")
+    logger.info(s"Final models are written to: $finalModelsDir")
   }
 
   @throws(classOf[IOException])
@@ -157,9 +157,9 @@ protected[ml] class Driver(
     trainingDataNum = trainingData.count().toInt
 
     /* Print out the basic statistics of the training data */
-    logger.println(s"number of training data points: $trainingDataNum, " +
+    logger.info(s"number of training data points: $trainingDataNum, " +
       s"number of features in each training example including intercept (if any) $featureNum.")
-    logger.println(s"Input RDD persisted in storage level $trainDataStorageLevel")
+    logger.info(s"Input RDD persisted in storage level $trainDataStorageLevel")
 
     if (! DataValidators.sanityCheckData(trainingData, params.taskType, params.dataValidationType)) {
       throw new IllegalArgumentException("Training data has issues")
@@ -167,7 +167,7 @@ protected[ml] class Driver(
 
     if (params.validateDirOpt.isDefined) {
       val validateDir = params.validateDirOpt.get
-      logger.println(s"\nRead validation data from $validateDir")
+      logger.info(s"\nRead validation data from $validateDir")
 
       // Read validation data after the training data are unpersisted.
       validatingData =
@@ -179,8 +179,7 @@ protected[ml] class Driver(
     }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001
-    logger.println(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
-    logger.flush()
+    logger.info(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
 
     /* Summarize */
     if (params.summarizationOutputDirOpt.isDefined || params.normalizationType != NormalizationType.NONE) {
@@ -203,12 +202,12 @@ protected[ml] class Driver(
     outputDir.foreach { dir =>
       Utils.deleteHDFSDir(dir, sc.hadoopConfiguration)
       suite.writeBasicStatistics(sc, summary, dir)
-      logger.println(s"Feature statistics written to $outputDir")
+      logger.info(s"Feature statistics written to $outputDir")
     }
 
     val timeForSummarization = 1.0E-3 * (System.currentTimeMillis() - beforeSummarization)
-    logger.println(f"Feature summary finishes. Time elapsed: $timeForSummarization%.3f")
-    logger.flush()
+    logger.info(f"Feature summary finishes. Time elapsed: $timeForSummarization%.3f")
+
     summary
   }
 
@@ -217,7 +216,7 @@ protected[ml] class Driver(
 
     /* Given the processed training data, starting to train a model using the chosen algorithm */
     val startTimeForTraining = System.currentTimeMillis()
-    logger.println("model training started...")
+    logger.info("model training started...")
 
     // The sole purpose of optimizationStateTrackersMapOption is used for logging. When we have better logging support,
     // we should remove stop returning optimizationStateTrackerMapOption
@@ -237,14 +236,13 @@ protected[ml] class Driver(
     lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
 
     val trainingTime = (System.currentTimeMillis() - startTimeForTraining) * 0.001
-    logger.println(f"model training finished, time elapsed: $trainingTime%.3f(s)")
+    logger.info(f"model training finished, time elapsed: $trainingTime%.3f(s)")
 
     lambdaModelTrackerTuplesOption.foreach { modelTrackersMap =>
-      logger.println(s"optimization state tracker information:")
+      logger.info(s"optimization state tracker information:")
       modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
-        logger.println(s"model with regularization weight $regularizationWeight:")
-        logger.println(s"${modelTracker.optimizationStateTrackerString}")
-        logger.flush()
+        logger.info(s"model with regularization weight $regularizationWeight: " +
+                    s"${modelTracker.optimizationStateTrackerString}")
       }
     }
 
@@ -255,8 +253,8 @@ protected[ml] class Driver(
     assertDriverStage(DriverStage.TRAINED)
     if (params.validateDirOpt.isDefined) {
       /* Validating the learned models using the validating data set */
-      logger.println("\nStart to validate the learned models with validating data")
-      logger.flush()
+      logger.info("\nStart to validate the learned models with validating data")
+
       val startTimeForValidating = System.currentTimeMillis()
       if (params.validatePerIteration) {
         // Calculate metrics for all (models, iterations)
@@ -273,7 +271,7 @@ protected[ml] class Driver(
                 }).mkString("\n")
               }).mkString("\n")
 
-            logger.println(s"Model with lambda = $lambda:\n$msg")
+            logger.info(s"Model with lambda = $lambda:\n$msg")
           }
         }
       } else {
@@ -284,7 +282,7 @@ protected[ml] class Driver(
           val msg = metrics.keys.toSeq.sorted.map(y => {
             f"    Metric: [$y] value: ${metrics.get(y).get}"
           }).mkString("\n")
-          logger.println(s"Model with lambda = $lambda:\n$msg")
+          logger.info(s"Model with lambda = $lambda:\n$msg")
         }
       }
 
@@ -304,16 +302,14 @@ protected[ml] class Driver(
           ModelSelection.selectBestLinearClassifier(models, validatingData)
       }
 
-      logger.println(s"Regularization weight of the best model is: $bestModelWeight")
+      logger.info(s"Regularization weight of the best model is: $bestModelWeight")
       val bestModelDir = new Path(params.outputDir, BEST_MODEL_TEXT).toString
       Utils.deleteHDFSDir(bestModelDir, sc.hadoopConfiguration)
       suite.writeModelsInText(sc, List((bestModelWeight, bestModel)), bestModelDir.toString)
-      logger.println(s"The best model is written to: $bestModelDir")
-      logger.flush()
+      logger.info(s"The best model is written to: $bestModelDir")
 
       val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
-      logger.println(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
-      logger.flush()
+      logger.info(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
 
       updateStage(DriverStage.VALIDATED)
     }
@@ -352,7 +348,7 @@ protected[ml] class Driver(
         .mapValues(_.mapValues(_._1))
 
       val modelDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
-      logger.println(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
+      logger.info(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
 
       val trainDiagnosticStart = System.currentTimeMillis
       val bootstrapDiagnostic = new BootstrapTrainingDiagnostic(suite.featureKeyToIdMap)
@@ -373,7 +369,7 @@ protected[ml] class Driver(
           treeAggregateDepth = params.treeAggregateDepth)._1
       }
 
-      logger.println(s"Starting training diagnostics")
+      logger.info(s"Starting training diagnostics")
       val lambdaModelMap: Map[Double, GeneralizedLinearModel] = lambdaModelTuples.toMap
 
       val lambdaFitMap: Map[Double, FittingReport] = if (params.trainingDiagnosticsEnabled) {
@@ -389,7 +385,7 @@ protected[ml] class Driver(
       }
 
       val trainDiagnosticTime = (System.currentTimeMillis - trainDiagnosticStart) / 1000.0
-      logger.println(f"Training diagnostic time elapsed: $trainDiagnosticTime%.03f(s)")
+      logger.info(f"Training diagnostic time elapsed: $trainDiagnosticTime%.03f(s)")
 
 
       diagnostic.modelReports ++= lambdaModelTuples.map(x => {
@@ -423,9 +419,8 @@ protected[ml] class Driver(
 
       val totalDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
 
-      logger.println(f"Total diagnostic time: $totalDiagnosticTime%.03f (s)")
-      logger.println("Writing diagnostics")
-      logger.flush()
+      logger.info(f"Total diagnostic time: $totalDiagnosticTime%.03f (s)")
+      logger.info("Writing diagnostics")
 
       validatingData.unpersist()
       writeDiagnostics(params.outputDir, REPORT_FILE, diagnostic)
@@ -484,14 +479,24 @@ object Driver {
     /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
     val sc: SparkContext = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
 
-
     // A temporary solution to save log into HDFS.
-    val logger = new LogWriter(params.outputDir, sc)
+    val logPath = new Path(params.outputDir, "log-message.txt")
+    val logger = new PhotonLogger(logPath, sc)
 
-    val job = new Driver(params, sc, logger)
-    job.run()
-    logger.close()
-    sc.stop()
+    try {
+      val job = new Driver(params, sc, logger)
+      job.run()
+
+    } catch {
+      case e: Exception => {
+        logger.error("Failure while running the driver", e)
+        throw e
+      }
+
+    } finally {
+      logger.close()
+      sc.stop()
+    }
   }
 
   private def writeDiagnostics(outputDir: String, file: String, diagReport: DiagnosticReport): Unit = {
