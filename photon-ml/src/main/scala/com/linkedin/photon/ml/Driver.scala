@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
+import com.linkedin.photon.ml.util.{PalDBIndexMapLoader, PalDBIndexMap, PhotonLogger, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
@@ -60,7 +60,8 @@ import scala.xml.PrettyPrinter
  * </ul>
  * More detailed documentation can be found either through the comments and notations in the source code, or at
  * [[TODO: wiki URL]].
- * @param params: The Photon-ML parameters [[Params]]], containing essential information
+  *
+  * @param params: The Photon-ML parameters [[Params]]], containing essential information
  *              for the underlying model training tasks.
  * @param sc: The Spark context.
  * @param logger: A temporary container to hold the driver's logs.
@@ -80,7 +81,7 @@ protected[ml] class Driver(
 
   protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
   private[this] val trainDataStorageLevel: StorageLevel = DEFAULT_STORAGE_LEVEL
-  private[this] val suite: GLMSuite = new GLMSuite(params.fieldsNameType, params.addIntercept, params.constraintString)
+  private[this] var suite: GLMSuite = null
   protected var stage: DriverStage = DriverStage.INIT
   private[this] var trainingData: RDD[LabeledPoint] = null
   private[this] var validatingData: RDD[LabeledPoint] = null
@@ -141,6 +142,23 @@ protected[ml] class Driver(
   @throws(classOf[IllegalArgumentException])
   protected def preprocess(): Unit = {
     assertDriverStage(DriverStage.INIT)
+
+    // Prepare offHeapIndexMap loader if provided
+    val offHeapIndexMapLoader = if (params.offHeapIndexMapDir != null) {
+      // TODO: if we want to support other off heap storages in the future, we could modify this into a factory pattern
+      val indexMapLoader = new PalDBIndexMapLoader()
+      indexMapLoader.prepare(sc, params)
+      Some(indexMapLoader)
+    } else {
+      None
+    }
+
+    // Initialize GLMSuite
+    suite = new GLMSuite(params.fieldsNameType,
+        params.addIntercept,
+        params.constraintString,
+        offHeapIndexMapLoader)
+
     params.selectedFeaturesFile.foreach(file => {
       val path = new Path(file)
       if (! path.getFileSystem(sc.hadoopConfiguration).exists(path)) {
@@ -286,6 +304,9 @@ protected[ml] class Driver(
         }
       }
 
+      /* TODO: we potentially have an excessive memory usage issue at this step,
+       * 2M feature sponsor ads dataset with fail at here due to OOM
+       */
       /* Select the best model using the validating data set and stores the best model as text file */
       val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
         case LINEAR_REGRESSION =>

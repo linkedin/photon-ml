@@ -146,6 +146,10 @@ class Params {
    * The depth used in tree aggregate
    */
   var treeAggregateDepth: Int = 1
+
+  var offHeapIndexMapDir: String = null
+  var offHeapIndexMapNumPartitions: Int = 0
+
   /**
    * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
    */

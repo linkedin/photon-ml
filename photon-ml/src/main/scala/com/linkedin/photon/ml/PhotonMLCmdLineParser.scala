@@ -201,6 +201,12 @@ object PhotonMLCmdLineParser {
           }
         )
         .foreach(x => params.treeAggregateDepth = x)
+      opt[String](OFFHEAP_INDEXMAP_DIR)
+        .text("")
+        .foreach(x => params.offHeapIndexMapDir = x)
+      opt[Int](OFFHEAP_INDEXMAP_NUM_PARTITIONS)
+        .text("")
+        .foreach(x => params.offHeapIndexMapNumPartitions = x.toInt)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
     }

@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.io
 
 import com.linkedin.photon.ml.test.CommonTestUtils
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
@@ -30,12 +30,12 @@ import org.testng.annotations.{DataProvider, Test}
 class GLMSuiteTest {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testWithUnsupportedFieldNameType(): Unit = {
-    new GLMSuite(FieldNamesType.NONE, false, None)
+    new GLMSuite(FieldNamesType.NONE, false, None, None)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testWithUnsupportedFieldNameType2(): Unit = {
-    new GLMSuite(FieldNamesType.NONE, true, None)
+    new GLMSuite(FieldNamesType.NONE, true, None, None)
   }
 
   @DataProvider
@@ -71,8 +71,8 @@ class GLMSuiteTest {
 
   @Test(dataProvider = "generateInvalidConstraintStrings", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testCreateConstraintFeatureMapForInvalidInputs(featureKeyToIdMap: Map[String, Int], constraintString: String) = {
-    val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString))
-    suite.featureKeyToIdMap = featureKeyToIdMap
+    val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString), None)
+    suite.featureKeyToIdMap = new DefaultIndexMap(featureKeyToIdMap)
     suite.createConstraintFeatureMap()
   }
 
@@ -110,8 +110,8 @@ class GLMSuiteTest {
   @Test(dataProvider = "generateValidConstraintStrings")
   def testCreateConstraintFeatureMapForValidInputs(featureKeyToIdMap: Map[String, Int], constraintString: String,
                                                    expectedMap: Option[Map[Int, (Double, Double)]]) = {
-    val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString))
-    suite.featureKeyToIdMap = featureKeyToIdMap
+    val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString), None)
+    suite.featureKeyToIdMap = new DefaultIndexMap(featureKeyToIdMap)
     val actualMap = suite.createConstraintFeatureMap()
     Assert.assertTrue(CommonTestUtils.compareConstraintMaps(actualMap, expectedMap))
   }

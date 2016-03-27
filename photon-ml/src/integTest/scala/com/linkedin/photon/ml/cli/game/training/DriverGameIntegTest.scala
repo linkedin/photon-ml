@@ -29,8 +29,8 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
 
-class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
-  import DriverIntegTest._
+class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+  import DriverGameIntegTest._
   import CommonTestUtils._
 
   @Test
@@ -255,7 +255,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 }
 
-object DriverIntegTest {
+object DriverGameIntegTest {
   val fs = FileSystems.getDefault()
   val inputPath = getClass.getClassLoader.getResource("GameDriverIntegTest/input").getPath
   val trainPath = inputPath + "/train"

@@ -46,4 +46,7 @@ object OptionNames {
   val TREE_AGGREGATE_DEPTH = "tree-aggregate-depth"
   val TRAINING_DIAGNOSTICS = "training-diagnostics"
   val SELECTED_FEATURES_FILE = "selected-features-file"
+
+  val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
+  val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
 }

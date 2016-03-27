@@ -22,7 +22,7 @@ import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, Train
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
 import org.apache.avro.Schema
 import org.apache.avro.file.{DataFileReader, DataFileWriter}
 import org.apache.avro.generic.{GenericRecordBuilder, GenericDatumWriter, GenericRecord}
@@ -49,7 +49,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testLoadFeatureMapWithIllegalFeatureList(): Unit = sparkTest("testLoadFeatureMapWithIllegalFeatureList") {
-    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None)
+    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None, None)
 
     val recordBuilder = new GenericRecordBuilder(BAD_RESPONSE_PREDICTION_SCHEMA)
     val records = Array(
@@ -67,7 +67,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testReadLabeledPointsWithIllegalFeatureList(): Unit = sparkTest("testReadLabeledPointsWithIllegalFeatureList") {
-    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None)
+    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None, None)
 
     val recordBuilder = new GenericRecordBuilder(BAD_RESPONSE_PREDICTION_SCHEMA)
     val records = Array(
@@ -79,7 +79,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val path = getTmpDir + "/testReadLabeledPointsWithIllegalFeatureList"
     writeToTempDir(records, path, BAD_RESPONSE_PREDICTION_SCHEMA)
 
-    suite.featureKeyToIdMap = Map[String, Int](("Making map non-empty" -> 1))
+    suite.featureKeyToIdMap = new DefaultIndexMap(Map[String, Int](("Making map non-empty" -> 1)))
 
     // Because the map is non empty, now it tests the actual avro record parse method
     suite.readLabeledPointsFromAvro(sc, path, None, 1).count
@@ -88,7 +88,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testReadLabeledPointsWithIllegalFeatureList2(): Unit =
       sparkTest("testReadLabeledPointsWithIllegalFeatureList2") {
-    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None)
+    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None, None)
 
     val recordBuilder = new GenericRecordBuilder(BAD_RESPONSE_PREDICTION_SCHEMA2)
     val features = new JArrayList[Double]()
@@ -102,7 +102,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val path = getTmpDir + "/testReadLabeledPointsWithIllegalFeatureList2"
     writeToTempDir(records, path, BAD_RESPONSE_PREDICTION_SCHEMA2)
 
-    suite.featureKeyToIdMap = Map[String, Int](("Making map non-empty" -> 1))
+    suite.featureKeyToIdMap = new DefaultIndexMap(Map[String, Int](("Making map non-empty" -> 1)))
 
     // Because the map is non empty, now it tests the actual avro record parse method
     suite.readLabeledPointsFromAvro(sc, path, None, 1).count
@@ -388,9 +388,14 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       normL2 = normL2Vector,
       meanAbs = meanVector)
 
-    val suite = new GLMSuite(fieldNamesType = FieldNamesType.TRAINING_EXAMPLE, addIntercept = true, constraintString = None)
-    suite.featureKeyToIdMap = Map(("f0" + GLMSuite.DELIMITER -> 0), ("f1" + GLMSuite.DELIMITER + "t1" -> 1),
-      ("f2" + GLMSuite.DELIMITER -> 2), ("f3" + GLMSuite.DELIMITER + "t3" -> 3), ("f4" + GLMSuite.DELIMITER -> 4))
+    val suite = new GLMSuite(fieldNamesType = FieldNamesType.TRAINING_EXAMPLE, addIntercept = true,
+        constraintString = None, offHeapIndexMapLoader = None)
+    suite.featureKeyToIdMap = new DefaultIndexMap(Map(
+        ("f0" + GLMSuite.DELIMITER -> 0),
+        ("f1" + GLMSuite.DELIMITER + "t1" -> 1),
+        ("f2" + GLMSuite.DELIMITER -> 2),
+        ("f3" + GLMSuite.DELIMITER + "t3" -> 3),
+        ("f4" + GLMSuite.DELIMITER -> 4)))
 
     val tempOut = getTmpDir + "/summary-output"
     suite.writeBasicStatistics(sc, summary, tempOut)

@@ -68,6 +68,108 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
+  def testRunWithOffHeapMap(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
+    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+    args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
+    args += "false"
+    appendOffHeapConfig(args, addIntercept = false)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 13, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
+    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+    appendOffHeapConfig(args, addIntercept = true)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithDataValidationPerIterationWithOffHeapMap(): Unit = sparkTestSelfServeContext(
+    "testRunWithDataValidationPerIteration") {
+    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir, isValidating = true)
+
+    args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
+    args += true.toString()
+    args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
+    args += "false"
+    appendOffHeapConfig(args, addIntercept = false)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
+      expectedNumFeatures = 13, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // The selected best model is supposed to be of lambda 0.1
+    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    assertEquals(bestModel.size, 1)
+    // Verify lambda
+    assertEquals(bestModel(0)._1, 0.1)
+  }
+
+  @Test
+  def testRunWithDataValidationPerIterationWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext(
+    "testRunWithDataValidationPerIteration") {
+    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir, isValidating = true)
+
+    args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
+    args += true.toString()
+    appendOffHeapConfig(args, addIntercept = true)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // The selected best model is supposed to be of lambda 0.1
+    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    assertEquals(bestModel.size, 1)
+    // Verify lambda
+    assertEquals(bestModel(0)._1, 0.1)
+  }
+
+  @Test
   def testRunWithTRON(): Unit = sparkTestSelfServeContext("testRunWithTRON") {
     val tmpDir = getTmpDir + "/testRunWithTRON"
     val args = mutable.ArrayBuffer[String]()
@@ -448,6 +550,9 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
 object DriverIntegTest {
   val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
+  val OFFHEAP_HEART_STORE_NO_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart"
+  val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
+  val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   def appendCommonJobArgs(args: mutable.ArrayBuffer[String], testRoot: String, isValidating: Boolean = false): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
@@ -466,6 +571,17 @@ object DriverIntegTest {
 
     args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
     args += FieldNamesType.TRAINING_EXAMPLE.toString()
+  }
+
+  def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
+    args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_DIR)
+    if (addIntercept) {
+      args += OFFHEAP_HEART_STORE_WITH_INTERCEPT
+    } else {
+      args += OFFHEAP_HEART_STORE_NO_INTERCEPT
+    }
+    args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_NUM_PARTITIONS)
+    args += OFFHEAP_HEART_STORE_PARTITION_NUM
   }
 
   /* TODO: formalize these model loaders in another RB
