@@ -43,9 +43,8 @@ class VarianceFeatureImportanceDiagnostic(modelNameToIndex: Map[String, Int])
   protected def getImportances(
       model: GeneralizedLinearModel,
       summary: Option[BasicStatisticalSummary]): Iterable[((String, String), Int, Double)] = {
-    println(s"MODEL NAME TO INDEX ${modelNameToIndex}")
 
-    val res = modelNameToIndex.map(x => {
+    modelNameToIndex.map(x => {
       val nameTerm = Utils.extractNameTerm(x._1)
       val index = x._2
       val coeff = model.coefficients(index)
@@ -57,10 +56,5 @@ class VarianceFeatureImportanceDiagnostic(modelNameToIndex: Map[String, Int])
       val importance = math.abs(coeff * expAbs)
       (nameTerm, index, importance)
     })
-
-    println(s"$res")
-
-    res
-
   }
 }

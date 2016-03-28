@@ -77,7 +77,7 @@ class FeatureIndexingJobTest {
     }
   }
 
-  def checkPalDBReadable(path: String, numPartitions: Int, addIntercept: Boolean): Unit = {
+  private def checkPalDBReadable(path: String, numPartitions: Int, addIntercept: Boolean): Unit = {
     val indexMap = new PalDBIndexMap().load(path, numPartitions)
 
     val expectedFeatureDimension = if (addIntercept) 14 else 13

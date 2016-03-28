@@ -44,12 +44,13 @@ class PalDBIndexMap extends IndexMap {
     _partitioner = new HashPartitioner(_partitionsNum)
 
     for (i <- 0 until partitionsNum) {
+      // TODO: make such config customable in the future, so far, there isn't necessacity for doing so.
       val config = new Configuration()
       config.set(Configuration.CACHE_ENABLED, "true")
       // Allow 200MB in-memory cache in total
       config.set(Configuration.CACHE_BYTES, String.valueOf(209715200L / _partitionsNum))
 
-      // TODO: because we also store reverse mapping
+      // Note: because we store both name -> idx and idx -> name in the same store
       _offsets(i) = _size / 2
       val filename = getPartitionFilename(i)
       val storeFile = new java.io.File(SparkFiles.get(filename))
@@ -65,7 +66,6 @@ class PalDBIndexMap extends IndexMap {
   override def size(): Int = _size / 2
 
   override def getFeatureName(idx: Int): String = {
-    // throw new RuntimeException("Reverse query is not supported yet")
     var i = 0
     for (i <- 0 until _partitionsNum) {
       val k = idx - _offsets(i)

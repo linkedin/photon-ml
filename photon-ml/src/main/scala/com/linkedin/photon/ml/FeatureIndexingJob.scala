@@ -60,7 +60,7 @@ class FeatureIndexingJob(val sc: SparkContext,
       }
       res
     }.mapPartitions{iter =>
-      // Step 2. map features to (hashCode,
+      // Step 2. map features to (hashCode, featureName)
       val set = new scala.collection.mutable.HashSet[String]()
       while (iter.hasNext) {
         set.add(iter.next())

@@ -14,12 +14,15 @@
  */
 package com.linkedin.photon.ml.util
 
+
+import scala.collection.immutable.Map
+
 /**
   * The trait defines the methods supposed should be supported by an index map
   *
   * @author yizhou
   */
-trait IndexMap extends Map[String, Int] with java.io.Serializable {
+trait IndexMap extends Map[String, Int] {
 
   /**
     * Given an index, reversely track down the corresponding feature name

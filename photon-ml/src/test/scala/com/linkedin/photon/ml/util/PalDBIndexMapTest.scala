@@ -20,7 +20,8 @@ import org.testng.annotations.Test
 import org.testng.Assert._
 
 /**
-  * Created by yizhou on 3/23/16.
+  * A class tests PalDBIndexMap implementation
+  *
   */
 class PalDBIndexMapTest {
 
