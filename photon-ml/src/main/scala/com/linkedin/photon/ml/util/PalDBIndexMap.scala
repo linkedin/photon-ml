@@ -36,7 +36,16 @@ class PalDBIndexMap extends IndexMap {
   @transient
   private var _partitioner: HashPartitioner = null
 
-  def load(storePath: String, partitionsNum: Int): PalDBIndexMap = {
+  /**
+    * Load a storage at a particular path
+    *
+    * @param storePath The directory where the storage is put
+    * @param partitionsNum The number of partitions, the storage contains
+    * @param isLocal default: false, if set false will use SparkFiles to access cached files; otherwise,
+    *                it will directly read from local files
+    * @return
+    */
+  def load(storePath: String, partitionsNum: Int, isLocal: Boolean = false): PalDBIndexMap = {
     _storeReaders = new Array[StoreReader](partitionsNum)
     _offsets = new Array[Int](partitionsNum)
 
@@ -44,7 +53,7 @@ class PalDBIndexMap extends IndexMap {
     _partitioner = new HashPartitioner(_partitionsNum)
 
     for (i <- 0 until partitionsNum) {
-      // TODO: make such config customable in the future, so far, there isn't necessacity for doing so.
+      // TODO: make such config customizable in the future, so far, there isn't necessity for doing so.
       val config = new Configuration()
       config.set(Configuration.CACHE_ENABLED, "true")
       // Allow 200MB in-memory cache in total
@@ -53,8 +62,11 @@ class PalDBIndexMap extends IndexMap {
       // Note: because we store both name -> idx and idx -> name in the same store
       _offsets(i) = _size / 2
       val filename = getPartitionFilename(i)
-      val storeFile = new java.io.File(SparkFiles.get(filename))
-      _storeReaders(i) = PalDB.createReader(storeFile, config)
+
+      val storeFile = if (isLocal) new java.io.File(storePath, filename) else new java.io.File(SparkFiles.get(filename))
+      PALDB_READER_LOCK.synchronized {
+        _storeReaders(i) = PalDB.createReader(storeFile, config)
+      }
       _size += _storeReaders(i).size().asInstanceOf[Number].intValue()
     }
 
@@ -69,9 +81,9 @@ class PalDBIndexMap extends IndexMap {
     var i = 0
     for (i <- 0 until _partitionsNum) {
       val k = idx - _offsets(i)
-      val v = _storeReaders(i).get(k).asInstanceOf[String]
-      if (v != null) {
-        return v
+      PALDB_READER_LOCK.synchronized {
+        val v = _storeReaders(i).get(k).asInstanceOf[String]
+        if (v != null) return v
       }
     }
 
@@ -80,12 +92,13 @@ class PalDBIndexMap extends IndexMap {
 
   override def getIndex(name: String): Int = {
     val i = _partitioner.getPartition(name)
-    val map = _storeReaders(i)
     // Note: very important to cast to java.lang.Object first; if directly casting to int,
     // null will be cast to 0 by Scala
-    val idx = map.get(name).asInstanceOf[java.lang.Object]
+    PALDB_READER_LOCK.synchronized {
+      val idx = _storeReaders(i).get(name).asInstanceOf[java.lang.Object]
 
-    if (idx == null) -1 else idx.asInstanceOf[Int] + _offsets(i)
+      if (idx == null) -1 else idx.asInstanceOf[Int] + _offsets(i)
+    }
   }
 
   //noinspection ScalaStyle
@@ -106,6 +119,9 @@ class PalDBIndexMap extends IndexMap {
 }
 
 object PalDBIndexMap {
+  /* PalDB is not thread safe for parallel reads even for different storages, necessary to lock it.
+   */
+  private val PALDB_READER_LOCK = "READER_LOCK"
 
   /**
     * Returns the formatted filename for a partitioncular partition file of PalDB IndexMap.
@@ -130,7 +146,7 @@ object PalDBIndexMap {
     override def next(): (String, Int) = {
       fetch()
       if (_currentItem == null) {
-        throw new RuntimeException("No more element exisits.")
+        throw new RuntimeException("No more element exists.")
       }
 
       val res = _currentItem
@@ -139,7 +155,8 @@ object PalDBIndexMap {
     }
 
     private def fetch(): Unit = {
-        while(_currentItem == null && ((_storeIterator != null && _storeIterator.hasNext) || _i < map._partitionsNum - 1)) {
+        while(_currentItem == null
+            && ((_storeIterator != null && _storeIterator.hasNext) || _i < map._partitionsNum - 1)) {
           if (_storeIterator == null || !_storeIterator.hasNext) {
             _i += 1
             _currentStore = map._storeReaders(_i)

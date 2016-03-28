@@ -305,7 +305,7 @@ protected[ml] class Driver(
       }
 
       /* TODO: we potentially have an excessive memory usage issue at this step,
-       * 2M feature sponsor ads dataset with fail at here due to OOM
+       * 2M feature dataset with fail at here due to OOM
        */
       /* Select the best model using the validating data set and stores the best model as text file */
       val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {

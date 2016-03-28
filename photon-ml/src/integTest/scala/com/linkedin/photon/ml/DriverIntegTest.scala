@@ -28,6 +28,7 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.util.PalDBIndexMapTest
 import org.apache.commons.io.FileUtils
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -550,9 +551,6 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
 object DriverIntegTest {
   val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
-  val OFFHEAP_HEART_STORE_NO_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart"
-  val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
-  val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   def appendCommonJobArgs(args: mutable.ArrayBuffer[String], testRoot: String, isValidating: Boolean = false): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
@@ -576,12 +574,12 @@ object DriverIntegTest {
   def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_DIR)
     if (addIntercept) {
-      args += OFFHEAP_HEART_STORE_WITH_INTERCEPT
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_WITH_INTERCEPT
     } else {
-      args += OFFHEAP_HEART_STORE_NO_INTERCEPT
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_NO_INTERCEPT
     }
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_NUM_PARTITIONS)
-    args += OFFHEAP_HEART_STORE_PARTITION_NUM
+    args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_PARTITION_NUM
   }
 
   /* TODO: formalize these model loaders in another RB

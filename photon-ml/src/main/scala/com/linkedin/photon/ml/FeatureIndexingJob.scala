@@ -29,7 +29,16 @@ import java.util.{List => JList}
   * A class that builds feature index map as an independent Spark job. Recommended when feature space is large,
   * typically when there are more than 200k unique features.
   *
-  * @author yizhou
+  * The job expected three required arguments and one optional one:
+  * [input_data_path]: The input path of data
+  * [partition_num]: The number of partitions to break the storage into. This is merely introduced as an optimization at
+  *   build stage that we don't necessary have to shuffle all features into the same partition but rather we could
+  *   just hold them into multiple ones. A heuristically good number could be 1-10, or even as large as 20; but please
+  *   avoid setting it into an arbitrarily large number. Use just 1 or 2 if you find the indexing job is already fast
+  *   enough.
+  * [output_dir]: The output directory
+  * [if_add_intercept] (optional, default=true): whether include INTERCEPT into the map.
+  *
   */
 class FeatureIndexingJob(val sc: SparkContext,
                          val inputPath: String,
