@@ -15,9 +15,14 @@
 package com.linkedin.photon.ml
 
 
-import com.linkedin.photon.ml.avro.AvroIOUtils
-import com.linkedin.photon.ml.io.GLMSuite
-import com.linkedin.photon.ml.util.PalDBIndexMapBuilder
+import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
+import com.linkedin.photon.ml.io.FieldNamesType._
+
+import scala.collection.mutable
+
+import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, FieldNames, AvroIOUtils}
+import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
+import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapBuilder}
 import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
@@ -44,9 +49,8 @@ class FeatureIndexingJob(val sc: SparkContext,
                          val inputPath: String,
                          val partitionNum: Int,
                          val outputPath: String,
-                         val addIntercept: Boolean) {
-  import FeatureIndexingJob._
-
+                         val addIntercept: Boolean,
+                         val fieldNames: FieldNames) {
 
   /**
     * Given a raw input data RDD, generate the partitioned unique features names grouped by hash code
@@ -55,24 +59,26 @@ class FeatureIndexingJob(val sc: SparkContext,
     * @return RDD[(hash key, Iterable[unique feature name])]
     */
   private def partitionedUniqueFeatures(inputRdd: RDD[GenericRecord]): RDD[(Int, Iterable[String])] = {
+    // Copy it to avoid serialization of the entire class
+    val fieldNamesRef = fieldNames
     val keyedFeaturesRDD = inputRdd.flatMap { r: GenericRecord =>
       // Step 1: extract feature names
-      val fs = r.get("features").asInstanceOf[JList[_]]
+      val fs = r.get(fieldNamesRef.features).asInstanceOf[JList[_]]
       val it = fs.iterator()
 
       val res = new Array[String](fs.size())
       var i = 0
       while (it.hasNext) {
-        val tuple = it.next().asInstanceOf[GenericRecord]
-        res(i) = getFullFeatureName(tuple)
+        val record = it.next().asInstanceOf[GenericRecord]
+        res(i) = Utils.getFeatureKey(record, fieldNamesRef.name, fieldNamesRef.term, GLMSuite.DELIMITER)
         i += 1
       }
       res
     }.mapPartitions{iter =>
       // Step 2. map features to (hashCode, featureName)
-      val set = new scala.collection.mutable.HashSet[String]()
+      val set = mutable.HashSet[String]()
       while (iter.hasNext) {
-        set.add(iter.next())
+        set += iter.next()
       }
       set.toList.map(f => (f.hashCode, f)).iterator
     }
@@ -127,28 +133,32 @@ class FeatureIndexingJob(val sc: SparkContext,
 }
 
 object FeatureIndexingJob {
-  def getFullFeatureName(record: GenericRecord): String = {
-    val name = record.get("name")
-    val term = record.get("term")
-
-    val nameStr = if (name == null) "" else name.toString
-    val termStr = if (term == null) "" else term.toString
-    nameStr + GLMSuite.DELIMITER + termStr
-  }
-
   def main(args: Array[String]): Unit = {
     val sc: SparkContext = SparkContextConfiguration.asYarnClient(new SparkConf(), "build-feature-index-map", true)
 
-    if (args.length < 3 || args.length > 4) {
-      throw new IllegalArgumentException("Excepting 3-4 arguments for this job: " +
-          "[input_data_path] [partition_num] [output_dir] optional: [if_add_intercept] (by default is true)")
+    if (args.length < 3 || args.length > 5) {
+      throw new IllegalArgumentException("Excepting 3-5 arguments for this job: " +
+          "[input_data_path] [partition_num] [output_dir] optional: [if_add_intercept] (by default is true)" +
+          "optional:[data_format](default: TRAINING_EXAMPLE, options: [TRAINING_EXAMPLE|RESPONSE_PREDICTION]"
+      )
     }
     val inputPath = args(0)
     val partitionNum = args(1).toInt
     val outputPath = args(2)
 
     val addIntercept = if (args.length > 3) args(3).toBoolean else true
+    val fieldNames: FieldNames = if (args.length > 4) {
+      val fieldNamesType = FieldNamesType.withName(args(4).toUpperCase())
+      fieldNamesType match {
+        case RESPONSE_PREDICTION => ResponsePredictionFieldNames
+        case TRAINING_EXAMPLE => TrainingExampleFieldNames
+        case _ => throw new IllegalArgumentException(
+            s"Input training file's field name type cannot be ${fieldNamesType}")
+      }
+    } else {
+      TrainingExampleFieldNames
+    }
 
-    new FeatureIndexingJob(sc, inputPath, partitionNum, outputPath, addIntercept).run()
+    new FeatureIndexingJob(sc, inputPath, partitionNum, outputPath, addIntercept, fieldNames).run()
   }
 }

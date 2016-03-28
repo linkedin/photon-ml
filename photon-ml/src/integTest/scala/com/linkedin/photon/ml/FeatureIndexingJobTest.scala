@@ -15,6 +15,8 @@
 package com.linkedin.photon.ml
 
 import com.linkedin.paldb.api.PalDB
+import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, FieldNames}
+import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
 import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{IndexMap, PalDBIndexMap}
@@ -28,9 +30,8 @@ import scala.collection.mutable
 
 
 /**
-  * This class tests the FeatureIndexJob
+  * This class tests [[com.linkedin.photon.ml.FeatureIndexingJob]]
   *
-  * @author yizhou
   */
 class FeatureIndexingJobTest {
 
@@ -42,14 +43,19 @@ class FeatureIndexingJobTest {
     tempFile.mkdirs()
 
     for (partitionNum <- 1 to 4) {
-      testOneJob(tempFile.toString(), partitionNum, true)
-      testOneJob(tempFile.toString(), partitionNum, false)
+      testOneJob(tempFile.toString(), partitionNum, true, TrainingExampleFieldNames)
+      testOneJob(tempFile.toString(), partitionNum, false, TrainingExampleFieldNames)
+      testOneJob(tempFile.toString(), partitionNum, true, ResponsePredictionFieldNames)
+      testOneJob(tempFile.toString(), partitionNum, false, ResponsePredictionFieldNames)
     }
 
     FileUtils.deleteQuietly(tempFile)
   }
 
-  private def testOneJob(outputDir: String = "/tmp/index-output", numPartitions: Int, addIntercept: Boolean): Unit = {
+  private def testOneJob(outputDir: String = "/tmp/index-output",
+                         numPartitions: Int,
+                         addIntercept: Boolean,
+                         fieldNames: FieldNames): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
       FileUtils.deleteDirectory(new java.io.File(outputDir))
 
@@ -62,7 +68,9 @@ class FeatureIndexingJobTest {
           "src/integTest/resources/DriverIntegTest/input/heart.avro",
           numPartitions,
           outputDir,
-          addIntercept).run()
+          addIntercept,
+          fieldNames
+        ).run()
 
         // Add all partitions to cache
         (0 until numPartitions).foreach(i =>
