@@ -20,7 +20,8 @@ package com.linkedin.photon.ml.util
   *
   * @author yizhou
   */
-class DefaultIndexMap(val featureNameToIdMap: Map[String, Int]) extends IndexMap {
+class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMap {
+  @transient
   private var _idToNameMap: Map[Int, String] = null
 
   override def getFeatureName(idx: Int): String = {

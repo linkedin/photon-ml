@@ -25,7 +25,7 @@ import org.apache.spark.broadcast.Broadcast
   *
   * @author yizhou
   */
-class DefaultIndexMapLoader(featureNameToIdMap: Map[String, Int]) extends IndexMapLoader {
+class DefaultIndexMapLoader(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMapLoader {
   @transient
   private var _indexMap: IndexMap = null
 
