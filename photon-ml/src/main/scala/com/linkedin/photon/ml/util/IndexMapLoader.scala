@@ -29,9 +29,8 @@ import org.apache.spark.SparkContext
   *
   * Also its up to IndexMap to decide whether each time, it should provide a reusable instance or create a new one.
   *
-  * @author yizhou
   */
-trait IndexMapLoader extends java.io.Serializable {
+trait IndexMapLoader extends Serializable {
 
   /**
     * Prepare the loader, should be called at the very beginning
@@ -42,14 +41,17 @@ trait IndexMapLoader extends java.io.Serializable {
   def prepare(sc: SparkContext, params: Params): Unit
 
   /**
-    * Should be called in driver
+    * Should be called in driver. Whether or not this method returns a new instance or reuses an old one
+    * should depend on the implementor's decision.
     *
     * @return the loaded IndexMap for driver
     */
   def indexMapForDriver(): IndexMap
 
   /**
-    * Should be called inside RDD operations
+    * Should be called inside RDD operations. Whether or not this method returns a new instance or reuses an old one
+    * should depend on the implementor's decision. However, it's always highly recommended that this method should be
+    * designed with caution to avoid serializing unnecessary large objects to RDD executors.
     *
     * @return the loaded IndexMap for RDDs
     */

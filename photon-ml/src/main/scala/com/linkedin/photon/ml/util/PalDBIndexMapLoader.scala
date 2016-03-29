@@ -23,7 +23,6 @@ import org.apache.spark.SparkContext
 /**
   * A PalDBIndexMap loader
   *
-  * @author yizhou
   */
 class PalDBIndexMapLoader extends IndexMapLoader {
   private var _storeDir: String = null
@@ -44,10 +43,5 @@ class PalDBIndexMapLoader extends IndexMapLoader {
 
   override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions)
 
-  /**
-    * Should be called inside RDD operations
-    *
-    * @return the loaded IndexMap for RDDs
-    */
   override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions)
 }

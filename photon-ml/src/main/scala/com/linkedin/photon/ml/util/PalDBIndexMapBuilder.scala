@@ -46,6 +46,7 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
   }
 
   override def put(name: String, idx: Int): IndexMapBuilder = {
+    validateConfig()
     _storeWriter.put(name, idx)
     // Also store the reversed mapping
     _storeWriter.put(idx, name)
@@ -64,10 +65,25 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
   }
 
   override def close(): Unit = {
+    validateConfig()
     _storeWriter.close()
 
     val fs = FileSystem.get(new Configuration())
     fs.copyFromLocalFile(new Path(_tmpFile.toString()), _dstFilePath)
+  }
+
+  private def validateConfig(): Unit = {
+    if (_storeWriter == null) {
+      throw new RuntimeException("Cannot proceed, storeWriter is null.")
+    }
+
+    if (_tmpFile == null || !_tmpFile.exists()) {
+      throw new RuntimeException(s"Cannot proceed, tmpFile is null or does not exist.")
+    }
+
+    if (_dstFilePath == null) {
+      throw new RuntimeException("Cannot proceed, the to-save output path is null.")
+    }
   }
 }
 

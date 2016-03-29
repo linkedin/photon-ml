@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.util
 
 /**
-  * Created by yizhou on 3/23/16.
+  * This trait tries to define a protoal of what's a proper contract when building an IndexMap.
   */
 trait IndexMapBuilder {
 

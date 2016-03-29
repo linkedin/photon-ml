@@ -40,17 +40,7 @@ class DefaultIndexMapLoader(@transient val featureNameToIdMap: Map[String, Int])
     _mapBroadCaster = sc.broadcast(featureNameToIdMap)
   }
 
-  /**
-    * Should be called in driver
-    *
-    * @return a new IndexMap
-    */
   override def indexMapForDriver(): IndexMap = _indexMap
 
-  /**
-    * Should be called inside RDD operations
-    *
-    * @return a new IndexMap
-    */
   override def indexMapForRDD(): IndexMap = new DefaultIndexMap(_mapBroadCaster.value)
 }
