@@ -28,7 +28,7 @@ import org.apache.hadoop.fs.{Path, FileSystem}
   *
   * @author yizhou
   */
-class PalDBIndexMapBuilder extends IndexMapBuilder with java.io.Serializable {
+class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
   @transient
   private var _storeWriter: StoreWriter = null
 

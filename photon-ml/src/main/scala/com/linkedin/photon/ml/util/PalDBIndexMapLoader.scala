@@ -31,11 +31,14 @@ class PalDBIndexMapLoader extends IndexMapLoader {
 
   override def prepare(sc: SparkContext, params: Params): Unit = {
     if (!params.offHeapIndexMapDir.isEmpty && params.offHeapIndexMapNumPartitions != 0) {
-      _storeDir = params.offHeapIndexMapDir
+      _storeDir = params.offHeapIndexMapDir.get
       _numPartitions = params.offHeapIndexMapNumPartitions
-      (0 until params.offHeapIndexMapNumPartitions).foreach(i =>
+      (0 until _numPartitions).foreach(i =>
         sc.addFile(new Path(_storeDir, PalDBIndexMap.getPartitionFilename(i)).toUri().toString())
       )
+    } else {
+      throw new IllegalArgumentException(s"offHeapIndexMapDir is empty or the offHeapIndexMapNumPartitions is zero." +
+          s" Cannot init PalDBIndexMapLoader in this case.")
     }
   }
 

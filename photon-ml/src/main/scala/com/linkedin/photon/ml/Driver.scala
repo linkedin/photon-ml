@@ -144,13 +144,14 @@ protected[ml] class Driver(
     assertDriverStage(DriverStage.INIT)
 
     // Prepare offHeapIndexMap loader if provided
-    val offHeapIndexMapLoader = if (params.offHeapIndexMapDir != null) {
-      // TODO: if we want to support other off heap storages in the future, we could modify this into a factory pattern
-      val indexMapLoader = new PalDBIndexMapLoader()
-      indexMapLoader.prepare(sc, params)
-      Some(indexMapLoader)
-    } else {
-      None
+    val offHeapIndexMapLoader = params.offHeapIndexMapDir match {
+      case Some(offHeapDir) => {
+        // TODO: if we want to support other off heap storages in the future, we could modify this into a factory pattern
+        val indexMapLoader = new PalDBIndexMapLoader()
+        indexMapLoader.prepare(sc, params)
+        Some(indexMapLoader)
+      }
+      case None => None
     }
 
     // Initialize GLMSuite

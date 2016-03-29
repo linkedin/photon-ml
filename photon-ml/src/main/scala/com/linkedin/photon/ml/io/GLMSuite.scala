@@ -106,15 +106,17 @@ class GLMSuite(
     }
     /*Only load the featureKeyToIdMap once*/
     if (featureKeyToIdMap == null) {
-      if (offHeapIndexMapLoader.isEmpty) {
-        // Build the default indexmap if offheap map dir is not provided
-        _indexMapLoader = createDefaultIndexMapLoader(avroRDD, selectedFeatures)
-        // Important to call prepare, though params are not actually needed for DefaultIndexMapLoader.
-        // TODO More refactoring is needed here that indexMap creation logic should be put outside of this
-        // suite class. It tries to do too many things at once.
-        _indexMapLoader.prepare(sc, null)
-      } else {
-        _indexMapLoader = offHeapIndexMapLoader.get
+      _indexMapLoader = offHeapIndexMapLoader match {
+        case Some(loader) => loader
+        case None => {
+          // Build the default indexmap if offheap map dir is not provided
+          _indexMapLoader = createDefaultIndexMapLoader(avroRDD, selectedFeatures)
+          // Important to call prepare, though params are not actually needed for DefaultIndexMapLoader.
+          // TODO More refactoring is needed here that indexMap creation logic should be put outside of this
+          // suite class. It tries to do too many things at once.
+          _indexMapLoader.prepare(sc, null)
+          _indexMapLoader
+        }
       }
 
       featureKeyToIdMap = _indexMapLoader.indexMapForDriver()

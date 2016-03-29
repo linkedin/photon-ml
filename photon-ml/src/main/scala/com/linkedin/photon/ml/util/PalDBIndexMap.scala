@@ -19,9 +19,23 @@ import org.apache.spark.{SparkFiles, HashPartitioner}
 
 
 /**
-  * An off heap index map implementation using PalDB
+  * An off heap index map implementation using PalDB.
   *
-  * @author yizhou
+  * The internal implementation assumed the following things:
+  * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
+  * [[com.linkedin.photon.ml.FeatureIndexingJob]]. The partition strategy is via the hashcode of the feature names,
+  * following the rules defined in [[org.apache.spark.HashPartitioner]].
+  *
+  * 2. Each time when a user is querying the index of a certain feature, the indexmap will first compute the hashcode,
+  * and then compute the expected partition of the storageReader.
+  *
+  * 3. Because the way we are building each index partition (they are built in parallel, without sharing information
+  * with each other). Each partition's internal index always starts from 0. Thus, we are keeping an offset array to
+  * properly record how much offset we should provide for each index coming from a particular partition. In this way,
+  * we could safely ensure that each index is unique.
+  *
+  * 4. Each time when a user is querying for the feature name of a given index, we'll do a linear search for each
+  * storage until we find one or return null. TODO: this could be optimized further via a binary search of the offsets
   */
 class PalDBIndexMap extends IndexMap {
   import PalDBIndexMap._

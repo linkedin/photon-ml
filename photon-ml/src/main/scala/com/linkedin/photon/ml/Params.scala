@@ -147,7 +147,7 @@ class Params {
    */
   var treeAggregateDepth: Int = 1
 
-  var offHeapIndexMapDir: String = null
+  var offHeapIndexMapDir: Option[String] = None
   var offHeapIndexMapNumPartitions: Int = 0
 
   /**
