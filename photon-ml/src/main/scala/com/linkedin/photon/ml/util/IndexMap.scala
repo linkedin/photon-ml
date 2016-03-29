@@ -22,7 +22,7 @@ import scala.collection.immutable.Map
   *
   * @author yizhou
   */
-trait IndexMap extends Map[String, Int] {
+trait IndexMap extends Map[String, Int] with Serializable {
 
   /**
     * Given an index, reversely track down the corresponding feature name

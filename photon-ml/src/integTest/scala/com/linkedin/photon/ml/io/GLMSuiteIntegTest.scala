@@ -285,7 +285,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   private def checkPoints(glmSuite: GLMSuite, points: RDD[LabeledPoint], avroPath: String,
                           addIntercept: Boolean, selectedFeaturesFile: Option[String]) = {
-    val featureMap = glmSuite.featureKeyToIdMap
+    val featureMap = glmSuite.featureKeyToIdMap.asInstanceOf[DefaultIndexMap].featureNameToIdMap
     val f1t1Id = Utils.getFeatureKey("f1", "t1")
     val f2t2Id = Utils.getFeatureKey("f2", "t2")
     val f2t1Id = Utils.getFeatureKey("f2", "t1")
