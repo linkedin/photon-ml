@@ -17,12 +17,13 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
 import com.linkedin.photon.ml.io.FieldNamesType._
+import org.apache.hadoop.fs.Path
 
 import scala.collection.mutable
 
 import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, FieldNames, AvroIOUtils}
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
-import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapBuilder}
+import com.linkedin.photon.ml.util.{PhotonLogger, Utils, PalDBIndexMapBuilder}
 import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
@@ -51,6 +52,7 @@ class FeatureIndexingJob(val sc: SparkContext,
                          val outputPath: String,
                          val addIntercept: Boolean,
                          val fieldNames: FieldNames) {
+  private val logger: PhotonLogger = new PhotonLogger(new Path(outputPath, "_log"), sc)
 
   /**
     * Given a raw input data RDD, generate the partitioned unique features names grouped by hash code
@@ -58,7 +60,7 @@ class FeatureIndexingJob(val sc: SparkContext,
     * @param inputRdd
     * @return RDD[(hash key, Iterable[unique feature name])]
     */
-  private def partitionedUniqueFeatures(inputRdd: RDD[GenericRecord]): RDD[(Int, Iterable[String])] = {
+  private def partitionedUniqueFeatures(inputRdd: RDD[GenericRecord]): RDD[(Int, String)] = {
     // Copy it to avoid serialization of the entire class
     val fieldNamesRef = fieldNames
     val keyedFeaturesRDD = inputRdd.flatMap { r: GenericRecord =>
@@ -93,10 +95,10 @@ class FeatureIndexingJob(val sc: SparkContext,
 
     // Step 3. distinct and group by hashcode
     // (note: integer's hashcode is still itself, this trick saves shuffle data size)
-    keyedFeaturesUnionedRDD.distinct().groupByKey(new HashPartitioner(partitionNum))
+    keyedFeaturesUnionedRDD.reduceByKey(new HashPartitioner(partitionNum), (pair1, pari2) => pair1)
   }
 
-  private def buildIndexMap(featuresRdd: RDD[(Int, Iterable[String])]): Unit = {
+  private def buildIndexMap(featuresRdd: RDD[(Int, String)]): Unit = {
     // Copy variable to avoid serializing the job class
     val outputPathCopy = outputPath
 
@@ -108,21 +110,18 @@ class FeatureIndexingJob(val sc: SparkContext,
 
         var i: Int = 0
         while (iter.hasNext) {
-          val it2 = iter.next._2.iterator
-          while (it2.hasNext) {
-            mapBuilder.put(it2.next(), i)
-            i += 1
-          }
+          mapBuilder.put(iter.next()._2, i)
+          i += 1
         }
 
-        println(s"Partition [${idx}] total record number: ${i}")
         mapBuilder.close()
       }
       iter
     }
 
     // Trigger run
-    projectRdd.count
+    val num = projectRdd.count()
+    logger.info(s"Total number of features indexed: [$num]")
   }
 
   def run(): Unit = {
