@@ -301,7 +301,7 @@ class GLMSuite(
                 val featureFullName = Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, GLMSuite.DELIMITER)
                 val idx = indexMap.getIndex(featureFullName)
                 if (idx != IndexMap.NULL_KEY) {
-                  pairsArr += Pair(idx, Utils.getDoubleAvro(record, fieldNames.value))
+                  pairsArr += ((idx, Utils.getDoubleAvro(record, fieldNames.value)))
                 }
               case any =>
                 throw new IOException(s"${String.valueOf(any)} in ${fieldNames.features} list is not a record")
@@ -309,7 +309,7 @@ class GLMSuite(
           }
           if (addIntercept) {
             val featureFullName = GLMSuite.INTERCEPT_NAME_TERM
-            pairsArr += Pair(indexMap.getIndex(featureFullName), 1.0)
+            pairsArr += ((indexMap.getIndex(featureFullName), 1.0))
           }
           val sortedPairsArray = pairsArr.toArray.sortBy(_._1)
           val index = sortedPairsArray.map(_._1)
@@ -391,20 +391,18 @@ class GLMSuite(
           }
           model.coefficients.toArray.zipWithIndex.sortWith((p1, p2) => p1._1 > p2._1).foreach { case (value, index) =>
             val nameAndTerm = indexMap.getFeatureName(index)
-            println(s"Trying to hit ${index}, but get ${nameAndTerm}")
-            if (nameAndTerm != null) {
-                val tokens = nameAndTerm.split(GLMSuite.DELIMITER)
+            nameAndTerm.foreach { s =>
+                val tokens = s.split(GLMSuite.DELIMITER)
                 if (tokens.length == 1) {
                   builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
                 } else if (tokens.length == 2) {
                   builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
                 } else {
-                  throw new IOException(s"unknown name and terms: $nameAndTerm")
+                  throw new IOException(s"unknown name and terms: $s")
                 }
             }
           }
           val s = builder.mkString("\n")
-          println("MODEL STR: " + s)
           modelStrs += s
       }
 

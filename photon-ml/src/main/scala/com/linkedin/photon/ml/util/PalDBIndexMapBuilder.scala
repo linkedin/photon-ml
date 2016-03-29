@@ -32,7 +32,6 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
   @transient
   private var _storeWriter: StoreWriter = null
 
-  private var _i: Int = 0
   private var _tmpFile: java.io.File = null
   private var _dstFilePath: Path = null
 
@@ -50,16 +49,6 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
     _storeWriter.put(name, idx)
     // Also store the reversed mapping
     _storeWriter.put(idx, name)
-
-    if (idx >= _i) {
-      _i = idx + 1
-    }
-
-    this
-  }
-
-  override def putIfAbsent(name: String): IndexMapBuilder = {
-    put(name, _i)
 
     this
   }

@@ -16,7 +16,8 @@ package com.linkedin.photon.ml.util
 
 import com.linkedin.paldb.api.{Configuration, PalDB, StoreReader}
 import org.apache.spark.{SparkFiles, HashPartitioner}
-
+import java.util.{Arrays => JArrays}
+import java.io.{File => JFile}
 
 /**
   * An off heap index map implementation using PalDB.
@@ -67,19 +68,17 @@ class PalDBIndexMap extends IndexMap {
     _partitioner = new HashPartitioner(_partitionsNum)
 
     for (i <- 0 until partitionsNum) {
-      // TODO: make such config customizable in the future, so far, there isn't necessity for doing so.
-      val config = new Configuration()
-      config.set(Configuration.CACHE_ENABLED, "true")
-      // Allow 200MB in-memory cache in total
-      config.set(Configuration.CACHE_BYTES, String.valueOf(209715200L / _partitionsNum))
-
       // Note: because we store both name -> idx and idx -> name in the same store
       _offsets(i) = _size / 2
       val filename = getPartitionFilename(i)
 
-      val storeFile = if (isLocal) new java.io.File(storePath, filename) else new java.io.File(SparkFiles.get(filename))
+      val storeFile = if (isLocal) {
+        new JFile(storePath, filename)
+      } else {
+        new JFile(SparkFiles.get(filename))
+      }
       PALDB_READER_LOCK.synchronized {
-        _storeReaders(i) = PalDB.createReader(storeFile, config)
+        _storeReaders(i) = PalDB.createReader(storeFile, createDefaultPalDBConfig(_partitionsNum))
       }
       _size += _storeReaders(i).size().asInstanceOf[Number].intValue()
     }
@@ -91,17 +90,26 @@ class PalDBIndexMap extends IndexMap {
 
   override def size(): Int = _size / 2
 
-  override def getFeatureName(idx: Int): String = {
-    var i = 0
-    for (i <- 0 until _partitionsNum) {
-      val k = idx - _offsets(i)
-      PALDB_READER_LOCK.synchronized {
-        val v = _storeReaders(i).get(k).asInstanceOf[String]
-        if (v != null) return v
-      }
+  override def getFeatureName(idx: Int): Option[String] = {
+    var i = JArrays.binarySearch(_offsets, idx)
+    // Note: check Arrays#binarySearch doc, >= 0 means we have a hit, otherwise it's (-insertion_pos-1)
+    // insertion position is the 1st element that's greater than the key
+    if (i < 0) {
+      // The position before insertion position
+      i = -(i + 1) - 1
     }
 
-    null
+    if (i == -1) {
+      // When the bounds are exceeded
+      None
+    } else {
+      PALDB_READER_LOCK.synchronized {
+        _storeReaders(i).get(idx - _offsets(i)).asInstanceOf[Any] match {
+          case name: String => Some(name)
+          case _ => None
+        }
+      }
+    }
   }
 
   override def getIndex(name: String): Int = {
@@ -109,9 +117,10 @@ class PalDBIndexMap extends IndexMap {
     // Note: very important to cast to java.lang.Object first; if directly casting to int,
     // null will be cast to 0 by Scala
     PALDB_READER_LOCK.synchronized {
-      val idx = _storeReaders(i).get(name).asInstanceOf[java.lang.Object]
-
-      if (idx == null) -1 else idx.asInstanceOf[Int] + _offsets(i)
+      _storeReaders(i).get(name).asInstanceOf[Any] match {
+        case idx: Int => idx + _offsets(i)
+        case _ => IndexMap.NULL_KEY
+      }
     }
   }
 
@@ -136,6 +145,8 @@ object PalDBIndexMap {
   /* PalDB is not thread safe for parallel reads even for different storages, necessary to lock it.
    */
   private val PALDB_READER_LOCK = "READER_LOCK"
+  // By default, we allow 200MB of LRU used by PalDBIndexMap in total
+  private val DEFAULT_LRU_CACHE_BYTES = 209715200L
 
   /**
     * Returns the formatted filename for a partitioncular partition file of PalDB IndexMap.
@@ -145,6 +156,15 @@ object PalDBIndexMap {
     * @return the formatted filename
     */
   def getPartitionFilename(partitionId: Int): String = s"paldb-partition-${partitionId}.dat"
+
+  private def createDefaultPalDBConfig(partitionNum: Int): Configuration = {
+    // TODO: make such config customizable in the future, so far, there isn't necessity for doing so.
+    val config = new Configuration()
+    config.set(Configuration.CACHE_ENABLED, "true")
+    // Allow 200MB in-memory cache in total
+    config.set(Configuration.CACHE_BYTES, String.valueOf(DEFAULT_LRU_CACHE_BYTES / partitionNum))
+    config
+  }
 
   class PalDBIndexMapIterator(private val map: PalDBIndexMap) extends Iterator[(String, Int)] {
     private var _i: Int = -1

@@ -24,12 +24,12 @@ class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) exten
   @transient
   private var _idToNameMap: Map[Int, String] = null
 
-  override def getFeatureName(idx: Int): String = {
+  override def getFeatureName(idx: Int): Option[String] = {
     if (_idToNameMap == null) {
       _idToNameMap = featureNameToIdMap.map{case (k, v) => (v, k)}
     }
 
-    _idToNameMap.getOrElse(idx, null)
+    _idToNameMap.get(idx)
   }
 
   override def getIndex(name: String): Int = featureNameToIdMap.getOrElse(name, IndexMap.NULL_KEY)

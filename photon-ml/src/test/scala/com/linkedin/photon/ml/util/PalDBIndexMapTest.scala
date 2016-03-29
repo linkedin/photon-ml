@@ -90,6 +90,6 @@ object PalDBIndexMapTest {
 
   private def assertFeatureIndexMapping(palDBIndexMap: PalDBIndexMap, expectedName: String, expectedIdx: Int): Unit = {
     assertEquals(palDBIndexMap.getIndex(expectedName), expectedIdx)
-    assertEquals(palDBIndexMap.getFeatureName(expectedIdx), expectedName)
+    assertEquals(palDBIndexMap.getFeatureName(expectedIdx).get, expectedName)
   }
 }

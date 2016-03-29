@@ -30,7 +30,7 @@ trait IndexMap extends Map[String, Int] with Serializable {
     * @param idx the feature index
     * @return the feature name, return null if not found
     */
-  def getFeatureName(idx: Int): String
+  def getFeatureName(idx: Int): Option[String]
 
   /**
     * Given a feature string, return the index

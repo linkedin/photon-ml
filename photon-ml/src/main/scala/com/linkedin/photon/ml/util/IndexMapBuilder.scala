@@ -34,14 +34,6 @@ trait IndexMapBuilder {
   def close(): Unit
 
   /**
-    * Automatically put a feature into the index map builder, using by default indexing logic handled by the builder
-    *
-    * @param name
-    * @return
-    */
-  def putIfAbsent(name: String): IndexMapBuilder
-
-  /**
     * Put a feature into map using a specific indexing rule
     *
     * @param name
