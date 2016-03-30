@@ -169,6 +169,13 @@ subprojects {
       }
     }
   }
+
+  idea {
+    module {
+      testSourceDirs += file('src/integTest/java')
+      testSourceDirs += file('src/integTest/scala')
+    }
+  }
 }
 
 // Task to generate the Gradle wrapper scripts

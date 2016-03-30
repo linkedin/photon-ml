@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util._
 import org.apache.avro.generic.GenericRecord
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -35,23 +35,28 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.json.JSON
 
 
 /**
  * A suite responsible for transforming raw data into [[data.LabeledPoint]]
  * and write the learned [[GeneralizedLinearModel]] in text or avro files.
- * @param fieldNamesType Input Avro file's format, which contains the information of each field's name
+  *
+  * @param fieldNamesType Input Avro file's format, which contains the information of each field's name
  * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning
  *                     purpose
  * @author xazhang
  * @author nkatariy
  */
+// TODO we already have Params class handling all paramters, passing in arguments here seems to be a very trivial
+// and fragile style that could easily require method signature replacements
 @SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
 class GLMSuite(
     fieldNamesType: FieldNamesType,
     addIntercept: Boolean,
-    constraintString: Option[String])
+    constraintString: Option[String],
+    offHeapIndexMapLoader: Option[IndexMapLoader] = None)
   extends Serializable {
 
   /**
@@ -68,7 +73,7 @@ class GLMSuite(
    * into memory. Making it transient in order to avoid it being serialized to the executors, which could be expensive
    * and is unnecessary.
    */
-  @transient var featureKeyToIdMap: Map[String, Int] = Map.empty
+  @transient var featureKeyToIdMap: IndexMap = null
 
   /* Map of feature indices to their (lowerBound, upperBound) constraints */
   @transient var constraintFeatureMap: Option[Map[Int, (Double, Double)]] = None
@@ -76,9 +81,12 @@ class GLMSuite(
   /* set of selected features. If empty, all features are used */
   @transient var selectedFeatures: Set[String] = Set.empty[String]
 
+  private var _indexMapLoader: IndexMapLoader = null
+
   /**
    * Read the [[data.LabeledPoint]] from a directory of Avro files
-   * @param sc The Spark context
+    *
+    * @param sc The Spark context
    * @param inputDir Input directory of the Avro files
    * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
    *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
@@ -97,8 +105,21 @@ class GLMSuite(
       selectedFeatures = getSelectedFeatureSetFromFile(sc, selectedFeaturesFile)
     }
     /*Only load the featureKeyToIdMap once*/
-    if (featureKeyToIdMap.isEmpty) {
-      featureKeyToIdMap = loadFeatureKeyToIdMap(avroRDD, selectedFeatures)
+    if (featureKeyToIdMap == null) {
+      _indexMapLoader = offHeapIndexMapLoader match {
+        case Some(loader) => loader
+        case None => {
+          // Build the default indexmap if offheap map dir is not provided
+          _indexMapLoader = createDefaultIndexMapLoader(avroRDD, selectedFeatures)
+          // Important to call prepare, though params are not actually needed for DefaultIndexMapLoader.
+          // TODO More refactoring is needed here that indexMap creation logic should be put outside of this
+          // suite class. It tries to do too many things at once.
+          _indexMapLoader.prepare(sc, null)
+          _indexMapLoader
+        }
+      }
+
+      featureKeyToIdMap = _indexMapLoader.indexMapForDriver()
     }
     if (constraintFeatureMap.isEmpty) {
       constraintFeatureMap = createConstraintFeatureMap()
@@ -132,8 +153,8 @@ class GLMSuite(
    * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
    * @return Tuple of (number of distinct features, map that maps String based features keys to integer based featureIds)
    */
-  private def loadFeatureKeyToIdMap[T <: GenericRecord](avroRDD: RDD[T],
-                                                        selectedFeatures: Set[String]): Map[String, Int] = {
+  private def createDefaultIndexMapLoader[T <: GenericRecord](avroRDD: RDD[T],
+                                                        selectedFeatures: Set[String]): IndexMapLoader = {
     def getFeatures(avroRecord: GenericRecord): Array[String] = {
       avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
@@ -149,9 +170,9 @@ class GLMSuite(
     val featureSet = if (selectedFeatures.isEmpty) featureRDD.collect().toSet
                      else featureRDD.filter(selectedFeatures.contains).collect().toSet
     if (addIntercept) {
-      (featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap
+      new DefaultIndexMapLoader((featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap)
     } else {
-      featureSet.zipWithIndex.toMap
+      new DefaultIndexMapLoader(featureSet.zipWithIndex.toMap)
     }
   }
 
@@ -255,15 +276,15 @@ class GLMSuite(
 
   /**
    * Transform the Avro files into LabeledPoints
-   * @param avroRDD A RDD of Avro files
+    *
+    * @param avroRDD A RDD of Avro files
    * @return A RDD of [[data.LabeledPoint]]
    */
   private def toLabeledPoints[T <: GenericRecord](avroRDD: RDD[T]): RDD[LabeledPoint] = {
-    val broadcastedFeatureKeyToIdMap = avroRDD.sparkContext.broadcast(featureKeyToIdMap)
-    val numFeatures = featureKeyToIdMap.values.max + 1
-
     // Returns None if no features in the record are in the featureKeyToIdMap
-    def parseAvroRecord(avroRecord: GenericRecord, localFeatureKeyToIdMap: Map[String, Int]): Option[LabeledPoint] = {
+    def parseAvroRecord(avroRecord: GenericRecord, indexMap: IndexMap): Option[LabeledPoint] = {
+      val numFeatures = indexMap.size
+
       val features = avroRecord.get(fieldNames.features) match {
         case recordList: JList[_] =>
           val nnz =
@@ -277,17 +298,18 @@ class GLMSuite(
           while (iter.hasNext) {
             iter.next match {
               case record: GenericRecord =>
-                val key = Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, GLMSuite.DELIMITER)
-                if (localFeatureKeyToIdMap.contains(key)) {
-                  pairsArr += Pair(localFeatureKeyToIdMap(key), Utils.getDoubleAvro(record, fieldNames.value))
+                val featureFullName = Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, GLMSuite.DELIMITER)
+                val idx = indexMap.getIndex(featureFullName)
+                if (idx != IndexMap.NULL_KEY) {
+                  pairsArr += ((idx, Utils.getDoubleAvro(record, fieldNames.value)))
                 }
               case any =>
                 throw new IOException(s"${String.valueOf(any)} in ${fieldNames.features} list is not a record")
             }
           }
           if (addIntercept) {
-            val key = GLMSuite.INTERCEPT_NAME_TERM
-            pairsArr += Pair(localFeatureKeyToIdMap(key), 1.0)
+            val featureFullName = GLMSuite.INTERCEPT_NAME_TERM
+            pairsArr += ((indexMap.getIndex(featureFullName), 1.0))
           }
           val sortedPairsArray = pairsArr.toArray.sortBy(_._1)
           val index = sortedPairsArray.map(_._1)
@@ -315,51 +337,76 @@ class GLMSuite(
         Some(new LabeledPoint(response, features, offset, weight))
       }
     }
-    avroRDD.flatMap { k => parseAvroRecord(k, broadcastedFeatureKeyToIdMap.value) }
+
+    avroRDD.mapPartitions { iter =>
+      val res = new ArrayBuffer[LabeledPoint]
+      val map = _indexMapLoader.indexMapForRDD()
+      while (iter.hasNext) {
+        val r = parseAvroRecord(iter.next(), map)
+        r.foreach(k => res += k)
+      }
+
+      res.iterator
+    }
   }
 
   /**
    * Write a map of learned [[GeneralizedLinearModel]] to text files
-   * @param sc The Spark context
+    *
+    * @param sc The Spark context
    * @param models The map of (Model Id -> [[GeneralizedLinearModel]])
    * @param modelDir The directory for the output text files
    */
   def writeModelsInText(
-      sc: SparkContext,
-      models: Iterable[(Double, GeneralizedLinearModel)],
-      modelDir: String) {
+                           sc: SparkContext,
+                           models: Iterable[(Double, GeneralizedLinearModel)],
+                           modelDir: String) {
 
-    val broadCastedIdToFeatureKeyMap = sc.broadcast(featureKeyToIdMap.map { case (str, int) => (int, str) })
-    sc.parallelize(models.toSeq, models.size).map { case (regWeight, model) =>
-      val builder = new mutable.ArrayBuffer[String]()
-      model.intercept match {
-        case Some(intercept) =>
-          val tokens = GLMSuite.INTERCEPT_NAME_TERM.split(GLMSuite.DELIMITER)
-          if (tokens.length == 1) {
-            builder += s"${tokens(0)}\t${""}\t$intercept\t$regWeight"
-          } else if (tokens.length == 2) {
-            builder += s"${tokens(0)}\t${tokens(1)}\t$intercept\t$regWeight"
-          } else {
-            throw new IOException(s"unexpected intercept name: ${GLMSuite.INTERCEPT_NAME_TERM}")
+
+    println("Models SIZE: " + models.size)
+    models.foreach{ case (lambda, m) => println(lambda + ": " + m.toString)}
+
+    sc.parallelize(models.toSeq, models.size).mapPartitions { iter =>
+        val indexMap = _indexMapLoader.indexMapForRDD()
+
+        val modelStrs = new mutable.ArrayBuffer[String]()
+
+        while (iter.hasNext) {
+          val t = iter.next()
+          val regWeight = t._1
+          val model = t._2
+
+          val builder = new mutable.ArrayBuffer[String]()
+          model.intercept match {
+            case Some(intercept) =>
+              val tokens = GLMSuite.INTERCEPT_NAME_TERM.split(GLMSuite.DELIMITER)
+              if (tokens.length == 1) {
+                builder += s"${tokens(0)}\t${""}\t$intercept\t$regWeight"
+              } else if (tokens.length == 2) {
+                builder += s"${tokens(0)}\t${tokens(1)}\t$intercept\t$regWeight"
+              } else {
+                throw new IOException(s"unexpected intercept name: ${GLMSuite.INTERCEPT_NAME_TERM}")
+              }
+            case None =>
           }
-        case None =>
-      }
-      val idToFeatureKeyMap = broadCastedIdToFeatureKeyMap.value
-      model.coefficients.toArray.zipWithIndex.sortWith((p1, p2) => p1._1 > p2._1).foreach { case (value, index) =>
-        idToFeatureKeyMap.get(index) match {
-          case Some(nameAndTerm) =>
-            val tokens = nameAndTerm.split(GLMSuite.DELIMITER)
-            if (tokens.length == 1) {
-              builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
-            } else if (tokens.length == 2) {
-              builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
-            } else {
-              throw new IOException(s"unknown name and terms: $nameAndTerm")
+          model.coefficients.toArray.zipWithIndex.sortWith((p1, p2) => p1._1 > p2._1).foreach { case (value, index) =>
+            val nameAndTerm = indexMap.getFeatureName(index)
+            nameAndTerm.foreach { s =>
+                val tokens = s.split(GLMSuite.DELIMITER)
+                if (tokens.length == 1) {
+                  builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
+                } else if (tokens.length == 2) {
+                  builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
+                } else {
+                  throw new IOException(s"unknown name and terms: $s")
+                }
             }
-          case None =>
-        }
+          }
+          val s = builder.mkString("\n")
+          modelStrs += s
       }
-      builder.mkString("\n")
+
+      modelStrs.iterator
     }.saveAsTextFile(modelDir)
   }
 
@@ -418,7 +465,8 @@ class GLMSuite(
   /**
    * Get the intercept index. This is used especially for normalization because the intercept should be treated
    * differently.
-   * @return The option for the intercept index value
+    *
+    * @return The option for the intercept index value
    */
   def getInterceptId: Option[Int] = featureKeyToIdMap.get(GLMSuite.INTERCEPT_NAME_TERM)
 }

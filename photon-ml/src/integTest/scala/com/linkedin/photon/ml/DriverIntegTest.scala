@@ -28,6 +28,7 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.util.PalDBIndexMapTest
 import org.apache.commons.io.FileUtils
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -65,6 +66,108 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     // No best model output dir
     assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithOffHeapMap(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
+    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+    args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
+    args += "false"
+    appendOffHeapConfig(args, addIntercept = false)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 13, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
+    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+    appendOffHeapConfig(args, addIntercept = true)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+  }
+
+  @Test
+  def testRunWithDataValidationPerIterationWithOffHeapMap(): Unit = sparkTestSelfServeContext(
+    "testRunWithDataValidationPerIteration") {
+    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir, isValidating = true)
+
+    args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
+    args += true.toString()
+    args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
+    args += "false"
+    appendOffHeapConfig(args, addIntercept = false)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
+      expectedNumFeatures = 13, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // The selected best model is supposed to be of lambda 0.1
+    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    assertEquals(bestModel.size, 1)
+    // Verify lambda
+    assertEquals(bestModel(0)._1, 0.1)
+  }
+
+  @Test
+  def testRunWithDataValidationPerIterationWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext(
+    "testRunWithDataValidationPerIteration") {
+    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir, isValidating = true)
+
+    args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
+    args += true.toString()
+    appendOffHeapConfig(args, addIntercept = true)
+
+    MockDriver.runLocally(args = args.toArray,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED, DriverStage.DIAGNOSED),
+      expectedNumFeatures = 14, expectedNumTrainingData = 250, expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.size, 4)
+    // Verify lambdas
+    assertEquals(models.map(_._1), Array(0.1, 1, 10, 100))
+
+    // The selected best model is supposed to be of lambda 0.1
+    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    assertEquals(bestModel.size, 1)
+    // Verify lambda
+    assertEquals(bestModel(0)._1, 0.1)
   }
 
   @Test
@@ -466,6 +569,17 @@ object DriverIntegTest {
 
     args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
     args += FieldNamesType.TRAINING_EXAMPLE.toString()
+  }
+
+  def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
+    args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_DIR)
+    if (addIntercept) {
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_WITH_INTERCEPT
+    } else {
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_NO_INTERCEPT
+    }
+    args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_NUM_PARTITIONS)
+    args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_PARTITION_NUM
   }
 
   /* TODO: formalize these model loaders in another RB

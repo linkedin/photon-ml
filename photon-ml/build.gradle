@@ -31,16 +31,19 @@ dependencies {
 
   compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
   compile("org.apache.spark:spark-mllib$scalaSuffix:1.4.0")
+  compile("com.databricks:spark-avro$scalaSuffix:2.0.1")
   compile("org.apache.spark:spark-sql$scalaSuffix:1.4.0")
   compile("org.apache.spark:spark-catalyst$scalaSuffix:1.4.0")
 
   //this one is scala's option parsing library
   compile("com.github.scopt:scopt$scalaSuffix:3.2.0")
-
   compile('log4j:log4j:1.2.17')
   compile('org.slf4j:slf4j-api:1.7.9')
+  // offheap storage
+  compile('com.linkedin.paldb:paldb:1.1.0')
 
   compile(project(':photon-avro-schemas'))
+
 
   testCompile(project(":photon-test$scalaSuffix"))
 
