@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
  * @param regularizationType regularization type
  * @author xazhang
  */
-protected[ml] case class GLMOptimizationConfiguration(
+protected[ml] case class GLMOptimizationConfiguration private (
     maxNumberIterations: Int = 20,
     convergenceTolerance: Double = 1e-5,
     regularizationWeight: Double = 50,
@@ -48,9 +48,17 @@ protected[ml] case class GLMOptimizationConfiguration(
 }
 
 object GLMOptimizationConfiguration {
-
   /**
-   * Parse and build the configuration object from a string representation
+   * Parse and build the configuration object from a string representation.
+   * The string is expected to be a comma separated list with order of elements being
+   * <ol>
+   *  <li> Maximum number of iterations
+   *  <li> Convergence tolerance
+   *  <li> Regularization weight
+   *  <li> Down-sampling rate
+   *  <li> Optimizer Type
+   *  <li> Regularization type
+   * </ol>
    *
    * @param string the string representation
    * @todo Add assert and meaningful parsing error message here
@@ -62,6 +70,7 @@ object GLMOptimizationConfiguration {
     val convergenceTolerance = convergenceToleranceStr.toDouble
     val regularizationWeight = regularizationWeightStr.toDouble
     val downSamplingRate = downSamplingRateStr.toDouble
+
     assert(downSamplingRate > 0.0 && downSamplingRate <= 1.0, s"Unexpected downSamplingRate: $downSamplingRate")
     val optimizerType = OptimizerType.withName(optimizerTypeStr.toUpperCase)
     val regularizationType = RegularizationType.withName(regularizationTypeStr.toUpperCase)
