@@ -74,7 +74,7 @@ class FeatureIndexingJobTest {
 
         // Add all partitions to cache
         (0 until numPartitions).foreach(i =>
-            sc.addFile(new Path(outputDir, PalDBIndexMap.getPartitionFilename(i)).toString()))
+            sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i)).toString()))
 
         checkPalDBReadable(outputDir, numPartitions, addIntercept)
       } finally {
@@ -93,7 +93,7 @@ class FeatureIndexingJobTest {
     var i = 0
     var offset = 0
     for (i <- 0 until numPartitions) {
-      val reader = PalDB.createReader(new java.io.File(path, PalDBIndexMap.getPartitionFilename(i)))
+      val reader = PalDB.createReader(new java.io.File(path, PalDBIndexMap.partitionFilename(i)))
       val iter = reader.iterable().iterator()
 
       while (iter.hasNext) {

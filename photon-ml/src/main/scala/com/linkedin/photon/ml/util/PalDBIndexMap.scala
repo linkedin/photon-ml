@@ -15,9 +15,8 @@
 package com.linkedin.photon.ml.util
 
 import com.linkedin.paldb.api.{Configuration, PalDB, StoreReader}
-import com.google.common.collect.Iterators
 import org.apache.spark.{SparkFiles, HashPartitioner}
-import java.util.{Arrays => JArrays, Iterator => JIterator, Map => JMap}
+import java.util.{Arrays => JArrays, Map => JMap}
 import java.io.{File => JFile}
 
 import collection.JavaConverters._
@@ -38,8 +37,8 @@ import collection.JavaConverters._
   * properly record how much offset we should provide for each index coming from a particular partition. In this way,
   * we could safely ensure that each index is unique.
   *
-  * 4. Each time when a user is querying for the feature name of a given index, we'll do a linear search for each
-  * storage until we find one or return null. TODO: this could be optimized further via a binary search of the offsets
+  * 4. Each time when a user is querying for the feature name of a given index, we'll do a binary search for the proper
+  * storage according to offset ranges and then return null or the proper feature name.
   */
 class PalDBIndexMap extends IndexMap {
   import PalDBIndexMap._
@@ -76,7 +75,7 @@ class PalDBIndexMap extends IndexMap {
     for (i <- 0 until partitionsNum) {
       // Note: because we store both name -> idx and idx -> name in the same store
       _offsets(i) = _size / 2
-      val filename = getPartitionFilename(i)
+      val filename = partitionFilename(i)
 
       val storeFile = if (isLocal) {
         new JFile(storePath, filename)
@@ -84,7 +83,8 @@ class PalDBIndexMap extends IndexMap {
         new JFile(SparkFiles.get(filename))
       }
       PALDB_READER_LOCK.synchronized {
-        _storeReaders(i) = PalDB.createReader(storeFile, createDefaultPalDBConfig(_partitionsNum))
+        // TODO: make such config customizable in the future, so far, there isn't necessity for doing so.
+        _storeReaders(i) = PalDB.createReader(storeFile, new Configuration())
       }
       _size += _storeReaders(i).size().asInstanceOf[Number].intValue()
     }
@@ -160,26 +160,15 @@ object PalDBIndexMap {
   /* PalDB is not thread safe for parallel reads even for different storages, necessary to lock it.
    */
   private val PALDB_READER_LOCK = "READER_LOCK"
-  // By default, we allow 200MB of LRU used by PalDBIndexMap in total
-  private val DEFAULT_LRU_CACHE_BYTES = 209715200L
 
   /**
-    * Returns the formatted filename for a partitioncular partition file of PalDB IndexMap.
+    * Returns the formatted filename for a partition file of PalDB IndexMap storing (name -> index) mapping
     * This method should be used consistently as a protocol to handle naming conventions
     *
     * @param partitionId the partition Id
     * @return the formatted filename
     */
-  def getPartitionFilename(partitionId: Int): String = s"paldb-partition-${partitionId}.dat"
-
-  private def createDefaultPalDBConfig(partitionNum: Int): Configuration = {
-    // TODO: make such config customizable in the future, so far, there isn't necessity for doing so.
-    val config = new Configuration()
-    config.set(Configuration.CACHE_ENABLED, "true")
-    // Allow 200MB in-memory cache in total
-    config.set(Configuration.CACHE_BYTES, String.valueOf(DEFAULT_LRU_CACHE_BYTES / partitionNum))
-    config
-  }
+  def partitionFilename(partitionId: Int): String = s"paldb-partition-${partitionId}.dat"
 
   class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap) extends Iterator[(String, Int)] {
     private var _iter: Iterator[JMap.Entry[Any, Any]] = null

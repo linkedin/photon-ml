@@ -17,7 +17,8 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
 import com.linkedin.photon.ml.io.FieldNamesType._
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 
 import scala.collection.mutable
 
@@ -101,6 +102,9 @@ class FeatureIndexingJob(val sc: SparkContext,
   private def buildIndexMap(featuresRdd: RDD[(Int, Iterable[String])]): Unit = {
     // Copy variable to avoid serializing the job class
     val outputPathCopy = outputPath
+    val fs = FileSystem.get(new Configuration())
+    fs.delete(new Path(outputPathCopy), true)
+    fs.mkdirs(new Path(outputPathCopy))
 
     val projectRdd = featuresRdd.mapPartitionsWithIndex{ case (idx, iter) =>
       var i: Int = 0

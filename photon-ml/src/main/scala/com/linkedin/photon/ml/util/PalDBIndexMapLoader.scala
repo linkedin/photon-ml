@@ -33,7 +33,7 @@ class PalDBIndexMapLoader extends IndexMapLoader {
       _storeDir = params.offHeapIndexMapDir.get
       _numPartitions = params.offHeapIndexMapNumPartitions
       (0 until _numPartitions).foreach(i =>
-        sc.addFile(new Path(_storeDir, PalDBIndexMap.getPartitionFilename(i)).toUri().toString())
+        sc.addFile(new Path(_storeDir, PalDBIndexMap.partitionFilename(i)).toUri().toString())
       )
     } else {
       throw new IllegalArgumentException(s"offHeapIndexMapDir is empty or the offHeapIndexMapNumPartitions is zero." +
