@@ -15,9 +15,12 @@
 package com.linkedin.photon.ml.util
 
 import com.linkedin.paldb.api.{Configuration, PalDB, StoreReader}
+import com.google.common.collect.Iterators
 import org.apache.spark.{SparkFiles, HashPartitioner}
-import java.util.{Arrays => JArrays}
+import java.util.{Arrays => JArrays, Iterator => JIterator, Map => JMap}
 import java.io.{File => JFile}
+
+import collection.JavaConverters._
 
 /**
   * An off heap index map implementation using PalDB.
@@ -43,9 +46,12 @@ class PalDBIndexMap extends IndexMap {
 
   @transient
   private[PalDBIndexMap] var _storeReaders: Array[StoreReader] = null
+  // Each store's internal indices start from 0, this offsets the external returned idx should be
+  //  ([internal_idx] + offset) so that it is always globally unique
   private[PalDBIndexMap] var _offsets: Array[Int] = null
 
   private[PalDBIndexMap] var _partitionsNum: Int = 0
+  // Internal use only, total number of elements, including both id -> name and name -> id mappings
   private[PalDBIndexMap] var _size: Int = 0
 
   @transient
@@ -113,7 +119,7 @@ class PalDBIndexMap extends IndexMap {
   }
 
   override def getIndex(name: String): Int = {
-    val i = _partitioner.getPartition(name)
+    val i = getPartitionId(name)
     // Note: very important to cast to java.lang.Object first; if directly casting to int,
     // null will be cast to 0 by Scala
     PALDB_READER_LOCK.synchronized {
@@ -122,6 +128,10 @@ class PalDBIndexMap extends IndexMap {
         case _ => IndexMap.NULL_KEY
       }
     }
+  }
+
+  private[PalDBIndexMap] def getPartitionId(name: String): Int = {
+    _partitioner.getPartition(name)
   }
 
   //noinspection ScalaStyle
@@ -133,6 +143,11 @@ class PalDBIndexMap extends IndexMap {
 
   override def get(key: String): Option[Int] = Option[Int](getIndex(key))
 
+  /**
+   * @note This method is thread unsafe, external synchronization should be handled properly
+   *       in concurrent settings.
+   * @return an iterator walking through all stored feature mappings as (name, index) tuples
+   */
   override def iterator: Iterator[(String, Int)] = new PalDBIndexMapIterator(this)
 
   //noinspection ScalaStyle
@@ -166,11 +181,9 @@ object PalDBIndexMap {
     config
   }
 
-  class PalDBIndexMapIterator(private val map: PalDBIndexMap) extends Iterator[(String, Int)] {
-    private var _i: Int = -1
+  class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap) extends Iterator[(String, Int)] {
+    private var _iter: Iterator[JMap.Entry[Any, Any]] = null
     private var _currentItem: (String, Int) = null
-    private var _currentStore: StoreReader = null
-    private var _storeIterator: java.util.Iterator[java.util.Map.Entry[Any, Any]] = null
 
     override def hasNext: Boolean = {
       fetch()
@@ -189,22 +202,22 @@ object PalDBIndexMap {
     }
 
     private def fetch(): Unit = {
-        while(_currentItem == null
-            && ((_storeIterator != null && _storeIterator.hasNext) || _i < map._partitionsNum - 1)) {
-          if (_storeIterator == null || !_storeIterator.hasNext) {
-            _i += 1
-            _currentStore = map._storeReaders(_i)
-            _storeIterator = _currentStore.iterable().iterator()
-          }
-
-          while (_currentItem == null && _storeIterator.hasNext) {
-            val entry = _storeIterator.next()
-            if (entry.getKey.isInstanceOf[String]) {
-              val idx = entry.getValue.asInstanceOf[Int]
-              _currentItem = (entry.getKey().asInstanceOf[String], idx + map._offsets(_i))
-            }
-          }
+      if (_iter == null) {
+        val merged = indexMap._storeReaders.foldLeft(List[JMap.Entry[Any, Any]]().toIterator){ (l, r) =>
+          l ++ r.iterable().iterator().asScala
         }
+        _iter = merged
+      }
+
+      while (_iter.hasNext && _currentItem == null) {
+        val entry = _iter.next()
+        if (entry.getKey().isInstanceOf[String]) {
+          val key = entry.getKey().asInstanceOf[String]
+          val i = indexMap.getPartitionId(key)
+          val value = entry.getValue().asInstanceOf[Int] + indexMap._offsets(i)
+          _currentItem = (key, value)
+        }
+      }
     }
   }
 }

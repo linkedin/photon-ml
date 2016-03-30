@@ -110,7 +110,7 @@ class FeatureIndexingJobTest {
           assertEquals(value, result)
           assertEquals(idx, result + offset)
         } else {
-          val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset)
+          val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset).get
           // The index map itself should be consistent
           assertEquals(indexMap.getIndex(featureName), key.asInstanceOf[Int] + offset)
         }
@@ -129,7 +129,7 @@ class FeatureIndexingJobTest {
     val namesSet = mutable.Set[String]()
     (1 to 13).foreach{i =>
       val idx = indexMap.getIndex(i + GLMSuite.DELIMITER)
-      val name = indexMap.getFeatureName(idx)
+      val name = indexMap.getFeatureName(idx).get
       assertNotEquals(idx, IndexMap.NULL_KEY)
       assertNotNull(name)
       indicesSet += idx
@@ -138,7 +138,7 @@ class FeatureIndexingJobTest {
     // Intercept
     if (addIntercept) {
       val idx = indexMap.getIndex(GLMSuite.INTERCEPT_NAME_TERM)
-      val name = indexMap.getFeatureName(idx)
+      val name = indexMap.getFeatureName(idx).get
       assertNotEquals(idx, IndexMap.NULL_KEY)
       assertNotNull(name)
       indicesSet += idx
@@ -151,8 +151,8 @@ class FeatureIndexingJobTest {
     // Check other indices or string aren't there
     assertEquals(indexMap.getIndex(""), IndexMap.NULL_KEY)
     assertEquals(indexMap.getIndex("sdfds"), IndexMap.NULL_KEY)
-    assertEquals(indexMap.getFeatureName(expectedFeatureDimension), null)
-    assertEquals(indexMap.getFeatureName(IndexMap.NULL_KEY), null)
+    assertTrue(indexMap.getFeatureName(expectedFeatureDimension).isEmpty)
+    assertTrue(indexMap.getFeatureName(IndexMap.NULL_KEY).isEmpty)
 
     // Check iterator
     indicesSet.clear()
@@ -165,7 +165,7 @@ class FeatureIndexingJobTest {
       val idx = indexMap.getIndex(entry._1)
       assertEquals(idx, indexMap.get(entry._1).get)
       assertEquals(idx, entry._2)
-      assertEquals(entry._1, indexMap.getFeatureName(idx))
+      assertEquals(entry._1, indexMap.getFeatureName(idx).get)
       indicesSet += idx
       namesSet += entry._1
     }
