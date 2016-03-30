@@ -164,13 +164,13 @@ object RandomEffectDataSet {
   /**
    * Build the random effect data set with the given configuration
    *
-   * @param gameDataSet The RDD of [[GameData]] used to generate the random effect data set
+   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect data set
    * @param randomEffectDataConfiguration The data configuration for the random effect data set
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return
    */
   protected[ml] def buildWithConfiguration(
-      gameDataSet: RDD[(Long, GameData)],
+      gameDataSet: RDD[(Long, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner): RandomEffectDataSet = {
 
@@ -209,7 +209,7 @@ object RandomEffectDataSet {
    * @return active dataset
    */
   private def generateActiveData(
-      gameDataSet: RDD[(Long, GameData)],
+      gameDataSet: RDD[(Long, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner): RDD[(String, LocalDataSet)] = {
 
@@ -314,7 +314,7 @@ object RandomEffectDataSet {
    * @return the passive dataset
    */
   private def generatePassiveData(
-      gameDataSet: RDD[(Long, GameData)],
+      gameDataSet: RDD[(Long, GameDatum)],
       activeData: RDD[(String, LocalDataSet)],
       globalPartitioner: Partitioner,
       randomEffectDataConfiguration: RandomEffectDataConfiguration):

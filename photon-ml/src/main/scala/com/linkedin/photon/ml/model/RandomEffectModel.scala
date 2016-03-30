@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
+import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
 
 /**
  * Representation of a random effect model
@@ -64,7 +64,7 @@ protected[ml] class RandomEffectModel(
    * @param dataPoints the dataset
    * @return the score
    */
-  override def score(dataPoints: RDD[(Long, GameData)]): KeyValueScore = {
+  override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
     RandomEffectModel.score(dataPoints, coefficientsRDD, randomEffectId, featureShardId)
   }
 
@@ -106,7 +106,7 @@ object RandomEffectModel {
    * @return the score
    */
   protected def score(
-      dataPoints: RDD[(Long, GameData)],
+      dataPoints: RDD[(Long, GameDatum)],
       coefficientsRDD: RDD[(String, Coefficients)],
       randomEffectId: String,
       featureShardId: String): KeyValueScore = {

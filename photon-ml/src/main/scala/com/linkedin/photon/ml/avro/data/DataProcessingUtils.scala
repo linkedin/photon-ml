@@ -23,7 +23,7 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroUtils}
-import com.linkedin.photon.ml.data.GameData
+import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.util.{Utils, VectorUtils}
 
 
@@ -34,11 +34,11 @@ import com.linkedin.photon.ml.util.{Utils, VectorUtils}
 object DataProcessingUtils {
 
   //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
-  protected[ml] def parseAndGenerateGameDataSetFromGenericRecords(
+  protected[ml] def getGameDataSetFromGenericRecords(
       records: RDD[GenericRecord],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
-      randomEffectIdSet: Set[String]): RDD[(Long, GameData)] = {
+      randomEffectIdSet: Set[String]): RDD[(Long, GameDatum)] = {
 
     val sparkContext = records.sparkContext
     val numPartitions = records.partitions.length.toLong
@@ -50,24 +50,24 @@ object DataProcessingUtils {
     records.mapPartitionsWithIndex { case (k, iterator) =>
       val featureShardIdToFeatureMapMap = featureShardIdToFeatureMapMapBroadcast.value
       iterator.zipWithIndex.map { case (record, idx) =>
-        val gameData = parseAndGenerateGameDataFromGenericRecord(record, featureShardIdToFeatureSectionKeysMap,
+        val gameData = getGameDatumFromGenericRecord(record, featureShardIdToFeatureSectionKeysMap,
           featureShardIdToFeatureMapMap, featureShardMapLargestIndices, randomEffectIdSet)
         (idx * numPartitions + k, gameData)
       }
     }
   }
 
-  private def parseAndGenerateGameDataFromGenericRecord(
+  private def getGameDatumFromGenericRecord(
       record: GenericRecord,
       featureShardSectionKeys: Map[String, Set[String]],
       featureShardMaps: Map[String, Map[NameAndTerm, Int]],
       featureShardMapLargestIndices: Map[String, Int],
-      randomEffectIdSet: Set[String]): GameData = {
+      randomEffectIdSet: Set[String]): GameDatum = {
 
     val featureShardContainer = featureShardSectionKeys.map { case (shardId, featureSectionKeys) =>
       val featureMap = featureShardMaps(shardId)
       val largestIndex = featureShardMapLargestIndices(shardId)
-      val features = parseAndGenerateFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, largestIndex)
+      val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, largestIndex)
       (shardId, features)
     }
     val response = Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
@@ -80,10 +80,10 @@ object DataProcessingUtils {
     val ids = randomEffectIdSet.map { randomEffectId =>
       (randomEffectId, Utils.getStringAvro(record, randomEffectId, isNullOK = false))
     }.toMap
-    new GameData(response, offset, weight, featureShardContainer, ids)
+    new GameDatum(response, offset, weight, featureShardContainer, ids)
   }
 
-  private def parseAndGenerateFeaturesFromGenericRecord(
+  private def getFeaturesFromGenericRecord(
       record: GenericRecord,
       featureNameAndTermToIndexMap: Map[NameAndTerm, Int],
       fieldNames: Set[String],

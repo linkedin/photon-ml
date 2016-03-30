@@ -29,7 +29,7 @@ import breeze.linalg.Vector
  *   (e.g. "memberId" -> "1234" or "itemId" -> "abcd")
  * @author xazhang
  */
-protected[ml] class GameData(
+protected[ml] class GameDatum(
     val response: Double,
     val offset: Double,
     val weight: Double,

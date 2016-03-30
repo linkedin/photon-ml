@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.avro.AvroUtils
 import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTermFeatureSetContainer, NameAndTerm}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.GameData
+import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.{RMSEEvaluator, BinaryClassificationEvaluator}
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType._
@@ -76,7 +76,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param featureShardIdToFeatureMapMap a map of shard id to feature map
    * @return the prepared GAME dataset
    */
-  def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): RDD[(Long, GameData)] = {
+  def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): RDD[(Long, GameDatum)] = {
 
     val recordsPath = dateRangeOpt match {
       case Some(dateRange) =>
@@ -88,7 +88,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     val records = AvroUtils.readAvroFiles(sparkContext, recordsPath, parallelism)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val gameDataSet = DataProcessingUtils.parseAndGenerateGameDataSetFromGenericRecords(records,
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(records,
       featureShardIdToFeatureSectionKeysMap, featureShardIdToFeatureMapMap, randomEffectIdSet)
         .partitionBy(globalDataPartitioner)
         .setName("Scoring Game data set")
@@ -128,7 +128,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    */
   def scoreAndWriteScoreToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
-      gameDataSet: RDD[(Long, GameData)]): RDD[(Long, Double)] = {
+      gameDataSet: RDD[(Long, GameDatum)]): RDD[(Long, Double)] = {
 
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, gameModelInputDir,
       sparkContext)
@@ -163,7 +163,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param gameDataSet the input dataset
    * @param scores the scores
    */
-  def evaluateAndLog(gameDataSet: RDD[(Long, GameData)], scores: RDD[(Long, Double)]) {
+  def evaluateAndLog(gameDataSet: RDD[(Long, GameDatum)], scores: RDD[(Long, Double)]) {
 
     val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
     val metric =  taskType match {

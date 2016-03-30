@@ -18,7 +18,7 @@ import breeze.linalg.{DenseMatrix, DenseVector, Matrix, SparseVector, Vector}
 import scala.collection.mutable.BitSet
 
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.data.{GameData, KeyValueScore, LabeledPoint, LocalDataSet}
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore, LabeledPoint, LocalDataSet}
 import com.linkedin.photon.ml.function.{
   LogisticLossFunction, SquaredLossFunction, GeneralizedLinearModelLossFunction, HessianVectorAggregator,
   ValueAndGradientAggregator}
@@ -48,7 +48,7 @@ object SparkContextConfiguration {
     classOf[DenseMatrix[Double]],
     classOf[DenseVector[Double]],
     classOf[GLMOptimizationConfiguration],
-    classOf[GameData],
+    classOf[GameDatum],
     classOf[GeneralizedLinearModelLossFunction],
     classOf[HessianVectorAggregator],
     classOf[KeyValueScore],

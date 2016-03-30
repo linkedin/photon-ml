@@ -19,7 +19,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.constants.{StorageLevel, MathConst}
-import com.linkedin.photon.ml.data.{DataSet, GameData}
+import com.linkedin.photon.ml.data.{DataSet, GameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.Model
 import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
@@ -31,15 +31,15 @@ import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
  *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator training loss function evaluator
  * @param validatingDataAndEvaluatorOption optional validation data evaluator. The validating data is a [[RDD]] consists
- *                                         of (global Id, [[GameData]] object pairs), there the global Id is a unique
- *                                         identifier for each [[GameData]] object.
+ *                                         of (global Id, [[GameDatum]] object pairs), there the global Id is a unique
+ *                                         identifier for each [[GameDatum]] object.
  * @param logger logger instance
  * @author xazhang
  */
 class CoordinateDescent(
     coordinates: Seq[(String, Coordinate[_ <: DataSet[_], _ <: Coordinate[_, _]])],
     trainingLossFunctionEvaluator: Evaluator,
-    validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)],
+    validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
     logger: PhotonLogger) {
 
   /**

@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.model
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
+import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
 
 /**
  * Interface for the implementation of a GAME model
@@ -33,7 +33,7 @@ protected[ml] trait Model {
    *                   referred to in the GAME code as the "global ID".
    * @return the score
    */
-  def score(dataPoints: RDD[(Long, GameData)]): KeyValueScore
+  def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore
 
   /**
    * Build a summary string for the model

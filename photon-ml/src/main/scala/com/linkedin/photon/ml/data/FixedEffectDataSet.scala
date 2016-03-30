@@ -93,7 +93,7 @@ object FixedEffectDataSet {
    * @return new dataset with given configuration
    */
   protected[ml] def buildWithConfiguration(
-      gameDataSet: RDD[(Long, GameData)],
+      gameDataSet: RDD[(Long, GameDatum)],
       fixedEffectDataConfiguration: FixedEffectDataConfiguration): FixedEffectDataSet = {
 
     val featureShardId = fixedEffectDataConfiguration.featureShardId

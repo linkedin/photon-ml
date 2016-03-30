@@ -80,7 +80,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @return the prepared GAME dataset
    */
   protected[training] def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
-  : RDD[(Long, GameData)] = {
+  : RDD[(Long, GameDatum)] = {
 
     val trainingRecordsPath = trainDateRangeOpt match {
       case Some(trainDateRange) =>
@@ -111,10 +111,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
     val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-    val gameDataSet = DataProcessingUtils.parseAndGenerateGameDataSetFromGenericRecords(records,
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(records,
       featureShardIdToFeatureSectionKeysMap, featureShardIdToFeatureMapMap, randomEffectIdSet)
         .partitionBy(globalDataPartitioner)
-        .setName("Training Game data set")
+        .setName("GAME training data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     gameDataSet.count()
     gameDataSet
@@ -126,7 +126,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @param gameDataSet the input dataset
    * @return the training dataset
    */
-  protected[training] def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameData)])
+  protected[training] def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameDatum)])
   : Map[String, DataSet[_ <: DataSet[_]]] = {
 
     val fixedEffectDataSets = fixedEffectDataConfigurations.map { case (id, fixedEffectDataConfiguration) =>
@@ -181,7 +181,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @param gameDataSet the input dataset
    * @return the training evaluator
    */
-  protected[training] def prepareTrainingEvaluator(gameDataSet: RDD[(Long, GameData)]): Evaluator = {
+  protected[training] def prepareTrainingEvaluator(gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
     val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
       (gameData.response, gameData.offset, gameData.weight)
     ).setName("Training label and offset and weights").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -204,7 +204,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    */
   protected[training] def prepareValidatingEvaluator(
       validatingDirs: Seq[String],
-      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameData)], Evaluator) = {
+      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameDatum)], Evaluator) = {
 
     // Read and parse the validating activities
     val validatingRecordsPath = validateDateRangeOpt match {
@@ -220,7 +220,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // filter out features that validating data are included in the black list
     val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
     val gameDataSet = DataProcessingUtils
-        .parseAndGenerateGameDataSetFromGenericRecords(records, featureShardIdToFeatureSectionKeysMap,
+        .getGameDataSetFromGenericRecords(records, featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapMap, randomEffectIdSet).partitionBy(partitioner).setName("Validating Game data set")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
@@ -281,7 +281,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   protected[training] def train(
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
-      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)]): Map[String, Map[String, Model]] = {
+      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)]): Map[String, Map[String, Model]] = {
 
     val gameModels = for (
         fixedEffectOptimizationConfiguration <- fixedEffectOptimizationConfigurations;
@@ -361,7 +361,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
-      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameData)], Evaluator)],
+      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
       gameModelsMap: Map[String, Map[String, Model]]) {
 
     val combinedGameModelsMap = gameModelsMap.map { case (modelName, gameModel) =>
