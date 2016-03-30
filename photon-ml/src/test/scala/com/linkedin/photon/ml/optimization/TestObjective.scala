@@ -46,7 +46,7 @@ class TestObjective extends TwiceDiffFunction[LabeledPoint] {
       coefficients: Vector[Double],
       cumHessianDiagonal: Vector[Double]): Unit = {
 
-    val LabeledPoint(label, features, _, weight) = dataPoint
+    val LabeledPoint(_, features, _, weight) = dataPoint
     axpy(weight, features.map(feature => feature * feature), cumHessianDiagonal)
   }
 

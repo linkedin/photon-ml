@@ -65,7 +65,7 @@ object RandomEffectIdPartitioner {
   def generateRandomEffectIdPartitionerFromGameDataSet(
       numPartitions: Int,
       randomEffectId: String,
-      gameDataSet: RDD[(Long, GameData)],
+      gameDataSet: RDD[(Long, GameDatum)],
       partitionerCapacity: Int = 10000): RandomEffectIdPartitioner = {
 
     assert(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")

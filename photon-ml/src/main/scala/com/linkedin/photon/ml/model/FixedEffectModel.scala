@@ -18,7 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.BroadcastLike
-import com.linkedin.photon.ml.data.{KeyValueScore, GameData}
+import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
 
 
 /**
@@ -39,7 +39,7 @@ protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coeffi
    * @param dataPoints the dataset
    * @return the score
    */
-  override def score(dataPoints: RDD[(Long, GameData)]): KeyValueScore = {
+  override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
     FixedEffectModel.score(dataPoints, coefficientsBroadcast, featureShardId)
   }
 
@@ -82,7 +82,7 @@ object FixedEffectModel {
    * @return the score
    */
   private def score(
-      dataPoints: RDD[(Long, GameData)],
+      dataPoints: RDD[(Long, GameDatum)],
       coefficientsBroadcast: Broadcast[Coefficients],
       featureShardId: String): KeyValueScore = {
 
