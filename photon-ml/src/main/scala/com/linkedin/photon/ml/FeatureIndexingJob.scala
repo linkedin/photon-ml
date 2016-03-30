@@ -60,7 +60,7 @@ class FeatureIndexingJob(val sc: SparkContext,
     * @param inputRdd
     * @return RDD[(hash key, Iterable[unique feature name])]
     */
-  private def partitionedUniqueFeatures(inputRdd: RDD[GenericRecord]): RDD[(Int, String)] = {
+  private def partitionedUniqueFeatures(inputRdd: RDD[GenericRecord]): RDD[(Int, Iterable[String])] = {
     // Copy it to avoid serialization of the entire class
     val fieldNamesRef = fieldNames
     val keyedFeaturesRDD = inputRdd.flatMap { r: GenericRecord =>
@@ -95,32 +95,36 @@ class FeatureIndexingJob(val sc: SparkContext,
 
     // Step 3. distinct and group by hashcode
     // (note: integer's hashcode is still itself, this trick saves shuffle data size)
-    keyedFeaturesUnionedRDD.reduceByKey(new HashPartitioner(partitionNum), (pair1, pari2) => pair1)
+    keyedFeaturesUnionedRDD.distinct().groupByKey(new HashPartitioner(partitionNum))
   }
 
-  private def buildIndexMap(featuresRdd: RDD[(Int, String)]): Unit = {
+  private def buildIndexMap(featuresRdd: RDD[(Int, Iterable[String])]): Unit = {
     // Copy variable to avoid serializing the job class
     val outputPathCopy = outputPath
 
     val projectRdd = featuresRdd.mapPartitionsWithIndex{ case (idx, iter) =>
+      var i: Int = 0
       // Note: PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
       // lock the write. This will only block writing operations within the same JVM
       PalDBIndexMapBuilder.WRITER_LOCK.synchronized {
         val mapBuilder = new PalDBIndexMapBuilder().init(outputPathCopy, idx)
 
-        var i: Int = 0
         while (iter.hasNext) {
-          mapBuilder.put(iter.next()._2, i)
-          i += 1
+          val tuple = iter.next()
+          val features = tuple._2
+          features.foreach { feature =>
+            mapBuilder.put(feature, i)
+            i += 1
+          }
         }
 
         mapBuilder.close()
       }
-      iter
+      Array[Int](i).toIterator
     }
 
     // Trigger run
-    val num = projectRdd.count()
+    val num = projectRdd.sum().toInt
     logger.info(s"Total number of features indexed: [$num]")
   }
 
