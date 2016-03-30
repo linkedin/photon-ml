@@ -26,25 +26,38 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.mockito.{Matchers, Mockito}
 import org.testng.Assert
-import org.testng.annotations.{DataProvider, BeforeTest, Test}
+import org.testng.annotations.{DataProvider, Test}
 
 /**
  * @author nkatariy
  */
 class OptimizationProblemTest {
-  val mockOptimizer = Mockito.mock(classOf[AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]])
-  val mockObjectiveFunction =  Mockito.mock(classOf[TwiceDiffFunction[LabeledPoint]])
+  case class Mocks (optimizer: AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]],
+                    objectiveFunction: TwiceDiffFunction[LabeledPoint],
+                    rdd: RDD[LabeledPoint],
+                    sparkContext: SparkContext,
+                    broadcastVector: Broadcast[Vector[Double]],
+                    iterable: Iterable[LabeledPoint],
+                    coeffs: Coefficients,
+                    vector: Vector[Double],
+                    variancesOption: Option[Vector[Double]])
 
-  val mockRDD = Mockito.mock(classOf[RDD[LabeledPoint]])
-  val mockSparkContext = Mockito.mock(classOf[SparkContext])
-  val mockBroadcastVector = Mockito.mock(classOf[Broadcast[Vector[Double]]])
-  val mockIterable = Mockito.mock(classOf[Iterable[LabeledPoint]])
-  val mockCoeffs = Mockito.mock(classOf[Coefficients])
-  val mockVector = Mockito.mock(classOf[Vector[Double]])
-  val mockVariancesOption = Mockito.mock(classOf[Option[Vector[Double]]])
+  def getMocks(): Mocks = {
+    Mocks(
+      Mockito.mock(classOf[AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]]),
+      Mockito.mock(classOf[TwiceDiffFunction[LabeledPoint]]),
+      Mockito.mock(classOf[RDD[LabeledPoint]]),
+      Mockito.mock(classOf[SparkContext]),
+      Mockito.mock(classOf[Broadcast[Vector[Double]]]),
+      Mockito.mock(classOf[Iterable[LabeledPoint]]),
+      Mockito.mock(classOf[Coefficients]),
+      Mockito.mock(classOf[Vector[Double]]),
+      Mockito.mock(classOf[Option[Vector[Double]]])
+    )
+  }
 
-  def getProblem(optimizer: AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = mockOptimizer,
-                 objectiveFunction: TwiceDiffFunction[LabeledPoint] = mockObjectiveFunction,
+  def getProblem(optimizer: AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]],
+                 objectiveFunction: TwiceDiffFunction[LabeledPoint],
                  regularizationWeight: Double = 0.5) = {
     val mockLossFunction = Mockito.mock(classOf[TwiceDiffFunction[LabeledPoint]])
     val mockSampler = Mockito.mock(classOf[DownSampler])
@@ -55,94 +68,111 @@ class OptimizationProblemTest {
 
   @DataProvider
   def regularizationTermTestData(): Array[Array[Any]] = {
+    val mocks = getMocks()
+    val mockOptimizer = mocks.optimizer
+    val mockObjectiveFunction = mocks.objectiveFunction
+    val mockCoeffs = mocks.coeffs
+    val mockVector = mocks.vector
+
     val dummyDotProduct = 20.0
     Mockito.when(mockCoeffs.means).thenReturn(mockVector)
     Mockito.when(mockVector.dot(mockVector)).thenReturn(dummyDotProduct)
 
     Array(
-      Array(0.1, mockCoeffs, 1.0),
-      Array(1, mockCoeffs, 10.0),
-      Array(10.0, mockCoeffs, 100.0)
+      Array(mockOptimizer, mockObjectiveFunction, 0.1, mockCoeffs, 1.0),
+      Array(mockOptimizer, mockObjectiveFunction, 1, mockCoeffs, 10.0),
+      Array(mockOptimizer, mockObjectiveFunction, 10.0, mockCoeffs, 100.0)
     )
   }
 
   @Test(dataProvider = "regularizationTermTestData")
-  def testGetRegularizationTermValue(regWeight: Double, coeffs: Coefficients, expectedRegularizationTermValue: Double) = {
-    Assert.assertEquals(getProblem(regularizationWeight = regWeight).getRegularizationTermValue(coeffs),
+  def testGetRegularizationTermValue(mockOptimizer: AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]],
+                                     mockObjectiveFunction: TwiceDiffFunction[LabeledPoint],
+                                     regWeight: Double,
+                                     coeffs: Coefficients,
+                                     expectedRegularizationTermValue: Double) = {
+    Assert.assertEquals(getProblem(mockOptimizer, mockObjectiveFunction, regWeight).getRegularizationTermValue(coeffs),
       expectedRegularizationTermValue)
   }
 
   @Test
   def testUpdateCoefficientVariancesIterable() = {
+    val mocks = getMocks()
+
     val hessianDiagonalOutput = new DenseVector[Double](Array(0.3, -0.5, 0.0, 0.1))
     val expectedVariances = Array[Double](10.0 / 3, -2.0, 1 / MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD, 10.0)
 
-    Mockito.when(mockObjectiveFunction.hessianDiagonal(Matchers.any(classOf[Iterable[LabeledPoint]]), Matchers.any(classOf[Vector[Double]])))
+    Mockito.when(mocks.objectiveFunction.hessianDiagonal(Matchers.any(classOf[Iterable[LabeledPoint]]), Matchers.any(classOf[Vector[Double]])))
       .thenReturn(hessianDiagonalOutput)
-    val problem = getProblem(objectiveFunction = mockObjectiveFunction)
+    val problem = getProblem(mocks.optimizer, mocks.objectiveFunction)
 
-    Mockito.when(mockCoeffs.means).thenReturn(mockVector)
+    Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
 
-    val result = problem.updateCoefficientsVariances(mockIterable, mockCoeffs)
-    Assert.assertEquals(result.means, mockVector)
+    val result = problem.updateCoefficientsVariances(mocks.iterable, mocks.coeffs)
+    Assert.assertEquals(result.means, mocks.vector)
     result.variancesOption.foreach(x => x.toArray.zip(expectedVariances)
       .foreach(y => Assert.assertEquals(y._1, y._2, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)))
   }
 
   @Test
   def testUpdateCoefficientMeansIterable() = {
-    Mockito.when(mockCoeffs.means).thenReturn(mockVector)
-    Mockito.when(mockCoeffs.variancesOption).thenReturn(mockVariancesOption)
+    val mocks = getMocks()
+
+    Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
+    Mockito.when(mocks.coeffs.variancesOption).thenReturn(mocks.variancesOption)
 
     val mockUpdatedCoeffs = Mockito.mock(classOf[Vector[Double]])
     val mockLossValue = Matchers.anyDouble()
-    Mockito.when(mockOptimizer.optimize(Matchers.any(classOf[Iterable[LabeledPoint]]),
-      Matchers.any(classOf[TwiceDiffFunction[LabeledPoint]]), mockVector))
+    Mockito.when(mocks.optimizer.optimize(Matchers.any(classOf[Iterable[LabeledPoint]]),
+      Matchers.any(classOf[TwiceDiffFunction[LabeledPoint]]), mocks.vector))
       .thenReturn((mockUpdatedCoeffs, mockLossValue))
 
-    val problem = getProblem(optimizer = mockOptimizer)
-    val result = problem.updateCoefficientMeans(mockIterable, mockCoeffs)
+    val problem = getProblem(mocks.optimizer, mocks.objectiveFunction)
+    val result = problem.updateCoefficientMeans(mocks.iterable, mocks.coeffs)
     Assert.assertEquals(result._1.means, mockUpdatedCoeffs)
-    Assert.assertEquals(result._1.variancesOption, mockVariancesOption)
+    Assert.assertEquals(result._1.variancesOption, mocks.variancesOption)
     Assert.assertEquals(result._2, mockLossValue)
   }
 
   @Test
   def testUpdateCoefficientVariancesRDD() = {
-    Mockito.when(mockRDD.sparkContext).thenReturn(mockSparkContext)
-    Mockito.when(mockSparkContext.broadcast(mockVector)).thenReturn(mockBroadcastVector)
+    val mocks = getMocks()
+
+    Mockito.when(mocks.rdd.sparkContext).thenReturn(mocks.sparkContext)
+    Mockito.when(mocks.sparkContext.broadcast(mocks.vector)).thenReturn(mocks.broadcastVector)
 
     val hessianDiagonalOutput = new DenseVector[Double](Array(0.3, -0.5, 0.0, 0.1))
     val expectedVariances = Array[Double](10.0 / 3, -2.0, 1 / MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD, 10.0)
 
-    val mockObjectiveFunction =  Mockito.mock(classOf[TwiceDiffFunction[LabeledPoint]])
-    Mockito.when(mockObjectiveFunction.hessianDiagonal(Matchers.any(classOf[RDD[LabeledPoint]]), Matchers.any(classOf[Broadcast[Vector[Double]]])))
+    Mockito.when(mocks.objectiveFunction.hessianDiagonal(Matchers.any(classOf[RDD[LabeledPoint]]), Matchers.any(classOf[Broadcast[Vector[Double]]])))
       .thenReturn(hessianDiagonalOutput)
-    val problem = getProblem(objectiveFunction = mockObjectiveFunction)
+    val problem = getProblem(mocks.optimizer, mocks.objectiveFunction)
 
-    Mockito.when(mockCoeffs.means).thenReturn(mockVector)
+    Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
 
-    val result = problem.updateCoefficientsVariances(mockRDD, mockCoeffs)
-    Assert.assertEquals(result.means, mockVector)
+    val result = problem.updateCoefficientsVariances(mocks.rdd, mocks.coeffs)
+    Assert.assertEquals(result.means, mocks.vector)
     result.variancesOption.foreach(x => x.toArray.zip(expectedVariances)
       .foreach(y => Assert.assertEquals(y._1, y._2, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)))
   }
 
   @Test
   def testUpdateCoefficientMeansRDD() = {
-    Mockito.when(mockCoeffs.means).thenReturn(mockVector)
-    Mockito.when(mockCoeffs.variancesOption).thenReturn(mockVariancesOption)
+    val mocks = getMocks()
+
+    Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
+    Mockito.when(mocks.coeffs.variancesOption).thenReturn(mocks.variancesOption)
 
     val mockUpdatedCoeffs = Mockito.mock(classOf[Vector[Double]])
     val mockLossValue = Matchers.anyDouble()
-    Mockito.when(mockOptimizer.optimize(Matchers.any(classOf[RDD[LabeledPoint]]),
-      Matchers.any(classOf[TwiceDiffFunction[LabeledPoint]]), mockVector))
+    Mockito.when(mocks.optimizer.optimize(Matchers.any(classOf[RDD[LabeledPoint]]),
+      Matchers.any(classOf[TwiceDiffFunction[LabeledPoint]]), mocks.vector))
       .thenReturn((mockUpdatedCoeffs, mockLossValue))
 
-    val problem = getProblem(optimizer = mockOptimizer)
-    val result = problem.updateCoefficientMeans(mockRDD, mockCoeffs)
+    val problem = getProblem(mocks.optimizer, mocks.objectiveFunction)
+    val result = problem.updateCoefficientMeans(mocks.rdd, mocks.coeffs)
     Assert.assertEquals(result._1.means, mockUpdatedCoeffs)
-    Assert.assertEquals(result._1.variancesOption, mockVariancesOption)
+    Assert.assertEquals(result._1.variancesOption, mocks.variancesOption)
     Assert.assertEquals(result._2, mockLossValue)
   }
 }
