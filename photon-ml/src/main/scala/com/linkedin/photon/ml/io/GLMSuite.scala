@@ -339,14 +339,8 @@ class GLMSuite(
     }
 
     avroRDD.mapPartitions { iter =>
-      val res = new ArrayBuffer[LabeledPoint]
       val map = _indexMapLoader.indexMapForRDD()
-      while (iter.hasNext) {
-        val r = parseAvroRecord(iter.next(), map)
-        r.foreach(k => res += k)
-      }
-
-      res.iterator
+      iter.flatMap { r => parseAvroRecord(r, map) }
     }
   }
 
