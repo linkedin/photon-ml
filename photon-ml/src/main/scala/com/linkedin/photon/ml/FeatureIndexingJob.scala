@@ -50,9 +50,19 @@ import java.util.{List => JList}
 class FeatureIndexingJob(val sc: SparkContext,
                          val inputPath: String,
                          val partitionNum: Int,
-                         val outputPath: String,
+                         val outputDir: String,
                          val addIntercept: Boolean,
                          val fieldNames: FieldNames) {
+  private val outputPath: Path = {
+    val path = new Path(outputDir)
+    val fs = FileSystem.get(new Configuration())
+    if (fs.exists(path)) {
+      fs.delete(path, true)
+    }
+    fs.mkdirs(path)
+    path
+  }
+
   private val logger: PhotonLogger = new PhotonLogger(new Path(outputPath, "_log"), sc)
 
   /**
@@ -101,10 +111,7 @@ class FeatureIndexingJob(val sc: SparkContext,
 
   private def buildIndexMap(featuresRdd: RDD[(Int, Iterable[String])]): Unit = {
     // Copy variable to avoid serializing the job class
-    val outputPathCopy = outputPath
-    val fs = FileSystem.get(new Configuration())
-    fs.delete(new Path(outputPathCopy), true)
-    fs.mkdirs(new Path(outputPathCopy))
+    val outputPathCopy = outputDir
 
     val projectRdd = featuresRdd.mapPartitionsWithIndex{ case (idx, iter) =>
       var i: Int = 0
