@@ -1,15 +1,26 @@
-## Photon Machine Learning (ML)
-**Photon Machine Learning (ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
+# Photon Machine Learning (Photon-ML)
+**Photon Machine Learning (Photon-ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
 
-### Motivation
-Photon ML is a complement to Spark ML/MLLIB. The development started when there was only an early version of Spark MLLIB. Its original intention was to provide LinkedIn-specific learning functionalities needed by multiple LinkedIn relevance teams. Over time, Photon ML has diverged from Spark ML/MLLIB. It contains a few similar components but also a few distinct functionalities. We'd like to open source Photon ML as an opportunity to bind more closely with Spark community, and also figure out ways of contributing those generally useful components back to Spark.
+It's designed to be flexible, scalable and efficient, while providing handy analytical abilities to help modelers / data scientists make predictions easily and quickly.
 
-### Functions
-**Photon ML** currently supports:
+<!-- MarkdownTOC autolink=true bracket=round depth=0 -->
+
+- [Features](#features)
+- [Experimental Features](#experimental-features)
+  - [GAME - Generalized Additive Mixed Effect Model](#game---generalized-additive-mixed-effect-model)
+- [How to build](#how-to-build)
+- [Example](#example)
+- [How to Contribute](#how-to-contribute)
+
+<!-- /MarkdownTOC -->
+
+
+## Features
+**Photon-ML** currently supports:
 
 1. Generalized Linear Model:
-  * Logistic Regression with L1/L2/Elastic Net regularization;
-  * Possion Regression with L1/L2/Elastic Net regularization
+  * Logistic Regression with L1/L2/Elastic Net regularization
+  * Poisson Regression with L1/L2/Elastic Net regularization
   * Lasso/Ridge Linear Regression
 
 2. Boxed constraints towards model coefficients, e.g. [0.1 <= wi <= 0.9] where wi is the model coefficient at dimension i
@@ -31,7 +42,29 @@ Photon ML is a complement to Spark ML/MLLIB. The development started when there 
   * Model fitting analysis, and bootstrap analysis
   * [Hosmer-Lemeshow Goodness-of-Fit Test](https://en.wikipedia.org/wiki/Hosmer%E2%80%93Lemeshow_test) for Logistic Regression
 
-### How to build
+## Experimental Features
+Photon ML currently contains a number of experimental features that have not been fully tested, and as such should not be used in production. These features center mostly around the **GAME (Generalized Additive Mixed Effect)** modules.
+
+### GAME - Generalized Additive Mixed Effect Model
+GAME is a specific expansion of traditional Generalized Linear Models that further provides entity level (e.g., per-user/per-item) or segment level (e.g., per-country/per-category) coefficients, also known as random effects in the statistics literature, in addition to global coefficients. It manages to scale model training up to hundreds of billions of coefficients while still solvable within Spark's framework.
+
+GAME models consist of three components:
+  * One fixed effect model:
+    * The fixed effect model is effectively a conventional generalized linear model. Its parameters are "global" in the sense that they apply uniformly to all entities.
+  * Multiple random effect models:
+    * Random effect models consist of "local" parameters – entity-specific coefficients that can be seen as random deviations from the global mean. In other words, they are personalized models.
+  * Optionally a matrix factorization model:
+    * The matrix factorization model captures interactions between the different random effect models.
+
+The main difference between a GAME model and a conventional linear model is that GAME includes per-entity sub-models for personalization. An entity can be thought of as a logical grouping of data around some object or person, say a member. In GAME, each entity has its own RandomEffect optimization problem, where the training data have been grouped and partitioned by entity.
+
+The relevant code can be found in the following namespaces:
+ * com.linkedin.photon.ml.algorithm
+ * com.linkedin.photon.ml.data
+ * com.linkedin.photon.ml.optimization.game
+
+
+## How to build
 **Note**: Before building, please make sure environment variable ```JAVA_HOME``` is pointed at a Java 8 JDK properly. Photon ML is not compatible with JDK < 1.8.
 The below commands are for Linux/Mac users, for Windows, please use ```gradlew.bat``` instead of ```gradlew```.
 
@@ -47,8 +80,17 @@ The below commands are for Linux/Mac users, for Windows, please use ```gradlew.b
 
 # Run only integration tests:
 ./gradlew clean integTest -x test
+
+# Check License with Apache Rat
+./gradlew rat
+
+# Check scala style
+./gradlew scalastyle
+
+# Check everything
+./gradlew check
 ```
-### Example
+## Example
 Upload ```example/run_photon_ml.driver.sh``` onto a Spark cluster.
 Run command:
 ```bash
@@ -60,10 +102,5 @@ sh run_photon_ml.driver.sh [-h|--help]
 ```
 **Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
 
-### Experimental Features
-
-Photon ML currently contains a number of experimental features that have not been fully tested, and as such should not be used in production. These features center mostly around the GAME (Generalized Additive Mixed Effect) modules, and can be found in the following namespaces:
-
- * com.linkedin.photon.ml.algorithm
- * com.linkedin.photon.ml.data
- * com.linkedin.photon.ml.optimization.game
+## How to Contribute
+Contributions are always more than welcome. For starters, you could begin with reporting an issue, participating in discussions, or sending out a pull request addressing one. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
