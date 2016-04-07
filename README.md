@@ -8,8 +8,14 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
 - [Features](#features)
 - [Experimental Features](#experimental-features)
   - [GAME - Generalized Additive Mixed Effect Model](#game---generalized-additive-mixed-effect-model)
-- [How to build](#how-to-build)
-- [Example](#example)
+- [How to Build](#how-to-build)
+- [How to Use](#how-to-use)
+  - [Avro Schemas](#avro-schemas)
+    - [*What about other formats?*](#what-about-other-formats)
+  - [Input Data Format](#input-data-format)
+  - [Models](#models)
+  - [Shaded Jar](#shaded-jar)
+  - [Example Scripts](#example-scripts)
 - [How to Contribute](#how-to-contribute)
 
 <!-- /MarkdownTOC -->
@@ -64,7 +70,7 @@ The relevant code can be found in the following namespaces:
  * com.linkedin.photon.ml.optimization.game
 
 
-## How to build
+## How to Build
 **Note**: Before building, please make sure environment variable ```JAVA_HOME``` is pointed at a Java 8 JDK properly. Photon ML is not compatible with JDK < 1.8.
 The below commands are for Linux/Mac users, for Windows, please use ```gradlew.bat``` instead of ```gradlew```.
 
@@ -90,15 +96,102 @@ The below commands are for Linux/Mac users, for Windows, please use ```gradlew.b
 # Check everything
 ./gradlew check
 ```
-## Example
-Upload ```example/run_photon_ml.driver.sh``` onto a Spark cluster.
-Run command:
-```bash
-sh run_photon_ml.driver.sh [..options] hdfs_working_dir
+## How to Use
+### Avro Schemas
+Currently all serialized Photon ML data other than models is stored in [Apache Avro](https://avro.apache.org/) format. The detailed schemas are declared at [photon-avro-schemas](https://github.com/linkedin/photon-ml/tree/master/photon-avro-schemas/src/main/avro) module. And such Avro schemas are compiled for Avro 1.7.5+, be mindful that Avro 1.4 or any version < 1.7.5 might not be entirely compatible with the in-memory data record representations.
+
+#### *What about other formats?*
+While Avro does provide a unified and rigorous way of managing all critical data representations, we think it is also important to allow other data formats to make Photon ML more flexible. There are future plans to loosen such data format requirements. For the current version, Photon ML is assuming users will properly prepare input data in Avro formats.
+
+### Input Data Format
+Currently Photon ML uses Avro schema [TrainingExampleAvro](https://github.com/linkedin/photon-ml/blob/master/photon-avro-schemas/src/main/avro/TrainingExampleAvro.avsc) as the official input format. However, any Avro Generic Datum satisfying the following schema requirements are actually acceptable:
+- The Avro record *must* have two fields:
+  1. **label**: ```double```
+  2. **features**: ```array: [{name:string, term:string, value:float}]```
+- All the other fields are *optional*.
+- We define a feature string to be represented as ```name + INTERNAL_DELIM + term```. For example, if we have a feature called ```age=[10,20]```, i.e. age between 10 years old to 20 years old. The feature can be represented as:
 ```
-Get detailed usage help:
+  name="age"
+  term="[10,20]"
+  value=1.0
+```
+- **term** field is optional, if you don't want to use two fields to represent one feature, feel free to set it as empty string.
+- Train and validation datasets should be in the exact same format. e.g. it is probably a bad idea if train dataset contains the **offset** field while validation data does not.
+- Intercept is not required in the training data, it can be optionally be appended via an option see [example scripts](#example-scripts) for more details;
+- **weight** is an optional field that specifies the weight of the observation. Default is 1.0. If you feel some observation is stronger than the others, feel free to use this field, say making the weak ones 0.5.
+- **offset** is an optional field. Default is 0.0. When it is non-zero, the model will learn coefficients beta by ```x'beta+offset``` instead of ```x'beta```.
+
+Below is a sample of training/test data:
+```
+Avro Record 1:
+  {
+    "label" : 0,
+    "features" : [
+    {
+      "name" : "7",
+      "term" : "33",
+      "value" : 1.0
+    }, {
+      "name" : "8",
+      "term" : "151",
+      "value" : 1.0
+    }, {
+      "name" : "3",
+      "term" : "0",
+      "value" : 1.0
+    }, {
+      "name" : "12",
+      "term" : "132",
+      "value" : 1.0
+    }
+   ],
+    "weight" : 1.0,
+    "offset" : 0.0,
+    "foo" : "whatever"
+ }
+```
+
+### Models
+The trained model coefficients are output as text directly. It is intended as such for easy consumption. The current output format for Generalized Linear Models are as such:
 ```bash
-sh run_photon_ml.driver.sh [-h|--help]
+# For each line in the text file:
+[feature_string]\t[feature_id]\t[coefficient_value]\t[regularization_weight]
+```
+Future improvements are planned to make such model formats more flexible.
+
+### Shaded Jar
+[photon-all](https://github.com/linkedin/photon-ml/tree/master/photon-all) module releases a shaded jar containing all the required runtime dependencies of Photon ML other than Spark. Shading is a robust way of creating fat/uber jars. It does not only package all dependencies into one single place, but also smartly renames a few selected class packages to avoid dependency conflicts. Although ```photon-all.jar``` is not a necessity, and it is fine for users to provide their own copies of dependences, it is highly recommended to be used in cluster environment where complex dependency conflicts could happen between system and user jars. (See [Gradle Shadow Plugin](https://github.com/johnrengelman/shadow) for more about shading).
+
+Below is a command to build the photon-all jar:
+```bash
+# Change 2.10 to 2.11 for Scala 2.11
+./gradlew :photon-all_2.10:assemble
+```
+
+### Example Scripts
+The below script is a simple demonstration of running a Logistic Regression training and validation job with minimal setups:
+```bash
+spark-submit \
+  --class com.linkedin.photon.ml.Driver \
+  --master yarn-cluster \
+  --num-executors 50 \
+  --driver-memory 10G \
+  --executor-memory $memory \
+  "photon-all_2.10-1.0.0.jar" \
+  --training-data-directory "path/to/training/data" \
+  --validating-data-directory "path/to/validating/data" \
+  --output-directory "path/to/output/dir" \
+  --task "LOGISTIC_REGRESSION" \
+  --num-iterations 50 \
+  --regularization-weights "0.1,1,10" \
+  --job-name "demo_photon_ml_logistic_regression"
+```
+
+There is also a more complex script demonstrating advanced options and customizations of using Photon ML at  [example/run_photon_ml.driver.sh](https://github.com/linkedin/photon-ml/blob/master/examples/run_photon_ml_driver.sh).
+
+Detailed usages are described via command:
+```bash
+./run_photon_ml.driver.sh [-h|--help]
 ```
 **Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
 
