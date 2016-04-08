@@ -16,7 +16,11 @@ apply plugin: 'scala-cross-build'
 
 scalaCrossBuild {
   defaultScalaVersion '2.10.4'
-  targetScalaVersions '2.10.4', '2.11.7'
+  /* Disable 2.11 build temporarily due to an issue with both OS X and Travis CI envs.
+   * something to do with Gradle version
+   */
+  // targetScalaVersions '2.10.4', '2.11.7'
+  targetScalaVersions '2.10.4'
   buildDefaultOnly false
 
   projectsToCrossBuild(

@@ -17,7 +17,6 @@
 
 buildscript {
   repositories {
-    mavenCentral()
     jcenter()
   }
 
@@ -44,7 +43,7 @@ allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
   repositories {
-    mavenCentral()
+    jcenter()
   }
 }
 
@@ -71,6 +70,7 @@ rat {
     '**/.DS_Store/**',
     '**/build/**',
     '.reviewboardrc',
+    '.travis.yml',
     'dev-scripts/license_template.txt',
     'gradle/wrapper/**',
     'gradlew',
