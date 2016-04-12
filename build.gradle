@@ -186,4 +186,12 @@ task wrapper(type: Wrapper) {
 // For LinkedIn internal builds, apply the LinkedIn-specific build file
 if (project.hasProperty('overrideBuildEnvironment')) {
   apply from: project.overrideBuildEnvironment
+} else {
+  // Specify Jar versions here instead of within gradle.properties
+  // This will provide overriding ability for internal builds
+  subprojects {
+    tasks.withType(Jar) {
+      version '1.0.0'
+    }
+  }
 }
