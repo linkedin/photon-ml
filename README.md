@@ -1,6 +1,7 @@
 # Photon Machine Learning (Photon-ML)
 
 [![Build Status](https://travis-ci.org/linkedin/photon-ml.svg?branch=master)](https://travis-ci.org/linkedin/photon-ml)
+[![Coverage Status](https://coveralls.io/repos/github/linkedin/photon-ml/badge.svg?branch=master)](https://coveralls.io/github/linkedin/photon-ml?branch=master)
 
 **Photon Machine Learning (Photon-ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
 

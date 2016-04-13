@@ -36,12 +36,14 @@ buildscript {
     classpath "com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0"
     classpath "org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2"
     classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    classpath "org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.6.3"
   }
 }
 
 allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
+
   repositories {
     jcenter()
   }
@@ -51,6 +53,8 @@ apply from: 'build-scripts/rat.gradle'
 
 rat {
   excludes = [
+    '.*',
+    '*.log',
     '*.patch',
     '**/*.avsc',
     '**/*.acl',

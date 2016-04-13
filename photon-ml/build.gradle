@@ -15,6 +15,16 @@
 apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
+apply plugin: "jacoco"
+apply plugin: 'com.github.kt3k.coveralls'
+jacocoTestReport {
+  reports {
+      xml.enabled = true // coveralls plugin depends on xml format report
+      html.enabled = true
+  }
+}
+
+
 dependencies {
   compile('joda-time:joda-time:2.7')
 
