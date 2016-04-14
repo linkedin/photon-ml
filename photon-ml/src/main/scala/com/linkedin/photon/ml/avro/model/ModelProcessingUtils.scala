@@ -105,35 +105,43 @@ object ModelProcessingUtils {
 
     // Load the fixed effect models
     val fixedEffectModelInputDir = new Path(inputDir, FIXED_EFFECT)
-    val fixedEffectModels = fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
-      val inputPath = fileStatus.getPath
+    val fixedEffectModels = if (fs.exists(fixedEffectModelInputDir)) {
+      fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
+        val inputPath = fileStatus.getPath
 
-      // Load the model ID info
-      val idInfoPath = new Path(inputPath, ID_INFO)
-      val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+        // Load the model ID info
+        val idInfoPath = new Path(inputPath, ID_INFO)
+        val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
-      // Load the coefficients
-      val featureNameAndTermToIndexMap = featureShardIdToFeatureMapMap(featureShardId)
-      val modelPath = new Path(inputPath, COEFFICIENTS)
-      val coefficients = loadCoefficientsFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
-      new FixedEffectModel(sparkContext.broadcast(coefficients), featureShardId)
+        // Load the coefficients
+        val featureNameAndTermToIndexMap = featureShardIdToFeatureMapMap(featureShardId)
+        val modelPath = new Path(inputPath, COEFFICIENTS)
+        val coefficients = loadCoefficientsFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
+        new FixedEffectModel(sparkContext.broadcast(coefficients), featureShardId)
+      }
+    } else {
+      Array[FixedEffectModel]()
     }
 
     // Load the random effect models
     val randomEffectModelInputDir = new Path(inputDir, RANDOM_EFFECT)
-    val randomEffectModels = fs.listStatus(randomEffectModelInputDir).map { innerFileStatus =>
-      val innerPath = innerFileStatus.getPath
+    val randomEffectModels = if (fs.exists(randomEffectModelInputDir)) {
+      fs.listStatus(randomEffectModelInputDir).map { innerFileStatus =>
+        val innerPath = innerFileStatus.getPath
 
-      // Load the model ID info
-      val idInfoPath = new Path(innerPath, ID_INFO)
-      val Array(randomEffectId, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+        // Load the model ID info
+        val idInfoPath = new Path(innerPath, ID_INFO)
+        val Array(randomEffectId, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
-      // Load the coefficients
-      val featureNameAndTermToIndexMap = featureShardIdToFeatureMapBroadcastMap(featureShardId)
-      val coefficientsRDDInputPath = new Path(innerPath, COEFFICIENTS)
-      val coefficientsRDD = loadCoefficientsRDDFromHDFS(coefficientsRDDInputPath.toString,
-        featureNameAndTermToIndexMap, sparkContext)
-      new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
+        // Load the coefficients
+        val featureNameAndTermToIndexMap = featureShardIdToFeatureMapBroadcastMap(featureShardId)
+        val coefficientsRDDInputPath = new Path(innerPath, COEFFICIENTS)
+        val coefficientsRDD = loadCoefficientsRDDFromHDFS(coefficientsRDDInputPath.toString,
+          featureNameAndTermToIndexMap, sparkContext)
+        new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
+      }
+    } else {
+      Array[RandomEffectModel]()
     }
 
     fixedEffectModels ++ randomEffectModels

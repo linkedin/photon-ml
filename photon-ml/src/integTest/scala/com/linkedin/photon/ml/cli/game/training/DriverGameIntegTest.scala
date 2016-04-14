@@ -22,6 +22,7 @@ import org.testng.Assert._
 
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
+import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType
@@ -37,20 +38,27 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testFixedEffects = sparkTest("fixedEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/fixedEffects"
 
-    runDriver(argArray(fixedEffectArgs ++ Map(
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 1.7
+
+    val driver = runDriver(argArray(fixedEffectArgs ++ Map(
       "output-dir" -> outputDir)))
 
     val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
 
     assertTrue(Files.exists(fixedEffectModelPath))
     assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14983))
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 
   @Test
   def testRandomEffects = sparkTest("randomEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/randomEffects"
 
-    runDriver(argArray(randomEffectArgs ++ Map(
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 2.2
+
+    val driver = runDriver(argArray(randomEffectArgs ++ Map(
       "output-dir" -> outputDir)))
 
     val userModelPath = modelPath(outputDir, "random-effect", "userId-shard2")
@@ -65,13 +73,18 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertTrue(Files.exists(artistModelPath))
     assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
+
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 
   @Test
   def testFixedAndRandomEffects = sparkTest("fixedAndRandomEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/fixedAndRandomEffects"
 
-    runDriver(argArray(fixedAndRandomEffectArgs ++ Map(
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 2.2
+
+    val driver = runDriver(argArray(fixedAndRandomEffectArgs ++ Map(
       "output-dir" -> outputDir)))
 
     val fixedEffectModelPath = modelPath(outputDir, "fixed-effect", "shard1")
@@ -90,6 +103,8 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertTrue(Files.exists(artistModelPath))
     assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
+
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 
   @Test
@@ -193,7 +208,10 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testMultipleOptimizerConfigs = sparkTest("multipleOptimizerConfigs", useKryo = true) {
     val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
 
-    runDriver(argArray(fixedEffectArgs ++ Map(
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 1.7
+
+    val driver = runDriver(argArray(fixedEffectArgs ++ Map(
       "output-dir" -> outputDir,
       "fixed-effect-optimization-configurations" ->
         ("global:10,1e-5,10,1,tron,l2;" +
@@ -203,6 +221,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertTrue(Files.exists(fixedEffectModelPath))
     assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14982))
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 
   /**
@@ -241,17 +260,45 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   /**
+   * Evaluate the model by calculating RMSE between its scores and the validation set
+   *
+   * @param driver the driver instance used for training
+   * @param modelPath base path to the GAME model files
+   * @return validation error for the model
+   */
+  def evaluateModel(driver: Driver, modelPath: Path): Double = {
+    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
+    val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
+
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+      featureShardIdToFeatureMapMap, modelPath.toString, sc)
+
+    val (_, evaluator) = driver.prepareValidatingEvaluator(
+      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
+
+    val scores = gameModel
+      .map(_.score(gameDataSet))
+      .reduce(_ + _)
+      .scores
+
+    return evaluator.evaluate(scores)
+  }
+
+  /**
    * Run the Game driver with the specified arguments
    *
    * @param args the command-line arguments
    */
-  def runDriver(args: Array[String]) {
+  def runDriver(args: Array[String]) = {
     val params = Params.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(params, sc, logger)
 
+
     driver.run
     logger.close
+
+    driver
   }
 }
 
