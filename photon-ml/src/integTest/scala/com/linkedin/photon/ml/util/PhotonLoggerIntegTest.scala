@@ -17,17 +17,17 @@ package com.linkedin.photon.ml.util
 import org.testng.annotations.{DataProvider, Test}
 import org.testng.Assert._
 
-import java.nio.file.{Files, FileSystems, Path}
+import java.nio.file.{Files, FileSystems}
 import scala.io.Source
 
-import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   class TestException extends Exception
 
   @Test
-  def testSingleLogMessage = sparkTest("singleLogMessage") {
+  def testSingleLogMessage() = sparkTest("singleLogMessage") {
     val logFile = s"$getTmpDir/singleLogMessage"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -35,19 +35,19 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       logger.error("test message")
 
     } finally {
-      logger.close
+      logger.close()
     }
 
-    val fs = FileSystems.getDefault()
+    val fs = FileSystems.getDefault
     assertTrue(Files.exists(fs.getPath(logFile)))
 
-    val lines = Source.fromFile(logFile).getLines.toArray
-    assertEquals(lines.size, 1)
+    val lines = Source.fromFile(logFile).getLines().toArray
+    assertEquals(lines.length, 1)
     assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message$"))
   }
 
   @Test
-  def testMultipleLogMessages = sparkTest("multipleLogMessages") {
+  def testMultipleLogMessages() = sparkTest("multipleLogMessages") {
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -62,14 +62,14 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       logger.warn("test message 5")
 
     } finally {
-      logger.close
+      logger.close()
     }
 
-    val fs = FileSystems.getDefault()
+    val fs = FileSystems.getDefault
     assertTrue(Files.exists(fs.getPath(logFile)))
 
-    val lines = Source.fromFile(logFile).getLines.toArray
-    assertEquals(lines.size, 5)
+    val lines = Source.fromFile(logFile).getLines().toArray
+    assertEquals(lines.length, 5)
     assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[DEBUG\\] test message 1$"))
     assertTrue(lines(1).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message 2$"))
     assertTrue(lines(2).matches("^[0-9T\\-\\:\\.]* \\[INFO\\] test message 3$"))
@@ -102,18 +102,18 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       logger.warn("test message 5")
 
     } finally {
-      logger.close
+      logger.close()
     }
 
-    val fs = FileSystems.getDefault()
+    val fs = FileSystems.getDefault
     assertTrue(Files.exists(fs.getPath(logFile)))
 
-    val lines = Source.fromFile(logFile).getLines.toArray
-    assertEquals(lines.size, expectedMessages)
+    val lines = Source.fromFile(logFile).getLines().toArray
+    assertEquals(lines.length, expectedMessages)
   }
 
   @Test
-  def testLogMessageWithStackTrace = sparkTest("logMessageWithStackTrace") {
+  def testLogMessageWithStackTrace() = sparkTest("logMessageWithStackTrace") {
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -128,14 +128,14 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         logger.error("test message 2", e)
 
     } finally {
-      logger.close
+      logger.close()
     }
 
-    val fs = FileSystems.getDefault()
+    val fs = FileSystems.getDefault
     assertTrue(Files.exists(fs.getPath(logFile)))
 
-    val lines = Source.fromFile(logFile).getLines.toArray
-    assertEquals(lines.size, 19)
+    val lines = Source.fromFile(logFile).getLines().toArray
+    assertEquals(lines.length, 19)
     assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message 2$"))
     assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerIntegTest$TestException")
   }
