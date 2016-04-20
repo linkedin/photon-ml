@@ -36,7 +36,8 @@ import com.linkedin.photon.ml.util.Utils
  * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
  * @author xazhang
  */
-//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
+//classes/functons are decoupled from the rest of code
 object AvroUtils {
 
   /**

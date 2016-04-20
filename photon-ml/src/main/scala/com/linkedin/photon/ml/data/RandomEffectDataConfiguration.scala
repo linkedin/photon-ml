@@ -45,7 +45,7 @@ protected[ml] case class RandomEffectDataConfiguration(
     numFeaturesToSamplesRatioUpperBound: Double = Double.MaxValue,
     projectorType: ProjectorType) {
 
-  def isDownSamplingNeeded = numActiveDataPointsToKeepUpperBound < Int.MaxValue
+  def isDownSamplingNeeded: Boolean  = numActiveDataPointsToKeepUpperBound < Int.MaxValue
 
   def isFeatureSelectionNeeded = numFeaturesToSamplesRatioUpperBound < Double.MaxValue
 

@@ -120,7 +120,10 @@ protected[ml] class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capa
    * @return heap data
    */
   def getData: Iterable[T] = {
-    if (cumCount < capacity) arrayBuffer
-    else minHeap
+    if (cumCount < capacity) {
+      arrayBuffer
+    } else {
+      minHeap
+    }
   }
 }

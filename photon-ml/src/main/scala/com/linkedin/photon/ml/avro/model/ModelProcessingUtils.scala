@@ -33,7 +33,8 @@ import com.linkedin.photon.ml.util.{IOUtils, Utils}
  * using Avro format.
  * @author xazhang
  */
-//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+//TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
+//classes/functons are decoupled from the rest of code
 object ModelProcessingUtils {
   private val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
   private val ID_INFO = "id-info"

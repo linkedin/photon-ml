@@ -62,7 +62,8 @@ import org.apache.spark.rdd.RDD
 /**
  * This class used to solve an optimization problem using trust region Newton method (TRON).
  * Reference1: [[http://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf]]
- * Reference2: [[http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/distributed-liblinear/spark/running_spark_liblinear.html]]
+ * Reference2:
+ *   [[http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/distributed-liblinear/spark/running_spark_liblinear.html]]
  * @tparam Datum Generic type of input data point
  *
  * @param maxNumImprovementFailures

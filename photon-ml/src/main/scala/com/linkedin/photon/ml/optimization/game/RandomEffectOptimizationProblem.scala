@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.optimization.game
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.SparkContext
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
@@ -41,7 +42,7 @@ protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[Label
     val optimizationProblems: RDD[(String, OptimizationProblem[F])])
   extends RDDLike {
 
-  def sparkContext = optimizationProblems.sparkContext
+  def sparkContext: SparkContext = optimizationProblems.sparkContext
 
   def setName(name: String): this.type = {
     optimizationProblems.setName(s"$name: Optimization problems")

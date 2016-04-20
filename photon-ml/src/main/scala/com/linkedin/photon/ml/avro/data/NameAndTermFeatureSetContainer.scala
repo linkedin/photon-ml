@@ -36,7 +36,8 @@ import com.linkedin.photon.ml.util._
  * @param nameAndTermFeatureSets A [[Map]] of feature section key to [[NameAndTerm]] feature sets
  * @author xazhang
  */
-//TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+//TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
+//rest of code
 protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
 
   def getFeatureNameAndTermToIndexMap(featureSectionKeys: Set[String], isAddingIntercept: Boolean)
@@ -111,7 +112,8 @@ object NameAndTermFeatureSetContainer {
    * @param configuration The Hadoop configuration
    * @return This [[NameAndTermFeatureSetContainer]] parsed from text files on HDFS
    */
-  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
+  //rest of code
   protected[ml] def loadFromTextFiles(
       nameAndTermFeatureSetContainerInputDir: String,
       featureSectionKeys: Set[String],
@@ -244,7 +246,7 @@ object NameAndTermFeatureSetContainer {
       featureSectionKeys: Set[String] = Set(),
       applicationName: String = "Generate-name-and-term-feature-set") {
 
-    override def toString = {
+    override def toString: String = {
       s"Input parameters:\n" +
           s"inputDirs: ${inputDirs.mkString(", ")}\n" +
           s"dateRangeOpt: $dateRangeOpt\n" +

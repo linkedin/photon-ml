@@ -254,8 +254,11 @@ object RandomEffectDataSet {
       extends Comparable[ComparableLabeledPointWithId] {
 
       override def compareTo(comparableLabeledPointWithId: ComparableLabeledPointWithId): Int = {
-        if (comparableKey - comparableLabeledPointWithId.comparableKey > 0) 1
-        else -1
+        if (comparableKey - comparableLabeledPointWithId.comparableKey > 0) {
+          1
+        } else {
+          -1
+        }
       }
     }
 

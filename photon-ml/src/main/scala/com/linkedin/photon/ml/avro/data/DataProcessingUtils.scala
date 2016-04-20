@@ -33,7 +33,8 @@ import com.linkedin.photon.ml.util.{Utils, VectorUtils}
  */
 object DataProcessingUtils {
 
-  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the rest of code
+  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
+  //rest of code
   protected[ml] def getGameDataSetFromGenericRecords(
       records: RDD[GenericRecord],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
@@ -71,12 +72,18 @@ object DataProcessingUtils {
       (shardId, features)
     }
     val response = Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
-    val offset =
-      if (record.get(AvroFieldNames.OFFSET) != null) Utils.getDoubleAvro(record, AvroFieldNames.OFFSET)
-      else 0.0
-    val weight =
-      if (record.get(AvroFieldNames.WEIGHT) != null) Utils.getDoubleAvro(record, AvroFieldNames.WEIGHT)
-      else 1.0
+    val offset = if (record.get(AvroFieldNames.OFFSET) != null) {
+      Utils.getDoubleAvro(record, AvroFieldNames.OFFSET)
+    } else {
+      0.0
+    }
+
+    val weight = if (record.get(AvroFieldNames.WEIGHT) != null) {
+      Utils.getDoubleAvro(record, AvroFieldNames.WEIGHT)
+    } else {
+      1.0
+    }
+
     val ids = randomEffectIdSet.map { randomEffectId =>
       (randomEffectId, Utils.getStringAvro(record, randomEffectId, isNullOK = false))
     }.toMap
