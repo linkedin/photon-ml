@@ -16,8 +16,8 @@ package com.linkedin.photon.ml.cli.game.training
 
 import collection.JavaConversions._
 import java.nio.file.{Files, FileSystems, Path}
-import org.apache.spark.{SparkConf, SparkContext}
-import org.testng.annotations.{BeforeMethod, AfterMethod, DataProvider, Test}
+import org.apache.spark.SparkConf
+import org.testng.annotations.Test
 import org.testng.Assert._
 
 import com.linkedin.photon.ml.avro.AvroIOUtils
@@ -26,7 +26,6 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -35,7 +34,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   import CommonTestUtils._
 
   @Test
-  def testFixedEffects = sparkTest("fixedEffects", useKryo = true) {
+  def testFixedEffects() = sparkTest("fixedEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/fixedEffects"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -52,7 +51,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testRandomEffects = sparkTest("randomEffects", useKryo = true) {
+  def testRandomEffects() = sparkTest("randomEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/randomEffects"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -78,7 +77,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testFixedAndRandomEffects = sparkTest("fixedAndRandomEffects", useKryo = true) {
+  def testFixedAndRandomEffects() = sparkTest("fixedAndRandomEffects", useKryo = true) {
     val outputDir = s"$getTmpDir/fixedAndRandomEffects"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -108,7 +107,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testPrepareFixedEffectTrainingDataSet = sparkTest("prepareFixedEffectTrainingDataSet", useKryo = true) {
+  def testPrepareFixedEffectTrainingDataSet() = sparkTest("prepareFixedEffectTrainingDataSet", useKryo = true) {
     val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
 
     val args = argArray(fixedEffectArgs ++ Map(
@@ -123,9 +122,9 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertEquals(trainingDataSet.size, 1)
 
-    val fixedEffectDataSet = trainingDataSet("global") match {
+    trainingDataSet("global") match {
       case ds: FixedEffectDataSet =>
-        assertEquals(ds.labeledPoints.count, 34810)
+        assertEquals(ds.labeledPoints.count(), 34810)
         assertEquals(ds.numFeatures, 30045)
 
       case _ => fail("Wrong dataset type.")
@@ -133,7 +132,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testPrepareFixedAndRandomEffectTrainingDataSet =
+  def testPrepareFixedAndRandomEffectTrainingDataSet() =
       sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
     val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
 
@@ -152,7 +151,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // fixed effect data
     trainingDataSet("global") match {
       case ds: FixedEffectDataSet =>
-        assertEquals(ds.labeledPoints.count, 34810)
+        assertEquals(ds.labeledPoints.count(), 34810)
         assertEquals(ds.numFeatures, 30085)
 
       case _ => fail("Wrong dataset type.")
@@ -161,7 +160,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // per-user data
     trainingDataSet("per-user") match {
       case ds: RandomEffectDataSet =>
-        assertEquals(ds.activeData.count, 33110)
+        assertEquals(ds.activeData.count(), 33110)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
         assertEquals(featureStats.count, 33110)
@@ -176,7 +175,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // per-song data
     trainingDataSet("per-song") match {
       case ds: RandomEffectDataSet =>
-        assertEquals(ds.activeData.count, 23167)
+        assertEquals(ds.activeData.count(), 23167)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
         assertEquals(featureStats.count, 23167)
@@ -191,7 +190,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // per-artist data
     trainingDataSet("per-artist") match {
       case ds: RandomEffectDataSet =>
-        assertEquals(ds.activeData.count, 4471)
+        assertEquals(ds.activeData.count(), 4471)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
         assertEquals(featureStats.count, 4471)
@@ -205,7 +204,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testMultipleOptimizerConfigs = sparkTest("multipleOptimizerConfigs", useKryo = true) {
+  def testMultipleOptimizerConfigs() = sparkTest("multipleOptimizerConfigs", useKryo = true) {
     val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -238,7 +237,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       try {
         body
       } finally {
-        sc.stop
+        sc.stop()
         System.clearProperty("spark.driver.port")
         System.clearProperty("spark.hostPort")
       }
@@ -281,7 +280,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       .reduce(_ + _)
       .scores
 
-    return evaluator.evaluate(scores)
+    evaluator.evaluate(scores)
   }
 
   /**
@@ -294,16 +293,14 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(params, sc, logger)
 
-
-    driver.run
-    logger.close
-
+    driver.run()
+    logger.close()
     driver
   }
 }
 
 object DriverGameIntegTest {
-  val fs = FileSystems.getDefault()
+  val fs = FileSystems.getDefault
   val inputPath = getClass.getClassLoader.getResource("GameDriverIntegTest/input").getPath
   val trainPath = inputPath + "/train"
   val testPath = inputPath + "/test"
@@ -323,7 +320,8 @@ object DriverGameIntegTest {
     "validate-input-dirs" -> testPath,
     "feature-name-and-term-set-path" -> featurePath,
     "num-iterations" -> numIterations.toString,
-    "save-models-to-hdfs" -> true.toString)
+    "save-models-to-hdfs" -> true.toString,
+    "num-output-files-for-random-effect-model" -> "-1")
 
   /**
    * Default fixed effect arguments

@@ -16,6 +16,9 @@ package com.linkedin.photon.ml.test
 
 import java.io.File
 import java.nio.file.{Paths, Files}
+
+import scala.collection.mutable
+
 import org.apache.commons.io.FileUtils
 import org.testng.annotations.AfterMethod
 
@@ -24,15 +27,25 @@ import org.testng.annotations.AfterMethod
  * @author dpeng
  */
 trait TestTemplateWithTmpDir {
+
+  private val tmpDirs = new mutable.ArrayBuffer[String]()
+
   /**
    * Return the temporary directory as a string.
    * @return the temporary directory as a string.
    */
-  def getTmpDir: String = TestTemplateWithTmpDir._tmpDirThreadLocal.get()
+  def getTmpDir: String = {
+    val tmpDirName = TestTemplateWithTmpDir._tmpDirThreadLocal.get()
+    tmpDirs.synchronized {
+      tmpDirs += tmpDirName
+    }
+    tmpDirName
+  }
 
   @AfterMethod
   def afterMethod(): Unit = {
-    FileUtils.cleanDirectory(new File(getTmpDir))
+    tmpDirs.foreach(tmpDir => FileUtils.cleanDirectory(new File(tmpDir)))
+    tmpDirs.clear()
   }
 }
 
@@ -42,7 +55,6 @@ private object TestTemplateWithTmpDir {
       val parentDir = Paths.get(FileUtils.getTempDirectoryPath)
       val prefix = Thread.currentThread().getId + "-" + System.currentTimeMillis()
       val dir = Files.createTempDirectory(parentDir, prefix).toFile
-      FileUtils.forceDeleteOnExit(dir)
       dir.toString
     }
   }

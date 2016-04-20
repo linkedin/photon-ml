@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.stat
 
 import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
-import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir, Assertions}
+import com.linkedin.photon.ml.test.Assertions
 import Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -28,7 +28,7 @@ import org.testng.annotations.Test
  * Test basic statistics result.
  * @author dpeng
  */
-class BasicStatisticsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class BasicStatisticsIntegTest extends SparkTestUtils {
   private val DELTA: Double = 1.0e-8
   private val NUM_POINTS: Int = 10
   private val NUM_FEATURES: Int = 6
@@ -36,13 +36,15 @@ class BasicStatisticsIntegTest extends SparkTestUtils with TestTemplateWithTmpDi
 
   @Test
   def testBasicStatistics(): Unit = sparkTest("testBasicStatistics") {
-    val labeledPoints = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, NUM_POINTS, NUM_FEATURES)
-            .map(obj => new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)).toList
+    val labeledPoints = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, NUM_POINTS,
+      NUM_FEATURES)
+        .map(obj => new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)).toList
     val dataRdd = sc.parallelize(labeledPoints)
     val summary = BasicStatistics.getBasicStatistics(dataRdd)
     assertEquals(summary.count, NUM_POINTS.toLong)
     val allElements = labeledPoints.map(x => x.features.toArray).reduceLeft((x, y) => x ++: y)
-    // A matrix with columns representing points and rows representing features. The matrix is filled in column major order.
+    // A matrix with columns representing points and rows representing features.
+    // The matrix is filled in column major order.
     val matrix = new DenseMatrix(NUM_FEATURES, NUM_POINTS, allElements)
 
     val items = for (i <- 0 until NUM_FEATURES) yield {
