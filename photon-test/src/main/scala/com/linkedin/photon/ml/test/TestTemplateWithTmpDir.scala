@@ -20,7 +20,7 @@ import java.nio.file.{Paths, Files}
 import scala.collection.mutable
 
 import org.apache.commons.io.FileUtils
-import org.testng.annotations.AfterMethod
+import org.testng.annotations.AfterClass
 
 /**
  * Thread safe test template to provide a temporary directory per method.
@@ -42,9 +42,9 @@ trait TestTemplateWithTmpDir {
     tmpDirName
   }
 
-  @AfterMethod
-  def afterMethod(): Unit = {
-    tmpDirs.foreach(tmpDir => FileUtils.cleanDirectory(new File(tmpDir)))
+  @AfterClass
+  def afterClass(): Unit = {
+    tmpDirs.foreach(tmpDir => FileUtils.deleteDirectory(new File(tmpDir)))
     tmpDirs.clear()
   }
 }
