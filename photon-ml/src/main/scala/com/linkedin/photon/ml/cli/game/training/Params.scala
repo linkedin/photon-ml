@@ -25,12 +25,52 @@ import com.linkedin.photon.ml.supervised.TaskType._
 
 
 /**
+ * Command line arguments for GAME
+ * @param trainDirs Input directories of training data. Multiple input directories are also accepted if they are
+ *                  separated by commas, e.g., inputDir1,inputDir2,inputDir3.
+ * @param trainDateRangeOpt Date range for the training data represented in the form start.date-end.date,
+ *                          e.g. 20150501-20150631. If trainDateRangeOpt is specified, the input directory is expected
+ *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
+ *                          Otherwise, the input paths are assumed to be flat directories of input files
+ *                          (e.g., trainDir/input-data-files)."
+ * @param validateDirsOpt Input directories of validating data. Multiple input directories are also accepted if they
+ *                        are separated by commas, e.g., inputDir1,inputDir2,inputDir3.
+ * @param validateDateRangeOpt Date range for the training data represented in the form start.date-end.date,
+ *                             e.g. 20150501-20150631. If validateDateRangeOpt is specified, the input directory is
+ *                             expected to be in the daily format structure
+ *                             (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are
+ *                             assumed to be flat directories of input files (e.g., validateDir/input-data-files)."
+ * @param minPartitionsForValidation Minimum number of partitions for validating data (if provided).
+ * @param featureNameAndTermSetInputPath Input path to the features name-and-term lists.
+ * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
+ *                                              section keys in the following format:
+ *                                              shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
+ * @param outputDir Output directory for logs and learned models.
+ * @param numIterations Number of coordinate descent iterations.
+ * @param updatingSequence Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
+ * @param fixedEffectOptimizationConfigurations Optimization configurations for the fixed effect optimization problem,
+ *                                              multiple configurations are accepted and should be separated by
+ *                                              semi-colon.
+ * @param fixedEffectDataConfigurations Configurations for each fixed effect data set.
+ * @param randomEffectOptimizationConfigurations Optimization configurations for each random effect optimization
+ *                                               problem, multiple parameters are separated by semi-colon.
+ * @param factoredRandomEffectOptimizationConfigurations Optimization configurations for each factored random effect
+ *                                                       optimization problem, multiple parameters are accepted and
+ *                                                       separated by semi-colon.
+ * @param randomEffectDataConfigurations Configurations for all the random effect data sets.
+ * @param taskType GAME task type. Examples include logistic_regression and linear_regression.
+ * @param isSavingModelsToHDFS Whether to save the models (best model and all models) to HDFS.
+ * @param numberOfOutputFilesForRandomEffectModel Number of output files to write for each random effect model.
+ * @param applicationName Name of this Spark application.
+ *
+ * @note Note that examples of how to configure GAME parameters can be found in the integration tests for the GAME
+ *       driver.
+ * @todo Making the way GAME being configured more user friendly
  * @author xazhang
  */
 case class Params(
     trainDirs: Array[String] = Array(),
     trainDateRangeOpt: Option[String] = None,
-    numDaysDataForTraining: Option[Int] = None,
     validateDirsOpt: Option[Array[String]] = None,
     validateDateRangeOpt: Option[String] = None,
     minPartitionsForValidation: Int = 1,
@@ -47,12 +87,12 @@ case class Params(
     randomEffectDataConfigurations: Map[String, RandomEffectDataConfiguration] = Map(),
     taskType: TaskType = LOGISTIC_REGRESSION,
     isSavingModelsToHDFS: Boolean = true,
+    numberOfOutputFilesForRandomEffectModel: Int = -1,
     applicationName: String = "Game-Full-Model-Training") {
 
   override def toString: String = {
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
         s"trainDateRangeOpt: $trainDateRangeOpt\n" +
-        s"numDaysDataForTraining: $numDaysDataForTraining\n" +
         s"validateDirsOpt: ${validateDirsOpt.map(_.mkString(", "))}\n" +
         s"validateDateRangeOpt: $validateDateRangeOpt\n" +
         s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
@@ -72,6 +112,7 @@ case class Params(
         s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}\n" +
         s"taskType: $taskType\n" +
         s"saveModelsToHDFS: $isSavingModelsToHDFS\n" +
+        s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
         s"applicationName: $applicationName"
   }
 }
@@ -81,85 +122,85 @@ object Params {
     val defaultParams = Params()
     val parser = new OptionParser[Params]("Photon-Game") {
       opt[String]("train-input-dirs")
-        .required()
-        .text("input directories of training data in response prediction AVRO format. " +
-          "Multiple input directories are separated by commas.")
-        .action((x, c) => c.copy(trainDirs = x.split(",")))
+          .required()
+          .text("Input directories of training data. Multiple input directories are also accepted if they are " +
+          "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
+          .action((x, c) => c.copy(trainDirs = x.split(",")))
       opt[String]("task-type")
-        .required()
-        .text("Task type. Examples include logistic_regression and linear_regression.")
-        .action((x, c) => c.copy(taskType = TaskType.withName(x.toUpperCase)))
+          .required()
+          .text("Task type. Examples include logistic_regression and linear_regression.")
+          .action((x, c) => c.copy(taskType = TaskType.withName(x.toUpperCase)))
       opt[String]("train-date-range")
-        .text(s"Date range for the training data represented in the form start.date-end.date, " +
-          s"e.g. 20150501-20150631, default: ${defaultParams.trainDateRangeOpt}.")
-        .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
-      opt[Int]("num-days-data-for-training")
-        .text(s"Number of days of data used for training. Currently this parameter is used in the daily " +
-          s"training pipeline, which specifies the number of days of data (since Yesterday) used for training. " +
-          s"Default: ${defaultParams.numDaysDataForTraining}.")
-        .action((x, c) => c.copy(numDaysDataForTraining = Some(x)))
+          .text(s"Date range for the training data represented in the form start.date-end.date, " +
+          s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
+          s"Default: ${defaultParams.trainDateRangeOpt}.")
+          .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
       opt[String]("validate-input-dirs")
-        .text(s"Input directories of validating data in response prediction AVRO format, " +
-          s"multiple input directories are separated by commas." +
-        s"Default: ${defaultParams.validateDirsOpt}")
-        .action((x, c) => c.copy(validateDirsOpt = Some(x.split(","))))
+          .text("Input directories of validating data. Multiple input directories are also accepted if they are " +
+          "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
+          .action((x, c) => c.copy(validateDirsOpt = Some(x.split(","))))
       opt[String]("validate-date-range")
-        .text(s"date range for the validating data represented in the form start.date-end.date," +
-          s" e.g. 20150501-20150631, default: ${defaultParams.validateDateRangeOpt}.")
-        .action((x, c) => c.copy(validateDateRangeOpt = Some(x)))
+          .text(s"Date range for the validating data represented in the form start.date-end.date, " +
+          s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
+          s"Default: ${defaultParams.validateDateRangeOpt}.")
+          .action((x, c) => c.copy(validateDateRangeOpt = Some(x)))
       opt[Int]("min-partitions-for-validation")
-        .text(s"Minimum number of partitions for validating data. Default: ${defaultParams.minPartitionsForValidation}")
-        .action((x, c) => c.copy(minPartitionsForValidation = x))
+          .text(s"Minimum number of partitions for validating data (if provided). " +
+          s"Default: ${defaultParams.minPartitionsForValidation}")
+          .action((x, c) => c.copy(minPartitionsForValidation = x))
       opt[String]("output-dir")
-        .required()
-        .text(s"Output directory for logs and learned models.")
-        .action((x, c) => c.copy(outputDir = x.replace(',', '_').replace(':', '_')))
+          .required()
+          .text(s"Output directory for logs and learned models.")
+          .action((x, c) => c.copy(outputDir = x.replace(',', '_').replace(':', '_')))
       opt[String]("feature-name-and-term-set-path")
-        .required()
-        .text(s"Input path to the features name-and-term lists.")
-        .action((x, c) => c.copy(featureNameAndTermSetInputPath = x))
+          .required()
+          .text(s"Input path to the features name-and-term lists.")
+          .action((x, c) => c.copy(featureNameAndTermSetInputPath = x))
       opt[String]("feature-shard-id-to-feature-section-keys-map")
-        .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
-        s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
+          .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
+          s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
           .action((x, c) => c.copy(featureShardIdToFeatureSectionKeysMap =
           x.split("\\|").map { line => line.split(":") match {
             case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
             case Array(key) => (key, Set[String]())
-          }
-          }.toMap
+          }}.toMap
       ))
       opt[Int]("num-iterations")
-        .text(s"Number of outer iterations, default: ${defaultParams.numIterations}")
-        .action((x, c) => c.copy(numIterations = x))
+          .text(s"Number of coordinate descent iterations, default: ${defaultParams.numIterations}")
+          .action((x, c) => c.copy(numIterations = x))
       opt[String]("updating-sequence")
-        .text(s"Updating sequence of the ordinates (separated by commas) in the coordinate descent.")
-        .action((x, c) => c.copy(updatingSequence = x.split(",")))
+          .text(s"Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.")
+          .action((x, c) => c.copy(updatingSequence = x.split(",")))
       opt[String]("fixed-effect-optimization-configurations")
-        .text("Optimization configurations for the fixed effect optimization problem, multiple configurations are " +
-          "separated by semi-colon \";\".")
-        .action((x, c) => c.copy(fixedEffectOptimizationConfigurations =
+          .text("Optimization configurations for the fixed effect optimization problem, multiple configurations are " +
+          "accepted and separated by semi-colon \";\".")
+          .action((x, c) => c.copy(fixedEffectOptimizationConfigurations =
           x.split(";").map(_.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
             (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
           }.toMap)
       ))
       opt[String]("fixed-effect-data-configurations")
-        .text("Configurations for each fixed effect data set.")
-        .action((x, c) => c.copy(fixedEffectDataConfigurations =
+          .text("Configurations for each fixed effect data set.")
+          .action((x, c) => c.copy(fixedEffectDataConfigurations =
           x.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
             (key, FixedEffectDataConfiguration.parseAndBuildFromString(value))
           }.toMap
       ))
       opt[String]("random-effect-optimization-configurations")
-        .text("Optimization configurations for each random effect optimization problem, multiple parameters are " +
-          "separated by semi-colon \";\".")
-        .action((x, c) => c.copy(randomEffectOptimizationConfigurations =
-        x.split(";").map(_.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
-          (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
-        }.toMap)
+          .text("Optimization configurations for each random effect optimization problem, multiple parameters are " +
+          "accepted and separated by semi-colon \";\".")
+          .action((x, c) => c.copy(randomEffectOptimizationConfigurations =
+          x.split(";").map(_.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
+            (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
+          }.toMap)
       ))
       opt[String]("factored-random-effect-optimization-configurations")
-          .text("Optimization configurations for each random effect optimization problem, multiple parameters are " +
-          "separated by semi-colon \";\".")
+          .text("Optimization configurations for each factored random effect optimization problem, multiple parameters " +
+          "are accepted and separated by semi-colon \";\".")
           .action((x, c) => c.copy(factoredRandomEffectOptimizationConfigurations =
           x.split(";").map(_.split("\\|").map { line => val Array(key, s1, s2, s3) = line.split(":").map(_.trim)
             val randomEffectOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s1)
@@ -169,21 +210,26 @@ object Params {
           }.toMap)
       ))
       opt[String]("random-effect-data-configurations")
-        .text("Configurations for each random effect data set.")
-        .action((x, c) => c.copy(randomEffectDataConfigurations =
-        x.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
-          (key, RandomEffectDataConfiguration.parseAndBuildFromString(value))
-        }.toMap
+          .text("Configurations for all the random effect data sets.")
+          .action((x, c) => c.copy(randomEffectDataConfigurations =
+          x.split("\\|").map { line => val Array(key, value) = line.split(":").map(_.trim)
+            (key, RandomEffectDataConfiguration.parseAndBuildFromString(value))
+          }.toMap
       ))
       opt[Boolean]("save-models-to-hdfs")
-        .text(s"Whether to save the models (best model and all models) to HDFS. " +
+          .text(s"Whether to save the models (best model and all models) to HDFS." +
           s"Default: ${defaultParams.isSavingModelsToHDFS}")
-        .action((x, c) => c.copy(isSavingModelsToHDFS = x))
+          .action((x, c) => c.copy(isSavingModelsToHDFS = x))
+      opt[Int]("num-output-files-for-random-effect-model")
+          .text(s"Number of output files to write for each random effect model. Not setting this parameter or " +
+          s"setting it to -1 means to use the default number of output files." +
+          s"Default: ${defaultParams.numberOfOutputFilesForRandomEffectModel}")
+          .action((x, c) => c.copy(numberOfOutputFilesForRandomEffectModel = x))
       opt[String]("application-name")
-        .text(s"name of this Spark application, default: ${defaultParams.applicationName}.")
-        .action((x, c) => c.copy(applicationName = x))
+          .text(s"Name of this Spark application. Default: ${defaultParams.applicationName}.")
+          .action((x, c) => c.copy(applicationName = x))
       help("help")
-        .text("prints usage text.")
+          .text("prints usage text.")
     }
     parser.parse(args, Params()) match {
       case Some(parsedParams) => parsedParams

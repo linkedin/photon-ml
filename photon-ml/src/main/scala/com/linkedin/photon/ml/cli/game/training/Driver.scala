@@ -391,7 +391,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
         IOUtils.writeStringsToHDFS(Iterator(bestModelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
         ModelProcessingUtils.saveGameModelsToHDFS(bestGameModel, featureShardIdToFeatureMapMap, modelOutputDir,
-          sparkContext)
+          numberOfOutputFilesForRandomEffectModel, sparkContext)
       case _ =>
     }
 
@@ -403,7 +403,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
       val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
       IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-      ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapMap, modelOutputDir, sparkContext)
+      ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapMap, modelOutputDir,
+        numberOfOutputFilesForRandomEffectModel, sparkContext)
       modelIdx += 1
     }
   }
@@ -492,13 +493,10 @@ object Driver {
 
       val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
       logger.info(s"Overall time elapsed $timeElapsed minutes")
-
     } catch {
-      case e: Exception => {
+      case e: Exception =>
         logger.error("Failure while running the driver", e)
         throw e
-      }
-
     } finally {
       logger.close()
       sc.stop()

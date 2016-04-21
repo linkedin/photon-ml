@@ -15,8 +15,7 @@
 package com.linkedin.photon.ml
 
 import com.linkedin.paldb.api.PalDB
-import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, FieldNames}
-import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
+import com.linkedin.photon.ml.avro.{TrainingExampleFieldNames, ResponsePredictionFieldNames, FieldNames}
 import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{IndexMap, PalDBIndexMap}
@@ -30,23 +29,21 @@ import scala.collection.mutable
 
 
 /**
-  * This class tests [[com.linkedin.photon.ml.FeatureIndexingJob]]
-  *
-  */
+ * This class tests [[com.linkedin.photon.ml.FeatureIndexingJob]]
+ */
 class FeatureIndexingJobTest {
 
   @Test
   def testIndexingJobWithPalDB(): Unit = {
-    var partitionNum: Int = 1
 
     val tempFile = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job")
     tempFile.mkdirs()
 
     for (partitionNum <- 1 to 4) {
-      testOneJob(tempFile.toString(), partitionNum, true, TrainingExampleFieldNames)
-      testOneJob(tempFile.toString(), partitionNum, false, TrainingExampleFieldNames)
-      testOneJob(tempFile.toString(), partitionNum, true, ResponsePredictionFieldNames)
-      testOneJob(tempFile.toString(), partitionNum, false, ResponsePredictionFieldNames)
+      testOneJob(tempFile.toString, partitionNum, addIntercept = true, TrainingExampleFieldNames)
+      testOneJob(tempFile.toString, partitionNum, addIntercept = false, TrainingExampleFieldNames)
+      testOneJob(tempFile.toString, partitionNum, addIntercept = true, ResponsePredictionFieldNames)
+      testOneJob(tempFile.toString, partitionNum, addIntercept = false, ResponsePredictionFieldNames)
     }
 
     FileUtils.deleteQuietly(tempFile)
@@ -74,7 +71,7 @@ class FeatureIndexingJobTest {
 
         // Add all partitions to cache
         (0 until numPartitions).foreach(i =>
-            sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i)).toString()))
+            sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i)).toString))
 
         checkPalDBReadable(outputDir, numPartitions, addIntercept)
       } finally {
@@ -90,7 +87,6 @@ class FeatureIndexingJobTest {
 
     val expectedFeatureDimension = if (addIntercept) 14 else 13
 
-    var i = 0
     var offset = 0
     for (i <- 0 until numPartitions) {
       val reader = PalDB.createReader(new java.io.File(path, PalDBIndexMap.partitionFilename(i)))
@@ -99,20 +95,21 @@ class FeatureIndexingJobTest {
       while (iter.hasNext) {
         val entry = iter.next()
 
-        val key = entry.getKey().asInstanceOf[Object];
-        val value = entry.getValue().asInstanceOf[Object];
+        val key = entry.getKey.asInstanceOf[Object]
+        val value = entry.getValue.asInstanceOf[Object]
 
-        if (key.isInstanceOf[String] && value.isInstanceOf[Int]) {
-          val result = reader.get(key.asInstanceOf[String]).asInstanceOf[Int]
-          val idx = indexMap.getIndex(key.asInstanceOf[String])
+        key match {
+          case s: String if value.isInstanceOf[Int] =>
+            val result = reader.get(s).asInstanceOf[Int]
+            val idx = indexMap.getIndex(s)
 
-          // What IndexMap read and what the original data file reads are consistent
-          assertEquals(value, result)
-          assertEquals(idx, result + offset)
-        } else {
-          val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset).get
-          // The index map itself should be consistent
-          assertEquals(indexMap.getIndex(featureName), key.asInstanceOf[Int] + offset)
+            // What IndexMap read and what the original data file reads are consistent
+            assertEquals(value, result)
+            assertEquals(idx, result + offset)
+          case _ =>
+            val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset).get
+            // The index map itself should be consistent
+            assertEquals(indexMap.getIndex(featureName), key.asInstanceOf[Int] + offset)
         }
       }
 
@@ -158,7 +155,6 @@ class FeatureIndexingJobTest {
     indicesSet.clear()
     namesSet.clear()
     val iter = indexMap.iterator
-    var count = 0
     while (iter.hasNext) {
       val entry: (String, Int) = iter.next()
 
