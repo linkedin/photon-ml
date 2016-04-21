@@ -93,6 +93,21 @@ protected[ml] class RandomEffectModel(
   def updateRandomEffectModel(updatedCoefficientsRDD: RDD[(String, Coefficients)]): RandomEffectModel = {
     new RandomEffectModel(updatedCoefficientsRDD, randomEffectId, featureShardId)
   }
+
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: RandomEffectModel =>
+        val sameMetaData = this.randomEffectId == other.randomEffectId && this.featureShardId == other.featureShardId
+        val sameCoefficientsRDD = this.coefficientsRDD.fullOuterJoin(other.coefficientsRDD).mapPartitions(iterator =>
+            Iterator.single(iterator.forall { case (_, (coefficientsOpt1, coefficientsOpt2)) =>
+              coefficientsOpt1.isDefined && coefficientsOpt2.isDefined &&
+                  coefficientsOpt1.get.equals(coefficientsOpt2.get)
+            })
+        ).filter(!_).count() == 0
+        sameMetaData && sameCoefficientsRDD
+      case _ => false
+    }
+  }
 }
 
 object RandomEffectModel {

@@ -69,6 +69,16 @@ protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coeffi
   def update(updatedCoefficientsBroadcast: Broadcast[Coefficients]): FixedEffectModel = {
     new FixedEffectModel(updatedCoefficientsBroadcast, featureShardId)
   }
+
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: FixedEffectModel =>
+        val sameMetaData = this.featureShardId == other.featureShardId
+        val sameCoefficients = this.coefficients.equals(other.coefficients)
+        sameMetaData && sameCoefficients
+      case _ => false
+    }
+  }
 }
 
 object FixedEffectModel {
