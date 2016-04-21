@@ -46,7 +46,7 @@ protected[ml] class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[St
       throw new IllegalArgumentException(s"Expected key of ${this.getClass} is String, but ${any.getClass} found")
   }
 
-  def defaultPartitioner = new HashPartitioner(partitions)
+  def defaultPartitioner: HashPartitioner = new HashPartitioner(partitions)
 
   override def hashCode: Int = idToPartitionMap.hashCode()
 }

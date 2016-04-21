@@ -153,9 +153,12 @@ object OptimizationProblem {
       case OptimizerType.LBFGS =>
         new LBFGS[LabeledPoint]
       case OptimizerType.TRON =>
-        if (regularizationType == RegularizationType.L2) new TRON[LabeledPoint]
-        else throw new IllegalArgumentException(s"For regularization of type $regularizationType, optimizer of " +
+        if (regularizationType == RegularizationType.L2) {
+          new TRON[LabeledPoint]
+        } else {
+          throw new IllegalArgumentException(s"For regularization of type $regularizationType, optimizer of " +
             s"type ${OptimizerType.TRON} is not supported!")
+        }
       case any =>
         throw new UnsupportedOperationException(s"Optimizer of type $any is not supported")
     }

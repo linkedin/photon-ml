@@ -52,8 +52,9 @@ protected[ml] class BinaryClassificationDownSampler(downSamplingRate: Double) ex
       iterator.filter { case (_, labeledPoint) =>
         labeledPoint.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD || random.nextDouble() < downSamplingRate
       }.map { case (id, labeledPoint) =>
-        if (labeledPoint.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD) (id, labeledPoint)
-        else  {
+        if (labeledPoint.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD) {
+          (id, labeledPoint)
+        } else  {
           val updatedWeight = labeledPoint.weight / downSamplingRate
           (id, LabeledPoint(labeledPoint.label, labeledPoint.features, labeledPoint.offset, updatedWeight))
         }

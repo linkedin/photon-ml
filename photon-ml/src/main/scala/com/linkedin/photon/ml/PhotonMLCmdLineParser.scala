@@ -190,9 +190,10 @@ object PhotonMLCmdLineParser {
               .text(s"Path to the file containing the features to be selected for training")
               .foreach(x => params.selectedFeaturesFile = Some(x))
       opt[Int](TREE_AGGREGATE_DEPTH)
-        .text("The depth of the aggregate tree used in treeAggregate for the loss function. When the depth is 1, it works as normal linear aggregate. " +
-              "A depth larger than 1 consumes less memory in driver side and is potentially faster. Be aware that treeAggregate with depth > 1 " +
-              "is unstable and may be slow in Spark 1.4 and 1.5. We recommend setting depth = 2 when tree structure aggregation is needed. " +
+        .text("The depth of the aggregate tree used in treeAggregate for the loss function. When the depth is 1, it " +
+              "works as normal linear aggregate. A depth larger than 1 consumes less memory in driver side and is " +
+              "potentially faster. Be aware that treeAggregate with depth > 1 is unstable and may be slow in Spark " +
+              "1.4 and 1.5. We recommend setting depth = 2 when tree structure aggregation is needed. " +
               s"Default: ${defaultParams.treeAggregateDepth}")
         .validate(x => if (x > 0) {
             success
@@ -207,7 +208,8 @@ object PhotonMLCmdLineParser {
       opt[Int](OFFHEAP_INDEXMAP_NUM_PARTITIONS)
         .text("The number of partitions for the offheap map storage. Such partition number should be consistent with " +
             "the number when offheap storage is built. This is a parameter only affecting the execution speed at " +
-            "feature index building stage and has zero performance impact in training other than maintaining a convention.")
+            "feature index building stage and has zero performance impact in training other than maintaining a " +
+            "convention.")
         .foreach(x => params.offHeapIndexMapNumPartitions = x.toInt)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true

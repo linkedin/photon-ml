@@ -49,7 +49,7 @@ case class Params(
     isSavingModelsToHDFS: Boolean = true,
     applicationName: String = "Game-Full-Model-Training") {
 
-  override def toString = {
+  override def toString: String = {
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
         s"trainDateRangeOpt: $trainDateRangeOpt\n" +
         s"numDaysDataForTraining: $numDaysDataForTraining\n" +

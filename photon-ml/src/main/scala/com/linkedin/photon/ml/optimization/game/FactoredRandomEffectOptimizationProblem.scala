@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.optimization.game
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.SparkContext
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
@@ -40,7 +41,7 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFuncti
     val latentSpaceDimension: Int)
   extends RDDLike {
 
-  override def sparkContext = randomEffectOptimizationProblem.sparkContext
+  override def sparkContext: SparkContext = randomEffectOptimizationProblem.sparkContext
 
   override def setName(name: String): this.type = {
     randomEffectOptimizationProblem.setName(name)

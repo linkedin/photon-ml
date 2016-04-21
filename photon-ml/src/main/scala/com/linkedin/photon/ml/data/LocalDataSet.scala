@@ -159,8 +159,11 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 object LocalDataSet {
 
   protected[ml] def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
-    if (isSortedByFirstIndex) LocalDataSet(dataPoints)
-    else LocalDataSet(dataPoints.sortBy(_._1))
+    if (isSortedByFirstIndex) {
+      LocalDataSet(dataPoints)
+    } else {
+      LocalDataSet(dataPoints.sortBy(_._1))
+    }
   }
 
   /**
@@ -229,8 +232,9 @@ object LocalDataSet {
       // When the variance of the feature is 0, we treat it as the intercept term
         if (math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum) <
             MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD) {
-          if (interceptAdded) 0.0
-          else {
+          if (interceptAdded) {
+            0.0
+          } else {
             interceptAdded = true
             1.0
           }

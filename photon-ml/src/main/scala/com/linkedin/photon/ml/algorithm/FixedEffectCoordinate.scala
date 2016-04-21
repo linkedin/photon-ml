@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.util.PhotonLogger
  * @param optimizationProblem the fixed effect optimization problem
  * @author xazhang
  */
-protected[ml] class FixedEffectCoordinate [F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class FixedEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
     fixedEffectDataSet: FixedEffectDataSet,
     private var optimizationProblem: OptimizationProblem[F])
   extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[F]](fixedEffectDataSet) {

@@ -151,7 +151,8 @@ class GLMSuite(
    *
    * @param avroRDD The avro files that contains feature information
    * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
-   * @return Tuple of (number of distinct features, map that maps String based features keys to integer based featureIds)
+   * @return Tuple of (number of distinct features, map that maps String based features keys to integer based
+   *   featureIds)
    */
   private def createDefaultIndexMapLoader[T <: GenericRecord](avroRDD: RDD[T],
                                                         selectedFeatures: Set[String]): IndexMapLoader = {
@@ -167,8 +168,12 @@ class GLMSuite(
     }
 
     val featureRDD = avroRDD.flatMap { k => getFeatures(k) }.distinct()
-    val featureSet = if (selectedFeatures.isEmpty) featureRDD.collect().toSet
-                     else featureRDD.filter(selectedFeatures.contains).collect().toSet
+    val featureSet = if (selectedFeatures.isEmpty) {
+      featureRDD.collect().toSet
+    } else {
+      featureRDD.filter(selectedFeatures.contains).collect().toSet
+    }
+
     if (addIntercept) {
       new DefaultIndexMapLoader((featureSet + GLMSuite.INTERCEPT_NAME_TERM).zipWithIndex.toMap)
     } else {

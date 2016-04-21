@@ -19,12 +19,14 @@ import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
-import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
+import com.linkedin.photon.ml.diagnostics.featureimportance.{
+  ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{
+  DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.GLMSuite
@@ -146,7 +148,8 @@ protected[ml] class Driver(
     // Prepare offHeapIndexMap loader if provided
     val offHeapIndexMapLoader = params.offHeapIndexMapDir match {
       case Some(offHeapDir) => {
-        // TODO: if we want to support other off heap storages in the future, we could modify this into a factory pattern
+        // TODO: if we want to support other off heap storages in the future, we could modify this into a factory
+        // pattern
         val indexMapLoader = new PalDBIndexMapLoader()
         indexMapLoader.prepare(sc, params)
         Some(indexMapLoader)
@@ -170,7 +173,8 @@ protected[ml] class Driver(
     /* Preprocess the data for the following model training and validating procedure using the chosen suite */
     val startTimeForPreprocessing = System.currentTimeMillis()
 
-    trainingData = suite.readLabeledPointsFromAvro(sc, params.trainDir, params.selectedFeaturesFile, params.minNumPartitions)
+    trainingData = suite.readLabeledPointsFromAvro(
+        sc, params.trainDir, params.selectedFeaturesFile, params.minNumPartitions)
       .persist(trainDataStorageLevel).setName("training data")
     featureNum = trainingData.first().features.size
     trainingDataNum = trainingData.count().toInt

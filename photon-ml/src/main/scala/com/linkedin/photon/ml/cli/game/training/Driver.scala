@@ -281,7 +281,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   protected[training] def train(
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
-      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)]): Map[String, Map[String, Model]] = {
+      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)]):
+    Map[String, Map[String, Model]] = {
 
     val gameModels = for (
         fixedEffectOptimizationConfiguration <- fixedEffectOptimizationConfigurations;

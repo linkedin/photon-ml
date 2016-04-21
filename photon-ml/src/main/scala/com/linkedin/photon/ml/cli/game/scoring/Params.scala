@@ -37,7 +37,7 @@ case class Params(
     taskType: TaskType = LOGISTIC_REGRESSION,
     applicationName: String = "Game-Scoring") {
 
-  override def toString = {
+  override def toString: String = {
     s"Input parameters:\n" +
         s"inputDirs: ${inputDirs.mkString(", ")}\n" +
         s"dateRangeOpt: $dateRangeOpt\n" +
