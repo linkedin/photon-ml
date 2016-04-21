@@ -103,7 +103,7 @@ protected[ml] class RandomEffectModel(
               coefficientsOpt1.isDefined && coefficientsOpt2.isDefined &&
                   coefficientsOpt1.get.equals(coefficientsOpt2.get)
             })
-        ).filter(sameCoefficients => !sameCoefficients).count() == 0
+        ).filter(!_).count() == 0
         sameMetaData && sameCoefficientsRDD
       case _ => false
     }
