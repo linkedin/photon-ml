@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @param validateDirsOpt Input directories of validating data. Multiple input directories are also accepted if they
  *                        are separated by commas, e.g., inputDir1,inputDir2,inputDir3.
  * @param validateDateRangeOpt Date range for the training data represented in the form start.date-end.date,
- *                             e.g. 20150501-20150631. If trainDateRangeOpt is specified, the input directory is
+ *                             e.g. 20150501-20150631. If validateDateRangeOpt is specified, the input directory is
  *                             expected to be in the daily format structure (e.g., validateDir/daily/2015/05/01), if
  *                             not, then no assumption is made on the structure of the input directory.
  * @param minPartitionsForValidation Minimum number of partitions for validating data (if provided).
@@ -60,6 +60,10 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @param isSavingModelsToHDFS Whether to save the models (best model and all models) to HDFS.
  * @param numberOfOutputFilesForRandomEffectModel Number of output files to write for each random effect model.
  * @param applicationName Name of this Spark application.
+ *
+ * @note Note that examples of how to configure GAME parameters can be found in the integration tests for the GAME
+ *       driver.
+ * @todo Making the way GAME being configured more user friendly
  * @author xazhang
  */
 case class Params(
