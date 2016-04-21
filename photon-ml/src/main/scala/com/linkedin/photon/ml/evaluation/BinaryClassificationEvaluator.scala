@@ -20,8 +20,8 @@ import org.apache.spark.rdd.RDD
 /**
  * Evaluator for binary classification problems
  *
- * @param labelAndOffsets sequence of labels and offsets
- * @param defaultScore default score
+ * @param labelAndOffsets a [[RDD]] of (id, (label, offset)) pairs
+ * @param defaultScore the default score used to compute the metric
  * @author xazhang
  */
 protected[ml] class BinaryClassificationEvaluator(

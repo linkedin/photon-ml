@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.evaluation
 import org.apache.spark.rdd.RDD
 
 /**
- * Interface for evaluation implementations
+ * Interface for evaluation implementations at the [[RDD]] level
  *
  * @author xazhang
  */

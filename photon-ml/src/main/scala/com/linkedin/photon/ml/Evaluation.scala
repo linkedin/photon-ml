@@ -19,7 +19,6 @@ import com.linkedin.photon.ml.metric.MetricMetadata
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, BinaryClassifier}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, Regression}
-import com.linkedin.photon.ml.util.Utils
 import org.apache.commons.math3.special.Gamma
 import org.apache.spark.Logging
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, RegressionMetrics}
@@ -47,8 +46,8 @@ object Evaluation extends Logging {
    * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
    * all metrics.
    *
-   * @param model
-   * @param dataSet
+   * @param model The GLM model to be evaluated
+   * @param dataSet The data set used to evaluate the GLM model
    * @return Map of (metricName &rarr; value)
    */
   def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): Map[String, Double] = {
@@ -75,7 +74,7 @@ object Evaluation extends Logging {
         val binaryMetrics = new BinaryClassificationMetrics(scoreAndLabel)
         metrics ++= Map[String, Double](AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR,
                                         AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC,
-                                        PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold.map(x => x._2).max)
+                                        PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold().map(x => x._2).max)
       case _ =>
       // Do nothing
     }
@@ -93,7 +92,7 @@ object Evaluation extends Logging {
     }
 
     val aikakeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
-      val n = scoreAndLabel.count
+      val n = scoreAndLabel.count()
       val logLikelihood = n * x
       val effectiveParameters = model.coefficients.activeValuesIterator.foldLeft(0)((count, coeff) => {
         if (math.abs(coeff) > 1e-9) {
@@ -115,7 +114,7 @@ object Evaluation extends Logging {
 
     logInfo(s"Generated metrics with keys ${metrics.keys.mkString(", ")}")
 
-    scoreAndLabel.unpersist(false)
+    scoreAndLabel.unpersist(blocking = false)
     metrics
   }
 
@@ -165,7 +164,6 @@ object Evaluation extends Logging {
       // Aggregate per-partition means
       val (countA, meanA) = a
       val (countB, meanB) = b
-      val delta = meanB - meanA
       val newCount = countA + countB
       val newMean = meanA + (meanB * countB) / newCount
       (newCount, newMean)
