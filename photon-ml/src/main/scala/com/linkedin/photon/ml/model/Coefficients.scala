@@ -24,7 +24,7 @@ import breeze.stats.meanAndVariance
  * @param variancesOption optional variance of the model coefficients
  * @author xazhang
  */
-protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]]) {
+protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None) {
 
   lazy val meansL2Norm: Double = norm(means, 2)
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
@@ -52,6 +52,19 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
     stringBuilder.append(s"\nl2 norm of the mean: ${norm(means, 2)}")
     variancesOption.foreach(variances => s"\nmeanAndVarianceAndCount of variance: ${meanAndVariance(variances)}")
     stringBuilder.toString()
+  }
+
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: Coefficients =>
+        val sameMeans = this.means.equals(other.means)
+        val sameVariance =
+          (this.variancesOption.isDefined && other.variancesOption.isDefined &&
+              this.variancesOption.get.equals(other.variancesOption.get)) ||
+              (this.variancesOption.isEmpty && other.variancesOption.isEmpty)
+        sameMeans && sameVariance
+      case _ => false
+    }
   }
 }
 
