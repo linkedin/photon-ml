@@ -30,14 +30,16 @@ import com.linkedin.photon.ml.supervised.TaskType._
  *                  separated by commas, e.g., inputDir1,inputDir2,inputDir3.
  * @param trainDateRangeOpt Date range for the training data represented in the form start.date-end.date,
  *                          e.g. 20150501-20150631. If trainDateRangeOpt is specified, the input directory is expected
- *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/01), if not, then no
- *                          assumption is on the structure of the input directory.
+ *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
+ *                          Otherwise, the input paths are assumed to be flat directories of input files
+ *                          (e.g., trainDir/input-data-files)."
  * @param validateDirsOpt Input directories of validating data. Multiple input directories are also accepted if they
  *                        are separated by commas, e.g., inputDir1,inputDir2,inputDir3.
  * @param validateDateRangeOpt Date range for the training data represented in the form start.date-end.date,
  *                             e.g. 20150501-20150631. If validateDateRangeOpt is specified, the input directory is
- *                             expected to be in the daily format structure (e.g., validateDir/daily/2015/05/01), if
- *                             not, then no assumption is made on the structure of the input directory.
+ *                             expected to be in the daily format structure
+ *                             (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are
+ *                             assumed to be flat directories of input files (e.g., validateDir/input-data-files)."
  * @param minPartitionsForValidation Minimum number of partitions for validating data (if provided).
  * @param featureNameAndTermSetInputPath Input path to the features name-and-term lists.
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
@@ -130,17 +132,21 @@ object Params {
           .action((x, c) => c.copy(taskType = TaskType.withName(x.toUpperCase)))
       opt[String]("train-date-range")
           .text(s"Date range for the training data represented in the form start.date-end.date, " +
-          s"e.g. 20150501-20150631. If specified, the input directory is expected to be in the daily format " +
-          s"structure, e.g., trainDir/daily/2015/05/01), if not, then no assumption is made on the structure of the " +
-          s"input directory. Default: ${defaultParams.trainDateRangeOpt}.")
+          s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
+          s"Default: ${defaultParams.trainDateRangeOpt}.")
           .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
       opt[String]("validate-input-dirs")
           .text("Input directories of validating data. Multiple input directories are also accepted if they are " +
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
           .action((x, c) => c.copy(validateDirsOpt = Some(x.split(","))))
       opt[String]("validate-date-range")
-          .text(s"date range for the validating data represented in the form start.date-end.date," +
-          s" e.g. 20150501-20150631, default: ${defaultParams.validateDateRangeOpt}.")
+          .text(s"Date range for the validating data represented in the form start.date-end.date, " +
+          s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
+          s"Default: ${defaultParams.validateDateRangeOpt}.")
           .action((x, c) => c.copy(validateDateRangeOpt = Some(x)))
       opt[Int]("min-partitions-for-validation")
           .text(s"Minimum number of partitions for validating data (if provided). " +
