@@ -40,7 +40,7 @@ class CoefficientsTest {
   }
 
   @Test
-  def testComputeScore() = {
+  def testComputeScore(): Unit = {
 
     val length = 4
 
@@ -69,7 +69,7 @@ class CoefficientsTest {
       MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 
-  def testEquals() = {
+  def testEquals(): Unit = {
     val length = 2
     val meansIndices = Array(0, 1)
     val meansValues = Array(1.0, -1.0)

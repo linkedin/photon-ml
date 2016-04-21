@@ -12,21 +12,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.avro.model
-
-import com.linkedin.photon.ml.avro.FieldNames
-
+package com.linkedin.photon.ml.avro
 
 /**
- * Metronome's TrainingExample format fields name
- * @author xazhang
+ * Some commonly used constants
  */
-object TrainingExampleFieldNames extends FieldNames {
-  val features: String = "features"
-  val name: String = "name"
-  val term: String = "term"
-  val value: String = "value"
-  val response: String = "label"
-  val offset: String = "offset"
-  val weight: String = "weight"
+object Constants {
+  protected[avro] val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
+  protected[avro] val ID_INFO = "id-info"
+  protected[avro] val COEFFICIENTS = "coefficients"
+  protected[avro] val FIXED_EFFECT = "fixed-effect"
+  protected[avro] val RANDOM_EFFECT = "random-effect"
 }

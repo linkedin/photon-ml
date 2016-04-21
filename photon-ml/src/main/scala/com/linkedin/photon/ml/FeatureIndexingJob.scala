@@ -14,15 +14,13 @@
  */
 package com.linkedin.photon.ml
 
-
-import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
 import com.linkedin.photon.ml.io.FieldNamesType._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
 import scala.collection.mutable
 
-import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, FieldNames, AvroIOUtils}
+import com.linkedin.photon.ml.avro.{TrainingExampleFieldNames, ResponsePredictionFieldNames, FieldNames, AvroIOUtils}
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.util.{PhotonLogger, Utils, PalDBIndexMapBuilder}
 import org.apache.avro.generic.GenericRecord

@@ -121,11 +121,11 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
   /**
    * Score and write results to HDFS
-   *
    * @param featureShardIdToFeatureMapMap a map of shard id to feature map
    * @param gameDataSet the input dataset
    * @return the scores
    */
+  //todo: make the number of files written to HDFS to be configurable
   def scoreAndWriteScoreToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       gameDataSet: RDD[(Long, GameDatum)]): RDD[(Long, Double)] = {
@@ -238,10 +238,9 @@ object Driver {
       logger.info(s"Overall time elapsed $timeElapsed minutes")
 
     } catch {
-      case e: Exception => {
+      case e: Exception =>
         logger.error("Failure while running the driver", e)
         throw e
-      }
 
     } finally {
       logger.close()

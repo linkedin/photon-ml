@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class RandomEffectModelTest extends SparkTestUtils {
 
   @Test
-  def testEquals() = sparkTest("testEqualsForRandomEffectModel") {
+  def testEquals(): Unit = sparkTest("testEqualsForRandomEffectModel") {
 
     // Coefficients parameter
     val coefficientDimension = 1

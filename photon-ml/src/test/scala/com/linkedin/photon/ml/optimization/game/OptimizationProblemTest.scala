@@ -42,7 +42,7 @@ class OptimizationProblemTest {
                     vector: Vector[Double],
                     variancesOption: Option[Vector[Double]])
 
-  def getMocks(): Mocks = {
+  def getMocks: Mocks = {
     Mocks(
       Mockito.mock(classOf[AbstractOptimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]]),
       Mockito.mock(classOf[TwiceDiffFunction[LabeledPoint]]),
@@ -68,7 +68,7 @@ class OptimizationProblemTest {
 
   @DataProvider
   def regularizationTermTestData(): Array[Array[Any]] = {
-    val mocks = getMocks()
+    val mocks = getMocks
     val mockOptimizer = mocks.optimizer
     val mockObjectiveFunction = mocks.objectiveFunction
     val mockCoeffs = mocks.coeffs
@@ -97,7 +97,7 @@ class OptimizationProblemTest {
 
   @Test
   def testUpdateCoefficientVariancesIterable() = {
-    val mocks = getMocks()
+    val mocks = getMocks
 
     val hessianDiagonalOutput = new DenseVector[Double](Array(0.3, -0.5, 0.0, 0.1))
     val expectedVariances = Array[Double](10.0 / 3, -2.0, 1 / MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD, 10.0)
@@ -116,7 +116,7 @@ class OptimizationProblemTest {
 
   @Test
   def testUpdateCoefficientMeansIterable() = {
-    val mocks = getMocks()
+    val mocks = getMocks
 
     Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
     Mockito.when(mocks.coeffs.variancesOption).thenReturn(mocks.variancesOption)
@@ -136,7 +136,7 @@ class OptimizationProblemTest {
 
   @Test
   def testUpdateCoefficientVariancesRDD() = {
-    val mocks = getMocks()
+    val mocks = getMocks
 
     Mockito.when(mocks.rdd.sparkContext).thenReturn(mocks.sparkContext)
     Mockito.when(mocks.sparkContext.broadcast(mocks.vector)).thenReturn(mocks.broadcastVector)
@@ -158,7 +158,7 @@ class OptimizationProblemTest {
 
   @Test
   def testUpdateCoefficientMeansRDD() = {
-    val mocks = getMocks()
+    val mocks = getMocks
 
     Mockito.when(mocks.coeffs.means).thenReturn(mocks.vector)
     Mockito.when(mocks.coeffs.variancesOption).thenReturn(mocks.variancesOption)

@@ -21,8 +21,7 @@ import java.util.{List => JList, Map => JMap}
 import breeze.linalg.SparseVector
 import FieldNamesType._
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.avro.{ResponsePredictionFieldNames, AvroIOUtils}
-import com.linkedin.photon.ml.avro.model.TrainingExampleFieldNames
+import com.linkedin.photon.ml.avro.{TrainingExampleFieldNames, ResponsePredictionFieldNames, AvroIOUtils}
 import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -35,7 +34,6 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.util.parsing.json.JSON
 
 
@@ -49,7 +47,7 @@ import scala.util.parsing.json.JSON
  * @author xazhang
  * @author nkatariy
  */
-// TODO we already have Params class handling all paramters, passing in arguments here seems to be a very trivial
+// TODO we already have Params class handling all parameters, passing in arguments here seems to be a very trivial
 // and fragile style that could easily require method signature replacements
 @SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
 class GLMSuite(
@@ -65,7 +63,7 @@ class GLMSuite(
   private val fieldNames = fieldNamesType match {
     case RESPONSE_PREDICTION => ResponsePredictionFieldNames
     case TRAINING_EXAMPLE => TrainingExampleFieldNames
-    case _ => throw new IllegalArgumentException(s"Input training file's field name type cannot be ${fieldNamesType}")
+    case _ => throw new IllegalArgumentException(s"Input training file's field name type cannot be $fieldNamesType")
   }
 
   /**
@@ -108,7 +106,7 @@ class GLMSuite(
     if (featureKeyToIdMap == null) {
       _indexMapLoader = offHeapIndexMapLoader match {
         case Some(loader) => loader
-        case None => {
+        case None =>
           // Build the default indexmap if offheap map dir is not provided
           _indexMapLoader = createDefaultIndexMapLoader(avroRDD, selectedFeatures)
           // Important to call prepare, though params are not actually needed for DefaultIndexMapLoader.
@@ -116,7 +114,6 @@ class GLMSuite(
           // suite class. It tries to do too many things at once.
           _indexMapLoader.prepare(sc, null)
           _indexMapLoader
-        }
       }
 
       featureKeyToIdMap = _indexMapLoader.indexMapForDriver()
@@ -163,7 +160,7 @@ class GLMSuite(
             Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, GLMSuite.DELIMITER)
           }
         case other =>
-          throw new IOException(s"Avro field [${fieldNames.features}] (val = ${other.toString()}) is not a list")
+          throw new IOException(s"Avro field [${fieldNames.features}] (val = ${other.toString}) is not a list")
       }
     }
 
@@ -225,7 +222,7 @@ class GLMSuite(
               } else {
                 if (name == GLMSuite.WILDCARD) {
                   if (term == GLMSuite.WILDCARD) {
-                    if (!constraintMap.isEmpty) {
+                    if (constraintMap.nonEmpty) {
                       throw new IllegalArgumentException(s"Potentially conflicting constraints specified. When the " +
                           s"name and term are specified as wildcards, it is expected that no other constraints are" +
                           s" specified. The specified constraint string was [$constraintString]")
@@ -270,7 +267,7 @@ class GLMSuite(
               }
             })
         }
-        if (!constraintMap.isEmpty) {
+        if (constraintMap.nonEmpty) {
           Some(Map[Int, (Double, Double)]() ++ constraintMap)
         } else {
           None

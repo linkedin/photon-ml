@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.avro.model
 
 import scala.collection.Map
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
@@ -29,23 +30,21 @@ import com.linkedin.photon.ml.util.{IOUtils, Utils}
 
 
 /**
- * Some basic functions to read/write GAME models from/to HDFS. The current implementaion assumes the models are stored
+ * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
  * using Avro format.
  * @author xazhang
  */
 //TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
 //classes/functons are decoupled from the rest of code
 object ModelProcessingUtils {
-  private val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
-  private val ID_INFO = "id-info"
-  private val COEFFICIENTS = "coefficients"
-  private val FIXED_EFFECT = "fixed-effect"
-  private val RANDOM_EFFECT = "random-effect"
+
+  import com.linkedin.photon.ml.avro.Constants._
 
   protected[ml] def saveGameModelsToHDFS(
       gameModel: Iterable[Model],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       outputDir: String,
+      numberOfOutputFilesForRandomEffectModel: Int,
       sparkContext: SparkContext): Unit = {
 
     val configuration = sparkContext.hadoopConfiguration
@@ -76,20 +75,35 @@ object ModelProcessingUtils {
           val featureShardId = randomEffectModel.featureShardId
 
           val randomEffectModelOutputDir = new Path(outputDir, s"$RANDOM_EFFECT/$randomEffectId-$featureShardId")
-          Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
-
           //Write the model ID info
           val modelIdInfoPath = new Path(randomEffectModelOutputDir, ID_INFO)
           val ids = Array(randomEffectId, featureShardId)
           IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, configuration, forceOverwrite = false)
-
-          //Write the coefficientsRDD
-          val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, COEFFICIENTS).toString
           val featureIndexToNameAndTermMapBroadcast = featureShardIdToFeatureSwappedMapBroadcastMap(featureShardId)
-          val coefficientsRDD = randomEffectModel.coefficientsRDD
-          saveCoefficientsRDDToHDFS(coefficientsRDD, featureIndexToNameAndTermMapBroadcast, coefficientsRDDOutputDir)
+          saveRandomEffectModelToHDFS(randomEffectModel, featureIndexToNameAndTermMapBroadcast,
+            randomEffectModelOutputDir, numberOfOutputFilesForRandomEffectModel, configuration)
       }
     }
+  }
+
+  private def saveRandomEffectModelToHDFS(
+      randomEffectModel: RandomEffectModel,
+      featureIndexToNameAndTermMapBroadcast: Broadcast[Map[Int, NameAndTerm]],
+      randomEffectModelOutputDir: Path,
+      numberOfOutputFilesForRandomEffectModel: Int,
+      configuration: Configuration): Unit = {
+    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
+
+    //Write the coefficientsRDD
+    val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, COEFFICIENTS).toString
+    val coefficientsRDD =
+      if (numberOfOutputFilesForRandomEffectModel > 0){
+        // Control the number of output files by re-partitioning the RDD.
+        randomEffectModel.coefficientsRDD.repartition(numberOfOutputFilesForRandomEffectModel)
+      } else {
+        randomEffectModel.coefficientsRDD
+      }
+    saveCoefficientsRDDToHDFS(coefficientsRDD, featureIndexToNameAndTermMapBroadcast, coefficientsRDDOutputDir)
   }
 
   protected[ml] def loadGameModelFromHDFS(

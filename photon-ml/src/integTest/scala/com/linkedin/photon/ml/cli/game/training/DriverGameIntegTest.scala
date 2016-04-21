@@ -320,6 +320,7 @@ object DriverGameIntegTest {
     "validate-input-dirs" -> testPath,
     "feature-name-and-term-set-path" -> featurePath,
     "num-iterations" -> numIterations.toString,
+    "num-output-files-for-random-effect-model" -> "-1",
     "save-models-to-hdfs" -> true.toString)
 
   /**
