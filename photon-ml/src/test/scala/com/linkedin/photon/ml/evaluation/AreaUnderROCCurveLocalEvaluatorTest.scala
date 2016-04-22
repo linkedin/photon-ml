@@ -35,12 +35,20 @@ class AreaUnderROCCurveLocalEvaluatorTest {
   def testEvaluate(): Unit = {
 
     // normal cases
-    val labelsInNormalCase = arrayToIndexedMap(Array[Double](0, 1, 0, 0, 1, 1, 1))
-    val scoresInNormalCase = arrayToIndexedMap(Array[Double](-0.1, -1, 0, 1, 2, 6, 8))
+    val labelsInNormalCase = arrayToIndexedMap(Array[Double](1, 0, 0, 0, 1, 1, 1))
+    val scoresInNormalCase = arrayToIndexedMap(Array[Double](-1, -0.1, 0, 1, 2, 6, 8))
     val groundTruthFromRInNormalCase = 0.75
     val computedAUCInNormalCase = new AreaUnderROCCurveLocalEvaluator(labelsInNormalCase)
         .evaluate(scoresInNormalCase)
-    assertEquals(groundTruthFromRInNormalCase, computedAUCInNormalCase, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(computedAUCInNormalCase, groundTruthFromRInNormalCase, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+
+    // if we have two identical scores with conflicting ground-truth labels
+    val labelsInCornerCase1 = arrayToIndexedMap(Array[Double](0, 1, 0, 0, 1, 1, 1))
+    val scoresInCornerCase1 = arrayToIndexedMap(Array[Double](-0.1, -1, 0, -1, 2, 6, 8))
+    val groundTruthFromRnCornerCase1 = 0.79166667
+    val computedAUCInCornerCase1 = new AreaUnderROCCurveLocalEvaluator(labelsInCornerCase1)
+        .evaluate(scoresInCornerCase1)
+    assertEquals(computedAUCInCornerCase1, groundTruthFromRnCornerCase1, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
 
     // where all examples have positive label
     val positiveLabelsOnly = arrayToIndexedMap(Array[Double](1, 1))

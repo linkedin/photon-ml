@@ -34,8 +34,6 @@ protected[ml] class AreaUnderROCCurveLocalEvaluator(
 
   def this(labels: Map[Long, Double]) = this(labels.mapValues(label => (label, DEFAULT_OFFSET, DEFAULT_WEIGHT)))
 
-  val numLabels = labelAndOffsetAndWeights.size
-
   /**
    * Evaluate the scores of the model
    *
@@ -43,15 +41,12 @@ protected[ml] class AreaUnderROCCurveLocalEvaluator(
    * @return score metric value
    */
   override def evaluate(scores: Map[Long, Double]): Double = {
-    val scoresAndLabelAndWeight = new Array[(Double, Double, Double)](numLabels)
-    var pos = 0
-    labelAndOffsetAndWeights.foreach { case (id, (label, offset, weight)) =>
+    val scoresAndLabelAndWeight = labelAndOffsetAndWeights.map { case (id, (label, offset, weight)) =>
       val score = scores.getOrElse(id, defaultScore) + offset
-      scoresAndLabelAndWeight(pos) = (score, label, weight)
-      pos += 1
-    }
+      (score, label, weight)
+    }.toArray
 
-    // directly calling scoresAndLabelAndWeight.sort would cause some performance issue with large arrays
+    // directly calling scoresAndLabelAndWeight.sort in Scala would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {
       override def compare(tuple1: (Double, Double, Double), tuple2: (Double, Double, Double)): Int = {
         JDouble.compare(tuple1._1, tuple2._1)
@@ -59,20 +54,32 @@ protected[ml] class AreaUnderROCCurveLocalEvaluator(
     }
     JArrays.sort(scoresAndLabelAndWeight, comparator.reversed())
 
-    var aucAccum = 0.0
-    var positiveCount = 0.0
-    var negativeCount = 0.0
+    var rawAUC = 0.0
+    var totalPositiveCount = 0.0
+    var totalNegativeCount = 0.0
+    var currentPositiveCount = 0.0
+    var currentNegativeCount = 0.0
+    var previousScore = scoresAndLabelAndWeight.head._1
 
     scoresAndLabelAndWeight.foreach { case (score, label, weight) =>
-      if (label > POSITIVE_RESPONSE_THRESHOLD) {
-        positiveCount += weight
-      } else {
-        aucAccum += positiveCount
-        negativeCount += weight
+      if (score != previousScore) {
+        rawAUC += totalPositiveCount * currentNegativeCount + currentPositiveCount * currentNegativeCount / 2.0
+        totalPositiveCount += currentPositiveCount
+        totalNegativeCount += currentNegativeCount
+        currentPositiveCount = 0.0
+        currentNegativeCount = 0.0
       }
+      if (label > POSITIVE_RESPONSE_THRESHOLD) {
+        currentPositiveCount += weight
+      } else {
+        currentNegativeCount += weight
+      }
+      previousScore = score
     }
-
+    rawAUC += totalPositiveCount * currentNegativeCount + currentPositiveCount * currentNegativeCount / 2.0
+    totalPositiveCount += currentPositiveCount
+    totalNegativeCount += currentNegativeCount
     //normalize AUC over the total area
-    aucAccum / (positiveCount * negativeCount)
+    rawAUC / (totalPositiveCount * totalNegativeCount)
   }
 }
