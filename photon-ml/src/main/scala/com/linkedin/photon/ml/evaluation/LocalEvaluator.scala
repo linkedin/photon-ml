@@ -14,29 +14,17 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import org.apache.spark.rdd.RDD
-
+import scala.collection.Map
 
 /**
- * Evaluator for root mean squared error
- *
- * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * @param defaultScore the default score used to compute the metric
- * @author xazhang
+ * Interface for evaluation implementations at the local level
  */
-protected[ml] class RMSEEvaluator(
-    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-    defaultScore: Double = 0.0) extends Evaluator {
-
-  val squaredLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights, defaultScore)
-
+trait LocalEvaluator {
   /**
    * Evaluate the scores of the model
    *
    * @param scores the scores to evaluate
    * @return score metric value
    */
-  override def evaluate(scores: RDD[(Long, Double)]): Double = {
-    math.sqrt(squaredLossEvaluator.evaluate(scores) / labelAndOffsetAndWeights.count())
-  }
+  def evaluate(scores: Map[Long, Double]): Double
 }

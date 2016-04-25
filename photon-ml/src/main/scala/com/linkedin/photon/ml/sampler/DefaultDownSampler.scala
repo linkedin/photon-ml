@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.sampler
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**

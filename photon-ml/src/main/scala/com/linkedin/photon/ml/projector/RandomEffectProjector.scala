@@ -56,7 +56,7 @@ object RandomEffectProjector {
    * Builds a random effect projector instance
    *
    * @param randomEffectDataSet the dataset
-   * @param projectorType
+   * @param projectorType the type of the projector
    * @return the projector
    */
   protected[ml] def buildRandomEffectProjector(

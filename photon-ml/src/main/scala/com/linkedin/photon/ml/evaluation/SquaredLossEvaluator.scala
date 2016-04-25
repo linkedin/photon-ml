@@ -16,14 +16,11 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.util.Utils
-
 /**
  * Evaluator for squared loss
  *
- * @param labelAndOffsetAndWeights label and offset weights
- * @param defaultScore default score
+ * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
+ * @param defaultScore the default score used to compute the metric
  * @author xazhang
  */
 protected[ml] class SquaredLossEvaluator(
