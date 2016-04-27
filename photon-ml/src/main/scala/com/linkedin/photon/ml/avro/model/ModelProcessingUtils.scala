@@ -168,7 +168,7 @@ object ModelProcessingUtils {
       outputDir: String,
       sparkContext: SparkContext): Unit = {
 
-    val bayesianLinearModelAvro = AvroUtils.modelToBayesianLinearModelAvro(coefficients, FIXED_EFFECT,
+    val bayesianLinearModelAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(coefficients, FIXED_EFFECT,
       featureIndexToNameAndTermMap)
     val coefficientsOutputPath = new Path(outputDir, DEFAULT_AVRO_FILE_NAME).toString
     AvroIOUtils.saveAsSingleAvro(sparkContext, Seq(bayesianLinearModelAvro), coefficientsOutputPath,
@@ -185,7 +185,7 @@ object ModelProcessingUtils {
     val linearModelAvroSchema = BayesianLinearModelAvro.getClassSchema.toString
     val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sparkContext, coefficientsPath,
       linearModelAvroSchema).head
-    val means = AvroUtils.loadMeanVectorFromBayesianLinearModelAvro(linearModelAvro, featureNameAndTermToIndexMap)
+    val means = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(linearModelAvro, featureNameAndTermToIndexMap)
     Coefficients(means, variancesOption = None)
   }
 
@@ -195,7 +195,7 @@ object ModelProcessingUtils {
       outputDir: String): Unit = {
 
     val linearModelAvro = coefficientsRDD.map { case (modelId, coefficients) =>
-      AvroUtils.modelToBayesianLinearModelAvro(coefficients, modelId, featureIndexToNameAndTermMapBroadcast.value)
+      AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(coefficients, modelId, featureIndexToNameAndTermMapBroadcast.value)
     }
     AvroIOUtils.saveAsAvro(linearModelAvro, outputDir, BayesianLinearModelAvro.getClassSchema.toString)
   }
@@ -211,7 +211,7 @@ object ModelProcessingUtils {
     modelAvros.map { modelAvro =>
       val modelId = modelAvro.getModelId.toString
       val nameAndTermFeatureMap = featureIndexToNameAndTermMapBroadcast.value
-      val means = AvroUtils.loadMeanVectorFromBayesianLinearModelAvro(modelAvro, nameAndTermFeatureMap)
+      val means = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(modelAvro, nameAndTermFeatureMap)
       (modelId, Coefficients(means, variancesOption = None))
     }
   }

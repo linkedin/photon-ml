@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.avro
 
 import scala.collection.JavaConversions._
 import scala.collection.Map
+import scala.collection.mutable
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.avro.generic.GenericRecord
@@ -29,7 +30,7 @@ import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermV
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{VectorUtils, Utils}
 
 
 /**
@@ -91,14 +92,14 @@ object AvroUtils {
     NameAndTerm(name, term)
   }
 
-  protected[avro] def modelToBayesianLinearModelAvro(
-      model: Coefficients,
+  protected[avro] def convertCoefficientsToBayesianLinearModelAvroRecord(
+      coefficients: Coefficients,
       modelId: String,
       intToNameAndTermMap: Map[Int, NameAndTerm]): BayesianLinearModelAvro = {
 
-    val meansAvros = vectorToArrayOfNameTermValueAvros(model.means, intToNameAndTermMap)
-    val variancesAvrosOption = model.variancesOption.map(variances => vectorToArrayOfNameTermValueAvros(variances,
-      intToNameAndTermMap))
+    val meansAvros = vectorToArrayOfNameTermValueAvros(coefficients.means, intToNameAndTermMap)
+    val variancesAvrosOption =
+      coefficients.variancesOption.map(vectorToArrayOfNameTermValueAvros(_, intToNameAndTermMap))
     val avroFile = BayesianLinearModelAvro.newBuilder().setModelId(modelId).setLossFunction("")
         .setMeans(meansAvros.toList)
     if (variancesAvrosOption.isDefined) avroFile.setVariances(variancesAvrosOption.get.toList)
@@ -106,12 +107,12 @@ object AvroUtils {
   }
 
   // Here we only load means
-  protected[avro] def loadMeanVectorFromBayesianLinearModelAvro(
+  protected[avro] def parseMeanVectorFromBayesianLinearModelAvroRecord(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
       nameAndTermToIntMap: Map[NameAndTerm, Int]): Vector[Double] = {
 
     val meansAvros = bayesianLinearModelAvro.getMeans
-    val indexAndValueArray = new Array[Double](nameAndTermToIntMap.size)
+    val indexAndValueArrayBuffer = new mutable.ArrayBuffer[(Int, Double)]
     val iterator = meansAvros.iterator()
     while (iterator.hasNext) {
       val feature = iterator.next()
@@ -122,9 +123,11 @@ object AvroUtils {
         val value = feature.getValue
         val index = nameAndTermToIntMap.getOrElse(nameAndTerm,
           throw new NoSuchElementException(s"nameAndTerm $nameAndTerm not found in the feature map"))
-        indexAndValueArray(index) = value
+        indexAndValueArrayBuffer += ((index, value))
       }
     }
-    new DenseVector(indexAndValueArray)
+    val maxIndex = nameAndTermToIntMap.values.max
+    val length = maxIndex + 1
+    VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length)
   }
 }
