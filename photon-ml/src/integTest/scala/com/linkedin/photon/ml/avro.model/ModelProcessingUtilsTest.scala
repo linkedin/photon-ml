@@ -76,8 +76,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureNameAndTermToIndexMapMap,
       outputDir, sc)
     loadedGameModel.foreach {
-      case loadedFixedEffectModel: FixedEffectModel => assertTrue(loadedFixedEffectModel.equals(fixedEffectModel))
-      case loadedRandomEffectModel: RandomEffectModel => assertTrue(loadedRandomEffectModel.equals(randomEffectModel))
+      case loadedFixedEffectModel: FixedEffectModel => assertEquals(loadedFixedEffectModel, fixedEffectModel)
+      case loadedRandomEffectModel: RandomEffectModel => assertEquals(loadedRandomEffectModel, randomEffectModel)
     }
   }
 }

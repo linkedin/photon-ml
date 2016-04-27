@@ -26,7 +26,7 @@ import scala.collection.mutable
  */
 object VectorUtils {
 
-  private val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
+  protected[ml] val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[Vector]].

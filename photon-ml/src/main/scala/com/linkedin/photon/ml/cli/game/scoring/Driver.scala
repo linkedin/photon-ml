@@ -52,7 +52,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    *
    * @return a map of shard id to feature map
    */
-  def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
+  protected def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
 
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.loadFromTextFiles(
@@ -76,7 +76,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param featureShardIdToFeatureMapMap a map of shard id to feature map
    * @return the prepared GAME dataset
    */
-  def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): RDD[(Long, GameDatum)] = {
+  protected def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
+  : RDD[(Long, GameDatum)] = {
 
     val recordsPath = dateRangeOpt match {
       case Some(dateRange) =>
@@ -126,7 +127,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @return the scores
    */
   //todo: make the number of files written to HDFS to be configurable
-  def scoreAndWriteScoreToHDFS(
+  protected def scoreAndWriteScoreToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       gameDataSet: RDD[(Long, GameDatum)]): RDD[(Long, Double)] = {
 
@@ -163,7 +164,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param gameDataSet the input dataset
    * @param scores the scores
    */
-  def evaluateAndLog(gameDataSet: RDD[(Long, GameDatum)], scores: RDD[(Long, Double)]) {
+  protected def evaluateAndLog(gameDataSet: RDD[(Long, GameDatum)], scores: RDD[(Long, Double)]) {
 
     val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
     val metric =  taskType match {
