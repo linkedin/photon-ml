@@ -37,8 +37,12 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
    */
   @Test
   def checkHappyPath():Unit = sparkTest("checkHappyPath") {
-    val data = sc.parallelize(drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE,
-      DIMENSION).map( x => new LabeledPoint(x._1, x._2)).toSeq).repartition(NUM_PARTITIONS).cache()
+    val data = sc.parallelize(
+      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE, DIMENSION)
+          .map( x => new LabeledPoint(x._1, x._2))
+          .toSeq)
+        .repartition(NUM_PARTITIONS)
+        .cache()
 
     val modelFit = (data: RDD[LabeledPoint], warmStart: Map[Double, GeneralizedLinearModel]) => {
       ModelTraining.trainGeneralizedLinearModel(

@@ -224,10 +224,12 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         val f3t2Id = suite.featureKeyToIdMap(Utils.getFeatureKey("f3", "t2"))
         if (addIntercept) {
           val interceptId = suite.featureKeyToIdMap(GLMSuite.INTERCEPT_NAME_TERM)
-          assertEquals(singlePoint.features,
+          assertEquals(
+            singlePoint.features,
             buildSparseVector(singlePoint.features.length)((interceptId, 1d), (f2t1Id, 12d), (f3t2Id, 13d)))
         } else {
-          assertEquals(singlePoint.features,
+          assertEquals(
+            singlePoint.features,
             buildSparseVector(singlePoint.features.length)((f2t1Id, 12d), (f3t2Id, 13d)))
         }
     }
@@ -307,17 +309,24 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
             case Some(x: String) =>
               if (addIntercept) {
                 val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((interceptId, 1d), (featureMap(f1t1Id), 1d)))
+                assertEquals(
+                  point.features,
+                  buildSparseVector(point.features.length)((interceptId, 1d), (featureMap(f1t1Id), 1d))
+                )
               } else {
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((featureMap(f1t1Id), 1d)))
+                assertEquals(
+                  point.features,
+                  buildSparseVector(point.features.length)((featureMap(f1t1Id), 1d))
+                )
               }
             case _ =>
               if (addIntercept) {
                 val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((interceptId, 1d), (featureMap(f1t1Id), 1d),
+                assertEquals(
+                  point.features,
+                  buildSparseVector(point.features.length)(
+                    (interceptId, 1d),
+                    (featureMap(f1t1Id), 1d),
                     (featureMap(f2t2Id), 2d)
                   )
                 )
@@ -334,8 +343,14 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
               assertEquals(point.weight, 1d, EPSILON)
               if (addIntercept) {
                 val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((interceptId, 1d), (featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d)))
+                assertEquals(
+                  point.features,
+                  buildSparseVector(point.features.length)(
+                    (interceptId, 1d),
+                    (featureMap(f2t1Id), 2d),
+                    (featureMap(f3t2Id), 3d)
+                  )
+                )
               } else {
                 assertEquals(point.features,
                   buildSparseVector(point.features.length)((featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d)))
@@ -347,11 +362,16 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
           // all features in this instance are selected so conditioning on selected features file is not necessary
           if (addIntercept) {
             val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-            assertEquals(point.features, buildSparseVector(point.features.length)((interceptId, 1d),
-              (featureMap(f1t1Id), 3d), (featureMap(f4t2Id), 4d)))
+            assertEquals(point.features, buildSparseVector(point.features.length)(
+              (interceptId, 1d),
+              (featureMap(f1t1Id), 3d),
+              (featureMap(f4t2Id), 4d)
+            ))
           } else {
-            assertEquals(point.features, buildSparseVector(point.features.length)((featureMap(f1t1Id), 3d),
-              (featureMap(f4t2Id), 4d)))
+            assertEquals(point.features, buildSparseVector(point.features.length)(
+              (featureMap(f1t1Id), 3d),
+              (featureMap(f4t2Id), 4d))
+            )
           }
         case _ => throw new RuntimeException(s"Observed an unexpected labeled point: $point")
       }

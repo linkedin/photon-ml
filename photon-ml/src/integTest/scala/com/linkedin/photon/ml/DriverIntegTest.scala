@@ -58,9 +58,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += "10"
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -85,9 +87,12 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += "10"
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = 13, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA, expectedIsSummarized = false)
+      expectedNumFeatures = 13,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -109,9 +114,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += "10"
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -138,10 +145,17 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = 13, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA, expectedIsSummarized = false)
+      expectedNumFeatures = 13,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -168,10 +182,16 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -196,9 +216,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += "10"
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -220,9 +242,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -252,9 +276,12 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += "false"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = 13, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA, expectedIsSummarized = false)
+      expectedNumFeatures = 13,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
 
@@ -298,9 +325,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -339,9 +368,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -363,9 +394,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -387,9 +420,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(TREE_AGGREGATE_DEPTH)
     args += 2.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -412,9 +447,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
+    MockDriver.runLocally(
+      args = args.toArray,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -442,10 +479,16 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -472,10 +515,16 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
     val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
@@ -513,10 +562,16 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = EXPECTED_NUM_FEATURES, expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
   }
 
@@ -602,10 +657,17 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     FileUtils.deleteDirectory(new File(outputDir))
 
-    MockDriver.runLocally(args = args.toArray,
-      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED, DriverStage.VALIDATED,
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
         DriverStage.DIAGNOSED),
-      expectedNumFeatures = numFeatures, expectedNumTrainingData = numTrainingSamples, expectedIsSummarized = true)
+      expectedNumFeatures = numFeatures,
+      expectedNumTrainingData = numTrainingSamples,
+      expectedIsSummarized = true)
   }
 }
 

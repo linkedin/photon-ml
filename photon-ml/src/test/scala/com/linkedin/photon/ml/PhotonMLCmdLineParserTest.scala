@@ -75,13 +75,13 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.addIntercept, defaultParams.addIntercept)
     assertEquals(params.enableOptimizationStateTracker, defaultParams.enableOptimizationStateTracker)
     assertEquals(params.validatePerIteration, defaultParams.validatePerIteration)
-    assertEquals(params.minNumPartitions, 1)
+    assertEquals(params.minNumPartitions, defaultParams.minNumPartitions)
     assertEquals(params.kryo, defaultParams.kryo)
-    assertEquals(params.fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
-    assertEquals(params.summarizationOutputDirOpt, None)
-    assertEquals(params.normalizationType, NormalizationType.NONE)
-    assertEquals(params.constraintString, None)
-    assertEquals(params.treeAggregateDepth, 1)
+    assertEquals(params.fieldsNameType, defaultParams.fieldsNameType)
+    assertEquals(params.summarizationOutputDirOpt, defaultParams.summarizationOutputDirOpt)
+    assertEquals(params.normalizationType, defaultParams.normalizationType)
+    assertEquals(params.constraintString, defaultParams.constraintString)
+    assertEquals(params.treeAggregateDepth, defaultParams.treeAggregateDepth)
   }
 
   @Test

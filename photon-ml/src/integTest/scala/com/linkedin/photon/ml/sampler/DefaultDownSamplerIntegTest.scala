@@ -83,8 +83,8 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
     } else if (downSamplingRate == 1.0) {
       Assert.assertEquals(numInstancesInSampled, numTimesToRun * numInstancesToGenerate)
     } else {
-      val mean = numTimesToRun*numInstancesToGenerate*downSamplingRate
-      val variance = mean*(1-downSamplingRate)
+      val mean = numTimesToRun * numInstancesToGenerate * downSamplingRate
+      val variance = mean * (1 - downSamplingRate)
       // tolerance = standard deviation * 5
       val tolerance = math.sqrt(variance) * 5
       Assert.assertEquals(numInstancesInSampled, mean, tolerance)

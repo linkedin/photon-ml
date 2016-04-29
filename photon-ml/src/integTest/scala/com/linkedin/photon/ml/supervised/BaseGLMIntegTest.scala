@@ -133,8 +133,16 @@ class BaseGLMIntegTest extends SparkTestUtils {
       reg: RegularizationContext,
       data: Iterator[(Double, Vector[Double])],
       validator: ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm, optimizerConfig, reg, List(1.0), None, NoNormalization,
-      data, validator)
+    runGeneralizedLinearAlgorithmScenario(
+      desc,
+      algorithm,
+      optimizerConfig,
+      reg,
+      List(1.0),
+      None,
+      NoNormalization,
+      data,
+      validator)
   }
 
   /**
