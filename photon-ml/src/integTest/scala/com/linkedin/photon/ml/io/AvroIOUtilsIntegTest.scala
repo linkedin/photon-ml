@@ -45,7 +45,8 @@ class AvroIOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     AvroIOUtils.saveAsAvro[FeatureAvro](outputRdd, outputDir, schemaString)
 
     // TODO: Rewrite the filter logic when Photon has better file util supports
-    val fileFilter = FileFilterUtils.notFileFilter(FileFilterUtils.or(new PrefixFileFilter("."), new PrefixFileFilter("_")))
+    val fileFilter = FileFilterUtils
+        .notFileFilter(FileFilterUtils.or(new PrefixFileFilter("."), new PrefixFileFilter("_")))
     val files = FileUtils.listFiles(new File(outputDir), fileFilter, null)
     assertEquals(files.size(), 1)
 

@@ -65,18 +65,18 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.taskType, TaskType.LINEAR_REGRESSION)
 
     // Verify optional parameters values, should be default values
-    assertEquals(params.validateDirOpt, None)
-    assertEquals(params.maxNumIter, 80)
-    assertEquals(params.regularizationWeights, List(0.1, 1, 10, 100))
-    assertEquals(params.tolerance, 1e-6)
-    assertEquals(params.optimizerType, OptimizerType.LBFGS)
-    assertEquals(params.regularizationType, RegularizationType.L2)
-    assertEquals(params.elasticNetAlpha, None)
-    assertTrue(params.addIntercept)
-    assertTrue(params.enableOptimizationStateTracker)
-    assertFalse(params.validatePerIteration)
+    assertEquals(params.validateDirOpt, defaultParams.validateDirOpt)
+    assertEquals(params.maxNumIter, defaultParams.maxNumIter)
+    assertEquals(params.regularizationWeights, defaultParams.regularizationWeights)
+    assertEquals(params.tolerance, defaultParams.tolerance)
+    assertEquals(params.optimizerType, defaultParams.optimizerType)
+    assertEquals(params.regularizationType, defaultParams.regularizationType)
+    assertEquals(params.elasticNetAlpha, defaultParams.elasticNetAlpha)
+    assertEquals(params.addIntercept, defaultParams.addIntercept)
+    assertEquals(params.enableOptimizationStateTracker, defaultParams.enableOptimizationStateTracker)
+    assertEquals(params.validatePerIteration, defaultParams.validatePerIteration)
     assertEquals(params.minNumPartitions, 1)
-    assertTrue(params.kryo)
+    assertEquals(params.kryo, defaultParams.kryo)
     assertEquals(params.fieldsNameType, FieldNamesType.RESPONSE_PREDICTION)
     assertEquals(params.summarizationOutputDirOpt, None)
     assertEquals(params.normalizationType, NormalizationType.NONE)
@@ -143,23 +143,26 @@ class PhotonMLCmdLineParserTest {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testL1RegularizationAndTRON(): Unit = {
     val rawArgs = requiredArgs()
-    val invalidArgs = rawArgs ++ Array(CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION), OptimizerType.TRON.toString,
-                                       CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.L1.toString)
+    val invalidArgs = rawArgs ++
+        Array(CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION), OptimizerType.TRON.toString,
+          CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.L1.toString)
     PhotonMLCmdLineParser.parseFromCommandLine(invalidArgs)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testElasticNetRegularizationAndTRON(): Unit = {
     val rawArgs = requiredArgs()
-    val invalidArgs = rawArgs ++ Array(CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION), OptimizerType.TRON.toString,
-                                       CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.ELASTIC_NET.toString)
+    val invalidArgs = rawArgs ++
+        Array(CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION), OptimizerType.TRON.toString,
+          CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.ELASTIC_NET.toString)
     PhotonMLCmdLineParser.parseFromCommandLine(invalidArgs)
   }
 
   @Test
   def testNoneRegularizationOverrideDefaultRegularizationWeight(): Unit = {
     val rawArgs = requiredArgs()
-    val noneRegularization = rawArgs ++ Array(CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.NONE.toString)
+    val noneRegularization = rawArgs ++
+        Array(CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.NONE.toString)
     val weights = PhotonMLCmdLineParser.parseFromCommandLine(noneRegularization).regularizationWeights
     assertEquals(weights, List(0.0))
   }
@@ -167,8 +170,9 @@ class PhotonMLCmdLineParserTest {
   @Test
   def testNoneRegularizationOverrideRegularizationWeight(): Unit = {
     val rawArgs = requiredArgs()
-    val noneRegularization = rawArgs ++ Array(CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.NONE.toString,
-                                              CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION), Array(0.2, 1.0).mkString(","))
+    val noneRegularization = rawArgs ++
+        Array(CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.NONE.toString,
+          CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION), Array(0.2, 1.0).mkString(","))
     val weights = PhotonMLCmdLineParser.parseFromCommandLine(noneRegularization).regularizationWeights
     assertEquals(weights, List(0.0))
   }
@@ -183,7 +187,8 @@ class PhotonMLCmdLineParserTest {
     )
   }
 
-  @Test(dataProvider = "generateUnparseableConstraintStrings", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  @Test(dataProvider = "generateUnparseableConstraintStrings",
+    expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testUnparseableConstrainedString(constraintString: String): Unit = {
     val args = new Array[String](2)
     args(0) = CommonTestUtils.fromOptionNameToArg(COEFFICIENT_BOX_CONSTRAINTS)
@@ -222,6 +227,8 @@ class PhotonMLCmdLineParserTest {
 }
 
 object PhotonMLCmdLineParserTest {
+
+  val defaultParams = new Params
   val REQUIRED_OPTIONS = Array(TRAIN_DIR_OPTION, OUTPUT_DIR_OPTION, TASK_TYPE_OPTION)
 
   // Optional options other than boolean options
@@ -264,7 +271,7 @@ object PhotonMLCmdLineParserTest {
     REQUIRED_OPTIONS.foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
       args(i+1) = option match {
-        case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString().toLowerCase()
+        case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString.toLowerCase
         case _ => "value"
       }
       i += 2
@@ -280,16 +287,16 @@ object PhotonMLCmdLineParserTest {
       args(i+1) = option match {
         case VALIDATE_DIR_OPTION => "validate_dir"
         case REGULARIZATION_WEIGHTS_OPTION => List(0.5, 0.7).mkString(",")
-        case REGULARIZATION_TYPE_OPTION => RegularizationType.L2.toString()
+        case REGULARIZATION_TYPE_OPTION => RegularizationType.L2.toString
         case ELASTIC_NET_ALPHA_OPTION => "0.5"
-        case MAX_NUM_ITERATIONS_OPTION => 3.toString()
-        case TOLERANCE_OPTION => 1e-3.toString()
+        case MAX_NUM_ITERATIONS_OPTION => 3.toString
+        case TOLERANCE_OPTION => 1e-3.toString
         case JOB_NAME_OPTION => "Job Foo"
-        case OPTIMIZER_TYPE_OPTION => OptimizerType.TRON.toString()
-        case FORMAT_TYPE_OPTION => FieldNamesType.TRAINING_EXAMPLE.toString()
-        case MIN_NUM_PARTITIONS_OPTION => 888.toString()
+        case OPTIMIZER_TYPE_OPTION => OptimizerType.TRON.toString
+        case FORMAT_TYPE_OPTION => FieldNamesType.TRAINING_EXAMPLE.toString
+        case MIN_NUM_PARTITIONS_OPTION => 888.toString
         case SUMMARIZATION_OUTPUT_DIR => "summarization_output_dir"
-        case NORMALIZATION_TYPE => NormalizationType.NONE.toString()
+        case NORMALIZATION_TYPE => NormalizationType.NONE.toString
         case COEFFICIENT_BOX_CONSTRAINTS => constraintString
         case TREE_AGGREGATE_DEPTH => 2.toString
         case _ => "dummy-value"
@@ -299,7 +306,7 @@ object PhotonMLCmdLineParserTest {
 
     BOOLEAN_OPTIONAL_OPTIONS.foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i+1) = booleanOptionValue.toString()
+      args(i+1) = booleanOptionValue.toString
       i += 2
     }
 
@@ -316,7 +323,7 @@ object PhotonMLCmdLineParserTest {
     REQUIRED_OPTIONS.filter(_ != missingArgName).foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
       args(i+1) = option match {
-        case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString().toLowerCase()
+        case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString.toLowerCase
         case _ => "value"
       }
       i += 2

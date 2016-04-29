@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.supervised
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -26,13 +27,18 @@ import scala.reflect.ClassTag
  *
  * TODO LOW: think about adding support for other thresholds.
  */
-class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassifier: ClassTag] extends ModelValidator[GLM] {
+class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassifier: ClassTag]
+    extends ModelValidator[GLM] {
 
   override def validateModelPredictions(model:GLM, data:RDD[LabeledPoint]) : Unit = {
-    val predictions = model.predictClassAllWithThreshold(data.map(x => x.features) , 0.5)
-    val invalidCount = predictions.filter(x => x != BinaryClassifier.negativeClassLabel && x != BinaryClassifier.positiveClassLabel).count
+    val predictions = model.predictClassAllWithThreshold(data.map(x => x.features),
+      MathConst.POSITIVE_RESPONSE_THRESHOLD)
+    val invalidCount = predictions.filter(x => x != BinaryClassifier.negativeClassLabel &&
+        x != BinaryClassifier.positiveClassLabel
+    ).count()
     if (invalidCount > 0) {
-      throw new IllegalStateException(s"Found [$invalidCount] samples with invalid predictions (expect [$BinaryClassifier.negativeClassLabel] or [$BinaryClassifier.positiveClassLabel]")
+      throw new IllegalStateException(s"Found [$invalidCount] samples with invalid predictions (expect " +
+          s"[$BinaryClassifier.negativeClassLabel] or [$BinaryClassifier.positiveClassLabel]")
     }
   }
 }

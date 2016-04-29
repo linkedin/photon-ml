@@ -32,14 +32,15 @@ class SparkContextConfigurationIntegTest extends SparkTestUtils {
   // Synchronize across different potential SparkContext creators
   @Test
   def testAsYarnClient() = sparkTestSelfServeContext("testAsYarnClient") {
-    val sc1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", true)
+    val sc1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", useKryo = true)
     assertEquals(sc1.getConf.get(CONF_SPARK_APP_NAME), "foo")
-    assertEquals(sc1.getConf.get(CONF_SPARK_SERIALIZER), classOf[KryoSerializer].getName())
-    assertEquals(sc1.getConf.get(CONF_SPARK_KRYO_CLASSES_TO_REGISTER), KRYO_CLASSES_TO_REGISTER.map { case c => c.getName() }
-        .mkString(","))
+    assertEquals(sc1.getConf.get(CONF_SPARK_SERIALIZER), classOf[KryoSerializer].getName)
+    assertEquals(sc1.getConf.get(CONF_SPARK_KRYO_CLASSES_TO_REGISTER),
+      KRYO_CLASSES_TO_REGISTER.map { case c => c.getName }.mkString(",")
+    )
     sc1.stop()
 
-    val sc2 = asYarnClient(new SparkConf().setMaster("local[1]"), "bar", false)
+    val sc2 = asYarnClient(new SparkConf().setMaster("local[1]"), "bar", useKryo = false)
     assertEquals(sc2.getConf.get(CONF_SPARK_APP_NAME), "bar")
     assertFalse(sc2.getConf.contains(CONF_SPARK_SERIALIZER))
     assertFalse(sc2.getConf.contains(CONF_SPARK_KRYO_CLASSES_TO_REGISTER))

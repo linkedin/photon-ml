@@ -39,7 +39,7 @@ class PredictionFiniteValidator extends ModelValidator[GeneralizedLinearModel] {
         throw new IllegalArgumentException("Don't know how to handle models of type [" + model.getClass.getName + "]")
     }
 
-    val invalidCount = predictions.filter(x => !java.lang.Double.isFinite(x)).count
+    val invalidCount = predictions.filter(x => !java.lang.Double.isFinite(x)).count()
     if (invalidCount > 0) {
       throw new IllegalStateException("Found [" + invalidCount + "] samples with invalid (NaN or +/-Inf) predictions")
     }

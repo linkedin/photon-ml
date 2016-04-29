@@ -84,7 +84,7 @@ abstract class GeneralizedLinearModel(val coefficients: Vector[Double], val inte
   /**
    * Validate coefficients and offset. Child classes should add additional checks.
    */
-  def validateCoefficients():Unit = {
+  def validateCoefficients(): Unit = {
     val msg:StringBuilder = new StringBuilder()
     var valid:Boolean = true
     coefficients.foreachPair( (idx, value) => {

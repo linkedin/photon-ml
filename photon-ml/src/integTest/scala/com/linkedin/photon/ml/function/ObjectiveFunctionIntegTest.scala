@@ -16,16 +16,16 @@ package com.linkedin.photon.ml.function
 
 import java.util.Random
 
+import scala.collection.mutable
+
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.log4j.{LogManager, Logger}
-import org.apache.spark.broadcast.Broadcast
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
 
-import scala.collection.mutable.ListBuffer
 
 /**
  * Unit tests to verify functions have gradients / Hessians to be consistent with each other.
@@ -33,6 +33,10 @@ import scala.collection.mutable.ListBuffer
  * @author yali
  */
 class ObjectiveFunctionIntegTest extends SparkTestUtils {
+
+
+  import ObjectiveFunctionIntegTest._
+
 
   /**
    * List everything that conforms to DiffFunction here
@@ -57,27 +61,25 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       val (desc, undecorated, data) = base()
       val diffAdapted = undecorated match {
         case df: DiffFunction[LabeledPoint] =>
-          Seq(
-            (desc, df, data),
-            (s"$desc with diff function L2 regularization", DiffFunction.withRegularization(df, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
-            (s"$desc with diff function L1 regularization", DiffFunction.withRegularization(df, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data))
+          Seq((desc, df, data), (s"$desc with diff function L2 regularization", DiffFunction
+              .withRegularization(df, L2RegularizationContext, REGULARIZATION_WEIGHT), data),
+            (s"$desc with diff function L1 regularization", DiffFunction
+                .withRegularization(df, L1RegularizationContext, REGULARIZATION_WEIGHT), data))
         case _ => Seq()
       }
 
       val twiceDiffAdapted = undecorated match {
         case twiceDF: TwiceDiffFunction[LabeledPoint] =>
-          Seq(
-            (s"$desc with twice diff function L2 regularization", TwiceDiffFunction.withRegularization(twiceDF, L2RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data),
-            (s"$desc with twice diff function L1 regularization", TwiceDiffFunction.withRegularization(twiceDF, L1RegularizationContext, ObjectiveFunctionTest.REGULARIZATION_STRENGTH), data)
-          )
-
+          Seq((s"$desc with twice diff function L2 regularization", TwiceDiffFunction
+              .withRegularization(twiceDF, L2RegularizationContext, REGULARIZATION_WEIGHT), data),
+            (s"$desc with twice diff function L1 regularization", TwiceDiffFunction
+                .withRegularization(twiceDF, L1RegularizationContext, REGULARIZATION_WEIGHT), data))
         case _ => Seq()
       }
 
       diffAdapted ++ twiceDiffAdapted
-    }).flatMap(_.iterator).flatMap(x => Array(Array(x._1, x._2, x._3, 1), Array(x._1, x._2, x._3, 2))).toArray
+    }).flatMap(_.iterator).flatMap(x => Array(Array(x._1, x._2, x._3, 1), Array(x._1, x._2, x._3, 2)))
   }
-
 
   /**
    * List everything that conforms to TwiceDiffFunction here
@@ -93,18 +95,18 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
       () => ("Differentiable poisson loss, outlier data", new PoissonLossFunction(), generateOutlierLocalDataSetPoissonRegression()))
 
     // List of regularization decorators. For each item in the base loss function list, we apply each decorator
-    val regularizationDecorators = Array(
-      (x: TwiceDiffFunction[LabeledPoint], baseDesc: String) => (s"$baseDesc with TwiceDiffFunction L2 regularization", TwiceDiffFunction.withRegularization(x, L2RegularizationContext, ObjectiveFunctionIntegTest.REGULARIZATION_STRENGTH))
-    )
+    val regularizationDecorators = Array((x: TwiceDiffFunction[LabeledPoint],
+        baseDesc: String) => (s"$baseDesc with TwiceDiffFunction L2 regularization", TwiceDiffFunction
+        .withRegularization(x, L2RegularizationContext, REGULARIZATION_WEIGHT)))
 
-    val tmp: scala.collection.mutable.ListBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])] = scala.collection.mutable.ListBuffer()
+    val tmp = mutable.ArrayBuffer[(String, DiffFunction[LabeledPoint], Seq[LabeledPoint])]()
 
     // Generate cartesian product of all regularization types by all base loss functions
-    baseLossFunctions.map({ f =>
+    baseLossFunctions.foreach({ f =>
       val undecorated = f()
       tmp.append(undecorated)
 
-      regularizationDecorators.map({ regularize =>
+      regularizationDecorators.foreach({ regularize =>
         val decorated = regularize(undecorated._2, undecorated._1)
         tmp.append((decorated._1, decorated._2, undecorated._3))
       })
@@ -119,21 +121,17 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return a list of [[LabeledPoint]]
    */
   def generateBenignLocalDataSetBinaryClassification(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
@@ -145,117 +143,97 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return a list of [[LabeledPoint]]
    */
   def generateOutlierLocalDataSetBinaryClassification(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
 
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
   }
 
   def generateBenignLocalDataSetPoissonRegression(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
 
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
   }
 
   def generateOutlierLocalDataSetPoissonRegression(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
 
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight: Double = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
   }
 
   def generateBenignLocalDataSetLinearRegression(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
 
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+      DATA_RANDOM_SEED, TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
   }
 
   def generateOutlierLocalDataSetLinearRegression(): List[LabeledPoint] = {
-    val tmp1: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
+    val tmp1 = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)
     }).toList
 
     //generate random points with random weights
-    val r: Random = new Random(ObjectiveFunctionTest.WEIGHT_RANDOM_SEED)
-    val tmp2: List[LabeledPoint] = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
-      ObjectiveFunctionIntegTest.DATA_RANDOM_SEED,
-      ObjectiveFunctionIntegTest.TRAINING_SAMPLES,
-      ObjectiveFunctionIntegTest.PROBLEM_DIMENSION).map({ obj =>
-      assertEquals(obj._2.length, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION, "Samples should have expected lengths")
-      val weight: Double = r.nextDouble() * ObjectiveFunctionTest.WEIGHT_RANDOM_MAX
+    val r = new Random(WEIGHT_RANDOM_SEED)
+    val tmp2 = drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(DATA_RANDOM_SEED,
+      TRAINING_SAMPLES, PROBLEM_DIMENSION).map({ obj =>
+      assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
+      val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
       new LabeledPoint(label = obj._1, obj._2, offset = 0, weight)
     }).toList
     tmp1 ::: tmp2
   }
 
   def checkGradient(prefix: String, objectiveBefore: Double, objectiveAfter: Double, expected: Double) = {
-    val numericDeriv = (objectiveAfter - objectiveBefore) / (2.0 * ObjectiveFunctionIntegTest.DERIVATIVE_DELTA)
+    val numericDeriv = (objectiveAfter - objectiveBefore) / (2.0 * DERIVATIVE_DELTA)
     val relativeErrorNum = Math.abs(numericDeriv - expected)
     val relativeErrorFactor = Math.min(Math.abs(numericDeriv), Math.abs(expected))
     val relativeErrorDen = if (relativeErrorFactor > 0) {
@@ -269,18 +247,17 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     assertTrue(java.lang.Double.isFinite(objectiveAfter), s"Objective after step [$objectiveAfter] should be finite")
 
     if (!(numericDeriv.isInfinite || numericDeriv.isNaN)) {
-      assertTrue(
-        relativeError < ObjectiveFunctionIntegTest.GRADIENT_TOLERANCE ||
-          relativeErrorNum < ObjectiveFunctionIntegTest.GRADIENT_TOLERANCE,
+      assertTrue(relativeError < GRADIENT_TOLERANCE ||
+          relativeErrorNum < GRADIENT_TOLERANCE,
         "Computed gradient and numerical differentiation estimate should be close." +
-          s"$prefix estimated [$numericDeriv] " +
-          s"v. computed [$expected] with absolute error [$relativeErrorNum] and " +
-          s"relative error [$relativeError]")
+            s"$prefix estimated [$numericDeriv] " +
+            s"v. computed [$expected] with absolute error [$relativeErrorNum] and " +
+            s"relative error [$relativeError]")
     }
   }
 
   def checkHessian(prefix: String, gradBefore: Double, gradAfter: Double, expected: Double) = {
-    val numericDeriv = (gradAfter - gradBefore) / (2.0 * ObjectiveFunctionIntegTest.DERIVATIVE_DELTA)
+    val numericDeriv = (gradAfter - gradBefore) / (2.0 * DERIVATIVE_DELTA)
     val relativeErrorNum = Math.abs(numericDeriv - expected)
     val relativeErrorFactor = Math.min(Math.abs(numericDeriv), Math.abs(expected))
     val relativeErrorDen = if (relativeErrorFactor > 0) {
@@ -290,13 +267,12 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
     }
     val relativeError = relativeErrorNum / relativeErrorDen
 
-    assertTrue(
-      relativeError < ObjectiveFunctionIntegTest.HESSIAN_TOLERANCE ||
-        relativeErrorNum < ObjectiveFunctionIntegTest.HESSIAN_TOLERANCE,
+    assertTrue(relativeError < HESSIAN_TOLERANCE ||
+        relativeErrorNum < HESSIAN_TOLERANCE,
       "Computed Hessian and numerical differentiation estimate should be close." +
-        s"$prefix estimated [$numericDeriv] " +
-        s"v. computed [$expected] with absolute error [$relativeErrorNum] and " +
-        s"relative error [$relativeError]")
+          s"$prefix estimated [$numericDeriv] " +
+          s"v. computed [$expected] with absolute error [$relativeErrorNum] and " +
+          s"relative error [$relativeError]")
   }
 
   /**
@@ -309,31 +285,36 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
    * In the near term, we should decide if we want to keep those methods as part of the
    * design or remove them, as they aren't used by any of the solvers.
    */
-  @Test(dataProvider = "getDifferentiableFunctions",
-    groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkGradientConsistentWithObjectiveSpark(description: String, function: DiffFunction[LabeledPoint], localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
-    function.treeAggregateDepth = treeAggregateDepth
-    val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
-    val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
+  @Test(dataProvider = "getDifferentiableFunctions", groups = Array[String]("ObjectiveFunctionTests", "testCore"))
+  def checkGradientConsistentWithObjectiveSpark(description: String, function: DiffFunction[LabeledPoint],
+      localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest(
+    "checkGradientConsistentWithObjectiveSpark") {
 
-    for (iter <- 0 until ObjectiveFunctionIntegTest.SPARK_CONSISTENCY_CHECK_SAMPLES) {
-      val initParam: Vector[Double] = DenseVector.fill[Double](ObjectiveFunctionIntegTest.PROBLEM_DIMENSION) { if (iter > 0) { r.nextDouble() } else { 0 } }
-      val bcastParams: Broadcast[Vector[Double]] = sc.broadcast(initParam)
+    function.treeAggregateDepth = treeAggregateDepth
+    val data = sc.parallelize(localData).repartition(NUM_PARTITIONS)
+    val r = new Random(PARAMETER_RANDOM_SEED)
+
+    for (iter <- 0 until SPARK_CONSISTENCY_CHECK_SAMPLES) {
+      val initParam: Vector[Double] = DenseVector.fill[Double](PROBLEM_DIMENSION) {
+        if (iter > 0) {
+          r.nextDouble()
+        } else {
+          0
+        }
+      }
+      val bcastParams = sc.broadcast(initParam)
       val computed = function.gradient(data, bcastParams)
 
       // Element-wise numerical differentiation to get the gradient
-      for (idx <- 0 until ObjectiveFunctionIntegTest.PROBLEM_DIMENSION) {
+      for (idx <- 0 until PROBLEM_DIMENSION) {
         val before = initParam.copy
-        before(idx) -= ObjectiveFunctionIntegTest.DERIVATIVE_DELTA
+        before(idx) -= DERIVATIVE_DELTA
         val after = initParam.copy
-        after(idx) += ObjectiveFunctionIntegTest.DERIVATIVE_DELTA
+        after(idx) += DERIVATIVE_DELTA
         val objBefore = function.value(data, sc.broadcast(before))
         val objAfter = function.value(data, sc.broadcast(after))
 
-        checkGradient(
-          s" f=[$function / ${function.getClass.getName}], iter=[$iter], idx=[$idx] ",
-          objBefore,
-          objAfter,
+        checkGradient(s" f=[$function / ${function.getClass.getName}], iter=[$iter], idx=[$idx] ", objBefore, objAfter,
           computed(idx))
       }
     }
@@ -342,34 +323,40 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
   /**
    * Verify that the Hessian is consistent with the gradient when computed via Spark
    */
-  @Test(dataProvider = "getTwiceDifferentiableFunctions",
-    groups = Array[String]("ObjectiveFunctionTests", "testCore"))
-  def checkHessianConsistentWithObjectiveSpark(description: String, function: TwiceDiffFunction[LabeledPoint], localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
-    function.treeAggregateDepth = treeAggregateDepth
-    val data = sc.parallelize(localData).repartition(Runtime.getRuntime.availableProcessors)
-    val r: Random = new Random(ObjectiveFunctionIntegTest.PARAMETER_RANDOM_SEED)
+  @Test(dataProvider = "getTwiceDifferentiableFunctions", groups = Array[String]("ObjectiveFunctionTests", "testCore"))
+  def checkHessianConsistentWithObjectiveSpark(description: String, function: TwiceDiffFunction[LabeledPoint],
+      localData: Seq[LabeledPoint], treeAggregateDepth: Int): Unit = sparkTest(
+    "checkHessianConsistentWithObjectiveSpark") {
 
-    for (iter <- 0 until ObjectiveFunctionIntegTest.SPARK_CONSISTENCY_CHECK_SAMPLES) {
-      val initParam: Vector[Double] = DenseVector.fill[Double](ObjectiveFunctionIntegTest.PROBLEM_DIMENSION) { if (iter > 0) { r.nextDouble() } else { 0 } }
+    function.treeAggregateDepth = treeAggregateDepth
+    val data = sc.parallelize(localData).repartition(NUM_PARTITIONS)
+    val r = new Random(PARAMETER_RANDOM_SEED)
+
+    for (iter <- 0 until SPARK_CONSISTENCY_CHECK_SAMPLES) {
+      val initParam: Vector[Double] = DenseVector.fill[Double](PROBLEM_DIMENSION) {
+        if (iter > 0) {
+          r.nextDouble()
+        } else {
+          0
+        }
+      }
 
       // Loop over basis vectors. This will give us H*e_i = H(:,i) (so one column of H at a time)
-      for (basis <- 0 until ObjectiveFunctionIntegTest.PROBLEM_DIMENSION) {
-        val basisVector: Vector[Double] = new SparseVector[Double](Array[Int](basis), Array[Double](1.0), 1, ObjectiveFunctionIntegTest.PROBLEM_DIMENSION)
+      for (basis <- 0 until PROBLEM_DIMENSION) {
+        val basisVector: Vector[Double] = new SparseVector[Double](Array[Int](basis), Array[Double](1.0), 1,
+          PROBLEM_DIMENSION)
         val hessianVector = function.hessianVector(data, sc.broadcast(initParam), sc.broadcast(basisVector))
 
         // Element-wise numerical differentiation to get the Hessian
-        for (idx <- 0 until ObjectiveFunctionIntegTest.PROBLEM_DIMENSION) {
+        for (idx <- 0 until PROBLEM_DIMENSION) {
           val before = initParam.copy
-          before(idx) -= ObjectiveFunctionIntegTest.DERIVATIVE_DELTA
+          before(idx) -= DERIVATIVE_DELTA
           val after = initParam.copy
-          after(idx) += ObjectiveFunctionIntegTest.DERIVATIVE_DELTA
+          after(idx) += DERIVATIVE_DELTA
           val gradBefore = function.gradient(data, sc.broadcast(before))
           val gradAfter = function.gradient(data, sc.broadcast(after))
-          checkHessian(
-            s"Iteration [$iter], basis=[$basis], idx=[$idx], Hessian=[$hessianVector]",
-            gradBefore(basis),
-            gradAfter(basis),
-            hessianVector(idx))
+          checkHessian(s"Iteration [$iter], basis=[$basis], idx=[$idx], Hessian=[$hessianVector]", gradBefore(basis),
+            gradAfter(basis), hessianVector(idx))
         }
       }
     }
@@ -377,10 +364,10 @@ class ObjectiveFunctionIntegTest extends SparkTestUtils {
 }
 
 object ObjectiveFunctionIntegTest {
-  val LOCAL_CONSISTENCY_CHECK_SAMPLES = 1000
-  val SPARK_CONSISTENCY_CHECK_SAMPLES = 10
-  val PROBLEM_DIMENSION: Int = 10
-  val REGULARIZATION_STRENGTH: Double = 100
+  val SPARK_CONSISTENCY_CHECK_SAMPLES = 5
+  val NUM_PARTITIONS = 4
+  val PROBLEM_DIMENSION: Int = 5
+  val REGULARIZATION_WEIGHT: Double = 100
   val DERIVATIVE_DELTA: Double = 1e-6
   val GRADIENT_TOLERANCE: Double = 1e-3
   val HESSIAN_TOLERANCE: Double = 1e-3

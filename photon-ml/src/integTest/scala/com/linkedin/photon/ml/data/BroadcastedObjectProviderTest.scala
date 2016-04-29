@@ -41,7 +41,11 @@ class BroadcastedObjectProviderTest extends SparkTestUtils {
     Array(
       Array(SparseVector(5)((1, 3.0), (3, 0.2))),
       Array(DenseVector.ones[Double](5)),
-      Array(NormalizationContext(factors = Some(DenseVector.ones[Double](5)), Some(SparseVector(5)((1, 3.0), (3, 0.2))), Some(2)))
+      Array(NormalizationContext(
+        factors = Some(DenseVector.ones[Double](5)),
+        Some(SparseVector(5)((1, 3.0), (3, 0.2))),
+        Some(2)
+      ))
     )
   }
 }

@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
  */
 protected[ml] class DefaultDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
 
-  // TODO nkatariy We should have an assert on downsampling rate being > 0 and < 1 at runtime
+  require(downSamplingRate >= 0 && downSamplingRate <= 1)
   /**
    * Samples from the given dataset
    *

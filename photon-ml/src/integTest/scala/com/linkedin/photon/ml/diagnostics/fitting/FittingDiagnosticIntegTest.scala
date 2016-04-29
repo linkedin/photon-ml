@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.fitting
 
-import com.linkedin.photon.ml.{DataValidationType, Evaluation, ModelTraining}
+import com.linkedin.photon.ml.{Evaluation, ModelTraining}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
@@ -23,22 +23,24 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
 import org.testng.annotations.Test
+import org.testng.Assert._
 
 /**
  * Integration tests for FittingDiagnostic
  */
 class FittingDiagnosticIntegTest extends SparkTestUtils {
+
   import FittingDiagnosticIntegTest._
-  import org.testng.Assert._
 
   /**
    * Happy path
    */
   @Test
   def checkHappyPath():Unit = sparkTest("checkHappyPath") {
-    val data = sc.parallelize(drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE, DIMENSION).map( x => new LabeledPoint(x._1, x._2)).toSeq).repartition(4).cache
+    val data = sc.parallelize(drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE,
+      DIMENSION).map( x => new LabeledPoint(x._1, x._2)).toSeq).repartition(NUM_PARTITIONS).cache()
 
-    val modelFit = (data:RDD[LabeledPoint], warmStart:Map[Double, GeneralizedLinearModel]) => {
+    val modelFit = (data: RDD[LabeledPoint], warmStart: Map[Double, GeneralizedLinearModel]) => {
       ModelTraining.trainGeneralizedLinearModel(
         data,
         TaskType.LOGISTIC_REGRESSION,
@@ -48,7 +50,7 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         NoNormalization,
         NUM_ITERATIONS,
         TOLERANCE,
-        false,
+        enableOptimizationStateTracker = false,
         None,
         warmStart,
         1)._1
@@ -60,20 +62,23 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
 
     assertFalse(reports.isEmpty)
     assertEquals(reports.size, LAMBDAS.length)
-    LAMBDAS.map(lambda => assertTrue(reports.contains(lambda), s"Report contains lambda $lambda"))
+    LAMBDAS.foreach(lambda => assertTrue(reports.contains(lambda), s"Report contains lambda $lambda"))
 
-    reports.map(x => {
+    reports.foreach(x => {
       val (_, report) = x
 
       assertFalse(report.metrics.isEmpty)
-      val expectedKeys = List(Evaluation.ROOT_MEAN_SQUARE_ERROR, Evaluation.MEAN_ABSOLUTE_ERROR, Evaluation.MEAN_SQUARE_ERROR)
-      expectedKeys.map(y => {
+      val expectedKeys = List(Evaluation.ROOT_MEAN_SQUARE_ERROR, Evaluation.MEAN_ABSOLUTE_ERROR,
+        Evaluation.MEAN_SQUARE_ERROR)
+      expectedKeys.foreach(y => {
         assertTrue(report.metrics.contains(y))
-        assertEquals(report.metrics.get(y).get._1.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-        assertEquals(report.metrics.get(y).get._2.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-        assertEquals(report.metrics.get(y).get._3.size, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics.get(y).get._1.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics.get(y).get._2.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics.get(y).get._3.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
         // Make sure that training set fraction is monotonically increasing
-        assertTrue(report.metrics.get(y).get._1.foldLeft((0.0, true))((prev, current) => (current, prev._2 && current > prev._1))._2)
+        assertTrue(report.metrics.get(y).get._1.foldLeft((0.0, true))((prev, current) =>
+          (current, prev._2 && current > prev._1))._2
+        )
       })
     })
   }
@@ -81,9 +86,11 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
 
 object FittingDiagnosticIntegTest {
   val SEED = 0xdeadbeef
-  val SIZE = 500000
-  val DIMENSION = 100
+  // 500 data points is good enough for integTest
+  val SIZE = 500
+  val DIMENSION = 10
   val NUM_ITERATIONS = 100
   val TOLERANCE = 1e-2
-  val LAMBDAS = List(1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5)
+  val LAMBDAS = List(1e-3, 1e-1, 1e1, 1e3, 1e5)
+  val NUM_PARTITIONS = 4
 }

@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.sampler
 
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import org.apache.spark.SparkContext
@@ -35,11 +34,8 @@ import scala.util.Random
  */
 class DefaultDownSamplerIntegTest extends SparkTestUtils {
   val numTimesToRun = 100
-
   val numInstancesToGenerate = 100
-  val numFeatures = 5
-
-  val tolerance = math.min(100.0 / numTimesToRun / numInstancesToGenerate, 1.0)
+  val numFeatures = 1
 
   /**
    * Generates a random labeled point with given number of features having a random label, default offset (0.0)
@@ -87,9 +83,11 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
     } else if (downSamplingRate == 1.0) {
       Assert.assertEquals(numInstancesInSampled, numTimesToRun * numInstancesToGenerate)
     } else {
-      Assert.assertEquals(numInstancesInSampled * 1.0 / numTimesToRun / numInstancesToGenerate,
-        downSamplingRate,
-        tolerance)
+      val mean = numTimesToRun*numInstancesToGenerate*downSamplingRate
+      val variance = mean*(1-downSamplingRate)
+      // tolerance = standard deviation * 5
+      val tolerance = math.sqrt(variance) * 5
+      Assert.assertEquals(numInstancesInSampled, mean, tolerance)
     }
   }
 }

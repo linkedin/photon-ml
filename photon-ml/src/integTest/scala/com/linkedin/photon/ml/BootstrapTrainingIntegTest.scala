@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import breeze.linalg.DenseVector
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, CoefficientSummary}
+import com.linkedin.photon.ml.supervised.model.CoefficientSummary
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
@@ -35,9 +35,11 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   val seed = 0L
   val numSamples = 100
 
-  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double]): (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
+  def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double])
+  : (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient, None))).toList
+      lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) *
+          coefficient, None))).toList
     }
   }
 
@@ -87,67 +89,4 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
       }
     })
   }
-
-  /**
-   * "Real" integration test where we hook in all the aggregation operations and sanity check their output
-   */
-  @Test
-  def checkBootstrapHappyPathRealAggregates(): Unit = sparkTest("checkBootstrapHappyPathRealAggregates") {
-    // Return a different model each time fitFunction is called
-    var count: Int = -BootstrapTrainingTest.HALF_NUM_SAMPLES
-    val fitFunction = (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      val value = count / BootstrapTrainingTest.HALF_NUM_SAMPLES.toDouble
-      count += 1
-      val fn = regressionModelFitFunction(value, lambdas)
-      fn(x, y)
-    }
-
-
-    val confidenceIntervalsKey = "confidenceIntervalEstimate"
-    val metricsIntervalsKey = "metricsIntervalEstimate"
-    val aggregations: Map[String, Seq[(LinearRegressionModel, Map[String, Double])] => Any] = Map(
-      confidenceIntervalsKey -> BootstrapTraining.aggregateCoefficientConfidenceIntervals,
-      metricsIntervalsKey -> BootstrapTraining.aggregateMetricsConfidenceIntervals
-    )
-
-    val validateConfidenceIntervals: Any => Unit = x => {
-      x match {
-        case (coeff: Array[CoefficientSummary], intercept: Option[CoefficientSummary]) =>
-          coeff.foreach(c => {
-            BootstrapTrainingTest.checkCoefficientSummary(c)
-          })
-          intercept match {
-            case Some(_) => fail("Intercept should not have been computed")
-            case None =>
-          }
-        case _ =>
-          fail(s"Aggregate for $confidenceIntervalsKey is of unexpected type")
-      }
-    }: Unit
-
-    val validateMetricsIntervals: Any => Unit = x => {
-      x match {
-        case m: Map[String, CoefficientSummary] =>
-        case _ =>
-          fail(s"Aggregate for $metricsIntervalsKey is of unexpected type")
-      }
-    }: Unit
-
-    val aggregationValidators: Map[String, Any => Unit] = Map(
-      confidenceIntervalsKey -> validateConfidenceIntervals,
-      metricsIntervalsKey -> validateMetricsIntervals
-    )
-
-    val data: RDD[LabeledPoint] = sc.parallelize(drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(seed.toInt, numSamples, BootstrapTrainingTest.NUM_DIMENSIONS).toSeq).map(x => new LabeledPoint(x._1, x._2)).coalesce(4)
-
-    val aggregates: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
-      BootstrapTrainingTest.NUM_SAMPLES,
-      samplePct,
-      Map[Double, LinearRegressionModel](),
-      fitFunction,
-      aggregations,
-      data)
-  }
 }
-
-

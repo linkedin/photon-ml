@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.sampler
 
-import breeze.linalg.DenseVector
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}

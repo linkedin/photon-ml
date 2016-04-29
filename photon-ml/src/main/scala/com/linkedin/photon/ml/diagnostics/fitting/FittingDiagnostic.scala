@@ -52,8 +52,8 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       summary: Option[BasicStatisticalSummary],
       seed: Long = System.nanoTime): Map[Double, FittingReport] = {
 
-    val numSamples = trainingSet.count
-    val dimension = trainingSet.first.features.size
+    val numSamples = trainingSet.count()
+    val dimension = trainingSet.first().features.size
     val minSamples = dimension * MIN_SAMPLES_PER_PARTITION_PER_DIMENSION
 
     if (numSamples > minSamples) {
@@ -61,12 +61,12 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
         val prng = new MersenneTwister(seed)
         val dist = new UniformIntegerDistribution(prng, 0, NUM_TRAINING_PARTITIONS)
         partition.map(x => (dist.sample(), x))
-      }).cache.setName("Tagged samples for learning curves")
+      }).cache().setName("Tagged samples for learning curves")
 
       val holdOut = tagged
         .filter(_._1 == NUM_TRAINING_PARTITIONS - 1)
         .map(_._2)
-        .cache
+        .cache()
         .setName("Hold out for learning curves")
 
       val result = (0 until (NUM_TRAINING_PARTITIONS - 1))
@@ -75,14 +75,14 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
 
         val dataSet = tagged.filter(_._1 <= maxTag).map(_._2)
         val startTime = System.currentTimeMillis
-        val samples = dataSet.count
+        val samples = dataSet.count()
         val dataPortion = 100.0 * samples / numSamples
-        logInfo(s"Data portion: ${dataPortion} ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
+        logInfo(s"Data portion: $dataPortion ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
         val models = modelFactory(dataSet, prev._2).toMap
 
         val metricsTest = models.mapValues(x => Evaluation.evaluate(x, holdOut))
         val metricsTrain = models.mapValues(x => Evaluation.evaluate(x, dataSet))
-        dataSet.unpersist(false)
+        dataSet.unpersist(blocking = false)
         val elapsedTime = (System.currentTimeMillis - startTime) / 1000.0
         logInfo(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
 
@@ -116,8 +116,8 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       })
 
 
-      holdOut.unpersist(false)
-      tagged.unpersist(false)
+      holdOut.unpersist(blocking = false)
+      tagged.unpersist(blocking = false)
       result
     } else {
       Map.empty
@@ -127,5 +127,5 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
 
 object FittingDiagnostic {
   val NUM_TRAINING_PARTITIONS = 10
-  val MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 100
+  val MIN_SAMPLES_PER_PARTITION_PER_DIMENSION = 10
 }

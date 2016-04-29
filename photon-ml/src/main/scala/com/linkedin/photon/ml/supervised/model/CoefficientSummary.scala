@@ -26,7 +26,7 @@ import scala.collection.mutable.ArrayBuffer
  * If this is not the case, the quantile estimation will need to be revisited.
  */
 class CoefficientSummary extends Serializable {
-  private val summary:SummaryStatistics = new SummaryStatistics()
+  private val summary: SummaryStatistics = new SummaryStatistics()
   private val quantiles = new ArrayBuffer[Double]()
 
   def accumulate(x:Double): Unit = {
@@ -34,13 +34,13 @@ class CoefficientSummary extends Serializable {
     quantiles += x
   }
 
-  def getMean(): Double = summary.getMean
+  def getMean: Double = summary.getMean
 
-  def getMin(): Double = summary.getMin
+  def getMin: Double = summary.getMin
 
-  def getMax(): Double = summary.getMax
+  def getMax: Double = summary.getMax
 
-  def getStdDev(): Double = summary.getStandardDeviation
+  def getStdDev: Double = summary.getStandardDeviation
 
   def estimateFirstQuartile(): Double = quantiles.sortWith(_ < _)(1 * quantiles.size / 4)
 
@@ -48,11 +48,11 @@ class CoefficientSummary extends Serializable {
 
   def estimateThirdQuartile(): Double = quantiles.sortWith(_ < _)(3 * quantiles.size / 4)
 
-  def getCount(): Long = summary.getN
+  def getCount: Long = summary.getN
 
-  override def toString():String = {
-    f"Range: [Min: $getMin%.03f, Q1: $estimateFirstQuartile%.03f, Med: $estimateMedian%.03f, " +
-      f"Q3: $estimateThirdQuartile%.03f, Max: $getMax%.03f) " +
+  override def toString:String = {
+    f"Range: [Min: $getMin%.03f, Q1: ${estimateFirstQuartile()}%.03f, Med: ${estimateMedian()}%.03f, " +
+      f"Q3: ${estimateThirdQuartile()}%.03f, Max: $getMax%.03f) " +
     f"Mean: [$getMean%.03f], Std. Dev.[$getStdDev%.03f], # samples = [$getCount]"
   }
 }
