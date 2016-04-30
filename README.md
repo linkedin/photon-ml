@@ -199,4 +199,4 @@ Detailed usages are described via command:
 **Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
 
 ## How to Contribute
-Contributions are always more than welcome. For starters, you could begin with reporting an issue, participating in discussions, or sending out a pull request addressing one. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
+We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
