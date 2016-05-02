@@ -61,7 +61,7 @@ class Params {
   /**
    * An array of regularization weights that will be used to train the model
    */
-  var regularizationWeights: List[Double] = List(0.1, 1, 10, 100)
+  var regularizationWeights: List[Double] = List(10)
   /**
    * The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of more iterations
    */
@@ -157,7 +157,7 @@ class Params {
     val messages = new ArrayBuffer[String]
     if ((regularizationType == RegularizationType.L1 ||
             regularizationType == RegularizationType.ELASTIC_NET) && optimizerType == OptimizerType.TRON) {
-      messages += s"Combination of (${regularizationType}, ${optimizerType}) is not allowed."
+      messages += s"Combination of ($regularizationType, $optimizerType) is not allowed."
     }
     if (constraintString.nonEmpty && normalizationType != NormalizationType.NONE) {
       messages += (s"Normalization and box constraints should not be used together since we cannot guarantee the " +
@@ -165,14 +165,14 @@ class Params {
     }
     if (normalizationType == NormalizationType.STANDARDIZATION && !addIntercept) {
       messages += s"Intercept must be used to enable feature standardization. Normalization type: " +
-                  s"${normalizationType}, add intercept: ${addIntercept}."
+                  s"$normalizationType, add intercept: $addIntercept."
     }
     if (messages.nonEmpty) {
       throw new IllegalArgumentException(messages.mkString("\n"))
     }
   }
 
-  override def toString(): String = {
+  override def toString: String = {
     getClass.getDeclaredFields.map(field => {
       field.setAccessible(true)
       field.getName + "=" + field.get(this)

@@ -25,14 +25,18 @@ import scala.reflect.ClassTag
 /**
  * Verify that we are able to achieve some minimum AUROC as part of validating a binary classifier's predictions
  */
-class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClassifier : ClassTag](minimumAUC:Double) extends ModelValidator[BC] {
+class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClassifier : ClassTag](minimumAUC:Double)
+    extends ModelValidator[BC] {
+
   assert(minimumAUC >= 0.5)
   assert(minimumAUC <= 1.0)
 
   def validateModelPredictions(model:BC, data:RDD[LabeledPoint]) = {
-    val scored:RDD[(Double, Double)] = data.map { x => (x.label, model.computeMeanFunctionWithOffset(x.features, x.offset))}
+    val scored:RDD[(Double, Double)] = data.map { x =>
+      (x.label, model.computeMeanFunctionWithOffset(x.features, x.offset))
+    }
     val evaluator = new BinaryClassificationMetrics(scored)
-    val auROC = evaluator.areaUnderROC
+    val auROC = evaluator.areaUnderROC()
 
     if (auROC < minimumAUC) {
       throw new IllegalStateException(s"Computed AUROC [$auROC] is smaller than minimum required [$minimumAUC]")

@@ -14,13 +14,10 @@
  */
 package com.linkedin.photon.ml.test
 
-import java.io.File
 import java.nio.file.{Paths, Files}
 
-import scala.collection.mutable
-
 import org.apache.commons.io.FileUtils
-import org.testng.annotations.AfterClass
+
 
 /**
  * Thread safe test template to provide a temporary directory per method.
@@ -28,24 +25,12 @@ import org.testng.annotations.AfterClass
  */
 trait TestTemplateWithTmpDir {
 
-  private val tmpDirs = new mutable.ArrayBuffer[String]()
-
   /**
    * Return the temporary directory as a string.
    * @return the temporary directory as a string.
    */
   def getTmpDir: String = {
-    val tmpDirName = TestTemplateWithTmpDir._tmpDirThreadLocal.get()
-    tmpDirs.synchronized {
-      tmpDirs += tmpDirName
-    }
-    tmpDirName
-  }
-
-  @AfterClass
-  def afterClass(): Unit = {
-    tmpDirs.foreach(tmpDir => FileUtils.deleteDirectory(new File(tmpDir)))
-    tmpDirs.clear()
+    TestTemplateWithTmpDir._tmpDirThreadLocal.get()
   }
 }
 
@@ -53,8 +38,9 @@ private object TestTemplateWithTmpDir {
   private val _tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
     protected override def initialValue(): String = {
       val parentDir = Paths.get(FileUtils.getTempDirectoryPath)
-      val prefix = Thread.currentThread().getId + "-" + System.currentTimeMillis()
+      val prefix = Thread.currentThread().getId + "-" + System.nanoTime()
       val dir = Files.createTempDirectory(parentDir, prefix).toFile
+      dir.deleteOnExit()
       dir.toString
     }
   }

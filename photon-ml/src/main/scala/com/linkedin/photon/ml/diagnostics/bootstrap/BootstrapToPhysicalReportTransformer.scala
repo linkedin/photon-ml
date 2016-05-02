@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.diagnostics.bootstrap
 
-import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
@@ -70,8 +69,8 @@ class BootstrapToPhysicalReportTransformer
           .height(PlotUtils.PLOT_HEIGHT)
           .theme(StyleManager.ChartTheme.XChart)
           .title(
-            s"Coefficient distribution for N=$name, T=$term (mean = ${summary.getMean()}, " +
-            s"st.dev = ${summary.getStdDev()})")
+            s"Coefficient distribution for N=$name, T=$term (mean = ${summary.getMean}, " +
+            s"st.dev = ${summary.getStdDev})")
           .yAxisTitle("Coefficient value")
           .width(PlotUtils.PLOT_WIDTH)
           .build()
@@ -96,8 +95,8 @@ class BootstrapToPhysicalReportTransformer
       Seq(
         new SimpleTextPhysicalReport(
           s"Total features with interquartile range straddling zero: ${logical.zeroCrossingFeatures.size}"),
-        new BulletedListPhysicalReport(logical.zeroCrossingFeatures.toSeq.sortBy(_._2._2).reverse.map(x => {
-          val ((name, term), (index, importance, coeff)) = x
+        new BulletedListPhysicalReport(logical.zeroCrossingFeatures.toSeq.sortBy(_._2._2).reverseMap(x => {
+          val ((name, term), (_, importance, coeff)) = x
           new SimpleTextPhysicalReport(s"Feature N=$name, T=$term with importance $importance ==> $coeff")
         }))), FEATURES_STRADDLING_ZERO_TITLE)
   }

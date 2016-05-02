@@ -53,6 +53,7 @@ object MockDriver {
 
   def runLocally(args: Array[String], expectedStages: Array[DriverStage], expectedNumFeatures: Int,
       expectedNumTrainingData: Int, expectedIsSummarized: Boolean): Unit = {
+
     /* Parse the parameters from command line, should always be the 1st line in main*/
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
     /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */

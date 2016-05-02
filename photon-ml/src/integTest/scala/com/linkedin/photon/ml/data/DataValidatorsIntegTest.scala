@@ -29,7 +29,7 @@ import org.testng.annotations.{DataProvider, Test}
  */
 class DataValidatorsIntegTest extends SparkTestUtils {
   @DataProvider
-  def getArgumentsForDataSanityCheck(): Array[Array[Any]] = {
+  def getArgumentsForDataSanityCheck: Array[Array[Any]] = {
     val vectors = CommonTestUtils.generateDenseFeatureVectors(1, 1, 20)
     val validVector = vectors.head
     val invalidVector = vectors.last
@@ -118,7 +118,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
   // check data provider correctness
   @Test
   def testDataProvider(): Unit = sparkTest("testDataProvider") {
-    getArgumentsForDataSanityCheck()
+    getArgumentsForDataSanityCheck
   }
 
   /*
@@ -134,7 +134,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
 
   @Test
   def testSanityCheckData(): Unit = sparkTest("testSanityCheckData") {
-    val input = getArgumentsForDataSanityCheck()
+    val input = getArgumentsForDataSanityCheck
     for (x <- input) {
       Assert.assertEquals(DataValidators.sanityCheckData(x(0).asInstanceOf[RDD[LabeledPoint]],
         x(1).asInstanceOf[TaskType], x(2).asInstanceOf[DataValidationType]), x(3).asInstanceOf[Boolean])

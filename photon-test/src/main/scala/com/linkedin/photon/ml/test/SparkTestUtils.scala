@@ -194,7 +194,7 @@ object SparkTestUtils {
 
   val SPARK_LOCAL_CONFIG: String = "local[4]"
   val INLIER_PROBABILITY: Double = 0.90
-  val INLIER_STANDARD_DEVIATION: Double = 1e-4
+  val INLIER_STANDARD_DEVIATION: Double = 1e-3
   val OUTLIER_STANDARD_DEVIATION: Double = 1
 
   def numericallyBenignGeneratorFunctionForBinaryClassifier(

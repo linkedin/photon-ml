@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml
 
-import java.util.Collections
-
 import com.google.common.base.Preconditions
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.{CoefficientSummary, GeneralizedLinearModel}
@@ -64,14 +62,13 @@ object BootstrapTraining {
 
     // Reduce the remaining models into a full summary
     modelsAndMetrics.tail.foldLeft(firstState)({
-      case ((coeffs, intercept), (glm, _)) => {
+      case ((coeffs, intercept), (glm, _)) =>
 
         // Accumulate coefficients
         coeffs.zip(glm.coefficients.toArray).map({
-          case (accCoeff, currCoeff) => {
+          case (accCoeff, currCoeff) =>
             accCoeff.accumulate(currCoeff)
             accCoeff
-          }
         })
 
         // Accumulate intercept
@@ -81,7 +78,6 @@ object BootstrapTraining {
         })
 
         (coeffs, intercept)
-      }
     })
   }
 
@@ -176,7 +172,7 @@ object BootstrapTraining {
         val dist = new UniformIntegerDistribution(prng, 0, numSplits)
 
         x.map(y => (dist.sample, y))
-      }).cache.setName("Tagged training splits")
+      }).cache().setName("Tagged training splits")
 
     val tags = (0 until numSplits).toList
     val prng = new MersenneTwister(seed)

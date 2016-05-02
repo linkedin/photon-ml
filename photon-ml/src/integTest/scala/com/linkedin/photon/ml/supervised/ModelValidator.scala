@@ -33,8 +33,8 @@ abstract class ModelValidator[-GLM <: GeneralizedLinearModel : ClassTag] extends
    * Inspect a model's predictions and determine whether they are "sensible" / "valid"
    *
    * Should throw some reasonable kind of exception if this is _not_ the case.
-   * @param model
-   * @param data
+   * @param model The GLM model to be validated
+   * @param data The data used to validate the model
    */
   def validateModelPredictions(model:GLM, data:RDD[LabeledPoint]): Unit
 }

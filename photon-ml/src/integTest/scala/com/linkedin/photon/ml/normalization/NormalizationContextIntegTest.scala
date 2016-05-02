@@ -60,7 +60,11 @@ class NormalizationContextIntegTest extends SparkTestUtils {
   private val _meanShifts = Array(0.8, 2.75, 0.125, 1.5, 0.0, 0.0)
 
   @Test(dataProvider = "generateTestData")
-  def testFactor(normalizationType: NormalizationType, expectedFactors: Option[Array[Double]], expectedShifts: Option[Array[Double]]): Unit = sparkTest("test") {
+  def testFactor(
+      normalizationType: NormalizationType,
+      expectedFactors: Option[Array[Double]],
+      expectedShifts: Option[Array[Double]]): Unit = sparkTest("test") {
+
     val rdd = sc.parallelize(_features.map(x => new LabeledPoint(0, x)))
     lazy val summary = BasicStatistics.getBasicStatistics(rdd)
     val normalizationContext = NormalizationContext(normalizationType, summary, _intercept)
@@ -94,20 +98,23 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
   @DataProvider(name = "generateStandardizationTestData")
   def generateStandardizationTestData(): Array[Array[Any]] = {
-    (for (x <- OptimizerType.values; y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)) yield Array[Any](x, y)).toArray
+    (for (x <- OptimizerType.values; y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM))
+      yield Array[Any](x, y)).toArray
   }
 
   /**
    * This is a sophisticated test for standardization with the heart data set. An objective function with a
-   * normal input and a loss function with standardization context should produce the same result of an objective function
-   * with a standardized input and a plain loss function.
-   * Heart data set seems to be a well-behaved data set so the final objective and the model coefficients can be reproduced
-   * even after some many iterations.
+   * normal input and a loss function with standardization context should produce the same result of an objective
+   * function with a standardized input and a plain loss function.
+   * Heart data set seems to be a well-behaved data set so the final objective and the model coefficients can be
+   * reproduced even after some many iterations.
    * @param optimizerType Optimizer type
    * @param taskType Task type
    */
   @Test(dataProvider = "generateStandardizationTestData")
-  def testOptimizationWithStandardization(optimizerType: OptimizerType, taskType: TaskType): Unit = sparkTest("testObjectivesAfterNormalization") {
+  def testOptimizationWithStandardization(optimizerType: OptimizerType, taskType: TaskType): Unit =
+    sparkTest("testObjectivesAfterNormalization") {
+
     // Read heart data
     val heartDataRDD: RDD[LabeledPoint] = {
       val inputFile = getClass.getClassLoader.getResource("DriverIntegTest/input/heart.txt").toString

@@ -38,9 +38,9 @@ class BootstrapTrainingDiagnostic(
       models: Map[Double, GeneralizedLinearModel]) = {
 
     coefficients.map(x => {
-      val (lambda, (coeff, interept)) = x
+      val (lambda, (coeff, _)) = x
       (lambda, coeff.zipWithIndex.map(x => {
-        val (sumary, idx) = x
+        val (_, idx) = x
         val value = summary match {
           case Some(sum: BasicStatisticalSummary) =>
             sum.meanAbs(idx)
@@ -67,17 +67,10 @@ class BootstrapTrainingDiagnostic(
       val (lambda, metricSummary) = item
 
       // should always have the same lambdas as keys in both these containers.
-      val coefficientSummary = coefficients.get(lambda).get
-
-      val numStraddlingZero = coefficientSummary._1
-        .filter(x => x.estimateFirstQuartile() < 0 && x.estimateThirdQuartile() > 0).size
 
       val m = metricSummary
         .mapValues(
-          x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
-
-      val c = coefficientSummary._1
-        .map(x => (x.getMin(), x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax()))
+          x => (x.getMin, x.estimateFirstQuartile(), x.estimateMedian(), x.estimateThirdQuartile(), x.getMax))
 
       val straddlingZero = importances
         .getOrElse(lambda, Map.empty[(String, String), (Int, Double, CoefficientSummary)])

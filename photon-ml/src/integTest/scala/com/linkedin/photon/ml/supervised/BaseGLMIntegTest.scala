@@ -15,12 +15,10 @@
 package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext, NoNormalization}
+import com.linkedin.photon.ml.normalization.{NormalizationContext, NoNormalization}
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, SmoothedHingeLossLinearSVMAlgorithm, LogisticRegressionAlgorithm, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearAlgorithm, GeneralizedLinearModel}
@@ -71,7 +69,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
   /**
    * Enumerate valid sets of (description, generalized linear algorithm, data set) tuples.
    */
-  private def getGeneralizedLinearAlgorithms() : Array[Tuple5[Object, Object, Object, Object, Object]] = {
+  private def getGeneralizedLinearAlgorithms : Array[(Object, Object, Object, Object, Object)] = {
     Array(
       Tuple5("Linear regression, easy problem",
         new LinearRegressionAlgorithm(),
@@ -86,7 +84,10 @@ class BaseGLMIntegTest extends SparkTestUtils {
         OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
         drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
           BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-          new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator, new NonNegativePredictionValidator[PoissonRegressionModel])),
+          new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator,
+            new NonNegativePredictionValidator[PoissonRegressionModel]
+          )
+      ),
 
       Tuple5("Logistic regression, easy problem",
         new LogisticRegressionAlgorithm(),
@@ -132,7 +133,16 @@ class BaseGLMIntegTest extends SparkTestUtils {
       reg: RegularizationContext,
       data: Iterator[(Double, Vector[Double])],
       validator: ModelValidator[GLM]) = {
-    runGeneralizedLinearAlgorithmScenario(desc, algorithm, optimizerConfig, reg, List(1.0), None, NoNormalization, data, validator)
+    runGeneralizedLinearAlgorithmScenario(
+      desc,
+      algorithm,
+      optimizerConfig,
+      reg,
+      List(1.0),
+      None,
+      NoNormalization,
+      data,
+      validator)
   }
 
   /**
@@ -157,7 +167,9 @@ class BaseGLMIntegTest extends SparkTestUtils {
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
     // Step 1: generate our input RDD
-    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data.map( x => { new LabeledPoint(label = x._1, features = x._2)}).toList).repartition(4)
+    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data.map( x => {
+      new LabeledPoint(label = x._1, features = x._2)
+    }).toList).repartition(BaseGLMIntegTest.NUM_PARTITIONS)
 
     // Step 2: actually run
     val (models, optimizer) = algorithm.run(trainingSet, optimizerConfig, reg, lambdas, norm)
@@ -170,7 +182,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
 
     // Step 4: validate the models
     models.foreach( m => {
-      m.validateCoefficients
+      m.validateCoefficients()
       validator.validateModelPredictions(m, trainingSet)
     })
 
@@ -190,9 +202,12 @@ class BaseGLMIntegTest extends SparkTestUtils {
  * Mostly constants controlling this test
  */
 object BaseGLMIntegTest {
+  val NUM_PARTITIONS = 4
   val RANDOM_SEED:Int = 0
-  val NUMBER_OF_SAMPLES:Int = 100000
-  val NUMBER_OF_DIMENSIONS:Int = 100
+  // 10,000 samples would be good enough
+  val NUMBER_OF_SAMPLES:Int = 10000
+  // dimension of 10 would be sufficient to test the problem
+  val NUMBER_OF_DIMENSIONS:Int = 10
   /** Minimum required AUROC */
   val MINIMUM_CLASSIFIER_AUCROC:Double = 0.95
   /** Maximum allowable magnitude difference between predictions and labels for regression problems
