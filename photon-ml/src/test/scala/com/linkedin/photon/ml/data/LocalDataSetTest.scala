@@ -173,7 +173,7 @@ class LocalDataSetTest {
      )
      val expected = Map(0 -> 0.05564149, 1 -> 1.0, 2 -> -0.40047142)
      val labelAndFeatures = labels.zip(features)
-     val computed = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures.iterator)
+     val computed = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures)
      computed.foreach { case (key, value) =>
        assertEquals(expected(key), value, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD,
          s"Computed Pearson correlation score is $value, while the expected value is ${expected(key)}.")

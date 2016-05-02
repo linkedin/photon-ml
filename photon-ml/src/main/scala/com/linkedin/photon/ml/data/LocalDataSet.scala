@@ -118,7 +118,7 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet = {
     if (numFeaturesToKeep < numActiveFeatures) {
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
-      val pearsonScores = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures.iterator)
+      val pearsonScores = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures)
 
       val filteredFeaturesIndexSet = pearsonScores.toArray
         .sortBy { case (key, score) => math.abs(score) }
@@ -192,11 +192,11 @@ object LocalDataSet {
   /**
    * Compute Pearson correlation scores
    *
-   * @param labelAndFeatures iterator over label, feature tuples
+   * @param labelAndFeatures array over label, feature tuples
    * @return correlation scores
    */
   protected[ml] def computePearsonCorrelationScore(
-      labelAndFeatures: Iterator[(Double, Vector[Double])]): Map[Int, Double] = {
+      labelAndFeatures: Array[(Double, Vector[Double])]): Map[Int, Double] = {
 
     val featureLabelProductSums = mutable.Map[Int, Double]()
     val featureFirstOrderSums = mutable.Map[Int, Double]()
@@ -224,14 +224,12 @@ object LocalDataSet {
       val featureSecondOrderSum = featureSecondOrderSums(key)
       val featureLabelProductSum = featureLabelProductSums(key)
       val numerator = numSamples * featureLabelProductSum - featureFirstOrderSum * labelFirstOrderSum
-      val denominator = math.sqrt(math.abs(numSamples * featureSecondOrderSum -
-          featureFirstOrderSum * featureFirstOrderSum)) *
-          math.sqrt(numSamples * labelSecondOrderSum - labelFirstOrderSum * labelFirstOrderSum)
+      val std = math.sqrt(math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum))
+      val denominator = std * math.sqrt(numSamples * labelSecondOrderSum - labelFirstOrderSum * labelFirstOrderSum)
 
       val score =
-      // When the variance of the feature is 0, we treat it as the intercept term
-        if (math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum) <
-            MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD) {
+      // When the standard deviation of the feature is close to 0, we treat it as the intercept term
+        if (std < MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD) {
           if (interceptAdded) {
             0.0
           } else {
@@ -242,7 +240,7 @@ object LocalDataSet {
           numerator / (denominator + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
         }
 
-      assert(math.abs(score) <= 1 + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD,
+      assert(math.abs(score) <= 1 + MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD,
         s"Computed pearson correlation score is $score, " +
         s"while the score's magnitude should be less than 1. " +
         s"(Diagnosis:\n" +
@@ -253,7 +251,8 @@ object LocalDataSet {
         s"featureSecondOrderSum=$featureSecondOrderSum\n" +
         s"featureLabelProductSum=$featureLabelProductSum\n" +
         s"labelFirstOrderSum=$labelFirstOrderSum\n" +
-        s"labelSecondOrderSum=$labelSecondOrderSum)")
+        s"labelSecondOrderSum=$labelSecondOrderSum\n" +
+        s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
 
       (key, score)
     }.toMap
