@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.util
 
-import java.io.{BufferedReader, InputStreamReader}
+import java.io._
 
 import scala.collection.mutable
 
@@ -97,7 +97,15 @@ protected[ml] object IOUtils {
 
     val fs = outputPath.getFileSystem(configuration)
     val stream = fs.create(outputPath, forceOverwrite)
-    stringMsgs.foreach(stringMsg => stream.writeBytes(stringMsg + "\n"))
-    stream.close()
+    val writer = new PrintWriter(
+      new BufferedWriter(
+        new OutputStreamWriter(stream)
+      )
+    )
+    try {
+      stringMsgs.foreach(stringMsg => writer.println(stringMsg))
+    } finally {
+      writer.close()
+    }
   }
 }
