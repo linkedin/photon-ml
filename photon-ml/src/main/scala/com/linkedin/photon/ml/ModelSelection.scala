@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.metric.MetricMetadata
-import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import org.apache.spark.Logging
@@ -28,8 +28,7 @@ import org.apache.spark.rdd.RDD
  * @author dpeng
  * @author bdrew
  */
-object ModelSelection extends Logging
-{
+object ModelSelection extends Logging {
 
   /**
    * Select the best binary classifier via AUC (Area Under ROC Curve) computed on validating data set
@@ -79,7 +78,7 @@ object ModelSelection extends Logging
       (Evaluation.evaluate(x._2, validatingData).getOrElse(metric, -1.0), x._1, x._2)
     }).toArray.sortBy(_._1)(metricMetadata.worstToBestOrdering)
     val (bestMetricValue, bestLambda, bestModel) = sortedByMetric.last
-    val (worstMetricValue, worstLambda, worstModel) = sortedByMetric.head
+    val (worstMetricValue, worstLambda, _) = sortedByMetric.head
       logInfo(s"Selecting model with lambda = $bestLambda ($metric = $bestMetricValue) v. worst @ " +
               s"lambda = $worstLambda ($metric = $worstMetricValue)")
     (bestLambda, bestModel)

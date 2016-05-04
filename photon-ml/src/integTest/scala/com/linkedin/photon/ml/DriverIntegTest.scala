@@ -582,24 +582,22 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       TaskType.LINEAR_REGRESSION ->("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION ->("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
       TaskType.POISSON_REGRESSION ->("poisson_train.avro", "poisson_test.avro", 27, 13547)
-
       // Note: temporarily disabled due to OFFREL-934. Details explained in the ticket.
       //      , TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM ->("logistic_regression_train.avro",
       // "logistic_regression_val.avro", 124, 32561)
     )
 
-    val lambdas = List(0, 1000)
+    val candidateLambdas = List(0, 1000)
 
     val regularizations = Map(
       RegularizationType.NONE ->(OptimizerType.TRON, List(0.0)),
-      RegularizationType.L2 ->(OptimizerType.TRON, lambdas),
-      RegularizationType.L1 ->(OptimizerType.LBFGS, lambdas),
-      RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, lambdas))
+      RegularizationType.L2 ->(OptimizerType.TRON, candidateLambdas),
+      RegularizationType.L1 ->(OptimizerType.LBFGS, candidateLambdas),
+      RegularizationType.ELASTIC_NET ->(OptimizerType.LBFGS, candidateLambdas))
 
     (for (m <- models; r <- regularizations) yield {
       (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
-    }).map(x => {
-      val (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) = x
+    }).map { case (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) =>
       val trainEnabled = TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM != taskType
 
       val outputDir = s"${taskType}_${regType}_$trainEnabled"
@@ -648,7 +646,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS)
       args += trainEnabled.toString
       Array(outputDir, args.toArray, numDim, numSamp)
-    }).toArray
+    }.toArray
   }
 
   @Test(dataProvider = "testDiagnosticGenerationProvider")
