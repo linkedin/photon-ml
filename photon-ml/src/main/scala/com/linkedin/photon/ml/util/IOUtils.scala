@@ -103,7 +103,7 @@ protected[ml] object IOUtils {
       )
     )
     try {
-      stringMsgs.foreach { stringMsg => writer.println(stringMsg)}
+      stringMsgs.foreach(stringMsg => writer.println(stringMsg))
     } finally {
       writer.close()
     }
