@@ -26,13 +26,20 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   class TestException extends Exception
 
+  private val LOG_REGEX_BASE = "^[0-9\\-]{10}T[0-9\\:\\.]{12}[\\-\\+][0-9]{4} \\[%s\\] %s$"
+  private val DEBUG_MESSAGE = "test message 1"
+  private val ERROR_MESSAGE = "test message 2"
+  private val INFO_MESSAGE = "test message 3"
+  private val TRACE_MESSAGE = "test message 4"
+  private val WARN_MESSAGE = "test message 5"
+
   @Test
   def testSingleLogMessage() = sparkTest("singleLogMessage") {
     val logFile = s"$getTmpDir/singleLogMessage"
     val logger = new PhotonLogger(logFile, sc)
 
     try {
-      logger.error("test message")
+      logger.error(ERROR_MESSAGE)
 
     } finally {
       logger.close()
@@ -43,7 +50,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val lines = Source.fromFile(logFile).getLines().toArray
     assertEquals(lines.length, 1)
-    assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message$"))
+    assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
   }
 
   @Test
@@ -55,12 +62,11 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     logger.setLogLevel(PhotonLogger.LogLevelTrace)
 
     try {
-      logger.debug("test message 1")
-      logger.error("test message 2")
-      logger.info("test message 3")
-      logger.trace("test message 4")
-      logger.warn("test message 5")
-
+      logger.debug(DEBUG_MESSAGE)
+      logger.error(ERROR_MESSAGE)
+      logger.info(INFO_MESSAGE)
+      logger.trace(TRACE_MESSAGE)
+      logger.warn(WARN_MESSAGE)
     } finally {
       logger.close()
     }
@@ -70,11 +76,11 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val lines = Source.fromFile(logFile).getLines().toArray
     assertEquals(lines.length, 5)
-    assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[DEBUG\\] test message 1$"))
-    assertTrue(lines(1).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message 2$"))
-    assertTrue(lines(2).matches("^[0-9T\\-\\:\\.]* \\[INFO\\] test message 3$"))
-    assertTrue(lines(3).matches("^[0-9T\\-\\:\\.]* \\[TRACE\\] test message 4$"))
-    assertTrue(lines(4).matches("^[0-9T\\-\\:\\.]* \\[WARN\\] test message 5$"))
+    assertTrue(lines(0).matches(LOG_REGEX_BASE.format("DEBUG", DEBUG_MESSAGE)))
+    assertTrue(lines(1).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
+    assertTrue(lines(2).matches(LOG_REGEX_BASE.format("INFO", INFO_MESSAGE)))
+    assertTrue(lines(3).matches(LOG_REGEX_BASE.format("TRACE", TRACE_MESSAGE)))
+    assertTrue(lines(4).matches(LOG_REGEX_BASE.format("WARN", WARN_MESSAGE)))
   }
 
   @DataProvider
@@ -95,11 +101,11 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     logger.setLogLevel(level)
 
     try {
-      logger.debug("test message 1")
-      logger.error("test message 2")
-      logger.info("test message 3")
-      logger.trace("test message 4")
-      logger.warn("test message 5")
+      logger.debug(DEBUG_MESSAGE)
+      logger.error(ERROR_MESSAGE)
+      logger.info(INFO_MESSAGE)
+      logger.trace(TRACE_MESSAGE)
+      logger.warn(WARN_MESSAGE)
 
     } finally {
       logger.close()
@@ -125,7 +131,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     } catch {
       case e: TestException =>
-        logger.error("test message 2", e)
+        logger.error(ERROR_MESSAGE, e)
 
     } finally {
       logger.close()
@@ -136,7 +142,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val lines = Source.fromFile(logFile).getLines().toArray
     assertEquals(lines.length, 19)
-    assertTrue(lines(0).matches("^[0-9T\\-\\:\\.]* \\[ERROR\\] test message 2$"))
+    assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
     assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerIntegTest$TestException")
   }
 }

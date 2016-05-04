@@ -86,7 +86,8 @@ rat {
     'photon-ml/LINEAR_REGRESSION*/**',
     'photon-ml/LOGISTIC_REGRESSION*/**',
     'photon-ml/POISSON_REGRESSION*/**',
-    'photon-test/src/test/resources/**'
+    'photon-test/src/test/resources/**',
+    'tests.sh'
   ]
 }
 
