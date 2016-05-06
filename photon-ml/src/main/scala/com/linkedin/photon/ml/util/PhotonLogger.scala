@@ -414,10 +414,9 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
       sprintln(content)
 
       throwable match {
-        case Some(t) => {
+        case Some(t) =>
           t.printStackTrace(writer)
           t.printStackTrace(System.out)
-        }
         case None =>
       }
 
@@ -477,28 +476,28 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
   }
 }
 
-private object PhotonLogger {
+object PhotonLogger {
   /**
    * Log level constants, inherited from SLF4J
    */
-  val LogLevelDebug = LocationAwareLogger.DEBUG_INT
-  val LogLevelError = LocationAwareLogger.ERROR_INT
-  val LogLevelInfo = LocationAwareLogger.INFO_INT
-  val LogLevelTrace = LocationAwareLogger.TRACE_INT
-  val LogLevelWarn = LocationAwareLogger.WARN_INT
+  protected[ml] val LogLevelDebug = LocationAwareLogger.DEBUG_INT
+  protected[ml] val LogLevelError = LocationAwareLogger.ERROR_INT
+  protected[ml] val LogLevelInfo = LocationAwareLogger.INFO_INT
+  protected[ml] val LogLevelTrace = LocationAwareLogger.TRACE_INT
+  protected[ml] val LogLevelWarn = LocationAwareLogger.WARN_INT
 
   /**
    * Default log level: INFO
    */
-  val DefaultLogLevel = LogLevelInfo
+  protected val DefaultLogLevel = LogLevelInfo
 
   /**
    * Default date format
    */
-  val DefaultDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+  protected val DefaultDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
 
   /**
    * Default log message format
    */
-  val DefaultMessageFormat = "%s [%s] %s"
+  protected val DefaultMessageFormat = "%s [%s] %s"
 }
