@@ -515,6 +515,8 @@ object Driver {
     // A temporary solution to save log into HDFS.
     val logPath = new Path(params.outputDir, "log-message.txt")
     val logger = new PhotonLogger(logPath, sc)
+    //TODO: This Photon log level should be made configurable
+    logger.setLogLevel(PhotonLogger.LogLevelDebug)
 
     try {
       val job = new Driver(params, sc, logger)
