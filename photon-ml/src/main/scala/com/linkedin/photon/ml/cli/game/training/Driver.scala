@@ -484,6 +484,8 @@ object Driver {
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
     val logger = new PhotonLogger(logsDir, sc)
+    //TODO: This Photon log level should be made configurable
+    logger.setLogLevel(PhotonLogger.LogLevelDebug)
 
     try {
       logger.debug(params.toString + "\n")

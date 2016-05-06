@@ -83,6 +83,8 @@ object SparkContextConfiguration {
       sparkConf.set(CONF_SPARK_SERIALIZER, classOf[KryoSerializer].getName)
       sparkConf.registerKryoClasses(KRYO_CLASSES_TO_REGISTER)
     }
+    //TODO: This Spark log level should be made configurable, please note that this log level may be different from
+    // Photon log level
     Logger.getRootLogger.setLevel(Level.INFO)
     new SparkContext(sparkConf)
   }
