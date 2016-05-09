@@ -240,7 +240,7 @@ class GLMSuite(
                 }
               } else if (term == GLMSuite.WILDCARD) {
                 featureKeyToIdMap
-                  .filter(x => x._1.startsWith(name))
+                  .filter(x => x._1.startsWith(name + GLMSuite.DELIMITER))
                   .foreach(x => {
                     if (constraintMap.containsKey(x._2)) {
                       throw new IllegalArgumentException(s"Please avoid specifying potentially " +
