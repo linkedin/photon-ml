@@ -49,17 +49,13 @@ object CommonTestUtils {
         if (x.size != y.size) {
           false
         } else {
-          x.foreach{
+          x.filter {
             case (id, bounds) =>
               y.get(id) match {
-                case Some(w: (Double, Double)) =>
-                  if (w != bounds) {
-                    false
-                  }
+                case Some(w: (Double, Double)) => w == bounds
                 case None => false
               }
-          }
-          true
+          }.size == x.size
         }
       case (None, None) => true
       case (None, _) => false
