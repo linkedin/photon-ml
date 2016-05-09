@@ -65,7 +65,8 @@ class GLMSuiteTest {
         """[
              {"name": "foo", "term": "bar", "lowerBound": 0, "upperBound": 1},
              {"name": "foo", "term": "bar", "lowerBound": 0, "upperBound": 5}
-           ]""")
+           ]"""),
+      Array(featureKeyToIdMap, """[{"name": "foo", "lowerbound": 0, "upperbound": 1}]""")
     )
   }
 
@@ -84,7 +85,9 @@ class GLMSuiteTest {
       Utils.getFeatureKey("foo", "baz")->2,
       Utils.getFeatureKey("qux", "bar")->3,
       GLMSuite.INTERCEPT_NAME_TERM->4,
-      Utils.getFeatureKey("qux", "baz")->5)
+      Utils.getFeatureKey("qux", "baz")->5,
+      Utils.getFeatureKey("qux", "")->6,
+      Utils.getFeatureKey("quxl", "")->7)
     Array(
       Array(featureKeyToIdMap, """[{"name": "foo", "term": "baz", "lowerBound": 0, "upperBound": 1}]""",
         Some(Map[Int, (Double, Double)](2->(0.0, 1.0)))),
@@ -95,15 +98,15 @@ class GLMSuiteTest {
       Array(featureKeyToIdMap, """[{"name": "foo", "term": "bar", "upperBound": 1}]""",
         Some(Map[Int, (Double, Double)](1->(Double.NegativeInfinity, 1.0)))),
       Array(featureKeyToIdMap, """[{"name": "*", "term": "*", "lowerBound": 0, "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](0->(0.0, 1.0), 1->(0.0, 1.0), 2->(0.0, 1.0), 3->(0.0, 1.0), 5->(0.0, 1.0)))),
+        Some(Map[Int, (Double, Double)](0->(0.0, 1.0), 1->(0.0, 1.0), 2->(0.0, 1.0), 3->(0.0, 1.0), 5->(0.0, 1.0), 6->(0.0, 1.0), 7->(0.0, 1.0)))),
       Array(featureKeyToIdMap, """[{"name": "qux", "term": "*", "lowerBound": 0, "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](3->(0.0, 1.0), 4->(0.0, 1.0)))),
+        Some(Map[Int, (Double, Double)](3->(0.0, 1.0), 5->(0.0, 1.0), 6->(0.0, 1.0)))),
       Array(featureKeyToIdMap,
         """[
              {"name": "foo", "term": "bar", "lowerBound": 0, "upperBound": 1},
              {"name": "qux", "term": "baz", "lowerBound": 0, "upperBound": 1}
            ]""",
-        Some(Map[Int, (Double, Double)](1->(0.0, 1.0), 4->(0.0, 1.0))))
+        Some(Map[Int, (Double, Double)](1->(0.0, 1.0), 5->(0.0, 1.0))))
     )
   }
 
