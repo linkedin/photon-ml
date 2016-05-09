@@ -213,47 +213,48 @@ class GLMSuite(
               val upperBound = Utils.getKeyFromMapOrElse[Double](entry, ConstraintMapKeys.upperBound.toString,
                 Right(Double.PositiveInfinity))
 
-              if (lowerBound > upperBound) {
-                throw new IllegalArgumentException(s"The lower bound [$lowerBound] is incorrectly specified as " +
-                    s"greater than the upper bound [$upperBound] for the feature with name [$name] and term [$term].")
-              } else if (lowerBound == Double.NegativeInfinity && upperBound == Double.PositiveInfinity) {
-                println(s"The lower and upper bound are respectively -Inf and +Inf for the " +
-                    s"feature with name [$name] and term [$term]. Ignoring bounds...")
-              } else {
-                if (name == GLMSuite.WILDCARD) {
-                  if (term == GLMSuite.WILDCARD) {
-                    if (constraintMap.nonEmpty) {
-                      throw new IllegalArgumentException(s"Potentially conflicting constraints specified. When the " +
-                          s"name and term are specified as wildcards, it is expected that no other constraints are" +
-                          s" specified. The specified constraint string was [$constraintString]")
-                    } else {
-                      featureKeyToIdMap.foreach(x =>
-                        if (!x._1.equals(GLMSuite.INTERCEPT_NAME_TERM)) {
-                          constraintMap.put(x._2, (lowerBound, upperBound))
-                        })
-                    }
+              require(lowerBound > Double.NegativeInfinity || upperBound < Double.PositiveInfinity,
+                s"The lower and upper bound are respectively -Inf and +Inf for the feature with name [$name] and " +
+                s"term [$term]. This is an invalid constraint specification.")
+
+              require(lowerBound < upperBound,
+                s"The lower bound [$lowerBound] is incorrectly specified as greater than the upper bound " +
+                s"[$upperBound] for the feature with name [$name] and term [$term].")
+
+              if (name == GLMSuite.WILDCARD) {
+                if (term == GLMSuite.WILDCARD) {
+                  if (constraintMap.nonEmpty) {
+                    throw new IllegalArgumentException(s"Potentially conflicting constraints specified. When the " +
+                      s"name and term are specified as wildcards, it is expected that no other constraints are" +
+                      s" specified. The specified constraint string was [$constraintString]")
                   } else {
-                    throw new IllegalArgumentException("We do not support wildcard in feature name alone for now. If " +
-                        "the name is a wildcard, it is expected that the term is also a wildcard. Wildcards in names " +
-                        "but not in term may potentially be incorporated later as feature requests")
+                    featureKeyToIdMap.foreach(x =>
+                      if (!x._1.equals(GLMSuite.INTERCEPT_NAME_TERM)) {
+                        constraintMap.put(x._2, (lowerBound, upperBound))
+                      })
                   }
-                } else if (term == GLMSuite.WILDCARD) {
-                  featureKeyToIdMap
-                      .filter(x => x._1.startsWith(name))
-                      .foreach(x => {
+                } else {
+                  throw new IllegalArgumentException("We do not support wildcard in feature name alone for now. If " +
+                    "the name is a wildcard, it is expected that the term is also a wildcard. Wildcards in names " +
+                    "but not in term may potentially be incorporated later as feature requests")
+                }
+              } else if (term == GLMSuite.WILDCARD) {
+                featureKeyToIdMap
+                  .filter(x => x._1.startsWith(name))
+                  .foreach(x => {
                     if (constraintMap.containsKey(x._2)) {
                       throw new IllegalArgumentException(s"Please avoid specifying potentially " +
-                          s"conflicting bounds. The feature with name [$name] and term " +
-                          s"[${Utils.getFeatureTermFromKey(x._1)}] was already added with bounds " +
-                          s"[${constraintMap.get(x._2)}] and attempted to add it back with bounds " +
-                          s"[${(lowerBound, upperBound)}]")
+                        s"conflicting bounds. The feature with name [$name] and term " +
+                        s"[${Utils.getFeatureTermFromKey(x._1)}] was already added with bounds " +
+                        s"[${constraintMap.get(x._2)}] and attempted to add it back with bounds " +
+                        s"[${(lowerBound, upperBound)}]")
                     } else {
                       constraintMap.put(x._2, (lowerBound, upperBound))
                     }
                   })
-                } else {
-                  featureKeyToIdMap.get(Utils.getFeatureKey(name, term))
-                      .foreach(x => {
+              } else {
+                featureKeyToIdMap.get(Utils.getFeatureKey(name, term))
+                  .foreach(x => {
                     if (constraintMap.containsKey(x)) {
                       throw new IllegalArgumentException(s"Please avoid specifying potentially " +
                           s"conflicting bounds. The feature with name [$name] and term [$term] was " +
@@ -263,7 +264,6 @@ class GLMSuite(
                       constraintMap.put(x, (lowerBound, upperBound))
                     }
                   })
-                }
               }
             })
         }
