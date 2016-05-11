@@ -15,13 +15,13 @@
 package com.linkedin.photon.ml.model
 
 import org.testng.annotations.Test
-import org.testng.Assert.assertTrue
+import org.testng.Assert._
 
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 
 /**
- * @author xazhang
+ * Test the random effect model
  */
 class RandomEffectModelTest extends SparkTestUtils {
 
@@ -42,11 +42,11 @@ class RandomEffectModelTest extends SparkTestUtils {
     val randomEffectModel = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
 
     // Should equal to itself
-    assertTrue(randomEffectModel.equals(randomEffectModel))
+    assertEquals(randomEffectModel, randomEffectModel)
 
     // Should equal to the random effect model with same featureShardId, randomEffectId and coefficientsRDD
     val randomEffectModelCopy = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
-    assertTrue(randomEffectModel.equals(randomEffectModelCopy))
+    assertEquals(randomEffectModel, randomEffectModelCopy)
 
     // Should not equal to the random effect model with different featureShardId
     val featureShardId1 = "featureShardId1"

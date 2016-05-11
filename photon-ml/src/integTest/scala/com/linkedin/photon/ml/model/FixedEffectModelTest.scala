@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 
 
 /**
- * @author xazhang
+ * Test the fixed effect model
  */
 class FixedEffectModelTest extends SparkTestUtils {
 
