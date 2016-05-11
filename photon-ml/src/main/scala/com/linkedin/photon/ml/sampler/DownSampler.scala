@@ -39,8 +39,8 @@ protected[ml] trait DownSampler {
   def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)]
 }
 
-protected object DownSampler {
-  val random = new Random(MathConst.RANDOM_SEED)
+object DownSampler {
+  private val random = new Random(MathConst.RANDOM_SEED)
 
-  def getSeed: Long = random.nextLong()
+  protected[sampler] def getSeed: Long = random.nextLong()
 }
