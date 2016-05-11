@@ -54,7 +54,7 @@ class KeyValueScoreTest extends SparkTestUtils {
     //case 2: key value scores with different length
     val nonEmptyScores1 = generateKeyValueScore(scores = Array[Double](1, 2))
     val nonEmptyScores2 = generateKeyValueScore(scores = Array[Double](1, 2, 3))
-    assertTrue(!nonEmptyScores1.equals(nonEmptyScores2))
+    assertNotEquals(nonEmptyScores1, nonEmptyScores2)
 
     //case 3: key value scores with same keys but different values
     val sharedKeys = Array[Long](1, 3, 5)
@@ -62,7 +62,7 @@ class KeyValueScoreTest extends SparkTestUtils {
     val values2 = Array[Double](0, 1, 0)
     val keyValueScore1 = generateKeyValueScore(sharedKeys, values1)
     val keyValueScore2 = generateKeyValueScore(sharedKeys, values2)
-    assertTrue(!keyValueScore1.equals(keyValueScore2))
+    assertNotEquals(keyValueScore1, keyValueScore2)
 
     //case 4: key value scores with different keys but same values
     val keys1 = Array[Long](0, 1, 2)
@@ -70,7 +70,7 @@ class KeyValueScoreTest extends SparkTestUtils {
     val sharedValues = Array[Double](1, 2, 3)
     val keyValueScore3 = generateKeyValueScore(keys1, sharedValues)
     val keyValueScore4 = generateKeyValueScore(keys2, sharedValues)
-    assertTrue(!keyValueScore3.equals(keyValueScore4))
+    assertNotEquals(keyValueScore3, keyValueScore4)
 
     //case 5: same keys and same values, but the order of key/value pairs are different
     val keys3 = Array[Long](0, 1, 2)
