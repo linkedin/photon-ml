@@ -34,7 +34,7 @@ protected[ml] class GameDatum(
     val offset: Double,
     val weight: Double,
     val featureShardContainer: Map[String, Vector[Double]],
-    val randomEffectIdToIndividualIdMap: Map[String, String]) {
+    val randomEffectIdToIndividualIdMap: Map[String, String]) extends Serializable {
 
   /**
    * Build a labeled point with sharded feature container
