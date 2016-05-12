@@ -15,15 +15,13 @@
 package com.linkedin.photon.ml.avro.data
 
 import java.text.SimpleDateFormat
-import java.util.{Calendar, List => JList, TimeZone}
+import java.util.{Calendar, TimeZone}
 
-import scala.collection.{Map, Set, mutable}
+import scala.collection.{Map, Set}
 
-import org.apache.avro.generic.GenericRecord
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.avro.AvroUtils
@@ -40,6 +38,14 @@ import com.linkedin.photon.ml.util._
 //rest of code
 protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
 
+  /**
+   * Get the map from feature name of type [[NameAndTerm]] to feature index of type [[Int]] based on the specified
+   * feature section keys from the input
+   * @param featureSectionKeys The specified feature section keys to generate the name to index map explained above
+   * @param isAddingIntercept Whether to add the intercept term to the generated map
+   * @todo Need a better design to deal with the intercept term
+   * @return The generated map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
+   */
   def getFeatureNameAndTermToIndexMap(featureSectionKeys: Set[String], isAddingIntercept: Boolean)
   : Map[NameAndTerm, Int] = {
 
@@ -69,67 +75,32 @@ protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[S
 object NameAndTermFeatureSetContainer {
 
   /**
-   * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
-   * @param genericRecords The input [[RDD]] of [[GenericRecord]]s.
-   * @param featureSectionKeys The set of feature section keys of interest in the input generic records
-   * @return The generated [[NameAndTermFeatureSetContainer]]
-   */
-  private def generateFromGenericRecords(
-      genericRecords: RDD[GenericRecord],
-      featureSectionKeys: Set[String]): NameAndTermFeatureSetContainer = {
-
-    val nameAndTermFeatureSets = featureSectionKeys.map { featureSectionKey =>
-      (featureSectionKey, parseNameAndTermSetFromGenericRecords(genericRecords, featureSectionKey))
-    }.toMap
-
-    new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
-  }
-
-  private def parseNameAndTermSetFromGenericRecords(genericRecords: RDD[GenericRecord],
-      featureSectionKey: String): Set[NameAndTerm] = {
-
-    genericRecords.flatMap(_.get(featureSectionKey) match { case recordList: JList[_] =>
-      val nnz = recordList.size
-      val featureNameAndTermBuf = new mutable.ArrayBuffer[NameAndTerm](nnz)
-      val iterator = recordList.iterator
-      while (iterator.hasNext) {
-        iterator.next match {
-          case record: GenericRecord =>
-            val featureNameAndTerm = AvroUtils.getNameAndTermFromAvroRecord(record)
-            featureNameAndTermBuf += featureNameAndTerm
-          case any => throw new IllegalArgumentException(s"$any in features list is not a record")
-        }
-      }
-      featureNameAndTermBuf
-    case _ => throw new IllegalArgumentException(s"$featureSectionKey is not a list (and might be null)")
-    }).distinct().collect().toSet
-  }
-
-  /**
    * Parse the [[NameAndTermFeatureSetContainer]] from text files on HDFS
    * @param nameAndTermFeatureSetContainerInputDir The input HDFS directory
    * @param featureSectionKeys The set of feature section keys to look for from the input directory
    * @param configuration The Hadoop configuration
    * @return This [[NameAndTermFeatureSetContainer]] parsed from text files on HDFS
    */
-  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
-  //rest of code
-  protected[ml] def loadFromTextFiles(
+  protected[ml] def readNameAndTermFeatureSetContainerFromTextFiles(
       nameAndTermFeatureSetContainerInputDir: String,
       featureSectionKeys: Set[String],
       configuration: Configuration): NameAndTermFeatureSetContainer = {
 
     val nameAndTermFeatureSets = featureSectionKeys.map { featureSectionKey =>
       val inputPath = new Path(nameAndTermFeatureSetContainerInputDir, featureSectionKey)
-      val nameAndTermFeatureSet = loadNameAndTermSetFromHDFSPath(inputPath, configuration)
+      val nameAndTermFeatureSet = readNameAndTermSetFromTextFiles(inputPath, configuration)
       (featureSectionKey, nameAndTermFeatureSet)
     }.toMap
     new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
   }
 
-  private def loadNameAndTermSetFromHDFSPath(
-      inputPath: Path,
-      configuration: Configuration): Set[NameAndTerm] = {
+  /**
+   * Read a [[Set]] of [[NameAndTerm]] from the text files within the input path
+   * @param inputPath The input path
+   * @param configuration the Hadoop configuration
+   * @return The [[Set]] of [[NameAndTerm]] read from the text files of the given input path
+   */
+  private def readNameAndTermSetFromTextFiles(inputPath: Path, configuration: Configuration): Set[NameAndTerm] = {
     IOUtils.readStringsFromHDFS(inputPath, configuration).map { string =>
       string.split("\t") match {
         case Array(name, term) => NameAndTerm(name, term)
@@ -231,7 +202,8 @@ object NameAndTermFeatureSetContainer {
         numExecutors * 5
       }
     val records = AvroUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
-    val nameAndTermFeatureSetContainer = generateFromGenericRecords(records, featureSectionKeys)
+    val nameAndTermFeatureSetContainer =
+      AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys)
     Utils.deleteHDFSDir(featureNameAndTermSetOutputPath, sparkContext.hadoopConfiguration)
     nameAndTermFeatureSetContainer.saveAsTextFiles(featureNameAndTermSetOutputPath, sparkContext)
 
@@ -256,5 +228,4 @@ object NameAndTermFeatureSetContainer {
           s"applicationName: $applicationName"
     }
   }
-
 }

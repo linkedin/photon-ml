@@ -104,7 +104,7 @@ object DataProcessingUtils {
           while (iterator.hasNext) {
             iterator.next match {
               case record: GenericRecord =>
-                val featureNameAndTerm = AvroUtils.getNameAndTermFromAvroRecord(record)
+                val featureNameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
                 if (featureNameAndTermToIndexMap.contains(featureNameAndTerm)) {
                   featureIndexAndValueArrayBuilder += featureNameAndTermToIndexMap(featureNameAndTerm) ->
                       Utils.getDoubleAvro(record, AvroFieldNames.VALUE)
