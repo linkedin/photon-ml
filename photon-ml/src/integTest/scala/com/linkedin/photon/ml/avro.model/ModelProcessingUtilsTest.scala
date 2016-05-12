@@ -14,16 +14,18 @@
  */
 package com.linkedin.photon.ml.avro.model
 
+import java.util.Random
+
 import scala.collection.Map
 
 import org.apache.hadoop.fs.Path
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 import org.testng.Assert._
 
 import com.linkedin.photon.ml.avro.Constants._
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.model.{FixedEffectModel, Coefficients, RandomEffectModel}
+import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.model.{MatrixFactorizationModelTest, FixedEffectModel, Coefficients, RandomEffectModel}
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
@@ -67,7 +69,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val randomEffectModelCoefficientsDir = new Path(outputDirAsPath,
       s"$RANDOM_EFFECT/$randomEffectId-$featureShardId/$COEFFICIENTS")
     val numRandomEffectModelFiles = fs.listStatus(randomEffectModelCoefficientsDir)
-        .filter(_.getPath.toString.contains("part")).length
+      .count(_.getPath.toString.contains("part"))
     assertTrue(numRandomEffectModelFiles == numberOfOutputFilesForRandomEffectModel,
       s"Expected number of random effect model files: $numberOfOutputFilesForRandomEffectModel, " +
           s"found: $numRandomEffectModelFiles")
@@ -79,5 +81,43 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
       case loadedFixedEffectModel: FixedEffectModel => assertEquals(loadedFixedEffectModel, fixedEffectModel)
       case loadedRandomEffectModel: RandomEffectModel => assertEquals(loadedRandomEffectModel, randomEffectModel)
     }
+  }
+
+  @DataProvider
+  def matrixFactorizationConfigProvider():Array[Array[Any]] = {
+    Array(
+      Array(0, 0, 0),
+      Array(1, 0, 0),
+      Array(1, 1, 0),
+      Array(1, 0, 1),
+      Array(1, 1, 1),
+      Array(5, 10, 10)
+    )
+  }
+
+  @Test(dataProvider = "matrixFactorizationConfigProvider")
+  def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int)
+  : Unit = sparkTest("loadAndSaveRandomEffectModelToHDFS") {
+
+    import MatrixFactorizationModelTest._
+    // Meta data
+    val rowEffectType = "rowEffectType"
+    val colEffectType = "colEffectType"
+
+    // Generate the random matrix
+    val random = new Random(MathConst.RANDOM_SEED)
+    def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+    def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+    val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
+      randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
+
+    val tmpDir = getTmpDir
+    val numOutputFiles = 1
+    // Save the model to HDFS
+    ModelProcessingUtils.saveMatrixFactorizationModelToHDFS(randomMFModel, tmpDir, numOutputFiles, sc)
+    // Load the model from HDFS
+    val loadedRandomMFModel =
+      ModelProcessingUtils.loadMatrixFactorizationModelFromHDFS(tmpDir, rowEffectType, colEffectType, sc)
+    assertEquals(loadedRandomMFModel, randomMFModel)
   }
 }
