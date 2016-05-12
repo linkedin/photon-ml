@@ -20,6 +20,8 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.constants.MathConst
+
 
 /**
  * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
@@ -27,8 +29,7 @@ import com.linkedin.photon.ml.RDDLike
  * [[RDD]][([[Long]], [[Double]])], where the [[Long]] typed variable represents the unique ID of each data point,
  * while the [[Double]] typed variable represents the score.
  *
- * @param scores the scores
- * @author xazhang
+ * @param scores the scores consists of (unique Id, score) pairs as explained above.
  */
 protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
 
@@ -80,5 +81,17 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
         .fullOuterJoin(that.scores)
         .mapValues { case (thisScore, thatScore) => thisScore.getOrElse(0.0) - thatScore.getOrElse(0.0) }
     new KeyValueScore(subtractedScores)
+  }
+
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: KeyValueScore => this.scores.fullOuterJoin(other.scores).mapPartitions(iterator =>
+        Iterator.single(iterator.forall { case (_, (thisScoreOpt1, thisScoreOpt2)) =>
+          thisScoreOpt1.isDefined && thisScoreOpt2.isDefined &&
+            math.abs(thisScoreOpt1.get - thisScoreOpt2.get) < MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
+        })
+      ).filter(!_).count() == 0
+      case _ => false
+    }
   }
 }

@@ -15,13 +15,13 @@
 package com.linkedin.photon.ml.model
 
 import org.testng.annotations.Test
-import org.testng.Assert.assertTrue
+import org.testng.Assert._
 
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 
 /**
- * @author xazhang
+ * Test the fixed effect model
  */
 class FixedEffectModelTest extends SparkTestUtils {
 
@@ -38,21 +38,21 @@ class FixedEffectModelTest extends SparkTestUtils {
     val fixedEffectModel = new FixedEffectModel(sc.broadcast(coefficients), featureShardId)
 
     // Should equal to itself
-    assertTrue(fixedEffectModel.equals(fixedEffectModel))
+    assertEquals(fixedEffectModel, fixedEffectModel)
 
     // Should equal to the fixed effect model with same featureShardId and coefficientsBroadcast
     val fixedEffectModelCopy = new FixedEffectModel(sc.broadcast(coefficients), featureShardId)
-    assertTrue(fixedEffectModel.equals(fixedEffectModelCopy))
+    assertEquals(fixedEffectModel, fixedEffectModelCopy)
 
     // Should not equal to the fixed effect model with different featureShardId
     val featureShardId1 = "featureShardId1"
     val fixedEffectModelWithDiffFeatureShardId = new FixedEffectModel(sc.broadcast(coefficients), featureShardId1)
-    assertTrue(!fixedEffectModel.equals(fixedEffectModelWithDiffFeatureShardId))
+    assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffFeatureShardId)
 
     // Should not equal to the fixed effect model with different coefficientsBroadcast
     val coefficientDimension1 = coefficientDimension + 1
     val coefficients1 = Coefficients.initializeZeroCoefficients(coefficientDimension1)
     val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(coefficients1), featureShardId)
-    assertTrue(!fixedEffectModel.equals(fixedEffectModelWithDiffCoefficientsRDD))
+    assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
   }
 }

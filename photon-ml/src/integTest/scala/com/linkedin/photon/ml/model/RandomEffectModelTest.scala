@@ -15,13 +15,13 @@
 package com.linkedin.photon.ml.model
 
 import org.testng.annotations.Test
-import org.testng.Assert.assertTrue
+import org.testng.Assert._
 
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 
 /**
- * @author xazhang
+ * Test the random effect model
  */
 class RandomEffectModelTest extends SparkTestUtils {
 
@@ -42,29 +42,29 @@ class RandomEffectModelTest extends SparkTestUtils {
     val randomEffectModel = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
 
     // Should equal to itself
-    assertTrue(randomEffectModel.equals(randomEffectModel))
+    assertEquals(randomEffectModel, randomEffectModel)
 
     // Should equal to the random effect model with same featureShardId, randomEffectId and coefficientsRDD
     val randomEffectModelCopy = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
-    assertTrue(randomEffectModel.equals(randomEffectModelCopy))
+    assertEquals(randomEffectModel, randomEffectModelCopy)
 
     // Should not equal to the random effect model with different featureShardId
     val featureShardId1 = "featureShardId1"
     val randomEffectModelWithDiffFeatureShardId =
       new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId1)
-    assertTrue(!randomEffectModel.equals(randomEffectModelWithDiffFeatureShardId))
+    assertNotEquals(randomEffectModel, randomEffectModelWithDiffFeatureShardId)
 
     // Should not equal to the random effect model with different randomEffectId
     val randomEffectId1 = "randomEffectId1"
     val randomEffectModelWithDiffRandomEffectShardId =
       new RandomEffectModel(coefficientsRDD, randomEffectId1, featureShardId)
-    assertTrue(!randomEffectModel.equals(randomEffectModelWithDiffRandomEffectShardId))
+    assertNotEquals(randomEffectModel, randomEffectModelWithDiffRandomEffectShardId)
 
     // Should not equal to the random effect model with different coefficientsRDD
     val numCoefficients1 = numCoefficients + 1
     val coefficientsRDD1 = sc.parallelize(Seq.tabulate(numCoefficients1)(i => (i.toString, coefficients)))
     val randomEffectModelWithDiffCoefficientsRDD =
       new RandomEffectModel(coefficientsRDD1, randomEffectId, featureShardId)
-    assertTrue(!randomEffectModel.equals(randomEffectModelWithDiffCoefficientsRDD))
+    assertNotEquals(randomEffectModel, randomEffectModelWithDiffCoefficientsRDD)
   }
 }
