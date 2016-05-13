@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.avro
 
 import scala.collection.Map
 
-import breeze.linalg.{SparseVector, DenseVector}
+import breeze.linalg.{SparseVector, DenseVector, Vector}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -29,6 +29,8 @@ import com.linkedin.photon.ml.model.Coefficients
  */
 class AvroUtilsTest {
 
+  // Test both the convertCoefficientsToBayesianLinearModelAvro and readMeanOfCoefficientsFromBayesianLinearModelAvro
+  // functions
   @Test
   def testCoefficientsAndBayesianLinearModelAvroRecordConversion(): Unit = {
 
@@ -44,19 +46,40 @@ class AvroUtilsTest {
     val nameAndTermToIntMap = intToNameAndTermMap.map(_.swap)
 
     // Convert the sparse coefficients to Avro record, and convert it back to coefficients
-    val sparseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(sparseCoefficients,
+    val sparseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvro(sparseCoefficients,
       modelId, intToNameAndTermMap)
-    val recoveredSparseVector = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(sparseCoefficientsAvro,
+    val recoveredSparseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(sparseCoefficientsAvro,
       nameAndTermToIntMap)
     val recoveredSparseCoefficients = Coefficients(recoveredSparseVector)
     assertEquals(sparseCoefficients, recoveredSparseCoefficients)
 
     // Convert the dense coefficients to Avro record, and convert it back to coefficients
-    val denseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(denseCoefficients,
+    val denseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvro(denseCoefficients,
       modelId, intToNameAndTermMap)
-    val recoveredDenseVector = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(denseCoefficientsAvro,
+    val recoveredDenseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(denseCoefficientsAvro,
       nameAndTermToIntMap)
     val recoveredDenseCoefficients = Coefficients(recoveredDenseVector)
     assertEquals(denseCoefficients, recoveredDenseCoefficients)
+  }
+
+  // Test both the convertLatentFactorAsLatentFactorAvro and readLatentFactorFromLatentFactorAvro functions
+  @Test
+  def testLatentFactorAndLatentFactorAvroRecordConversion(): Unit = {
+    // Meta data
+    val effectId = "effectId"
+
+    // Case 1: latentFactor of length 0
+    val emptyLatentFactor = Vector.fill[Double](size = 0)(0)
+    val emptyLatentFactorAvro = AvroUtils.convertLatentFactorToLatentFactorAvro(effectId, emptyLatentFactor)
+    val recoveredEmptyLatentFactor = AvroUtils.convertLatentFactorAvroToLatentFactor(emptyLatentFactorAvro)
+    assertEquals(recoveredEmptyLatentFactor._1, effectId)
+    assertEquals(recoveredEmptyLatentFactor._2, emptyLatentFactor)
+
+    // Case 2: latentFactor of length > 0
+    val latentFactor = Vector.tabulate[Double](size = 10)(i => i)
+    val latentFactorAvro = AvroUtils.convertLatentFactorToLatentFactorAvro(effectId, latentFactor)
+    val recoveredLatentFactor = AvroUtils.convertLatentFactorAvroToLatentFactor(latentFactorAvro)
+    assertEquals(recoveredLatentFactor._1, effectId)
+    assertEquals(recoveredLatentFactor._2, latentFactor)
   }
 }

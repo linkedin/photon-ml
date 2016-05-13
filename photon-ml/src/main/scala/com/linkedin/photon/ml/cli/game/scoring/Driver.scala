@@ -55,7 +55,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   protected def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
 
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
-    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.loadFromTextFiles(
+    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
       featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
 
     val featureShardIdToFeatureMapMap =

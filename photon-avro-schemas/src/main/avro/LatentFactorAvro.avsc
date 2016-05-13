@@ -1,0 +1,21 @@
+{
+    "name": "LatentFactorAvro",
+    "namespace": "com.linkedin.photon.ml.avro.generated",
+    "type": "record",
+    "doc": "a generic schema to describe a latent factor used in the matrix factorization model",
+    "fields": [
+        {
+            "name": "effectId",
+            "type": "string",
+            "doc": "The corresponding id for this latent factor, depends on the context, the id could be the rowId, colId, memberId, or itemId."
+        },
+        {
+            "name": "latentFactor",
+            "type": {
+                "type": "array",
+                "items": "double"
+            },
+            "doc": "The latent factor learned from a matrix factorization model."
+        }
+    ]
+}

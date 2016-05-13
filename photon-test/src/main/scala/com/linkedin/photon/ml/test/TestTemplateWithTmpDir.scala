@@ -35,7 +35,7 @@ trait TestTemplateWithTmpDir {
 }
 
 private object TestTemplateWithTmpDir {
-  private val _tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
+  private def _tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
     protected override def initialValue(): String = {
       val parentDir = Paths.get(FileUtils.getTempDirectoryPath)
       val prefix = Thread.currentThread().getId + "-" + System.nanoTime()

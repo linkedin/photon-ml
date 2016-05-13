@@ -22,8 +22,8 @@ import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 
 /**
  * Representation of a matrix factorization model
- * @param rowEffectType The type of the row effect (or the matrix row's name)
- * @param colEffectType The type of the column effect (or the matrix col's name)
+ * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
+ * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
  * @param rowLatentFactors Latent factors for row effect
  * @param colLatentFactors Latent factors for column effect
  */
@@ -36,7 +36,14 @@ class MatrixFactorizationModel(
   /**
    * Number of latent factors of the matrix factorization model (or the rank)
    */
-  lazy val numLatentFactors = rowLatentFactors.first()._2.length
+  lazy val numLatentFactors =
+    if (!rowLatentFactors.isEmpty()) {
+      rowLatentFactors.first()._2.length
+    } else if (!colLatentFactors.isEmpty()) {
+      colLatentFactors.first()._2.length
+    } else {
+      0
+    }
 
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
     MatrixFactorizationModel.score(dataPoints, rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)

@@ -16,23 +16,23 @@ package com.linkedin.photon.ml.avro.model
 
 import scala.collection.Map
 
+import breeze.linalg.Vector
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.model.{Coefficients, RandomEffectModel, FixedEffectModel, Model}
+import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.util.{IOUtils, Utils}
 
 
 /**
  * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
  * using Avro format.
- * @author xazhang
  */
 //TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
 //classes/functons are decoupled from the rest of code
@@ -69,7 +69,6 @@ object ModelProcessingUtils {
           val featureIndexToNameAndTermMap = featureShardIdToFeatureSwappedMapBroadcastMap(featureShardId).value
           val coefficients = fixedEffectModel.coefficients
           saveCoefficientsToHDFS(coefficients, featureIndexToNameAndTermMap, coefficientsOutputDir, sparkContext)
-
         case randomEffectModel: RandomEffectModel =>
           val randomEffectId = randomEffectModel.randomEffectId
           val featureShardId = randomEffectModel.featureShardId
@@ -84,26 +83,6 @@ object ModelProcessingUtils {
             randomEffectModelOutputDir, numberOfOutputFilesForRandomEffectModel, configuration)
       }
     }
-  }
-
-  private def saveRandomEffectModelToHDFS(
-      randomEffectModel: RandomEffectModel,
-      featureIndexToNameAndTermMapBroadcast: Broadcast[Map[Int, NameAndTerm]],
-      randomEffectModelOutputDir: Path,
-      numberOfOutputFilesForRandomEffectModel: Int,
-      configuration: Configuration): Unit = {
-    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
-
-    //Write the coefficientsRDD
-    val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, COEFFICIENTS).toString
-    val coefficientsRDD =
-      if (numberOfOutputFilesForRandomEffectModel > 0){
-        // Control the number of output files by re-partitioning the RDD.
-        randomEffectModel.coefficientsRDD.repartition(numberOfOutputFilesForRandomEffectModel)
-      } else {
-        randomEffectModel.coefficientsRDD
-      }
-    saveCoefficientsRDDToHDFS(coefficientsRDD, featureIndexToNameAndTermMapBroadcast, coefficientsRDDOutputDir)
   }
 
   protected[ml] def loadGameModelFromHDFS(
@@ -162,13 +141,33 @@ object ModelProcessingUtils {
     fixedEffectModels ++ randomEffectModels
   }
 
+  private def saveRandomEffectModelToHDFS(
+    randomEffectModel: RandomEffectModel,
+    featureIndexToNameAndTermMapBroadcast: Broadcast[Map[Int, NameAndTerm]],
+    randomEffectModelOutputDir: Path,
+    numberOfOutputFilesForRandomEffectModel: Int,
+    configuration: Configuration): Unit = {
+    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
+
+    //Write the coefficientsRDD
+    val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, COEFFICIENTS).toString
+    val coefficientsRDD =
+      if (numberOfOutputFilesForRandomEffectModel > 0){
+        // Control the number of output files by re-partitioning the RDD.
+        randomEffectModel.coefficientsRDD.coalesce(numberOfOutputFilesForRandomEffectModel)
+      } else {
+        randomEffectModel.coefficientsRDD
+      }
+    saveCoefficientsRDDToHDFS(coefficientsRDD, featureIndexToNameAndTermMapBroadcast, coefficientsRDDOutputDir)
+  }
+
   private def saveCoefficientsToHDFS(
       coefficients: Coefficients,
       featureIndexToNameAndTermMap: Map[Int, NameAndTerm],
       outputDir: String,
       sparkContext: SparkContext): Unit = {
 
-    val bayesianLinearModelAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(coefficients, FIXED_EFFECT,
+    val bayesianLinearModelAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvro(coefficients, FIXED_EFFECT,
       featureIndexToNameAndTermMap)
     val coefficientsOutputPath = new Path(outputDir, DEFAULT_AVRO_FILE_NAME).toString
     AvroIOUtils.saveAsSingleAvro(sparkContext, Seq(bayesianLinearModelAvro), coefficientsOutputPath,
@@ -185,7 +184,7 @@ object ModelProcessingUtils {
     val linearModelAvroSchema = BayesianLinearModelAvro.getClassSchema.toString
     val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sparkContext, coefficientsPath,
       linearModelAvroSchema).head
-    val means = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(linearModelAvro, featureNameAndTermToIndexMap)
+    val means = AvroUtils.convertBayesianLinearModelAvroToMeanVector(linearModelAvro, featureNameAndTermToIndexMap)
     Coefficients(means, variancesOption = None)
   }
 
@@ -195,7 +194,7 @@ object ModelProcessingUtils {
       outputDir: String): Unit = {
 
     val linearModelAvro = coefficientsRDD.map { case (modelId, coefficients) =>
-      AvroUtils.convertCoefficientsToBayesianLinearModelAvroRecord(coefficients, modelId, featureIndexToNameAndTermMapBroadcast.value)
+      AvroUtils.convertCoefficientsToBayesianLinearModelAvro(coefficients, modelId, featureIndexToNameAndTermMapBroadcast.value)
     }
     AvroIOUtils.saveAsAvro(linearModelAvro, outputDir, BayesianLinearModelAvro.getClassSchema.toString)
   }
@@ -211,7 +210,7 @@ object ModelProcessingUtils {
     modelAvros.map { modelAvro =>
       val modelId = modelAvro.getModelId.toString
       val nameAndTermFeatureMap = featureIndexToNameAndTermMapBroadcast.value
-      val means = AvroUtils.parseMeanVectorFromBayesianLinearModelAvroRecord(modelAvro, nameAndTermFeatureMap)
+      val means = AvroUtils.convertBayesianLinearModelAvroToMeanVector(modelAvro, nameAndTermFeatureMap)
       (modelId, Coefficients(means, variancesOption = None))
     }
   }
@@ -262,5 +261,72 @@ object ModelProcessingUtils {
 
       ((effectId, featureShardId), combinedModel)
     }
+  }
+
+  /**
+   * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files
+   * @param matrixFactorizationModel The given matrix factorization model
+   * @param outputDir The HDFS output directory for the matrix factorization model
+   * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix 
+   *                       factorization model
+   * @param sparkContext The Spark context
+   */
+  protected[ml] def saveMatrixFactorizationModelToHDFS(
+    matrixFactorizationModel: MatrixFactorizationModel,
+    outputDir: String,
+    numOutputFiles: Int,
+    sparkContext: SparkContext): Unit = {
+
+    val rowLatentFactors = matrixFactorizationModel.rowLatentFactors
+    val rowEffectType = matrixFactorizationModel.rowEffectType
+    val rowLatentFactorsOutputDir = new Path(outputDir, rowEffectType).toString
+    val rowLatentFactorsAvro = rowLatentFactors.coalesce(numOutputFiles).map { case (rowId, latentFactor) =>
+      AvroUtils.convertLatentFactorToLatentFactorAvro(rowId, latentFactor)
+    }
+    AvroIOUtils.saveAsAvro(rowLatentFactorsAvro, rowLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
+
+    val colLatentFactors = matrixFactorizationModel.colLatentFactors
+    val colEffectType = matrixFactorizationModel.colEffectType
+    val colLatentFactorsOutputDir = new Path(outputDir, colEffectType).toString
+    val colLatentFactorsAvro = colLatentFactors.coalesce(numOutputFiles).map { case (colId, latentFactor) =>
+      AvroUtils.convertLatentFactorToLatentFactorAvro(colId, latentFactor)
+    }
+    AvroIOUtils.saveAsAvro(colLatentFactorsAvro, colLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
+  }
+
+  private def loadLatentFactorsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, Vector[Double])] = {
+    val minNumPartitions = sparkContext.defaultParallelism
+    val modelAvros = AvroIOUtils.readFromAvro[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
+    modelAvros.map(AvroUtils.convertLatentFactorAvroToLatentFactor)
+  }
+
+  /**
+   * Load the matrix factorization model of type [[MatrixFactorizationModel]] from the Avro files on HDFS
+   * @param inputDir The input directory of the Avro files on HDFS
+   * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
+   * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
+   * @param sparkContext The Spark context
+   * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
+   */
+  protected[ml] def loadMatrixFactorizationModelFromHDFS(
+    inputDir: String,
+    rowEffectType: String,
+    colEffectType: String,
+    sparkContext: SparkContext): MatrixFactorizationModel = {
+
+    val configuration = sparkContext.hadoopConfiguration
+    val inputDirAsPath = new Path(inputDir)
+    val fs = inputDirAsPath.getFileSystem(configuration)
+    assert(fs.exists(inputDirAsPath),
+      s"Specified input directory $inputDir for matrix factorization model is not found!")
+    val rowLatentFactorsPath = new Path(inputDir, rowEffectType)
+    assert(fs.exists(rowLatentFactorsPath),
+      s"Specified input directory $rowLatentFactorsPath for row latent factors is not found!")
+    val rowLatentFactors = loadLatentFactorsFromHDFS(rowLatentFactorsPath.toString, sparkContext)
+    val colLatentFactorsPath = new Path(inputDir, colEffectType)
+    assert(fs.exists(colLatentFactorsPath),
+      s"Specified input directory $colLatentFactorsPath for column latent factors is not found!")
+    val colLatentFactors = loadLatentFactorsFromHDFS(colLatentFactorsPath.toString, sparkContext)
+    new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
   }
 }

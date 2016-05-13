@@ -31,37 +31,14 @@ import com.linkedin.photon.ml.test.SparkTestUtils
  */
 class MatrixFactorizationModelTest extends SparkTestUtils {
 
-  // Generate a latent factor of zeros
-  private def generateZerosLatentFactor(numLatentFactors: Int): Vector[Double] = {
-    Vector.zeros[Double](numLatentFactors)
-  }
-
-  // Generate a latent factor with random numbers
-  private def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] = {
-    Vector.fill(numLatentFactors)(random.nextDouble())
-  }
-
-  // Generate a matrix factorization model with the given specs
-  private def generateMatrixFactorizationModel(
-    numRows: Int,
-    numCols: Int,
-    rowEffectType: String,
-    colEffectType: String,
-    rowFactorGenerator: => Vector[Double],
-    colFactorGenerator: => Vector[Double],
-    sparkContext: SparkContext): MatrixFactorizationModel = {
-
-    val rowLatentFactors =
-      sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
-    val colLatentFactors =
-      sparkContext.parallelize(Seq.tabulate(numRows)(j => (j.toString, colFactorGenerator)))
-    new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
-  }
+  import MatrixFactorizationModelTest._
 
   @DataProvider
   def matrixFactorizationConfigProvider():Array[Array[Any]] = {
     Array(
-      Array(1, 2, 2),
+      Array(1, 1, 0),
+      Array(1, 0, 1),
+      Array(1, 1, 1),
       Array(5, 10, 10)
     )
   }
@@ -145,5 +122,34 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
     val zeroMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
       generateZerosLatentFactor(numLatentFactors), generateZerosLatentFactor(numLatentFactors), sc)
     assertNotEquals(randomMFModel, zeroMFModel)
+  }
+}
+
+object MatrixFactorizationModelTest {
+  // Generate a latent factor of zeros
+  protected[ml] def generateZerosLatentFactor(numLatentFactors: Int): Vector[Double] = {
+    Vector.zeros[Double](numLatentFactors)
+  }
+
+  // Generate a latent factor with random numbers
+  protected[ml] def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] = {
+    Vector.fill(numLatentFactors)(random.nextDouble())
+  }
+
+  // Generate a matrix factorization model with the given specs
+  protected[ml] def generateMatrixFactorizationModel(
+    numRows: Int,
+    numCols: Int,
+    rowEffectType: String,
+    colEffectType: String,
+    rowFactorGenerator: => Vector[Double],
+    colFactorGenerator: => Vector[Double],
+    sparkContext: SparkContext): MatrixFactorizationModel = {
+
+    val rowLatentFactors =
+      sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
+    val colLatentFactors =
+      sparkContext.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
+    new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
   }
 }
