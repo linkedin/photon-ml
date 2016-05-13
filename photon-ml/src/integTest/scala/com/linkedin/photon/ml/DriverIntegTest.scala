@@ -74,6 +74,28 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
   }
 
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testRunEmptyTrainingSet(): Unit = sparkTestSelfServeContext("testRunEmptyTrainingSet") {
+    val tmpDir = getTmpDir + "/testRunEmptyTrainingSet"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, tmpDir)
+
+    // Training data with empty feature vectors
+    args(1) = TEST_DIR + "/input/empty.avro"
+
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "TRON"
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += "10"
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      expectedStages = Array(),
+      expectedNumFeatures = 0,
+      expectedNumTrainingData = 0,
+      expectedIsSummarized = false)
+  }
+
   @Test
   def testRunWithOffHeapMap(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
     val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
