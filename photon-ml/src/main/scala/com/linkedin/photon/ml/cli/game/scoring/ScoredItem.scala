@@ -15,8 +15,19 @@
 package com.linkedin.photon.ml.cli.game.scoring
 
 /**
- * @author xazhang
- */
-case class ScoredItem(ids: Iterable[String], score: Double, label: Double) {
-  override def toString: String = s"${ids.mkString("\t")}\t$score\t$label\t"
+  * A compact representation of the scored item
+  * @param uid A uid that can be used to uniquely characterize the scored item
+  * @param predictionScore Score predicted by the model
+  */
+case class ScoredItem(uid: String, predictionScore: Double) {
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: ScoredItem => uid == other.uid && predictionScore == other.predictionScore
+      case _ => false
+    }
+  }
+
+  override def hashCode(): Int = {
+    uid.hashCode() ^ predictionScore.hashCode()
+  }
 }

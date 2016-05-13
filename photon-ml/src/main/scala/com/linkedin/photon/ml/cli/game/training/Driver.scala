@@ -14,28 +14,26 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.io.ModelOutputMode
 import org.apache.spark.rdd.RDD
-
 import scala.collection.Map
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.avro.data.{NameAndTerm, DataProcessingUtils, NameAndTermFeatureSetContainer}
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.optimization.game.{
-  FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem, OptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, OptimizationProblem,
+  RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._
 
@@ -124,14 +122,19 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
 
     val records = AvroUtils.readAvroFiles(sparkContext, trainingRecordsPath, numPartitions)
+    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
     val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(records,
-      featureShardIdToFeatureSectionKeysMap, featureShardIdToFeatureMapMap, randomEffectIdSet)
-        .partitionBy(globalDataPartitioner)
-        .setName("GAME training data")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
+      recordsWithUniqueId,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapMap,
+      randomEffectIdSet,
+      isResponseRequired = true)
+      .partitionBy(globalDataPartitioner)
+      .setName("GAME training data")
+      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     gameDataSet.count()
     gameDataSet
   }
@@ -246,13 +249,18 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
 
     val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
+    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val partitioner = new LongHashPartitioner(records.partitions.length)
     // filter out features that validating data are included in the black list
     val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-    val gameDataSet = DataProcessingUtils
-        .getGameDataSetFromGenericRecords(records, featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapMap, randomEffectIdSet).partitionBy(partitioner).setName("Validating Game data set")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
+      recordsWithUniqueId,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapMap,
+      randomEffectIdSet,
+      isResponseRequired = true)
+      .partitionBy(partitioner).setName("Validating Game data set")
+      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     // Log some simple summary info on the Game data set
     logger.debug(s"Summary for the validating Game data set")

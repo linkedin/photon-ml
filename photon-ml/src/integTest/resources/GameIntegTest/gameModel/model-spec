@@ -1,0 +1,4 @@
+global -> maxNumberIterations: 10	convergenceTolerance: 1.0E-5	regularizationWeight: 10.0	downSamplingRate: 1.0	optimizerType: TRON	regularizationType: L2
+user -> maxNumberIterations: 5	convergenceTolerance: 1.0E-5	regularizationWeight: 1.0	downSamplingRate: 1.0	optimizerType: TRON	regularizationType: L2
+song -> maxNumberIterations: 5	convergenceTolerance: 1.0E-5	regularizationWeight: 10.0	downSamplingRate: 1.0	optimizerType: TRON	regularizationType: L2
+

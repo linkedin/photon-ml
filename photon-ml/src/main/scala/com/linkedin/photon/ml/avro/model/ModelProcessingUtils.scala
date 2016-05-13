@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.util.{IOUtils, Utils}
  * using Avro format.
  */
 //TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
-//classes/functons are decoupled from the rest of code
+//classes/functions are decoupled from the rest of code
 object ModelProcessingUtils {
 
   import com.linkedin.photon.ml.avro.Constants._
@@ -199,7 +199,8 @@ object ModelProcessingUtils {
       outputDir: String): Unit = {
 
     val linearModelAvro = coefficientsRDD.map { case (modelId, coefficients) =>
-      AvroUtils.convertCoefficientsToBayesianLinearModelAvro(coefficients, modelId, featureIndexToNameAndTermMapBroadcast.value)
+      AvroUtils.convertCoefficientsToBayesianLinearModelAvro(coefficients, modelId,
+        featureIndexToNameAndTermMapBroadcast.value)
     }
     AvroIOUtils.saveAsAvro(linearModelAvro, outputDir, BayesianLinearModelAvro.getClassSchema.toString)
   }
