@@ -20,6 +20,7 @@ import java.util.{List => JList}
 
 import scala.collection.JavaConversions._
 import scala.collection.{Set, Map, mutable}
+import scala.collection.JavaConverters._
 
 import breeze.linalg.{Vector, DenseVector, SparseVector}
 import org.apache.avro.generic.GenericRecord
@@ -119,20 +120,12 @@ object AvroUtils {
     genericRecords: RDD[GenericRecord],
     featureSectionKey: String): Set[NameAndTerm] = {
 
-    genericRecords.flatMap(_.get(featureSectionKey) match { case recordList: JList[_] =>
-      val nnz = recordList.size
-      val featureNameAndTermBuf = new mutable.ArrayBuffer[NameAndTerm](nnz)
-      val iterator = recordList.iterator
-      while (iterator.hasNext) {
-        iterator.next match {
-          case record: GenericRecord =>
-            val featureNameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
-            featureNameAndTermBuf += featureNameAndTerm
-          case any => throw new IllegalArgumentException(s"$any in features list is not a record")
-        }
+    genericRecords.flatMap(_.get(featureSectionKey) match {
+      case recordList: JList[_] => recordList.asScala.map {
+        case record: GenericRecord => AvroUtils.readNameAndTermFromGenericRecord(record)
+        case any => throw new IllegalArgumentException(s"$any in features list is not a record")
       }
-      featureNameAndTermBuf
-    case _ => throw new IllegalArgumentException(s"$featureSectionKey is not a list (and might be null)")
+      case _ => throw new IllegalArgumentException(s"$featureSectionKey is not a list (and might be null)")
     }).distinct().collect().toSet
   }
 
@@ -174,7 +167,7 @@ object AvroUtils {
   }
 
   /**
-   * Convert the Avro record of type [[BayesianLinearModelAvro]] to the mean of coefficients of type [[Coefficients]] 
+   * Convert the Avro record of type [[BayesianLinearModelAvro]] to the mean of coefficients of type [[Coefficients]]
    * @param bayesianLinearModelAvro the input Avro record
    * @param nameAndTermToIntMap the map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    * @return the mean of the coefficients converted from the Avro record
@@ -218,7 +211,7 @@ object AvroUtils {
   }
 
   /**
-   * Convert the given Avro record of type [[LatentFactorAvro]] to the latent factor of type [[Vector[Double]]] 
+   * Convert the given Avro record of type [[LatentFactorAvro]] to the latent factor of type [[Vector[Double]]]
    * @param latentFactorAvro The given Avro record
    * @return The (effectId, latentFactor) pair converted from the input Avro record
    */
