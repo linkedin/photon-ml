@@ -188,8 +188,8 @@ object NameAndTermFeatureSetContainer {
 
     val inputRecordsPath = adjustedDateRangeOpt match {
       case Some(dateRange) =>
-        val Array(startDate, endDate) = dateRange.split("-")
-        IOUtils.getInputPathsWithinDateRange(inputDirs, startDate, endDate, sparkContext.hadoopConfiguration,
+        val range = DateRange.fromDates(dateRange)
+        IOUtils.getInputPathsWithinDateRange(inputDirs, range, sparkContext.hadoopConfiguration,
           errorOnMissing = false)
       case None => inputDirs.toSeq
     }

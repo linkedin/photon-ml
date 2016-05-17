@@ -81,8 +81,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     val recordsPath = dateRangeOpt match {
       case Some(dateRange) =>
-        val Array(startDate, endDate) = dateRange.split("-")
-        IOUtils.getInputPathsWithinDateRange(inputDirs, startDate, endDate, hadoopConfiguration, errorOnMissing = false)
+        val range = DateRange.fromDates(dateRange)
+        IOUtils.getInputPathsWithinDateRange(inputDirs, range, hadoopConfiguration, errorOnMissing = false)
       case None => inputDirs.toSeq
     }
     logger.debug(s"Avro records paths:\n${recordsPath.mkString("\n")}")

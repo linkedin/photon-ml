@@ -82,11 +82,26 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   protected[training] def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
   : RDD[(Long, GameDatum)] = {
 
-    val trainingRecordsPath = trainDateRangeOpt match {
-      case Some(trainDateRange) =>
-        val Array(startDate, endDate) = trainDateRange.split("-")
-        IOUtils.getInputPathsWithinDateRange(trainDirs, startDate, endDate, hadoopConfiguration, errorOnMissing = false)
-      case None => trainDirs.toSeq
+    // Get the training records path
+    val trainingRecordsPath = (trainDateRangeOpt, trainDateRangeDaysAgoOpt) match {
+      // Specified as date range
+      case (Some(trainDateRange), None) =>
+        val dateRange = DateRange.fromDates(trainDateRange)
+        IOUtils.getInputPathsWithinDateRange(trainDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+      // Specified as a range of start days ago - end days ago
+      case (None, Some(trainDateRangeDaysAgo)) =>
+        val dateRange = DateRange.fromDaysAgo(trainDateRangeDaysAgo)
+        IOUtils.getInputPathsWithinDateRange(trainDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+      // Both types specified: illegal
+      case (Some(_), Some(_)) =>
+        throw new IllegalArgumentException(
+          "Both trainDateRangeOpt and trainDateRangeDaysAgoOpt given. You must specify date ranges using only one " +
+          "format.")
+
+      // No range specified, just use the train dir
+      case (None, None) => trainDirs.toSeq
     }
     logger.debug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
 
@@ -207,14 +222,28 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameDatum)], Evaluator) = {
 
     // Read and parse the validating activities
-    val validatingRecordsPath = validateDateRangeOpt match {
-      case Some(validateDateRange) =>
-        val Array(startDate, endDate) = validateDateRange.split("-")
-        IOUtils.getInputPathsWithinDateRange(validatingDirs, startDate, endDate, sparkContext.hadoopConfiguration,
-          errorOnMissing = false)
-      case None => validatingDirs.toSeq
+    val validatingRecordsPath = (validateDateRangeOpt, validateDateRangeDaysAgoOpt) match {
+      // Specified as date range
+      case (Some(validateDateRange), None) =>
+        val dateRange = DateRange.fromDates(validateDateRange)
+        IOUtils.getInputPathsWithinDateRange(validatingDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+      // Specified as a range of start days ago - end days ago
+      case (None, Some(validateDateRangeDaysAgo)) =>
+        val dateRange = DateRange.fromDaysAgo(validateDateRangeDaysAgo)
+        IOUtils.getInputPathsWithinDateRange(validatingDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+      // Both types specified: illegal
+      case (Some(_), Some(_)) =>
+        throw new IllegalArgumentException(
+          "Both trainDateRangeOpt and trainDateRangeDaysAgoOpt given. You must specify date ranges using only one " +
+          "format.")
+
+      // No range specified, just use the train dir
+      case (None, None) => validatingDirs.toSeq
     }
     logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
+
     val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
     val partitioner = new LongHashPartitioner(records.partitions.length)
     // filter out features that validating data are included in the black list
