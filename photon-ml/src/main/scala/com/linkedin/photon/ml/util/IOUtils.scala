@@ -21,6 +21,7 @@ import scala.collection.mutable
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.joda.time.Days
+import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
 
 /**
@@ -32,34 +33,44 @@ protected[ml] object IOUtils {
 
   def getInputPathsWithinDateRange(
       inputDirs: Seq[String],
-      startDate: String,
-      endDate: String,
+      dateRange: DateRange,
       configuration: Configuration,
       errorOnMissing: Boolean): Seq[String] = {
 
-    inputDirs.map(inputDir => getInputPathsWithinDateRange(inputDir, startDate, endDate, configuration, errorOnMissing))
+    inputDirs.map(inputDir => getInputPathsWithinDateRange(inputDir, dateRange, configuration, errorOnMissing))
         .reduce(_ ++ _)
   }
 
-  def getInputPathsWithinDateRange(
+  /**
+   * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
+   * behavior can be changed with the "errorOnMissing" parameter.
+   *
+   * @param inputDirs the base path for input files
+   * @param dateRange date range for finding input files
+   * @param configuration Hadoop configuration
+   * @param errorOnMissing if true, the method will throw when a date has no corresponding input file
+   * @return a sequence of matching file paths
+   */
+  protected def getInputPathsWithinDateRange(
       inputDirs: String,
-      startDate: String,
-      endDate: String,
+      dateRange: DateRange,
       configuration: Configuration,
       errorOnMissing: Boolean): Seq[String] = {
 
     val dailyDir = new Path(inputDirs, "daily")
-    val from = DateTimeFormat.forPattern("yyyyMMdd").parseLocalDate(startDate)
-    val until = DateTimeFormat.forPattern("yyyyMMdd").parseLocalDate(endDate)
-    val numberOfDays = Days.daysBetween(from, until).getDays
+    val numberOfDays = Days.daysBetween(dateRange.startDate, dateRange.endDate).getDays
     val paths = (0 to numberOfDays).map { day =>
-      new Path(dailyDir, from.plusDays(day).toString("yyyy/MM/dd"))
+      new Path(dailyDir, dateRange.startDate.plusDays(day).toString("yyyy/MM/dd"))
     }
+
     if (errorOnMissing) {
-      paths.foreach(path => assert(path.getFileSystem(configuration).exists(path), s"Path $path does not exist!"))
+      paths.foreach(path => require(path.getFileSystem(configuration).exists(path), s"Path $path does not exist!"))
     }
+
     val existingPaths = paths.filter(path => path.getFileSystem(configuration).exists(path))
-    assert(existingPaths.nonEmpty, s"No data folder found between $startDate and $endDate in $dailyDir")
+    require(existingPaths.nonEmpty,
+      s"No data folder found between $dateRange.startDate and $dateRange.endDate in $dailyDir")
+
     existingPaths.map(_.toString)
   }
 

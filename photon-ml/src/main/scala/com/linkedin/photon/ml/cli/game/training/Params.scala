@@ -33,6 +33,11 @@ import com.linkedin.photon.ml.supervised.TaskType._
  *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
  *                          Otherwise, the input paths are assumed to be flat directories of input files
  *                          (e.g., trainDir/input-data-files)."
+ * @param trainDateRangeDaysAgoOpt Date range for the training data represented in the form start.daysAgo-end.daysAgo,
+ *                          e.g. 90-1. If trainDateRangeDaysAgoOpt is specified, the input directory is expected
+ *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
+ *                          Otherwise, the input paths are assumed to be flat directories of input files
+ *                          (e.g., trainDir/input-data-files)."
  * @param validateDirsOpt Input directories of validating data. Multiple input directories are also accepted if they
  *                        are separated by commas, e.g., inputDir1,inputDir2,inputDir3.
  * @param validateDateRangeOpt Date range for the training data represented in the form start.date-end.date,
@@ -40,6 +45,12 @@ import com.linkedin.photon.ml.supervised.TaskType._
  *                             expected to be in the daily format structure
  *                             (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are
  *                             assumed to be flat directories of input files (e.g., validateDir/input-data-files)."
+ * @param validateDateRangeDaysAgoOpt Date range for the training data represented in the form
+ *                                    start.daysAgo-end.daysAgo, e.g. 90-1. If validateDateRangeDaysAgoOpt is specified,
+ *                                    the input directory is expected to be in the daily format structure (e.g.,
+ *                                    validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are
+ *                                    assumed to be flat directories of input files (e.g.,
+ *                                    validateDir/input-data-files)."
  * @param minPartitionsForValidation Minimum number of partitions for validating data (if provided).
  * @param featureNameAndTermSetInputPath Input path to the features name-and-term lists.
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
@@ -71,8 +82,10 @@ import com.linkedin.photon.ml.supervised.TaskType._
 case class Params(
     trainDirs: Array[String] = Array(),
     trainDateRangeOpt: Option[String] = None,
+    trainDateRangeDaysAgoOpt: Option[String] = None,
     validateDirsOpt: Option[Array[String]] = None,
     validateDateRangeOpt: Option[String] = None,
+    validateDateRangeDaysAgoOpt: Option[String] = None,
     minPartitionsForValidation: Int = 1,
     featureNameAndTermSetInputPath: String = "",
     featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]] = Map(),
@@ -93,8 +106,10 @@ case class Params(
   override def toString: String = {
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
         s"trainDateRangeOpt: $trainDateRangeOpt\n" +
+        s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt\n" +
         s"validateDirsOpt: ${validateDirsOpt.map(_.mkString(", "))}\n" +
         s"validateDateRangeOpt: $validateDateRangeOpt\n" +
+        s"validateDateRangeDaysAgoOpt: $validateDateRangeDaysAgoOpt\n" +
         s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
         s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
         s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
@@ -137,6 +152,13 @@ object Params {
           s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
           s"Default: ${defaultParams.trainDateRangeOpt}.")
           .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
+      opt[String]("train-date-range-days-ago")
+          .text(s"Date range for the training data represented in the form start.daysAgo-end.daysAgo, " +
+          s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
+          s"Default: ${defaultParams.trainDateRangeDaysAgoOpt}.")
+          .action((x, c) => c.copy(trainDateRangeDaysAgoOpt = Some(x)))
       opt[String]("validate-input-dirs")
           .text("Input directories of validating data. Multiple input directories are also accepted if they are " +
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
@@ -148,6 +170,13 @@ object Params {
           s"are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
           s"Default: ${defaultParams.validateDateRangeOpt}.")
           .action((x, c) => c.copy(validateDateRangeOpt = Some(x)))
+      opt[String]("validate-date-range-days-ago")
+          .text(s"Date range for the validating data represented in the form start.daysAgo-end.daysAgo, " +
+          s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
+          s"Default: ${defaultParams.validateDateRangeDaysAgoOpt}.")
+          .action((x, c) => c.copy(validateDateRangeDaysAgoOpt = Some(x)))
       opt[Int]("min-partitions-for-validation")
           .text(s"Minimum number of partitions for validating data (if provided). " +
           s"Default: ${defaultParams.minPartitionsForValidation}")
