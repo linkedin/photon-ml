@@ -18,6 +18,9 @@ apply from: '../build-scripts/integration-test.gradle'
 dependencies {
   compile('joda-time:joda-time:2.7')
 
+  // See the "Scala" section, at the bottom here: http://www.joda.org/joda-time/upgradeto270.html
+  compile('org.joda:joda-convert:1.2')
+
   compile('org.apache.avro:avro:1.7.5')
   compile('org.apache.avro:avro-compiler:1.7.5')
   compile('org.apache.avro:avro-mapred:1.7.5')
