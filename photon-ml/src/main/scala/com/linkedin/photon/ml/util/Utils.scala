@@ -39,7 +39,7 @@ protected[ml] object Utils {
    * @return The feature name
    */
   def getFeatureKey(record: GenericRecord, nameKey: String, termKey: String, delimiter: String): String = {
-    val name = getStringAvro(record, nameKey, isNullOK = false)
+    val name = getStringAvro(record, nameKey)
     val term = getStringAvro(record, termKey, isNullOK = true)
     getFeatureKey(name, term, delimiter)
   }
@@ -90,9 +90,11 @@ protected[ml] object Utils {
    * Extract the String typed field with a given key from the Avro GenericRecord
    * @param record the generic record
    * @param key the key of the field
+   * @param isNullOK whether null is accepted. If set to true, then an empty string will be returned if the
+   *                 corresponding field of the key is null, otherwise, exception will be thrown.
    * @return the String typed field
    */
-  def getStringAvro(record: GenericRecord, key: String, isNullOK: Boolean = true): String = {
+  def getStringAvro(record: GenericRecord, key: String, isNullOK: Boolean = false): String = {
     record.get(key) match {
       case id@(_: Utf8 | _: JString) => id.toString
       case number: JNumber => number.toString

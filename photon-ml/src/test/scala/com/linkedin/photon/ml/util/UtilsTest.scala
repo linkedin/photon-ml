@@ -146,15 +146,15 @@ class UtilsTest extends TestTemplateWithTmpDir {
       .setDoubleValue(-4.4d)
       .build()
 
-    assertEquals(Utils.getStringAvro(record, "stringField"), "foo")
-    assertEquals(Utils.getStringAvro(record, "utf8StringField", true), "bar")
-    assertEquals(Utils.getStringAvro(record, "floatField"), "1.1")
-    assertEquals(Utils.getStringAvro(record, "intField", true), "-1")
-    assertEquals(Utils.getStringAvro(record, "longField"), "3")
-    assertEquals(Utils.getStringAvro(record, "doubleField", true), "-4.4")
+    assertEquals(Utils.getStringAvro(record, "stringField", isNullOK = true), "foo")
+    assertEquals(Utils.getStringAvro(record, "utf8StringField"), "bar")
+    assertEquals(Utils.getStringAvro(record, "floatField", isNullOK = true), "1.1")
+    assertEquals(Utils.getStringAvro(record, "intField"), "-1")
+    assertEquals(Utils.getStringAvro(record, "longField", isNullOK = true), "3")
+    assertEquals(Utils.getStringAvro(record, "doubleField"), "-4.4")
 
     // Nullable okay
-    assertEquals(Utils.getStringAvro(EMPTY_RECORD, "stringField", true), "")
+    assertEquals(Utils.getStringAvro(EMPTY_RECORD, "stringField", isNullOK = true), "")
   }
 
   @Test
@@ -252,7 +252,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetStringAvroNullableNotOk(): Unit = {
-    Utils.getStringAvro(EMPTY_RECORD, "stringField", false)
+    Utils.getStringAvro(EMPTY_RECORD, "stringField")
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -307,7 +307,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetStringAvroOtherType(): Unit = {
-    Utils.getStringAvro(FIXED_TYPE_RECORD, "fixedField", true)
+    Utils.getStringAvro(FIXED_TYPE_RECORD, "fixedField", isNullOK = true)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
