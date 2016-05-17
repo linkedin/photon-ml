@@ -85,7 +85,7 @@ object DataProcessingUtils {
     }
 
     val ids = randomEffectIdSet.map { randomEffectId =>
-      (randomEffectId, Utils.getStringAvro(record, randomEffectId, isNullOK = false))
+      (randomEffectId, Utils.getStringAvro(record, randomEffectId))
     }.toMap
     new GameDatum(response, offset, weight, featureShardContainer, ids)
   }

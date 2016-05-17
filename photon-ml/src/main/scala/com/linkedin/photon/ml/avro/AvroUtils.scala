@@ -104,8 +104,8 @@ object AvroUtils {
    * @return The nameAndTerm parsed from the Avro record
    */
   protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
-    val name = Utils.getStringAvro(record, AvroFieldNames.NAME, isNullOK = false)
-    val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = false)
+    val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
+    val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
     NameAndTerm(name, term)
   }
 
