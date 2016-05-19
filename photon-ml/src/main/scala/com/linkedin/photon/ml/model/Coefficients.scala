@@ -66,6 +66,10 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
       case _ => false
     }
   }
+
+  override def hashCode(): Int = {
+    super.hashCode()
+  }
 }
 
 protected[ml] object Coefficients {

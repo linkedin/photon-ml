@@ -108,6 +108,10 @@ protected[ml] class RandomEffectModel(
       case _ => false
     }
   }
+
+  override def hashCode(): Int = {
+    super.hashCode()
+  }
 }
 
 object RandomEffectModel {
