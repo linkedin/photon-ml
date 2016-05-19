@@ -79,6 +79,10 @@ protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coeffi
       case _ => false
     }
   }
+
+  override def hashCode(): Int = {
+    super.hashCode()
+  }
 }
 
 object FixedEffectModel {

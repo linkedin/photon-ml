@@ -67,25 +67,32 @@ class MatrixFactorizationModel(
       case other: MatrixFactorizationModel =>
         val sameMetaData = this.rowEffectType == other.rowEffectType && this.colEffectType == other.colEffectType &&
           this.numLatentFactors == other.numLatentFactors
-        val sameRowLatentFactors = this.rowLatentFactors.fullOuterJoin(other.rowLatentFactors).mapPartitions(iterator =>
-          Iterator.single(iterator.forall { case (_, (rowLatentFactor1, rowLatentFactor2)) =>
-            rowLatentFactor1.isDefined && rowLatentFactor2.isDefined &&
-              rowLatentFactor1.get.equals(rowLatentFactor2.get)
-          })
-        ).filter(!_).count() == 0
-        val sameColLatentFactors = this.colLatentFactors.fullOuterJoin(other.colLatentFactors).mapPartitions(iterator =>
-          Iterator.single(iterator.forall { case (_, (colLatentFactor1, colLatentFactor2)) =>
-            colLatentFactor1.isDefined && colLatentFactor2.isDefined &&
-              colLatentFactor1.get.equals(colLatentFactor2.get)
-          })
-        ).filter(!_).count() == 0
+        val sameRowLatentFactors =
+          MatrixFactorizationModel.isSameLatentFactors(this.rowLatentFactors, other.rowLatentFactors)
+        val sameColLatentFactors =
+          MatrixFactorizationModel.isSameLatentFactors(this.colLatentFactors, other.colLatentFactors)
         sameMetaData && sameRowLatentFactors && sameColLatentFactors
       case _ => false
     }
   }
+
+  override def hashCode(): Int = {
+    super.hashCode()
+  }
 }
 
 object MatrixFactorizationModel {
+
+  protected def isSameLatentFactors(
+    latentFactors1: RDD[(String, Vector[Double])],
+    latentFactors2: RDD[(String, Vector[Double])]): Boolean = {
+    latentFactors1.fullOuterJoin(latentFactors2).mapPartitions(iterator =>
+      Iterator.single(iterator.forall { case (_, (factor1, factor2)) =>
+        factor1.isDefined && factor2.isDefined && factor1.get.equals(factor2.get)
+      })
+    ).filter(!_).count() == 0
+  }
+
   protected def score(
     dataPoints: RDD[(Long, GameDatum)],
     rowEffectType: String,
@@ -112,8 +119,9 @@ object MatrixFactorizationModel {
       // Decorate colEffectId with column latent factors
       .cogroup(colLatentFactors)
       .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsIterable, colLatentFactorIterable)) =>
-      assert(colLatentFactorIterable.size <= 1, s"More than one column latent factor (${colLatentFactorIterable.size}) " +
-        s"found for random effect Id $colEffectId of random effect type $colEffectType")
+        val size = colLatentFactorIterable.size
+      assert(size <= 1, s"More than one column latent factor ($size) found for random effect Id $colEffectId of " +
+        s"random effect type $colEffectType")
       rowLatentFactorAndUniqueIdsIterable.flatMap { case (rowLatentFactor, uniqueId) =>
         colLatentFactorIterable.map(colLatentFactor => (uniqueId, (rowLatentFactor, colLatentFactor)))
       }
