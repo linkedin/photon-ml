@@ -69,7 +69,7 @@ protected[ml] object IOUtils {
 
     val existingPaths = paths.filter(path => path.getFileSystem(configuration).exists(path))
     require(existingPaths.nonEmpty,
-      s"No data folder found between $dateRange.startDate and $dateRange.endDate in $dailyDir")
+      s"No data folder found between ${dateRange.startDate} and ${dateRange.endDate} in $dailyDir")
 
     existingPaths.map(_.toString)
   }
