@@ -139,6 +139,10 @@ object NameAndTermFeatureSetContainer {
           .text(s"date range for the input data represented in the form start.date-end.date, e.g. 20150501-20150631, " +
           s"default: ${defaultParams.dateRangeOpt}")
           .action((x, c) => c.copy(dateRangeOpt = Some(x)))
+      opt[String]("date-range-days-ago")
+          .text(s"date range for the input data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1, " +
+          s"default: ${defaultParams.dateRangeDaysAgoOpt}")
+          .action((x, c) => c.copy(dateRangeDaysAgoOpt = Some(x)))
       opt[Int]("num-days-data-for-feature-generation")
           .text(s"Number of days of data used for feature generation. Currently this parameter is only used in " +
           s"the weekly/monthly feature generation pipeline. If date-range is specified, the input of this option " +
@@ -186,14 +190,29 @@ object NameAndTermFeatureSetContainer {
         }
     }
 
-    val inputRecordsPath = adjustedDateRangeOpt match {
-      case Some(dateRange) =>
+    val inputRecordsPath = (adjustedDateRangeOpt, dateRangeDaysAgoOpt) match {
+      // Specified as date range
+      case (Some(dateRange), None) =>
         val range = DateRange.fromDates(dateRange)
         IOUtils.getInputPathsWithinDateRange(inputDirs, range, sparkContext.hadoopConfiguration,
           errorOnMissing = false)
-      case None => inputDirs.toSeq
+
+      // Specified as a range of start days ago - end days ago
+      case (None, Some(dateRangeDaysAgo)) =>
+        val range = DateRange.fromDaysAgo(dateRangeDaysAgo)
+        IOUtils.getInputPathsWithinDateRange(inputDirs, range, sparkContext.hadoopConfiguration,
+          errorOnMissing = false)
+
+      // Both types specified: illegal
+      case (Some(_), Some(_)) =>
+        throw new IllegalArgumentException(
+          "Both dateRangeOpt and dateRangeDaysAgoOpt given. You must specify date ranges using only one " +
+          "format.")
+
+      case (None, None) => inputDirs.toSeq
     }
     println(s"inputRecordsPath:\n${inputRecordsPath.mkString("\n")}")
+
     val numExecutors = sparkContext.getExecutorStorageStatus.length
     val minPartitions =
       if (sparkContext.getConf.contains("spark.default.parallelism")) {
@@ -213,6 +232,7 @@ object NameAndTermFeatureSetContainer {
   private case class Params(
       inputDirs: Array[String] = Array(),
       dateRangeOpt: Option[String] = None,
+      dateRangeDaysAgoOpt: Option[String] = None,
       numDaysDataForFeatureGeneration: Int = Int.MaxValue,
       featureNameAndTermSetOutputPath: String = "",
       featureSectionKeys: Set[String] = Set(),
@@ -222,6 +242,7 @@ object NameAndTermFeatureSetContainer {
       s"Input parameters:\n" +
           s"inputDirs: ${inputDirs.mkString(", ")}\n" +
           s"dateRangeOpt: $dateRangeOpt\n" +
+          s"dateRangeDaysAgoOpt: $dateRangeDaysAgoOpt\n" +
           s"numDaysDataForFeatureGeneration: $numDaysDataForFeatureGeneration\n" +
           s"featureNameAndTermSetOutputPath:\n$featureNameAndTermSetOutputPath\n" +
           s"featureSectionKeys: ${featureSectionKeys.mkString(", ")}\n" +
