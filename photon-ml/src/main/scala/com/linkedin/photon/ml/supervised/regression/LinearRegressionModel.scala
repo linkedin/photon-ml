@@ -20,34 +20,28 @@ import org.apache.spark.rdd.RDD
 
 /**
  * Class for the classification model trained using Logistic Regression
+ *
  * @param coefficients Weights estimated for every feature
- * @param intercept Intercept computed for this model (Option)
- * @author xazhang
  */
-class LinearRegressionModel(override val coefficients: Vector[Double], override val intercept: Option[Double])
-  extends GeneralizedLinearModel(coefficients, intercept) with Regression with Serializable {
-
-  override def predictWithOffset(features: Vector[Double], offset: Double): Double = {
-    computeMeanFunctionWithOffset(features, offset)
-  }
-
-  override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] = {
-    computeMeanFunctionsWithOffsets(featuresWithOffsets)
-  }
+class LinearRegressionModel(override val coefficients: Vector[Double])
+  extends GeneralizedLinearModel(coefficients)
+  with Regression
+  with Serializable {
 
   /**
    * Compute the mean of the linear regression model
-   * @param coefficients the estimated features' coefficients
-   * @param intercept the estimated model intercept
+   *
+   * @param coefficients the estimated feature coefficients
    * @param features the input data point's feature
    * @param offset the input data point's offset
    * @return
    */
-  override protected def computeMean(
-      coefficients: Vector[Double],
-      intercept: Option[Double],
-      features: Vector[Double],
-      offset: Double): Double = {
-    coefficients.dot(features) + intercept.getOrElse(0.0) + offset
-  }
+  override protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double)
+    : Double = coefficients.dot(features) + offset
+
+  override def predictWithOffset(features: Vector[Double], offset: Double): Double =
+    computeMeanFunctionWithOffset(features, offset)
+
+  override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
+    computeMeanFunctionsWithOffsets(featuresWithOffsets)
 }

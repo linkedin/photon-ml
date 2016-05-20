@@ -267,7 +267,7 @@ object ModelProcessingUtils {
    * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files
    * @param matrixFactorizationModel The given matrix factorization model
    * @param outputDir The HDFS output directory for the matrix factorization model
-   * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix 
+   * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix
    *                       factorization model
    * @param sparkContext The Spark context
    */

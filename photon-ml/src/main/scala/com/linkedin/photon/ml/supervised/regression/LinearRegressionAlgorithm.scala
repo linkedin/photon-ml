@@ -15,31 +15,35 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.{DataValidators, ObjectProvider, LabeledPoint}
+import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.{SquaredLossFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.{LBFGS, Optimizer, OptimizerConfig, OptimizerFactory, RegularizationContext}
+import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
-import org.apache.spark.rdd.RDD
 
 /**
  * Train a regression model using L1/L2/Elastic net-regularized linear regression.
- *
- * @author xazhang
- * @author dpeng
  */
 class LinearRegressionAlgorithm
   extends GeneralizedLinearAlgorithm[LinearRegressionModel, TwiceDiffFunction[LabeledPoint]] {
 
   /**
-   *  Objective function = loss function + l2weight * regularization
-   *  Only the L2 regularization part is implemented in the objective function. L1 part is implemented through the
-   *    optimizer. See [[LBFGS]].
+   * Create the objective function of the generalized linear algorithm.
+   *
+   * objective function = loss function + l2weight * regularization
+   *
+   * Only the L2 regularization part is implemented in the objective function. L1 part is implemented through the
+   * optimizer. See [[LBFGS]].
+   *
+   * @param normalizationContext The normalization context for the training
+   * @param regularizationContext The type of regularization to construct the objective function
+   * @param regularizationWeight The weight of the regularization term in the objective function
    */
   override protected def createObjectiveFunction(
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double): TwiceDiffFunction[LabeledPoint] = {
+
     val basicFunction = new SquaredLossFunction(normalizationContext)
     basicFunction.treeAggregateDepth = treeAggregateDepth
     TwiceDiffFunction.withRegularization(basicFunction, regularizationContext, regularizationWeight)
@@ -51,12 +55,16 @@ class LinearRegressionAlgorithm
    * @param optimizerConfig Optimizer configuration
    * @return A new Optimizer created according to the configuration
    */
-  override protected def createOptimizer(
-      optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = {
-    OptimizerFactory.twiceDiffOptimizer(optimizerConfig)
-  }
+  override protected def createOptimizer(optimizerConfig: OptimizerConfig)
+    : Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = OptimizerFactory.twiceDiffOptimizer(optimizerConfig)
 
-  override protected def createModel(coefficients: Vector[Double], intercept: Option[Double]) = {
-    new LinearRegressionModel(coefficients, intercept)
+  /**
+   * Create a model given the coefficients
+   *
+   * @param coefficients The coefficients parameter of each feature
+   * @return A generalized linear model with intercept and coefficients parameters
+   */
+  override protected def createModel(coefficients: Vector[Double]) = {
+    new LinearRegressionModel(coefficients)
   }
 }

@@ -26,10 +26,7 @@ import org.apache.spark.rdd.RDD
 
 /**
  * A collection of evaluation metrics and functions
- * @author xazhang
- * @author bdrew
  */
-
 object Evaluation extends Logging {
   val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
   val MEAN_SQUARE_ERROR = "Mean square error"
@@ -123,15 +120,10 @@ object Evaluation extends Logging {
     val logLikelihoods = labeled.map(sample => {
       // Compute the log likelihoods
       val y = sample.label
-      val intercept = if (model.hasIntercept) {
-        model.intercept.get
-      } else {
-        0.0
-      }
-      val wTx = sample.computeMargin(model.coefficients) + intercept
+      val wTx = sample.computeMargin(model.coefficients)
       val numeratorLog = y * wTx - math.exp(wTx)
-      val denominorLog = Gamma.logGamma(1.0 + y) // y! = Gamma(y + 1)
-      numeratorLog - denominorLog
+      val denominatorLog = Gamma.logGamma(1.0 + y) // y! = Gamma(y + 1)
+      numeratorLog - denominatorLog
     })
 
     averageRDD(logLikelihoods)

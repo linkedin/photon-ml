@@ -63,7 +63,6 @@ import org.testng.annotations.{DataProvider, Test}
  *   <li>The number of models matches expectations</li>
  *   <li>The models themselves match expectations (per a provided ModelValidator)</li>
  * </ul>
- *
  */
 class BaseGLMIntegTest extends SparkTestUtils {
   /**
@@ -162,7 +161,6 @@ class BaseGLMIntegTest extends SparkTestUtils {
       validator: ModelValidator[GLM]) = sparkTest(desc) {
 
     // Step 0: configure the algorithm
-    algorithm.enableIntercept = true
     algorithm.isTrackingState = true
     algorithm.targetStorageLevel = StorageLevel.MEMORY_ONLY
 
@@ -177,7 +175,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
     // Step 3: check convergence
     // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
     // TODO: be fixed.
-    assertTrue(None != optimizer.getStateTracker, "State tracking was enabled")
+    assertTrue(optimizer.getStateTracker.isDefined, "State tracking was enabled")
     OptimizerIntegTest.checkConvergence(optimizer.getStateTracker.get)
 
     // Step 4: validate the models

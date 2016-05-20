@@ -23,7 +23,6 @@ import org.apache.spark.rdd.RDD
 
 import scala.util.Random
 
-
 /**
  * General framework for bootstrap training.
  */
@@ -40,30 +39,25 @@ object BootstrapTraining {
    * <li>The information could be consumed by downstream components. E.g: post-modeling feature selection (drop all
    * features whose CI includes zero; drop all features whose coefficient has too large variance, etc.)</li>
    * </ul>
-   * @param modelsAndMetrics
-   * @tparam GLM
-   * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the
-   *   coefficient vector. The optional second part contains information about the intercept (if available).
+   * @param modelsAndMetrics Sequence of tuples containing a generalized linear model and a map of summary metrics for
+   *                         the model.
+   * @tparam GLM The type of generalized linear model
+   * @return A tuple representing coefficient-wise summaries. Matches 1:1 with the coefficient vector.
    */
   def aggregateCoefficientConfidenceIntervals[GLM <: GeneralizedLinearModel](
-      modelsAndMetrics: Seq[(GLM, Map[String, Double])]): (Array[CoefficientSummary], Option[CoefficientSummary]) = {
-
-    val initState = (x: Double) => {
-      val coeff = new CoefficientSummary
-      coeff.accumulate(x)
-      coeff
-    }
+      modelsAndMetrics: Seq[(GLM, Map[String, Double])]): Array[CoefficientSummary] = {
 
     // Initialize summary state with the first model in the sequence
     val firstGLM = modelsAndMetrics.head._1
-    val firstState = (
-      firstGLM.coefficients.toArray.map(initState),
-      firstGLM.intercept.map(initState))
+    val firstState = firstGLM.coefficients.toArray.map( x => {
+      val coeff = new CoefficientSummary
+      coeff.accumulate(x)
+      coeff
+    })
 
     // Reduce the remaining models into a full summary
     modelsAndMetrics.tail.foldLeft(firstState)({
-      case ((coeffs, intercept), (glm, _)) =>
-
+      case (coeffs, (glm, _)) =>
         // Accumulate coefficients
         coeffs.zip(glm.coefficients.toArray).map({
           case (accCoeff, currCoeff) =>
@@ -71,13 +65,7 @@ object BootstrapTraining {
             accCoeff
         })
 
-        // Accumulate intercept
-        intercept.map(accIntercept => {
-          accIntercept.accumulate(glm.intercept.get)
-          accIntercept
-        })
-
-        (coeffs, intercept)
+        coeffs
     })
   }
 
@@ -93,10 +81,11 @@ object BootstrapTraining {
    * <li>The information could be consumed by downstream components. E.g: post-modeling feature selection (drop all
    * features whose CI includes zero; drop all features whose coefficient has too large variance, etc.)</li>
    * </ul>
-   * @param modelsAndMetrics
-   * @tparam GLM
+   * @param modelsAndMetrics Sequence of tuples containing a generalized linear model and a map of summary metrics for
+   *                         the model.
+   * @tparam GLM The type of generalized linear model
    * @return A tuple representing coefficient-wise summaries. The first part of the tuple matches 1:1 with the
-   *   coefficient vector. The optional second part contains information about the intercept (if available).
+   *         coefficient vector. The optional second part contains information about the intercept (if available).
    */
   def aggregateMetricsConfidenceIntervals[GLM <: GeneralizedLinearModel](
       modelsAndMetrics: Seq[(GLM, Map[String, Double])]): Map[String, CoefficientSummary] = {
@@ -127,22 +116,18 @@ object BootstrapTraining {
    * a model trained on the full data set, while one could just as easily use an aggregator that binds the underlying
    * models to a bootstrap aggregating adapter to get model bagging.
    *
-   * @param numBootstrapSamples
-   * How many bootstrap samples to draw
-   * @param trainModel
-   * A closure that maps (RDD, warm start models) to (regularization &rarr; model) maps
-   * @param aggregations
-   * A map of (name &rarr; closure that implements aggregation operation)
-   * @param trainingSamples
-   * RDD used for training
-   * @param populationPortionPerBootstrapSample
-   * Fraction in the range of (0, 1) of trainingSamples to use when fitting a bootstrap model. The remaining fraction is
-   * used as a hold-out to evaluate.
-   * @tparam GLM
-   * Model type
-   * @return
-   * A two level map of (regularization &rarr; aggregate name &rarr; aggregate) computed aggregates,
-   * broken down by regularization.
+   * @param numBootstrapSamples How many bootstrap samples to draw
+   * @param populationPortionPerBootstrapSample Fraction in the range of (0, 1) of trainingSamples to use when fitting a
+   *                                            bootstrap model. The remaining fraction is used as a hold-out to
+   *                                            evaluate.
+   * @param warmStart
+   * @param trainModel A closure that maps (RDD, warm start models) to (regularization &rarr; model) maps
+   * @param aggregations A map of (name &rarr; closure that implements aggregation operation)
+   * @param trainingSamples RDD used for training
+   * @param seed
+   * @tparam GLM The type of generalized linear model
+   * @return A two level map of (regularization &rarr; aggregate name &rarr; aggregate) computed aggregates, broken down
+   *         by regularization.
    */
   def bootstrap[GLM <: GeneralizedLinearModel](
       numBootstrapSamples: Int,
@@ -157,10 +142,10 @@ object BootstrapTraining {
       numBootstrapSamples > 1,
       "Number of bootstrap samples must be at least 1, got [%s]",
       numBootstrapSamples: java.lang.Integer)
-    Preconditions.checkArgument(populationPortionPerBootstrapSample > 0 && populationPortionPerBootstrapSample <= 1.0,
+    Preconditions.checkArgument(
+      populationPortionPerBootstrapSample > 0 && populationPortionPerBootstrapSample <= 1.0,
       "Portion of training samples used for training must be in the range (0, 1.0], got [%s]",
       populationPortionPerBootstrapSample: java.lang.Double)
-
 
     val numSplits = 1000
 
@@ -177,15 +162,15 @@ object BootstrapTraining {
     val tags = (0 until numSplits).toList
     val prng = new MersenneTwister(seed)
     (1 to numBootstrapSamples).map(x => {
-      val shuffled = Random.javaRandomToRandom(RandomAdaptor.createAdaptor(prng)).shuffle(tags).toArray
-      val trainTags = shuffled.slice(0, targetSplits).toSet
-      val trainSet = tagged.filter(x => trainTags.contains(x._1)).map(_._2)
+        val shuffled = Random.javaRandomToRandom(RandomAdaptor.createAdaptor(prng)).shuffle(tags).toArray
+        val trainTags = shuffled.slice(0, targetSplits).toSet
+        val trainSet = tagged.filter(x => trainTags.contains(x._1)).map(_._2)
 
-      val holdoutTags = shuffled.slice(targetSplits, numSplits).toSet
-      val holdoutSet = tagged.filter(x => holdoutTags.contains(x._1)).map(_._2)
-      val models = trainModel(trainSet, warmStart).toMap
-      models.mapValues(x => (x, Evaluation.evaluate(x, holdoutSet)))
-    })
+        val holdoutTags = shuffled.slice(targetSplits, numSplits).toSet
+        val holdoutSet = tagged.filter(x => holdoutTags.contains(x._1)).map(_._2)
+        val models = trainModel(trainSet, warmStart).toMap
+        models.mapValues(x => (x, Evaluation.evaluate(x, holdoutSet)))
+      })
       .flatMap(_.iterator)
       .toSeq
       .groupBy(_._1)
