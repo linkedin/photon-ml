@@ -28,50 +28,16 @@ class BootstrapTrainingTest {
   import BootstrapTrainingTest._
 
   @Test
-  def checkAggregateCoefficientsHappyPathWithIntercept() = {
+  def checkAggregateCoefficients() = {
     val toAggregate = new Array[(LinearRegressionModel, Map[String, Double])](NUM_SAMPLES)
 
     for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
       val f = i.toDouble / HALF_NUM_SAMPLES
       val coefficients = DenseVector.ones[Double](NUM_DIMENSIONS) * f
-      val intercept = Option(f)
-      toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients, intercept), Map.empty)
+      toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients), Map.empty)
     }
 
-    val result = BootstrapTraining.aggregateCoefficientConfidenceIntervals(toAggregate)
-
-    result match {
-      case (coeffSum: Array[CoefficientSummary], Some(intSum)) =>
-        coeffSum.foreach(x => {
-          checkCoefficientSummary(x)
-        })
-
-        checkCoefficientSummary(intSum)
-      case _ => fail("Should have computed a summary for intercept")
-    }
-  }
-
-  @Test
-  def checkAggregateCoefficientsHappyPathWithoutIntercept() = {
-    val toAggregate = new Array[(LinearRegressionModel, Map[String, Double])](NUM_SAMPLES)
-
-    for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
-      val f = i.toDouble / HALF_NUM_SAMPLES
-      val coefficients = DenseVector.ones[Double](NUM_DIMENSIONS) * f
-      val intercept = None
-      toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients, intercept), Map.empty)
-    }
-
-    val result = BootstrapTraining.aggregateCoefficientConfidenceIntervals(toAggregate)
-
-    result match {
-      case (coeffSum: Array[CoefficientSummary], None) =>
-        coeffSum.foreach(x => {
-          checkCoefficientSummary(x)
-        })
-
-      case _ => fail("Should have computed a summary for intercept")
-    }
+    BootstrapTraining.aggregateCoefficientConfidenceIntervals(toAggregate).foreach(checkCoefficientSummary)
   }
 
   @Test
@@ -82,9 +48,7 @@ class BootstrapTrainingTest {
     for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
       val f = i.toDouble / HALF_NUM_SAMPLES
       val coefficients = DenseVector.ones[Double](NUM_DIMENSIONS) * f
-      val intercept = None
-      toAggregate(i + HALF_NUM_SAMPLES) =
-          (new LinearRegressionModel(coefficients, intercept), keys.map(x => (x, f)).toMap)
+      toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients), keys.map(x => (x, f)).toMap)
     }
 
     val aggregated = BootstrapTraining.aggregateMetricsConfidenceIntervals(toAggregate)

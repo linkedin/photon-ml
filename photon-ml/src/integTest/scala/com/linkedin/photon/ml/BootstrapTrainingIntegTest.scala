@@ -36,10 +36,13 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   val numSamples = 100
 
   def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double])
-  : (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
+    : (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
+
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      lambdas.map(l => (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) *
-          coefficient, None))).toList
+      lambdas.map(l => {
+          (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient))
+        })
+        .toList
     }
   }
 
@@ -49,14 +52,18 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
    */
   @Test
   def checkBootstrapHappyPathRegressionDummyAggregates(): Unit = sparkTest("checkBootstrapHappyPathDummyAggregates") {
-    val identity = (x: Seq[(LinearRegressionModel, Map[String, Double])]) => {
-      x
-    }
+    val identity = (x: Seq[(LinearRegressionModel, Map[String, Double])]) => x
     val identityKey: String = "identity"
     val aggregations: Map[String, Seq[(LinearRegressionModel, Map[String, Double])] => Any] = Map(identityKey -> identity)
 
     // Generate an empty RDD (model fitting is mocked out but we need a "real" instance for the sampling to work)
-    val data: RDD[LabeledPoint] = sc.parallelize(drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(seed.toInt, numSamples, BootstrapTrainingTest.NUM_DIMENSIONS).toSeq).map(x => new LabeledPoint(x._1, x._2))
+    val data: RDD[LabeledPoint] = sc.parallelize(
+      drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+        seed.toInt,
+        numSamples,
+        BootstrapTrainingTest.NUM_DIMENSIONS)
+        .toSeq)
+      .map(x => new LabeledPoint(x._1, x._2))
 
     val result: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
       BootstrapTrainingTest.NUM_SAMPLES,
@@ -74,7 +81,11 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
           aggregates.get(identityKey) match {
             case Some(models) =>
               models match {
-                case m: TraversableOnce[(LinearRegressionModel, Map[String, Double])] => assertEquals(m.size, BootstrapTrainingTest.NUM_SAMPLES, "Number of bootstrapped models matches expected")
+                case m: TraversableOnce[(LinearRegressionModel, Map[String, Double])] =>
+                  assertEquals(
+                    m.size,
+                    BootstrapTrainingTest.NUM_SAMPLES,
+                    "Number of bootstrapped models matches expected")
                 case _ => fail(f"Found aggregate for lambda=[$x%.04f] and name [$identityKey] with unexpected type")
               }
             case None =>

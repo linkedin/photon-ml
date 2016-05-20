@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml
 
-import java.io.File
-
 import breeze.linalg.{DenseVector, Vector, norm}
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
@@ -34,15 +32,12 @@ import org.apache.commons.io.FileUtils
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import java.io.File
 import scala.collection.mutable
 import scala.io.Source
 
 /**
  * This class tests Driver with a set of important configuration parameters
- *
- * @author yizhou
- * @author dpeng
- * @author bdrew
  */
 class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
@@ -74,7 +69,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
   }
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
   def testRunEmptyTrainingSet(): Unit = sparkTestSelfServeContext("testRunEmptyTrainingSet") {
     val tmpDir = getTmpDir + "/testRunEmptyTrainingSet"
     val args = mutable.ArrayBuffer[String]()
@@ -753,21 +748,27 @@ object DriverIntegTest {
     for (line <- Source.fromFile(modelPath).getLines()) {
       val tokens = line.split("\t")
 
-      // Heart scale dataset's feature names are indices, and they don't have terms.
+      // Heart scale dataset feature names are indices, and they don't have terms.
       // Thus, we are ignoring tokens(1)
       val name = tokens(0)
       if (name == GLMSuite.INTERCEPT_NAME) {
         intercept = Some(tokens(2).toDouble)
       } else {
-        val co = (tokens(0).toLong, tokens(2).toDouble)
-        coeffs += co
+        coeffs += ((tokens(0).toLong, tokens(2).toDouble))
       }
       lambda = Some(tokens(3).toDouble)
     }
+
+    intercept match {
+      case Some(x) =>
+        coeffs += ((coeffs.size.toLong, x))
+      case _ =>
+    }
+
     val features = new DenseVector[Double](coeffs.sortWith(_._1 < _._1).map(_._2).toArray)
 
     val model = taskType match {
-      case TaskType.LOGISTIC_REGRESSION => new LogisticRegressionModel(features, intercept)
+      case TaskType.LOGISTIC_REGRESSION => new LogisticRegressionModel(features)
       case _ => new RuntimeException("Other task type not supported.")
     }
     (lambda.get, model.asInstanceOf[GeneralizedLinearModel])

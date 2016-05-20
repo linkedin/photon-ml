@@ -37,14 +37,16 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  * intercept should be 0, and the factor for the intercept should be 1.
  *
  * Also note that this normalization context class covers all affine transformations without rotation.
- *
- * @author dpeng
  */
-private[ml] case class NormalizationContext(factors: Option[_ <: Vector[Double]], shifts: Option[_ <: Vector[Double]],
-                                interceptId: Option[Int]) {
+private[ml] case class NormalizationContext(
+    factors: Option[_ <: Vector[Double]],
+    shifts: Option[_ <: Vector[Double]],
+    interceptId: Option[Int]) {
+
   require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
-  if (factors.isDefined && shifts.isDefined) require(factors.get.size == shifts.get.size,
-                                                     "Factors and shifts vectors should have the same size")
+  if (factors.isDefined && shifts.isDefined) {
+    require(factors.get.size == shifts.get.size, "Factors and shifts vectors should have the same size")
+  }
 
   /**
    * Transform the coefficients of the transformed space to the original space. This is typically used to

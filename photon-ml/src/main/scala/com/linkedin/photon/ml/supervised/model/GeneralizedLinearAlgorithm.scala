@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.supervised.model
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.Vector
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DiffFunction
@@ -30,10 +30,9 @@ import scala.reflect.ClassTag
 /**
  * GeneralizedLinearAlgorithm implements methods to train a Generalized Linear Model (GLM).
  * This class should be extended with a loss function and the createModel function to create a new GLM.
+ *
  * @tparam GLM The type of returned generalized linear model
  * @tparam Function The type of loss function of the generalized linear algorithm
- * @author xazhang
- * @author dpeng
  */
 abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassTag,
     Function <: DiffFunction[LabeledPoint]]
@@ -62,6 +61,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
 
   /**
    * Get the optimization state trackers for the optimization problems solved in the generalized linear algorithm
+   *
    * @return Some(stateTracker) if isTrackingState is set to true, None otherwise.
    */
   def getStateTracker: Option[List[ModelTracker]] = {
@@ -73,27 +73,20 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   }
 
   /**
-   * Whether to enable intercept (default: false).
-   * A better practice would be adding the intercept during data preparation stage, adding the intercept here will
-   * create unnecessary temp memory allocation that is proportional to the input data size.
-   */
-  var enableIntercept: Boolean = false
-
-  /**
-   * TODO: enable feature specific regularization / disable regularizing intercept
-   *   https://jira01.corp.linkedin.com:8443/browse/OFFREL-324
    * Create the objective function of the generalized linear algorithm
+   *
    * @param normalizationContext The normalization context for the training
    * @param regularizationContext The type of regularization to construct the objective function
    * @param regularizationWeight The weight of the regularization term in the objective function
    */
+  // TODO: enable feature specific regularization / disable regularizing intercept
   protected def createObjectiveFunction(
     normalizationContext: ObjectProvider[NormalizationContext],
     regularizationContext: RegularizationContext,
     regularizationWeight: Double): Function
 
   /**
-   * Create an appropriate Optimizer according to the config.
+   * Create an Optimizer according to the config.
    *
    * @param optimizerConfig Optimizer configuration
    * @return A new Optimizer created according to the configuration
@@ -101,35 +94,27 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
   protected def createOptimizer(optimizerConfig: OptimizerConfig): Optimizer[LabeledPoint, Function]
 
   /**
-   * Create a model given the coefficients and intercept
-   * @param coefficients The coefficients parameter of each feature
-   * @param intercept The intercept of the generalized linear model
-   * @return A generalized linear model with intercept and coefficients parameters
+   * Create a model given the coefficients
+   *
+   * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+   * @return A generalized linear model with coefficients parameters
    */
-  protected def createModel(coefficients: Vector[Double], intercept: Option[Double]): GLM
+  protected def createModel(coefficients: Vector[Double]): GLM
 
   /**
-   * Create a model given the coefficients and intercept
+   * Create a model given the coefficients
+   *
    * @param normalizationContext The normalization context
-   * @param coefficientsWithIntercept A vector of the form [intercept, coefficients parameters]
+   * @param coefficients A vector of feature coefficients (and potentially including intercept)
    * @return A generalized linear model with intercept and coefficients parameters
    */
-  protected def createModel(
-      normalizationContext: NormalizationContext,
-      coefficientsWithIntercept: Vector[Double]): GLM = {
-
-    val updatedWeights =
-      if (enableIntercept) {
-        new DenseVector(coefficientsWithIntercept.toArray.tail)
-      } else {
-        coefficientsWithIntercept
-      }
-    val updatedIntercept = if (enableIntercept) Some(coefficientsWithIntercept(0)) else None
-    createModel(normalizationContext.transformModelCoefficients(updatedWeights), updatedIntercept)
+  protected def createModel(normalizationContext: NormalizationContext, coefficients: Vector[Double]): GLM = {
+    createModel(normalizationContext.transformModelCoefficients(coefficients))
   }
 
   /**
    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
+   *
    * @param input A RDD of input labeled data points in the original scale
    * @param optimizerConfig The optimizer config used to construct the optimizer
    * @param regularizationContext The chosen type of regularization
@@ -143,12 +128,14 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
       normalizationContext: NormalizationContext): (List[GLM], Optimizer[LabeledPoint, Function]) = {
+
     logInfo("Doing training without any warm start models")
     run(input, optimizerConfig, regularizationContext, regularizationWeights, normalizationContext, Map.empty)
   }
 
   /**
    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
+   *
    * @param input A RDD of input labeled data points in the original scale
    * @param optimizerConfig The optimizer config used to construct the optimizer
    * @param regularizationContext The chosen type of regularization
@@ -166,17 +153,22 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       warmStartModels: Map[Double, GeneralizedLinearModel]): (List[GLM], Optimizer[LabeledPoint, Function]) = {
 
     val numFeatures = input.first().features.size
-
     val initialWeight = Vector.zeros[Double](numFeatures)
-    val initialIntercept = if (enableIntercept) Some(1.0) else None
-    val initialModel = createModel(initialWeight, initialIntercept)
-    run(input, initialModel, optimizerConfig, regularizationContext, regularizationWeights,
-      normalizationContext, warmStartModels)
+    val initialModel = createModel(initialWeight)
+
+    run(input,
+      initialModel,
+      optimizerConfig,
+      regularizationContext,
+      regularizationWeights,
+      normalizationContext,
+      warmStartModels)
   }
 
   /**
    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries
    * starting from the initial model provided.
+   *
    * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
    * @param initialModel The initial model
    * @param optimizerConfig The optimizer config used to construct the optimizer
@@ -203,28 +195,9 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         + " parent RDDs are also uncached.")
     }
 
-    /**
-     * Prepend a scalar to a vector
-     */
-    def prepend(vector: Vector[Double], scalar: Double): Vector[Double] = {
-      vector match {
-        case dv: DenseVector[Double] => DenseVector.vertcat(new DenseVector[Double](Array(scalar)), dv)
-        case sv: SparseVector[Double] => SparseVector.vertcat(new SparseVector[Double](Array(0), Array(scalar), 1), sv)
-        case v: Any => throw new IllegalArgumentException("Do not support vector type " + v.getClass)
-      }
-    }
-    // Prepend an extra variable consisting of all 1.0's for the intercept.
-    val dataPoints = if (enableIntercept) {
-      input.map {
-        case LabeledPoint(label, features, offset, weight) =>
-          LabeledPoint(label, prepend(features, 1), offset, weight)
-      }
-    } else {
-      input
-    }
-    val broadcastedNormalizationContext = input.sparkContext.broadcast(normalizationContext)
+    val broadcastNormalizationContext = input.sparkContext.broadcast(normalizationContext)
     val normalizationContextProvider =
-      new BroadcastedObjectProvider[NormalizationContext](broadcastedNormalizationContext)
+      new BroadcastedObjectProvider[NormalizationContext](broadcastNormalizationContext)
 
     val largestWarmStartLambda = if (warmStartModels.isEmpty) {
       0.0
@@ -237,30 +210,31 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
       logInfo(s"No warm start model found; falling back to all 0 as initial value")
     }
 
-    /* Find the path of solutions with different regularization coefficients */
-    // If we can find a warm start model for the largest lambda, use that; otherwise, default to the provided initial
-    // model
+    //
+    // Find the path of solutions with different regularization coefficients
+    //
+
     val optimizer = createOptimizer(optimizerConfig)
     optimizer.setStateTrackingEnabled(isTrackingState)
-    // Reuse the previous initial state in order for consistent convergence check for different runs in the grid-search
-    // based hyper-parameter tuning procedure
+    // Reuse the previous initial state for consistent convergence checks over consecutive runs in the grid-search-based
+    // hyper-parameter tuning procedure.
     optimizer.isReusingPreviousInitialState = true
 
+    // If we can find a warm start model for the largest lambda, use that. Otherwise, default to the provided initial
+    // model.
     val initModel = warmStartModels.getOrElse(largestWarmStartLambda, initialModel)
-    var initialCoefficientsWithIntercept: Vector[Double] =
-      if (enableIntercept) {
-        prepend(initModel.coefficients, initModel.intercept.getOrElse(0.0))
-      } else {
-        initModel.coefficients
-      }
+    var initialCoefficients = initModel.coefficients
 
     val models = regularizationWeights.map { regularizationWeight =>
       val objectiveFunction = createObjectiveFunction(
-        normalizationContextProvider, regularizationContext, regularizationWeight)
-      val (coefficientsWithIntercept, _) = optimizer.optimize(
-        dataPoints, objectiveFunction, initialCoefficientsWithIntercept)
-      initialCoefficientsWithIntercept = coefficientsWithIntercept
+        normalizationContextProvider,
+        regularizationContext,
+        regularizationWeight)
+      val (optimizedCoefficients, _) = optimizer.optimize(input, objectiveFunction, initialCoefficients)
+
+      initialCoefficients = optimizedCoefficients
       logInfo(s"Training model with regularization weight $regularizationWeight finished")
+
       if (isTrackingState) {
         val tracker = optimizer.getStateTracker.get
         logInfo(s"History tracker information:\n $tracker")
@@ -268,9 +242,10 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
         modelTrackerBuilder += new ModelTracker(tracker.toString, modelsPerIteration)
         logInfo(s"Number of iterations: ${modelsPerIteration.length}")
       }
-      createModel(normalizationContext, coefficientsWithIntercept)
+
+      createModel(normalizationContext, optimizedCoefficients)
     }
-    broadcastedNormalizationContext.unpersist()
+    broadcastNormalizationContext.unpersist()
 
     (models, optimizer)
   }

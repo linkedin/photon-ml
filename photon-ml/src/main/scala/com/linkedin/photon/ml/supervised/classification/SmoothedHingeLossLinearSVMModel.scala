@@ -20,64 +20,44 @@ import org.apache.spark.rdd.RDD
 import breeze.linalg.Vector
 
 /**
- * Soft hinge loss linear SVM model.
+ * Class for the classification model trained using soft hinge loss linear SVM
  *
- * @param coefficients The generalized linear model's coefficients (or called weights in some scenarios) of the features
- * @param intercept The generalized linear model's intercept parameter (Optional)
- *
- * @author bdrew
+ * @param coefficients Weights estimated for every feature
  */
-class SmoothedHingeLossLinearSVMModel(
-    override val coefficients: Vector[Double],
-    override val intercept: Option[Double])
-  extends GeneralizedLinearModel(coefficients, intercept)
+class SmoothedHingeLossLinearSVMModel(override val coefficients: Vector[Double])
+  extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
   with Regression
   with Serializable {
 
-  override def predictClassWithOffset(
-      features: Vector[Double],
-      offset: Double,
-      threshold: Double = 0.5): Double = {
-    predict(coefficients, intercept, features, offset, threshold)
-  }
+  /**
+   * Compute the mean of the soft hinge loss linear SVM model
+   *
+   * @param coefficients the estimated feature coefficients
+   * @param features the input data point's feature
+   * @param offset the input data point's offset
+   * @return
+   */
+  override protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double)
+    : Double = coefficients.dot(features) + offset
 
-  override def predictClassAllWithOffsets(
-      featuresWithOffsets: RDD[(Vector[Double], Double)],
-      threshold: Double = 0.5): RDD[Double] = {
+  override def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double = 0.5): Double =
+    predictClass(predictWithOffset(features, offset), threshold)
 
-    val broadcastedModel = featuresWithOffsets.context.broadcast(this)
-    featuresWithOffsets.map { case (features, offset) =>
-      val coefficients = broadcastedModel.value.coefficients
-      val intercept = broadcastedModel.value.intercept
-      predict(coefficients, intercept, features, offset, threshold)
+  override def predictClassAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)], threshold: Double = 0.5)
+    : RDD[Double] = predictAllWithOffsets(featuresWithOffsets).map(predictClass(_, threshold))
+
+  override def predictWithOffset(features: Vector[Double], offset: Double): Double =
+    computeMeanFunctionWithOffset(features, offset)
+
+  override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
+    computeMeanFunctionsWithOffsets(featuresWithOffsets)
+
+  private def predictClass(score: Double, threshold: Double): Double = {
+    if (score < threshold) {
+      BinaryClassifier.negativeClassLabel
+    } else {
+      BinaryClassifier.positiveClassLabel
     }
   }
-
-  private def predict(
-      coefficients: Vector[Double],
-      intercept: Option[Double],
-      features: Vector[Double],
-      offset: Double,
-      threshold: Double): Double = {
-
-    val score = computeMean(coefficients, intercept, features, offset)
-    if (score < threshold) BinaryClassifier.negativeClassLabel else BinaryClassifier.positiveClassLabel
-  }
-
-  override protected def computeMean(
-      coefficients: Vector[Double],
-      intercept: Option[Double],
-      features: Vector[Double],
-      offset: Double): Double = {
-    coefficients.dot(features) + intercept.getOrElse(0.0) + offset
-  }
-
-  override def predictWithOffset(
-      features: Vector[Double],
-      offset: Double): Double = computeMean(coefficients, intercept, features, offset)
-
-  override def predictAllWithOffsets(
-      featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
-    featuresWithOffsets.map(x => predictWithOffset(x._1, x._2))
 }

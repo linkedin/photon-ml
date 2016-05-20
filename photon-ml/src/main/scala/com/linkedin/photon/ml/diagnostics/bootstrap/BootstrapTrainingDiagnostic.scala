@@ -32,13 +32,13 @@ class BootstrapTrainingDiagnostic(
   import BootstrapTrainingDiagnostic._
 
   private def getImportances(
-      coefficients: Map[Double, (Array[CoefficientSummary], Option[CoefficientSummary])],
+      coefficients: Map[Double, Array[CoefficientSummary]],
       indexToNameTerm: Map[Int, (String, String)],
       summary: Option[BasicStatisticalSummary],
       models: Map[Double, GeneralizedLinearModel]) = {
 
     coefficients.map(x => {
-      val (lambda, (coeff, _)) = x
+      val (lambda, coeff) = x
       (lambda, coeff.zipWithIndex.map(x => {
         val (_, idx) = x
         val value = summary match {
@@ -60,7 +60,6 @@ class BootstrapTrainingDiagnostic(
 
   private def getBootstrapMetrics(
       metrics: Map[Double, Map[String, CoefficientSummary]],
-      coefficients: Map[Double, (Array[CoefficientSummary], Option[CoefficientSummary])],
       importances: Map[Double, Map[(String, String), (Int, Double, CoefficientSummary)]]) = {
 
     metrics.map(item => {
@@ -102,7 +101,12 @@ class BootstrapTrainingDiagnostic(
     )
 
     val aggregates = BootstrapTraining.bootstrap[GeneralizedLinearModel](
-      numSamples, trainingPortion, models, modelFactory, aggregators, trainingData)
+      numSamples,
+      trainingPortion,
+      models,
+      modelFactory,
+      aggregators,
+      trainingData)
 
     // lambda -> metric -> metric distribution
     val metrics = aggregates.mapValues(aggregate => {
@@ -118,7 +122,7 @@ class BootstrapTrainingDiagnostic(
     val coefficients = aggregates.mapValues(aggregate => {
       aggregate.get(COEFFICIENTS_AGGREGATION) match {
         // Similar to above, but this time the change was in BootstrapTraining.aggregateCoefficientConfidenceIntervals
-        case Some(coefficientSummary: (Array[CoefficientSummary], Option[CoefficientSummary])) => coefficientSummary
+        case Some(coefficientSummary: Array[CoefficientSummary]) => coefficientSummary
       }
     })
 
@@ -132,7 +136,7 @@ class BootstrapTrainingDiagnostic(
     // lambda -> (name, term) -> (index, importance, coefficient)
     val importances = getImportances(coefficients, indexToNameTerm, summary, models)
 
-    getBootstrapMetrics(metrics, coefficients, importances)
+    getBootstrapMetrics(metrics, importances)
   }
 }
 

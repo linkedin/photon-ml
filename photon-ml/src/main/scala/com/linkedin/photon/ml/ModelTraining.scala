@@ -20,15 +20,14 @@ import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{
-  LogisticRegressionAlgorithm, SmoothedHingeLossLinearSVMAlgorithm}
+  LogisticRegressionAlgorithm,
+  SmoothedHingeLossLinearSVMAlgorithm}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, PoissonRegressionAlgorithm}
 import org.apache.spark.rdd.RDD
 
 /**
  * Collection of functions for model training
- * @author xazhang
- * @author dpeng
  */
 object ModelTraining {
 
@@ -59,12 +58,21 @@ object ModelTraining {
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
-      treeAggregateDepth: Int):
-        (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+      treeAggregateDepth: Int): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     trainGeneralizedLinearModel(
-      trainingData, taskType, optimizerType, regularizationContext, regularizationWeights, normalizationContext,
-      maxNumIter, tolerance, enableOptimizationStateTracker, constraintMap, Map.empty, treeAggregateDepth)
+      trainingData,
+      taskType,
+      optimizerType,
+      regularizationContext,
+      regularizationWeights,
+      normalizationContext,
+      maxNumIter,
+      tolerance,
+      enableOptimizationStateTracker,
+      constraintMap,
+      Map.empty,
+      treeAggregateDepth)
   }
 
   /**
@@ -96,12 +104,11 @@ object ModelTraining {
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels:Map[Double, GeneralizedLinearModel],
-      treeAggregateDepth: Int):
-        (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+      treeAggregateDepth: Int): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
 
-    /* Choose the generalized linear algorithm */
+    // Choose the generalized linear algorithm
     val algorithm = taskType match {
       case LINEAR_REGRESSION => new LinearRegressionAlgorithm
       case POISSON_REGRESSION => new PoissonRegressionAlgorithm
@@ -113,13 +120,17 @@ object ModelTraining {
     algorithm.isTrackingState = enableOptimizationStateTracker
     algorithm.treeAggregateDepth = treeAggregateDepth
 
-    /* Sort the regularization weights from high to low, which would potentially speed up the overall convergence
-     * time */
+    // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
 
-    /* Model training with the chosen optimizer and algorithm */
-    val (models, _) = algorithm.run(trainingData, optimizerConfig, regularizationContext, sortedRegularizationWeights,
-        normalizationContext, warmStartModels)
+    // Model training with the chosen optimizer and algorithm
+    val (models, _) = algorithm.run(
+      trainingData,
+      optimizerConfig,
+      regularizationContext,
+      sortedRegularizationWeights,
+      normalizationContext,
+      warmStartModels)
 
     val weightModelTuples = sortedRegularizationWeights.zip(models)
 

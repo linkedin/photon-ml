@@ -19,7 +19,6 @@ import org.apache.spark.rdd.RDD
 
 /**
  * Represents a regression that predicts values for the given data set / data point using the model trained
- * @author xazhang
  */
 trait Regression extends Serializable {
 

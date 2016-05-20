@@ -33,7 +33,7 @@ class FeatureImportanceDiagnosticTest {
     val count = 1000L
     val features = DenseVector((1 to size).map(_.toDouble).toArray)
     val summary = new BasicStatisticalSummary(features, features, count, DenseVector.ones[Double](size) * count.toDouble, features, features, features, features, features)
-    val model = new LinearRegressionModel(features, None)
+    val model = new LinearRegressionModel(features)
     val featureIdx = (1 to size).map(x => (s"FEATURE_$x", x - 1)).toMap[String, Int]
 
     println(s"Generated model with target size $size (features: ${features.length}, feature idx mapping ${featureIdx.size})")
@@ -63,7 +63,7 @@ class FeatureImportanceDiagnosticTest {
       (x: Map[String, Int]) => new VarianceFeatureImportanceDiagnostic(x),
       (x: Map[String, Int]) => new ExpectedMagnitudeFeatureImportanceDiagnostic(x))
 
-    Seq(generateSmallModel, generateLargeModel).flatMap(x => {
+    Seq(generateSmallModel(), generateLargeModel()).flatMap(x => {
       val (featureNames, model, summary) = x
       diagnosticFactories.flatMap(factory => {
         Seq(
@@ -85,7 +85,7 @@ class FeatureImportanceDiagnosticTest {
     assertEquals(report.rankToImportance.size, expectedRankImportanceSamples, "Number of (rank, importance) tuples matches expectations")
     assertEquals(report.featureImportance.size, expectedSize, "Expected number of (feature -> description) tuples")
     // Because of how the test data was constructed, we know what these should be
-    val importances = if (summary != None) {
+    val importances = if (summary.isDefined) {
       model.coefficients :* model.coefficients
     } else {
       model.coefficients

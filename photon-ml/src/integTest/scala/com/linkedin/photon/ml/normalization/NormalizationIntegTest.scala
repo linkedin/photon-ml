@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.photon.ml.{DataValidationType, ModelTraining}
+import com.linkedin.photon.ml.ModelTraining
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
 import com.linkedin.photon.ml.stat.BasicStatistics
@@ -28,14 +28,11 @@ import org.testng.annotations.Test
 
 import scala.util.Random
 
-
 /**
  * All feature normalizations are affine transformation so the resulting models without regularization should be the same
  * except for numerical errors.
  *
  * This test checks the validity of feature normalization in the context of training.
- *
- * @author dpeng
  */
 class NormalizationIntegTest extends SparkTestUtils {
   private val _seed = 1
@@ -64,7 +61,7 @@ class NormalizationIntegTest extends SparkTestUtils {
     Random.setSeed(seed)
     // The size of the vector is _dimension + 1 due to the intercept
     val coef = (for (i <- 0 to _dimension) yield Random.nextGaussian()).toArray
-    new LogisticRegressionModel(DenseVector(coef), None)
+    new LogisticRegressionModel(DenseVector(coef))
   }
 
   /**
