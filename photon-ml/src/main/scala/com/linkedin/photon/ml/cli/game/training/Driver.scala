@@ -20,6 +20,7 @@ import com.linkedin.photon.ml.avro.AvroUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.io.ModelOutputMode
 import org.apache.spark.rdd.RDD
 
 import scala.collection.Map
@@ -422,19 +423,22 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         ModelProcessingUtils.saveGameModelsToHDFS(bestGameModel, featureShardIdToFeatureMapMap, modelOutputDir,
           numberOfOutputFilesForRandomEffectModel, sparkContext)
       case _ =>
+        logger.info("No validation data provided: cannot determine best model, thus no 'best model' output.")
     }
 
     // Write all models to HDFS
-    var modelIdx = 0
-    combinedGameModelsMap.foreach { case (modelConfig, gameModel) =>
-      val modelOutputDir = new Path(outputDir, s"all/$modelIdx").toString
-      Utils.deleteHDFSDir(modelOutputDir, sparkContext.hadoopConfiguration)
-      Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
-      val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
-      IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-      ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapMap, modelOutputDir,
-        numberOfOutputFilesForRandomEffectModel, sparkContext)
-      modelIdx += 1
+    if (modelOutputMode == ModelOutputMode.ALL) {
+      var modelIdx = 0
+      combinedGameModelsMap.foreach { case (modelConfig, gameModel) =>
+        val modelOutputDir = new Path(outputDir, s"all/$modelIdx").toString
+        Utils.deleteHDFSDir(modelOutputDir, sparkContext.hadoopConfiguration)
+        Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
+        val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
+        IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
+        ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapMap, modelOutputDir,
+          numberOfOutputFilesForRandomEffectModel, sparkContext)
+        modelIdx += 1
+      }
     }
   }
 
@@ -486,7 +490,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
     trainingDataSet.foreach { case (_, rddLike: RDDLike) => rddLike.unpersistRDD() }
 
-    if (isSavingModelsToHDFS) {
+    if (modelOutputMode != ModelOutputMode.NONE) {
       startTime = System.nanoTime()
       saveModelToHDFS(featureShardIdToFeatureMapMap, validatingDataAndEvaluatorOption, gameModelsMap)
       val savingModelTime = (System.nanoTime() - startTime) * 1e-9
