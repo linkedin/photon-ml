@@ -107,6 +107,7 @@ subprojects {
       options {
         parallel = 'methods'
         threadCount = 4
+        listeners << 'com.linkedin.photon.ml.test.FailOnSkipListener'
       }
 
       afterSuite { desc, result ->
