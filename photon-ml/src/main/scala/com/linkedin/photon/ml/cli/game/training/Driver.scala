@@ -416,7 +416,6 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         logger.info(s"The selected model has the following config:\n$bestModelConfig\nModel summary:" +
             s"\n${bestGameModel.map(_.toSummaryString).mkString("\n")}\n\nEvaluation result is : $evaluationResult")
         val modelOutputDir = new Path(outputDir, "best").toString
-        Utils.deleteHDFSDir(modelOutputDir, sparkContext.hadoopConfiguration)
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
         IOUtils.writeStringsToHDFS(Iterator(bestModelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
@@ -431,7 +430,6 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       var modelIdx = 0
       combinedGameModelsMap.foreach { case (modelConfig, gameModel) =>
         val modelOutputDir = new Path(outputDir, s"all/$modelIdx").toString
-        Utils.deleteHDFSDir(modelOutputDir, sparkContext.hadoopConfiguration)
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
         IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
@@ -513,6 +511,9 @@ object Driver {
     import params._
 
     val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
+    val configuration = sc.hadoopConfiguration
+
+    require(!IOUtils.isDirExisting(outputDir, configuration), s"Output directory $outputDir already exists!" )
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)

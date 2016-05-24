@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.util
 
-import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import org.joda.time.DateTime
 import org.joda.time.DateTimeUtils
-import org.joda.time.LocalDate
 import org.testng.Assert._
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 
@@ -27,19 +26,19 @@ import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   val baseDir = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
-  val path1 = s"${baseDir}/daily/2016/01/01"
-  val path2 = s"${baseDir}/daily/2016/02/01"
-  val path3 = s"${baseDir}/daily/2016/03/01"
+  val path1 = s"$baseDir/daily/2016/01/01"
+  val path2 = s"$baseDir/daily/2016/02/01"
+  val path3 = s"$baseDir/daily/2016/03/01"
   val today = "2016-04-01"
 
   @BeforeClass
   def setup() {
-    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis());
+    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis)
   }
 
   @AfterClass
   def teardown() {
-    DateTimeUtils.setCurrentMillisSystem();
+    DateTimeUtils.setCurrentMillisSystem()
   }
 
   @DataProvider
@@ -71,4 +70,14 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       Seq(baseDir), DateRange.fromDates("19551105-19551106"), sc.hadoopConfiguration, errorOnMissing = true)
   }
 
+  @Test
+  def testIsDirExisting(): Unit = sparkTest("testIsDirExisting") {
+    val dir = getTmpDir
+    val configuration = sc.hadoopConfiguration
+
+    Utils.deleteHDFSDir(dir, configuration)
+    assertFalse(IOUtils.isDirExisting(dir, configuration))
+    Utils.createHDFSDir(dir, configuration)
+    assertTrue(IOUtils.isDirExisting(dir, configuration))
+  }
 }

@@ -32,7 +32,6 @@ import com.linkedin.photon.ml.util._
 /**
  * A class contain [[NameAndTerm]] features sets for each feature section keys
  * @param nameAndTermFeatureSets A [[Map]] of feature section key to [[NameAndTerm]] feature sets
- * @author xazhang
  */
 //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
 //rest of code
@@ -168,6 +167,9 @@ object NameAndTermFeatureSetContainer {
 
     println(params + "\n")
     val sparkContext = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
+    val configuration = sparkContext.hadoopConfiguration
+    require(!IOUtils.isDirExisting(params.featureNameAndTermSetOutputPath, configuration),
+      s"Output path ${params.featureNameAndTermSetOutputPath} already exists!" )
 
     println(s"Application applicationName: $applicationName")
 
@@ -223,7 +225,6 @@ object NameAndTermFeatureSetContainer {
     val records = AvroUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
     val nameAndTermFeatureSetContainer =
       AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys)
-    Utils.deleteHDFSDir(featureNameAndTermSetOutputPath, sparkContext.hadoopConfiguration)
     nameAndTermFeatureSetContainer.saveAsTextFiles(featureNameAndTermSetOutputPath, sparkContext)
 
     sparkContext.stop()

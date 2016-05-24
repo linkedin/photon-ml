@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.{PalDBIndexMapLoader, PhotonLogger, Utils}
+import com.linkedin.photon.ml.util.{IOUtils, PalDBIndexMapLoader, PhotonLogger, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
@@ -144,7 +144,6 @@ protected[ml] class Driver(
 
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
     val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT).toString
-    Utils.deleteHDFSDir(finalModelsDir, sc.hadoopConfiguration)
     suite.writeModelsInText(sc, lambdaModelTuples, finalModelsDir.toString)
 
     logger.info(s"Final models are written to: $finalModelsDir")
@@ -215,7 +214,6 @@ protected[ml] class Driver(
     val summary = BasicStatistics.getBasicStatistics(trainingData)
 
     outputDir.foreach { dir =>
-      Utils.deleteHDFSDir(dir, sc.hadoopConfiguration)
       suite.writeBasicStatistics(sc, summary, dir)
       logger.info(s"Feature statistics written to $outputDir")
     }
@@ -344,7 +342,6 @@ protected[ml] class Driver(
 
     logger.info(s"Regularization weight of the best model is: $bestModelWeight")
     val bestModelDir = new Path(params.outputDir, BEST_MODEL_TEXT).toString
-    Utils.deleteHDFSDir(bestModelDir, sc.hadoopConfiguration)
     suite.writeModelsInText(sc, List((bestModelWeight, bestModel)), bestModelDir.toString)
     logger.info(s"The best model is written to: $bestModelDir")
   }
@@ -517,7 +514,16 @@ object Driver {
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
 
     /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
-    val sc: SparkContext = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
+    val sc = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
+    val configuration = sc.hadoopConfiguration
+
+    require(!IOUtils.isDirExisting(params.outputDir, configuration),
+      s"Output directory ${params.outputDir} already exists!" )
+
+    params.summarizationOutputDirOpt.foreach { dir =>
+      require(!IOUtils.isDirExisting(dir, configuration),
+        s"Summarization output directory $dir already exists!" )
+    }
 
     // A temporary solution to save log into HDFS.
     val logPath = new Path(params.outputDir, "log-message.txt")

@@ -150,7 +150,6 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     val numScoredItems = scoredItems.count()
     val scoresDir = new Path(outputDir, Driver.SCORES).toString
-    Utils.deleteHDFSDir(scoresDir, hadoopConfiguration)
     // Should always materialize the scoredItems first (e.g., count()) before the coalesce happens
     scoredItems.coalesce(numFiles).saveAsTextFile(scoresDir)
     logger.debug(s"Number of scored items: $numScoredItems")
@@ -224,6 +223,8 @@ object Driver {
     import params._
 
     val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
+    val configuration = sc.hadoopConfiguration
+    require(!IOUtils.isDirExisting(outputDir, configuration), s"Output directory $outputDir already exists!" )
 
     val logsDir = new Path(outputDir, LOGS).toString
     Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
