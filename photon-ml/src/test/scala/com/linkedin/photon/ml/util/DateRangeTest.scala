@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.util
 import org.joda.time.DateTime
 import org.joda.time.DateTimeUtils
 import org.joda.time.LocalDate
-import org.joda.time.LocalDate
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 import org.testng.Assert._
 
@@ -30,17 +29,18 @@ class DateRangeTest {
 
   @BeforeClass
   def setup() {
-    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis());
+    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis)
   }
 
   @AfterClass
   def teardown() {
-    DateTimeUtils.setCurrentMillisSystem();
+    DateTimeUtils.setCurrentMillisSystem()
   }
 
   @DataProvider
   def rangeDataProvider(): Array[Array[Any]] = {
     Array(
+      Array(DateRange.fromDates("20150101-20150101"), "2015-01-01", "2015-01-01"),
       Array(DateRange.fromDates("20150101-20150201"), "2015-01-01", "2015-02-01"),
       Array(DateRange.fromDates("20140312-20150211"), "2014-03-12", "2015-02-11"),
       Array(DateRange.fromDates("19950816-20011120"), "1995-08-16", "2001-11-20"),
