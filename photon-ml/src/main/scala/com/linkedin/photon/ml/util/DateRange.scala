@@ -26,14 +26,14 @@ import org.joda.time.format.DateTimeFormat
  */
 case class DateRange(val startDate: LocalDate, val endDate: LocalDate) {
 
-  require(startDate.isBefore(endDate), s"Invalid range: start date $startDate comes after end date $endDate.")
+  require(!startDate.isAfter(endDate), s"Invalid range: start date $startDate comes after end date $endDate.")
 
   /**
    * Builds a string representation for the date range.
    *
    * @return the string representation
    */
-  override def toString(): String = {
+  override def toString: String = {
     s"$startDate-$endDate"
   }
 
@@ -87,7 +87,7 @@ object DateRange {
    * Builds a new range from the starting and ending days ago.
    *
    * @param startDaysAgo beginning of the range, in number of days from now
-   * @param endDate end of the range, in number of days from now
+   * @param endDaysAgo end of the range, in number of days from now
    * @return the new date range
    */
   def fromDaysAgo(startDaysAgo: Int, endDaysAgo: Int, now: LocalDate = new LocalDate): DateRange = {
@@ -101,7 +101,7 @@ object DateRange {
    * Builds a new range from string representations of the starting and ending days ago.
    *
    * @param startDaysAgo string representation of the beginning of the range, in number of days from now
-   * @param endDate string representation of the end of the range, in number of days from now
+   * @param endDaysAgo string representation of the end of the range, in number of days from now
    * @return the new date range
    */
   def fromDaysAgo(startDaysAgo: String, endDaysAgo: String): DateRange = {
