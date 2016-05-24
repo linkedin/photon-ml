@@ -60,12 +60,12 @@ class UtilsTest extends TestTemplateWithTmpDir {
     val createdDir = new Path(getTmpDir + "/testDeleteHDFSDir")
 
     // Directory not existing, nothing should happen
-    Utils.deleteHDFSDir(createdDir.toString(), conf)
+    Utils.deleteHDFSDir(createdDir.toString, conf)
     assertFalse(fs.exists(createdDir))
 
     fs.mkdirs(createdDir)
     assertTrue(fs.exists(createdDir))
-    Utils.deleteHDFSDir(createdDir.toString(), conf)
+    Utils.deleteHDFSDir(createdDir.toString, conf)
     assertFalse(fs.exists(createdDir))
   }
 

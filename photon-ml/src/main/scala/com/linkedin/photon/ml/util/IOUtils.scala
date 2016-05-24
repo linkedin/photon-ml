@@ -21,16 +21,34 @@ import scala.collection.mutable
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.joda.time.Days
-import org.joda.time.LocalDate
-import org.joda.time.format.DateTimeFormat
 
 /**
  * Some basic IO util functions to be merged with the other util functions
- * @todo merge this class with the IOUtil function in Photon
- * @author xazhang
  */
 protected[ml] object IOUtils {
 
+  /**
+    * Check if the given directory already exists or not
+    * @param dir the directory path
+    * @param hadoopConf the Hadoop Configuration object
+    * @return whether the given directory already exists
+    */
+  def isDirExisting(dir: String, hadoopConf: Configuration): Boolean = {
+    val path = new Path(dir)
+    val fs = path.getFileSystem(hadoopConf)
+    fs.exists(path)
+  }
+
+  /**
+    * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
+    * behavior can be changed with the "errorOnMissing" parameter.
+    *
+    * @param inputDirs the base paths for input files
+    * @param dateRange date range for finding input files
+    * @param configuration Hadoop configuration
+    * @param errorOnMissing if true, the method will throw when a date has no corresponding input file
+    * @return a sequence of matching file paths
+    */
   def getInputPathsWithinDateRange(
       inputDirs: Seq[String],
       dateRange: DateRange,
@@ -74,10 +92,22 @@ protected[ml] object IOUtils {
     existingPaths.map(_.toString)
   }
 
+  /**
+    * Read a [[mutable.ArrayBuffer]] of strings from the input path on HDFS
+    * @param inputPath the input path
+    * @param configuration the Hadoop configuration
+    * @return a [[mutable.ArrayBuffer]] of strings read from the input path on HDFS
+    */
   def readStringsFromHDFS(inputPath: String, configuration: Configuration): mutable.ArrayBuffer[String] = {
     readStringsFromHDFS(new Path(inputPath), configuration)
   }
 
+  /**
+    * Read a [[mutable.ArrayBuffer]] of strings from the input path on HDFS
+    * @param inputPath the input path
+    * @param configuration the Hadoop configuration
+    * @return a [[mutable.ArrayBuffer]] of strings read from the input path on HDFS
+    */
   def readStringsFromHDFS(inputPath: Path, configuration: Configuration): mutable.ArrayBuffer[String] = {
     val fs = inputPath.getFileSystem(configuration)
     val bufferedReader = new BufferedReader(new InputStreamReader(fs.open(inputPath)))
@@ -91,6 +121,13 @@ protected[ml] object IOUtils {
     arrayBuffer
   }
 
+  /**
+    * Write an iterator of strings to HDFS
+    * @param stringMsgs the strings to be written to HDFS
+    * @param outputPath the HDFS path to write the strings
+    * @param configuration hadoop configuration
+    * @param forceOverwrite whether to force overwrite the output path if already exists
+    */
   def writeStringsToHDFS(
       stringMsgs: Iterator[String],
       outputPath: String,
@@ -100,6 +137,13 @@ protected[ml] object IOUtils {
     writeStringsToHDFS(stringMsgs, new Path(outputPath), configuration, forceOverwrite)
   }
 
+  /**
+    * Write an iterator of strings to HDFS
+    * @param stringMsgs the strings to be written to HDFS
+    * @param outputPath the HDFS path to write the strings
+    * @param configuration hadoop configuration
+    * @param forceOverwrite whether to force overwrite the output path if already exists
+    */
   def writeStringsToHDFS(
       stringMsgs: Iterator[String],
       outputPath: Path,
