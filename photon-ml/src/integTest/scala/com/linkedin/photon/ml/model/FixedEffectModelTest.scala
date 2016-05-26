@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class FixedEffectModelTest extends SparkTestUtils {
 
   @Test
-  def testEquals() = sparkTest("testEqualsForFixedEffectModel") {
+  def testEquals(): Unit = sparkTest("testEqualsForFixedEffectModel") {
     // Coefficients parameter
     val coefficientDimension = 1
     val coefficients = Coefficients.initializeZeroCoefficients(coefficientDimension)

@@ -25,7 +25,7 @@ import org.testng.Assert._
 import com.linkedin.photon.ml.avro.Constants._
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.model.{MatrixFactorizationModelTest, FixedEffectModel, Coefficients, RandomEffectModel}
+import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
@@ -53,7 +53,10 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val randomEffectModel = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
 
     // GAME model
-    val gameModel = Iterable(fixedEffectModel, randomEffectModel)
+    val fixedEffectModelName = "fixed"
+    val randomEffectModelName = "random"
+    val gameModel =
+      new GAMEModel(Map(fixedEffectModelName -> fixedEffectModel, randomEffectModelName -> randomEffectModel))
 
     // Default number of output files
     val numberOfOutputFilesForRandomEffectModel = 2
@@ -67,7 +70,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // Check if the numberOfOutputFilesForRandomEffectModel parameter is working or not
     val randomEffectModelCoefficientsDir = new Path(outputDirAsPath,
-      s"$RANDOM_EFFECT/$randomEffectId-$featureShardId/$COEFFICIENTS")
+      s"$RANDOM_EFFECT/$randomEffectModelName/$COEFFICIENTS")
     val numRandomEffectModelFiles = fs.listStatus(randomEffectModelCoefficientsDir)
       .count(_.getPath.toString.contains("part"))
     assertTrue(numRandomEffectModelFiles == numberOfOutputFilesForRandomEffectModel,
@@ -77,10 +80,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     // Check if the models loaded correctly and they are the same as the models saved previously
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureNameAndTermToIndexMapMap,
       outputDir, sc)
-    loadedGameModel.foreach {
-      case loadedFixedEffectModel: FixedEffectModel => assertEquals(loadedFixedEffectModel, fixedEffectModel)
-      case loadedRandomEffectModel: RandomEffectModel => assertEquals(loadedRandomEffectModel, randomEffectModel)
-    }
+    assertEquals(loadedGameModel, gameModel)
   }
 
   @DataProvider
