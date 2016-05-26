@@ -244,7 +244,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     assertTrue(Files.exists(fixedEffectModelPath))
-    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14982))
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14983))
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 

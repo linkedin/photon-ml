@@ -397,13 +397,14 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // Write the best model to HDFS
     validatingDataAndEvaluatorOption match {
       case Some((validatingData, evaluator)) =>
-        //TODO: The model selection logic is wrong, see [[https://github.com/linkedin/photon-ml/issues/93]]
         val (bestModelConfig, evaluationResult) = gameModelsMap.mapValues(_.score(validatingData).scores)
           .mapValues(evaluator.evaluate)
-          .reduce((result1, result2) => if (result1._2 > result2._2) result1 else result2)
+          .reduce((result1, result2) => if (evaluator.betterThan(result1._2, result2._2)) result1 else result2)
+
         val bestGameModel = gameModelsMap.get(bestModelConfig).get
         logger.info(s"The selected model has the following config:\n$bestModelConfig\nModel summary:" +
-            s"\n${bestGameModel.toSummaryString}\n\nEvaluation result is : $evaluationResult")
+          s"\n${bestGameModel.toSummaryString}\n\nEvaluation result is : $evaluationResult")
+
         val modelOutputDir = new Path(outputDir, "best").toString
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
