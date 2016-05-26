@@ -20,7 +20,6 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.avro.AvroUtils
 import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTermFeatureSetContainer, NameAndTerm}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
@@ -134,13 +133,9 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, gameModelInputDir,
       sparkContext)
 
-    gameModel.foreach {
-      case rddLike: RDDLike => rddLike.persistRDD(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-      case _ =>
-    }
-    logger.debug(s"Loaded game model summary:\n${gameModel.map(_.toSummaryString).mkString("\n")}")
+    logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 
-    val scores = gameModel.map(_.score(gameDataSet)).reduce(_ + _).scores
+    val scores = gameModel.score(gameDataSet).scores
         .setName("Scores").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val scoredItems = scores.join(gameDataSet).map { case (_, (score, gameData)) =>
       val ids = gameData.randomEffectIdToIndividualIdMap.values

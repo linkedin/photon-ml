@@ -41,7 +41,7 @@ object ModelProcessingUtils {
   import com.linkedin.photon.ml.avro.Constants._
 
   protected[ml] def saveGameModelsToHDFS(
-      gameModel: Iterable[Model],
+      gameModel: GAMEModel,
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       outputDir: String,
       numberOfOutputFilesForRandomEffectModel: Int,
@@ -51,11 +51,11 @@ object ModelProcessingUtils {
     val featureShardIdToFeatureSwappedMapBroadcastMap = featureShardIdToFeatureMapMap.map { case (shardId, map) =>
       (shardId, sparkContext.broadcast(map.map(_.swap)))
     }
-    gameModel.foreach { case model =>
+    gameModel.toMap.foreach { case (name, model) =>
       model match {
         case fixedEffectModel: FixedEffectModel =>
           val featureShardId = fixedEffectModel.featureShardId
-          val fixedEffectModelOutputDir = new Path(outputDir, s"$FIXED_EFFECT/$featureShardId").toString
+          val fixedEffectModelOutputDir = new Path(outputDir, s"$FIXED_EFFECT/$name").toString
           Utils.createHDFSDir(fixedEffectModelOutputDir, configuration)
 
           //Write the model ID info
@@ -73,7 +73,7 @@ object ModelProcessingUtils {
           val randomEffectId = randomEffectModel.randomEffectId
           val featureShardId = randomEffectModel.featureShardId
 
-          val randomEffectModelOutputDir = new Path(outputDir, s"$RANDOM_EFFECT/$randomEffectId-$featureShardId")
+          val randomEffectModelOutputDir = new Path(outputDir, s"$RANDOM_EFFECT/$name")
           //Write the model ID info
           val modelIdInfoPath = new Path(randomEffectModelOutputDir, ID_INFO)
           val ids = Array(randomEffectId, featureShardId)
@@ -88,7 +88,7 @@ object ModelProcessingUtils {
   protected[ml] def loadGameModelFromHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       inputDir: String,
-      sparkContext: SparkContext): Iterable[Model] = {
+      sparkContext: SparkContext): GAMEModel = {
 
     val configuration = sparkContext.hadoopConfiguration
     val inputDirAsPath = new Path(inputDir)
@@ -101,20 +101,21 @@ object ModelProcessingUtils {
     val fixedEffectModelInputDir = new Path(inputDir, FIXED_EFFECT)
     val fixedEffectModels = if (fs.exists(fixedEffectModelInputDir)) {
       fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
-        val inputPath = fileStatus.getPath
+        val innerPath = fileStatus.getPath
+        val name = innerPath.getName
 
         // Load the model ID info
-        val idInfoPath = new Path(inputPath, ID_INFO)
+        val idInfoPath = new Path(innerPath, ID_INFO)
         val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the coefficients
         val featureNameAndTermToIndexMap = featureShardIdToFeatureMapMap(featureShardId)
-        val modelPath = new Path(inputPath, COEFFICIENTS)
+        val modelPath = new Path(innerPath, COEFFICIENTS)
         val coefficients = loadCoefficientsFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
-        new FixedEffectModel(sparkContext.broadcast(coefficients), featureShardId)
+        (name, new FixedEffectModel(sparkContext.broadcast(coefficients), featureShardId))
       }
     } else {
-      Array[FixedEffectModel]()
+      Array[(String, FixedEffectModel)]()
     }
 
     // Load the random effect models
@@ -122,6 +123,7 @@ object ModelProcessingUtils {
     val randomEffectModels = if (fs.exists(randomEffectModelInputDir)) {
       fs.listStatus(randomEffectModelInputDir).map { innerFileStatus =>
         val innerPath = innerFileStatus.getPath
+        val name = innerPath.getName
 
         // Load the model ID info
         val idInfoPath = new Path(innerPath, ID_INFO)
@@ -132,23 +134,26 @@ object ModelProcessingUtils {
         val coefficientsRDDInputPath = new Path(innerPath, COEFFICIENTS)
         val coefficientsRDD = loadCoefficientsRDDFromHDFS(coefficientsRDDInputPath.toString,
           featureNameAndTermToIndexMap, sparkContext)
-        new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
+        (name, new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId))
       }
     } else {
-      Array[RandomEffectModel]()
+      Array[(String, RandomEffectModel)]()
     }
-
-    fixedEffectModels ++ randomEffectModels
+    val gameModels = fixedEffectModels ++ randomEffectModels
+    val gameModelNames = gameModels.map(_._1)
+    require(gameModelNames.toSet.size == gameModelNames.length,
+      s"Duplicated model names found: ${gameModelNames.mkString("\t")}")
+    new GAMEModel(gameModels.toMap)
   }
 
   private def saveRandomEffectModelToHDFS(
-    randomEffectModel: RandomEffectModel,
-    featureIndexToNameAndTermMapBroadcast: Broadcast[Map[Int, NameAndTerm]],
-    randomEffectModelOutputDir: Path,
-    numberOfOutputFilesForRandomEffectModel: Int,
-    configuration: Configuration): Unit = {
-    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
+      randomEffectModel: RandomEffectModel,
+      featureIndexToNameAndTermMapBroadcast: Broadcast[Map[Int, NameAndTerm]],
+      randomEffectModelOutputDir: Path,
+      numberOfOutputFilesForRandomEffectModel: Int,
+      configuration: Configuration): Unit = {
 
+    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
     //Write the coefficientsRDD
     val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, COEFFICIENTS).toString
     val coefficientsRDD =
@@ -215,54 +220,6 @@ object ModelProcessingUtils {
     }
   }
 
-  private def combineCoefficients(coefficients1: Coefficients, coefficients2: Coefficients): Coefficients = {
-    val combinedMeans = coefficients1.means + coefficients2.means
-    Coefficients(combinedMeans, variancesOption = None)
-  }
-
-  protected[ml] def collapseGameModel(gameModel: Map[String, Model], sparkContext: SparkContext)
-  : Map[(String, String), Model] = {
-
-    gameModel.toArray.map {
-      case (modelId, fixedEffectModel: FixedEffectModel) =>
-        val effectId = FIXED_EFFECT
-        val featureShardId = fixedEffectModel.featureShardId
-        Pair[Pair[String, String], Model]((effectId, featureShardId), fixedEffectModel)
-      case (modelId, randomEffectModel: RandomEffectModel) =>
-        val effectId = randomEffectModel.randomEffectId
-        val featureShardId = randomEffectModel.featureShardId
-        Pair[Pair[String, String], Model]((effectId, featureShardId), randomEffectModel)
-      case (modelId, model) =>
-        throw new UnsupportedOperationException(s"Collapse model of type ${model.getClass} is not supported")
-    }
-        .groupBy(_._1)
-        .map { case ((effectId, featureShardId), modelsMap) =>
-      val combinedModel = modelsMap.map(_._2).reduce[Model] {
-        case (fixedEffectModel1: FixedEffectModel, fixedEffectModel2: FixedEffectModel) =>
-          val combinedCoefficients = combineCoefficients(fixedEffectModel1.coefficients, fixedEffectModel2.coefficients)
-          val combinedCoefficientsBroadcast = sparkContext.broadcast(combinedCoefficients)
-          new FixedEffectModel(combinedCoefficientsBroadcast, featureShardId)
-
-        case (randomEffectModel1: RandomEffectModel, randomEffectModel2: RandomEffectModel) =>
-          val coefficientsRDD1 = randomEffectModel1.coefficientsRDD
-          val coefficientsRDD2 = randomEffectModel2.coefficientsRDD
-          val combinedCoefficientsRDD = coefficientsRDD1.cogroup(coefficientsRDD2)
-              .mapValues { case (coefficientsItr1, coefficientsItr2) =>
-            assert(coefficientsItr1.size == 1)
-            assert(coefficientsItr2.size == 1)
-            combineCoefficients(coefficientsItr1.head, coefficientsItr2.head)
-          }
-          new RandomEffectModel(combinedCoefficientsRDD, effectId, featureShardId)
-
-        case (model1, model2) =>
-          throw new UnsupportedOperationException(s"Combining models of type ${model1.getClass} " +
-              s"and ${model2.getClass} is not supported!")
-      }
-
-      ((effectId, featureShardId), combinedModel)
-    }
-  }
-
   /**
    * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files
    * @param matrixFactorizationModel The given matrix factorization model
@@ -272,10 +229,10 @@ object ModelProcessingUtils {
    * @param sparkContext The Spark context
    */
   protected[ml] def saveMatrixFactorizationModelToHDFS(
-    matrixFactorizationModel: MatrixFactorizationModel,
-    outputDir: String,
-    numOutputFiles: Int,
-    sparkContext: SparkContext): Unit = {
+      matrixFactorizationModel: MatrixFactorizationModel,
+      outputDir: String,
+      numOutputFiles: Int,
+      sparkContext: SparkContext): Unit = {
 
     val rowLatentFactors = matrixFactorizationModel.rowLatentFactors
     val rowEffectType = matrixFactorizationModel.rowEffectType
@@ -309,10 +266,10 @@ object ModelProcessingUtils {
    * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
    */
   protected[ml] def loadMatrixFactorizationModelFromHDFS(
-    inputDir: String,
-    rowEffectType: String,
-    colEffectType: String,
-    sparkContext: SparkContext): MatrixFactorizationModel = {
+      inputDir: String,
+      rowEffectType: String,
+      colEffectType: String,
+      sparkContext: SparkContext): MatrixFactorizationModel = {
 
     val configuration = sparkContext.hadoopConfiguration
     val inputDirAsPath = new Path(inputDir)

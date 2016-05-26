@@ -15,23 +15,27 @@
 package com.linkedin.photon.ml.model
 
 import breeze.linalg.{Vector, norm}
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 
 
 /**
  * Representation of a matrix factorization model
+ *
  * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
  * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
  * @param rowLatentFactors Latent factors for row effect
  * @param colLatentFactors Latent factors for column effect
  */
 class MatrixFactorizationModel(
-  val rowEffectType: String,
-  val colEffectType: String,
-  val rowLatentFactors: RDD[(String, Vector[Double])],
-  val colLatentFactors: RDD[(String, Vector[Double])]) extends Model {
+    val rowEffectType: String,
+    val colEffectType: String,
+    val rowLatentFactors: RDD[(String, Vector[Double])],
+    val colLatentFactors: RDD[(String, Vector[Double])]) extends Model with RDDLike {
 
   /**
    * Number of latent factors of the matrix factorization model (or the rank)
@@ -79,10 +83,42 @@ class MatrixFactorizationModel(
   override def hashCode(): Int = {
     super.hashCode()
   }
+
+  override def sparkContext: SparkContext = rowLatentFactors.sparkContext
+
+  override def persistRDD(storageLevel: StorageLevel): this.type = {
+    if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
+    if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
+    this
+  }
+
+  override def unpersistRDD(): this.type = {
+    if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
+    if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
+    this
+  }
+
+  override def setName(name: String): this.type = {
+    rowLatentFactors.setName(s"$name: row latent factors")
+    colLatentFactors.setName(s"$name: col latent factors")
+    this
+  }
+
+  override def materialize(): this.type = {
+    rowLatentFactors.count()
+    colLatentFactors.count()
+    this
+  }
 }
 
 object MatrixFactorizationModel {
 
+  /**
+   * Check whether two latent factors are the same
+   * @param latentFactors1 the first latent factor
+   * @param latentFactors2 the second latent factor
+   * @return true if the two latent factors are the same, false otherwise
+   */
   protected def isSameLatentFactors(
     latentFactors1: RDD[(String, Vector[Double])],
     latentFactors2: RDD[(String, Vector[Double])]): Boolean = {
@@ -93,12 +129,21 @@ object MatrixFactorizationModel {
     ).filter(!_).count() == 0
   }
 
+  /**
+   * Score the given GAME data points with the row and column latent factors
+   * @param dataPoints the GAME data points
+   * @param rowEffectType the type of row effect used to retrieve row effect id from each GAME data point
+   * @param colEffectType the type of column effect used to retrieve column effect id from each GAME data point
+   * @param rowLatentFactors the row latent factors
+   * @param colLatentFactors the col latent factors
+   * @return the computed scores
+   */
   protected def score(
-    dataPoints: RDD[(Long, GameDatum)],
-    rowEffectType: String,
-    colEffectType: String,
-    rowLatentFactors: RDD[(String, Vector[Double])],
-    colLatentFactors: RDD[(String, Vector[Double])]): KeyValueScore = {
+      dataPoints: RDD[(Long, GameDatum)],
+      rowEffectType: String,
+      colEffectType: String,
+      rowLatentFactors: RDD[(String, Vector[Double])],
+      colLatentFactors: RDD[(String, Vector[Double])]): KeyValueScore = {
 
     val scores = dataPoints
       //For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.

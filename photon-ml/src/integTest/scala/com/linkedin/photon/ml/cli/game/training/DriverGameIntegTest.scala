@@ -40,8 +40,8 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
     val errorThreshold = 1.7
     val driver = runDriver(argArray(fixedEffectArgs ++ Map("output-dir" -> outputDir)))
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "shard1")
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "shard1")
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     println("HERE")
     println(allFixedEffectModelPath)
@@ -59,8 +59,8 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val driver = runDriver(argArray(fixedEffectArgs ++ Map(
       "output-dir" -> outputDir,
       "model-output-mode" -> ModelOutputMode.BEST.toString)))
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "shard1")
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "shard1")
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     assertFalse(Files.exists(allFixedEffectModelPath))
     assertTrue(Files.exists(bestFixedEffectModelPath))
@@ -72,8 +72,8 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val driver = runDriver(argArray(fixedEffectArgs ++ Map(
       "output-dir" -> outputDir,
       "model-output-mode" -> ModelOutputMode.NONE.toString)))
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "shard1")
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "shard1")
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     assertFalse(Files.exists(allFixedEffectModelPath))
     assertFalse(Files.exists(bestFixedEffectModelPath))
@@ -85,9 +85,9 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
     val errorThreshold = 2.2
     val driver = runDriver(argArray(randomEffectArgs ++ Map("output-dir" -> outputDir)))
-    val userModelPath = bestModelPath(outputDir, "random-effect", "userId-shard2")
-    val songModelPath = bestModelPath(outputDir, "random-effect", "songId-shard3")
-    val artistModelPath = bestModelPath(outputDir, "random-effect", "artistId-shard3")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(userModelPath))
     assertTrue(modelSane(userModelPath, expectedNumCoefficients = 21))
@@ -111,10 +111,10 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val driver = runDriver(argArray(fixedAndRandomEffectArgs ++ Map(
       "output-dir" -> outputDir)))
 
-    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "shard1")
-    val userModelPath = bestModelPath(outputDir, "random-effect", "userId-shard2")
-    val songModelPath = bestModelPath(outputDir, "random-effect", "songId-shard3")
-    val artistModelPath = bestModelPath(outputDir, "random-effect", "artistId-shard3")
+    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(fixedEffectModelPath))
     assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 15017))
@@ -241,7 +241,7 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         ("global:10,1e-5,10,1,tron,l2;" +
           "global:10,1e-5,10,1,lbfgs,l2"))))
 
-    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "shard1")
+    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     assertTrue(Files.exists(fixedEffectModelPath))
     assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14982))
@@ -295,17 +295,12 @@ class DriverGameIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
 
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToFeatureMapMap, modelPath.toString, sc)
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, modelPath.toString, sc)
 
     val (_, evaluator) = driver.prepareValidatingEvaluator(
       driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
 
-    val scores = gameModel
-      .map(_.score(gameDataSet))
-      .reduce(_ + _)
-      .scores
-
+    val scores = gameModel.score(gameDataSet).scores
     evaluator.evaluate(scores)
   }
 
@@ -405,31 +400,31 @@ object DriverGameIntegTest {
     * @param outputDir output base directory
     * @param outputMode output mode (best or all)
     * @param modelType model type (e.g. "fixed-effect", "random-effect")
-    * @param shardId the shard id designator
+    * @param modelName the model name
     * @return full path to model coefficients file
     */
-  private def modelPath(outputDir: String, outputMode: String, modelType: String, shardId: String): Path =
-    fs.getPath(outputDir, outputMode, modelType, shardId, "coefficients", "part-00000.avro")
+  private def modelPath(outputDir: String, outputMode: String, modelType: String, modelName: String): Path =
+    fs.getPath(outputDir, outputMode, modelType, modelName, "coefficients", "part-00000.avro")
 
   /**
     * Build the path to the model coefficients file
     *
     * @param outputDir output base directory
     * @param modelType model type (e.g. "fixed-effect", "random-effect")
-    * @param shardId the shard id designator
+    * @param modelName the model name
     * @return full path to model coefficients file
     */
-  def allModelPath(outputDir: String, modelType: String, shardId: String): Path =
-    modelPath(outputDir, "all/0", modelType, shardId)
+  def allModelPath(outputDir: String, modelType: String, modelName: String): Path =
+    modelPath(outputDir, "all/0", modelType, modelName)
 
   /**
     * Build the path to the best model coefficients file
     *
     * @param outputDir output base directory
     * @param modelType model type (e.g. "fixed-effect", "random-effect")
-    * @param shardId the shard id designator
+    * @param modelName the model name
     * @return full path to model coefficients file
     */
-  def bestModelPath(outputDir: String, modelType: String, shardId: String): Path =
-    modelPath(outputDir, "best", modelType, shardId)
+  def bestModelPath(outputDir: String, modelType: String, modelName: String): Path =
+    modelPath(outputDir, "best", modelType, modelName)
 }
