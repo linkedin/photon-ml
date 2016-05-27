@@ -21,22 +21,22 @@ import com.linkedin.photon.ml.util.Utils
 
 
 /**
- * Evaluator for logistic loss
- *
- * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * @param defaultScore the default score used to compute the metric
- * @author xazhang
- */
+  * Evaluator for logistic loss
+  *
+  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
+  * @param defaultScore the default score used to compute the metric
+  * @author xazhang
+  */
 protected[ml] class LogisticLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   /**
-   * Evaluate the scores of the model
-   *
-   * @param scores the scores to evaluate
-   * @return score metric value
-   */
+    * Evaluate the scores of the model
+    *
+    * @param scores the scores to evaluate
+    * @return score metric value
+    */
   def evaluate(scores: RDD[(Long, Double)]): Double = {
     val defaultScore = this.defaultScore
 
@@ -53,4 +53,14 @@ protected[ml] class LogisticLossEvaluator(
       }
     }.reduce(_ + _)
   }
+
+  /**
+    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
+    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
+    *
+    * @param score1 the first score to compare
+    * @param score2 the second score to compare
+    * @return true if the first score is better than the second
+    */
+  override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
 }

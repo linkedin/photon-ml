@@ -24,10 +24,20 @@ import org.apache.spark.rdd.RDD
 protected[ml] trait Evaluator {
 
   /**
-   * Evaluate the scores of the model
-   *
-   * @param scores the scores to evaluate
-   * @return score metric value
-   */
+    * Evaluate the scores of the model
+    *
+    * @param scores the scores to evaluate
+    * @return score metric value
+    */
   def evaluate(scores: RDD[(Long, Double)]): Double
+
+  /**
+    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
+    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
+    *
+    * @param score1 the first score to compare
+    * @param score2 the second score to compare
+    * @return true if the first score is better than the second
+    */
+  def betterThan(score1: Double, score2: Double): Boolean
 }

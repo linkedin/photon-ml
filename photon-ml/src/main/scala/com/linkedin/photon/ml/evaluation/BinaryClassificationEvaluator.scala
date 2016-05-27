@@ -18,22 +18,22 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.rdd.RDD
 
 /**
- * Evaluator for binary classification problems
- *
- * @param labelAndOffsets a [[RDD]] of (id, (label, offset)) pairs
- * @param defaultScore the default score used to compute the metric
- * @author xazhang
- */
+  * Evaluator for binary classification problems
+  *
+  * @param labelAndOffsets a [[RDD]] of (id, (label, offset)) pairs
+  * @param defaultScore the default score used to compute the metric
+  * @author xazhang
+  */
 protected[ml] class BinaryClassificationEvaluator(
     labelAndOffsets: RDD[(Long, (Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   /**
-   * Evaluate the scores of the model
-   *
-   * @param scores the scores to evaluate
-   * @return score metric value
-   */
+    * Evaluate the scores of the model
+    *
+    * @param scores the scores to evaluate
+    * @return score metric value
+    */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
@@ -43,4 +43,14 @@ protected[ml] class BinaryClassificationEvaluator(
 
     new BinaryClassificationMetrics(scoreAndLabels).areaUnderROC()
   }
+
+  /**
+    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
+    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
+    *
+    * @param score1 the first score to compare
+    * @param score2 the second score to compare
+    * @return true if the first score is better than the second
+    */
+  override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
 }
