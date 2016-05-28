@@ -22,32 +22,35 @@ import com.linkedin.photon.ml.projector.ProjectorType._
  *
  * @param randomEffectId The corresponding random effect Id of the data set
  * @param featureShardId Key of the feature shard used to generate the data set
+ * @param numPartitions Number of partitions of the data
  * @param numActiveDataPointsToKeepUpperBound The upper bound on the number of samples to keep (via reservoir sampling)
- *                                           as "active" for each individual-id level local data set in the random
- *                                           effect data set. The remaining samples will be kept as "passive" data.
+ *                                           as "active" for each individual-id level local data set. The remaining
+ *                                           samples that meets the numPassiveDataPointsToKeepLowerBound as discussed
+ *                                           below will be kept as "passive" data.
  * @param numPassiveDataPointsToKeepLowerBound The lower bound on the number of passive data points to keep for each
  *                                           individual-id level local data set. Only those individual-id level local
  *                                           data set with number of passive data points larger than
  *                                           [[numPassiveDataPointsToKeepLowerBound]] will have its passive data kept
- *                                           during the processing step, and as a result all the remaining passive data
+ *                                           during the processing step. Consequently, all the remaining passive data
  *                                           have more than [[numPassiveDataPointsToKeepLowerBound]] samples.
  * @param numFeaturesToSamplesRatioUpperBound The upper bound on the ratio between number of features and number of
  *                                            samples used for feature selection for each individual-id level local
  *                                            data set in the random effect data set.
- * @author xazhang
+ * @param projectorType The projector type, which is used to project the feature space of the random effect data set
+ *                      into a different space, usually one with lower dimension.
  */
-protected[ml] case class RandomEffectDataConfiguration(
+protected[ml] case class RandomEffectDataConfiguration private (
     randomEffectId: String,
     featureShardId: String,
     numPartitions: Int,
-    numActiveDataPointsToKeepUpperBound: Int = Int.MaxValue,
-    numPassiveDataPointsToKeepLowerBound: Int = 0,
-    numFeaturesToSamplesRatioUpperBound: Double = Double.MaxValue,
+    numActiveDataPointsToKeepUpperBound: Int,
+    numPassiveDataPointsToKeepLowerBound: Int,
+    numFeaturesToSamplesRatioUpperBound: Double,
     projectorType: ProjectorType) {
 
   def isDownSamplingNeeded: Boolean  = numActiveDataPointsToKeepUpperBound < Int.MaxValue
 
-  def isFeatureSelectionNeeded = numFeaturesToSamplesRatioUpperBound < Double.MaxValue
+  def isFeatureSelectionNeeded: Boolean = numFeaturesToSamplesRatioUpperBound < Double.MaxValue
 
   override def toString: String = {
     s"randomEffectId: $randomEffectId, featureShardId: $featureShardId, numPartitions: $numPartitions, " +

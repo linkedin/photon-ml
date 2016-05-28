@@ -48,8 +48,6 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
   private val hadoopConfiguration = sparkContext.hadoopConfiguration
 
-  private val isAddingIntercept = true
-
   /**
    * Builds feature name-and-term to index maps according to configuration
    *
@@ -63,7 +61,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val featureShardIdToFeatureMapMap =
       featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
         val featureMap = nameAndTermFeatureSetContainer.getFeatureNameAndTermToIndexMap(featureSectionKeys,
-          isAddingIntercept)
+          featureShardIdToInterceptMap.getOrElse(shardId, true))
         (shardId, featureMap)
       }
     featureShardIdToFeatureMapMap.foreach { case (shardId, featureMap) =>

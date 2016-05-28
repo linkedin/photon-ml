@@ -57,6 +57,9 @@ import scala.collection.{Map, Set}
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
  *                                              section keys in the following format:
  *                                              shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
+ * @param featureShardIdToInterceptMap A map between the feature shard id and a boolean variable to decide whether a
+ *                                     dummy feature should be added to this shard to learn an intercept. The default
+ *                                     is true for all shard ids
  * @param outputDir Output directory for logs and learned models.
  * @param numIterations Number of coordinate descent iterations.
  * @param updatingSequence Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
@@ -88,6 +91,7 @@ case class Params(
     minPartitionsForValidation: Int = 1,
     featureNameAndTermSetInputPath: String = "",
     featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]] = Map(),
+    featureShardIdToInterceptMap: Map[String, Boolean] = Map(),
     outputDir: String = "",
     numIterations: Int = 1,
     updatingSequence: Seq[String] = Seq(),
@@ -113,6 +117,7 @@ case class Params(
       s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
       s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
         .mkString("\n")}\n" +
+      s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
       s"outputDir: $outputDir\n" +
       s"numIterations: $numIterations\n" +
       s"updatingSequence: $updatingSequence\n" +
@@ -199,6 +204,15 @@ object Params {
             }}
             .toMap
         ))
+      opt[String]("feature-shard-id-to-intercept-map")
+          .text(s"A map between the feature shard id and a boolean variable to decide whether a dummy feature " +
+              s"should be added to this shard to learn an intercept. The default is true for all shard ids.")
+          .action((x, c) => c.copy(featureShardIdToInterceptMap =
+              x.split("\\|").map { line => line.split(":") match {
+                case Array(key, flag) => (key, flag.toBoolean)
+                case Array(key) => (key, true)
+              }}.toMap
+          ))
       opt[Int]("num-iterations")
         .text(s"Number of coordinate descent iterations, default: ${defaultParams.numIterations}")
         .action((x, c) => c.copy(numIterations = x))

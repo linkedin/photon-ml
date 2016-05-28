@@ -15,11 +15,11 @@
 package com.linkedin.photon.ml.data
 
 /**
- * Configuration for a fixed effect dataset
- *
- * @author xazhang
+ * Configuration needed in order to generate a [[FixedEffectDataSet]]
+ * @param featureShardId Key of the feature shard used to generate the data set
+ * @param numPartitions Number of partitions of the data
  */
-protected[ml] case class FixedEffectDataConfiguration(featureShardId: String, numPartitions: Int) {
+protected[ml] case class FixedEffectDataConfiguration private (featureShardId: String, numPartitions: Int) {
   override def toString: String = s"featureShardId: $featureShardId, numPartitions: $numPartitions"
 }
 
