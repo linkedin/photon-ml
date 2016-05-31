@@ -37,6 +37,10 @@ import scopt.OptionParser
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
  *                                              section keys in the following format:
  *                                              shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
+ * @param featureShardIdToInterceptMap A map between the feature shard id and a boolean variable that decides whether a
+ *                                     dummy feature should be added to the corresponding shard in order to learn an
+ *                                     intercept, for example, in the following format: shardId1:true|shardId2:false.
+ *                                     The default is true for all shard ids.
  * @param randomEffectIdSet A set of random effect ids of the corresponding random effect models in the following
  *                          format: randomEffectId1,randomEffectId2,randomEffectId3,
  * @param minPartitionsForRandomEffectModel Minimum number of partitions for GAME's random effect model
@@ -87,42 +91,46 @@ object Params {
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
         .action((x, c) => c.copy(inputDirs = x.split(",")))
       opt[String]("date-range")
-          .text(s"Date range for the input data represented in the form start.date-end.date, " +
-              s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
-              s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
-              s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
-              s"Default: ${defaultParams.dateRangeOpt}.")
-          .action((x, c) => c.copy(dateRangeOpt = Some(x)))
-      opt[String]("date-range-days-ago")
-          .text(s"Date range for the input data represented in the form start.daysAgo-end.daysAgo, " +
-              s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
-              s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
-              s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
-              s"Default: ${defaultParams.dateRangeDaysAgoOpt}.")
-          .action((x, c) => c.copy(dateRangeDaysAgoOpt = Some(x)))
+        .text(s"Date range for the input data represented in the form start.date-end.date, " +
+          s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
+          s"Default: ${defaultParams.dateRangeOpt}.")
         .action((x, c) => c.copy(dateRangeOpt = Some(x)))
+      opt[String]("date-range-days-ago")
+        .text(s"Date range for the input data represented in the form start.daysAgo-end.daysAgo, " +
+          s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
+          s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
+          s"Default: ${defaultParams.dateRangeDaysAgoOpt}.")
+        .action((x, c) => c.copy(dateRangeDaysAgoOpt = Some(x)))
       opt[String]("feature-name-and-term-set-path")
-          .required()
-          .text("Input path to the features name-and-term lists.")
-          .action((x, c) => c.copy(featureNameAndTermSetInputPath = x))
+        .required()
+        .text("Input path to the features name-and-term lists.")
+        .action((x, c) => c.copy(featureNameAndTermSetInputPath = x))
       opt[String]("feature-shard-id-to-feature-section-keys-map")
-          .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
-              s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
-          .action((x, c) => c.copy(featureShardIdToFeatureSectionKeysMap =
-              x.split("\\|").map { line => line.split(":") match {
-                case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
-                case Array(key) => (key, Set[String]())
-              }}.toMap
-          ))
+        .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
+          s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
+        .action((x, c) => c.copy(featureShardIdToFeatureSectionKeysMap =
+          x.split("\\|")
+            .map { line => line.split(":") match {
+              case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
+              case Array(key) => (key, Set[String]())
+            }}
+            .toMap
+        ))
       opt[String]("feature-shard-id-to-intercept-map")
-          .text(s"A map between the feature shard id and a boolean variable to decide whether a dummy feature " +
-              s"should be added to this shard to learn an intercept. The default is true for all shard ids.")
-          .action((x, c) => c.copy(featureShardIdToInterceptMap =
-              x.split("\\|").map { line => line.split(":") match {
-                case Array(key, flag) => (key, flag.toBoolean)
-                case Array(key) => (key, true)
-              }}.toMap
-          ))
+        .text(s"A map between the feature shard id and a boolean variable that decides whether a dummy feature " +
+          s"should be added to the corresponding shard in order to learn an intercept, for example, in the " +
+          s"following format: shardId1:true|shardId2:false. The default is true for all shard ids.")
+        .action((x, c) => c.copy(featureShardIdToInterceptMap =
+          x.split("\\|")
+            .map { line => line.split(":") match {
+              case Array(key, flag) => (key, flag.toBoolean)
+              case Array(key) => (key, true)
+            }}
+            .toMap
+        ))
       opt[String]("random-effect-id-set")
         .required()
         .text("A set of random effect ids of the corresponding random effect models in the following format: " +
@@ -146,8 +154,7 @@ object Params {
       //TODO: remove the task-type option
       opt[String]("task-type")
         .text("A dummy option that does nothing and will be removed for the next major version bump")
-      help("help")
-        .text("Prints usage text")
+      help("help").text("Prints usage text")
     }
     parser.parse(args, Params()) match {
       case Some(parsedParams) => parsedParams
