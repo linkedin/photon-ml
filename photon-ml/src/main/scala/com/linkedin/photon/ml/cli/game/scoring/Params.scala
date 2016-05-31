@@ -50,6 +50,7 @@ case class Params(
     dateRangeOpt: Option[String] = None,
     dateRangeDaysAgoOpt: Option[String] = None,
     featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]] = Map(),
+    featureShardIdToInterceptMap: Map[String, Boolean] = Map(),
     randomEffectIdSet: Set[String] = Set(),
     minPartitionsForRandomEffectModel: Int = 1,
     featureNameAndTermSetInputPath: String = "",
@@ -64,6 +65,7 @@ case class Params(
       s"dateRangeDaysAgoOpt: $dateRangeDaysAgoOpt\n" +
       s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
             .mkString("\n")}\n" +
+      s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
       s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
       s"randomEffectIdSet: $randomEffectIdSet\n" +
       s"numPartitionsForRandomEffectModel: $minPartitionsForRandomEffectModel\n" +
@@ -110,6 +112,15 @@ object Params {
               x.split("\\|").map { line => line.split(":") match {
                 case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
                 case Array(key) => (key, Set[String]())
+              }}.toMap
+          ))
+      opt[String]("feature-shard-id-to-intercept-map")
+          .text(s"A map between the feature shard id and a boolean variable to decide whether a dummy feature " +
+              s"should be added to this shard to learn an intercept. The default is true for all shard ids.")
+          .action((x, c) => c.copy(featureShardIdToInterceptMap =
+              x.split("\\|").map { line => line.split(":") match {
+                case Array(key, flag) => (key, flag.toBoolean)
+                case Array(key) => (key, true)
               }}.toMap
           ))
       opt[String]("random-effect-id-set")

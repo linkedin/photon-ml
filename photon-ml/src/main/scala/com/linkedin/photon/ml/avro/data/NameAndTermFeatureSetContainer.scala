@@ -41,8 +41,7 @@ protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[S
    * Get the map from feature name of type [[NameAndTerm]] to feature index of type [[Int]] based on the specified
    * feature section keys from the input
    * @param featureSectionKeys The specified feature section keys to generate the name to index map explained above
-   * @param isAddingIntercept Whether to add the intercept term to the generated map
-   * @todo Need a better design to deal with the intercept term
+   * @param isAddingIntercept Whether to add a dummy variable to the generated feature map to learn an intercept term
    * @return The generated map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    */
   def getFeatureNameAndTermToIndexMap(featureSectionKeys: Set[String], isAddingIntercept: Boolean)
