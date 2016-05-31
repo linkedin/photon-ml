@@ -207,7 +207,6 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
       setCurrentState(Some(updatedState))
     } while (!isDone)
     val currentState = getCurrentState
-    logInfo(s"After optimizing, current state: $currentState")
     (currentState.get.coefficients, currentState.get.value)
   }
 

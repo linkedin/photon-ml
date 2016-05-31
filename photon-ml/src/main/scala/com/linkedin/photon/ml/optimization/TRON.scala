@@ -187,7 +187,7 @@ class TRON[Datum <: DataPoint](
       }
       val gradientNorm = norm(updatedFunctionGradient, 2)
       val residualNorm = norm(residual, 2)
-      logInfo(f"iter ${state.iter}%3d act $actualReduction%5.3e pre $predictedReduction%5.3e delta $delta%5.3e " +
+      logDebug(f"iter ${state.iter}%3d act $actualReduction%5.3e pre $predictedReduction%5.3e delta $delta%5.3e " +
         f"f $updatedFunctionValue%5.3e |residual| $residualNorm%5.3e |g| $gradientNorm%5.3e CG $cgIter%3d")
 
       if (actualReduction > eta0 * predictedReduction) {
@@ -286,7 +286,7 @@ object TRON extends Logging {
         var alpha = rTr / direction.dot(Hd)
         step += direction * alpha
         if (norm(step, 2) > truncationBoundary) {
-          logInfo(s"cg reaches truncation boundary after $iteration iterations")
+          logDebug(s"cg reaches truncation boundary after $iteration iterations")
           /* Solve equation (13) of Algorithm 2 */
           alpha = -alpha
           step += direction * alpha
