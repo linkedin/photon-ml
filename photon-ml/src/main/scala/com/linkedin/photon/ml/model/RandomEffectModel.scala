@@ -76,7 +76,7 @@ protected[ml] class RandomEffectModel(
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model of randomEffectId $randomEffectId, " +
         s"featureShardId $featureShardId summary:")
-    stringBuilder.append(s"\nLength: ${coefficientsRDD.values.map(_.means.length).stats()}")
+    stringBuilder.append(s"\nLength: ${coefficientsRDD.values.map(_.means.activeSize).stats()}")
     stringBuilder.append(s"\nMean: ${coefficientsRDD.map(_._2.meansL2Norm).stats()}")
     if (coefficientsRDD.first()._2.variancesOption.isDefined) {
       stringBuilder.append(s"\nvariance: ${coefficientsRDD.map(_._2.variancesL2NormOption.get).stats()}")

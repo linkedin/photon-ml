@@ -21,13 +21,12 @@ import breeze.linalg.Vector
 /**
  * Representation of a single GAME data point
  *
- * @param response the reponse or label
+ * @param response the response or label
  * @param offset the offset
  * @param weight the importance weight
  * @param featureShardContainer the sharded feature vectors
  * @param randomEffectIdToIndividualIdMap a map from random effect type id to actual individual id
  *   (e.g. "memberId" -> "1234" or "itemId" -> "abcd")
- * @author xazhang
  */
 protected[ml] class GameDatum(
     val response: Double,

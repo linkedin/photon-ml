@@ -15,9 +15,7 @@
 package com.linkedin.photon.ml.avro
 
 /**
- * Field names in the Avro data set
- *
- * @author xazhang
+ * Common field names in the Avro data set used in GAME
  */
 object AvroFieldNames {
   protected[avro] val NAME: String = "name"
@@ -26,4 +24,5 @@ object AvroFieldNames {
   protected[avro] val RESPONSE: String = "response"
   protected[avro] val OFFSET: String = "offset"
   protected[avro] val WEIGHT: String = "weight"
+  protected[avro] val UID: String = "uid"
 }

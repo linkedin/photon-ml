@@ -33,12 +33,12 @@ import scala.collection.{Map, Set}
  *                          e.g. 20150501-20150631. If trainDateRangeOpt is specified, the input directory is expected
  *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
  *                          Otherwise, the input paths are assumed to be flat directories of input files
- *                          (e.g., trainDir/input-data-files)."
+ *                          (e.g., trainDir/input-data-files).
  * @param trainDateRangeDaysAgoOpt Date range for the training data represented in the form start.daysAgo-end.daysAgo,
  *                          e.g. 90-1. If trainDateRangeDaysAgoOpt is specified, the input directory is expected
  *                          to be in the daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files).
  *                          Otherwise, the input paths are assumed to be flat directories of input files
- *                          (e.g., trainDir/input-data-files)."
+ *                          (e.g., trainDir/input-data-files).
  * @param validateDirsOpt Input directories of validating data. Multiple input directories are also accepted if they
  *                        are separated by commas, e.g., inputDir1,inputDir2,inputDir3.
  * @param validateDateRangeOpt Date range for the training data represented in the form start.date-end.date,
@@ -51,7 +51,7 @@ import scala.collection.{Map, Set}
  *                                    the input directory is expected to be in the daily format structure (e.g.,
  *                                    validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are
  *                                    assumed to be flat directories of input files (e.g.,
- *                                    validateDir/input-data-files)."
+ *                                    validateDir/input-data-files).
  * @param minPartitionsForValidation Minimum number of partitions for validating data (if provided).
  * @param featureNameAndTermSetInputPath Input path to the features name-and-term lists.
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature

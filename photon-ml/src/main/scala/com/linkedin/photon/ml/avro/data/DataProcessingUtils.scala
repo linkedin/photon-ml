@@ -16,7 +16,8 @@ package com.linkedin.photon.ml.avro.data
 
 import java.util.{List => JList}
 
-import scala.collection.{Map, Set, mutable}
+import scala.collection.{Map, Set}
+import scala.collection.JavaConverters._
 
 import breeze.linalg.Vector
 import org.apache.avro.generic.GenericRecord
@@ -33,28 +34,52 @@ import com.linkedin.photon.ml.util.{Utils, VectorUtils}
  */
 object DataProcessingUtils {
 
-  //TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functons are decoupled from the
-  //rest of code
+  private def getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
+  : Map[String, Int] = {
+
+    featureShardIdToFeatureMapMap.map { case (shardId, featureMap) => (shardId, featureMap.values.max + 1) }
+  }
+
+  //TODO: Change the scope to protected[avro] after Avro related classes/functIons are decoupled from the rest of code
   protected[ml] def getGameDataSetFromGenericRecords(
-      records: RDD[GenericRecord],
+      records: RDD[(Long, GenericRecord)],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
-      randomEffectIdSet: Set[String]): RDD[(Long, GameDatum)] = {
+      randomEffectIdSet: Set[String],
+      isResponseRequired: Boolean): RDD[(Long, GameDatum)] = {
 
-    val sparkContext = records.sparkContext
-    val numPartitions = records.partitions.length.toLong
-    val featureShardMapLargestIndices =
-      featureShardIdToFeatureMapMap.map { case (shardId, featureMap) =>
-      (shardId, featureMap.values.max)
-    }
-    val featureShardIdToFeatureMapMapBroadcast = sparkContext.broadcast(featureShardIdToFeatureMapMap)
-    records.mapPartitionsWithIndex { case (k, iterator) =>
-      val featureShardIdToFeatureMapMap = featureShardIdToFeatureMapMapBroadcast.value
-      iterator.zipWithIndex.map { case (record, idx) =>
-        val gameData = getGameDatumFromGenericRecord(record, featureShardIdToFeatureSectionKeysMap,
-          featureShardIdToFeatureMapMap, featureShardMapLargestIndices, randomEffectIdSet)
-        (idx * numPartitions + k, gameData)
-      }
+    val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapMap)
+    val featureShardIdToFeatureMapMapBroadcast = records.sparkContext.broadcast(featureShardIdToFeatureMapMap)
+    records.mapValues(record => getGameDatumFromGenericRecord(
+      record,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapMapBroadcast.value,
+      shardIdToFeatureDimensionMap,
+      randomEffectIdSet,
+      isResponseRequired
+    ))
+  }
+
+  protected[ml] def getGameDataSetWithUIDFromGenericRecords(
+      records: RDD[(Long, GenericRecord)],
+      featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
+      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
+      randomEffectIdSet: Set[String],
+      isResponseRequired: Boolean): RDD[(Long, (GameDatum, String))] = {
+
+    val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapMap)
+    val featureShardIdToFeatureMapMapBroadcast = records.sparkContext.broadcast(featureShardIdToFeatureMapMap)
+    records.mapValues { record =>
+      val gameDatum = getGameDatumFromGenericRecord(
+        record,
+        featureShardIdToFeatureSectionKeysMap,
+        featureShardIdToFeatureMapMapBroadcast.value,
+        shardIdToFeatureDimensionMap,
+        randomEffectIdSet,
+        isResponseRequired
+      )
+      val uid = Utils.getStringAvro(record, AvroFieldNames.UID)
+      (gameDatum, uid)
     }
   }
 
@@ -62,16 +87,21 @@ object DataProcessingUtils {
       record: GenericRecord,
       featureShardSectionKeys: Map[String, Set[String]],
       featureShardMaps: Map[String, Map[NameAndTerm, Int]],
-      featureShardMapLargestIndices: Map[String, Int],
-      randomEffectIdSet: Set[String]): GameDatum = {
+      shardIdToFeatureDimensionMap: Map[String, Int],
+      randomEffectIdSet: Set[String],
+      isResponseRequired: Boolean): GameDatum = {
 
     val featureShardContainer = featureShardSectionKeys.map { case (shardId, featureSectionKeys) =>
       val featureMap = featureShardMaps(shardId)
-      val largestIndex = featureShardMapLargestIndices(shardId)
-      val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, largestIndex)
+      val featureDimension = shardIdToFeatureDimensionMap(shardId)
+      val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, featureDimension)
       (shardId, features)
     }
-    val response = Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
+    val response = if (isResponseRequired) {
+      Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
+    } else {
+      Double.NaN
+    }
     val offset = if (record.get(AvroFieldNames.OFFSET) != null) {
       Utils.getDoubleAvro(record, AvroFieldNames.OFFSET)
     } else {
@@ -92,40 +122,32 @@ object DataProcessingUtils {
 
   private def getFeaturesFromGenericRecord(
       record: GenericRecord,
-      featureNameAndTermToIndexMap: Map[NameAndTerm, Int],
+      nameAndTermToIndexMap: Map[NameAndTerm, Int],
       fieldNames: Set[String],
-      maxFeatureIndex: Int): Vector[Double] = {
+      featureDimension: Int): Vector[Double] = {
 
     val featuresAsIndexValueArray = fieldNames.map(fieldName =>
       record.get(fieldName) match {
         case recordList: JList[_] =>
-          val featureIndexAndValueArrayBuilder = new mutable.ArrayBuffer[(Int, Double)]
-          val iterator = recordList.iterator
-          while (iterator.hasNext) {
-            iterator.next match {
-              case record: GenericRecord =>
-                val featureNameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
-                if (featureNameAndTermToIndexMap.contains(featureNameAndTerm)) {
-                  featureIndexAndValueArrayBuilder += featureNameAndTermToIndexMap(featureNameAndTerm) ->
-                      Utils.getDoubleAvro(record, AvroFieldNames.VALUE)
-                }
-              case any => throw new IllegalArgumentException(s"$any in features list is not a GenericRecord")
-            }
+          recordList.asScala.flatMap {
+            case record: GenericRecord =>
+              val nameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
+              if (nameAndTermToIndexMap.contains(nameAndTerm)) {
+                Some(nameAndTermToIndexMap(nameAndTerm) -> Utils.getDoubleAvro(record, AvroFieldNames.VALUE))
+              } else {
+                None
+              }
+            case any => throw new IllegalArgumentException(s"$any in features list is not a GenericRecord")
           }
-          // Dedup the features with the same name by summing up the values
-          featureIndexAndValueArrayBuilder
-              .groupBy(_._1)
-              .map { case (index, values) => (index, values.map(_._2).sum) }
-              .toArray
         case _ => throw new IllegalArgumentException(s"$fieldName is not a list (or is null).")
       }
     ).foldLeft(Array[(Int, Double)]())(_ ++ _)
-    val isAddingInterceptToFeatureMap = featureNameAndTermToIndexMap.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
+    val isAddingInterceptToFeatureMap = nameAndTermToIndexMap.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
     if (isAddingInterceptToFeatureMap) {
       VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray ++
-          Array(featureNameAndTermToIndexMap(NameAndTerm.INTERCEPT_NAME_AND_TERM) -> 1.0), maxFeatureIndex + 1)
+        Array(nameAndTermToIndexMap(NameAndTerm.INTERCEPT_NAME_AND_TERM) -> 1.0), featureDimension)
     } else {
-      VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray, maxFeatureIndex + 1)
+      VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray, featureDimension)
     }
   }
 }
