@@ -57,9 +57,10 @@ import scala.collection.{Map, Set}
  * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
  *                                              section keys in the following format:
  *                                              shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
- * @param featureShardIdToInterceptMap A map between the feature shard id and a boolean variable to decide whether a
- *                                     dummy feature should be added to this shard to learn an intercept. The default
- *                                     is true for all shard ids
+ * @param featureShardIdToInterceptMap A map between the feature shard id and a boolean variable that decides whether a
+ *                                     dummy feature should be added to the corresponding shard in order to learn an
+ *                                     intercept, for example, in the following format: shardId1:true|shardId2:false.
+ *                                     The default is true for all shard ids.
  * @param outputDir Output directory for logs and learned models.
  * @param numIterations Number of coordinate descent iterations.
  * @param updatingSequence Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
@@ -152,14 +153,14 @@ object Params {
       opt[String]("train-date-range")
         .text(s"Date range for the training data represented in the form start.date-end.date, " +
           s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
-          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
-          s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
+          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths" +
+          s" are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
           s"Default: ${defaultParams.trainDateRangeOpt}.")
         .action((x, c) => c.copy(trainDateRangeOpt = Some(x)))
       opt[String]("train-date-range-days-ago")
         .text(s"Date range for the training data represented in the form start.daysAgo-end.daysAgo, " +
-          s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
-          s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
+          s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the daily " +
+          s"format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
           s"are assumed to be flat directories of input files (e.g., trainDir/input-data-files). " +
           s"Default: ${defaultParams.trainDateRangeDaysAgoOpt}.")
         .action((x, c) => c.copy(trainDateRangeDaysAgoOpt = Some(x)))
@@ -205,14 +206,17 @@ object Params {
             .toMap
         ))
       opt[String]("feature-shard-id-to-intercept-map")
-          .text(s"A map between the feature shard id and a boolean variable to decide whether a dummy feature " +
-              s"should be added to this shard to learn an intercept. The default is true for all shard ids.")
-          .action((x, c) => c.copy(featureShardIdToInterceptMap =
-              x.split("\\|").map { line => line.split(":") match {
-                case Array(key, flag) => (key, flag.toBoolean)
-                case Array(key) => (key, true)
-              }}.toMap
-          ))
+        .text(s"A map between the feature shard id and a boolean variable that decides whether a dummy feature " +
+          s"should be added to the corresponding shard in order to learn an intercept, for example, in the " +
+          s"following format: shardId1:true|shardId2:false. The default is true for all shard ids.")
+        .action((x, c) => c.copy(featureShardIdToInterceptMap =
+          x.split("\\|")
+            .map { line => line.split(":") match {
+              case Array(key, flag) => (key, flag.toBoolean)
+              case Array(key) => (key, true)
+            }}
+            .toMap
+        ))
       opt[Int]("num-iterations")
         .text(s"Number of coordinate descent iterations, default: ${defaultParams.numIterations}")
         .action((x, c) => c.copy(numIterations = x))
@@ -224,51 +228,49 @@ object Params {
           "accepted and separated by semi-colon \";\".")
         .action((x, c) => c.copy(fixedEffectOptimizationConfigurations =
           x.split(";")
-            .map(
-              _.split("\\|")
-                .map { line =>
-                  val Array(key, value) = line.split(":").map(_.trim)
-                  (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
-                }
-                .toMap)
+            .map(_.split("\\|")
+              .map { line =>
+                val Array(key, value) = line.split(":").map(_.trim)
+                (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
+              }
+              .toMap)
         ))
       opt[String]("fixed-effect-data-configurations")
         .text("Configurations for each fixed effect data set.")
         .action((x, c) => c.copy(fixedEffectDataConfigurations =
           x.split("\\|")
             .map { line =>
-                val Array(key, value) = line.split(":").map(_.trim)
-                (key, FixedEffectDataConfiguration.parseAndBuildFromString(value))
-              }.toMap
+              val Array(key, value) = line.split(":").map(_.trim)
+              (key, FixedEffectDataConfiguration.parseAndBuildFromString(value))
+            }
+            .toMap
         ))
       opt[String]("random-effect-optimization-configurations")
         .text("Optimization configurations for each random effect optimization problem, multiple parameters are " +
           "accepted and separated by semi-colon \";\".")
         .action((x, c) => c.copy(randomEffectOptimizationConfigurations =
           x.split(";")
-            .map(
-              _.split("\\|")
-                .map { line =>
-                  val Array(key, value) = line.split(":").map(_.trim)
-                  (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
-                }
-                .toMap)
+            .map(_.split("\\|")
+              .map { line =>
+                val Array(key, value) = line.split(":").map(_.trim)
+                (key, GLMOptimizationConfiguration.parseAndBuildFromString(value))
+              }
+              .toMap)
         ))
       opt[String]("factored-random-effect-optimization-configurations")
-        .text("Optimization configurations for each factored random effect optimization problem, multiple parameters " +
-          "are accepted and separated by semi-colon \";\".")
+        .text("Optimization configurations for each factored random effect optimization problem, multiple " +
+          "parameters are accepted and separated by semi-colon \";\".")
         .action((x, c) => c.copy(factoredRandomEffectOptimizationConfigurations =
           x.split(";")
-            .map(
-              _.split("\\|")
-                .map { line =>
-                  val Array(key, s1, s2, s3) = line.split(":").map(_.trim)
-                  val randomEffectOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s1)
-                  val latentFactorOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s2)
-                  val mfOptimizationOptConfig = MFOptimizationConfiguration.parseAndBuildFromString(s3)
-                  (key, (randomEffectOptConfig, latentFactorOptConfig, mfOptimizationOptConfig))
-                }
-                .toMap)
+            .map(_.split("\\|")
+              .map { line =>
+                val Array(key, s1, s2, s3) = line.split(":").map(_.trim)
+                val randomEffectOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s1)
+                val latentFactorOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s2)
+                val mfOptimizationOptConfig = MFOptimizationConfiguration.parseAndBuildFromString(s3)
+                (key, (randomEffectOptConfig, latentFactorOptConfig, mfOptimizationOptConfig))
+              }
+              .toMap)
         ))
       opt[String]("random-effect-data-configurations")
         .text("Configurations for all the random effect data sets.")
@@ -284,7 +286,7 @@ object Params {
         .text(s"DEPRECATED -- USE model-output-mode")
         .action((x, c) => c.copy(modelOutputMode = if (x) ALL else NONE))
       opt[String]("model-output-mode")
-        .text(s"Output mode of trained models to HDFS (ALL, BEST, or NONE)." +
+        .text(s"Output mode of trained models to HDFS (ALL, BEST, or NONE). " +
           s"Default: ${defaultParams.modelOutputMode}")
         .action((x, c) => c.copy(modelOutputMode = ModelOutputMode.withName(x.toUpperCase)))
       opt[Int]("num-output-files-for-random-effect-model")
@@ -295,13 +297,12 @@ object Params {
       opt[String]("application-name")
         .text(s"Name of this Spark application. Default: ${defaultParams.applicationName}.")
         .action((x, c) => c.copy(applicationName = x))
-      help("help")
-        .text("prints usage text.")
+      help("help").text("prints usage text.")
     }
     parser.parse(args, Params()) match {
       case Some(parsedParams) => parsedParams
       case None => throw new IllegalArgumentException(s"Parsing the command line arguments failed " +
-          s"(${args.mkString(", ")}),\n ${parser.usage}")
+        s"(${args.mkString(", ")}),\n ${parser.usage}")
     }
   }
 }
