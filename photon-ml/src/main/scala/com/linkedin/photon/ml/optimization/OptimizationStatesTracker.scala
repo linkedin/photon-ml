@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import java.io.{PrintWriter, StringWriter}
 
 import breeze.linalg.norm
 import breeze.optimize.FirstOrderMinimizer.{ConvergenceReason, FunctionValuesConverged, GradientConverged}
@@ -26,7 +25,6 @@ import scala.collection.mutable
  * Class to track the history of an optimizer's states and wall-clock time elapsed per iteration
  * @param maxNumStates The maximum number of states to track. This is used to prevent the OptimizationHistoryTracker
  *                     from using too much memory to track the history of the states.
- * @author xazhang
  * @note  DO NOT USE this class outside of Photon-ML. It is intended as an internal utility, and is likely to be changed
  *   or removed in future releases.
  */

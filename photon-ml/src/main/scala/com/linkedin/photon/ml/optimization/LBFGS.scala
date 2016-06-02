@@ -58,13 +58,16 @@ class LBFGS[Datum <: DataPoint](
       diffFunction: DiffFunction[Datum],
       initialCoef: Vector[Double]) {
 
-    private val lbfgs = diffFunction match {
+    // Initialize the solver (L-BFGS for L2 and OWLQN for L1/Elastic net)
+    private val lbfgs: BreezeLBFGS[Vector[Double]] = diffFunction match {
       case diffFunc: DiffFunction[Datum] with L1RegularizationTerm =>
         val l1Weight = diffFunc.getL1RegularizationParam
         new BreezeOWLQN[Int, Vector[Double]](maxNumIterations, numCorrections, (_: Int) => l1Weight, tolerance)
       case diffFunc: DiffFunction[Datum] =>
         new BreezeLBFGS[Vector[Double]](maxNumIterations, numCorrections, tolerance)
     }
+
+    // The objective function that is passed to the solver
     private val breezeDiffFunction = new BreezeDiffFunction[Vector[Double]]() {
       //calculating the gradient and value of the objective function
       override def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
@@ -80,6 +83,8 @@ class LBFGS[Datum <: DataPoint](
         }
       }
     }
+
+    // The actual workhorse
     private val breezeStates = lbfgs.iterations(breezeDiffFunction, initialCoef)
     breezeStates.next()
 
@@ -110,11 +115,12 @@ class LBFGS[Datum <: DataPoint](
       state: OptimizerState,
       data: Either[RDD[Datum], Iterable[Datum]],
       diffFunction: DiffFunction[Datum],
-      initialCoef: Vector[Double]) {
+      initialCoef: Vector[Double]): Unit = {
+
     breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
   }
 
-  override def clearOptimizerInnerState() {
+  override def clearOptimizerInnerState(): Unit = {
     breezeOptimization = _:BreezeOptimization
   }
 
@@ -122,6 +128,7 @@ class LBFGS[Datum <: DataPoint](
       data: Either[RDD[Datum], Iterable[Datum]],
       objectiveFunction: DiffFunction[Datum],
       state: OptimizerState): OptimizerState = {
+
     breezeOptimization.next(state)
   }
 }

@@ -134,7 +134,7 @@ class TRON[Datum <: DataPoint](
     var numImprovementFailure = 0
     var finalState = state
     do {
-      //retry the Tron optimization with tne shrunken trust region boundary (delta) until either
+      // retry the TRON optimization with the shrunken trust region boundary (delta) until either
       // 1. the function value is improved; or
       // 2. the maximum number of improvement failures reached.
       val (cgIter, step, residual) = TRON.truncatedConjugateGradientMethod(

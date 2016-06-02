@@ -88,6 +88,12 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
    */
   def getPreviousState: Option[OptimizerState]
 
+
+  /**
+   * Set the convergence reason
+   */
+  protected def setConvergenceReason(): Unit
+
   /**
    * Set the initial state for the optimizer
    * @param state The initial state
@@ -206,6 +212,7 @@ trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Se
       setPreviousState(getCurrentState)
       setCurrentState(Some(updatedState))
     } while (!isDone)
+    setConvergenceReason()
     val currentState = getCurrentState
     (currentState.get.coefficients, currentState.get.value)
   }

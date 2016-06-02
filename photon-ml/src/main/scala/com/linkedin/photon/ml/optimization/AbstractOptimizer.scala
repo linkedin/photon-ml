@@ -98,15 +98,21 @@ abstract class AbstractOptimizer[Datum <: DataPoint, -Function <: DiffFunction[D
   def getCurrentState: Option[OptimizerState] = currentState
 
   protected def setCurrentState(state: Option[OptimizerState]): Unit = {
-    currentState = state
-    state match {
-      case Some(x) =>
-        statesTracker match {
-          case Some(y) =>
-            y.track(x)
-            y.convergenceReason = convergenceReason
-          case None =>
+    (state, statesTracker, currentState) match {
+      case (Some(s), Some(st), Some(ct)) =>
+        // Only tracks the state if it is different from the previous state (e.g., different objects)
+        if (s != ct) {
+          st.track(s)
         }
+      case _ =>
+    }
+    currentState = state
+  }
+
+  protected def setConvergenceReason(): Unit = {
+    // Set the convergenceReason when the optimization is done
+    statesTracker match {
+      case Some(y) => y.convergenceReason = convergenceReason
       case None =>
     }
   }
