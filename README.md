@@ -18,6 +18,7 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
   - [Input Data Format](#input-data-format)
   - [Models](#models)
   - [Shaded Jar](#shaded-jar)
+  - [Try It Out!](#try-it-out)
   - [Example Scripts](#example-scripts)
 - [How to Contribute](#how-to-contribute)
 
@@ -169,6 +170,75 @@ Below is a command to build the photon-all jar:
 ```bash
 # Change 2.10 to 2.11 for Scala 2.11
 ./gradlew :photon-all_2.10:assemble
+```
+
+### Try It Out!
+
+Follow these steps to train a logistic regression model with Photon ML.
+
+#### Install Spark
+
+This step is platform-dependent. On OS X, you can install Spark with [Homebrew](http://brew.sh/) using the following command:
+
+```
+brew install spark
+```
+
+For more information, see the [Spark docs](http://spark.apache.org/docs/latest/index.html).
+
+#### Get and Build the Code
+
+```
+git clone git@github.com:linkedin/photon-ml.git
+cd photon-ml
+./gradlew build -x integTest
+```
+
+#### Grab a Dataset
+
+For this example, we'll use the "a1a" dataset, acquired from [https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html). Currently the Photon ML dataset converter supports only the LibSVM format.
+
+```
+curl -O https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a
+curl -O https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a.t
+```
+
+Convert the data to the Avro format that Photon ML understands.
+
+```
+pip install avro
+python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a dev-scripts/TrainingExample.avsc a1a.avro
+python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a.t dev-scripts/TrainingExample.avsc a1a.t.avro
+```
+
+The first command might be different, depending on the configuration of your system. If it fails, try your platform's standard approach for installing a Python library.
+
+#### Train the Model
+
+Now we're ready to train the model with Photon ML. Run the following command from the "photon-ml" directory:
+
+```
+spark-submit \
+  --class com.linkedin.photon.ml.Driver \
+  --master local[*] \
+  --num-executors 4 \
+  --driver-memory 1G \
+  --executor-memory 1G \
+  "./build/photon-all_2.10/libs/photon-all_2.10-1.0.0.jar" \
+  --training-data-directory "./a1a.avro" \
+  --validating-data-directory "./a1a.t.avro" \
+  --format "TRAINING_EXAMPLE" \
+  --output-directory "out" \
+  --task "LOGISTIC_REGRESSION" \
+  --num-iterations 50 \
+  --regularization-weights "0.1,1,10,100" \
+  --job-name "demo_photon_ml_logistic_regression"
+```
+
+When this command finishes, you should have a new folder named "out" containing the model and a diagnostic report. On OS X:
+
+```
+open out/model-diagnostic.html
 ```
 
 ### Example Scripts
