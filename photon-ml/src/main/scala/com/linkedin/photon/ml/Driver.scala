@@ -188,8 +188,8 @@ protected[ml] class Driver(
     featureNum = trainingData.first().features.size
 
     // Print out the basic statistics of the training data
-    logger.info(s"number of training data points: $trainingDataNum, " +
-      s"number of features in each training example including intercept (if any) $featureNum.")
+    logger.info(s"Number of training data points: $trainingDataNum, " +
+      s"total number of unique features found in training data including intercept (if any): $featureNum.")
     logger.info(s"Input RDD persisted in storage level $trainDataStorageLevel")
 
     if (! DataValidators.sanityCheckData(trainingData, params.taskType, params.dataValidationType)) {

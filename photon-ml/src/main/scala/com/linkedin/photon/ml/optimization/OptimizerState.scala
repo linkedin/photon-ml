@@ -25,7 +25,6 @@ import breeze.linalg.Vector
  * @param value The current objective function's value
  * @param gradient The current objective function's gradient
  * @param iter what iteration number we are on
- * @author xazhang
  */
 protected[optimization] case class OptimizerState(
   coefficients: Vector[Double],
