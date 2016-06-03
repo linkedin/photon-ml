@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
-import com.google.common.base.Preconditions
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import org.apache.spark.rdd.RDD
 
@@ -79,8 +78,8 @@ object AbstractPredictedProbabilityVersusObservedFrequencyBinner {
    * Helper method to generate initially empty bins
    */
   def generateInitialBins(numBins: Int): Array[PredictedProbabilityVersusObservedFrequencyHistogramBin] = {
-    Preconditions.checkArgument(numBins > 0,
-      "Requested number of bins must be positive, got [%s]", numBins: java.lang.Integer)
+    require(numBins > 0,
+      s"Requested number of bins must be positive, got [$numBins]")
 
     (0 until numBins).map(x => {
       val binStart = x / numBins.toDouble
@@ -105,8 +104,8 @@ object AbstractPredictedProbabilityVersusObservedFrequencyBinner {
    * The index of the bin that should receive the increment
    */
   def findBin(predictedScore: Double, bins: Array[PredictedProbabilityVersusObservedFrequencyHistogramBin]): Int = {
-    Preconditions.checkArgument(predictedScore >= 0.0 && predictedScore <= 1.0,
-      "Predicted score [%s] is in the range [0,1]", predictedScore: java.lang.Double)
+    require(predictedScore >= 0.0 && predictedScore <= 1.0,
+      s"Predicted score [$predictedScore] is in the range [0,1]")
 
     var minIdx: Int = 0
     var maxIdx: Int = bins.size - 1
