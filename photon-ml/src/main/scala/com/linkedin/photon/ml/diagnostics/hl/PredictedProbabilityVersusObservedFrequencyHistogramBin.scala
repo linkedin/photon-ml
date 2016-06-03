@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
-import com.google.common.base.Preconditions
-
 /**
  * Model an individual histogram bin for purposes of HL tests. Probably want to think about several things:
  * <ul>
@@ -44,19 +42,19 @@ class PredictedProbabilityVersusObservedFrequencyHistogramBin(
     var observedNegCount: Long = 0L)
   extends Serializable {
 
-  Preconditions.checkArgument(lowerBound >= 0 && lowerBound <= 1.0)
-  Preconditions.checkArgument(upperBound >= 0 && upperBound <= 1.0)
-  Preconditions.checkArgument(lowerBound < upperBound)
-  Preconditions.checkArgument(observedNegCount >= 0L)
-  Preconditions.checkArgument(observedPosCount >= 0L)
+  require(lowerBound >= 0 && lowerBound <= 1.0)
+  require(upperBound >= 0 && upperBound <= 1.0)
+  require(lowerBound < upperBound)
+  require(observedNegCount >= 0L)
+  require(observedPosCount >= 0L)
 
   def expectedPosCount(): Long = {
-    Preconditions.checkArgument(observedNegCount >= 0L)
-    Preconditions.checkArgument(observedPosCount >= 0L)
+    require(observedNegCount >= 0L)
+    require(observedPosCount >= 0L)
 
     val avgProbPos = (upperBound + lowerBound) / 2.0
-    Preconditions.checkState(avgProbPos >= 0.0)
-    Preconditions.checkState(avgProbPos <= 1.0)
+    require(avgProbPos >= 0.0)
+    require(avgProbPos <= 1.0)
 
     math.ceil((observedNegCount + observedPosCount) * avgProbPos).toLong
   }

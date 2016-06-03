@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml
 
-import com.google.common.base.Preconditions
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.{CoefficientSummary, GeneralizedLinearModel}
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
@@ -138,14 +137,13 @@ object BootstrapTraining {
       trainingSamples: RDD[LabeledPoint],
       seed: Long = System.nanoTime): Map[Double, Map[String, Any]] = {
 
-    Preconditions.checkArgument(
+    require(
       numBootstrapSamples > 1,
-      "Number of bootstrap samples must be at least 1, got [%s]",
-      numBootstrapSamples: java.lang.Integer)
-    Preconditions.checkArgument(
+      s"Number of bootstrap samples must be at least 1, got [$numBootstrapSamples]")
+    require(
       populationPortionPerBootstrapSample > 0 && populationPortionPerBootstrapSample <= 1.0,
-      "Portion of training samples used for training must be in the range (0, 1.0], got [%s]",
-      populationPortionPerBootstrapSample: java.lang.Double)
+      s"Portion of training samples used for training must be in the range (0, 1.0], got " +
+        s"[$populationPortionPerBootstrapSample]")
 
     val numSplits = 1000
 
