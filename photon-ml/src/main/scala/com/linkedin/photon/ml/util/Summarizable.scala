@@ -12,12 +12,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.supervised
+package com.linkedin.photon.ml.util
 
-/**
-  * Supported type of tasks
-  */
-object TaskType extends Enumeration {
-  type TaskType = Value
-  val LINEAR_REGRESSION, POISSON_REGRESSION, LOGISTIC_REGRESSION, SMOOTHED_HINGE_LOSS_LINEAR_SVM = Value
+protected[ml] trait Summarizable {
+  /**
+    * Build a summary string for the object
+    *
+    * @return A summary of the object in string representation
+    */
+  def toSummaryString: String
 }

@@ -14,27 +14,25 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import org.apache.spark.rdd.RDD
-
-import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
-import com.linkedin.photon.ml.constants.{StorageLevel, MathConst}
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.{DataSet, GameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
+import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
+import org.apache.spark.rdd.RDD
 
 /**
- * Coordinate descent implementation
- *
- * @param coordinates the individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
- *                    (coordinateName, [[Coordinate]] object) pairs.
- * @param trainingLossFunctionEvaluator training loss function evaluator
- * @param validatingDataAndEvaluatorOption optional validation data evaluator. The validating data is a [[RDD]]
- *                                         consists of (global Id, [[GameDatum]] object pairs), there the global Id
- *                                         is a unique identifier for each [[GameDatum]] object.
- * @param logger logger instance
- * @author xazhang
- */
+  * Coordinate descent implementation
+  *
+  * @param coordinates The individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
+  *                    (coordinateName, [[Coordinate]] object) pairs.
+  * @param trainingLossFunctionEvaluator Training loss function evaluator
+  * @param validatingDataAndEvaluatorOption Optional validation data evaluator. The validating data is a [[RDD]]
+  *                                         consists of (global Id, [[GameDatum]] object pairs), there the global Id
+  *                                         is a unique identifier for each [[GameDatum]] object.
+  * @param logger A logger instance
+  */
 class CoordinateDescent(
     coordinates: Seq[(String, Coordinate[_ <: DataSet[_], _ <: Coordinate[_, _]])],
     trainingLossFunctionEvaluator: Evaluator,
@@ -42,18 +40,20 @@ class CoordinateDescent(
     logger: PhotonLogger) {
 
   /**
-   * Run coordinate descent
-   *
-   * @param numIterations number of iterations
-   * @param seed random seed (default: MathConst.RANDOM_SEED)
-   * @return trained GAME model
-   */
+    * Run coordinate descent
+    *
+    * @param numIterations Number of iterations
+    * @param seed Random seed (default: MathConst.RANDOM_SEED)
+    * @return A trained GAME model
+    */
   def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): GAMEModel = {
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
       val initializedModel = coordinate.initializeModel(seed)
       initializedModel match {
-        case rddLike: RDDLike => rddLike.setName(s"Initialized model with coordinate id $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        case rddLike: RDDLike =>
+          rddLike
+            .setName(s"Initialized model with coordinate id $coordinateId")
+            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
         case _ =>
       }
       logger.debug(s"Summary of model (${initializedModel.getClass}}) initialized for coordinate with " +
@@ -68,9 +68,9 @@ class CoordinateDescent(
   /**
    * Run coordinate descent
    *
-   * @param numIterations number of iterations
-   * @param gameModel the initial GAME model
-   * @return trained GAME model
+   * @param numIterations Number of iterations
+   * @param gameModel The initial GAME model
+   * @return Trained GAME model
    */
   def run(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
 
@@ -101,10 +101,12 @@ class CoordinateDescent(
     }
 
     // Initialize the regularization term value
-    var regularizationTermValueContainer = coordinates.map { case (coordinateId, coordinate) =>
-      val updatedModel = updatedGAMEModel.getModel(coordinateId).get
-      (coordinateId, coordinate.computeRegularizationTermValue(updatedModel))
-    }.toMap
+    var regularizationTermValueContainer = coordinates
+      .map { case (coordinateId, coordinate) =>
+        val updatedModel = updatedGAMEModel.getModel(coordinateId).get
+        (coordinateId, coordinate.computeRegularizationTermValue(updatedModel))
+      }
+      .toMap
 
     for (iteration <- 0 until numIterations) {
       val iterationStartTime = System.nanoTime()
@@ -179,10 +181,11 @@ class CoordinateDescent(
         validatingScoresContainerOption = validatingDataAndEvaluatorOption.map { case (validatingData, evaluator) =>
           val validationStartTime = System.nanoTime()
           var validatingScoresContainer = validatingScoresContainerOption.get
-          val validatingScores = updatedGAMEModel.getModel(coordinateId).get.score(validatingData)
-              .setName(s"Updated validating scores with coordinateId $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-              .materialize()
+          val validatingScores = updatedModel
+            .score(validatingData)
+            .setName(s"Updated validating scores with coordinateId $coordinateId")
+            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .materialize()
           validatingScoresContainer(coordinateId).unpersistRDD()
           validatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
           val fullScore = validatingScoresContainer.values.reduce(_ + _)

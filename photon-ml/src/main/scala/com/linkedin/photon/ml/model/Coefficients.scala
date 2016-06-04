@@ -16,37 +16,32 @@ package com.linkedin.photon.ml.model
 
 import breeze.linalg.{Vector, norm}
 import breeze.stats.meanAndVariance
+import com.linkedin.photon.ml.util.Summarizable
 
 /**
- * Representation of model coefficients
- *
- * @param means the mean of the model coefficients
- * @param variancesOption optional variance of the model coefficients
- * @author xazhang
- */
-protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None) {
+  * Representation of model coefficients
+  *
+  * @param means The mean of the model coefficients
+  * @param variancesOption Optional variance of the model coefficients
+  */
+protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
+  extends Summarizable {
 
   lazy val meansL2Norm: Double = norm(means, 2)
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
 
   /**
-   * Compute the score for the given features
-   *
-   * @param features features to score
-   * @return the score
-   */
+    * Compute the score for the given features
+    *
+    * @param features Features to score
+    * @return The score
+    */
   def computeScore(features: Vector[Double]): Double = {
-    assert(means.length == features.length,
-      s"Coefficients length (${means.length}}) != features length (${features.length}})")
+    require(means.length == features.length, s"Coefficients length (${means.length}) != features length (${features.length})")
     means.dot(features)
   }
 
-  /**
-   * Build a summary string for the coefficients
-   *
-   * @return string representation
-   */
-  def toSummaryString: String = {
+  override def toSummaryString: String = {
     val stringBuilder = new StringBuilder()
     stringBuilder.append(s"meanAndVarianceAndCount of the mean: ${meanAndVariance(means)}")
     stringBuilder.append(s"\nl2 norm of the mean: ${norm(means, 2)}")
@@ -67,19 +62,19 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
     }
   }
 
+  // TODO: Violation of the hashCode() contract
   override def hashCode(): Int = {
     super.hashCode()
   }
 }
 
 protected[ml] object Coefficients {
-
   /**
-   * Create a zero coefficient vector
-   *
-   * @param dimension dimensionality of the coefficient vector
-   * @return zero coefficient vector
-   */
+    * Create a zero coefficient vector
+    *
+    * @param dimension Dimensionality of the coefficient vector
+    * @return Zero coefficient vector
+    */
   def initializeZeroCoefficients(dimension: Int): Coefficients = {
     Coefficients(Vector.zeros[Double](dimension), variancesOption = None)
   }

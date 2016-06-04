@@ -15,34 +15,26 @@
 package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
-import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 
 /**
- * Configuration object for GLM optimization
- *
- * @param maxNumberIterations maximum number of iterations
- * @param convergenceTolerance convergence tolerance
- * @param regularizationWeight regularization weight
- * @param downSamplingRate downsampling rate
- * @param optimizerType optimizer type (e.g. LBFGS, TRON)
- * @param regularizationType regularization type
- */
+  * Configuration object for GLM optimization
+  *
+  * @param optimizerConfig Optimizer configuration
+  * @param regularizationContext Regularization context
+  * @param regularizationWeight Regularization weight
+  * @param downSamplingRate Down-sampling rate
+  */
 protected[ml] case class GLMOptimizationConfiguration private (
-    maxNumberIterations: Int = 20,
-    convergenceTolerance: Double = 1e-5,
+    optimizerConfig: OptimizerConfig = OptimizerConfig(OptimizerType.TRON, 20, 1E-5, None),
+    regularizationContext: RegularizationContext = L2RegularizationContext,
     regularizationWeight: Double = 50,
-    downSamplingRate: Double = 1,
-    optimizerType: OptimizerType = OptimizerType.TRON,
-    regularizationType: RegularizationType = RegularizationType.L2) {
+    downSamplingRate: Double = 1) {
 
   override def toString: String = {
-    s"maxNumberIterations: $maxNumberIterations," +
-      s"convergenceTolerance: $convergenceTolerance," +
+    s"optimizerConfig: ${optimizerConfig.toSummaryString}," +
+      s"regularizationContext: ${regularizationContext.toSummaryString}," +
       s"regularizationWeight: $regularizationWeight," +
-      s"downSamplingRate: $downSamplingRate," +
-      s"optimizerType: $optimizerType," +
-      s"regularizationType: $regularizationType"
+      s"downSamplingRate: $downSamplingRate"
   }
 }
 
@@ -55,19 +47,19 @@ object GLMOptimizationConfiguration {
   protected[ml] val EXPECTED_NUM_CONFIGS = 6
 
   /**
-   * Parse and build the configuration object from a string representation.
-   * The string is expected to be a comma separated list with order of elements being
-   * <ol>
-   *  <li> Maximum number of iterations
-   *  <li> Convergence tolerance
-   *  <li> Regularization weight
-   *  <li> Down-sampling rate
-   *  <li> Optimizer Type
-   *  <li> Regularization type
-   * </ol>
-   *
-   * @param string the string representation
-   */
+    * Parse and build the configuration object from a string representation.
+    * The string is expected to be a comma separated list with order of elements being
+    * <ol>
+    *  <li> Maximum number of iterations
+    *  <li> Convergence tolerance
+    *  <li> Regularization weight
+    *  <li> Down-sampling rate
+    *  <li> Optimizer Type
+    *  <li> Regularization type
+    * </ol>
+    *
+    * @param string The string representation
+    */
   protected[ml] def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
 
     val configParams = string.split(SPLITTER).map(_.trim)
@@ -75,17 +67,31 @@ object GLMOptimizationConfiguration {
       s"Parsing $string failed! The expected GLM optimization configuration should contain $EXPECTED_NUM_CONFIGS " +
           s"parts separated by \'$SPLITTER\', but found ${configParams.length}. Expected format: $EXPECTED_FORMAT")
 
-    val Array(maxNumberIterationsStr, convergenceToleranceStr, regularizationWeightStr, downSamplingRateStr,
-    optimizerTypeStr, regularizationTypeStr) = configParams
+    val Array(maxNumberIterationsStr,
+      convergenceToleranceStr,
+      regularizationWeightStr,
+      downSamplingRateStr,
+      optimizerTypeStr,
+      regularizationTypeStr) = configParams
+
     val maxNumberIterations = maxNumberIterationsStr.toInt
     val convergenceTolerance = convergenceToleranceStr.toDouble
     val regularizationWeight = regularizationWeightStr.toDouble
     val downSamplingRate = downSamplingRateStr.toDouble
 
     require(downSamplingRate > 0.0 && downSamplingRate <= 1.0, s"Unexpected downSamplingRate: $downSamplingRate")
+
     val optimizerType = OptimizerType.withName(optimizerTypeStr.toUpperCase)
-    val regularizationType = RegularizationType.withName(regularizationTypeStr.toUpperCase)
-    GLMOptimizationConfiguration(maxNumberIterations, convergenceTolerance, regularizationWeight, downSamplingRate,
-      optimizerType, regularizationType)
+    val regularizationContext = RegularizationType.withName(regularizationTypeStr.toUpperCase) match {
+      case RegularizationType.NONE => NoRegularizationContext
+      case RegularizationType.L1 => L1RegularizationContext
+      case RegularizationType.L2 => L2RegularizationContext
+      // TODO: Elastic Net regularization
+      case other => throw new UnsupportedOperationException(s"Regularization of type $other is not supported.")
+    }
+
+    val optimizerConfig = OptimizerConfig(optimizerType, maxNumberIterations, convergenceTolerance, None)
+
+    GLMOptimizationConfiguration(optimizerConfig, regularizationContext, regularizationWeight, downSamplingRate)
   }
 }

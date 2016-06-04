@@ -19,34 +19,33 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.{
-  LogisticRegressionAlgorithm,
-  SmoothedHingeLossLinearSVMAlgorithm}
+import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMAlgorithm, LogisticRegressionAlgorithm}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
-import com.linkedin.photon.ml.supervised.regression.{LinearRegressionAlgorithm, PoissonRegressionAlgorithm}
+import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionAlgorithm, LinearRegressionAlgorithm}
 import org.apache.spark.rdd.RDD
 
 /**
- * Collection of functions for model training
- */
+  * Collection of functions for model training
+  */
 object ModelTraining {
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
-   * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
-   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
-   * @param optimizerType The type of optimizer that will be used to train the model
-   * @param regularizationContext The type of regularization that will be used to train the model
-   * @param regularizationWeights An array of regularization weights used to train the model
-   * @param normalizationContext Normalization context for feature normalization
-   * @param maxNumIter Maximum number of iterations to run
-   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
-   *                  more iterations
-   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
-   *                                       per-iteration log information of the running optimizer
-   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
-   *   regularization weight used to train the model
-   */
+    * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
+    *
+    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
+    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
+    * @param optimizerType The type of optimizer that will be used to train the model
+    * @param regularizationContext The type of regularization that will be used to train the model
+    * @param regularizationWeights An array of regularization weights used to train the model
+    * @param normalizationContext Normalization context for feature normalization
+    * @param maxNumIter Maximum number of iterations to run
+    * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
+    *                  more iterations
+    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
+    *                                       per-iteration log information of the running optimizer
+    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
+    *   regularization weight used to train the model
+    */
   def trainGeneralizedLinearModel(
       trainingData: RDD[LabeledPoint],
       taskType: TaskType,
@@ -76,22 +75,23 @@ object ModelTraining {
   }
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
-   * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
-   * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
-   * @param optimizerType The type of optimizer that will be used to train the model
-   * @param regularizationContext The type of regularization that will be used to train the model
-   * @param regularizationWeights An array of regularization weights used to train the model
-   * @param normalizationContext Normalization context for feature normalization
-   * @param maxNumIter Maximum number of iterations to run
-   * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
-   *                  more iterations
-   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
-   *                                       per-iteration log information of the running optimizer
-   * @param warmStartModels Map of &lambda; &rarr; model to use for warm start
-   * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
-   *   regularization weight used to train the model
-   */
+    * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings
+    *
+    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
+    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
+    * @param optimizerType The type of optimizer that will be used to train the model
+    * @param regularizationContext The type of regularization that will be used to train the model
+    * @param regularizationWeights An array of regularization weights used to train the model
+    * @param normalizationContext Normalization context for feature normalization
+    * @param maxNumIter Maximum number of iterations to run
+    * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of
+    *                  more iterations
+    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
+    *                                       per-iteration log information of the running optimizer
+    * @param warmStartModels Map of &lambda; &rarr; model to use for warm start
+    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
+    *   regularization weight used to train the model
+    */
   def trainGeneralizedLinearModel(
       trainingData: RDD[LabeledPoint],
       taskType: TaskType,
@@ -103,7 +103,7 @@ object ModelTraining {
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
-      warmStartModels:Map[Double, GeneralizedLinearModel],
+      warmStartModels: Map[Double, GeneralizedLinearModel],
       treeAggregateDepth: Int): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)

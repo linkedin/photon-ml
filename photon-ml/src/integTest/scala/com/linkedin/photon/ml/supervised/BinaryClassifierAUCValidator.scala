@@ -23,20 +23,23 @@ import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 
 /**
- * Verify that we are able to achieve some minimum AUROC as part of validating a binary classifier's predictions
- */
-class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClassifier : ClassTag](minimumAUC:Double)
-    extends ModelValidator[BC] {
+  * Verify that we are able to achieve some minimum AUROC as part of validating a binary classifier's predictions
+  */
+class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClassifier : ClassTag](minimumAUC: Double)
+  extends ModelValidator[BC] {
 
-  assert(minimumAUC >= 0.5)
-  assert(minimumAUC <= 1.0)
+  require(minimumAUC >= 0.5)
+  require(minimumAUC <= 1.0)
 
-  def validateModelPredictions(model:BC, data:RDD[LabeledPoint]) = {
-    val scored:RDD[(Double, Double)] = data.map { x =>
-      (x.label, model.computeMeanFunctionWithOffset(x.features, x.offset))
+  def validateModelPredictions(model: BC, data: RDD[LabeledPoint]): Unit = {
+    val broadcastModel = data.sparkContext.broadcast(model)
+    val labelAndScore = data.map { labeledPoint =>
+      (labeledPoint.label, broadcastModel.value.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset))
     }
-    val evaluator = new BinaryClassificationMetrics(scored)
+    val evaluator = new BinaryClassificationMetrics(labelAndScore)
     val auROC = evaluator.areaUnderROC()
+
+    broadcastModel.unpersist()
 
     if (auROC < minimumAUC) {
       throw new IllegalStateException(s"Computed AUROC [$auROC] is smaller than minimum required [$minimumAUC]")

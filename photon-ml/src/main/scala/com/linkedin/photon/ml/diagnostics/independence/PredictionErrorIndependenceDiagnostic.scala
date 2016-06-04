@@ -21,8 +21,8 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
 /**
- * Perform several tests of independence to see if prediction errors and predictions are independent.
- */
+  * Perform several tests of independence to see if prediction errors and predictions are independent.
+  */
 class PredictionErrorIndependenceDiagnostic
   extends ModelDiagnostic[GeneralizedLinearModel, PredictionErrorIndependenceReport] {
 
@@ -34,13 +34,14 @@ class PredictionErrorIndependenceDiagnostic
       summary: Option[BasicStatisticalSummary]): PredictionErrorIndependenceReport = {
 
     val broadcastModel = data.sparkContext.broadcast(model)
-    val predictionError = data.map( x => {
-      val prediction = broadcastModel.value.computeMeanFunctionWithOffset(x.features, x.offset)
-      val error = x.label - prediction
+    val predictionError = data.map { labeledPoint =>
+      val prediction = broadcastModel.value.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset)
+      val error = labeledPoint.label - prediction
       (prediction, error)
-    })
+    }
+    broadcastModel.unpersist()
 
-    val sample = predictionError.takeSample(false, MAXIMUM_SAMPLE_SIZE)
+    val sample = predictionError.takeSample(WITH_REPLACEMENT, MAXIMUM_SAMPLE_SIZE)
     val predictionSamples = sample.map(_._1)
     val errorSamples = sample.map(_._2)
     val kendallTau = KENDALL_TAU_ANALYSIS.analyze(sample)
@@ -49,6 +50,7 @@ class PredictionErrorIndependenceDiagnostic
 }
 
 object PredictionErrorIndependenceDiagnostic {
+  val WITH_REPLACEMENT = false
   val MAXIMUM_SAMPLE_SIZE = 5000
   val KENDALL_TAU_ANALYSIS = new KendallTauAnalysis
 }

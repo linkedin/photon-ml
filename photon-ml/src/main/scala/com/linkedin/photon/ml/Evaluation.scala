@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.metric.MetricMetadata
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, BinaryClassifier}
+import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, Regression}
 import org.apache.commons.math3.special.Gamma
@@ -25,8 +25,8 @@ import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, Regressio
 import org.apache.spark.rdd.RDD
 
 /**
- * A collection of evaluation metrics and functions
- */
+  * A collection of evaluation metrics and functions
+  */
 object Evaluation extends Logging {
   val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
   val MEAN_SQUARE_ERROR = "Mean square error"
@@ -39,17 +39,22 @@ object Evaluation extends Logging {
   val EPSILON = 1e-9
 
   /**
-   * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
-   * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
-   * all metrics.
-   *
-   * @param model The GLM model to be evaluated
-   * @param dataSet The data set used to evaluate the GLM model
-   * @return Map of (metricName &rarr; value)
-   */
+    * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
+    * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
+    * all metrics.
+    *
+    * @param model The GLM model to be evaluated
+    * @param dataSet The data set used to evaluate the GLM model
+    * @return Map of (metricName &rarr; value)
+    */
   def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): Map[String, Double] = {
-    val scoreAndLabel = dataSet.map(labeledPoint =>
-         (model.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset), labeledPoint.label)).cache()
+    val broadcastModel = dataSet.sparkContext.broadcast(model)
+    val scoreAndLabel = dataSet
+      .map(labeledPoint =>
+        (broadcastModel.value.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset),
+          labeledPoint.label))
+      .cache()
+    broadcastModel.unpersist()
 
     var metrics = Map[String, Double]()
 

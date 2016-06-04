@@ -14,72 +14,69 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.SparkContext
-
 import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.TaskType.TaskType
-
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 /**
- * Representation for a random effect optimization problem
- *
- * - Why sharding the optimizers?
- * Because we may want to preserve the optimization state of each sharded optimization problem
- *
- * - Why sharding the objective functions?
- * Because the regularization weight for each sharded optimization problem may be different, which leads to different
- * objective functions.
- *
- * @param optimizationProblems the component optimization problems for each random effect type
- * @author xazhang
- */
+  * Representation for a random effect optimization problem
+  *
+  * - Why sharding the optimizers?
+  * Because we may want to preserve the optimization state of each sharded optimization problem
+  *
+  * - Why sharding the objective functions?
+  * Because the regularization weight for each sharded optimization problem may be different, which leads to different
+  * objective functions.
+  *
+  * @param optimizationProblems The component optimization problems (one per individual) for a random effect
+  *                            optimization problem
+  */
 protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val optimizationProblems: RDD[(String, OptimizationProblem[F])])
   extends RDDLike {
 
   def sparkContext: SparkContext = optimizationProblems.sparkContext
 
-  def setName(name: String): this.type = {
+  override def setName(name: String): this.type = {
     optimizationProblems.setName(s"$name: Optimization problems")
     this
   }
 
-  def persistRDD(storageLevel: StorageLevel): this.type = {
+  override def persistRDD(storageLevel: StorageLevel): this.type = {
     if (!optimizationProblems.getStorageLevel.isValid) {
       optimizationProblems.persist(storageLevel)
     }
     this
   }
 
-  def unpersistRDD(): this.type = {
+  override def unpersistRDD(): this.type = {
     if (optimizationProblems.getStorageLevel.isValid) {
       optimizationProblems.unpersist()
     }
     this
   }
 
-  def materialize(): this.type = {
+  override def materialize(): this.type = {
     optimizationProblems.count()
     this
   }
 
   /**
-   * Compute the regularization term value
-   *
-   * @param coefficientsRDD the model coefficients
-   * @return regularization term value
-   */
+    * Compute the regularization term value
+    *
+    * @param coefficientsRDD The trained models
+    * @return The combined regularization term value
+    */
   def getRegularizationTermValue(coefficientsRDD: RDD[(String, Coefficients)]): Double = {
     optimizationProblems
       .join(coefficientsRDD)
       .map {
-        case (_, (optimizationProblem, coefficients)) =>
-          optimizationProblem.getRegularizationTermValue(coefficients)
+        case (_, (optimizationProblem, coefficients)) => optimizationProblem.getRegularizationTermValue(coefficients)
       }
       .reduce(_ + _)
   }
@@ -88,13 +85,13 @@ protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[Label
 object RandomEffectOptimizationProblem {
 
   /**
-   * Build an instance of random effect optimization problem
-   *
-   * @param taskType the task type (e.g. LinearRegression, LogisticRegression)
-   * @param configuration optimizer configuration
-   * @param randomEffectDataSet the training dataset
-   * @return a new optimization problem instance
-   */
+    * Build an instance of random effect optimization problem
+    *
+    * @param taskType The task type (e.g. LinearRegression, LogisticRegression)
+    * @param configuration Optimizer configuration
+    * @param randomEffectDataSet The training dataset
+    * @return A new optimization problem instance
+    */
   protected[ml] def buildRandomEffectOptimizationProblem(
       taskType: TaskType,
       configuration: GLMOptimizationConfiguration,

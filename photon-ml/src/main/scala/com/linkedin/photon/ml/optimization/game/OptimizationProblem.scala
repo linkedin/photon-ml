@@ -36,7 +36,7 @@ import com.linkedin.photon.ml.supervised.TaskType._
  * @author xazhang
  */
 protected[ml] case class OptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
-    optimizer: AbstractOptimizer[LabeledPoint, F],
+    optimizer: Optimizer[LabeledPoint, F],
     objectiveFunction: F,
     lossFunction: F,
     regularizationWeight: Double,
@@ -130,12 +130,10 @@ object OptimizationProblem {
       taskType: TaskType,
       configuration: GLMOptimizationConfiguration): OptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
 
-    val maxNumberIterations = configuration.maxNumberIterations
-    val convergenceTolerance = configuration.convergenceTolerance
+    val optimizationConfiguration = configuration.optimizerConfig
+    val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
     val downSamplingRate = configuration.downSamplingRate
-    val optimizerType = configuration.optimizerType
-    val regularizationType = configuration.regularizationType
 
     val lossFunction = taskType match {
       case LOGISTIC_REGRESSION => new LogisticLossFunction
@@ -143,26 +141,8 @@ object OptimizationProblem {
       case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
     }
 
-    val objectiveFunction = regularizationType match {
-      case RegularizationType.L2 => TwiceDiffFunction.withL2Regularization(lossFunction, regularizationWeight)
-      case RegularizationType.L1 => TwiceDiffFunction.withL1Regularization(lossFunction, regularizationWeight)
-      case other => throw new UnsupportedOperationException(s"Regularization of type $other is not supported.")
-    }
-
-    val optimizer = optimizerType match {
-      case OptimizerType.LBFGS =>
-        new LBFGS[LabeledPoint]
-      case OptimizerType.TRON =>
-        if (regularizationType == RegularizationType.L2) {
-          new TRON[LabeledPoint]
-        } else {
-          throw new IllegalArgumentException(s"For regularization of type $regularizationType, optimizer of " +
-            s"type ${OptimizerType.TRON} is not supported!")
-        }
-      case any =>
-        throw new UnsupportedOperationException(s"Optimizer of type $any is not supported")
-    }
-
+    val objectiveFunction = TwiceDiffFunction.withRegularization(lossFunction, regularizationContext, regularizationWeight)
+    val optimizer = OptimizerFactory.twiceDiffOptimizer(optimizationConfiguration)
     // For warm start model training
     optimizer.isReusingPreviousInitialState = true
 
@@ -171,9 +151,6 @@ object OptimizationProblem {
       case LINEAR_REGRESSION => new DefaultDownSampler(downSamplingRate)
       case _ => throw new Exception(s"Sampler for taskType $taskType is currently not supported.")
     }
-
-    optimizer.setMaximumIterations(maxNumberIterations)
-    optimizer.setTolerance(convergenceTolerance)
 
     OptimizationProblem(optimizer, objectiveFunction, lossFunction, regularizationWeight, sampler)
   }

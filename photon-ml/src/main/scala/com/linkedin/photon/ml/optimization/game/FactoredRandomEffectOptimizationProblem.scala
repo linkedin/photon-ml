@@ -14,26 +14,24 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.SparkContext
-
 import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.projector.ProjectionMatrix
-import com.linkedin.photon.ml.supervised.TaskType._
+import com.linkedin.photon.ml.supervised.TaskType.TaskType
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 /**
- * An optimization problem for factored random effect datasets
- *
- * @param randomEffectOptimizationProblem the random effect optimization problem
- * @param latentFactorOptimizationProblem the latent factor optimization problem
- * @param numIterations number of iterations
- * @param latentSpaceDimension dimensionality of latent space
- * @author xazhang
- */
+  * An optimization problem for factored random effect datasets
+  *
+  * @param randomEffectOptimizationProblem The random effect optimization problem
+  * @param latentFactorOptimizationProblem The latent factor optimization problem
+  * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
+  * @param latentSpaceDimension The dimensionality of the latent space
+  */
 protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
     val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
     val latentFactorOptimizationProblem: OptimizationProblem[F],
@@ -64,15 +62,14 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFuncti
   }
 
   /**
-   * Compute the regularization term value
-   *
-   * @param coefficientsRDD the coefficients
-   * @param projectionMatrix the projection matrix
-   * @return regularization term value
-   */
-  def getRegularizationTermValue(
-      coefficientsRDD: RDD[(String, Coefficients)],
-      projectionMatrix: ProjectionMatrix): Double = {
+    * Compute the regularization term value
+    *
+    * @param coefficientsRDD The coefficients
+    * @param projectionMatrix The projection matrix
+    * @return Regularization term value
+    */
+  def getRegularizationTermValue(coefficientsRDD: RDD[(String, Coefficients)], projectionMatrix: ProjectionMatrix)
+    : Double = {
 
     val projectionMatrixAsCoefficients = new Coefficients(projectionMatrix.matrix.flatten(), variancesOption = None)
     randomEffectOptimizationProblem.getRegularizationTermValue(coefficientsRDD) +
@@ -83,15 +80,15 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFuncti
 object FactoredRandomEffectOptimizationProblem {
 
   /**
-   * Builds a factored random effect optimization problem
-   *
-   * @param taskType the task type
-   * @param randomEffectOptimizationConfiguration random effect configuration
-   * @param latentFactorOptimizationConfiguration latent factor configuration
-   * @param mfOptimizationConfiguration MF configuration
-   * @param randomEffectDataSet the dataset
-   * @return the new optimization problem
-   */
+    * Builds a factored random effect optimization problem
+    *
+    * @param taskType The task type
+    * @param randomEffectOptimizationConfiguration Random effect configuration
+    * @param latentFactorOptimizationConfiguration Latent factor configuration
+    * @param mfOptimizationConfiguration MF configuration
+    * @param randomEffectDataSet The dataset
+    * @return The new optimization problem
+    */
   protected[ml] def buildFactoredRandomEffectOptimizationProblem(
       taskType: TaskType,
       randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,

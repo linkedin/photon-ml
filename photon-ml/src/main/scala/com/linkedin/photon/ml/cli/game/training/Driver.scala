@@ -14,34 +14,30 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-import com.linkedin.photon.ml.RDDLike
+
+import com.linkedin.photon.ml.{RDDLike, SparkContextConfiguration}
+import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer}
+import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.io.ModelOutputMode
-import org.apache.spark.rdd.RDD
-import scala.collection.Map
-
-import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
-
-import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation._
+import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, OptimizationProblem,
-  RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, OptimizationProblem, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
-import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util._
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+
+import scala.collection.Map
 
 /**
- * The driver class, which provides the main entrance to GAME model training
- *
- * @author xazhang
- */
+  * The driver class, which provides the main entrance to GAME model training
+  */
 final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
 
   import params._
@@ -49,10 +45,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   private val hadoopConfiguration = sparkContext.hadoopConfiguration
 
   /**
-   * Builds feature name-and-term to index maps according to configuration
-   *
-   * @return a map of shard id to feature map
-   */
+    * Builds feature name-and-term to index maps according to configuration
+    *
+    * @return A map of shard id to feature map
+    */
   protected[training] def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
@@ -71,13 +67,13 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Builds a GAME dataset according to input data configuration
-   *
-   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
-   * @return the prepared GAME dataset
-   */
+    * Builds a GAME dataset according to input data configuration
+    *
+    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
+    * @return The prepared GAME dataset
+    */
   protected[training] def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
-  : RDD[(Long, GameDatum)] = {
+    : RDD[(Long, GameDatum)] = {
 
     // Get the training records path
     val trainingRecordsPath = (trainDateRangeOpt, trainDateRangeDaysAgoOpt) match {
@@ -138,13 +134,13 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Prepares the training dataset
-   *
-   * @param gameDataSet the input dataset
-   * @return the training dataset
-   */
+    * Prepares the training dataset
+    *
+    * @param gameDataSet The input dataset
+    * @return The training dataset
+    */
   protected[training] def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameDatum)])
-  : Map[String, DataSet[_ <: DataSet[_]]] = {
+    : Map[String, DataSet[_ <: DataSet[_]]] = {
 
     val fixedEffectDataSets = fixedEffectDataConfigurations.map { case (id, fixedEffectDataConfiguration) =>
       val fixedEffectDataSet = FixedEffectDataSet.buildWithConfiguration(gameDataSet, fixedEffectDataConfiguration)
@@ -165,20 +161,20 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // Prepare the random effect data sets
     val randomEffectDataSet = randomEffectDataConfigurations.map { case (id, randomEffectDataConfiguration) =>
       val randomEffectPartitioner = randomEffectPartitionerMap(id)
-      val rawRandomEffectDataSet = RandomEffectDataSet.buildWithConfiguration(gameDataSet,
-        randomEffectDataConfiguration, randomEffectPartitioner)
-          .setName(s"Random effect data set with coordinate id $id")
-          .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-          .materialize()
+      val rawRandomEffectDataSet = RandomEffectDataSet
+        .buildWithConfiguration(gameDataSet, randomEffectDataConfiguration, randomEffectPartitioner)
+        .setName(s"Random effect data set with coordinate id $id")
+        .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .materialize()
       val projectorType = randomEffectDataConfiguration.projectorType
       val randomEffectDataSet = projectorType match {
         case IdentityProjection => rawRandomEffectDataSet
         case _ =>
-          val randomEffectDataSetInProjectedSpace =
-            RandomEffectDataSetInProjectedSpace.buildWithProjectorType(rawRandomEffectDataSet, projectorType)
-                .setName(s"Random effect data set in projected space with coordinate id $id")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-                .materialize()
+          val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
+            .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
+            .setName(s"Random effect data set in projected space with coordinate id $id")
+            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .materialize()
           // Only un-persist the active data and passive data, because randomEffectDataSet and
           // randomEffectDataSetInProjectedSpace share globalIdToIndividualIds and other RDDs/Broadcasts
           rawRandomEffectDataSet.activeData.unpersist()
@@ -193,11 +189,11 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Creates the training evaluator
-   *
-   * @param gameDataSet the input dataset
-   * @return the training evaluator
-   */
+    * Creates the training evaluator
+    *
+    * @param gameDataSet The input dataset
+    * @return The training evaluator
+    */
   protected[training] def prepareTrainingEvaluator(gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
     val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
       (gameData.response, gameData.offset, gameData.weight)
@@ -214,11 +210,11 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Creates the validation evaluator
-   *
-   * @param validatingDirs the input path for validating data set
-   * @return the validating game data sets and the companion evaluator
-   */
+    * Creates the validation evaluator
+    *
+    * @param validatingDirs The input path for validating data set
+    * @return The validating game data sets and the companion evaluator
+    */
   protected[training] def prepareValidatingEvaluator(
       validatingDirs: Seq[String],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameDatum)], Evaluator) = {
@@ -306,14 +302,14 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Train GAME models. This method builds a coordinate descent optimization problem from the individual optimization
-   * problems for the fixed effect, random effect, and factored random effect models.
-   *
-   * @param dataSets the training datasets
-   * @param trainingEvaluator the training evaluator
-   * @param validatingDataAndEvaluatorOption optional validation dataset and evaluator
-   * @return trained GAME model
-   */
+    * Train GAME models. This method builds a coordinate descent optimization problem from the individual optimization
+    * problems for the fixed effect, random effect, and factored random effect models.
+    *
+    * @param dataSets The training datasets
+    * @param trainingEvaluator The training evaluator
+    * @param validatingDataAndEvaluatorOption Optional validation dataset and evaluator
+    * @return Trained GAME model
+    */
   protected[training] def train(
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
@@ -337,12 +333,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           case fixedEffectDataSet: FixedEffectDataSet =>
             // Fixed effect coordinate
             val optimizationConfiguration = fixedEffectOptimizationConfiguration(coordinateId)
-
             // If number of features is from moderate to large (>200000), then use tree aggregate,
             // otherwise use aggregate.
             val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < 200000) 1 else 2
-            val optimizationProblem =
-              OptimizationProblem.buildOptimizationProblem(taskType, optimizationConfiguration)
+            val optimizationProblem = OptimizationProblem.buildOptimizationProblem(taskType, optimizationConfiguration)
             optimizationProblem.lossFunction.treeAggregateDepth = treeAggregateDepth
             println(s"Set treeAggregateDepth to ${optimizationProblem.objectiveFunction.treeAggregateDepth}")
             new FixedEffectCoordinate(fixedEffectDataSet, optimizationProblem)
@@ -352,22 +346,28 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             val optimizationConfiguration = randomEffectOptimizationConfiguration(coordinateId)
             val randomEffectOptimizationProblem =
               RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(taskType,
-                optimizationConfiguration, randomEffectDataSetInProjectedSpace)
-                  .setName(s"Random effect optimization problem of coordinate $coordinateId")
-                  .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-            new RandomEffectCoordinateInProjectedSpace(randomEffectDataSetInProjectedSpace,
+                  optimizationConfiguration,
+                  randomEffectDataSetInProjectedSpace)
+                .setName(s"Random effect optimization problem of coordinate $coordinateId")
+                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            new RandomEffectCoordinateInProjectedSpace(
+              randomEffectDataSetInProjectedSpace,
               randomEffectOptimizationProblem)
 
           case randomEffectDataSet: RandomEffectDataSet =>
             // Factored random effect coordinate
-            val (randomEffectOptimizationConfiguration, latentFactorOptimizationConfiguration,
-            mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
-            val factoredRandomEffectOptimizationProblem =
-               FactoredRandomEffectOptimizationProblem.buildFactoredRandomEffectOptimizationProblem(taskType,
-                 randomEffectOptimizationConfiguration, latentFactorOptimizationConfiguration,
-                 mfOptimizationConfiguration, randomEffectDataSet)
-                   .setName(s"Factored random effect optimization problem of coordinate $coordinateId")
-                   .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            val (randomEffectOptimizationConfiguration,
+              latentFactorOptimizationConfiguration,
+              mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
+            val factoredRandomEffectOptimizationProblem = FactoredRandomEffectOptimizationProblem
+              .buildFactoredRandomEffectOptimizationProblem(
+                taskType,
+                randomEffectOptimizationConfiguration,
+                latentFactorOptimizationConfiguration,
+                mfOptimizationConfiguration,
+                randomEffectDataSet)
+              .setName(s"Factored random effect optimization problem of coordinate $coordinateId")
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             new FactoredRandomEffectCoordinate(randomEffectDataSet, factoredRandomEffectOptimizationProblem)
 
           case dataSet =>
@@ -389,12 +389,12 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Write the learned GAME model to HDFS
-   *
-   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
-   * @param validatingDataAndEvaluatorOption optional validation dataset and evaluator
-   * @param gameModelsMap GAME models
-   */
+    * Write the learned GAME model to HDFS
+    *
+    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
+    * @param validatingDataAndEvaluatorOption Optional validation dataset and evaluator
+    * @param gameModelsMap GAME models
+    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
@@ -437,8 +437,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Run the driver
-   */
+    * Run the driver
+    */
   def run(): Unit = {
 
     // Process the output directory upfront and potentially fail the job early
@@ -500,8 +500,8 @@ object Driver {
   val LOGS = "logs"
 
   /**
-   * Main entry point
-   */
+    * Main entry point
+    */
   def main(args: Array[String]): Unit = {
 
     val startTime = System.nanoTime()

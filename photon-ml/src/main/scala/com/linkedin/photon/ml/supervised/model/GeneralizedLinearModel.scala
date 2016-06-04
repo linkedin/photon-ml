@@ -18,55 +18,35 @@ import breeze.linalg.Vector
 import org.apache.spark.rdd.RDD
 
 /**
- * GeneralizedLinearModel (GLM) represents a model trained using GeneralizedLinearAlgorithm.
- * Reference: [[http://en.wikipedia.org/wiki/Generalized_linear_model]].
- * Note that this class is modified based on MLLib's GeneralizedLinearModel.
- * @param coefficients The generalized linear model's coefficients (or called weights in some scenarios) of the features
- */
+  * GeneralizedLinearModel (GLM) represents a model trained using GeneralizedLinearAlgorithm.
+  * Reference: [[http://en.wikipedia.org/wiki/Generalized_linear_model]].
+  * Note that this class is modified based on MLLib's GeneralizedLinearModel.
+  *
+  * @param coefficients The generalized linear model's coefficients (or called weights in some scenarios) of the features
+  */
 abstract class GeneralizedLinearModel(val coefficients: Vector[Double]) extends Serializable {
 
-  protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double): Double
+  protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
 
   /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-   * coefficients and intercept
-   * @param features vector representing a single data point's features
-   * @return Computed mean function value
-   */
+    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+    * coefficients
+    *
+    * @param features Vector representing a single data point's features
+    * @return Computed mean function value
+    */
   def computeMeanFunction(features: Vector[Double]): Double = computeMeanFunctionWithOffset(features, 0.0)
 
   /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-   * coefficients and intercept
-   * @param features vector representing a single data point's features
-   * @param offset offset of the data point
-   * @return Computed mean function value
-   */
+    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+    * coefficients
+    *
+    * @param features Vector representing a single data point's features
+    * @param offset Offset of the data point
+    * @return Computed mean function value
+    */
   def computeMeanFunctionWithOffset(features: Vector[Double], offset: Double): Double =
-    computeMean(coefficients, features, offset)
-
-  /**
-   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
-   * estimated coefficients and intercept
-   * @param features RDD representing data points' features
-   * @return Computed mean function value
-   */
-  def computeMeanFunctions(features: RDD[Vector[Double]]): RDD[Double] =
-    computeMeanFunctionsWithOffsets(features.map(feature => (feature, 0.0)))
-
-  /**
-   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
-   * estimated coefficients and intercept
-   * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
-   * @return Computed mean function value
-   */
-  def computeMeanFunctionsWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] = {
-    val broadcastedCoefficients = featuresWithOffsets.context.broadcast(coefficients)
-
-    featuresWithOffsets.map {
-      case (features, offset) => computeMean(broadcastedCoefficients.value, features, offset)
-    }
-  }
+    computeMean(features, offset)
 
   /**
    * Validate coefficients and offset. Child classes should add additional checks.
@@ -88,10 +68,39 @@ abstract class GeneralizedLinearModel(val coefficients: Vector[Double]) extends 
   }
 
   /**
-   * Use String interpolation over format. It's a bit more concise and is checked at compile time (e.g. forgetting an
-   * argument would be a compile error).
-   */
-  override def toString: String = {
-    s"coefficients: $coefficients"
+    * Use String interpolation over format. It's a bit more concise and is checked at compile time (e.g. forgetting an
+    * argument would be a compile error).
+    */
+  override def toString: String = s"coefficients: ${coefficients}"
+}
+
+object GeneralizedLinearModel {
+  /**
+    * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
+    * estimated coefficients and intercept
+    *
+    * @param features RDD representing data points' features
+    * @return Computed mean function value
+    */
+  def computeMeanFunctions(model: GeneralizedLinearModel, features: RDD[Vector[Double]]): RDD[Double] =
+    computeMeanFunctionsWithOffsets(model, features.map(feature => (feature, 0.0)))
+
+  /**
+    * Compute the value of the mean functions of a generalized linear model given a RDD of data points
+    *
+    * @param model Generalized linear model to use
+    * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
+    * @return Computed mean function values
+    */
+  def computeMeanFunctionsWithOffsets(model: GeneralizedLinearModel, featuresWithOffsets: RDD[(Vector[Double], Double)])
+    : RDD[Double] = {
+
+    val broadcastModel = featuresWithOffsets.context.broadcast(model)
+    val result = featuresWithOffsets.map { case (features, offset) =>
+      broadcastModel.value.computeMeanFunctionWithOffset(features, offset)
+    }
+
+    broadcastModel.unpersist()
+    result
   }
 }

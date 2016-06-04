@@ -14,42 +14,40 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{KeyValueScore, DataSet}
-import com.linkedin.photon.ml.model.Model
+import com.linkedin.photon.ml.data.{DataSet, KeyValueScore}
+import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.game.OptimizationTracker
 
-
 /**
- * The optimization problem coordinate for each effect model
- *
- * @param dataSet the training dataset
- * @author xazhang
- */
+  * The optimization problem coordinate for each effect model
+  *
+  * @param dataSet the training dataset
+  */
 protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model
-   *
-   * @param model the input model
-   * @return the output scores
-   */
-  protected[algorithm] def score(model: Model): KeyValueScore
+    * Score the effect-specific data set in the coordinate with the input model
+    *
+    * @param model The input model
+    * @return The output scores
+    */
+  protected[algorithm] def score(model: DatumScoringModel): KeyValueScore
 
   /**
-   * Initialize the model
-   *
-   * @param seed random seed
-   */
-  protected[algorithm] def initializeModel(seed: Long): Model
+    * Initialize the model
+    *
+    * @param seed A random seed
+    */
+  protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
 
-  protected[algorithm] def updateModel(model: Model, score: KeyValueScore): (Model, OptimizationTracker) = {
+  protected[algorithm] def updateModel(model: DatumScoringModel, score: KeyValueScore): (DatumScoringModel, OptimizationTracker) = {
     val dataSetWithUpdatedOffsets = dataSet.addScoresToOffsets(score)
     updateCoordinateWithDataSet(dataSetWithUpdatedOffsets).updateModel(model)
   }
 
   protected def updateCoordinateWithDataSet(dataSet: D): C
 
-  protected[algorithm] def updateModel(model: Model): (Model, OptimizationTracker)
+  protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker)
 
-  protected[algorithm] def computeRegularizationTermValue(model: Model): Double
+  protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double
 }

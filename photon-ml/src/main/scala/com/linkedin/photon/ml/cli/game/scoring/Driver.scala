@@ -14,26 +14,22 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
-
-import scala.collection.Map
-
+import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer, ScoreProcessingUtils}
+import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
+import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer}
-import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
-import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
-import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.util._
-
+import scala.collection.Map
 
 /**
- * Driver for GAME full model scoring
- */
+  * Driver for GAME full model scoring
+  */
 class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
 
   import params._
@@ -43,10 +39,10 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   protected val hadoopConfiguration = sparkContext.hadoopConfiguration
 
   /**
-   * Builds feature name-and-term to index maps according to configuration
-   *
-   * @return a map of shard id to feature map
-   */
+    * Builds feature name-and-term to index maps according to configuration
+    *
+    * @return A map of shard id to feature map
+    */
   protected def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
 
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
@@ -66,11 +62,11 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
-   * Builds a GAME data set according to input data configuration
-   *
-   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
-   * @return the prepared GAME data set
-   */
+    * Builds a GAME data set according to input data configuration
+    *
+    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
+    * @return The prepared GAME data set
+    */
   protected def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
   : (RDD[(Long, Option[String])], RDD[(Long, GameDatum)]) = {
 
@@ -130,11 +126,12 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
-   * Score the game data set with the game model
-   * @param featureShardIdToFeatureMapMap a map of shard id to feature map
-   * @param gameDataSet the game data set
-   * @return the scores
-   */
+    * Score the game data set with the game model
+    *
+    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
+    * @param gameDataSet The game data set
+    * @return The scores
+    */
   //todo: make the number of files written to HDFS to be configurable
   protected def scoreGameDataSet(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
@@ -151,8 +148,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
-   * Run the driver
-   */
+    * Run the driver
+    */
   def run(): Unit = {
 
     // Process the output directory upfront and potentially fail the job early
@@ -205,8 +202,8 @@ object Driver {
   }
 
   /**
-   * Main entry point
-   */
+    * Main entry point
+    */
   def main(args: Array[String]): Unit = {
 
     val startTime = System.nanoTime()

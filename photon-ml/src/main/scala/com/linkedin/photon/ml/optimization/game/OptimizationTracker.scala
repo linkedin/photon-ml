@@ -14,17 +14,9 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-/**
- * Optimization tracker
- *
- * @author xazhang
- */
-protected[ml] trait OptimizationTracker {
+import com.linkedin.photon.ml.util.Summarizable
 
-  /**
-   * Build a summary string for the tracker
-   *
-   * @return string representation
-   */
-  def toSummaryString: String
-}
+/**
+  * Optimization tracker
+  */
+protected[ml] trait OptimizationTracker extends Summarizable

@@ -16,15 +16,16 @@ package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
 import breeze.numerics.sigmoid
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 import org.apache.spark.rdd.RDD
 
 /**
- * Class for the classification model trained using Logistic Regression
- *
- * @param coefficients Model coefficients estimated for every feature
- */
+  * Class for the classification model trained using Logistic Regression
+  *
+  * @param coefficients Model coefficients estimated for every feature
+  */
 class LogisticRegressionModel(override val coefficients: Vector[Double])
   extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
@@ -32,14 +33,13 @@ class LogisticRegressionModel(override val coefficients: Vector[Double])
   with Serializable {
 
   /**
-   * Compute the mean of the logistic regression model
-   *
-   * @param coefficients the estimated feature coefficients
-   * @param features the input data point's feature
-   * @param offset the input data point's offset
-   * @return
-   */
-  override protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double)
+    * Compute the mean of the logistic regression model
+    *
+    * @param features The input data point's feature
+    * @param offset The input data point's offset
+    * @return The mean for the passed features
+    */
+  override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = sigmoid(coefficients.dot(features) + offset)
 
   override def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double = 0.5): Double =
@@ -52,7 +52,7 @@ class LogisticRegressionModel(override val coefficients: Vector[Double])
     computeMeanFunctionWithOffset(features, offset)
 
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
-    computeMeanFunctionsWithOffsets(featuresWithOffsets)
+    GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
 
   private def predictClass(score: Double, threshold: Double): Double = {
     if (score < threshold) {

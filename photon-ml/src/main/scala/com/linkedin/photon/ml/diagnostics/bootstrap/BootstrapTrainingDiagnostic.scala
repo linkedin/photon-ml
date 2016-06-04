@@ -22,7 +22,6 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.{CoefficientSummary, GeneralizedLinearModel}
 import org.apache.spark.rdd.RDD
 
-
 class BootstrapTrainingDiagnostic(
     private val unparsedNameTermToIndex: Map[String, Int],
     private val numSamples: Int = BootstrapTrainingDiagnostic.DEFAULT_BOOTSTRAP_SAMPLES,

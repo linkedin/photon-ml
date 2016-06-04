@@ -15,33 +15,33 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
 /**
- * Class for the classification model trained using Logistic Regression
- *
- * @param coefficients Weights estimated for every feature
- */
+  * Class for the classification model trained using Logistic Regression
+  *
+  * @param coefficients Weights estimated for every feature
+  */
 class LinearRegressionModel(override val coefficients: Vector[Double])
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
 
   /**
-   * Compute the mean of the linear regression model
-   *
-   * @param coefficients the estimated feature coefficients
-   * @param features the input data point's feature
-   * @param offset the input data point's offset
-   * @return
-   */
-  override protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double)
+    * Compute the mean of the linear regression model
+    *
+    * @param features The input data point's feature
+    * @param offset The input data point's offset
+    * @return
+    */
+  override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = coefficients.dot(features) + offset
 
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)
 
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
-    computeMeanFunctionsWithOffsets(featuresWithOffsets)
+    GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
 }
