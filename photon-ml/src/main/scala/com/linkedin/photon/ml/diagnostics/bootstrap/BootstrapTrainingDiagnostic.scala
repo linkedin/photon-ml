@@ -48,7 +48,7 @@ class BootstrapTrainingDiagnostic(
         }
         val model = models.get(lambda)
         val c = model match {
-          case Some(g: GeneralizedLinearModel) => math.abs(g.coefficients(idx))
+          case Some(g: GeneralizedLinearModel) => math.abs(g.coefficients.means(idx))
           case _ => 1.0
         }
         val importance = value * c

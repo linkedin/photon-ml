@@ -41,7 +41,7 @@ class PredictionErrorIndependenceDiagnostic
     }
     broadcastModel.unpersist()
 
-    val sample = predictionError.takeSample(WITH_REPLACEMENT, MAXIMUM_SAMPLE_SIZE)
+    val sample = predictionError.takeSample(REPLACEMENT, MAXIMUM_SAMPLE_SIZE)
     val predictionSamples = sample.map(_._1)
     val errorSamples = sample.map(_._2)
     val kendallTau = KENDALL_TAU_ANALYSIS.analyze(sample)
@@ -50,7 +50,7 @@ class PredictionErrorIndependenceDiagnostic
 }
 
 object PredictionErrorIndependenceDiagnostic {
-  val WITH_REPLACEMENT = false
+  val REPLACEMENT = false
   val MAXIMUM_SAMPLE_SIZE = 5000
   val KENDALL_TAU_ANALYSIS = new KendallTauAnalysis
 }

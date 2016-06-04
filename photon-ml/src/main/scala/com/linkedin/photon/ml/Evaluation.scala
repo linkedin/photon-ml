@@ -96,7 +96,7 @@ object Evaluation extends Logging {
     val aikakeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
       val n = scoreAndLabel.count()
       val logLikelihood = n * x
-      val effectiveParameters = model.coefficients.activeValuesIterator.foldLeft(0)((count, coeff) => {
+      val effectiveParameters = model.coefficients.means.activeValuesIterator.foldLeft(0)((count, coeff) => {
         if (math.abs(coeff) > 1e-9) {
           count + 1
         } else {
@@ -125,7 +125,7 @@ object Evaluation extends Logging {
     val logLikelihoods = labeled.map(sample => {
       // Compute the log likelihoods
       val y = sample.label
-      val wTx = sample.computeMargin(model.coefficients)
+      val wTx = sample.computeMargin(model.coefficients.means)
       val numeratorLog = y * wTx - math.exp(wTx)
       val denominatorLog = Gamma.logGamma(1.0 + y) // y! = Gamma(y + 1)
       numeratorLog - denominatorLog

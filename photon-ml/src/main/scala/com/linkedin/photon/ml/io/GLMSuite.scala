@@ -378,6 +378,7 @@ class GLMSuite(
           val builder = new mutable.ArrayBuffer[String]()
 
           model.coefficients
+            .means
             .toArray
             .zipWithIndex
             .sortWith((p1, p2) => p1._1 > p2._1)

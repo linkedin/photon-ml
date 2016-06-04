@@ -26,7 +26,7 @@ import org.apache.spark.rdd.RDD
   *
   * @param coefficients Model coefficients estimated for every feature
   */
-class LogisticRegressionModel(override val coefficients: Vector[Double])
+class LogisticRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
   with Regression
@@ -40,7 +40,15 @@ class LogisticRegressionModel(override val coefficients: Vector[Double])
     * @return The mean for the passed features
     */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-    : Double = sigmoid(coefficients.dot(features) + offset)
+  : Double = sigmoid(coefficients.computeScore(features) + offset)
+
+  override def updateCoefficients(updatedCoefficients: Coefficients): LogisticRegressionModel =
+    new LogisticRegressionModel(updatedCoefficients)
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[LogisticRegressionModel]
+
+  override def toSummaryString: String =
+    s"Logistic Regression Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   override def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double = 0.5): Double =
     predictClass(predictWithOffset(features, offset), threshold)

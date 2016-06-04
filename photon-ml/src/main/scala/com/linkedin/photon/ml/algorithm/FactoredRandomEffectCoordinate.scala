@@ -19,7 +19,6 @@ import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{ProjectionMatrix, ProjectionMatrixBroadcast}
 import com.linkedin.photon.ml.util.VectorUtils
@@ -137,7 +136,7 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
 
     case _ =>
       throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-          s"in ${this.getClass} is not supported!")
+        s"in ${this.getClass} is not supported!")
   }
 
   /**

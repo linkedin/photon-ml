@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
+
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, KeyValueScore, LabeledPoint}
 import com.linkedin.photon.ml.function.TwiceDiffFunction

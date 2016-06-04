@@ -46,7 +46,7 @@ class ExpectedMagnitudeFeatureImportanceDiagnostic(modelNameToIndex: Map[String,
     modelNameToIndex.map(x => {
       val nameTerm = Utils.extractNameTerm(x._1)
       val index = x._2
-      val coeff = model.coefficients(index)
+      val coeff = model.coefficients.means(index)
       val expAbs = summary match {
         case Some(sum) =>
           sum.meanAbs(x._2)

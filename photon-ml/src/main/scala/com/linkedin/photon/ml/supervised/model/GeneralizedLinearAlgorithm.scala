@@ -223,7 +223,7 @@ abstract class GeneralizedLinearAlgorithm[GLM <: GeneralizedLinearModel : ClassT
     // If we can find a warm start model for the largest lambda, use that. Otherwise, default to the provided initial
     // model.
     val initModel = warmStartModels.getOrElse(largestWarmStartLambda, initialModel)
-    var initialCoefficients = initModel.coefficients
+    var initialCoefficients = initModel.coefficients.means
 
     val models = regularizationWeights.map { regularizationWeight =>
       val objectiveFunction = createObjectiveFunction(

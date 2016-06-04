@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 import org.apache.spark.rdd.RDD
@@ -24,7 +25,7 @@ import org.apache.spark.rdd.RDD
   *
   * @param coefficients Weights estimated for every feature
   */
-class SmoothedHingeLossLinearSVMModel(override val coefficients: Vector[Double])
+class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
   with Regression
@@ -38,7 +39,15 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Vector[Double])
     * @return The mean for the passed features
     */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-    : Double = coefficients.dot(features) + offset
+  : Double = coefficients.computeScore(features) + offset
+
+  override def updateCoefficients(updatedCoefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
+    new SmoothedHingeLossLinearSVMModel(updatedCoefficients)
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[SmoothedHingeLossLinearSVMModel]
+
+  override def toSummaryString: String =
+    s"Smoothed Hinge Loss Linear SVM Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   override def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double = 0.5): Double =
     predictClass(predictWithOffset(features, offset), threshold)

@@ -76,7 +76,7 @@ protected[ml] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[Label
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
-          s"type ${model.getClass} in ${this.getClass} is not supported!")
+        s"type ${model.getClass} in ${this.getClass} is not supported!")
   }
 }
 

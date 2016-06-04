@@ -132,11 +132,11 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     * @param gameDataSet The game data set
     * @return The scores
     */
-  //todo: make the number of files written to HDFS to be configurable
   protected def scoreGameDataSet(
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
+    // TODO: make the number of files written to HDFS to be configurable
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, gameModelInputDir,
       sparkContext)
 

@@ -45,7 +45,7 @@ class VarianceFeatureImportanceDiagnostic(modelNameToIndex: Map[String, Int])
     modelNameToIndex.map(x => {
       val nameTerm = Utils.extractNameTerm(x._1)
       val index = x._2
-      val coeff = model.coefficients(index)
+      val coeff = model.coefficients.means(index)
       val expAbs = summary match {
         case Some(sum) =>
           sum.variance(x._2)

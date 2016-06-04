@@ -73,7 +73,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunctio
 
     case _ =>
       throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-          s"in ${this.getClass} is not supported!")
+        s"in ${this.getClass} is not supported!")
   }
 
   /**
@@ -89,7 +89,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunctio
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
-          s"type ${model.getClass} in ${this.getClass} is not supported!")
+        s"type ${model.getClass} in ${this.getClass} is not supported!")
   }
 
   /**

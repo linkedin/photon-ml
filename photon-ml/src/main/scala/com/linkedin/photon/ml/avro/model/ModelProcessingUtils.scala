@@ -19,7 +19,6 @@ import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.util.{IOUtils, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -28,7 +27,6 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import scala.collection.Map
-
 
 /**
   * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
@@ -191,6 +189,7 @@ object ModelProcessingUtils {
   }
 
   // TODO: Currently only the means of the coefficients are loaded, the variances are discarded
+  // TODO: Currently the model type is not loaded; all models are treated as LinearRegressionModels
   private def loadCoefficientsFromHDFS(
       inputDir: String,
       featureNameAndTermToIndexMap: Map[NameAndTerm, Int],

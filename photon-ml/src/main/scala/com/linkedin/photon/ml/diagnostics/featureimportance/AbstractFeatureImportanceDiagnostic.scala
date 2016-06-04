@@ -99,7 +99,7 @@ abstract class AbstractFeatureImportanceDiagnostic(protected val modelNameToInde
       summary: Option[BasicStatisticalSummary]): String = {
 
     val basic = f"Feature (name=[${id._1}], term=[${id._2}]) importance = [$importance%.03f], " +
-      f"coefficient = [${model.coefficients(idx)}%.06g]"
+      f"coefficient = [${model.coefficients.means(idx)}%.06g]"
 
     val extended = summary match {
       case Some(sum) =>

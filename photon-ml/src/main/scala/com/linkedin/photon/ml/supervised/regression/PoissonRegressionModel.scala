@@ -24,7 +24,7 @@ import org.apache.spark.rdd.RDD
   *
   * @param coefficients Weights estimated for every feature
   */
-class PoissonRegressionModel(override val coefficients: Vector[Double])
+class PoissonRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
@@ -37,7 +37,15 @@ class PoissonRegressionModel(override val coefficients: Vector[Double])
     * @return The mean for the passed features
     */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-    : Double = math.exp(coefficients.dot(features) + offset)
+  : Double = math.exp(coefficients.computeScore(features) + offset)
+
+  override def updateCoefficients(updatedCoefficients: Coefficients): PoissonRegressionModel =
+    new PoissonRegressionModel(updatedCoefficients)
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[PoissonRegressionModel]
+
+  override def toSummaryString: String =
+    s"Poisson Regression Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)

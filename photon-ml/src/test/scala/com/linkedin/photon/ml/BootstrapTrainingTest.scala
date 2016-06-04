@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml
 
 import breeze.linalg.DenseVector
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.CoefficientSummary
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import org.testng.Assert._
@@ -33,7 +34,8 @@ class BootstrapTrainingTest {
 
     for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
       val f = i.toDouble / HALF_NUM_SAMPLES
-      val coefficients = DenseVector.ones[Double](NUM_DIMENSIONS) * f
+      val coefficientsVector = DenseVector.ones[Double](NUM_DIMENSIONS) * f
+      val coefficients = Coefficients(coefficientsVector, variancesOption = None)
       toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients), Map.empty)
     }
 
@@ -47,7 +49,8 @@ class BootstrapTrainingTest {
 
     for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
       val f = i.toDouble / HALF_NUM_SAMPLES
-      val coefficients = DenseVector.ones[Double](NUM_DIMENSIONS) * f
+      val coefficientsVector = DenseVector.ones[Double](NUM_DIMENSIONS) * f
+      val coefficients = Coefficients(coefficientsVector, variancesOption = None)
       toAggregate(i + HALF_NUM_SAMPLES) = (new LinearRegressionModel(coefficients), keys.map(x => (x, f)).toMap)
     }
 

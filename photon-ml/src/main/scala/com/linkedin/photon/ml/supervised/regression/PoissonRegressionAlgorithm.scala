@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.supervised.regression
 import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.{PoissonLossFunction, TwiceDiffFunction}
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
@@ -65,6 +66,6 @@ class PoissonRegressionAlgorithm
    * @return A generalized linear model with intercept and coefficients parameters
    */
   override protected def createModel(coefficients: Vector[Double]) = {
-    new PoissonRegressionModel(coefficients)
+    new PoissonRegressionModel(Coefficients(coefficients, variancesOption = None))
   }
 }

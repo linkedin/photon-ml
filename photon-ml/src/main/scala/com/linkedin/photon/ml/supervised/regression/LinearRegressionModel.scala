@@ -24,7 +24,7 @@ import org.apache.spark.rdd.RDD
   *
   * @param coefficients Weights estimated for every feature
   */
-class LinearRegressionModel(override val coefficients: Vector[Double])
+class LinearRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
@@ -37,7 +37,15 @@ class LinearRegressionModel(override val coefficients: Vector[Double])
     * @return
     */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-    : Double = coefficients.dot(features) + offset
+  : Double = coefficients.computeScore(features) + offset
+
+  override def updateCoefficients(updatedCoefficients: Coefficients): LinearRegressionModel =
+    new LinearRegressionModel(updatedCoefficients)
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[LinearRegressionModel]
+
+  override def toSummaryString: String =
+    s"Linear Regression Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)

@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.supervised.classification
 import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.{LogisticLossFunction, TwiceDiffFunction}
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearAlgorithm
@@ -67,6 +68,6 @@ class LogisticRegressionAlgorithm
    * @return A generalized linear model with intercept and coefficients parameters
    */
   override protected def createModel(coefficients: Vector[Double]) = {
-    new LogisticRegressionModel(coefficients)
+    new LogisticRegressionModel(Coefficients(coefficients, variancesOption = None))
   }
 }
