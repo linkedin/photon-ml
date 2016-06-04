@@ -16,25 +16,26 @@ package com.linkedin.photon.ml.model
 
 import com.linkedin.photon.ml.BroadcastLike
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 /**
   * Representation of a fixed effect model
   *
-  * @param coefficientsBroadcast The coefficients
+  * @param modelBroadcast The coefficients
   * @param featureShardId The feature shard id
   */
-protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coefficients], val featureShardId: String)
+protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLinearModel], val featureShardId: String)
   extends DatumScoringModel with BroadcastLike {
 
-  def coefficients: Coefficients = coefficientsBroadcast.value
+  def model: GeneralizedLinearModel = modelBroadcast.value
 
   /**
     * Clean up coefficient broadcast
     */
   override def unpersistBroadcast(): this.type = {
-    coefficientsBroadcast.unpersist()
+    modelBroadcast.unpersist()
     this
   }
 
@@ -45,7 +46,7 @@ protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coeffi
     * @return The score
     */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
-    FixedEffectModel.score(dataPoints, coefficientsBroadcast, featureShardId)
+    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
 
   /**
     * Build a summary string for the coefficients
@@ -53,22 +54,22 @@ protected[ml] class FixedEffectModel(val coefficientsBroadcast: Broadcast[Coeffi
     * @return String representation
     */
   override def toSummaryString: String =
-    s"Fixed effect model with featureShardId $featureShardId summary:\n${coefficients.toSummaryString}"
+    s"Fixed effect model with featureShardId $featureShardId summary:\n${model.toSummaryString}"
 
   /**
-    * Create an updated fixed effect model with new coefficients
+    * Create an updated model with the coefficients
     *
-    * @param updatedCoefficientsBroadcast The new coefficients
-    * @return Updated fixed effect model
+    * @param updatedModelBroadcast new coefficients
+    * @return updated model
     */
-  def update(updatedCoefficientsBroadcast: Broadcast[Coefficients]): FixedEffectModel =
-    new FixedEffectModel(updatedCoefficientsBroadcast, featureShardId)
+  def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
+    new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
   override def equals(that: Any): Boolean = {
     that match {
       case other: FixedEffectModel =>
         val sameMetaData = this.featureShardId == other.featureShardId
-        val sameCoefficients = this.coefficients.equals(other.coefficients)
+        val sameCoefficients = this.model.equals(other.model)
         sameMetaData && sameCoefficients
       case _ => false
     }
@@ -83,17 +84,17 @@ object FixedEffectModel {
     * Compute the score for the dataset
     *
     * @param dataPoints The dataset to score
-    * @param coefficientsBroadcast The model to use for scoring
+    * @param modelBroadcast The model to use for scoring
     * @param featureShardId The feature shard id
     * @return The score
     */
   private def score(
       dataPoints: RDD[(Long, GameDatum)],
-      coefficientsBroadcast: Broadcast[Coefficients],
+      modelBroadcast: Broadcast[GeneralizedLinearModel],
       featureShardId: String): KeyValueScore = {
 
     val scores = dataPoints.mapValues(gameData =>
-      coefficientsBroadcast.value.computeScore(gameData.featureShardContainer(featureShardId))
+      modelBroadcast.value.computeScore(gameData.featureShardContainer(featureShardId))
     )
 
     new KeyValueScore(scores)

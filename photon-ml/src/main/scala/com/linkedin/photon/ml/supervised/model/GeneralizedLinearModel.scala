@@ -28,7 +28,22 @@ import org.apache.spark.rdd.RDD
   */
 abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Serializable with Summarizable {
 
+  /**
+    * Compute the mean of the model
+    *
+    * @param features The input data point's features
+    * @param offset The input data point's offset
+    * @return The mean for the passed features
+    */
   protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
+
+  /**
+    * Compute the score for the given features
+    *
+    * @param features The input data point's feature
+    * @return The score for the passed features
+    */
+  def computeScore(features: Vector[Double]): Double = coefficients.computeScore(features)
 
   /**
     * Compute the value of the mean function of the generalized linear model given one data point using the estimated

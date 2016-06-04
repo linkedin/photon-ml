@@ -19,6 +19,7 @@ import java.lang.{Double => JDouble}
 import java.util.{List => JList, Map => JMap}
 
 import breeze.linalg.SparseVector
+
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
 import com.linkedin.photon.ml.avro.{AvroIOUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
 import com.linkedin.photon.ml.data

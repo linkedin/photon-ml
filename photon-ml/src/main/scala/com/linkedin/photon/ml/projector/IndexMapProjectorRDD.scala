@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.projector
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -62,13 +63,17 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
     randomEffectDataSet.update(projectedActiveData, projectedPassiveData)
   }
 
-  def projectCoefficientsRDD(coefficientsRDD: RDD[(String, Coefficients)])
-    : RDD[(String, Coefficients)] = {
+  override def projectCoefficientsRDD(coefficientsRDD: RDD[(String, GeneralizedLinearModel)])
+    : RDD[(String, GeneralizedLinearModel)] = {
 
     coefficientsRDD
       .join(indexMapProjectorRDD)
-      .mapValues { case (Coefficients(means, variancesOption), projector) =>
-        Coefficients(projector.projectCoefficients(means), variancesOption)
+      .mapValues { case (model, projector) =>
+        val oldCoefficients = model.coefficients
+        model.updateCoefficients(
+          Coefficients(
+            projector.projectCoefficients(oldCoefficients.means),
+            oldCoefficients.variancesOption.map(projector.projectCoefficients)))
       }
   }
 

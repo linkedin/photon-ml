@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.optimization._
   * @param regularizationWeight Regularization weight
   * @param downSamplingRate Down-sampling rate
   */
-protected[ml] case class GLMOptimizationConfiguration private (
+protected[ml] case class GLMOptimizationConfiguration (
     optimizerConfig: OptimizerConfig = OptimizerConfig(OptimizerType.TRON, 20, 1E-5, None),
     regularizationContext: RegularizationContext = L2RegularizationContext,
     regularizationWeight: Double = 50,
@@ -78,9 +78,7 @@ object GLMOptimizationConfiguration {
     val convergenceTolerance = convergenceToleranceStr.toDouble
     val regularizationWeight = regularizationWeightStr.toDouble
     val downSamplingRate = downSamplingRateStr.toDouble
-
     require(downSamplingRate > 0.0 && downSamplingRate <= 1.0, s"Unexpected downSamplingRate: $downSamplingRate")
-
     val optimizerType = OptimizerType.withName(optimizerTypeStr.toUpperCase)
     val regularizationContext = RegularizationType.withName(regularizationTypeStr.toUpperCase) match {
       case RegularizationType.NONE => NoRegularizationContext

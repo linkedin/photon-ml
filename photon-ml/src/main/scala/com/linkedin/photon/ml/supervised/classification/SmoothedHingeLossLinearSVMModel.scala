@@ -39,7 +39,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
     * @return The mean for the passed features
     */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-  : Double = coefficients.computeScore(features) + offset
+    : Double = coefficients.computeScore(features) + offset
 
   override def updateCoefficients(updatedCoefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
     new SmoothedHingeLossLinearSVMModel(updatedCoefficients)

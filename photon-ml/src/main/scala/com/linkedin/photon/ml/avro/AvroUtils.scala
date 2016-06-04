@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetConta
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.{Utils, VectorUtils}
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.mapred.{AvroInputFormat, AvroWrapper}
@@ -155,15 +156,17 @@ object AvroUtils {
     * @param intToNameAndTermMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
     * @return The Avro record that contains the information of the input coefficients
     */
-  protected[avro] def convertCoefficientsToBayesianLinearModelAvro(
-      coefficients: Coefficients,
+  protected[avro] def convertGLMModelToBayesianLinearModelAvro(
+      model: GeneralizedLinearModel,
       modelId: String,
       intToNameAndTermMap: Map[Int, NameAndTerm]): BayesianLinearModelAvro = {
 
-    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(coefficients.means, intToNameAndTermMap)
-    val variancesAvrosOption = coefficients
+    val modelCoefficients = model.coefficients
+    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, intToNameAndTermMap)
+    val variancesAvrosOption = modelCoefficients
       .variancesOption
       .map(convertVectorAsArrayOfNameTermValueAvros(_, intToNameAndTermMap))
+    // TODO: Output type of model.
     val avroFile = BayesianLinearModelAvro
       .newBuilder()
       .setModelId(modelId)
@@ -173,7 +176,6 @@ object AvroUtils {
     if (variancesAvrosOption.isDefined) {
       avroFile.setVariances(variancesAvrosOption.get.toList)
     }
-
     avroFile.build()
   }
 

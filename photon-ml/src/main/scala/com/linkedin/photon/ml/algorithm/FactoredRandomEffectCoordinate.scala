@@ -17,10 +17,13 @@ package com.linkedin.photon.ml.algorithm
 import breeze.linalg.Matrix
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.TwiceDiffFunction
+import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.model._
+import com.linkedin.photon.ml.normalization.NoNormalization
+import com.linkedin.photon.ml.optimization.GeneralizedLinearOptimizationProblem
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{ProjectionMatrix, ProjectionMatrixBroadcast}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 import org.apache.spark.rdd.RDD
 
@@ -30,10 +33,10 @@ import org.apache.spark.rdd.RDD
   * @param randomEffectDataSet The training dataset
   * @param factoredRandomEffectOptimizationProblem The fixed effect optimization problem
   */
-protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
-    factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[F])
-  extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[F]](randomEffectDataSet) {
+    factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[GLM, F])
+  extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[GLM, F]](randomEffectDataSet) {
 
   /**
     * Initialize the model
@@ -42,7 +45,11 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
     */
   protected[algorithm] override def initializeModel(seed: Long): DatumScoringModel = {
     val latentSpaceDimension = factoredRandomEffectOptimizationProblem.latentSpaceDimension
-    FactoredRandomEffectCoordinate.initializeModel(randomEffectDataSet, latentSpaceDimension, seed)
+    FactoredRandomEffectCoordinate.initializeModel(
+      randomEffectDataSet,
+      factoredRandomEffectOptimizationProblem,
+      latentSpaceDimension,
+      seed)
   }
 
   /**
@@ -54,7 +61,7 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
   protected[algorithm] override def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
     model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
-        var updatedCoefficientsRDD = factoredRandomEffectModel.coefficientsRDDInProjectedSpace
+        var updatedModelsRDD = factoredRandomEffectModel.modelsInProjectedSpaceRDD
         var updatedProjectionMatrixBroadcast = factoredRandomEffectModel.projectionMatrixBroadcast
         var latentFactorOptimizationProblem = factoredRandomEffectOptimizationProblem.latentFactorOptimizationProblem
 
@@ -69,7 +76,7 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
           val randomEffectDataSetInProjectedSpace = updatedProjectionMatrixBroadcast.projectRandomEffectDataSet(
             randomEffectDataSet)
           val randomEffectModel = factoredRandomEffectModel
-            .updateRandomEffectModelInProjectedSpace(updatedCoefficientsRDD)
+            .updateRandomEffectModelInProjectedSpace(updatedModelsRDD)
             .toRandomEffectModel
           val (updatedRandomEffectModel, randomEffectOptimizationTracker) = RandomEffectCoordinate.updateModel(
             randomEffectDataSetInProjectedSpace,
@@ -77,15 +84,15 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
             randomEffectModel)
 
           updatedRandomEffectModel
-              .coefficientsRDD
+              .modelsRDD
               .setName(s"Updated random effect model in iteration $iteration")
               .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
           randomEffectOptimizationTracker
               .setName(s"Random effect optimization tracker in iteration $iteration")
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
           updatedRandomEffectModel.materialize()
-          updatedCoefficientsRDD.unpersist()
-          updatedCoefficientsRDD = updatedRandomEffectModel.coefficientsRDD
+          updatedModelsRDD.unpersist()
+          updatedModelsRDD = updatedRandomEffectModel.modelsRDD
 
           // Then update the latent projection matrix
           val latentProjectionMatrix = updatedProjectionMatrixBroadcast.projectionMatrix
@@ -105,12 +112,12 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
           latentFactorOptimizationProblem = updatedLatentOptimizationProblem
 
           factoredRandomEffectOptimizationTracker(iteration) = (randomEffectOptimizationTracker,
-            new FixedEffectOptimizationTracker(latentFactorOptimizationProblem.optimizer.getStateTracker.get))
+            new FixedEffectOptimizationTracker(latentFactorOptimizationProblem.getStatesTracker.get))
         }
 
         // Return the updated model
         val updatedFactoredRandomEffectModel = factoredRandomEffectModel.updateFactoredRandomEffectModel(
-          updatedCoefficientsRDD,
+          updatedModelsRDD,
           updatedProjectionMatrixBroadcast)
 
         (updatedFactoredRandomEffectModel,
@@ -147,13 +154,13 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
     */
   protected[algorithm] override def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
-      val coefficientsRDD = factoredRandomEffectModel.coefficientsRDDInProjectedSpace
+      val modelsRDD = factoredRandomEffectModel.modelsInProjectedSpaceRDD
       val projectionMatrix = factoredRandomEffectModel.projectionMatrixBroadcast.projectionMatrix
-      factoredRandomEffectOptimizationProblem.getRegularizationTermValue(coefficientsRDD, projectionMatrix)
+      factoredRandomEffectOptimizationProblem.getRegularizationTermValue(modelsRDD, projectionMatrix)
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
-          s"type ${model.getClass} in ${this.getClass} is not supported!")
+        s"type ${model.getClass} in ${this.getClass} is not supported!")
   }
 
   /**
@@ -163,7 +170,7 @@ protected[ml] class FactoredRandomEffectCoordinate[F <: TwiceDiffFunction[Labele
     * @return The updated coordinate
     */
   override protected[algorithm] def updateCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
-    : FactoredRandomEffectCoordinate[F] =
+    : FactoredRandomEffectCoordinate[GLM, F] =
     new FactoredRandomEffectCoordinate(updatedRandomEffectDataSet, factoredRandomEffectOptimizationProblem)
 }
 
@@ -176,13 +183,15 @@ object FactoredRandomEffectCoordinate {
     * @param latentSpaceDimension Dimensionality of the latent space
     * @param seed Random seed
     */
-  private def initializeModel(
+  private def initializeModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
+      factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[GLM, F],
       latentSpaceDimension: Int,
       seed: Long): FactoredRandomEffectModel = {
 
     val randomEffectModelsRDD = randomEffectDataSet.activeData.mapValues(localDataSet =>
-      Coefficients.initializeZeroCoefficients(latentSpaceDimension))
+      factoredRandomEffectOptimizationProblem.initializeModel(latentSpaceDimension).asInstanceOf[GeneralizedLinearModel]
+    )
     val numCols = latentSpaceDimension
     val latentProjectionMatrix = ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
       randomEffectDataSet,
@@ -203,36 +212,40 @@ object FactoredRandomEffectCoordinate {
     * @param latentFactorOptimizationProblem The optimization problem
     * @return Updated projection matrix
     */
-  private def updateLatentProjectionMatrix[F <: TwiceDiffFunction[LabeledPoint]](
+  private def updateLatentProjectionMatrix[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectModel: RandomEffectModel,
       projectionMatrix: ProjectionMatrix,
-      latentFactorOptimizationProblem: OptimizationProblem[F]): (ProjectionMatrix, OptimizationProblem[F]) = {
+      latentFactorOptimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F])
+    : (ProjectionMatrix, GeneralizedLinearOptimizationProblem[GLM, F]) = {
 
     val localDataSetRDD = randomEffectDataSet.activeData
-    val coefficientsRDD = randomEffectModel.coefficientsRDD
+    val modelsRDD = randomEffectModel.modelsRDD
     val latentProjectionMatrix = projectionMatrix.matrix
     val numRows = latentProjectionMatrix.rows
     val numCols = latentProjectionMatrix.cols
     val globalIdPartitioner = randomEffectDataSet.globalIdPartitioner
     val generatedTrainingData = kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD,
-      coefficientsRDD,
+      modelsRDD,
       sparsityToleranceThreshold = MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
     val downSampledTrainingData = latentFactorOptimizationProblem
-      .sampler
       .downSample(generatedTrainingData)
       .partitionBy(globalIdPartitioner)
       .setName("Generated training data for latent projection matrix")
       .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val flattenedLatentProjectionMatrix = latentProjectionMatrix.flatten()
-    val latentProjectionMatrixAsCoefficients = Coefficients(flattenedLatentProjectionMatrix, variancesOption = None)
-    val (updatedCoefficients, _) = latentFactorOptimizationProblem.updateCoefficientMeans(
+    val latentProjectionMatrixAsModel = latentFactorOptimizationProblem
+      .initializeZeroModel(1)
+      .updateCoefficients(Coefficients(flattenedLatentProjectionMatrix, variancesOption = None))
+    val updatedModel = latentFactorOptimizationProblem.run(
       downSampledTrainingData.values,
-      latentProjectionMatrixAsCoefficients)
+      latentProjectionMatrixAsModel,
+      NoNormalization)
+
     downSampledTrainingData.unpersist()
 
-    val updatedLatentProjectionMatrix = Matrix.create(numRows, numCols, updatedCoefficients.means.toArray)
+    val updatedLatentProjectionMatrix = Matrix.create(numRows, numCols, updatedModel.coefficients.means.toArray)
     (new ProjectionMatrix(updatedLatentProjectionMatrix), latentFactorOptimizationProblem)
   }
 
@@ -242,7 +255,7 @@ object FactoredRandomEffectCoordinate {
     * the terminology "cross product" or "outer product".
     *
     * @param localDataSetRDD The dataset
-    * @param coefficientsRDD The coefficients
+    * @param modelsRDD The coefficients
     * @param sparsityToleranceThreshold If the product between a certain feature and coefficient is smaller than
     *                                   sparsityToleranceThreshold, then it will be stored as 0 for sparsity
     *                                   consideration.
@@ -250,14 +263,14 @@ object FactoredRandomEffectCoordinate {
     */
   private def kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD: RDD[(String, LocalDataSet)],
-      coefficientsRDD: RDD[(String, Coefficients)],
+      modelsRDD: RDD[(String, GeneralizedLinearModel)],
       sparsityToleranceThreshold: Double = 0.0): RDD[(Long, LabeledPoint)] = {
 
-    localDataSetRDD.join(coefficientsRDD).flatMap { case (_, (localDataSet, coefficients)) =>
+    localDataSetRDD.join(modelsRDD).flatMap { case (_, (localDataSet, model)) =>
       localDataSet.dataPoints.map { case (globalId, labeledPoint) =>
         val generatedFeatures = VectorUtils.kroneckerProduct(
           labeledPoint.features,
-          coefficients.means,
+          model.coefficients.means,
           sparsityToleranceThreshold)
         val generatedLabeledPoint =
           new LabeledPoint(labeledPoint.label, generatedFeatures, labeledPoint.offset, labeledPoint.weight)

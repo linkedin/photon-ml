@@ -24,7 +24,6 @@ import org.apache.spark.rdd.RDD
   * Interface for down-sampler implementations
   */
 protected[ml] trait DownSampler {
-
   /**
     * Down-sample a dataset
     *

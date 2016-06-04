@@ -16,9 +16,11 @@ package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet}
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
+import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
+import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem, RandomEffectOptimizationTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -30,10 +32,10 @@ import scala.collection.Set
   * @param randomEffectDataSet The training dataset
   * @param randomEffectOptimizationProblem The random effect optimization problem
   */
-protected[ml] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] abstract class RandomEffectCoordinate[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
-    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
-  extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[F]](randomEffectDataSet) {
+    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F])
+  extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[GLM, F]](randomEffectDataSet) {
 
   /**
     * Score the model
@@ -72,8 +74,7 @@ protected[ml] abstract class RandomEffectCoordinate[F <: TwiceDiffFunction[Label
     */
   protected[algorithm] override def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case randomEffectModel: RandomEffectModel =>
-      randomEffectOptimizationProblem.getRegularizationTermValue(randomEffectModel.coefficientsRDD)
-
+      randomEffectOptimizationProblem.getRegularizationTermValue(randomEffectModel.modelsRDD)
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
         s"type ${model.getClass} in ${this.getClass} is not supported!")
@@ -94,10 +95,10 @@ object RandomEffectCoordinate {
 
     val activeScores = randomEffectDataSet
       .activeData
-      .join(randomEffectModel.coefficientsRDD)
-      .flatMap { case (individualId, (localDataSet, coefficients)) =>
+      .join(randomEffectModel.modelsRDD)
+      .flatMap { case (individualId, (localDataSet, model)) =>
         localDataSet.dataPoints.map { case (globalId, labeledPoint) =>
-          (globalId, coefficients.computeScore(labeledPoint.features))
+          (globalId, model.computeScore(labeledPoint.features))
         }
       }
       .partitionBy(randomEffectDataSet.globalIdPartitioner)
@@ -110,7 +111,7 @@ object RandomEffectCoordinate {
       val passiveScores = computePassiveScores(
           passiveDataOption.get,
           passiveDataIndividualIdsOption.get,
-          randomEffectModel.coefficientsRDD)
+          randomEffectModel.modelsRDD)
         .setName("Passive scores")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
@@ -126,15 +127,15 @@ object RandomEffectCoordinate {
     *
     * @param passiveData The dataset
     * @param passiveDataIndividualIds The set of individual random effect entity ids
-    * @param coefficientsRDD Model coefficients
+    * @param modelsRDD Model coefficients
     * @return Scores
     */
   private def computePassiveScores(
       passiveData: RDD[(Long, (String, LabeledPoint))],
       passiveDataIndividualIds: Broadcast[Set[String]],
-      coefficientsRDD: RDD[(String, Coefficients)]): RDD[(Long, Double)] = {
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
 
-    val modelsForPassiveData = coefficientsRDD
+    val modelsForPassiveData = modelsRDD
       .filter { case (shardId, _) =>
         passiveDataIndividualIds.value.contains(shardId)
       }
@@ -160,19 +161,19 @@ object RandomEffectCoordinate {
     * @param randomEffectModel The model
     * @return Tuple of updated model and optimization tracker
     */
-  protected[algorithm] def updateModel[F <: TwiceDiffFunction[LabeledPoint]](
+  protected[algorithm] def updateModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
-      randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
+      randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F],
       randomEffectModel: RandomEffectModel) : (RandomEffectModel, RandomEffectOptimizationTracker) = {
 
     val result = randomEffectDataSet
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
-      .join(randomEffectModel.coefficientsRDD)
+      .join(randomEffectModel.modelsRDD)
       .mapValues {
         case (((localDataSet, optimizationProblem), localModel)) =>
           val trainingLabeledPoints = localDataSet.dataPoints.map(_._2)
-          val (updatedLocalModel, _) = optimizationProblem.updateCoefficientMeans(trainingLabeledPoints, localModel)
+          val updatedLocalModel = optimizationProblem.run(trainingLabeledPoints, localModel, NoNormalization)
 
           (updatedLocalModel, optimizationProblem)
       }
@@ -185,7 +186,7 @@ object RandomEffectCoordinate {
       .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
       .materialize()
 
-    val optimizationStateTrackers = result.values.map(_._2.optimizer.getStateTracker.get)
+    val optimizationStateTrackers = result.values.map(_._2.getStatesTracker.get)
     val optimizationTracker = new RandomEffectOptimizationTracker(optimizationStateTrackers)
         .setName(s"Random effect optimization tracker")
         .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)

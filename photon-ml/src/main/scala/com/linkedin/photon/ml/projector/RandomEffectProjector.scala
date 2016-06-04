@@ -48,7 +48,7 @@ protected[ml] trait RandomEffectProjector {
     * @param coefficientsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
     * @return The [[RDD]] of [[Coefficients]] in the original space
     */
-  def projectCoefficientsRDD(coefficientsRDD: RDD[(String, Coefficients)]): RDD[(String, Coefficients)]
+  def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)]
 }
 
 object RandomEffectProjector {

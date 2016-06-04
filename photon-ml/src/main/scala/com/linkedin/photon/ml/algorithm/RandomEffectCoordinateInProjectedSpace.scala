@@ -15,9 +15,10 @@
 package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
+import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
   * The optimization problem coordinate for a random effect model in projected space
@@ -25,10 +26,10 @@ import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffe
   * @param randomEffectDataSetInProjectedSpace The training dataset
   * @param randomEffectOptimizationProblem The fixed effect optimization problem
   */
-protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunction[LabeledPoint]](
+protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
-    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F])
-  extends RandomEffectCoordinate[F](randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
+    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F])
+  extends RandomEffectCoordinate[GLM, F](randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
 
   /**
     * Initialize the model
@@ -36,7 +37,9 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunctio
     * @param seed Random seed
     */
   protected[algorithm] override def initializeModel(seed: Long): RandomEffectModelInProjectedSpace = {
-    RandomEffectCoordinateInProjectedSpace.initializeZeroModel(randomEffectDataSetInProjectedSpace)
+    RandomEffectCoordinateInProjectedSpace.initializeModel(
+      randomEffectDataSetInProjectedSpace,
+      randomEffectOptimizationProblem)
   }
 
   /**
@@ -50,9 +53,10 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunctio
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
         val (updatedModel, optimizationTracker) = super.updateModel(randomEffectModel)
-        val updatedCoefficientsRDD = updatedModel.asInstanceOf[RandomEffectModel].coefficientsRDD
+        val updatedModelsRDD = updatedModel.asInstanceOf[RandomEffectModel].modelsRDD
         val updatedRandomEffectModelWithProjector = randomEffectModelWithProjector
-          .updateRandomEffectModelInProjectedSpace(updatedCoefficientsRDD)
+          .updateRandomEffectModelInProjectedSpace(updatedModelsRDD)
+
         (updatedRandomEffectModelWithProjector, optimizationTracker)
 
       case _ =>
@@ -99,7 +103,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[F <: TwiceDiffFunctio
     * @return The updated coordinate
     */
   override protected def updateCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
-    : RandomEffectCoordinate[F] = {
+    : RandomEffectCoordinate[GLM, F] = {
 
     val updatedRandomEffectDataSetInProjectedSpace = new RandomEffectDataSetInProjectedSpace(
       updatedRandomEffectDataSet,
@@ -118,11 +122,13 @@ object RandomEffectCoordinateInProjectedSpace {
     *
     * @param randomEffectDataSetInProjectedSpace The dataset
     */
-  private def initializeZeroModel(
-      randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace) : RandomEffectModelInProjectedSpace = {
+  private def initializeModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
+      randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
+      randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F]): RandomEffectModelInProjectedSpace = {
 
-    val randomEffectModelsRDD = randomEffectDataSetInProjectedSpace.activeData.mapValues(localDataSet =>
-      Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
+    val randomEffectModelsRDD = randomEffectDataSetInProjectedSpace.activeData.mapValues { localDataSet =>
+      randomEffectOptimizationProblem.initializeModel(localDataSet.numFeatures).asInstanceOf[GeneralizedLinearModel]
+    }
     val randomEffectId = randomEffectDataSetInProjectedSpace.randomEffectId
     val featureShardId = randomEffectDataSetInProjectedSpace.featureShardId
     val randomEffectProjector = randomEffectDataSetInProjectedSpace.randomEffectProjector

@@ -16,23 +16,24 @@ package com.linkedin.photon.ml.model
 
 import com.linkedin.photon.ml.BroadcastLike
 import com.linkedin.photon.ml.projector.ProjectionMatrixBroadcast
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
 /**
   * Representation of a factored random effect model
   *
-  * @param coefficientsRDDInProjectedSpace The underlying model coefficients in projected space
+  * @param modelsInProjectedSpaceRDD The underlying model coefficients in projected space
   * @param projectionMatrixBroadcast The projector between the original and projected spaces
   * @param randomEffectId The random effect type id
   * @param featureShardId The feature shard id
   */
 protected[ml] class FactoredRandomEffectModel(
-    override val coefficientsRDDInProjectedSpace: RDD[(String, Coefficients)],
+    override val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
     val projectionMatrixBroadcast: ProjectionMatrixBroadcast,
     override val randomEffectId: String,
     override val featureShardId: String)
   extends RandomEffectModelInProjectedSpace(
-    coefficientsRDDInProjectedSpace,
+    modelsInProjectedSpaceRDD,
     projectionMatrixBroadcast,
     randomEffectId,
     featureShardId) with BroadcastLike {
@@ -57,16 +58,16 @@ protected[ml] class FactoredRandomEffectModel(
   /**
     * Update the factored random effect model with new models per individual
     *
-    * @param updatedCoefficientsRDDInProjectedSpace The new models with updated coefficients in projected space
+    * @param updatedModelsInProjectedSpaceRDD The new models with updated coefficients in projected space
     * @param updatedProjectionMatrixBroadcast The updated projection matrix
     * @return The updated factored random effect model in projected space
     */
   def updateFactoredRandomEffectModel(
-      updatedCoefficientsRDDInProjectedSpace: RDD[(String, Coefficients)],
+      updatedModelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
       updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
 
     new FactoredRandomEffectModel(
-      updatedCoefficientsRDDInProjectedSpace,
+      updatedModelsInProjectedSpaceRDD,
       updatedProjectionMatrixBroadcast,
       randomEffectId,
       featureShardId)

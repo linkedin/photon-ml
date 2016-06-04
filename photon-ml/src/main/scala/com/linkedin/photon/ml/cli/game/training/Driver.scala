@@ -14,7 +14,9 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-
+import com.linkedin.photon.ml.optimization.{
+  GeneralizedLinearOptimizationProblem, SmoothedHingeLossLinearSVMOptimizationProblem, PoissonRegressionOptimizationProblem, LogisticRegressionOptimizationProblem, LinearRegressionOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.{RDDLike, SparkContextConfiguration}
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.avro.AvroUtils
@@ -23,11 +25,13 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
+import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, OptimizationProblem, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.supervised.TaskType._
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -43,6 +47,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   import params._
 
   private val hadoopConfiguration = sparkContext.hadoopConfiguration
+
+  private val isTrackingState = true
 
   /**
     * Builds feature name-and-term to index maps according to configuration
@@ -315,6 +321,19 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       trainingEvaluator: Evaluator,
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)]): Map[String, GAMEModel] = {
 
+    val optimizationProblemBuilder:
+        Function3[GLMOptimizationConfiguration, Int, Boolean,
+          GeneralizedLinearOptimizationProblem[GeneralizedLinearModel, DiffFunction[LabeledPoint]]] = taskType match {
+
+      case LOGISTIC_REGRESSION => LogisticRegressionOptimizationProblem.buildOptimizationProblem _
+      case LINEAR_REGRESSION => LinearRegressionOptimizationProblem.buildOptimizationProblem _
+      case POISSON_REGRESSION => PoissonRegressionOptimizationProblem.buildOptimizationProblem _
+      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        SmoothedHingeLossLinearSVMOptimizationProblem.buildOptimizationProblem _
+
+      case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
+    }
+
     val gameModels = for (
         fixedEffectOptimizationConfiguration <- fixedEffectOptimizationConfigurations;
         randomEffectOptimizationConfiguration <- randomEffectOptimizationConfigurations;
@@ -336,20 +355,21 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             // If number of features is from moderate to large (>200000), then use tree aggregate,
             // otherwise use aggregate.
             val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < 200000) 1 else 2
-            val optimizationProblem = OptimizationProblem.buildOptimizationProblem(taskType, optimizationConfiguration)
-            optimizationProblem.lossFunction.treeAggregateDepth = treeAggregateDepth
-            println(s"Set treeAggregateDepth to ${optimizationProblem.objectiveFunction.treeAggregateDepth}")
+            val optimizationProblem = optimizationProblemBuilder(
+              optimizationConfiguration,
+              treeAggregateDepth,
+              isTrackingState)
             new FixedEffectCoordinate(fixedEffectDataSet, optimizationProblem)
 
           case randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace =>
             // Random effect coordinate
             val optimizationConfiguration = randomEffectOptimizationConfiguration(coordinateId)
-            val randomEffectOptimizationProblem =
-              RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(taskType,
-                  optimizationConfiguration,
-                  randomEffectDataSetInProjectedSpace)
-                .setName(s"Random effect optimization problem of coordinate $coordinateId")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(
+                optimizationProblemBuilder,
+                optimizationConfiguration,
+                randomEffectDataSetInProjectedSpace)
+              .setName(s"Random effect optimization problem of coordinate $coordinateId")
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             new RandomEffectCoordinateInProjectedSpace(
               randomEffectDataSetInProjectedSpace,
               randomEffectOptimizationProblem)
@@ -361,7 +381,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
               mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
             val factoredRandomEffectOptimizationProblem = FactoredRandomEffectOptimizationProblem
               .buildFactoredRandomEffectOptimizationProblem(
-                taskType,
+                optimizationProblemBuilder,
                 randomEffectOptimizationConfiguration,
                 latentFactorOptimizationConfiguration,
                 mfOptimizationConfiguration,

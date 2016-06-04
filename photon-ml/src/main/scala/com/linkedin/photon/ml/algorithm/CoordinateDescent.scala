@@ -66,12 +66,12 @@ class CoordinateDescent(
   }
 
   /**
-   * Run coordinate descent
-   *
-   * @param numIterations Number of iterations
-   * @param gameModel The initial GAME model
-   * @return Trained GAME model
-   */
+    * Run coordinate descent
+    *
+    * @param numIterations Number of iterations
+    * @param gameModel The initial GAME model
+    * @return Trained GAME model
+    */
   def run(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
 
     coordinates.foreach { case (coordinateId, _) =>

@@ -18,6 +18,7 @@ import com.linkedin.photon.ml.BroadcastLike
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -48,11 +49,15 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
     randomEffectDataSet.update(projectedActiveData, projectedPassiveData)
   }
 
-  override def projectCoefficientsRDD(coefficientsRDD: RDD[(String, Coefficients)])
-    : RDD[(String, Coefficients)] = {
+  override def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)])
+    : RDD[(String, GeneralizedLinearModel)] = {
 
-    coefficientsRDD.mapValues { case Coefficients(mean, varianceOption) =>
-      Coefficients(projectionMatrixBroadcast.value.projectCoefficients(mean), varianceOption)
+    modelsRDD.mapValues { model =>
+      val oldCoefficients = model.coefficients
+      model.updateCoefficients(
+        Coefficients(
+          projectionMatrixBroadcast.value.projectCoefficients(oldCoefficients.means),
+          oldCoefficients.variancesOption))
     }
   }
 

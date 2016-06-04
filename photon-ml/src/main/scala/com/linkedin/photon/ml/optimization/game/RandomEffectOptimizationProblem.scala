@@ -16,9 +16,9 @@ package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
+import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.optimization.GeneralizedLinearOptimizationProblem
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -36,8 +36,9 @@ import org.apache.spark.storage.StorageLevel
   * @param optimizationProblems The component optimization problems (one per individual) for a random effect
   *                            optimization problem
   */
-protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
-    val optimizationProblems: RDD[(String, OptimizationProblem[F])])
+protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
+    val optimizationProblems: RDD[(String, GeneralizedLinearOptimizationProblem[GLM, F])],
+    baseOptimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F])
   extends RDDLike {
 
   def sparkContext: SparkContext = optimizationProblems.sparkContext
@@ -67,16 +68,24 @@ protected[ml] class RandomEffectOptimizationProblem[F <: TwiceDiffFunction[Label
   }
 
   /**
+    * Create a default generalized linear model with 0-valued coefficients
+    *
+    * @param dimension The dimensionality of the model coefficients
+    * @return A model with zero coefficients
+    */
+  def initializeModel(dimension: Int): GLM = baseOptimizationProblem.initializeZeroModel(dimension)
+
+  /**
     * Compute the regularization term value
     *
-    * @param coefficientsRDD The trained models
+    * @param modelsRDD The trained models
     * @return The combined regularization term value
     */
-  def getRegularizationTermValue(coefficientsRDD: RDD[(String, Coefficients)]): Double = {
+  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)]): Double = {
     optimizationProblems
-      .join(coefficientsRDD)
+      .join(modelsRDD)
       .map {
-        case (_, (optimizationProblem, coefficients)) => optimizationProblem.getRegularizationTermValue(coefficients)
+        case (_, (optimizationProblem, model)) => optimizationProblem.getRegularizationTermValue(model)
       }
       .reduce(_ + _)
   }
@@ -87,21 +96,27 @@ object RandomEffectOptimizationProblem {
   /**
     * Build an instance of random effect optimization problem
     *
-    * @param taskType The task type (e.g. LinearRegression, LogisticRegression)
+    * @param builder
     * @param configuration Optimizer configuration
     * @param randomEffectDataSet The training dataset
+    * @param treeAggregateDepth
+    * @param isTrackingState
     * @return A new optimization problem instance
     */
-  protected[ml] def buildRandomEffectOptimizationProblem(
-      taskType: TaskType,
+  protected[ml] def buildRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
+      builder: (GLMOptimizationConfiguration, Int, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
       configuration: GLMOptimizationConfiguration,
-      randomEffectDataSet: RandomEffectDataSet): RandomEffectOptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
+      randomEffectDataSet: RandomEffectDataSet,
+      treeAggregateDepth: Int = 1,
+      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[GLM, F] = {
 
     // Build an optimization problem for each random effect type
     val optimizationProblems = randomEffectDataSet.activeData.mapValues(_ =>
-      OptimizationProblem.buildOptimizationProblem(taskType, configuration)
+      builder(configuration, treeAggregateDepth, isTrackingState)
     )
 
-    new RandomEffectOptimizationProblem(optimizationProblems)
+    new RandomEffectOptimizationProblem(
+      optimizationProblems,
+      builder(configuration, treeAggregateDepth, isTrackingState))
   }
 }

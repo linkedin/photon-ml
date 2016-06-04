@@ -20,8 +20,9 @@ import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore, LabeledPoint, Loca
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.game.{OptimizationProblem, GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{LBFGS, TRON}
+import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, LBFGS, TRON}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -42,7 +43,9 @@ object SparkContextConfiguration {
     classOf[DenseVector[Double]],
     classOf[GLMOptimizationConfiguration],
     classOf[GameDatum],
+    classOf[GeneralizedLinearModel],
     classOf[GeneralizedLinearModelLossFunction],
+    classOf[GeneralizedLinearOptimizationProblem[_, _]],
     classOf[HessianVectorAggregator],
     classOf[KeyValueScore],
     classOf[LBFGS[LabeledPoint]],
@@ -53,7 +56,6 @@ object SparkContextConfiguration {
     classOf[Matrix[Double]],
     classOf[NameAndTerm],
     classOf[NormalizationContext],
-    classOf[OptimizationProblem[_]],
     classOf[Set[Int]],
     classOf[SparseVector[Double]],
     classOf[SquaredLossFunction],

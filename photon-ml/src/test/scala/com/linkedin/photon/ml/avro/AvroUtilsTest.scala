@@ -17,11 +17,13 @@ package com.linkedin.photon.ml.avro
 import scala.collection.Map
 
 import breeze.linalg.{SparseVector, DenseVector, Vector}
+import org.mockito.Mockito._
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 
 /**
@@ -29,10 +31,10 @@ import com.linkedin.photon.ml.model.Coefficients
  */
 class AvroUtilsTest {
 
-  // Test both the convertCoefficientsToBayesianLinearModelAvro and readMeanOfCoefficientsFromBayesianLinearModelAvro
+  // Test both the convertGLMModelToBayesianLinearModelAvro and readMeanOfCoefficientsFromBayesianLinearModelAvro
   // functions
   @Test
-  def testCoefficientsAndBayesianLinearModelAvroRecordConversion(): Unit = {
+  def testGLMModelAndBayesianLinearModelAvroRecordConversion(): Unit = {
 
     // Initialize the coefficients and related meta data
     val length = 4
@@ -45,16 +47,22 @@ class AvroUtilsTest {
       3 -> NameAndTerm("3", "3"))
     val nameAndTermToIntMap = intToNameAndTermMap.map(_.swap)
 
+    val sparseGlm = mock(classOf[GeneralizedLinearModel])
+    doReturn(sparseCoefficients).when(sparseGlm).coefficients
+
     // Convert the sparse coefficients to Avro record, and convert it back to coefficients
-    val sparseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvro(sparseCoefficients,
+    val sparseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(sparseGlm,
       modelId, intToNameAndTermMap)
     val recoveredSparseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(sparseCoefficientsAvro,
       nameAndTermToIntMap)
     val recoveredSparseCoefficients = Coefficients(recoveredSparseVector)
     assertEquals(sparseCoefficients, recoveredSparseCoefficients)
 
+    val denseGlm = mock(classOf[GeneralizedLinearModel])
+    doReturn(denseCoefficients).when(denseGlm).coefficients
+
     // Convert the dense coefficients to Avro record, and convert it back to coefficients
-    val denseCoefficientsAvro = AvroUtils.convertCoefficientsToBayesianLinearModelAvro(denseCoefficients,
+    val denseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(denseGlm,
       modelId, intToNameAndTermMap)
     val recoveredDenseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(denseCoefficientsAvro,
       nameAndTermToIntMap)

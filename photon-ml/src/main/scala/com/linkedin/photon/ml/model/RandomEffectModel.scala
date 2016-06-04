@@ -30,30 +30,30 @@ import org.apache.spark.storage.StorageLevel
   * @param featureShardId The feature shard id
   */
 protected[ml] class RandomEffectModel(
-    val coefficientsRDD: RDD[(String, Coefficients)],
+    val modelsRDD: RDD[(String, GeneralizedLinearModel)],
     val randomEffectId: String,
     val featureShardId: String)
   extends DatumScoringModel with RDDLike {
 
-  override def sparkContext: SparkContext = coefficientsRDD.sparkContext
+  override def sparkContext: SparkContext = modelsRDD.sparkContext
 
   override def persistRDD(storageLevel: StorageLevel): this.type = {
-    if (!coefficientsRDD.getStorageLevel.isValid) coefficientsRDD.persist(storageLevel)
+    if (!modelsRDD.getStorageLevel.isValid) modelsRDD.persist(storageLevel)
     this
   }
 
   override def unpersistRDD(): this.type = {
-    if (coefficientsRDD.getStorageLevel.isValid) coefficientsRDD.unpersist()
+    if (modelsRDD.getStorageLevel.isValid) modelsRDD.unpersist()
     this
   }
 
   override def setName(name: String): this.type = {
-    coefficientsRDD.setName(name)
+    modelsRDD.setName(name)
     this
   }
 
   override def materialize(): this.type = {
-    coefficientsRDD.count()
+    modelsRDD.count()
     this
   }
 
@@ -64,7 +64,7 @@ protected[ml] class RandomEffectModel(
     * @return The score
     */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
-    RandomEffectModel.score(dataPoints, coefficientsRDD, randomEffectId, featureShardId)
+    RandomEffectModel.score(dataPoints, modelsRDD, randomEffectId, featureShardId)
 
   /**
     * Build a summary string for the model
@@ -74,10 +74,10 @@ protected[ml] class RandomEffectModel(
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model of randomEffectId $randomEffectId, " +
         s"featureShardId $featureShardId summary:")
-    stringBuilder.append(s"\nLength: ${coefficientsRDD.values.map(_.means.activeSize).stats()}")
-    stringBuilder.append(s"\nMean: ${coefficientsRDD.map(_._2.meansL2Norm).stats()}")
-    if (coefficientsRDD.first()._2.variancesOption.isDefined) {
-      stringBuilder.append(s"\nvariance: ${coefficientsRDD.map(_._2.variancesL2NormOption.get).stats()}")
+    stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
+    stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
+    if (modelsRDD.first()._2.coefficients.variancesOption.isDefined) {
+      stringBuilder.append(s"\nvariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
     }
     stringBuilder.toString()
   }
@@ -88,7 +88,7 @@ protected[ml] class RandomEffectModel(
     * @param updatedModelsRdd The new underlying models, one per individual
     * @return The updated random effect model
     */
-  def updateRandomEffectModel(updatedModelsRdd: RDD[(String, Coefficients)]): RandomEffectModel =
+  def updateRandomEffectModel(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel =
     new RandomEffectModel(updatedModelsRdd, randomEffectId, featureShardId)
 
   override def equals(that: Any): Boolean = {
@@ -96,14 +96,13 @@ protected[ml] class RandomEffectModel(
       case other: RandomEffectModel =>
         val sameMetaData = this.randomEffectId == other.randomEffectId && this.featureShardId == other.featureShardId
         val sameCoefficientsRDD = this
-          .coefficientsRDD
-          .fullOuterJoin(other.coefficientsRDD)
-          .mapPartitions(iterator =>
-            Iterator.single(iterator.forall { case (_, (coefficientsOpt1, coefficientsOpt2)) =>
-              coefficientsOpt1.isDefined &&
-                coefficientsOpt2.isDefined &&
-                coefficientsOpt1.get.equals(coefficientsOpt2.get)
-            }))
+          .modelsRDD
+          .fullOuterJoin(other.modelsRDD)
+          .mapPartitions { iterator =>
+            Iterator.single(iterator.forall { case (_, (modelOpt1, modelOpt2)) =>
+              modelOpt1.isDefined && modelOpt2.isDefined && modelOpt1.get.equals(modelOpt2.get)
+            })
+          }
           .filter(!_)
           .count() == 0
 
@@ -129,7 +128,7 @@ object RandomEffectModel {
     */
   protected def score(
       dataPoints: RDD[(Long, GameDatum)],
-      coefficientsRDD: RDD[(String, Coefficients)],
+      modelsRDD: RDD[(String, GeneralizedLinearModel)],
       randomEffectId: String,
       featureShardId: String): KeyValueScore = {
 
@@ -139,18 +138,18 @@ object RandomEffectModel {
         val features = gameData.featureShardContainer(featureShardId)
         (individualId, (globalId, features))
       }
-      .cogroup(coefficientsRDD)
-      .flatMap { case (individualId, (globalIdAndFeaturesIterable, coefficientsIterable)) =>
-        assert(coefficientsIterable.size <= 1,
-          s"More than one model (${coefficientsIterable.size}) found for individual Id $individualId of " +
+      .cogroup(modelsRDD)
+      .flatMap { case (individualId, (globalIdAndFeaturesIterable, modelsIterable)) =>
+        assert(modelsIterable.size <= 1,
+          s"More than one model (${modelsIterable.size}) found for individual Id $individualId of " +
             s"random effect Id $randomEffectId")
 
-        if (coefficientsIterable.isEmpty) {
+        if (modelsIterable.isEmpty) {
           globalIdAndFeaturesIterable.map { case (globalId, _) => (globalId, 0.0) }
         } else {
-          val coefficients = coefficientsIterable.head
+          val model = modelsIterable.head
           globalIdAndFeaturesIterable.map { case (globalId, features) =>
-            (globalId, coefficients.computeScore(features))
+            (globalId, model.computeScore(features))
           }
         }
       }
