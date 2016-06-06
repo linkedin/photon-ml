@@ -19,7 +19,11 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
   - [Models](#models)
   - [Shaded Jar](#shaded-jar)
   - [Try It Out!](#try-it-out)
-  - [Example Scripts](#example-scripts)
+    - [Install Spark](#install-spark)
+    - [Get and Build the Code](#get-and-build-the-code)
+    - [Grab a Dataset](#grab-a-dataset)
+    - [Train the Model](#train-the-model)
+  - [Running Photon ML on Cluster Mode](#running-photon-ml-on-cluster-mode)
 - [How to Contribute](#how-to-contribute)
 
 <!-- /MarkdownTOC -->
@@ -215,7 +219,7 @@ The first command might be different, depending on the configuration of your sys
 
 #### Train the Model
 
-Now we're ready to train the model with Photon ML. Run the following command from the "photon-ml" directory:
+Now we're ready to train the model with Photon ML on your local dev box. Run the following command from the "photon-ml" directory:
 
 ```
 spark-submit \
@@ -241,16 +245,28 @@ When this command finishes, you should have a new folder named "out" containing 
 open out/model-diagnostic.html
 ```
 
-### Example Scripts
-The below script is a simple demonstration of running a Logistic Regression training and validation job with minimal setups:
+### Running Photon ML on Cluster Mode
+In general, running Photon ML is no different from running other general Spark applications. As a result, using the
+```spark-submit``` script in Spark’s ```bin``` directory we can run
+Photon ML on [different cluster modes](http://spark.apache.org/docs/latest/cluster-overview.html) (e.g.,
+[Spark Standalone Mode](http://spark.apache.org/docs/latest/spark-standalone.html),
+[Mesos](http://mesos.apache.org/), [YARN](http://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html)).
+
+In the following we provide a simple demonstration of running a Logistic Regression
+training and validation job with minimal setups on YARN. For running Photon ML on other cluster modes the relevant
+arguments can be modified accordingly with the ```spark-submit``` script as detailed in
+[http://spark.apache.org/docs/latest/submitting-applications.html](http://spark.apache.org/docs/latest/submitting-applications.html).
+
+
 ```bash
 spark-submit \
   --class com.linkedin.photon.ml.Driver \
-  --master yarn-cluster \
-  --num-executors 50 \
-  --driver-memory 10G \
-  --executor-memory $memory \
-  "photon-all_2.10-1.0.0.jar" \
+  --master yarn \
+  --deploy-mode cluster \
+  --num-executors $NUM_EXECUTORS \
+  --driver-memory $DRIVER_MEMORY \
+  --executor-memory $EXECUTOR_MEMORY \
+  "./build/photon-all_2.10/libs/photon-all_2.10-1.0.0.jar" \
   --training-data-directory "path/to/training/data" \
   --validating-data-directory "path/to/validating/data" \
   --output-directory "path/to/output/dir" \
@@ -260,7 +276,8 @@ spark-submit \
   --job-name "demo_photon_ml_logistic_regression"
 ```
 
-There is also a more complex script demonstrating advanced options and customizations of using Photon ML at  [example/run_photon_ml.driver.sh](https://github.com/linkedin/photon-ml/blob/master/examples/run_photon_ml_driver.sh).
+There is also a more complex script demonstrating advanced options and customizations of using Photon ML at
+[example/run_photon_ml.driver.sh](https://github.com/linkedin/photon-ml/blob/master/examples/run_photon_ml_driver.sh).
 
 Detailed usages are described via command:
 ```bash
