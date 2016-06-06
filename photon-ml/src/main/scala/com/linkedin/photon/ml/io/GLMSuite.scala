@@ -288,7 +288,7 @@ class GLMSuite(
    */
   private def toLabeledPoints[T <: GenericRecord](avroRDD: RDD[T]): RDD[LabeledPoint] = {
     // Returns None if no features in the record are in the featureKeyToIdMap
-    def parseAvroRecord(avroRecord: GenericRecord, indexMap: IndexMap): Option[LabeledPoint] = {
+    def parseAvroRecord(avroRecord: GenericRecord, indexMap: IndexMap): LabeledPoint = {
       val numFeatures = indexMap.size
 
       val features = avroRecord.get(fieldNames.features) match {
@@ -325,29 +325,26 @@ class GLMSuite(
           throw new IOException(s"Avro field [${fieldNames.features}] (val = ${String.valueOf(other)}) is not a list")
       }
 
-      if (features.activeSize == 0 || (addIntercept && features.activeSize == 1)) {
-        None
-      } else {
-        val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
-        val offset =
-          if (avroRecord.get(fieldNames.offset) != null) {
-            Utils.getDoubleAvro(avroRecord, fieldNames.offset)
-          } else {
-            0
-          }
-        val weight =
-          if (avroRecord.get(fieldNames.weight) != null) {
-            Utils.getDoubleAvro(avroRecord, fieldNames.weight)
-          } else {
-            1
-          }
-        Some(new LabeledPoint(response, features, offset, weight))
-      }
+      val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
+      val offset =
+        if (avroRecord.get(fieldNames.offset) != null) {
+          Utils.getDoubleAvro(avroRecord, fieldNames.offset)
+        } else {
+          0
+        }
+      val weight =
+        if (avroRecord.get(fieldNames.weight) != null) {
+          Utils.getDoubleAvro(avroRecord, fieldNames.weight)
+        } else {
+          1
+        }
+
+      new LabeledPoint(response, features, offset, weight)
     }
 
     avroRDD.mapPartitions { iter =>
       val map = _indexMapLoader.indexMapForRDD()
-      iter.flatMap { r => parseAvroRecord(r, map) }
+      iter.map { r => parseAvroRecord(r, map) }
     }
   }
 
