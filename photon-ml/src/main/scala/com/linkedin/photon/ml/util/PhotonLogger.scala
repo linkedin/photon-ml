@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.util
 
+import org.apache.commons.io.FileUtils
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.SparkContext
 import org.slf4j.helpers.{MarkerIgnoringBase, MessageFormatter}
@@ -22,6 +24,9 @@ import org.slf4j.spi.LocationAwareLogger
 import java.io.{BufferedWriter, OutputStreamWriter, PrintWriter}
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.io._
+import java.net.URI
+import java.util.UUID
 
 import scala.Predef.{println => sprintln}
 
@@ -53,6 +58,11 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
   var messageFormat = DefaultMessageFormat
 
   /**
+   * A local tmp file path for the logger
+   */
+  val tmpLocalPath: Path = new Path(FileUtils.getTempDirectoryPath(), UUID.randomUUID().toString())
+
+  /**
    * Initialize the writer
    */
   val writer = createWriter
@@ -62,7 +72,28 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
    * clean up when done.
    */
   def close() {
-    writer.close()
+    try {
+      val fs = FileSystem.get(new URI(logPath.toString()), new Configuration())
+      writer.close()
+
+      val parent = logPath.getParent
+      // Create the parent directory if it doesn't exist already
+      if (!fs.exists(parent)) {
+        fs.mkdirs(parent)
+      }
+
+      // Overwrite any existing file
+      // TODO: make this configurable?
+      if (fs.exists(logPath)) {
+        fs.delete(logPath, false)
+      }
+
+      fs.copyFromLocalFile(tmpLocalPath, logPath)
+    } catch {
+      case e: Exception => throw e
+    } finally {
+      new File(tmpLocalPath.toString()).delete()
+    }
   }
 
   /**
@@ -455,24 +486,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
    * @return the new writer
    */
   private def createWriter: PrintWriter = {
-    val fs = logPath.getFileSystem(sc.hadoopConfiguration)
-    val parent = logPath.getParent
-
-    // Create the parent directory if it doesn't exist already
-    if (!fs.exists(parent)) {
-      fs.mkdirs(parent)
-    }
-
-    // Overwrite any existing file
-    // TODO: make this configurable?
-    if (fs.exists(logPath)) {
-      fs.delete(logPath, false)
-    }
-
-    new PrintWriter(
-      new BufferedWriter(
-        new OutputStreamWriter(
-          fs.create(logPath))))
+    new PrintWriter(new BufferedWriter(new FileWriter(new File(tmpLocalPath.toString()))))
   }
 }
 
