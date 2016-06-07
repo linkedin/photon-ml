@@ -29,6 +29,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import scala.collection.Map
+import scala.reflect._
 
 /**
   * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
@@ -86,7 +87,7 @@ object ModelProcessingUtils {
     }
   }
 
-  protected[ml] def loadGameModelFromHDFS(
+  protected[ml] def loadGameModelFromHDFS[GLM <: GeneralizedLinearModel : ClassTag](
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       inputDir: String,
       sparkContext: SparkContext): GAMEModel = {
@@ -114,8 +115,9 @@ object ModelProcessingUtils {
         val featureNameAndTermToIndexMap = featureShardIdToFeatureMapMap(featureShardId)
         val modelPath = new Path(innerPath, COEFFICIENTS)
         val coefficients = loadCoefficientsFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
-        // TODO: Read actual model type
-        (name, new FixedEffectModel(sparkContext.broadcast(new LinearRegressionModel(coefficients)), featureShardId))
+        val glm = GeneralizedLinearModel.fromCoefficients[GLM](coefficients)
+
+        (name, new FixedEffectModel(sparkContext.broadcast(glm), featureShardId))
       }
     } else {
       Array[(String, FixedEffectModel)]()
@@ -135,7 +137,7 @@ object ModelProcessingUtils {
         // Load the models
         val featureNameAndTermToIndexMap = featureShardIdToFeatureMapBroadcastMap(featureShardId)
         val modelsRDDInputPath = new Path(innerPath, COEFFICIENTS)
-        val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureNameAndTermToIndexMap, sparkContext)
+        val modelsRDD = loadModelsRDDFromHDFS[GLM](modelsRDDInputPath.toString, featureNameAndTermToIndexMap, sparkContext)
 
         (name, new RandomEffectModel(modelsRDD, randomEffectId, featureShardId))
       }
@@ -221,7 +223,7 @@ object ModelProcessingUtils {
 
   // TODO: Currently only the means of the coefficients are loaded, the variances are discarded
   // TODO: Currently the model type is not loaded; all models are treated as LinearRegressionModels
-  private def loadModelsRDDFromHDFS(
+  private def loadModelsRDDFromHDFS[GLM <: GeneralizedLinearModel : ClassTag](
       coefficientsRDDInputDir: String,
       featureIndexToNameAndTermMapBroadcast: Broadcast[Map[NameAndTerm, Int]],
       sparkContext: SparkContext): RDD[(String, GeneralizedLinearModel)] = {
@@ -234,8 +236,9 @@ object ModelProcessingUtils {
       val modelId = modelAvro.getModelId.toString
       val nameAndTermFeatureMap = featureIndexToNameAndTermMapBroadcast.value
       val means = AvroUtils.convertBayesianLinearModelAvroToMeanVector(modelAvro, nameAndTermFeatureMap)
+      val glm = GeneralizedLinearModel.fromCoefficients(Coefficients(means))
 
-      (modelId, new LinearRegressionModel(Coefficients(means, variancesOption = None)))
+      (modelId, glm)
     }
   }
 

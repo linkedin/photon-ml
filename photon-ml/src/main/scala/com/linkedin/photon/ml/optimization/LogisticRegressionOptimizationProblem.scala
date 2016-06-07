@@ -20,9 +20,10 @@ import breeze.linalg.Vector
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DownSampler}
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
@@ -47,13 +48,24 @@ case class LogisticRegressionOptimizationProblem(
     treeAggregateDepth,
     isComputingVariances) {
 
-  override def updateRegularizationWeight(updatedRegularizationWeight: Double): LogisticRegressionOptimizationProblem = {
-    val lossFunction = new LogisticLossFunction
+  /**
+    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
+    *
+    * @param normalizationContext new normalization context
+    * @param regularizationWeight new regulariation weight
+    * @return a new optimization problem with updated objective
+    */
+  override def updateObjective(
+      normalizationContext: ObjectProvider[NormalizationContext],
+      regularizationWeight: Double): LogisticRegressionOptimizationProblem = {
+
+    val lossFunction = new LogisticLossFunction(normalizationContext)
     lossFunction.treeAggregateDepth = treeAggregateDepth
+
     val objectiveFunction = TwiceDiffFunction.withRegularization(
       lossFunction,
       regularizationContext,
-      updatedRegularizationWeight)
+      regularizationWeight)
 
     LogisticRegressionOptimizationProblem(
       optimizer,
@@ -67,7 +79,7 @@ case class LogisticRegressionOptimizationProblem(
   }
 
   override def initializeZeroModel(dimension: Int): LogisticRegressionModel =
-    new LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimension))
+    LogisticRegressionOptimizationProblem.initializeZeroModel(dimension)
 
   override protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]])
     : LogisticRegressionModel = new LogisticRegressionModel(Coefficients(coefficients, variances))
@@ -124,8 +136,10 @@ object LogisticRegressionOptimizationProblem {
 
     val optimizer = OptimizerFactory.twiceDiffOptimizer(optimizerConfig)
     val sampler = new BinaryClassificationDownSampler(downSamplingRate)
+
     val lossFunction = new LogisticLossFunction
     lossFunction.treeAggregateDepth = treeAggregateDepth
+
     val objectiveFunction = TwiceDiffFunction.withRegularization(
       lossFunction,
       regularizationContext,
@@ -141,4 +155,7 @@ object LogisticRegressionOptimizationProblem {
       treeAggregateDepth,
       COMPUTING_VARIANCE)
   }
+
+  def initializeZeroModel(dimension: Int): LogisticRegressionModel =
+    new LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimension))
 }

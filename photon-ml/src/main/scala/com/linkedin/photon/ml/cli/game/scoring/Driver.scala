@@ -20,6 +20,9 @@ import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameA
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -137,8 +140,24 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
     // TODO: make the number of files written to HDFS to be configurable
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, gameModelInputDir,
-      sparkContext)
+
+    // Load the model from HDFS into the appropriate GLM type
+    val gameModel = taskType match {
+      case TaskType.LINEAR_REGRESSION =>
+        ModelProcessingUtils.loadGameModelFromHDFS[LinearRegressionModel](
+          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
+      case TaskType.LOGISTIC_REGRESSION =>
+        ModelProcessingUtils.loadGameModelFromHDFS[LogisticRegressionModel](
+          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
+      case TaskType.POISSON_REGRESSION =>
+        ModelProcessingUtils.loadGameModelFromHDFS[PoissonRegressionModel](
+          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
+      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        ModelProcessingUtils.loadGameModelFromHDFS[SmoothedHingeLossLinearSVMModel](
+          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
+      case t =>
+        throw new IllegalArgumentException(s"Unsupported task type: $t")
+    }
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 

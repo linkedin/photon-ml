@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
 import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
+import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -126,8 +126,10 @@ object RandomEffectCoordinateInProjectedSpace {
       randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F]): RandomEffectModelInProjectedSpace = {
 
+    val glm = randomEffectOptimizationProblem.initializeModel(0)
     val randomEffectModelsRDD = randomEffectDataSetInProjectedSpace.activeData.mapValues { localDataSet =>
-      randomEffectOptimizationProblem.initializeModel(localDataSet.numFeatures).asInstanceOf[GeneralizedLinearModel]
+      glm.updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
+        .asInstanceOf[GeneralizedLinearModel]
     }
     val randomEffectId = randomEffectDataSetInProjectedSpace.randomEffectId
     val featureShardId = randomEffectDataSetInProjectedSpace.featureShardId

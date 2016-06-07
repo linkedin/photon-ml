@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.util.Summarizable
   * </ul>
   */
 class RegularizationContext(val regularizationType: RegularizationType, elasticNetParam: Option[Double] = None)
-  extends Summarizable {
+  extends Summarizable with Serializable {
 
   val alpha: Double = (regularizationType, elasticNetParam) match {
     case (RegularizationType.ELASTIC_NET, Some(x)) if x > 0.0d && x <= 1.0d => x

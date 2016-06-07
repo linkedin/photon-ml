@@ -20,7 +20,7 @@ import breeze.linalg.Vector
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.sampler.DownSampler
@@ -69,12 +69,15 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
   def getModelTracker: Option[List[ModelTracker]] = modelTrackerBuilder.map(_.toList)
 
   /**
-    * Create a new optimization problem of the same type with updated regularization weight.
+    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
     *
-    * @param updatedRegularizationWeight The new regularization weight
-    * @return A new optimization problem with the passed regularization weight
+    * @param normalizationContext new normalization context
+    * @param regularizationWeight new regulariation weight
+    * @return a new optimization problem with updated objective
     */
-  def updateRegularizationWeight(updatedRegularizationWeight: Double): GeneralizedLinearOptimizationProblem[GLM, F]
+  def updateObjective(
+      normalizationContext: ObjectProvider[NormalizationContext],
+      regularizationWeight: Double): GeneralizedLinearOptimizationProblem[GLM, F]
 
   /**
     * Create a default generalized linear model with 0-valued coefficients
@@ -152,8 +155,10 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     * @param normalizationContext The normalization context
     * @return The learned generalized linear models of each regularization weight and iteration.
     */
-  def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel, normalizationContext: NormalizationContext)
-    : GLM = {
+  def run(
+      input: RDD[LabeledPoint],
+      initialModel: GeneralizedLinearModel,
+      normalizationContext: NormalizationContext): GLM = {
 
     val (optimizedCoefficients, _) = optimizer.optimize(input, objectiveFunction, initialModel.coefficients.means)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
@@ -182,8 +187,10 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     * @param normalizationContext The normalization context
     * @return The learned generalized linear models of each regularization weight and iteration.
     */
-  def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel, normalizationContext: NormalizationContext)
-    : GLM = {
+  def run(
+      input: Iterable[LabeledPoint],
+      initialModel: GeneralizedLinearModel,
+      normalizationContext: NormalizationContext): GLM = {
 
     val (optimizedCoefficients, _) = optimizer.optimize(input, objectiveFunction, initialModel.coefficients.means)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)

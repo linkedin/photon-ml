@@ -20,6 +20,7 @@ import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -375,7 +376,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val epsilon = 1.0E-10
     val normsAndCounts = models.map { case (lambda, model) =>
-      (lambda, norm(model.coefficients, 1), model.coefficients.toArray.count(x => Math.abs(x) < epsilon))
+      (lambda, norm(model.coefficients.means, 1), model.coefficients.means.toArray.count(x => Math.abs(x) < epsilon))
     }
     for (i <- 0 until lambdas.length - 1) {
       val (lambda1, norm1, zero1) = normsAndCounts(i)
@@ -428,8 +429,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       alpha * norm(vec, 1) + (1 - alpha) * norm(vec, 2)
     }
     val normsAndCounts = models.map {
-      case (lambda, model) => (lambda, alpha * elasticNetNorm(model.coefficients, alpha),
-          model.coefficients.toArray.count(x => Math.abs(x) < epsilon))
+      case (lambda, model) => (lambda, alpha * elasticNetNorm(model.coefficients.means, alpha),
+          model.coefficients.means.toArray.count(x => Math.abs(x) < epsilon))
     }
     for (i <- 0 until lambdas.length - 1) {
       val (lambda1, norm1, zero1) = normsAndCounts(i)
@@ -935,7 +936,7 @@ object DriverIntegTest {
     val features = new DenseVector[Double](coeffs.sortWith(_._1 < _._1).map(_._2).toArray)
 
     val model = taskType match {
-      case TaskType.LOGISTIC_REGRESSION => new LogisticRegressionModel(features)
+      case TaskType.LOGISTIC_REGRESSION => new LogisticRegressionModel(Coefficients(features))
       case _ => new RuntimeException("Other task type not supported.")
     }
     (lambda.get, model.asInstanceOf[GeneralizedLinearModel])

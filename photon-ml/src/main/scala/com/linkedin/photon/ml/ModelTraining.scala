@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.data.{BroadcastedObjectProvider, LabeledPoint}
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -138,6 +138,11 @@ object ModelTraining extends Logging {
       case _ => throw new IllegalArgumentException(s"unrecognized task type $taskType")
     }
 
+    // Initialize the broadcasted normalization context
+    val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
+    val normalizationContextProvider =
+      new BroadcastedObjectProvider[NormalizationContext](broadcastNormalizationContext)
+
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
 
@@ -149,31 +154,40 @@ object ModelTraining extends Logging {
     logInfo(s"Starting model fits with $numWarmStartModels warm start models for lambdas " +
       s"${warmStartModels.keys.mkString(", ")}")
 
-    val firstRegWeight = sortedRegularizationWeights.head
-    val optimizationProblem = initOptimizationProblem.updateRegularizationWeight(firstRegWeight)
-    val initWeightsAndModels: List[(Double, GeneralizedLinearModel)] = if (numWarmStartModels == 0) {
-      logInfo(s"No warm start model found; beginning training with a 0-coefficients model")
-
-      List((firstRegWeight, optimizationProblem.run(trainingData, normalizationContext)))
-    } else {
-      val maxLambda = warmStartModels.keys.max
-      logInfo(s"Starting training using warm-start model with lambda = $maxLambda")
-
-      (firstRegWeight, optimizationProblem.run(trainingData, warmStartModels.get(maxLambda).get, normalizationContext)) :: Nil
-    }
-
+    val initWeightsAndModels = List[(Double, GeneralizedLinearModel)]()
     val (finalOptimizationProblem, finalWeightsAndModels) = sortedRegularizationWeights
-      .tail
-      .foldLeft((optimizationProblem, initWeightsAndModels)) {
+      .foldLeft((initOptimizationProblem, initWeightsAndModels)) {
+        case ((optimizationProblem, List()), currentWeight) =>
+          // Initialize the list with the result from the first regularization weight
+          val updatedOptimizationProblem = optimizationProblem.updateObjective(
+            normalizationContextProvider, currentWeight)
+
+          if (numWarmStartModels == 0) {
+            logInfo(s"No warm start model found; beginning training with a 0-coefficients model")
+
+            (updatedOptimizationProblem,
+              List((currentWeight, updatedOptimizationProblem.run(trainingData, normalizationContext))))
+          } else {
+            val maxLambda = warmStartModels.keys.max
+            logInfo(s"Starting training using warm-start model with lambda = $maxLambda")
+
+            (updatedOptimizationProblem,
+              List((currentWeight,
+                updatedOptimizationProblem.run(
+                  trainingData, warmStartModels.get(maxLambda).get, normalizationContext))))
+          }
+
         case ((latestOptimizationProblem, latestWeightsAndModels), currentWeight) =>
+          // Train the rest of the models
           val previousModel = latestWeightsAndModels.head._2
-          val updatedOptimizationProblem = latestOptimizationProblem.updateRegularizationWeight(currentWeight)
+          val updatedOptimizationProblem = latestOptimizationProblem.updateObjective(
+            normalizationContextProvider, currentWeight)
 
           logInfo(s"Training model with regularization weight $currentWeight finished")
 
           (updatedOptimizationProblem,
             (currentWeight, updatedOptimizationProblem.run(trainingData, previousModel, normalizationContext))
-            :: latestWeightsAndModels)
+              :: latestWeightsAndModels)
       }
 
     val finalWeightsAndModelTrackers = finalOptimizationProblem.getModelTracker.map(sortedRegularizationWeights.zip(_))

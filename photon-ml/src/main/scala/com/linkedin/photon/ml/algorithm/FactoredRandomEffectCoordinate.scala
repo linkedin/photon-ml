@@ -189,8 +189,10 @@ object FactoredRandomEffectCoordinate {
       latentSpaceDimension: Int,
       seed: Long): FactoredRandomEffectModel = {
 
+    val glm = factoredRandomEffectOptimizationProblem.initializeModel(0)
     val randomEffectModelsRDD = randomEffectDataSet.activeData.mapValues(localDataSet =>
-      factoredRandomEffectOptimizationProblem.initializeModel(latentSpaceDimension).asInstanceOf[GeneralizedLinearModel]
+      glm.updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
+        .asInstanceOf[GeneralizedLinearModel]
     )
     val numCols = latentSpaceDimension
     val latentProjectionMatrix = ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(

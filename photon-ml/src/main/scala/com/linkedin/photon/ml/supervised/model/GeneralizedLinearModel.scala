@@ -19,6 +19,8 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.util.Summarizable
 import org.apache.spark.rdd.RDD
 
+import scala.reflect._
+
 /**
   * GeneralizedLinearModel (GLM) represents a model trained using GeneralizedLinearAlgorithm.
   * Reference: [[http://en.wikipedia.org/wiki/Generalized_linear_model]].
@@ -143,5 +145,19 @@ object GeneralizedLinearModel {
 
     broadcastModel.unpersist()
     result
+  }
+
+  /**
+    * Creates a new instance of the generalized linear model specified by type parameter, with the given coefficients.
+    *
+    * @param coefficients the model coefficients
+    * @return the generalized linear model instance
+    */
+  def fromCoefficients[T <: GeneralizedLinearModel : ClassTag](coefficients: Coefficients): T = {
+    classTag[T]
+      .runtimeClass
+      .getConstructor(classOf[Coefficients])
+      .newInstance(coefficients)
+      .asInstanceOf[T]
   }
 }

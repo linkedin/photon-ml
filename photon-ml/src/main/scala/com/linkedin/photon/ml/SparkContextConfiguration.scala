@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, LBFGS, TRON}
+import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, LBFGS, RegularizationContext, TRON}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
@@ -56,6 +56,7 @@ object SparkContextConfiguration {
     classOf[Matrix[Double]],
     classOf[NameAndTerm],
     classOf[NormalizationContext],
+    classOf[RegularizationContext],
     classOf[Set[Int]],
     classOf[SparseVector[Double]],
     classOf[SquaredLossFunction],
