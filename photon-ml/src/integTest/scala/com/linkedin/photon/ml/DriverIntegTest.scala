@@ -69,8 +69,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
   }
 
-  @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
-  def testRunEmptyTrainingSet(): Unit = sparkTestSelfServeContext("testRunEmptyTrainingSet") {
+  def testRunTrainingSetWithEmptyFeatures(): Unit = sparkTestSelfServeContext("testRunTrainingSetWithEmptyFeatures") {
     val tmpDir = getTmpDir + "/testRunEmptyTrainingSet"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, tmpDir)
@@ -85,10 +84,18 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
-      expectedStages = Array(),
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 0,
-      expectedNumTrainingData = 0,
+      expectedNumTrainingData = 250,
       expectedIsSummarized = false)
+
+    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    assertEquals(models.length, defaultParams.regularizationWeights.length)
+    // Verify lambdas
+    assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
+
+    // No best model output dir
+    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
   }
 
   @Test
