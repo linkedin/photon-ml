@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.io
 import java.io.File
 
 import breeze.linalg.SparseVector
-import org.apache.hadoop.fs.Path
 import FieldNamesType.FieldNamesType
 import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, TrainingExampleAvro}
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -87,8 +86,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
-  def testReadLabeledPointsWithIllegalFeatureList2(): Unit =
-      sparkTest("testReadLabeledPointsWithIllegalFeatureList2") {
+  def testReadLabeledPointsWithIllegalFeatureList2(): Unit = sparkTest("testReadLabeledPointsWithIllegalFeatureList2") {
 
     val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None, None)
     val recordBuilder = new GenericRecordBuilder(BAD_RESPONSE_PREDICTION_SCHEMA2)
@@ -113,9 +111,9 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def dataProviderForTestReadLabelPointsFromAvro(): Array[Array[Any]] = {
     Array(
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
-          TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema(), None),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
-          TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema(), None),
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
         TrainingExampleAvro.getClassSchema(), Some(SELECTED_FEATURES_PATH)),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
@@ -142,10 +140,11 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(dataProvider = "dataProviderForTestReadLabelPointsFromAvro")
-  def testReadLabelPointsFromAvro(fieldNameType: FieldNamesType, addIntercept: Boolean,
-                                  builderFactory: TrainingAvroBuilderFactory, avroSchema: Schema,
-                                  selectedFeaturesFile: Option[String]): Unit =
-      sparkTest("testReadLabelPointsFromTrainingExampleAvroWithIntercept") {
+  def testReadLabelPointsFromAvro(
+      fieldNameType: FieldNamesType,
+      addIntercept: Boolean,
+      builderFactory: TrainingAvroBuilderFactory, avroSchema: Schema,
+      selectedFeaturesFile: Option[String]): Unit = sparkTest("testReadLabelPointsFromAvro") {
 
     val suite = new GLMSuite(fieldNameType, addIntercept, None)
 
@@ -235,7 +234,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }
   }
 
-  private def checkFeatureMap(glmSuite: GLMSuite, addIntercept: Boolean, selectedFeaturesFile: Option[String]) = {
+  private def checkFeatureMap(glmSuite: GLMSuite, addIntercept: Boolean, selectedFeaturesFile: Option[String]): Unit = {
     // Check feature map
     val featureMap = glmSuite.featureKeyToIdMap
 
@@ -280,8 +279,13 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }
   }
 
-  private def checkPoints(glmSuite: GLMSuite, points: RDD[LabeledPoint], avroPath: String,
-                          addIntercept: Boolean, selectedFeaturesFile: Option[String]) = {
+  private def checkPoints(
+      glmSuite: GLMSuite,
+      points: RDD[LabeledPoint],
+      avroPath: String,
+      addIntercept: Boolean,
+      selectedFeaturesFile: Option[String]): Unit = {
+
     val featureMap = glmSuite.featureKeyToIdMap.asInstanceOf[DefaultIndexMap].featureNameToIdMap
     val f1t1Id = Utils.getFeatureKey("f1", "t1")
     val f2t2Id = Utils.getFeatureKey("f2", "t2")
@@ -379,7 +383,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics")  {
+  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
     val dim: Int = 5
     val minVector = buildSparseVector(dim)((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d))
     val maxVector = buildSparseVector(dim)((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d))
