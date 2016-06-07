@@ -16,14 +16,13 @@ package com.linkedin.photon.ml.io
 
 import java.io.File
 
-import breeze.linalg.SparseVector
-import org.apache.hadoop.fs.Path
 import FieldNamesType.FieldNamesType
 import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, TrainingExampleAvro}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{TestTemplateWithTmpDir, SparkTestUtils}
 import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
+import com.linkedin.photon.ml.util.VectorUtils.convertIndexAndValuePairArrayToSparseVector
 import org.apache.avro.Schema
 import org.apache.avro.file.{DataFileReader, DataFileWriter}
 import org.apache.avro.generic.{GenericRecordBuilder, GenericDatumWriter, GenericRecord}
@@ -87,8 +86,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
-  def testReadLabeledPointsWithIllegalFeatureList2(): Unit =
-      sparkTest("testReadLabeledPointsWithIllegalFeatureList2") {
+  def testReadLabeledPointsWithIllegalFeatureList2(): Unit = sparkTest("testReadLabeledPointsWithIllegalFeatureList2") {
 
     val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, None, None)
     val recordBuilder = new GenericRecordBuilder(BAD_RESPONSE_PREDICTION_SCHEMA2)
@@ -113,9 +111,9 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def dataProviderForTestReadLabelPointsFromAvro(): Array[Array[Any]] = {
     Array(
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
-          TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema(), None),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
-          TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema(), None),
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
         TrainingExampleAvro.getClassSchema(), Some(SELECTED_FEATURES_PATH)),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
@@ -142,10 +140,11 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(dataProvider = "dataProviderForTestReadLabelPointsFromAvro")
-  def testReadLabelPointsFromAvro(fieldNameType: FieldNamesType, addIntercept: Boolean,
-                                  builderFactory: TrainingAvroBuilderFactory, avroSchema: Schema,
-                                  selectedFeaturesFile: Option[String]): Unit =
-      sparkTest("testReadLabelPointsFromTrainingExampleAvroWithIntercept") {
+  def testReadLabelPointsFromAvro(
+      fieldNameType: FieldNamesType,
+      addIntercept: Boolean,
+      builderFactory: TrainingAvroBuilderFactory, avroSchema: Schema,
+      selectedFeaturesFile: Option[String]): Unit = sparkTest("testReadLabelPointsFromAvro") {
 
     val suite = new GLMSuite(fieldNameType, addIntercept, None)
 
@@ -162,6 +161,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       .setOffset(1.1d)  // offsets shouldn't have an effect for now
       .build()
 
+    // This data point doesn't have any features belong to the selectedFeatures.avro
     records += builderFactory.newBuilder()
       .setLabel(0d)
       .setFeatures(new FeatureAvroListBuilder()
@@ -191,12 +191,14 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val secondAvroPath = getTmpDir + "/testReadLabelPointsFromTrainingExampleAvro2"
     val moreRecords = new ArrayBuffer[GenericRecord]()
 
+    // Features that are not contained in the feature map
+    val f2t1Id = Utils.getFeatureKey("f2", "t1")
+    val f3t2Id = Utils.getFeatureKey("f3", "t2")
     moreRecords += builderFactory.newBuilder()
         .setLabel(0d)
         .setFeatures(new FeatureAvroListBuilder()
           .append("f2", "t1", 12d)
           .append("f3", "t2", 13d)
-          .append("name should not appear", "term should not appear", 1.11d)
         .build())
         .setOffset(1.2d)
         .build()
@@ -204,38 +206,46 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     writeToTempDir(moreRecords, secondAvroPath, avroSchema)
 
     val morePoints = suite.readLabeledPointsFromAvro(sc, secondAvroPath, selectedFeaturesFile, 1)
+    assertEquals(morePoints.partitions.length, 1)
+    assertEquals(morePoints.count(), 1)
+    // Check the single label point data
+    val singlePoint = morePoints.first()
+    assertEquals(singlePoint.label, 0d, EPSILON)
+    assertEquals(singlePoint.offset, 1.2d, EPSILON)
+    assertEquals(singlePoint.weight, 1d, EPSILON)
 
     checkFeatureMap(suite, addIntercept, selectedFeaturesFile)
 
-    selectedFeaturesFile match {
+    val featureMap = suite.featureKeyToIdMap
+    val interceptId = if (addIntercept) {
+      featureMap(GLMSuite.INTERCEPT_NAME_TERM)
+    } else {
+      // Dummy id
+      Integer.MAX_VALUE
+    }
+
+    val actualIndexAndData = selectedFeaturesFile match {
       case Some(x: String) =>
-        assertEquals(morePoints.partitions.length, 1)
-        assertEquals(morePoints.count(), 0)
-        assertTrue(morePoints.isEmpty())
-      case _ =>
-        assertEquals(morePoints.partitions.length, 1)
-        assertEquals(morePoints.count(), 1)
-        // Check the single label point data
-        val singlePoint = morePoints.first()
-        assertEquals(singlePoint.label, 0d, EPSILON)
-        assertEquals(singlePoint.offset, 1.2d, EPSILON)
-        assertEquals(singlePoint.weight, 1d, EPSILON)
-        val f2t1Id = suite.featureKeyToIdMap(Utils.getFeatureKey("f2", "t1"))
-        val f3t2Id = suite.featureKeyToIdMap(Utils.getFeatureKey("f3", "t2"))
+        // Recall that this data point doesn't contain any features in the selected feature list, thus the feature
+        // size is 0
         if (addIntercept) {
-          val interceptId = suite.featureKeyToIdMap(GLMSuite.INTERCEPT_NAME_TERM)
-          assertEquals(
-            singlePoint.features,
-            buildSparseVector(singlePoint.features.length)((interceptId, 1d), (f2t1Id, 12d), (f3t2Id, 13d)))
+          Array((interceptId, 1d))
         } else {
-          assertEquals(
-            singlePoint.features,
-            buildSparseVector(singlePoint.features.length)((f2t1Id, 12d), (f3t2Id, 13d)))
+          Array[(Int, Double)]()
+        }
+      case _ =>
+        if (addIntercept) {
+          Array((interceptId, 1d), (featureMap(f2t1Id), 12d), (featureMap(f3t2Id), 13d))
+        } else {
+          Array((featureMap(f2t1Id), 12d), (featureMap(f3t2Id), 13d))
         }
     }
+    val numFeatures = singlePoint.features.length
+    val actualFeatures = convertIndexAndValuePairArrayToSparseVector(actualIndexAndData, numFeatures)
+    assertEquals(singlePoint.features, actualFeatures)
   }
 
-  private def checkFeatureMap(glmSuite: GLMSuite, addIntercept: Boolean, selectedFeaturesFile: Option[String]) = {
+  private def checkFeatureMap(glmSuite: GLMSuite, addIntercept: Boolean, selectedFeaturesFile: Option[String]): Unit = {
     // Check feature map
     val featureMap = glmSuite.featureKeyToIdMap
 
@@ -280,8 +290,13 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }
   }
 
-  private def checkPoints(glmSuite: GLMSuite, points: RDD[LabeledPoint], avroPath: String,
-                          addIntercept: Boolean, selectedFeaturesFile: Option[String]) = {
+  private def checkPoints(
+      glmSuite: GLMSuite,
+      points: RDD[LabeledPoint],
+      avroPath: String,
+      addIntercept: Boolean,
+      selectedFeaturesFile: Option[String]): Unit = {
+
     val featureMap = glmSuite.featureKeyToIdMap.asInstanceOf[DefaultIndexMap].featureNameToIdMap
     val f1t1Id = Utils.getFeatureKey("f1", "t1")
     val f2t2Id = Utils.getFeatureKey("f2", "t2")
@@ -292,102 +307,105 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     selectedFeaturesFile match {
       case Some(x: String) =>
         assertEquals(points.partitions.length, 3)
-        assertEquals(points.count(), 2)
-        assertEquals(points.filter(point => Set[Double](1.1d, 1.2d, 0d).contains(point.offset)).count(), 2)
+        if (addIntercept) {
+          // With intercept added, the number of data points with only intercept-like dummy variable is 1
+          assertEquals(points.filter(_.features.activeSize == 1).count(), 1)
+        } else {
+          // Without intercept, the number of data points with empty feature vector is 1
+          assertEquals(points.filter(_.features.activeSize == 0).count(), 1)
+        }
+        assertEquals(points.count(), 3)
+        assertEquals(points.filter(point => Set[Double](1.1d, 1.2d, 0d).contains(point.offset)).count(), 3)
       case _ =>
         assertEquals(points.partitions.length, 3)
+        if (addIntercept) {
+          // With intercept added, all data points should have 3 features
+          assertEquals(points.filter(_.features.activeSize == 3).count(), 3)
+        } else {
+          // Without intercept, all data points should have 2 features
+          assertEquals(points.filter(_.features.activeSize == 2).count(), 3)
+        }
         assertEquals(points.count(), 3)
         assertEquals(points.filter(point => Set[Double](1.1d, 1.2d, 0d).contains(point.offset)).count(), 3)
     }
 
+    val interceptId = if (addIntercept) {
+      featureMap(GLMSuite.INTERCEPT_NAME_TERM)
+    } else {
+      // Dummy id
+      Integer.MAX_VALUE
+    }
     points.foreach { point =>
-      point.offset match {
-        case 1.1d =>
-          assertEquals(point.label, 1d, EPSILON)
-          assertEquals(point.weight, 1d, EPSILON)
-          selectedFeaturesFile match {
-            case Some(x: String) =>
+      val numFeatures = point.features.length
+      val actualIndexAndData =
+        point.offset match {
+          case 1.1d =>
+            assertEquals(point.label, 1d, EPSILON)
+            assertEquals(point.weight, 1d, EPSILON)
+            selectedFeaturesFile match {
+              case Some(x: String) =>
+                if (addIntercept) {
+                  Array((interceptId, 1d), (featureMap(f1t1Id), 1d))
+                } else {
+                  Array((featureMap(f1t1Id), 1d))
+                }
+              case _ =>
+                if (addIntercept) {
+                  Array((interceptId, 1d), (featureMap(f1t1Id), 1d), (featureMap(f2t2Id), 2d))
+                } else {
+                  Array((featureMap(f1t1Id), 1d), (featureMap(f2t2Id), 2d))
+                }
+            }
+          case 1.2d =>
+            assertEquals(point.label, 0d, EPSILON)
+            assertEquals(point.weight, 1d, EPSILON)
+            selectedFeaturesFile match {
+              case Some(x: String) =>
+                // Recall that this data point doesn't contain any features in the selected feature list, thus the
+                // feature size is 0
               if (addIntercept) {
-                val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(
-                  point.features,
-                  buildSparseVector(point.features.length)((interceptId, 1d), (featureMap(f1t1Id), 1d))
-                )
-              } else {
-                assertEquals(
-                  point.features,
-                  buildSparseVector(point.features.length)((featureMap(f1t1Id), 1d))
-                )
-              }
-            case _ =>
-              if (addIntercept) {
-                val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(
-                  point.features,
-                  buildSparseVector(point.features.length)(
-                    (interceptId, 1d),
-                    (featureMap(f1t1Id), 1d),
-                    (featureMap(f2t2Id), 2d)
-                  )
-                )
-              } else {
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((featureMap(f1t1Id), 1d), (featureMap(f2t2Id), 2d)))
-              }
-          }
-        case 1.2d =>
-          selectedFeaturesFile match {
-            case Some(x: String) => fail("Should not see this instance as it has none of the selected features")
-            case _ =>
-              assertEquals(point.label, 0d, EPSILON)
-              assertEquals(point.weight, 1d, EPSILON)
-              if (addIntercept) {
-                val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-                assertEquals(
-                  point.features,
-                  buildSparseVector(point.features.length)(
-                    (interceptId, 1d),
-                    (featureMap(f2t1Id), 2d),
-                    (featureMap(f3t2Id), 3d)
-                  )
-                )
-              } else {
-                assertEquals(point.features,
-                  buildSparseVector(point.features.length)((featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d)))
-              }
-          }
-        case 0d =>
-          assertEquals(point.label, 1d, EPSILON)
-          assertEquals(point.weight, 2d, EPSILON)
-          // all features in this instance are selected so conditioning on selected features file is not necessary
-          if (addIntercept) {
-            val interceptId = featureMap(GLMSuite.INTERCEPT_NAME_TERM)
-            assertEquals(point.features, buildSparseVector(point.features.length)(
-              (interceptId, 1d),
-              (featureMap(f1t1Id), 3d),
-              (featureMap(f4t2Id), 4d)
-            ))
-          } else {
-            assertEquals(point.features, buildSparseVector(point.features.length)(
-              (featureMap(f1t1Id), 3d),
-              (featureMap(f4t2Id), 4d))
-            )
-          }
-        case _ => throw new RuntimeException(s"Observed an unexpected labeled point: $point")
-      }
+                  Array((interceptId, 1d))
+                } else {
+                  Array[(Int, Double)]()
+                }
+              case _ =>
+                if (addIntercept) {
+                  Array((interceptId, 1d), (featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d))
+                } else {
+                  Array((featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d))
+                }
+            }
+          case 0d =>
+            assertEquals(point.label, 1d, EPSILON)
+            assertEquals(point.weight, 2d, EPSILON)
+            // all features in this instance are selected so conditioning on selected features file is not necessary
+            if (addIntercept) {
+              Array((interceptId, 1d), (featureMap(f1t1Id), 3d), (featureMap(f4t2Id), 4d))
+            } else {
+              Array((featureMap(f1t1Id), 3d), (featureMap(f4t2Id), 4d))
+            }
+          case _ => throw new RuntimeException(s"Observed an unexpected labeled point: $point")
+        }
+      val actualFeatures = convertIndexAndValuePairArrayToSparseVector(actualIndexAndData, numFeatures)
+      assertEquals(point.features, actualFeatures)
     }
   }
 
   @Test
-  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics")  {
+  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
     val dim: Int = 5
-    val minVector = buildSparseVector(dim)((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d))
-    val maxVector = buildSparseVector(dim)((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d))
-    val normL1Vector = buildSparseVector(dim)((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d))
-    val normL2Vector = buildSparseVector(dim)((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d))
-    val numNonzeros = buildSparseVector(dim)((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d))
-    val meanVector = buildSparseVector(dim)((0, 1.1d), (3, 2.4d), (4, 3.6d))
-    val varVector = buildSparseVector(dim)((0, 1d), (3, 7d), (4, 0.5d))
+    val minVector =
+      convertIndexAndValuePairArrayToSparseVector(Array((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d)), dim)
+    val maxVector =
+      convertIndexAndValuePairArrayToSparseVector(Array((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+    val normL1Vector =
+      convertIndexAndValuePairArrayToSparseVector(Array((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+    val normL2Vector =
+      convertIndexAndValuePairArrayToSparseVector(Array((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d)), dim)
+    val numNonzeros =
+      convertIndexAndValuePairArrayToSparseVector(Array((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d)), dim)
+    val meanVector = convertIndexAndValuePairArrayToSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
+    val varVector = convertIndexAndValuePairArrayToSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
 
 
     val summary = BasicStatisticalSummary(
@@ -490,18 +508,6 @@ private object GLMSuiteIntegTest {
   // A schema that contains illegal feature item field in the list
   val BAD_RESPONSE_PREDICTION_SCHEMA2 = new Schema.Parser().parse(
     new File("src/integTest/resources/GLMSuiteIntegTest/ResponsePredictionError2.avsc"))
-
-  /**
-   * This is a helper methods that builds a sparse vector given an array of (index, value) tuples
-   *
-   * @param size The size of the vector
-   * @param values an array of (index, value) tuples
-   * @return a SparseVector instance
-   */
-  def buildSparseVector(size: Int)(values: (Int, Double)*): SparseVector[Double] = {
-    val sortedValues = values.sortBy(x => x._1)
-    new SparseVector[Double](sortedValues.map(x => x._1).toArray, sortedValues.map(x => x._2).toArray, size)
-  }
 
   /**
    * A helper method writes a few generic records into an output directory
