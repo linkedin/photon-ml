@@ -151,6 +151,11 @@ class Params {
   var offHeapIndexMapNumPartitions: Int = 0
 
   /**
+   * Whether to delete the output directories (including the model and summarization output directories) if exist
+   */
+  var deleteOutputDirsIfExist: Boolean = false
+
+  /**
    * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
    */
   def validate(): Unit = {
