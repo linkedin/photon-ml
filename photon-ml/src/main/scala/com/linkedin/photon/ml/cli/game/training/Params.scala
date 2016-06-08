@@ -77,6 +77,7 @@ import scala.collection.{Map, Set}
  * @param taskType GAME task type. Examples include logistic_regression and linear_regression.
  * @param modelOutputMode Model output mode (output all models, best model, or no models)
  * @param numberOfOutputFilesForRandomEffectModel Number of output files to write for each random effect model.
+ * @param deleteOutputDirIfExists Whether to delete the output directory if exists
  * @param applicationName Name of this Spark application.
  * @note Note that examples of how to configure GAME parameters can be found in the integration tests for the GAME
  *       driver.
@@ -105,6 +106,7 @@ case class Params(
     taskType: TaskType = LOGISTIC_REGRESSION,
     modelOutputMode: ModelOutputMode = ALL,
     numberOfOutputFilesForRandomEffectModel: Int = -1,
+    deleteOutputDirIfExists: Boolean = false,
     applicationName: String = "Game-Full-Model-Training") {
 
   override def toString: String = {
@@ -133,6 +135,7 @@ case class Params(
       s"taskType: $taskType\n" +
       s"modelOutputOption: $modelOutputMode\n" +
       s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
+      s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
       s"applicationName: $applicationName"
   }
 }
@@ -294,6 +297,9 @@ object Params {
           s"setting it to -1 means to use the default number of output files." +
           s"Default: ${defaultParams.numberOfOutputFilesForRandomEffectModel}")
         .action((x, c) => c.copy(numberOfOutputFilesForRandomEffectModel = x))
+      opt[Boolean]("delete-output-dir-if-exists")
+          .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
+          .action((x, c) => c.copy(deleteOutputDirIfExists = x))
       opt[String]("application-name")
         .text(s"Name of this Spark application. Default: ${defaultParams.applicationName}.")
         .action((x, c) => c.copy(applicationName = x))

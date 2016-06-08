@@ -81,4 +81,37 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     Utils.createHDFSDir(dir, configuration)
     assertTrue(IOUtils.isDirExisting(dir, configuration))
   }
+
+  @Test
+  def testProcessOutputDir(): Unit = sparkTest("testProcessOutputDir") {
+
+    val configuration = sc.hadoopConfiguration
+
+    // Case 1: When the output directory already exists and deleteOutputDirIfExists is true
+    val dir1 = getTmpDir
+    IOUtils.processOutputDir(dir1, deleteOutputDirIfExists = true, configuration)
+    assertFalse(IOUtils.isDirExisting(dir1, configuration))
+
+    // Case 2: When the output directory already exists and deleteOutputDirIfExists is false
+    val dir2 = getTmpDir
+    try {
+      IOUtils.processOutputDir(dir2, deleteOutputDirIfExists = false, configuration)
+    } catch {
+      case e: Exception => assertTrue(e.isInstanceOf[IllegalArgumentException])
+    } finally {
+      assertTrue(IOUtils.isDirExisting(dir2, configuration))
+    }
+
+    // Case 3: When the output directory does not exist and deleteOutputDirIfExists is true
+    val dir3 = getTmpDir
+    Utils.deleteHDFSDir(dir3, configuration)
+    IOUtils.processOutputDir(dir3, deleteOutputDirIfExists = true, configuration)
+    assertFalse(IOUtils.isDirExisting(dir3, configuration))
+
+    // Case 4: When the output directory does not exist and deleteOutputDirIfExists is false
+    val dir4 = getTmpDir
+    Utils.deleteHDFSDir(dir4, configuration)
+    IOUtils.processOutputDir(dir4, deleteOutputDirIfExists = false, configuration)
+    assertFalse(IOUtils.isDirExisting(dir4, configuration))
+  }
 }

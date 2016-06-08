@@ -441,6 +441,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    */
   def run(): Unit = {
 
+    // Process the output directory upfront and potentially fail the job early
+    IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sparkContext.hadoopConfiguration)
+
     var startTime = System.nanoTime()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
     val initializationTime = (System.nanoTime() - startTime) * 1e-9
@@ -507,12 +510,8 @@ object Driver {
     import params._
 
     val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
-    val configuration = sc.hadoopConfiguration
-
-    require(!IOUtils.isDirExisting(outputDir, configuration), s"Output directory $outputDir already exists!" )
 
     val logsDir = new Path(outputDir, LOGS).toString
-    Utils.createHDFSDir(logsDir, sc.hadoopConfiguration)
     val logger = new PhotonLogger(logsDir, sc)
     //TODO: This Photon log level should be made configurable
     logger.setLogLevel(PhotonLogger.LogLevelDebug)
