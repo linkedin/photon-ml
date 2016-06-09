@@ -19,7 +19,6 @@ package com.linkedin.photon.ml.optimization.game
  *
  * @param maxNumberIterations maximum number of iterations
  * @param numFactors number of factors
- * @author xazhang
  */
 protected[ml] case class MFOptimizationConfiguration(maxNumberIterations: Int, numFactors: Int) {
   override def toString: String = {
@@ -29,6 +28,10 @@ protected[ml] case class MFOptimizationConfiguration(maxNumberIterations: Int, n
 
 object MFOptimizationConfiguration {
 
+  protected[ml] val SPLITTER = ","
+  protected[ml] val EXPECTED_FORMAT: String = s"maxNumberIterations${SPLITTER}numFactors{SPLITTER}"
+  protected[ml] val EXPECTED_NUM_CONFIGS = 2
+
   /**
    * Parse and build the configuration object from a string representation
    *
@@ -36,7 +39,12 @@ object MFOptimizationConfiguration {
    * @todo Add assert and meaningful parsing error message here
    */
   protected[ml] def parseAndBuildFromString(string: String): MFOptimizationConfiguration = {
-    val Array(maxNumberIterations, numFactors) = string.split(",").map(_.toInt)
+    val configParams = string.split(SPLITTER).map(_.trim)
+    require(configParams.length == EXPECTED_NUM_CONFIGS,
+      s"Parsing $string failed! The expected MF optimization configuration should contain $EXPECTED_NUM_CONFIGS " +
+          s"parts separated by \'$SPLITTER\', but found ${configParams.length}. Expected format: $EXPECTED_FORMAT")
+
+    val Array(maxNumberIterations, numFactors) = configParams.map(_.toInt)
     MFOptimizationConfiguration(maxNumberIterations, numFactors)
   }
 }
