@@ -15,38 +15,53 @@
 package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization.{RegularizationType, OptimizerType}
-import org.testng.Assert
+import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 /**
+ * Some simple tests for GLMOptimizationConfiguration
  * @author nkatariy
  */
 class GLMOptimizationConfigurationTest {
+
+  import GLMOptimizationConfiguration.{SPLITTER => S}
+
   @DataProvider
   def invalidStringConfigs(): Array[Array[Any]] = {
     Array(
-      Array("10,1e-2,1.0,-0.2,TRON,L2"),
-      Array("10,1e-2,1.0,1.2,TRON,L2"),
-      Array("10,1e-2,1.0,0.2,f0O,L2"),
-      Array("10,1e-2,1.0,0.2,TRON,bAR")
-      // TODO We get number format exceptions if there are spaces before / after commas. Not adding tests because more robust design is the right solution here
+      Array(s"10${S}1e-2${S}1.0$S-0.2${S}TRON${S}L2"),
+      Array(s"10$S${S}1e-2${S}1.0$S-0.2${S}TRON${S}L2"),
+      Array(s"10${S}1e-2${S}1.0${S}1.2${S}TRON${S}L2"),
+      Array(s"10${S}1e-2${S}1.0${S}0.2${S}f0O${S}L2"),
+      Array(s"10${S}1e-2${S}1.0${S}0.2${S}TRON${S}bAR"),
+      Array(s"10${S}1e-2${S}1.0${S}0.2${S}TRON"),
+      Array(s"10${S}1e-2${S}0.2${S}TRON${S}L2")
     )
   }
 
   @Test(dataProvider = "invalidStringConfigs",
-    expectedExceptions = Array(classOf[NoSuchElementException], classOf[AssertionError]))
-  def testParseAndBuild(configStr: String) = {
+    expectedExceptions = Array(classOf[NoSuchElementException], classOf[IllegalArgumentException]))
+  def testParseAndBuild(configStr: String): Unit = {
     println(GLMOptimizationConfiguration.parseAndBuildFromString(configStr))
   }
 
-  @Test
-  def testParseAndBuildWithValidString() = {
-    val config = GLMOptimizationConfiguration.parseAndBuildFromString("10,1e-2,1.0,0.3,TRON,L2")
-    Assert.assertEquals(config.maxNumberIterations, 10)
-    Assert.assertEquals(config.convergenceTolerance, 1e-2)
-    Assert.assertEquals(config.regularizationWeight, 1.0)
-    Assert.assertEquals(config.downSamplingRate, 0.3)
-    Assert.assertEquals(config.optimizerType, OptimizerType.TRON)
-    Assert.assertEquals(config.regularizationType, RegularizationType.L2)
+  @DataProvider
+  def validStringConfigs(): Array[Array[Any]] = {
+    Array(
+      Array(s"10${S}1e-2${S}1.0${S}0.3${S}TRON${S}L2"),
+      // With space before/after the splitters
+      Array(s" 10${S}1e-2 $S 1.0 ${S}0.3$S TRON$S L2 ")
+    )
+  }
+
+  @Test(dataProvider = "validStringConfigs")
+  def testParseAndBuildWithValidString(configStr: String): Unit = {
+    val config = GLMOptimizationConfiguration.parseAndBuildFromString(configStr)
+    assertEquals(config.maxNumberIterations, 10)
+    assertEquals(config.convergenceTolerance, 1e-2)
+    assertEquals(config.regularizationWeight, 1.0)
+    assertEquals(config.downSamplingRate, 0.3)
+    assertEquals(config.optimizerType, OptimizerType.TRON)
+    assertEquals(config.regularizationType, RegularizationType.L2)
   }
 }
