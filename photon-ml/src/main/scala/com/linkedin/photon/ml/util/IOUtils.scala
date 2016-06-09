@@ -40,6 +40,28 @@ protected[ml] object IOUtils {
   }
 
   /**
+   * Process the output directory. If deleteOutputDirIfExists is true, then the output directory will be deleted.
+   * Otherwise, an [[IllegalArgumentException]] will be thrown if the output directory already exists.
+   *
+   * @param outputDir The specified output directory
+   * @param deleteOutputDirIfExists Whether the output directory should be deleted if exists
+   * @param configuration The Hadoop Configuration object
+   */
+  protected[ml] def processOutputDir(
+      outputDir: String,
+      deleteOutputDirIfExists: Boolean,
+      configuration: Configuration): Unit = {
+
+    if (deleteOutputDirIfExists) {
+      Utils.deleteHDFSDir(outputDir, configuration)
+    } else {
+      if (IOUtils.isDirExisting(outputDir, configuration)) {
+        throw new IllegalArgumentException(s"Directory $outputDir already exists!")
+      }
+    }
+  }
+
+  /**
     * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
     * behavior can be changed with the "errorOnMissing" parameter.
     *
