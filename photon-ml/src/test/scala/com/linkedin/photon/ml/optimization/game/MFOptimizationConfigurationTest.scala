@@ -14,33 +14,28 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import com.linkedin.photon.ml.optimization.{RegularizationType, OptimizerType}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
-/**
- * Some simple tests for GLMOptimizationConfiguration
- * @author nkatariy
- */
-class GLMOptimizationConfigurationTest {
 
-  import GLMOptimizationConfiguration.{SPLITTER => S}
+/**
+ * Some simple tests for MFOptimizationConfiguration
+ */
+class MFOptimizationConfigurationTest {
+
+  import MFOptimizationConfiguration.{SPLITTER => S}
 
   @DataProvider
   def invalidStringConfigs(): Array[Array[Any]] = {
     Array(
-      Array(s"10${S}1e-2${S}1.0$S-0.2${S}TRON${S}L2"),
-      Array(s"10$S${S}1e-2${S}1.0$S-0.2${S}TRON${S}L2"),
-      Array(s"10${S}1e-2${S}1.0${S}1.2${S}TRON${S}L2"),
-      Array(s"10${S}1e-2${S}1.0${S}0.2${S}f0O${S}L2"),
-      Array(s"10${S}1e-2${S}1.0${S}0.2${S}TRON${S}bAR"),
-      Array(s"10${S}1e-2${S}1.0${S}0.2${S}TRON"),
-      Array(s"10${S}1e-2${S}0.2${S}TRON${S}L2")
+      Array(s"NotANumber${S}10"),
+      Array(s"5d${S}10"),
+      Array(s"5${S}NotANumber"),
+      Array(s"5")
     )
   }
 
-  @Test(dataProvider = "invalidStringConfigs",
-    expectedExceptions = Array(classOf[NoSuchElementException], classOf[IllegalArgumentException]))
+  @Test(dataProvider = "invalidStringConfigs", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testParseAndBuild(configStr: String): Unit = {
     println(GLMOptimizationConfiguration.parseAndBuildFromString(configStr))
   }
@@ -48,20 +43,16 @@ class GLMOptimizationConfigurationTest {
   @DataProvider
   def validStringConfigs(): Array[Array[Any]] = {
     Array(
-      Array(s"10${S}1e-2${S}1.0${S}0.3${S}TRON${S}L2"),
+      Array(s"10${S}20"),
       // With space before/after the splitters
-      Array(s" 10${S}1e-2 $S 1.0 ${S}0.3$S TRON$S L2 ")
+      Array(s" 10   $S  20  ")
     )
   }
 
   @Test(dataProvider = "validStringConfigs")
   def testParseAndBuildWithValidString(configStr: String): Unit = {
-    val config = GLMOptimizationConfiguration.parseAndBuildFromString(configStr)
+    val config = MFOptimizationConfiguration.parseAndBuildFromString(configStr)
     assertEquals(config.maxNumberIterations, 10)
-    assertEquals(config.convergenceTolerance, 1e-2)
-    assertEquals(config.regularizationWeight, 1.0)
-    assertEquals(config.downSamplingRate, 0.3)
-    assertEquals(config.optimizerType, OptimizerType.TRON)
-    assertEquals(config.regularizationType, RegularizationType.L2)
+    assertEquals(config.numFactors, 20)
   }
 }

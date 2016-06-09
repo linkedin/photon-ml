@@ -210,7 +210,11 @@ object PhotonMLCmdLineParser {
             "the number when offheap storage is built. This is a parameter only affecting the execution speed at " +
             "feature index building stage and has zero performance impact in training other than maintaining a " +
             "convention.")
-        .foreach(x => params.offHeapIndexMapNumPartitions = x.toInt)
+        .foreach(x => params.offHeapIndexMapNumPartitions = x)
+      opt[Boolean](DELETE_OUTPUT_DIRS_IF_EXIST)
+        .text(s"Delete the output directories (including the model and summarization output directories) if exist." +
+            s"Default: ${defaultParams.deleteOutputDirsIfExist}")
+        .foreach(x => params.deleteOutputDirsIfExist = x)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
     }

@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml
 
 import breeze.linalg.{DenseVector, Vector, norm}
+import org.apache.hadoop.fs.Path
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
@@ -27,7 +28,7 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.PalDBIndexMapTest
+import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapTest}
 import org.apache.commons.io.FileUtils
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -44,10 +45,10 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   import DriverIntegTest._
 
   @Test
-  def testRunWithMinimalArguments(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
-    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+  def testRunWithMinimalArguments(): Unit = sparkTest("testRunWithMinimalArguments") {
+    val outputDir = getTmpDir + "/testRunWithMinimalArguments"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
@@ -55,24 +56,61 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
-  def testRunTrainingSetWithEmptyFeatures(): Unit = sparkTestSelfServeContext("testRunTrainingSetWithEmptyFeatures") {
-    val tmpDir = getTmpDir + "/testRunEmptyTrainingSet"
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def failedTestRunWithOutputDirExists(): Unit = sparkTest("failedTestRunWithOutputDirExists") {
+    val outputDir = getTmpDir + "/failedTestRunWithOutputDirExists"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
+    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false)
+  }
+
+  @Test
+  def successfulTestRunWithOutputDirExists(): Unit = sparkTest("successfulTestRunWithOutputDirExists") {
+    val outputDir = getTmpDir + "/successfulTestRunWithOutputDirExists"
+    val args = mutable.ArrayBuffer[String]()
+    args += CommonTestUtils.fromOptionNameToArg(DELETE_OUTPUT_DIRS_IF_EXIST)
+    args += "tRUe"
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += "1"
+    appendCommonJobArgs(args, outputDir)
+    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false)
+  }
+
+  def testRunTrainingSetWithEmptyFeatures(): Unit = sparkTest("testRunTrainingSetWithEmptyFeatures") {
+    val outputDir = getTmpDir + "/testRunEmptyTrainingSet"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir)
 
     // Training data with empty feature vectors
     args(1) = TEST_DIR + "/input/empty.avro"
@@ -84,25 +122,26 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 0,
       expectedNumTrainingData = 250,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRunWithOffHeapMap(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
-    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+  def testRunWithOffHeapMap(): Unit = sparkTest("testRunWithMinimalArguments") {
+    val outputDir = getTmpDir + "/testRunWithMinimalArguments"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
     args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
@@ -113,25 +152,26 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRunWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext("testRunWithMinimalArguments") {
-    val tmpDir = getTmpDir + "/testRunWithMinimalArguments"
+  def testRunWithOffHeapMapWithIntercept(): Unit = sparkTest("testRunWithMinimalArguments") {
+    val outputDir = getTmpDir + "/testRunWithMinimalArguments"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
     appendOffHeapConfig(args, addIntercept = true)
@@ -140,26 +180,27 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRunWithDataValidationPerIterationWithOffHeapMap(): Unit = sparkTestSelfServeContext(
+  def testRunWithDataValidationPerIterationWithOffHeapMap(): Unit = sparkTest(
     "testRunWithDataValidationPerIteration") {
-    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val outputDir = getTmpDir + "/testRunWithDataValidationPerIteration"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
+    appendCommonJobArgs(args, outputDir, isValidating = true)
 
     args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
     args += true.toString
@@ -171,6 +212,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -181,24 +223,25 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // The selected best model is supposed to be of lambda 10
-    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
     assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   @Test
-  def testRunWithDataValidationPerIterationWithOffHeapMapWithIntercept(): Unit = sparkTestSelfServeContext(
-    "testRunWithDataValidationPerIteration") {
-    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+  def testRunWithDataValidationPerIterationWithOffHeapMapWithIntercept()
+  : Unit = sparkTest("testRunWithDataValidationPerIteration") {
+
+    val outputDir = getTmpDir + "/testRunWithDataValidationPerIteration"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
+    appendCommonJobArgs(args, outputDir, isValidating = true)
 
     args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
     args += true.toString
@@ -208,6 +251,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -218,23 +262,23 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // The selected best model is supposed to be of lambda 10
-    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
     assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   @Test
-  def testRunWithTRON(): Unit = sparkTestSelfServeContext("testRunWithTRON") {
-    val tmpDir = getTmpDir + "/testRunWithTRON"
+  def testRunWithTRON(): Unit = sparkTest("testRunWithTRON") {
+    val outputDir = getTmpDir + "/testRunWithTRON"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += OptimizerType.TRON.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
@@ -242,25 +286,26 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRunWithLBFGS(): Unit = sparkTestSelfServeContext("testRunWithLBFGS") {
-    val tmpDir = getTmpDir + "/testRunWithLBFGS"
+  def testRunWithLBFGS(): Unit = sparkTest("testRunWithLBFGS") {
+    val outputDir = getTmpDir + "/testRunWithLBFGS"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += OptimizerType.LBFGS.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
@@ -268,18 +313,19 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   /**
@@ -287,11 +333,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
    * coefficients shrink and will be shrink to zero.
    */
   @Test
-  def testRunWithL1(): Unit = sparkTestSelfServeContext("testRunWithL1") {
-    val tmpDir = getTmpDir + "/testRunWithL1"
+  def testRunWithL1(): Unit = sparkTest("testRunWithL1") {
+    val outputDir = getTmpDir + "/testRunWithL1"
     val args = mutable.ArrayBuffer[String]()
     val lambdas = Array(1.0, 1000.0)
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
     args += RegularizationType.L1.toString
     args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
@@ -302,19 +348,20 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += MAX_NUM_ITERATIONS.toString
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
 
     assertEquals(models.length, lambdas.length)
     // Verify lambdas
     assertEquals(models.map(_._1), lambdas)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
 
     val epsilon = 1.0E-10
     val normsAndCounts = models.map { case (lambda, model) =>
@@ -334,12 +381,12 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
    * increases, coefficients shrink and will be shrink to zero.
    */
   @Test
-  def testRunWithElasticNet(): Unit = sparkTestSelfServeContext("testRunWithElasticNet") {
-    val tmpDir = getTmpDir + "/testRunWithElasticNet"
+  def testRunWithElasticNet(): Unit = sparkTest("testRunWithElasticNet") {
+    val outputDir = getTmpDir + "/testRunWithElasticNet"
     val args = mutable.ArrayBuffer[String]()
     val lambdas = Array(10.0, 10000.0)
     val alpha = 0.5
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
     args += RegularizationType.ELASTIC_NET.toString
     args += CommonTestUtils.fromOptionNameToArg(ELASTIC_NET_ALPHA_OPTION)
@@ -351,18 +398,19 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, lambdas.length)
     // Verify lambdas
     assertEquals(models.map(_._1), lambdas)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
 
     val epsilon = 1.0E-10
     def elasticNetNorm(vec: Vector[Double], alpha: Double): Double = {
@@ -382,10 +430,10 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testRuntWithFeatureScaling(): Unit = sparkTestSelfServeContext("testRuntWithFeatureScaling") {
-    val tmpDir = getTmpDir + "/testRuntWithFeatureScaling"
+  def testRuntWithFeatureScaling(): Unit = sparkTest("testRuntWithFeatureScaling") {
+    val outputDir = getTmpDir + "/testRuntWithFeatureScaling"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
 
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString
@@ -394,25 +442,26 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRuntWithFeatureStandardization(): Unit = sparkTestSelfServeContext("testRuntWithFeatureScaling") {
-    val tmpDir = getTmpDir + "/testRuntWithFeatureNormalization"
+  def testRuntWithFeatureStandardization(): Unit = sparkTest("testRuntWithFeatureScaling") {
+    val outputDir = getTmpDir + "/testRuntWithFeatureNormalization"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.STANDARDIZATION.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
@@ -420,24 +469,25 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
   }
 
   @Test
-  def testRuntWithTreeAggregate(): Unit = sparkTestSelfServeContext("testRuntWithTreeAggregate") {
-    val tmpDir = getTmpDir + "/testRuntWithTreeAggregate"
+  def testRuntWithTreeAggregate(): Unit = sparkTest("testRuntWithTreeAggregate") {
+    val outputDir = getTmpDir + "/testRuntWithTreeAggregate"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
 
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
@@ -446,57 +496,81 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def failedTestRunWithSummarizationOutputDirExists()
+  : Unit = sparkTest("failedTestRunWithSummarizationOutputDirExists") {
+
+    val outputDir = getTmpDir + "/testRunWithSummarization"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir)
+
+    val summarizationOutputDir = getTmpDir + "/summary"
+    Utils.createHDFSDir(summarizationOutputDir, sc.hadoopConfiguration)
+    args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
+    args += summarizationOutputDir
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = true)
   }
 
   @Test
-  def testRunWithSummarization(): Unit = sparkTestSelfServeContext("testRunWithSummarization") {
-    val tmpDir = getTmpDir + "/testRunWithSummarization"
+  def testRunWithSummarization(): Unit = sparkTest("testRunWithSummarization") {
+    val outputDir = getTmpDir + "/testRunWithSummarization"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir)
+    appendCommonJobArgs(args, outputDir)
 
     args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
-    args += tmpDir + "/summary"
+    args += outputDir + "/summary"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // No best model output dir
-    assertFalse(new File(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT).exists())
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
 
     // Verify summary output
-    assertTrue(new File(tmpDir + "/summary/part-00000.avro").exists())
+    assertTrue(new File(outputDir + "/summary/part-00000.avro").exists())
   }
 
   @Test
-  def testRunWithDataValidation(): Unit = sparkTestSelfServeContext("testRunWithDataValidation") {
-    val tmpDir = getTmpDir + "/testRunWithDataValidation"
+  def testRunWithDataValidation(): Unit = sparkTest("testRunWithDataValidation") {
+    val outputDir = getTmpDir + "/testRunWithDataValidation"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
+    appendCommonJobArgs(args, outputDir, isValidating = true)
     args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
-    args += tmpDir + "/summary"
+    args += outputDir + "/summary"
 
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString
@@ -505,6 +579,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -515,24 +590,24 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = true)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // The selected best model is supposed to be of lambda 100.0 with features scaling with standard deviation
-    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
     assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   @Test
-  def testRunWithDataValidationPerIteration(): Unit = sparkTestSelfServeContext(
+  def testRunWithDataValidationPerIteration(): Unit = sparkTest(
     "testRunWithDataValidationPerIteration") {
-    val tmpDir = getTmpDir + "/testRunWithDataValidationPerIteration"
+    val outputDir = getTmpDir + "/testRunWithDataValidationPerIteration"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
+    appendCommonJobArgs(args, outputDir, isValidating = true)
 
     args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
     args += true.toString
@@ -541,6 +616,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -551,13 +627,13 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
       expectedIsSummarized = false)
 
-    val models = loadAllModels(tmpDir + "/output/" + Driver.LEARNED_MODELS_TEXT)
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
     assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
 
     // The selected best model is supposed to be of lambda 0.1
-    val bestModel = loadAllModels(tmpDir + "/output/" + Driver.BEST_MODEL_TEXT)
+    val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
     assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
@@ -574,11 +650,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test(dataProvider = "testInvalidRegularizationAndOptimizerDataProvider",
     expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidRegularizationAndOptimizer(regularizationType: RegularizationType, optimizer: OptimizerType)
-  : Unit = sparkTestSelfServeContext("testInvalidRegularizationAndOptimizer") {
+  : Unit = sparkTest("testInvalidRegularizationAndOptimizer") {
 
-    val tmpDir = getTmpDir + "/testInvalidRegularizationAndOptimizer"
+    val outputDir = getTmpDir + "/testInvalidRegularizationAndOptimizer"
     val args = mutable.ArrayBuffer[String]()
-    appendCommonJobArgs(args, tmpDir, isValidating = true)
+    appendCommonJobArgs(args, outputDir, isValidating = true)
     args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
     args += regularizationType.toString
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
@@ -588,6 +664,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -675,12 +752,13 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(dataProvider = "testDiagnosticGenerationProvider")
   def testDiagnosticGeneration(outputDir: String, args: Array[String], numFeatures: Int, numTrainingSamples: Int)
-  : Unit = sparkTestSelfServeContext("testDiagnosticGeneration") {
+  : Unit = sparkTest("testDiagnosticGeneration") {
 
     FileUtils.deleteDirectory(new File(outputDir))
 
     MockDriver.runLocally(
       args = args.toArray,
+      sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -705,7 +783,7 @@ object DriverIntegTest {
 
   val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
 
-  def appendCommonJobArgs(args: mutable.ArrayBuffer[String], testRoot: String, isValidating: Boolean = false): Unit = {
+  def appendCommonJobArgs(args: mutable.ArrayBuffer[String], outputDir: String, isValidating: Boolean = false): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
     args += TEST_DIR + "/input/heart.avro"
 
@@ -715,7 +793,7 @@ object DriverIntegTest {
     }
 
     args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)
-    args += testRoot + "/output"
+    args += outputDir
 
     args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
     args += TaskType.LOGISTIC_REGRESSION.toString

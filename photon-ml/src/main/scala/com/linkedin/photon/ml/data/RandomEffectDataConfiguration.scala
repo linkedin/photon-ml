@@ -63,8 +63,14 @@ protected[ml] case class RandomEffectDataConfiguration private (
 
 object RandomEffectDataConfiguration {
 
-  private val FIRST_LEVEL_SPLITTER = ","
-  private val SECOND_LEVEL_SPLITTER = "="
+  protected[ml] val FIRST_LEVEL_SPLITTER = ","
+  protected[ml] val SECOND_LEVEL_SPLITTER = "="
+  protected[ml] val EXPECTED_NUM_CONFIGS = 7
+  protected[ml] val EXPECTED_FORMAT = s"randomEffectId${FIRST_LEVEL_SPLITTER}featureShardId$FIRST_LEVEL_SPLITTER" +
+    s"numActiveDataPointsToKeepUpperBound$FIRST_LEVEL_SPLITTER" +
+    s"numPassiveDataPointsToKeepLowerBound$FIRST_LEVEL_SPLITTER" +
+    s"numFeaturesToSamplesRatioUpperBound$FIRST_LEVEL_SPLITTER" +
+    s"projectorType"
 
   /**
    * Parse and build the [[RandomEffectDataConfiguration]] from the input [[String]]
@@ -73,11 +79,11 @@ object RandomEffectDataConfiguration {
    */
   protected[ml] def parseAndBuildFromString(string: String): RandomEffectDataConfiguration = {
 
-    val expectedTokenLength = 7
-    val configParams = string.split(FIRST_LEVEL_SPLITTER)
-    assert(configParams.length == expectedTokenLength, s"Cannot parse $string as random effect data configuration.\n" +
-        s"The expected random effect data configuration should contain $expectedTokenLength parts separated by " +
-        s"\'$FIRST_LEVEL_SPLITTER\'.")
+    val configParams = string.split(FIRST_LEVEL_SPLITTER).map(_.trim)
+    require(configParams.length == EXPECTED_NUM_CONFIGS,
+      s"Parsing $string failed! The expected random effect data configuration should contain $EXPECTED_NUM_CONFIGS " +
+      s"parts separated by \'$FIRST_LEVEL_SPLITTER\', but found ${configParams.length}. " +
+      s"Expected format: $EXPECTED_FORMAT")
 
     val randomEffectId = configParams(0)
     val featureShardKey = configParams(1)
@@ -101,11 +107,11 @@ object RandomEffectDataConfiguration {
       rawUpperBoundNumFeaturesToSamplesRatio
     }
 
-    val projectorConfigParams = configParams(6).split(SECOND_LEVEL_SPLITTER)
+    val projectorConfigParams = configParams(6).split(SECOND_LEVEL_SPLITTER).map(_.trim)
     val projectorTypeName = ProjectorType.withName(projectorConfigParams.head.toUpperCase)
     val projectorType = projectorTypeName match {
       case RANDOM =>
-        assert(projectorConfigParams.length == 2, s"If projector of type $RANDOM is selected, the projected space " +
+        require(projectorConfigParams.length == 2, s"If projector of type $RANDOM is selected, the projected space " +
             s"dimension needs to be specified. Correct configuration format is " +
             s"$RANDOM${SECOND_LEVEL_SPLITTER}projectedSpaceDimension.")
         val projectedSpaceDimension = projectorConfigParams.last.toInt
