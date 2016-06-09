@@ -14,9 +14,10 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.PhotonLogger
 import org.apache.hadoop.fs.Path
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext
 import org.testng.Assert._
 
 /**
@@ -39,7 +40,7 @@ class MockDriver(
     (stageHistory += stage).toArray
   }
 
-  override def summarizeFeatures(outputDir: Option[String]) = {
+  override def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
     isSummarized = true
     super.summarizeFeatures(outputDir)
   }
@@ -51,36 +52,33 @@ object MockDriver {
   // Use a static random seed for deterministic test results
   val seed = 3L
 
-  def runLocally(args: Array[String], expectedStages: Array[DriverStage], expectedNumFeatures: Int,
-      expectedNumTrainingData: Int, expectedIsSummarized: Boolean): Unit = {
+  def runLocally(
+      args: Array[String],
+      sparkContext: SparkContext,
+      expectedStages: Array[DriverStage],
+      expectedNumFeatures: Int,
+      expectedNumTrainingData: Int,
+      expectedIsSummarized: Boolean): Unit = {
 
     /* Parse the parameters from command line, should always be the 1st line in main*/
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
-    /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
-    val sc: SparkContext = SparkContextConfiguration.asYarnClient(new SparkConf().setMaster("local[4]"),
-                                                                  params.jobName,
-                                                                  params.kryo)
-    try {
-      val logPath = new Path(params.outputDir, "log-message.txt")
-      val logger = new PhotonLogger(logPath, sc)
-      val job = new MockDriver(params, sc, logger, seed)
-      job.run()
+    val logPath = new Path(params.outputDir, "log-message.txt")
+    val logger = new PhotonLogger(logPath, sparkContext)
+    val job = new MockDriver(params, sparkContext, logger, seed)
+    job.run()
 
-      val actualStages = job.stages()
+    val actualStages = job.stages()
 
-      assertEquals(actualStages, expectedStages,
-        "The actual stages Driver went through, " + actualStages.mkString(",") + " is inconsistent with the expected one")
-      assertEquals(job.numFeatures(), expectedNumFeatures,
-        "The number of features " + job.numFeatures() + " do not meet the expectation.")
-      assertEquals(job.numTrainingData(), expectedNumTrainingData,
-        "The number of training data points " + job.numTrainingData() + " do not meet the expectation")
-      assertEquals(job.isSummarized, expectedIsSummarized)
+    assertEquals(actualStages, expectedStages,
+      "The actual stages Driver went through, " + actualStages.mkString(",") +
+          " is inconsistent with the expected one")
+    assertEquals(job.numFeatures(), expectedNumFeatures,
+      "The number of features " + job.numFeatures() + " do not meet the expectation.")
+    assertEquals(job.numTrainingData(), expectedNumTrainingData,
+      "The number of training data points " + job.numTrainingData() + " do not meet the expectation")
+    assertEquals(job.isSummarized, expectedIsSummarized)
 
-      // Closing up
-      logger.close()
-    } finally {
-      // Make sure sc is stopped
-      sc.stop()
-    }
+    // Closing up
+    logger.close()
   }
 }
