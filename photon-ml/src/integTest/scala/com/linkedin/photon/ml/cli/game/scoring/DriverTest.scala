@@ -23,13 +23,19 @@ import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.avro.{AvroUtils, DataProcessingUtilsTest}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.PhotonLogger
+import com.linkedin.photon.ml.util.{Utils, PhotonLogger}
 
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def failedTestRunWithOutputDirExists(): Unit = sparkTest("failedTestRunWithOutputDirExists") {
+    val args = DriverTest.yahooMusicArgs(getTmpDir, deleteOutputDirIfExists = false)
+    runDriver(CommonTestUtils.argArray(args))
+  }
+
   @Test
   def endToEndRunWithYahooMusicDataSet(): Unit = sparkTest("endToEndRunWithYahooMusicDataSet") {
-    val args = DriverTest.yahooMusicArgs(getTmpDir)
+    val args = DriverTest.yahooMusicArgs(getTmpDir, deleteOutputDirIfExists = true)
     runDriver(CommonTestUtils.argArray(args))
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
@@ -71,7 +77,7 @@ object DriverTest {
   /**
     * Arguments set for the Yahoo music data and model for the Game scoring driver
     */
-  def yahooMusicArgs(outputDir: String): Map[String, String] = {
+  def yahooMusicArgs(outputDir: String, deleteOutputDirIfExists: Boolean): Map[String, String] = {
     val inputRoot = getClass.getClassLoader.getResource("GameIntegTest").getPath
     val inputDir = new Path(inputRoot, "input/test-with-uid").toString
     val featurePath = new Path(inputRoot, "input/feature-lists").toString
@@ -89,6 +95,7 @@ object DriverTest {
       "game-model-input-dir" -> modelDir,
       "output-dir" -> outputDir,
       "num-files" -> numExecutors,
+      "delete-output-dir-if-exists" -> deleteOutputDirIfExists.toString,
       "application-name" -> applicationName
     )
   }

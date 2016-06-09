@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.PhotonLogger
+import com.linkedin.photon.ml.util.{Utils, PhotonLogger}
 import org.apache.spark.SparkConf
 import org.testng.annotations.Test
 import org.testng.Assert._
@@ -44,7 +44,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
-    println("HERE")
     println(allFixedEffectModelPath)
     assertTrue(Files.exists(allFixedEffectModelPath))
     assertTrue(Files.exists(bestFixedEffectModelPath))
@@ -54,6 +53,21 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
     assertTrue(modelContainsIntercept(allFixedEffectModelPath))
     assertTrue(modelContainsIntercept(bestFixedEffectModelPath))
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def failedTestRunWithOutputDirExists(): Unit = sparkTest("failedTestRunWithOutputDirExists") {
+    val outputDir = getTmpDir + "/failedTestRunWithOutputDirExists"
+    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+    runDriver(argArray(fixedEffectToyRunArgs ++ Map("output-dir" -> outputDir)))
+  }
+
+  @Test
+  def successfulTestRunWithOutputDirExists(): Unit = sparkTest("successfulTestRunWithOutputDirExists") {
+    val outputDir = getTmpDir + "/successfulTestRunWithOutputDirExists"
+    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+    runDriver(argArray(fixedEffectToyRunArgs ++
+        Map("output-dir" -> outputDir, "delete-output-dir-if-exists" -> "true")))
   }
 
   @Test

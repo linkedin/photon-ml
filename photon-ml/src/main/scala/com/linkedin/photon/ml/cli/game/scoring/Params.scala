@@ -47,6 +47,7 @@ import scopt.OptionParser
  * @param gameModelInputDir Input directory of the GAME model to be used to for scoring purpose
  * @param outputDir Output directory for logs and the scores.
  * @param numOutputFilesForScores Number of output files to write for the computed scores.
+ * @param deleteOutputDirIfExists Whether to delete the output directory if exists
  * @param applicationName Name of this Spark application.
  */
 case class Params(
@@ -61,6 +62,7 @@ case class Params(
     gameModelInputDir: String = "",
     outputDir: String = "",
     numOutputFilesForScores: Int = -1,
+    deleteOutputDirIfExists: Boolean = false,
     applicationName: String = "Game-Scoring") {
 
   override def toString: String = {
@@ -76,6 +78,7 @@ case class Params(
       s"gameModelInputDir: $gameModelInputDir\n" +
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
+      s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
       s"applicationName: $applicationName"
   }
 }
@@ -151,6 +154,9 @@ object Params {
       opt[String]("application-name")
         .text(s"Name of this Spark application. Default: ${defaultParams.applicationName}")
         .action((x, c) => c.copy(applicationName = x))
+      opt[Boolean]("delete-output-dir-if-exists")
+        .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
+        .action((x, c) => c.copy(deleteOutputDirIfExists = x))
       //TODO: remove the task-type option
       opt[String]("task-type")
         .text("A dummy option that does nothing and will be removed for the next major version bump")

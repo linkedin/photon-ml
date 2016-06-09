@@ -152,6 +152,9 @@ object NameAndTermFeatureSetContainer {
       opt[String]("feature-section-keys")
           .text(s"Comma separated ist of feature section keys used to generate the feature NameAndTerm set")
           .action((x, c) => c.copy(featureSectionKeys = x.split(",").toSet))
+      opt[Boolean]("delete-output-dir-if-exists")
+          .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
+          .action((x, c) => c.copy(deleteOutputDirIfExists = x))
       opt[String]("application-name")
           .text(s"Name of this Spark application, ${defaultParams.applicationName}")
           .action((x, c) => c.copy(applicationName = x))
@@ -167,8 +170,8 @@ object NameAndTermFeatureSetContainer {
     println(params + "\n")
     val sparkContext = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
     val configuration = sparkContext.hadoopConfiguration
-    require(!IOUtils.isDirExisting(params.featureNameAndTermSetOutputPath, configuration),
-      s"Output path ${params.featureNameAndTermSetOutputPath} already exists!" )
+    // Process the output directory upfront and potentially fail the job early
+    IOUtils.processOutputDir(featureNameAndTermSetOutputPath, deleteOutputDirIfExists, configuration)
 
     println(s"Application applicationName: $applicationName")
 
@@ -236,6 +239,7 @@ object NameAndTermFeatureSetContainer {
       numDaysDataForFeatureGeneration: Int = Int.MaxValue,
       featureNameAndTermSetOutputPath: String = "",
       featureSectionKeys: Set[String] = Set(),
+      deleteOutputDirIfExists: Boolean = false,
       applicationName: String = "Generate-name-and-term-feature-set") {
 
     override def toString: String = {
@@ -246,6 +250,7 @@ object NameAndTermFeatureSetContainer {
           s"numDaysDataForFeatureGeneration: $numDaysDataForFeatureGeneration\n" +
           s"featureNameAndTermSetOutputPath:\n$featureNameAndTermSetOutputPath\n" +
           s"featureSectionKeys: ${featureSectionKeys.mkString(", ")}\n" +
+          s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
           s"applicationName: $applicationName"
     }
   }
