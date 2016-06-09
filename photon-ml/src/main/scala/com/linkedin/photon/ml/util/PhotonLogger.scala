@@ -15,17 +15,15 @@
 package com.linkedin.photon.ml.util
 
 import org.apache.commons.io.FileUtils
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.slf4j.helpers.{MarkerIgnoringBase, MessageFormatter}
 import org.slf4j.spi.LocationAwareLogger
 
-import java.io.{BufferedWriter, OutputStreamWriter, PrintWriter}
+import java.io.{BufferedWriter, PrintWriter}
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.io._
-import java.net.URI
 import java.util.UUID
 
 import scala.Predef.{println => sprintln}
@@ -73,7 +71,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
    */
   def close() {
     try {
-      val fs = FileSystem.get(new URI(logPath.toString()), new Configuration())
+      val fs = logPath.getFileSystem(sc.hadoopConfiguration)
       writer.close()
 
       val parent = logPath.getParent
@@ -81,13 +79,6 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
       if (!fs.exists(parent)) {
         fs.mkdirs(parent)
       }
-
-      // Overwrite any existing file
-      // TODO: make this configurable?
-      if (fs.exists(logPath)) {
-        fs.delete(logPath, false)
-      }
-
       fs.copyFromLocalFile(tmpLocalPath, logPath)
     } catch {
       case e: Exception => throw e

@@ -123,6 +123,11 @@ protected[ml] class Driver(
 
     val startTime = System.currentTimeMillis()
 
+    // Process the output directory upfront and potentially fail the job early
+    val configuration = sc.hadoopConfiguration
+    IOUtils.processOutputDir(params.outputDir, params.deleteOutputDirsIfExist, configuration)
+    params.summarizationOutputDirOpt.foreach(IOUtils.processOutputDir(_, params.deleteOutputDirsIfExist, configuration))
+
     preprocess()
     train()
     if (params.validateDirOpt.isDefined) {
@@ -515,15 +520,6 @@ object Driver {
 
     /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
     val sc = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
-    val configuration = sc.hadoopConfiguration
-
-    require(!IOUtils.isDirExisting(params.outputDir, configuration),
-      s"Output directory ${params.outputDir} already exists!" )
-
-    params.summarizationOutputDirOpt.foreach { dir =>
-      require(!IOUtils.isDirExisting(dir, configuration),
-        s"Summarization output directory $dir already exists!" )
-    }
 
     // A temporary solution to save log into HDFS.
     val logPath = new Path(params.outputDir, "log-message.txt")
