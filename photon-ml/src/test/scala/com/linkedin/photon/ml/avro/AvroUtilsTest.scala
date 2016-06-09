@@ -52,20 +52,18 @@ class AvroUtilsTest {
     // Convert the sparse coefficients to Avro record, and convert it back to coefficients
     val sparseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(sparseGlm,
       modelId, intToNameAndTermMap)
-    val recoveredSparseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(sparseCoefficientsAvro,
-      nameAndTermToIntMap)
-    val recoveredSparseCoefficients = Coefficients(recoveredSparseVector)
-    assertEquals(sparseCoefficients, recoveredSparseCoefficients)
+    val recoveredSparseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(sparseCoefficientsAvro, nameAndTermToIntMap)
+
+    assertEquals(sparseCoefficients, recoveredSparseGlm.coefficients)
 
     val denseGlm: GeneralizedLinearModel = new LogisticRegressionModel(denseCoefficients)
 
     // Convert the dense coefficients to Avro record, and convert it back to coefficients
     val denseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(denseGlm,
       modelId, intToNameAndTermMap)
-    val recoveredDenseVector = AvroUtils.convertBayesianLinearModelAvroToMeanVector(denseCoefficientsAvro,
-      nameAndTermToIntMap)
-    val recoveredDenseCoefficients = Coefficients(recoveredDenseVector)
-    assertEquals(denseCoefficients, recoveredDenseCoefficients)
+    val recoveredDenseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(denseCoefficientsAvro, nameAndTermToIntMap)
+
+    assertEquals(denseCoefficients, recoveredDenseGlm.coefficients)
   }
 
   // Test both the convertLatentFactorAsLatentFactorAvro and readLatentFactorFromLatentFactorAvro functions

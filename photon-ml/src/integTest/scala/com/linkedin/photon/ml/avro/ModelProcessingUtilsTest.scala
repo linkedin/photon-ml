@@ -86,8 +86,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
           s"found: $numRandomEffectModelFiles")
 
     // Check if the models loaded correctly and they are the same as the models saved previously
-    val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS[LogisticRegressionModel](featureShardIdToFeatureNameAndTermToIndexMapMap,
-      outputDir, sc)
+    val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+      featureShardIdToFeatureNameAndTermToIndexMapMap, outputDir, sc)
     assertEquals(loadedGameModel, gameModel)
   }
 

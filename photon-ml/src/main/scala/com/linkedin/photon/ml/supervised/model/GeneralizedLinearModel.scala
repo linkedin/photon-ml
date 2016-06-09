@@ -146,18 +146,4 @@ object GeneralizedLinearModel {
     broadcastModel.unpersist()
     result
   }
-
-  /**
-    * Creates a new instance of the generalized linear model specified by type parameter, with the given coefficients.
-    *
-    * @param coefficients the model coefficients
-    * @return the generalized linear model instance
-    */
-  def fromCoefficients[T <: GeneralizedLinearModel : ClassTag](coefficients: Coefficients): T = {
-    classTag[T]
-      .runtimeClass
-      .getConstructor(classOf[Coefficients])
-      .newInstance(coefficients)
-      .asInstanceOf[T]
-  }
 }

@@ -170,6 +170,7 @@ object AvroUtils {
     val avroFile = BayesianLinearModelAvro
       .newBuilder()
       .setModelId(modelId)
+      .setModelClass(model.getClass.getName)
       .setLossFunction("")
       .setMeans(meansAvros.toList)
 
@@ -180,18 +181,20 @@ object AvroUtils {
   }
 
   /**
-    * Convert the Avro record of type [[BayesianLinearModelAvro]] to the mean of coefficients of type [[Coefficients]]
+    * Convert the Avro record of type [[BayesianLinearModelAvro]] to the model type [[GeneralizedLinearModel]]
     *
     * @param bayesianLinearModelAvro The input Avro record
     * @param nameAndTermToIntMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
-    * @return The mean of the coefficients converted from the Avro record
+    * @return The generalized linear model converted from the Avro record
     */
-  protected[avro] def convertBayesianLinearModelAvroToMeanVector(
+  protected[avro] def convertBayesianLinearModelAvroToGLM(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
-      nameAndTermToIntMap: Map[NameAndTerm, Int]): Vector[Double] = {
+      nameAndTermToIntMap: Map[NameAndTerm, Int]): GeneralizedLinearModel = {
 
     val meansAvros = bayesianLinearModelAvro.getMeans
+    val modelClass = bayesianLinearModelAvro.getModelClass.toString
     val indexAndValueArrayBuffer = new mutable.ArrayBuffer[(Int, Double)]
+
     val iterator = meansAvros.iterator()
     while (iterator.hasNext) {
       val feature = iterator.next()
@@ -205,9 +208,24 @@ object AvroUtils {
         indexAndValueArrayBuffer += ((index, value))
       }
     }
+
     val maxIndex = nameAndTermToIntMap.values.max
     val length = maxIndex + 1
-    VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length)
+    val coefficients = Coefficients(
+      VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length))
+
+    // Load an instantiate the model
+    try {
+      Class.forName(modelClass)
+        .getConstructor(classOf[Coefficients])
+        .newInstance(coefficients)
+        .asInstanceOf[GeneralizedLinearModel]
+
+    } catch {
+      case e: Exception =>
+        throw new IllegalArgumentException(
+          s"Error loading model: model class $modelClass couldn't be loaded. You may need to retrain the model.", e)
+    }
   }
 
   /**

@@ -14,9 +14,6 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType._
-
 import scopt.OptionParser
 
 /**

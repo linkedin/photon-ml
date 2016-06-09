@@ -388,7 +388,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
 
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS[LinearRegressionModel](
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       featureShardIdToFeatureMapMap, modelPath.toString, sc)
 
     val (_, evaluator) = driver.prepareValidatingEvaluator(

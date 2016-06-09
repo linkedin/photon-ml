@@ -141,23 +141,9 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     // TODO: make the number of files written to HDFS to be configurable
 
-    // Load the model from HDFS into the appropriate GLM type
-    val gameModel = taskType match {
-      case TaskType.LINEAR_REGRESSION =>
-        ModelProcessingUtils.loadGameModelFromHDFS[LinearRegressionModel](
-          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
-      case TaskType.LOGISTIC_REGRESSION =>
-        ModelProcessingUtils.loadGameModelFromHDFS[LogisticRegressionModel](
-          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
-      case TaskType.POISSON_REGRESSION =>
-        ModelProcessingUtils.loadGameModelFromHDFS[PoissonRegressionModel](
-          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        ModelProcessingUtils.loadGameModelFromHDFS[SmoothedHingeLossLinearSVMModel](
-          featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
-      case t =>
-        throw new IllegalArgumentException(s"Unsupported task type: $t")
-    }
+    // Load the model from HDFS
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+      featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 
