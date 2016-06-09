@@ -16,16 +16,19 @@ package com.linkedin.photon.ml.data
 
 /**
  * Configuration needed in order to generate a [[FixedEffectDataSet]]
+ *
  * @param featureShardId Key of the feature shard used to generate the data set
- * @param numPartitions Number of partitions of the data
+ * @param minNumPartitions Minimum number of partitions of the fixed effect data
  */
-protected[ml] case class FixedEffectDataConfiguration private (featureShardId: String, numPartitions: Int) {
-  override def toString: String = s"featureShardId: $featureShardId, numPartitions: $numPartitions"
+protected[ml] case class FixedEffectDataConfiguration private (featureShardId: String, minNumPartitions: Int) {
+  override def toString: String = s"featureShardId: $featureShardId, numPartitions: $minNumPartitions"
 }
 
 object FixedEffectDataConfiguration {
 
-  private val SPLITTER = ","
+  protected[ml] val SPLITTER = ","
+  protected[ml] val EXPECTED_FORMAT = s"featureShardId${SPLITTER}minNumPartitions"
+  protected[ml] val EXPECTED_NUM_CONFIGS = 2
 
   /**
    * Parse and build the configuration object from a string representation
@@ -35,11 +38,10 @@ object FixedEffectDataConfiguration {
    */
   protected[ml] def parseAndBuildFromString(string: String): FixedEffectDataConfiguration = {
 
-    val expectedTokenLength = 2
-    val configParams = string.split(SPLITTER)
-    assert(configParams.length == expectedTokenLength, s"Cannot parse $string as fixed effect data configuration.\n" +
-        s"The expected fixed effect data configuration should contain $expectedTokenLength parts separated by " +
-        s"\'$SPLITTER\'.")
+    val configParams = string.split(SPLITTER).map(_.trim)
+    require(configParams.length == EXPECTED_NUM_CONFIGS,
+      s"Parsing $string failed! The expected fixed effect data configuration should contain $EXPECTED_NUM_CONFIGS " +
+          s"parts separated by \'$SPLITTER\', but found ${configParams.length}. Expected format: $EXPECTED_FORMAT")
 
     val featureShardId = configParams(0)
     val numPartitions = configParams(1).toInt
