@@ -78,14 +78,37 @@ case class PoissonRegressionOptimizationProblem(
       isComputingVariances)
   }
 
+  /**
+    * Create a default poisson regression model with 0-valued coefficients
+    *
+    * @param dimension The dimensionality of the model coefficients
+    * @return A model with zero coefficients
+    */
   override def initializeZeroModel(dimension: Int): PoissonRegressionModel =
     PoissonRegressionOptimizationProblem.initializeZeroModel(dimension)
 
-  override protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]])
-  : PoissonRegressionModel = new PoissonRegressionModel(Coefficients(coefficients, variances))
+  /**
+    * Create a model given the coefficients
+    *
+    * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+    * @param variances The coefficient variances
+    * @return A generalized linear model with coefficients parameters
+    */
+  override protected[optimization] def createModel(
+      coefficients: Vector[Double],
+      variances: Option[Vector[Double]]): PoissonRegressionModel =
+    new PoissonRegressionModel(Coefficients(coefficients, variances))
 
-  override protected def computeVariances(labeledPoints: RDD[LabeledPoint], coefficients: Vector[Double])
-  : Option[Vector[Double]] = {
+  /**
+    * Compute coefficient variances
+    *
+    * @param labeledPoints The training dataset
+    * @param coefficients The model coefficients
+    * @return The coefficient variances
+    */
+  override protected[optimization] def computeVariances(
+      labeledPoints: RDD[LabeledPoint],
+      coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     if (isComputingVariances) {
       val broadcastCoefficients = labeledPoints.sparkContext.broadcast(coefficients)
@@ -100,8 +123,16 @@ case class PoissonRegressionOptimizationProblem(
     }
   }
 
-  override protected def computeVariances(labeledPoints: Iterable[LabeledPoint], coefficients: Vector[Double])
-  : Option[Vector[Double]] = {
+  /**
+    * Compute coefficient variances
+    *
+    * @param labeledPoints The training dataset
+    * @param coefficients The model coefficients
+    * @return The coefficient variances
+    */
+  override protected[optimization] def computeVariances(
+      labeledPoints: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     if (isComputingVariances) {
       Some(objectiveFunction

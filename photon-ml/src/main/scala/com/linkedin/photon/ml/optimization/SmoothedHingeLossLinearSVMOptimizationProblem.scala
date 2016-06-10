@@ -78,21 +78,52 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
       isComputingVariances)
   }
 
+  /**
+    * Create a default smoothed hinge SVM model with 0-valued coefficients
+    *
+    * @param dimension The dimensionality of the model coefficients
+    * @return A model with zero coefficients
+    */
   override def initializeZeroModel(dimension: Int): SmoothedHingeLossLinearSVMModel =
     SmoothedHingeLossLinearSVMOptimizationProblem.initializeZeroModel(dimension)
 
-  override protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]])
-  : SmoothedHingeLossLinearSVMModel = new SmoothedHingeLossLinearSVMModel(Coefficients(coefficients, variances))
+  /**
+    * Create a model given the coefficients
+    *
+    * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+    * @param variances The coefficient variances
+    * @return A generalized linear model with coefficients parameters
+    */
+  override protected[optimization] def createModel(
+      coefficients: Vector[Double],
+      variances: Option[Vector[Double]]): SmoothedHingeLossLinearSVMModel =
+    new SmoothedHingeLossLinearSVMModel(Coefficients(coefficients, variances))
 
-  override protected def computeVariances(labeledPoints: RDD[LabeledPoint], coefficients: Vector[Double])
-  : Option[Vector[Double]] = {
+  /**
+    * Compute coefficient variances
+    *
+    * @param labeledPoints The training dataset
+    * @param coefficients The model coefficients
+    * @return The coefficient variances
+    */
+  override protected[optimization] def computeVariances(
+      labeledPoints: RDD[LabeledPoint],
+      coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     logInfo("SmoothedHingeLossLinearSVMOptimizationProblem does not support coefficient variances.")
     None
   }
 
-  override protected def computeVariances(labeledPoints: Iterable[LabeledPoint], coefficients: Vector[Double])
-  : Option[Vector[Double]] = {
+  /**
+    * Compute coefficient variances
+    *
+    * @param labeledPoints The training dataset
+    * @param coefficients The model coefficients
+    * @return The coefficient variances
+    */
+  override protected[optimization] def computeVariances(
+      labeledPoints: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     logInfo("SmoothedHingeLossLinearSVMOptimizationProblem does not support coefficient variances.")
     None

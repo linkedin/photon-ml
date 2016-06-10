@@ -25,7 +25,7 @@ import org.apache.spark.storage.StorageLevel
 /**
   * Representation of a random effect model
   *
-  * @param coefficientsRDD The coefficients
+  * @param modelsRDD The models
   * @param randomEffectId The random effect type id
   * @param featureShardId The feature shard id
   */

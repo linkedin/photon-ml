@@ -91,6 +91,7 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     * Create a model given the coefficients
     *
     * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+    * @param variances The coefficient variances
     * @return A generalized linear model with coefficients parameters
     */
   protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GLM
@@ -100,6 +101,7 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     *
     * @param normalizationContext The normalization context
     * @param coefficients A vector of feature coefficients (and potentially including intercept)
+    * @param variances The coefficient variances
     * @return A generalized linear model with intercept and coefficients parameters
     */
   protected def createModel(

@@ -64,6 +64,20 @@ object CommonTestUtils {
   }
 
   /**
+    * Samples a dense vector from a Gaussian with the given properties.
+    *
+    * @param dim the dimension of the vector
+    * @param mean the mean of the distribution
+    * @param sd the standard deviation of the distribution
+    * @param seed the random seed value (defaults to current system time)
+    * @return a dense vector with values sampled from the Gaussian
+    */
+  def generateDenseVector(dim: Int, mean: Double = 0, sd: Double = 1, seed: Long = System.currentTimeMillis) = {
+    val random = new Random(seed)
+    DenseVector(Seq.fill(dim)({ (random.nextGaussian + mean) * sd }).toArray)
+  }
+
+  /**
    * Generates given number of valid and invalid dense feature vectors of given dimension
    *
    * @param numValidVectors number of valid vectors to generate
