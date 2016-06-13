@@ -72,7 +72,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @return the prepared GAME data set
    */
   protected def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
-  : (RDD[(Long, String)], RDD[(Long, GameDatum)]) = {
+  : (RDD[(Long, Option[String])], RDD[(Long, GameDatum)]) = {
 
     val recordsPath = (dateRangeOpt, dateRangeDaysAgoOpt) match {
       // Specified as date range
@@ -170,19 +170,19 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     startTime = System.nanoTime()
     val scores = scoreGameDataSet(featureShardIdToFeatureMapMap, gameDataSet)
-    val scoredItems = uids.join(scores.scores).map { case (_, (uid, score)) => ScoredItem(uid, score) }
+    val scoredItems = uids.join(gameDataSet).join(scores.scores).map { case (_, ((uid, gameDatum), score)) =>
+      ScoredItem(score, uid, Some(gameDatum.response), gameDatum.randomEffectIdToIndividualIdMap)
+    }
     scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val numScoredItems = scoredItems.count()
     logger.info(s"Number of scored items: $numScoredItems (s)\n")
-    val scoresDir = new Path(outputDir, Driver.SCORES).toString
     val scoredItemsToBeSaved =
       if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
         scoredItems.coalesce(numOutputFilesForScores)
       } else {
         scoredItems
       }
-
-    Utils.deleteHDFSDir(scoresDir, hadoopConfiguration)
+    val scoresDir = new Path(outputDir, Driver.SCORES).toString
     ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = "", scoresDir)
     val scoringTime = (System.nanoTime() - startTime) * 1e-9
     logger.info(s"Time elapsed scoring and writing scores to HDFS: $scoringTime (s)\n")

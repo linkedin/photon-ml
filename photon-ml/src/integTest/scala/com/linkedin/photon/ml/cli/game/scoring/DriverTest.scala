@@ -20,10 +20,9 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
-import com.linkedin.photon.ml.avro.{AvroUtils, DataProcessingUtilsTest}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{Utils, PhotonLogger}
+import com.linkedin.photon.ml.util.PhotonLogger
 
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
@@ -40,15 +39,9 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
     val scoreDir = new Path(args("output-dir"), Driver.SCORES).toString
-    val uidAndScores = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
-        .map(scoredItem => (scoredItem.uid, scoredItem.predictionScore))
-    val responseDirs = args("input-data-dirs").split(",")
-    val responseRecords = AvroUtils.readAvroFiles(sc, responseDirs, minPartitions = 1)
-    val uidAndResponses = DataProcessingUtilsTest.loadUidsWithResponsesFromGenericRecords(responseRecords)
+    val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
+        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
 
-    val predictionAndObservations = uidAndScores.rightOuterJoin(uidAndResponses).map { case (_, (score, response)) =>
-      (score.getOrElse(0.0), response)
-    }
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
     // Compare with the RMSE capture from an assumed-correct implementation on 5/20/2016

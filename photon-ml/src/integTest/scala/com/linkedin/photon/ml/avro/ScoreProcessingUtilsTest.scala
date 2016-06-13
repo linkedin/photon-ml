@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.avro
 
 import org.apache.hadoop.fs.Path
-import org.testng.Assert.assertEquals
-import org.testng.annotations.Test
+import org.testng.Assert._
+import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
@@ -24,15 +24,70 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  @Test
-  def testLoadAndSaveScoredItems(): Unit = sparkTest("testLoadAndSaveScoredItems") {
+  @DataProvider
+  def scoredItemsProvider():Array[Array[Any]] = {
+    val completeScoreItems = Array(
+      ScoredItem(predictionScore = 1.0, uid = Some("1"), label = Some(1.0), ids = Map("id1" -> "1", "id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, uid = Some("2"), label = Some(0.0), ids = Map("id1" -> "3", "id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, uid = Some("3"), label = Some(0.5), ids = Map("id1" -> "5", "id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, uid = Some("4"), label = Some(-0.5), ids = Map("id1" -> "7", "id2" -> "8"))
+    )
+    val scoredItemsWithoutUid = Array(
+      ScoredItem(predictionScore = 1.0, uid = None, label = Some(1.0), ids = Map("id1" -> "1", "id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, uid = None, label = Some(0.0), ids = Map("id1" -> "3", "id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, uid = None, label = Some(0.5), ids = Map("id1" -> "5", "id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, uid = None, label = Some(-0.5), ids = Map("id1" -> "7", "id2" -> "8"))
+    )
+    val scoredItemsWithoutLabel = Array(
+      ScoredItem(predictionScore = 1.0, uid = Some("1"), label = None, ids = Map("id1" -> "1", "id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, uid = Some("2"), label = None, ids = Map("id1" -> "3", "id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, uid = Some("3"), label = None, ids = Map("id1" -> "5", "id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, uid = Some("4"), label = None, ids = Map("id1" -> "7", "id2" -> "8"))
+    )
+    val scoredItemsWithScoreAndLabel = Array(
+      ScoredItem(predictionScore = 1.0, uid = None, label = Some(1.0), ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.0, uid = None, label = Some(0.0), ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.5, uid = None, label = Some(0.5), ids = Map[String, String]()),
+      ScoredItem(predictionScore = -1.0, uid = None, label = Some(-0.5), ids = Map[String, String]())
+    )
+    val scoredItemsWithoutIds = Array(
+      ScoredItem(predictionScore = 1.0, uid = Some("1"), label = Some(1.0), ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.0, uid = Some("2"), label = Some(0.0), ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.5, uid = Some("3"), label = Some(0.5), ids = Map[String, String]()),
+      ScoredItem(predictionScore = -1.0, uid = Some("4"), label = Some(-0.5), ids = Map[String, String]())
+    )
+    val scoredItemsWithOnlyScores = Array(
+      ScoredItem(predictionScore = 1.0, uid = None, label = None, ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.0, uid = None, label = None, ids = Map[String, String]()),
+      ScoredItem(predictionScore = 0.5, uid = None, label = None, ids = Map[String, String]()),
+      ScoredItem(predictionScore = -1.0, uid = None, label = None, ids = Map[String, String]())
+    )
+    Array(
+      Array("completeScoreItems", completeScoreItems),
+      Array("scoredItemsWithoutUid", scoredItemsWithoutUid),
+      Array("scoredItemsWithoutLabel", scoredItemsWithoutLabel),
+      Array("scoredItemsWithScoreAndLabel", scoredItemsWithScoreAndLabel),
+      Array("scoredItemsWithoutIds", scoredItemsWithoutIds),
+      Array("scoredItemsWithOnlyScores", scoredItemsWithOnlyScores)
+    )
+  }
 
-    val scoredItems = sc.parallelize(Seq(ScoredItem("1", 1.0), ScoredItem("2", 2.0), ScoredItem("-1", -1.0)))
+  @Test(dataProvider = "scoredItemsProvider")
+  def testLoadAndSaveScoredItems(modelId: String, scoredItems: Array[ScoredItem])
+  : Unit = sparkTest("testLoadAndSaveScoredItems") {
+
+    val scoredItemsAsRDD = sc.parallelize(scoredItems, 1)
     val dir = new Path(getTmpDir, "scores").toString
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItems, modelId = "", dir)
-    val loadedScoredItems = ScoreProcessingUtils.loadScoredItemsFromHDFS(dir, sc)
-    val scoredItemsMap = scoredItems.collect().map(scoredItems => (scoredItems.uid, scoredItems)).toMap
-    val loadedScoredItemsMap = loadedScoredItems.collect().map(scoredItems => (scoredItems.uid, scoredItems)).toMap
-    assertEquals(scoredItemsMap, loadedScoredItemsMap)
+    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsAsRDD, modelId = modelId, dir)
+    val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtils.loadScoredItemsFromHDFS(dir, sc)
+    val loadedModelIds = loadedModelIdWithScoredItemAsRDD.map(_._1)
+
+    // Same model Id
+    assertTrue(loadedModelIds.collect().forall(_ == modelId))
+    val loadedScoredItemAsRDD = loadedModelIdWithScoredItemAsRDD.map(_._2)
+    val loadedScoredItem = loadedScoredItemAsRDD.collect()
+
+    // Same scored items
+    assertEquals(loadedScoredItem.deep, scoredItems.deep)
   }
 }

@@ -14,6 +14,9 @@
  */
 package com.linkedin.photon.ml.avro.data
 
+
+import scala.collection.JavaConverters._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
@@ -32,15 +35,18 @@ object ScoreProcessingUtils {
    * Load the scored items of type [[ScoredItem]] from the given input directory on HDFS
    * @param inputDir The given input directory
    * @param sparkContext The Spark context
-   * @return An [[RDD]] of scored items of type [[ScoredItem]]
+   * @return An [[RDD]] of model ids of type [[String] and scored items of type [[ScoredItem]]
    */
-  protected[ml] def loadScoredItemsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[ScoredItem] = {
+  protected[ml] def loadScoredItemsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, ScoredItem)] = {
     val scoreAvros = AvroIOUtils.readFromAvro[ScoringResultAvro](sparkContext, inputDir,
       minNumPartitions = sparkContext.defaultParallelism)
     scoreAvros.map { scoreAvro =>
       val score = scoreAvro.getPredictionScore
-      val uid = scoreAvro.getUid.toString
-      ScoredItem(uid, score)
+      val uid = Option(scoreAvro.getUid).map(_.toString)
+      val label = Option(scoreAvro.getLabel()).map(_.toDouble)
+      val ids = scoreAvro.getMetadataMap().asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
+      val modelId = scoreAvro.getModelId.toString
+      (modelId, ScoredItem(score, uid, label, ids))
     }
   }
 
@@ -51,9 +57,15 @@ object ScoreProcessingUtils {
    * @param outputDir The given output directory
    */
   protected[ml] def saveScoredItemsToHDFS(scoredItems: RDD[ScoredItem], modelId: String, outputDir: String): Unit = {
-    val scoringResultAvros = scoredItems.map { case ScoredItem(uid, predictionScore) =>
-      val avroFile = ScoringResultAvro.newBuilder().setUid(uid).setModelId(modelId).setPredictionScore(predictionScore)
-      avroFile.build()
+    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, uidOpt, labelOpt, ids) =>
+      val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
+      val builder = ScoringResultAvro.newBuilder()
+      builder.setPredictionScore(predictionScore)
+      builder.setModelId(modelId)
+      uidOpt.foreach(builder.setUid(_))
+      labelOpt.foreach(builder.setLabel(_))
+      builder.setMetadataMap(metaDataMap)
+      builder.build()
     }
     AvroIOUtils.saveAsAvro(scoringResultAvros, outputDir, ScoringResultAvro.getClassSchema.toString)
   }
