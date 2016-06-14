@@ -52,7 +52,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "10"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -94,7 +94,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(DELETE_OUTPUT_DIRS_IF_EXIST)
     args += "tRUe"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "1"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
     appendCommonJobArgs(args, outputDir)
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
 
@@ -118,7 +118,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "10"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -148,7 +148,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += "false"
     appendOffHeapConfig(args, addIntercept = false)
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "10"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -176,7 +176,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += "TRON"
     appendOffHeapConfig(args, addIntercept = true)
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "10"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -208,7 +208,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += "false"
     appendOffHeapConfig(args, addIntercept = false)
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -247,7 +247,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += true.toString
     appendOffHeapConfig(args, addIntercept = true)
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -282,7 +282,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += OptimizerType.TRON.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += "10"
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -309,7 +309,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += OptimizerType.LBFGS.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -345,7 +345,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(INTERCEPT_OPTION)
     args += "false"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS.toString
     MockDriver.runLocally(
       args = args.toArray,
       sparkContext = sc,
@@ -394,7 +394,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
     args += lambdas.mkString(",")
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -438,7 +438,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -465,7 +465,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.STANDARDIZATION.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -490,7 +490,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     appendCommonJobArgs(args, outputDir)
 
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
     args += CommonTestUtils.fromOptionNameToArg(TREE_AGGREGATE_DEPTH)
     args += 2.toString
 
@@ -542,7 +542,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
     args += outputDir + "/summary"
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -575,7 +575,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
     args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -612,7 +612,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
     args += true.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -660,7 +660,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += optimizer.toString
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-    args += MAX_NUM_ITERATIONS.toString
+    args += HEAVY_MAX_NUM_ITERATIONS_FOR_TRON.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -713,9 +713,9 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
       args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
       if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
-        args += 10.toString
+        args += LIGHT_MAX_NUM_ITERATIONS.toString
       } else {
-        args += MAX_NUM_ITERATIONS.toString
+        args += LIGHT_MAX_NUM_ITERATIONS.toString
       }
 
       args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
@@ -779,7 +779,14 @@ object DriverIntegTest {
 
   val EXPECTED_NUM_TRAINING_DATA = 250
 
-  val MAX_NUM_ITERATIONS = 20
+  // Configured for TRON optimizer in tests that we care about the optimizer's performance
+  val HEAVY_MAX_NUM_ITERATIONS_FOR_TRON = 20
+
+  // Configured for L-BFGS optimizer in tests that we care about the optimizer's performance
+  val HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS = 50
+
+  // Configured for any optimizer in tests that we care about something other than the optimizer's performance
+  val LIGHT_MAX_NUM_ITERATIONS = 1
 
   val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
 
