@@ -39,7 +39,8 @@ class FittingToPhysicalReportTransformer
     } else {
       Some(new SectionPhysicalReport(report.metrics.keys.toSeq.sorted.map(x => {
         val (xData, trainData, testData) = report.metrics.get(x).get
-        val range = PlotUtils.getRangeForMetric(x, trainData ++ testData)
+        val range = PlotUtils.getRangeForMetric(x,
+          (trainData ++ testData).filter(x => !x.isInfinite && !x.isNaN))
 
         val builder = new ChartBuilder()
         val chart = builder.chartType(StyleManager.ChartType.Line)
