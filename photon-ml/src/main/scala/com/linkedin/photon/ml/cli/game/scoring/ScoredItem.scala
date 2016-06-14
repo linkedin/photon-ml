@@ -14,20 +14,18 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
-/**
-  * A compact representation of the scored item
-  * @param uid A uid that can be used to uniquely characterize the scored item
-  * @param predictionScore Score predicted by the model
-  */
-case class ScoredItem(uid: String, predictionScore: Double) {
-  override def equals(that: Any): Boolean = {
-    that match {
-      case other: ScoredItem => uid == other.uid && predictionScore == other.predictionScore
-      case _ => false
-    }
-  }
+import scala.collection.Map
 
-  override def hashCode(): Int = {
-    uid.hashCode() ^ predictionScore.hashCode()
-  }
-}
+/**
+ * A compact representation of the scored item
+ * @param predictionScore The prediction score
+ * @param uid An optional unique Id of the score
+ * @param label An optional label of the score
+ * @param ids An map of random effect keys to random effect ids (e.g., item -> itemId or member -> memberId)
+ */
+case class ScoredItem(
+    predictionScore: Double,
+    uid: Option[String],
+    label: Option[Double],
+    ids: Map[String, String]
+)

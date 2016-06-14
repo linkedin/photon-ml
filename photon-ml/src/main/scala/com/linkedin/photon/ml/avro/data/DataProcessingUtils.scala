@@ -65,7 +65,7 @@ object DataProcessingUtils {
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
       randomEffectIdSet: Set[String],
-      isResponseRequired: Boolean): RDD[(Long, (GameDatum, String))] = {
+      isResponseRequired: Boolean): RDD[(Long, (GameDatum, Option[String]))] = {
 
     val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapMap)
     val featureShardIdToFeatureMapMapBroadcast = records.sparkContext.broadcast(featureShardIdToFeatureMapMap)
@@ -78,7 +78,11 @@ object DataProcessingUtils {
         randomEffectIdSet,
         isResponseRequired
       )
-      val uid = Utils.getStringAvro(record, AvroFieldNames.UID)
+      val uid = if (record.get(AvroFieldNames.UID) != null) {
+        Some(Utils.getStringAvro(record, AvroFieldNames.UID))
+      } else {
+        None
+      }
       (gameDatum, uid)
     }
   }
@@ -100,7 +104,11 @@ object DataProcessingUtils {
     val response = if (isResponseRequired) {
       Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
     } else {
-      Double.NaN
+      if (record.get(AvroFieldNames.RESPONSE) != null) {
+        Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
+      } else {
+        Double.NaN
+      }
     }
     val offset = if (record.get(AvroFieldNames.OFFSET) != null) {
       Utils.getDoubleAvro(record, AvroFieldNames.OFFSET)
