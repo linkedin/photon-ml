@@ -14,6 +14,13 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode.DiagnosticMode
+import com.linkedin.photon.ml.diagnostics.DiagnosticStatus
+import com.linkedin.photon.ml.diagnostics.bootstrap.BootstrapReport
+import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceReport
+import com.linkedin.photon.ml.diagnostics.fitting.FittingReport
+import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowReport
+import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceReport
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.PhotonLogger
 import org.apache.hadoop.fs.Path
@@ -35,9 +42,29 @@ class MockDriver(
   extends Driver(params: Params, sc: SparkContext, logger: PhotonLogger, seed) {
 
   var isSummarized = false
+  val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
 
   def stages(): Array[DriverStage] = {
     (stageHistory += stage).toArray
+  }
+
+  override protected def initializeDiagnosticReport(): Unit = {
+    diagnosticStatus.trainDiagnosed = false
+    diagnosticStatus.validateDiagnosed = false
+    super.initializeDiagnosticReport()
+  }
+
+  override protected def trainDiagnostic(): (Map[Double, FittingReport], Map[Double, BootstrapReport]) = {
+    diagnosticStatus.trainDiagnosed = true
+    super.trainDiagnostic()
+  }
+
+  override protected def validateDiagnostic(): (
+      Map[Double, (FeatureImportanceReport, FeatureImportanceReport, PredictionErrorIndependenceReport)],
+      Map[Double, Option[HosmerLemeshowReport]]) = {
+
+    diagnosticStatus.validateDiagnosed = true
+    super.validateDiagnostic()
   }
 
   override def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
@@ -45,7 +72,6 @@ class MockDriver(
     super.summarizeFeatures(outputDir)
   }
 }
-
 
 object MockDriver {
 
@@ -58,7 +84,8 @@ object MockDriver {
       expectedStages: Array[DriverStage],
       expectedNumFeatures: Int,
       expectedNumTrainingData: Int,
-      expectedIsSummarized: Boolean): Unit = {
+      expectedIsSummarized: Boolean,
+      expectedDiagnosticMode: DiagnosticMode): Unit = {
 
     /* Parse the parameters from command line, should always be the 1st line in main*/
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
@@ -77,6 +104,7 @@ object MockDriver {
     assertEquals(job.numTrainingData(), expectedNumTrainingData,
       "The number of training data points " + job.numTrainingData() + " do not meet the expectation")
     assertEquals(job.isSummarized, expectedIsSummarized)
+    assertEquals(job.diagnosticStatus.getDiagnosticMode, expectedDiagnosticMode)
 
     // Closing up
     logger.close()

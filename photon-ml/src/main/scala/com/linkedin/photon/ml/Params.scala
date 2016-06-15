@@ -16,6 +16,9 @@ package com.linkedin.photon.ml
 
 
 import com.linkedin.photon.ml.DataValidationType._
+import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode.DiagnosticMode
 import com.linkedin.photon.ml.io.FieldNamesType._
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
@@ -133,10 +136,10 @@ class Params {
    */
   var constraintString: Option[String] = None
   /**
-   * Control whether training diagnostics like bootstrapping, etc. should be run. Since these
-   * tend to be more computationally demanding, this should default to false.
+   * Control the running mode for diagnostics. Examples include training diagnostics like bootstrapping, and validating
+   * diagnostics like Hosmer-Lemeshow diagnostic.
    */
-  var trainingDiagnosticsEnabled: Boolean = false
+  var diagnosticMode: DiagnosticMode = DiagnosticMode.NONE
   /**
    * A file containing selected features. The file is expected to contain avro records that have
    * the "name" and "term" fields
@@ -171,6 +174,11 @@ class Params {
     if (normalizationType == NormalizationType.STANDARDIZATION && !addIntercept) {
       messages += s"Intercept must be used to enable feature standardization. Normalization type: " +
                   s"$normalizationType, add intercept: $addIntercept."
+    }
+    if (validateDirOpt.isEmpty && (diagnosticMode == DiagnosticMode.VALIDATE || diagnosticMode == DiagnosticMode.ALL)) {
+      messages += s"Diagnostic mode cannot be $diagnosticMode when the validate directory is not specified. " +
+        s"Try ${DiagnosticMode.TRAIN} or ${DiagnosticMode.NONE} or " +
+          s"please specify the validate directory through $VALIDATE_DIR_OPTION"
     }
     if (messages.nonEmpty) {
       throw new IllegalArgumentException(messages.mkString("\n"))
