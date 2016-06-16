@@ -15,11 +15,11 @@
 package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType._
 import scopt.OptionParser
 
 import scala.util.parsing.json.JSON
@@ -27,6 +27,7 @@ import scala.util.parsing.json.JSON
 
 /**
  * A collection of functions used to parse Photon-ML's parameters [[Params]]
+ *
  * @author xazhang
  * @author dpeng
  * @author nkatariy
@@ -62,10 +63,15 @@ object PhotonMLCmdLineParser {
   /**
    * Parse [[Params]] from the command line using
    * [[http://scopt.github.io/scopt/3.3.0/api/#scopt.OptionParser scopt]]
+   *
    * @param args The command line input
    * @return The parsed [[Params]]
    */
   def parseFromCommandLine(args: Array[String]): Params = {
+
+    require(!(args.contains(s"--$TRAINING_DIAGNOSTICS") && args.contains(s"--$DIAGNOSTIC_MODE")),
+      s"Specifying both $TRAINING_DIAGNOSTICS and $DIAGNOSTIC_MODE at the same time is not supported!" )
+
     val defaultParams = new Params()
     val params = new Params()
     val parser = new OptionParser[Unit]("Photon-ML") {
@@ -160,9 +166,12 @@ object PhotonMLCmdLineParser {
                       s"Default: ${defaultParams.dataValidationType}")
               .foreach(x => params.dataValidationType = DataValidationType.withName(x.toUpperCase()))
       opt[Boolean](TRAINING_DIAGNOSTICS)
-              .text(s"Whether or not to enable training diagnostics. These can be slow but are very informative. " +
-                      s"Only relevant if you provide a validation set.")
-              .foreach(x => params.trainingDiagnosticsEnabled = x)
+              .text(s"DEPRECATED -- USE $DIAGNOSTIC_MODE")
+              .foreach(x => params.diagnosticMode = if (x) DiagnosticMode.ALL else DiagnosticMode.NONE)
+      opt[String](DIAGNOSTIC_MODE)
+              .text(s"Diagnostic mode after model training (${DiagnosticMode.ALL}, ${DiagnosticMode.NONE}," +
+                  s" ${DiagnosticMode.TRAIN}, ${DiagnosticMode.VALIDATE}). Default: ${defaultParams.diagnosticMode}")
+              .foreach(x => params.diagnosticMode = DiagnosticMode.withName(x.toUpperCase()))
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
               .text(s"JSON array of maps specifying bound constraints on coefficients. The input is expected to be " +
                       s"an array of maps with the map containing keys only from {" +
@@ -229,6 +238,7 @@ object PhotonMLCmdLineParser {
 
   /**
    * This method post process params for necessary value override.
+   *
    * @param inputParams Parsed params
    * @return Post processed params
    */

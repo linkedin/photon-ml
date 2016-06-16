@@ -59,10 +59,10 @@ case class ModelDiagnosticReport[GLM <: GeneralizedLinearModel](
     val nameIdxMap: Map[String, Int],
     val metrics: Map[String, Double],
     val summary: Option[BasicStatisticalSummary],
-    val predictionErrorIndependence: PredictionErrorIndependenceReport,
+    val predictionErrorIndependence: Option[PredictionErrorIndependenceReport],
     var hosmerLemeshow: Option[HosmerLemeshowReport],
-    val meanImpactFeatureImportance:FeatureImportanceReport,
-    val varianceImpactFeatureImportance:FeatureImportanceReport,
+    val meanImpactFeatureImportance: Option[FeatureImportanceReport],
+    val varianceImpactFeatureImportance: Option[FeatureImportanceReport],
     val fitReport:Option[FittingReport],
     val bootstrapReport:Option[BootstrapReport])
   extends LogicalReport

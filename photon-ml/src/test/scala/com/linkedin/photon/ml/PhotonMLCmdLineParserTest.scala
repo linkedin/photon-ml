@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -224,6 +225,35 @@ class PhotonMLCmdLineParserTest {
     )
     PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
   }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testDiagnosticModeBeingALLWhenNoValidateDirSpecified(): Unit = {
+    val args = Array(
+      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
+      DiagnosticMode.ALL.toString
+    )
+    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testDiagnosticModeBeingValidateWhenNoValidateDirSpecified(): Unit = {
+    val args = Array(
+      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
+      DiagnosticMode.VALIDATE.toString
+    )
+    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testDiagnosticModeAndTrainDiagnosticsBothSpecified(): Unit = {
+    val args = Array(
+      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
+      DiagnosticMode.NONE.toString,
+      CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS),
+      "false"
+    )
+    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
+  }
 }
 
 object PhotonMLCmdLineParserTest {
@@ -245,7 +275,8 @@ object PhotonMLCmdLineParserTest {
     SUMMARIZATION_OUTPUT_DIR,
     NORMALIZATION_TYPE,
     COEFFICIENT_BOX_CONSTRAINTS,
-    TREE_AGGREGATE_DEPTH
+    TREE_AGGREGATE_DEPTH,
+    DIAGNOSTIC_MODE
   )
 
   // Boolean options are unary instead of binary options
@@ -253,8 +284,7 @@ object PhotonMLCmdLineParserTest {
     INTERCEPT_OPTION,
     KRYO_OPTION,
     VALIDATE_PER_ITERATION,
-    OPTIMIZATION_STATE_TRACKER_OPTION,
-    TRAINING_DIAGNOSTICS
+    OPTIMIZATION_STATE_TRACKER_OPTION
   )
 
   val constraintString =
@@ -299,6 +329,7 @@ object PhotonMLCmdLineParserTest {
         case NORMALIZATION_TYPE => NormalizationType.NONE.toString
         case COEFFICIENT_BOX_CONSTRAINTS => constraintString
         case TREE_AGGREGATE_DEPTH => 2.toString
+        case DIAGNOSTIC_MODE => DiagnosticMode.NONE.toString
         case _ => "dummy-value"
       }
       i += 2

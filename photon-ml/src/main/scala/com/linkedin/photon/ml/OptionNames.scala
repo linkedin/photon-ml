@@ -44,11 +44,14 @@ object OptionNames {
   val COEFFICIENT_BOX_CONSTRAINTS = "coefficient-box-constraints"
   val DATA_VALIDATION_TYPE = "data-validation-type"
   val TREE_AGGREGATE_DEPTH = "tree-aggregate-depth"
-  val TRAINING_DIAGNOSTICS = "training-diagnostics"
+  val DIAGNOSTIC_MODE = "diagnostic-mode"
   val SELECTED_FEATURES_FILE = "selected-features-file"
 
   val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
 
   val DELETE_OUTPUT_DIRS_IF_EXIST = "delete-output-dirs-if-exist"
+
+  @deprecated
+  val TRAINING_DIAGNOSTICS = "training-diagnostics"
 }

@@ -18,12 +18,14 @@ package com.linkedin.photon.ml
 import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
 import com.linkedin.photon.ml.diagnostics.featureimportance.{
   FeatureImportanceReport, ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
-import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowDiagnostic
-import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceDiagnostic
+import com.linkedin.photon.ml.diagnostics.hl.{HosmerLemeshowReport, HosmerLemeshowDiagnostic}
+import com.linkedin.photon.ml.diagnostics.independence.{PredictionErrorIndependenceReport,
+PredictionErrorIndependenceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{
   DiagnosticReport, DiagnosticToPhysicalReportTransformer}
@@ -128,13 +130,28 @@ protected[ml] class Driver(
     IOUtils.processOutputDir(params.outputDir, params.deleteOutputDirsIfExist, configuration)
     params.summarizationOutputDirOpt.foreach(IOUtils.processOutputDir(_, params.deleteOutputDirsIfExist, configuration))
 
+    assertDriverStage(DriverStage.INIT)
     preprocess()
+    updateStage(DriverStage.PREPROCESSED)
+
+    assertDriverStage(DriverStage.PREPROCESSED)
     train()
+    updateStage(DriverStage.TRAINED)
+
     if (params.validateDirOpt.isDefined) {
-      //TODO: Currently the validate has to happen before diagnose through the assertDriverStage enforcement, however,
-      //validate and diagnose currently are implemented as two independent tasks and shouldn't be coupled together.
+      assertDriverStage(DriverStage.TRAINED)
       validate()
+      updateStage(DriverStage.VALIDATED)
+    }
+
+    if (params.diagnosticMode != DiagnosticMode.NONE) {
+      if (params.validateDirOpt.isDefined) {
+        assertDriverStage(DriverStage.VALIDATED)
+      } else {
+        assertDriverStage(DriverStage.TRAINED)
+      }
       diagnose()
+      updateStage(DriverStage.DIAGNOSED)
     }
 
     // Unpersist the training and validating data
@@ -232,7 +249,7 @@ protected[ml] class Driver(
   @throws(classOf[IOException])
   @throws(classOf[IllegalArgumentException])
   protected def preprocess(): Unit = {
-    assertDriverStage(DriverStage.INIT)
+
     /* Preprocess the data for the following model training and validating procedure using the chosen suite */
     val startTimeForPreprocessing = System.currentTimeMillis()
 
@@ -254,11 +271,9 @@ protected[ml] class Driver(
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001
     logger.info(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
 
-    updateStage(DriverStage.PREPROCESSED)
   }
 
   protected def train(): Unit = {
-    assertDriverStage(DriverStage.PREPROCESSED)
 
     /* Given the processed training data, starting to train a model using the chosen algorithm */
     val startTimeForTraining = System.currentTimeMillis()
@@ -291,8 +306,6 @@ protected[ml] class Driver(
                     s"${modelTracker.optimizationStateTrackerString}")
       }
     }
-
-    updateStage(DriverStage.TRAINED)
   }
 
   protected def computeAndLogModelMetrics(): Unit = {
@@ -352,19 +365,14 @@ protected[ml] class Driver(
   }
 
   protected def validate(): Unit = {
-    assertDriverStage(DriverStage.TRAINED)
     /* Validating the learned models using the validating data set */
     logger.info("\nStart to validate the learned models with validating data")
     val startTimeForValidating = System.currentTimeMillis()
-
     computeAndLogModelMetrics()
-
     modelSelection()
 
     val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
     logger.info(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
-
-    updateStage(DriverStage.VALIDATED)
   }
 
   protected def initializeDiagnosticReport(): Unit = {
@@ -391,70 +399,72 @@ protected[ml] class Driver(
       treeAggregateDepth = params.treeAggregateDepth)._1
   }
 
-  protected def getMeanImportanceDiagnostic: Map[Double, FeatureImportanceReport] = {
-    val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
-    lambdaModelTuples.map(x => (x._1, meanImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption))).toMap
-  }
-
-  protected def getVarianceImportanceDiagnostic: Map[Double, FeatureImportanceReport] = {
-    val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
-    lambdaModelTuples.map(x => (x._1, varImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption))).toMap
-  }
-
-  protected def getPredictionErrorDiagnostic = {
-    val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
-    lambdaModelTuples.map(x => {(x._1, predictionErrorDiagnostic.diagnose(x._2, validatingData, summaryOption))}).toMap
-  }
-
-  protected def getFitReport(lambdaModelMap: Map[Double, GeneralizedLinearModel]): Map[Double, FittingReport] = {
-    val fitDiagnostic = new FittingDiagnostic()
-    if (params.trainingDiagnosticsEnabled) {
-      fitDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption, seed)
-    } else {
-      Map[Double, FittingReport]().empty
-    }
-  }
-
-  protected def getLambdaBootstrapMap(lambdaModelMap: Map[Double, GeneralizedLinearModel])
-  : Map[Double, BootstrapReport] = {
-
-    val bootstrapDiagnostic = new BootstrapTrainingDiagnostic(suite.featureKeyToIdMap)
-    if (params.trainingDiagnosticsEnabled) {
-      bootstrapDiagnostic.diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption)
-    } else {
-      Map[Double, BootstrapReport]().empty
-    }
-  }
-
-  protected def diagnose(): Unit = {
-    assertDriverStage(DriverStage.VALIDATED)
-    val startTimeForDiagnostics = System.currentTimeMillis
-
-    initializeDiagnosticReport()
-    val lambdaMeanImportanceMap = getMeanImportanceDiagnostic
-    val lambdaVarianceImportanceMap = getVarianceImportanceDiagnostic
-    val lambdaPredErrorMap = getPredictionErrorDiagnostic
-
-    val modelDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
-    logger.info(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
-
+  protected def trainDiagnostic(): (Map[Double, FittingReport], Map[Double, BootstrapReport]) = {
     val trainDiagnosticStart = System.currentTimeMillis
     logger.info(s"Starting training diagnostics")
-
     val lambdaModelMap = lambdaModelTuples.toMap[Double, GeneralizedLinearModel]
-    val lambdaFitMap = getFitReport(lambdaModelMap)
-    val lambdaBootstrapMap = getLambdaBootstrapMap(lambdaModelMap)
-
+    val lambdaFitMap = new FittingDiagnostic().diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption, seed)
+    val lambdaBootstrapMap = new BootstrapTrainingDiagnostic(suite.featureKeyToIdMap)
+        .diagnose(trainFunc, lambdaModelMap, trainingData, summaryOption)
     val trainDiagnosticTime = (System.currentTimeMillis - trainDiagnosticStart) / 1000.0
     logger.info(f"Training diagnostic time elapsed: $trainDiagnosticTime%.03f(s)")
+    (lambdaFitMap, lambdaBootstrapMap)
+  }
+
+  protected def modelDiagnosticWithValidateData()
+  : Map[Double, (FeatureImportanceReport, FeatureImportanceReport, PredictionErrorIndependenceReport)]= {
+
+    val modelDiagnosticStart = System.currentTimeMillis
+    logger.info(s"Starting model diagnostics")
+    val meanImportanceDiagnostic = new ExpectedMagnitudeFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
+    val varImportanceDiagnostic = new VarianceFeatureImportanceDiagnostic(suite.featureKeyToIdMap)
+    val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
+    val lambdaMeanVarImportancePredictionErrorMap =
+      lambdaModelTuples.map(x => (x._1,
+        (meanImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption),
+        varImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption),
+        predictionErrorDiagnostic.diagnose(x._2, validatingData, summaryOption)))
+      ).toMap
+
+    val modelDiagnosticTime = (System.currentTimeMillis - modelDiagnosticStart) / 1000.0
+    logger.info(f"Model diagnostic time elapsed: $modelDiagnosticTime%.03f(s)")
+    lambdaMeanVarImportancePredictionErrorMap
+  }
+
+  protected def validateDiagnostic(): (
+      Map[Double, (FeatureImportanceReport, FeatureImportanceReport, PredictionErrorIndependenceReport)],
+      Map[Double, Option[HosmerLemeshowReport]]) = {
+
+    val validateDiagnosticStart = System.currentTimeMillis
+    logger.info(s"Starting validate diagnostics")
+
+    val lambdaMeanVarImportancePredictionErrorMap = modelDiagnosticWithValidateData()
 
     val hlDiagnostic = new HosmerLemeshowDiagnostic()
-    diagnostic.modelReports ++= lambdaModelTuples.map { case (lambda, model) =>
+    val lambdaHLReport = lambdaModelTuples.map { case Pair(lambda, model) =>
       val hlReport = model match {
-        case lm: LogisticRegressionModel =>
-          Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption))
+        case lm: LogisticRegressionModel => Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption))
         case _ => None
       }
+      (lambda, hlReport)
+    }.toMap
+    val validateDiagnosticTime = (System.currentTimeMillis - validateDiagnosticStart) / 1000.0
+    logger.info(f"Validating diagnostic time elapsed: $validateDiagnosticTime%.03f(s)")
+    (lambdaMeanVarImportancePredictionErrorMap, lambdaHLReport)
+  }
+
+  protected def reportDiagnosticResult(
+      lambdaMeanVarImportancePredictionErrorMap:
+        Map[Double, (FeatureImportanceReport, FeatureImportanceReport, PredictionErrorIndependenceReport)],
+      lambdaFitMap: Map[Double, FittingReport],
+      lambdaBootstrapMap: Map[Double, BootstrapReport],
+      lambdaHLReport: Map[Double, Option[HosmerLemeshowReport]]): Unit = {
+
+    val lambdaMeanImpactFeatureImportance = lambdaMeanVarImportancePredictionErrorMap.mapValues(_._1)
+    val lambdaVarianceImpactFeatureImportance = lambdaMeanVarImportancePredictionErrorMap.mapValues(_._2)
+    val lambdaPredictionErrorIndependenceReport = lambdaMeanVarImportancePredictionErrorMap.mapValues(_._3)
+
+    diagnostic.modelReports ++= lambdaModelTuples.map { case (lambda, model) =>
       ModelDiagnosticReport[GeneralizedLinearModel](
         model,
         lambda,
@@ -462,20 +472,42 @@ protected[ml] class Driver(
         suite.featureKeyToIdMap,
         metrics = perModelMetrics.getOrElse(lambda, Map.empty),
         summaryOption,
-        predictionErrorIndependence = lambdaPredErrorMap.get(lambda).get,
-        hlReport,
-        meanImpactFeatureImportance = lambdaMeanImportanceMap.get(lambda).get,
-        varianceImpactFeatureImportance = lambdaVarianceImportanceMap.get(lambda).get,
+        predictionErrorIndependence = lambdaPredictionErrorIndependenceReport.get(lambda),
+        hosmerLemeshow = lambdaHLReport.getOrElse(lambda, None),
+        meanImpactFeatureImportance = lambdaMeanImpactFeatureImportance.get(lambda),
+        varianceImpactFeatureImportance = lambdaVarianceImpactFeatureImportance.get(lambda),
         fitReport = lambdaFitMap.get(lambda),
         bootstrapReport = lambdaBootstrapMap.get(lambda))
     }
+  }
+
+  protected def diagnose(): Unit = {
+
+    val startTimeForDiagnostics = System.currentTimeMillis
+    initializeDiagnosticReport()
+
+    val (lambdaFitMap, lambdaBootstrapMap) = params.diagnosticMode match {
+      case DiagnosticMode.TRAIN | DiagnosticMode.ALL => trainDiagnostic()
+      case _ => (Map[Double, FittingReport](), Map[Double, BootstrapReport]())
+    }
+
+    val (lambdaMeanVarImportancePredictionErrorMap, lambdaHLReport) =
+      params.diagnosticMode match {
+        case DiagnosticMode.VALIDATE | DiagnosticMode.ALL => validateDiagnostic()
+        case _ => (Map[Double, (FeatureImportanceReport, FeatureImportanceReport, PredictionErrorIndependenceReport)](),
+            Map[Double, Option[HosmerLemeshowReport]]())
+      }
+
+    reportDiagnosticResult(
+      lambdaMeanVarImportancePredictionErrorMap,
+      lambdaFitMap,
+      lambdaBootstrapMap,
+      lambdaHLReport)
 
     val totalDiagnosticTime = (System.currentTimeMillis - startTimeForDiagnostics) / 1000.0
     logger.info(f"Total diagnostic time: $totalDiagnosticTime%.03f (s)")
     logger.info("Writing diagnostics")
-
     writeDiagnostics(params.outputDir, REPORT_FILE, diagnostic)
-    updateStage(DriverStage.DIAGNOSED)
   }
 
   protected def assertDriverStage(expectedStage: DriverStage): Unit = {
@@ -542,7 +574,7 @@ object Driver {
     }
   }
 
-  private def writeDiagnostics(outputDir: String, file: String, diagReport: DiagnosticReport): Unit = {
+  protected def writeDiagnostics(outputDir: String, file: String, diagReport: DiagnosticReport): Unit = {
     val xform = new DiagnosticToPhysicalReportTransformer()
     val doc = xform.transform(diagReport)
     val rs = new HTMLRenderStrategy()

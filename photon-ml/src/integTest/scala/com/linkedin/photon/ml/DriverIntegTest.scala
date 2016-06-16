@@ -18,6 +18,7 @@ import breeze.linalg.{DenseVector, Vector, norm}
 import org.apache.hadoop.fs.Path
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -60,7 +61,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -84,7 +86,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
   }
 
   @Test
@@ -104,7 +107,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
   }
 
   def testRunTrainingSetWithEmptyFeatures(): Unit = sparkTest("testRunTrainingSetWithEmptyFeatures") {
@@ -126,7 +130,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 0,
       expectedNumTrainingData = 250,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -156,7 +161,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -184,7 +190,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -217,11 +224,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
         DriverStage.TRAINED,
-        DriverStage.VALIDATED,
-        DriverStage.DIAGNOSED),
+        DriverStage.VALIDATED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -256,11 +263,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
         DriverStage.TRAINED,
-        DriverStage.VALIDATED,
-        DriverStage.DIAGNOSED),
+        DriverStage.VALIDATED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -290,7 +297,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -317,7 +325,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -352,7 +361,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
 
@@ -402,7 +412,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, lambdas.length)
@@ -446,7 +457,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -473,7 +485,9 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
+
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
     // Verify lambdas
@@ -500,7 +514,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -530,7 +545,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
   }
 
   @Test
@@ -550,7 +566,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -584,11 +601,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
         DriverStage.TRAINED,
-        DriverStage.VALIDATED,
-        DriverStage.DIAGNOSED),
+        DriverStage.VALIDATED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -603,8 +620,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testRunWithDataValidationPerIteration(): Unit = sparkTest(
-    "testRunWithDataValidationPerIteration") {
+  def testRunWithDataValidationPerIteration(): Unit = sparkTest("testRunWithDataValidationPerIteration") {
     val outputDir = getTmpDir + "/testRunWithDataValidationPerIteration"
     val args = mutable.ArrayBuffer[String]()
     appendCommonJobArgs(args, outputDir, isValidating = true)
@@ -621,11 +637,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
         DriverStage.TRAINED,
-        DriverStage.VALIDATED,
-        DriverStage.DIAGNOSED),
+        DriverStage.VALIDATED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
 
     val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
     assertEquals(models.length, defaultParams.regularizationWeights.length)
@@ -669,11 +685,11 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
         DriverStage.TRAINED,
-        DriverStage.VALIDATED,
-        DriverStage.DIAGNOSED),
+        DriverStage.VALIDATED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
-      expectedIsSummarized = false)
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
   }
 
   @DataProvider
@@ -699,9 +715,14 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     (for (m <- models; r <- regularizations) yield {
       (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
     }).map { case (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) =>
-      val trainEnabled = TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM != taskType
+      val diagnosticMode =
+        if (TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM != taskType) {
+          DiagnosticMode.ALL
+        } else {
+          DiagnosticMode.NONE
+        }
 
-      val outputDir = s"${taskType}_${regType}_$trainEnabled"
+      val outputDir = s"${taskType}_${regType}_$diagnosticMode"
 
       val args = mutable.ArrayBuffer[String]()
       args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
@@ -744,8 +765,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += outputDir + "/summary"
       args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
       args += NormalizationType.STANDARDIZATION.toString
-      args += CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS)
-      args += trainEnabled.toString
+      args += CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE)
+      args += diagnosticMode.toString
       Array(outputDir, args.toArray, numDim, numSamp)
     }.toArray
   }
@@ -767,7 +788,61 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         DriverStage.DIAGNOSED),
       expectedNumFeatures = numFeatures,
       expectedNumTrainingData = numTrainingSamples,
-      expectedIsSummarized = true)
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.ALL)
+  }
+
+  @Test
+  def testTrainOnlyDiagnostic(): Unit = sparkTest("testTrainOnlyDiagnostic") {
+
+    val outputDir = getTmpDir + "/testTrainOnlyDiagnostic"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir)
+
+    args += CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE)
+    args += DiagnosticMode.TRAIN.toString
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.DIAGNOSED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.TRAIN)
+  }
+
+  @Test
+  def testValidateOnlyDiagnostic(): Unit = sparkTest("testValidateOnlyDiagnostic") {
+
+    val outputDir = getTmpDir + "/testValidateOnlyDiagnostic"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir, isValidating = true)
+
+    args += CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE)
+    args += DiagnosticMode.VALIDATE.toString
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
+        DriverStage.DIAGNOSED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.VALIDATE)
   }
 }
 

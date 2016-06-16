@@ -32,37 +32,21 @@ class ModelDiagnosticToPhysicalReportTransformer[GLM <: GeneralizedLinearModel]
 
   def transform(model: ModelDiagnosticReport[GLM]): SectionPhysicalReport = {
     val metricsSection:SectionPhysicalReport = transformMetrics(model)
-    val predErrSection:SectionPhysicalReport = PREDICTION_ERROR_TRANSFORMER
-      .transform(model.predictionErrorIndependence)
-    val modelSection: SectionPhysicalReport = new SectionPhysicalReport(
-      Seq(
-        FEATURE_IMPORTANCE_TRANSFORMER.transform(model.meanImpactFeatureImportance),
-        FEATURE_IMPORTANCE_TRANSFORMER.transform(model.varianceImpactFeatureImportance)),
-      FEATURE_IMPORTANCE_TITLE)
 
-    val hlSection = model.hosmerLemeshow match {
-      case Some(hl) =>
-        Some(HOSMER_LEMESHOW_TRANSFORMER.transform(hl))
-      case None =>
-        None
-    }
+    val predErrSection = model.predictionErrorIndependence.map(PREDICTION_ERROR_TRANSFORMER.transform)
+    val meanImpactFeatureImportanceSection =
+      model.meanImpactFeatureImportance.map(FEATURE_IMPORTANCE_TRANSFORMER.transform)
+    val varImpactFeatureImportanceSection =
+      model.varianceImpactFeatureImportance.map(FEATURE_IMPORTANCE_TRANSFORMER.transform)
 
-    val fitSection = model.fitReport match {
-      case Some(fr) =>
-        Some(FIT_TRANSFORMER.transform(fr))
-      case None =>
-        println("Did not get a matching model fit report!")
-        None
-    }
+    val hlSection = model.hosmerLemeshow.map(HOSMER_LEMESHOW_TRANSFORMER.transform)
 
-    val bootstrapSection = model.bootstrapReport match {
-      case Some(b) => Some(BOOTSTRAP_TRANSFORMER.transform(b))
-      case None => None
-    }
+    val fitSection = model.fitReport.map(FIT_TRANSFORMER.transform)
+    val bootstrapSection = model.bootstrapReport.map(BOOTSTRAP_TRANSFORMER.transform)
 
     new SectionPhysicalReport(
-      metricsSection :: predErrSection :: modelSection ::
-      fitSection.toList ++ bootstrapSection.toList ++ hlSection.toList,
+      metricsSection :: predErrSection.toList ++ meanImpactFeatureImportanceSection.toList ++
+        varImpactFeatureImportanceSection.toList ++ fitSection.toList ++ bootstrapSection.toList ++ hlSection.toList,
       s"$SECTION_TITLE: ${model.modelDescription}, lambda=${model.lambda}")
   }
 
