@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.cli.game.scoring
 import org.apache.hadoop.fs.Path
 import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
@@ -33,12 +33,42 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
+  def testGAMEModelId(): Unit = sparkTest("testGAMEModelId") {
+    val modelId = "someModelIdForTest"
+    val outputDir = getTmpDir
+    val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = true, modelId = modelId)
+    runDriver(CommonTestUtils.argArray(args))
+
+    val scoresDir = Driver.getScoresDir(outputDir)
+    val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoresDir, sc)
+    assertTrue(loadedModelIdWithScoredItemAsRDD.map(_._1).collect().forall(_ == modelId))
+  }
+
+  @DataProvider
+  def numOutputFilesProvider(): Array[Array[Any]] = {
+    Array(Array(1), Array(10))
+  }
+
+  @Test(dataProvider = "numOutputFilesProvider")
+  def testNumOutputFiles(numOutputFiles: Int): Unit = sparkTest("testNumOutputFiles") {
+    val outputDir = getTmpDir
+    val args = DriverTest.yahooMusicArgs(outputDir, numOutputFiles = numOutputFiles)
+    runDriver(CommonTestUtils.argArray(args))
+    val scoresPath = new Path(Driver.getScoresDir(outputDir))
+
+    val fs = scoresPath.getFileSystem(sc.hadoopConfiguration)
+    val numLoadedFiles = fs.listStatus(scoresPath).count(_.getPath.toString.contains("part"))
+    assertEquals(numLoadedFiles, numOutputFiles)
+  }
+
+  @Test
   def endToEndRunWithYahooMusicDataSet(): Unit = sparkTest("endToEndRunWithYahooMusicDataSet") {
-    val args = DriverTest.yahooMusicArgs(getTmpDir, deleteOutputDirIfExists = true)
+    val outputDir = getTmpDir
+    val args = DriverTest.yahooMusicArgs(outputDir, deleteOutputDirIfExists = true)
     runDriver(CommonTestUtils.argArray(args))
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
-    val scoreDir = new Path(args("output-dir"), Driver.SCORES).toString
+    val scoreDir = Driver.getScoresDir(outputDir)
     val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
         .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
 
@@ -70,24 +100,42 @@ object DriverTest {
   /**
     * Arguments set for the Yahoo music data and model for the Game scoring driver
     */
-  def yahooMusicArgs(outputDir: String, deleteOutputDirIfExists: Boolean): Map[String, String] = {
+  def yahooMusicArgs(
+      outputDir: String,
+      fixedEffectOnly: Boolean = false,
+      deleteOutputDirIfExists: Boolean = true,
+      numOutputFiles: Int = 1,
+      modelId: String = ""): Map[String, String] = {
+
     val inputRoot = getClass.getClassLoader.getResource("GameIntegTest").getPath
     val inputDir = new Path(inputRoot, "input/test-with-uid").toString
     val featurePath = new Path(inputRoot, "input/feature-lists").toString
-    val featureShardIdToFeatureSectionKeysMap =
-      "globalShard:features,songFeatures,userFeatures|userShard:features,songFeatures|songShard:features,userFeatures"
-    val randomEffectIdSet = "userId,songId"
-    val modelDir = new Path(inputRoot, "gameModel").toString
-    val numExecutors = "1"
+
+    val (featureShardIdToFeatureSectionKeysMap, randomEffectIdSet, modelDir) =
+      if (fixedEffectOnly) {
+        val featureMap = "globalShard:features,songFeatures,userFeatures"
+        val idSet = ","
+        val modelDir = new Path(inputRoot, "fixedEffectOnlyGAMEModel").toString
+        (featureMap, idSet, modelDir)
+      } else {
+        val featureMap = "globalShard:features,songFeatures,userFeatures|userShard:features,songFeatures" +
+            "|songShard:features,userFeatures"
+        val idSet = "userId,songId"
+        val modelDir = new Path(inputRoot, "gameModel").toString
+        (featureMap, idSet, modelDir)
+      }
+
     val applicationName = "GAME-Scoring-Integ-Test"
+
     Map(
       "input-data-dirs" -> inputDir,
       "feature-name-and-term-set-path" -> featurePath,
       "feature-shard-id-to-feature-section-keys-map" -> featureShardIdToFeatureSectionKeysMap,
       "random-effect-id-set" -> randomEffectIdSet,
+      "game-model-id" -> modelId,
       "game-model-input-dir" -> modelDir,
       "output-dir" -> outputDir,
-      "num-files" -> numExecutors,
+      "num-files" -> numOutputFiles.toString,
       "delete-output-dir-if-exists" -> deleteOutputDirIfExists.toString,
       "application-name" -> applicationName
     )

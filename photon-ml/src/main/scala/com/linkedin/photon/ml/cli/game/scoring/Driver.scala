@@ -178,12 +178,12 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.info(s"Number of scored items: $numScoredItems (s)\n")
     val scoredItemsToBeSaved =
       if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
-        scoredItems.coalesce(numOutputFilesForScores)
+        scoredItems.repartition(numOutputFilesForScores)
       } else {
         scoredItems
       }
-    val scoresDir = new Path(outputDir, Driver.SCORES).toString
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = "", scoresDir)
+    val scoresDir = Driver.getScoresDir(outputDir)
+    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = gameModelId, scoresDir)
     val scoringTime = (System.nanoTime() - startTime) * 1e-9
     logger.info(s"Time elapsed scoring and writing scores to HDFS: $scoringTime (s)\n")
 
@@ -193,8 +193,16 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 }
 
 object Driver {
-  protected[scoring] val SCORES = "scores"
-  protected[scoring] val LOGS = "logs"
+  private val SCORES = "scores"
+  private val LOGS = "logs"
+
+  protected[scoring] def getScoresDir(outputDir: String): String = {
+    new Path(outputDir, Driver.SCORES).toString
+  }
+
+  protected[scoring] def getLogsPath(outputDir: String): String = {
+    new Path(outputDir, LOGS).toString
+  }
 
   /**
    * Main entry point
@@ -208,7 +216,7 @@ object Driver {
 
     val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
 
-    val logsDir = new Path(outputDir, LOGS).toString
+    val logsDir = getLogsPath(outputDir)
     val logger = new PhotonLogger(logsDir, sc)
     //TODO: This Photon log level should be made configurable
     logger.setLogLevel(PhotonLogger.LogLevelDebug)

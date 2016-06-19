@@ -44,8 +44,10 @@ import scopt.OptionParser
  * @param randomEffectIdSet A set of random effect ids of the corresponding random effect models in the following
  *                          format: randomEffectId1,randomEffectId2,randomEffectId3,
  * @param minPartitionsForRandomEffectModel Minimum number of partitions for GAME's random effect model
+ * @param gameModelId The GAME model's id that is used to populate the "modelId" field of ScoringResultAvro
+ *                      (output format of the computed scores).
  * @param gameModelInputDir Input directory of the GAME model to be used to for scoring purpose
- * @param outputDir Output directory for logs and the scores.
+ * @param outputDir Output directory for logs in text file and the scores in ScoringResultAvro format.
  * @param numOutputFilesForScores Number of output files to write for the computed scores.
  * @param deleteOutputDirIfExists Whether to delete the output directory if exists
  * @param applicationName Name of this Spark application.
@@ -60,6 +62,7 @@ case class Params(
     minPartitionsForRandomEffectModel: Int = 1,
     featureNameAndTermSetInputPath: String = "",
     gameModelInputDir: String = "",
+    gameModelId: String = "",
     outputDir: String = "",
     numOutputFilesForScores: Int = -1,
     deleteOutputDirIfExists: Boolean = false,
@@ -139,6 +142,10 @@ object Params {
         .text("A set of random effect ids of the corresponding random effect models in the following format: " +
           s"randomEffectId1,randomEffectId2,randomEffectId3, Default: ${defaultParams.randomEffectIdSet}")
         .action((x, c) => c.copy(randomEffectIdSet = x.split(",").toSet))
+      opt[String]("game-model-id")
+        .text(s"The GAME model's id that is used to populate the 'modelId' field of ScoringResultAvro " +
+          s"(output format of the computed scores). Default: ${defaultParams.gameModelId}")
+          .action((x, c) => c.copy(gameModelId = x))
       opt[String]("game-model-input-dir")
         .required()
         .text(s"Input directory of the GAME model to be used to for scoring purpose.")
