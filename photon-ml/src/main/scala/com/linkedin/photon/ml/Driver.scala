@@ -202,7 +202,7 @@ protected[ml] class Driver(
       .readLabeledPointsFromAvro(sc, params.trainDir, params.selectedFeaturesFile, params.minNumPartitions)
       .persist(trainDataStorageLevel)
       .setName("training data")
-    featureNum = trainingData.first().features.size
+
     trainingDataNum = trainingData.count().toInt
     require(trainingDataNum > 0,
       "No training data found. Ensure that training data exists and feature vectors are not empty.")
