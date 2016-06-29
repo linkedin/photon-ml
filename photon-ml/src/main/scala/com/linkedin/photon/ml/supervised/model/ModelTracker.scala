@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.supervised.model
 
-import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
 import scala.language.existentials
 
 // existentials is imported to suppress the warning message:
@@ -29,9 +28,8 @@ import scala.language.existentials
 // why the feature should be explicitly enabled.
 
 /**
- * A model tracker to include optimization state and per iteration models.
- * @author dpeng
- */
+  * A model tracker to include optimization state and per iteration models.
+  */
 case class ModelTracker(
   optimizationStateTrackerString: String,
   models: Array[_ <: GeneralizedLinearModel])

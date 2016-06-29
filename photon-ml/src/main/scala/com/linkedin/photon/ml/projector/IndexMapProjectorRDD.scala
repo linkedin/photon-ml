@@ -14,28 +14,22 @@
  */
 package com.linkedin.photon.ml.projector
 
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.model.Coefficients
-
 /**
- * A class that holds the projectors for a sharded data set
- *
- * @param indexMapProjectorRDD The projectors
- */
+  * A class that holds the projectors for a sharded data set
+  *
+  * @param indexMapProjectorRDD The projectors
+  */
 protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
   extends RandomEffectProjector with RDDLike {
 
-  /**
-   * Projects the random effect dataset into the new space
-   *
-   * @param randomEffectDataSet the dataset
-   * @return the projected dataset
-   */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
@@ -69,17 +63,18 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
     randomEffectDataSet.update(projectedActiveData, projectedPassiveData)
   }
 
-  /**
-   * Project the coefficients RDD into the new space
-   *
-   * @param coefficientsRDD the coefficients
-   * @return projected coefficients
-   */
-  override def projectCoefficientsRDD(coefficientsRDD: RDD[(String, Coefficients)]): RDD[(String, Coefficients)] = {
-    coefficientsRDD.join(indexMapProjectorRDD)
-        .mapValues { case (Coefficients(mean, varianceOption), projector) =>
-      Coefficients(projector.projectCoefficients(mean), varianceOption.map(projector.projectCoefficients))
-    }
+  override def projectCoefficientsRDD(coefficientsRDD: RDD[(String, GeneralizedLinearModel)])
+    : RDD[(String, GeneralizedLinearModel)] = {
+
+    coefficientsRDD
+      .join(indexMapProjectorRDD)
+      .mapValues { case (model, projector) =>
+        val oldCoefficients = model.coefficients
+        model.updateCoefficients(
+          Coefficients(
+            projector.projectCoefficients(oldCoefficients.means),
+            oldCoefficients.variancesOption.map(projector.projectCoefficients)))
+      }
   }
 
   override def sparkContext: SparkContext = {

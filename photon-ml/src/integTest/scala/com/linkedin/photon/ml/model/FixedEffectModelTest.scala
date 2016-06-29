@@ -17,6 +17,8 @@ package com.linkedin.photon.ml.model
 import org.testng.annotations.Test
 import org.testng.Assert._
 
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.optimization.LogisticRegressionOptimizationProblem
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 
@@ -29,30 +31,31 @@ class FixedEffectModelTest extends SparkTestUtils {
   def testEquals(): Unit = sparkTest("testEqualsForFixedEffectModel") {
     // Coefficients parameter
     val coefficientDimension = 1
-    val coefficients = Coefficients.initializeZeroCoefficients(coefficientDimension)
+    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
 
     // Meta data
     val featureShardId = "featureShardId"
 
     // Fixed effect model
-    val fixedEffectModel = new FixedEffectModel(sc.broadcast(coefficients), featureShardId)
+    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), featureShardId)
 
     // Should equal to itself
     assertEquals(fixedEffectModel, fixedEffectModel)
 
     // Should equal to the fixed effect model with same featureShardId and coefficientsBroadcast
-    val fixedEffectModelCopy = new FixedEffectModel(sc.broadcast(coefficients), featureShardId)
+    val fixedEffectModelCopy = new FixedEffectModel(sc.broadcast(glm), featureShardId)
     assertEquals(fixedEffectModel, fixedEffectModelCopy)
 
     // Should not equal to the fixed effect model with different featureShardId
     val featureShardId1 = "featureShardId1"
-    val fixedEffectModelWithDiffFeatureShardId = new FixedEffectModel(sc.broadcast(coefficients), featureShardId1)
+    val fixedEffectModelWithDiffFeatureShardId = new FixedEffectModel(sc.broadcast(glm), featureShardId1)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffFeatureShardId)
 
     // Should not equal to the fixed effect model with different coefficientsBroadcast
     val coefficientDimension1 = coefficientDimension + 1
-    val coefficients1 = Coefficients.initializeZeroCoefficients(coefficientDimension1)
-    val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(coefficients1), featureShardId)
+    val glm1: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension1)
+
+    val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(glm1), featureShardId)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
   }
 }

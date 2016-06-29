@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.{Utils, PhotonLogger}
 import org.apache.spark.SparkConf
@@ -387,7 +388,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
 
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureMapMap, modelPath.toString, sc)
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+      featureShardIdToFeatureMapMap, modelPath.toString, sc)
 
     val (_, evaluator) = driver.prepareValidatingEvaluator(
       driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)

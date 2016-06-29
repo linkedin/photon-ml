@@ -14,51 +14,52 @@
  */
 package com.linkedin.photon.ml.projector
 
-import org.apache.spark.rdd.RDD
-
 import com.linkedin.photon.ml.data.RandomEffectDataSet
 import com.linkedin.photon.ml.model.Coefficients
-
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import org.apache.spark.rdd.RDD
 
 /**
- * A trait that performs two types of projections:
- * <ul>
- * <li>
- *   Project the random effect data set from the original space to the projected space, usually at a pre-processing
- *   step before the model training phase.
- * </li>
- * <li>
- *   Project the coefficients from the projected space back to the original space, usually after training the model
- *   or before scoring a data set in the original space.
- * </li>
- * </ul>
- * @author xazhang
- */
+  * A trait that performs two types of projections:
+  * <ul>
+  * <li>
+  *   Project the random effect data set from the original space to the projected space, usually at a pre-processing
+  *   step before the model training phase.
+  * </li>
+  * <li>
+  *   Project the model coefficients from the projected space back to the original space after training the model, and
+  *   before scoring a data set in the original space.
+  * </li>
+  * </ul>
+  */
 protected[ml] trait RandomEffectProjector {
   /**
-   * Project the sharded data set from the original space to the projected space
-   * @param randomEffectDataSet The input sharded data set in the original space
-   * @return The sharded data set in the projected space
-   */
+    * Project the sharded data set from the original space to the projected space
+    *
+    * @param randomEffectDataSet The input sharded data set in the original space
+    * @return The sharded data set in the projected space
+    */
   def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet
 
   /**
-   * Project a [[RDD]] of [[Coefficients]] from the projected space back to the original space
-   * @param coefficientsRDD The input [[RDD]] of [[Coefficients]] in the projected space
-   * @return The [[RDD]] of [[Coefficients]] in the original space
-   */
-  def projectCoefficientsRDD(coefficientsRDD: RDD[(String, Coefficients)]): RDD[(String, Coefficients)]
+    * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original
+    * space.
+    *
+    * @param coefficientsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
+    * @return The [[RDD]] of [[Coefficients]] in the original space
+    */
+  def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)]
 }
 
 object RandomEffectProjector {
 
   /**
-   * Builds a random effect projector instance
-   *
-   * @param randomEffectDataSet the dataset
-   * @param projectorType the type of the projector
-   * @return the projector
-   */
+    * Builds a random effect projector instance
+    *
+    * @param randomEffectDataSet The dataset
+    * @param projectorType The type of the projector
+    * @return The projector
+    */
   protected[ml] def buildRandomEffectProjector(
       randomEffectDataSet: RandomEffectDataSet,
       projectorType: ProjectorType): RandomEffectProjector = {

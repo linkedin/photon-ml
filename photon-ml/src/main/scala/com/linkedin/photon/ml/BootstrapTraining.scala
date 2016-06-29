@@ -48,7 +48,7 @@ object BootstrapTraining {
 
     // Initialize summary state with the first model in the sequence
     val firstGLM = modelsAndMetrics.head._1
-    val firstState = firstGLM.coefficients.toArray.map( x => {
+    val firstState = firstGLM.coefficients.means.toArray.map( x => {
       val coeff = new CoefficientSummary
       coeff.accumulate(x)
       coeff
@@ -58,7 +58,7 @@ object BootstrapTraining {
     modelsAndMetrics.tail.foldLeft(firstState)({
       case (coeffs, (glm, _)) =>
         // Accumulate coefficients
-        coeffs.zip(glm.coefficients.toArray).map({
+        coeffs.zip(glm.coefficients.means.toArray).map({
           case (accCoeff, currCoeff) =>
             accCoeff.accumulate(currCoeff)
             accCoeff

@@ -15,7 +15,12 @@
 package com.linkedin.photon.ml.util
 
 import java.lang.{
-  Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
+  Boolean => JBoolean,
+  Double => JDouble,
+  Float => JFloat,
+  Number => JNumber,
+  Object => JObject,
+  String => JString}
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.io
@@ -25,19 +30,20 @@ import org.apache.avro.util.Utf8
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
+import scala.reflect.ClassTag
+
 /**
- * Some useful functions
- * @author xazhang
- * @author nkatariy
- */
+  * Some useful functions
+  */
 protected[ml] object Utils {
 
   /**
-   * Get the feature key from an Avro generic record as key = name + delimiter + term
-   * @param record The Avro generic record
-   * @param delimiter The delimiter used to combine/separate name and term.
-   * @return The feature name
-   */
+    * Get the feature key from an Avro generic record as key = name + delimiter + term
+    *
+    * @param record The Avro generic record
+    * @param delimiter The delimiter used to combine/separate name and term.
+    * @return The feature name
+    */
   def getFeatureKey(record: GenericRecord, nameKey: String, termKey: String, delimiter: String): String = {
     val name = getStringAvro(record, nameKey)
     val term = getStringAvro(record, termKey, isNullOK = true)
@@ -45,24 +51,24 @@ protected[ml] object Utils {
   }
 
   /**
-   * Get the feature key as a concatenation of name and term delimited by
-   * [[io.GLMSuite.DELIMITER]]
-   *
-   * @param name feature name
-   * @param term feature term
-   * @return feature key
-   */
+    * Get the feature key as a concatenation of name and term delimited by
+    * [[io.GLMSuite.DELIMITER]]
+    *
+    * @param name Feature name
+    * @param term Feature term
+    * @return Feature key
+    */
   def getFeatureKey(name: String, term: String, delimiter: String = GLMSuite.DELIMITER): String = {
     name + delimiter + term
   }
 
   /**
-   * Get the feature name from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods
-   *
-   * @param key feature key
-   * @param delimiter delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
-   * @return the feature name
-   */
+    * Get the feature name from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods
+    *
+    * @param key Feature key
+    * @param delimiter Delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
+    * @return The feature name
+    */
   def getFeatureNameFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
     val tokens = key.split(delimiter)
     if (tokens.size != 2) {
@@ -72,12 +78,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Get the feature term from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods
-   *
-   * @param key feature key
-   * @param delimiter delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
-   * @return the feature term
-   */
+    * Get the feature term from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods
+    *
+    * @param key Feature key
+    * @param delimiter Delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
+    * @return The feature term
+    */
   def getFeatureTermFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
     val tokens = key.split(delimiter)
     if (tokens.size != 2) {
@@ -87,13 +93,14 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the String typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @param isNullOK whether null is accepted. If set to true, then an empty string will be returned if the
-   *                 corresponding field of the key is null, otherwise, exception will be thrown.
-   * @return the String typed field
-   */
+    * Extract the String typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @param isNullOK Whether null is accepted. If set to true, then an empty string will be returned if the
+    *                 corresponding field of the key is null, otherwise, exception will be thrown.
+    * @return The String typed field
+    */
   def getStringAvro(record: GenericRecord, key: String, isNullOK: Boolean = false): String = {
     record.get(key) match {
       case id@(_: Utf8 | _: JString) => id.toString
@@ -104,11 +111,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the Double typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @return the Double typed field
-   */
+    * Extract the Double typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @return The Double typed field
+    */
   def getDoubleAvro(record: GenericRecord, key: String): Double = {
     record.get(key) match {
       case number: JNumber => number.doubleValue
@@ -119,8 +127,8 @@ protected[ml] object Utils {
   }
 
   /**
-   * Parse String to Double
-   */
+    * Parse String to Double
+    */
   private def atod(string: String): Double = {
     if (string.length() < 1) {
       throw new IllegalArgumentException("Can't convert empty string to double")
@@ -135,11 +143,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the Float typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @return the Float typed field
-   */
+    * Extract the Float typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @return The Float typed field
+    */
   def getFloatAvro(record: GenericRecord, key: String): Float = {
     record.get(key) match {
       case number: JNumber => number.floatValue
@@ -150,8 +159,8 @@ protected[ml] object Utils {
   }
 
   /**
-   * Parse String to Float
-   */
+    * Parse String to Float
+    */
   private def atof(string: String): Float = {
     if (string.length() < 1) {
       throw new IllegalArgumentException("Can't convert empty string to float")
@@ -166,11 +175,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the Int typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @return the Int typed field
-   */
+    * Extract the Int typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @return The Int typed field
+    */
   def getIntAvro(record: GenericRecord, key: String): Int = {
     record.get(key) match {
       case number: JNumber => number.intValue
@@ -181,11 +191,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the Long typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @return the Long typed field
-   */
+    * Extract the Long typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @return The Long typed field
+    */
   def getLongAvro(record: GenericRecord, key: String): Long = {
     record.get(key) match {
       case number: JNumber => number.longValue()
@@ -196,11 +207,12 @@ protected[ml] object Utils {
   }
 
   /**
-   * Extract the Boolean typed field with a given key from the Avro GenericRecord
-   * @param record the generic record
-   * @param key the key of the field
-   * @return the Boolean typed field
-   */
+    * Extract the Boolean typed field with a given key from the Avro GenericRecord
+    *
+    * @param record The generic record
+    * @param key The key of the field
+    * @return The Boolean typed field
+    */
   def getBooleanAvro(record: GenericRecord, key: String): Boolean = {
     record.get(key) match {
       case booleanValue: JBoolean => booleanValue.booleanValue
@@ -213,11 +225,11 @@ protected[ml] object Utils {
   }
 
   /**
-   * Delete a given directory on HDFS, it will be silent if the directory does not exist
-   *
-   * @param dir the directory path
-   * @param hadoopConf the Hadoop Configuration object
-   */
+    * Delete a given directory on HDFS, it will be silent if the directory does not exist
+    *
+    * @param dir The directory path
+    * @param hadoopConf The Hadoop Configuration object
+    */
   def deleteHDFSDir(dir: String, hadoopConf: Configuration): Unit = {
     val path = new Path(dir)
     val fs = path.getFileSystem(hadoopConf)
@@ -225,11 +237,11 @@ protected[ml] object Utils {
   }
 
   /**
-   * Create a HDFS directory, it will be silent if the directory already exists
-   *
-   * @param dir the directory path
-   * @param hadoopConf the Hadoop Configuration object
-   */
+    * Create a HDFS directory, it will be silent if the directory already exists
+    *
+    * @param dir The directory path
+    * @param hadoopConf The Hadoop Configuration object
+    */
   def createHDFSDir(dir: String, hadoopConf: Configuration): Unit = {
     val path = new Path(dir)
     val fs = path.getFileSystem(hadoopConf)
@@ -237,14 +249,14 @@ protected[ml] object Utils {
   }
 
   /**
-   * This function is copied from MLlib's MLUtils.log1pExp
-   * When `x` is positive and large, computing `math.log(1 + math.exp(x))` will lead to arithmetic
-   * overflow. This will happen when `x > 709.78` which is not a very large number.
-   * It can be addressed by rewriting the formula into `x + math.log1p(math.exp(-x))` when `x > 0`.
-   *
-   * @param x a floating-point value as input.
-   * @return the result of `math.log(1 + math.exp(x))`.
-   */
+    * This function is copied from MLlib's MLUtils.log1pExp
+    * When `x` is positive and large, computing `math.log(1 + math.exp(x))` will lead to arithmetic
+    * overflow. This will happen when `x > 709.78` which is not a very large number.
+    * It can be addressed by rewriting the formula into `x + math.log1p(math.exp(-x))` when `x > 0`.
+    *
+    * @param x A floating-point value as input.
+    * @return The result of `math.log(1 + math.exp(x))`.
+    */
   def log1pExp(x: Double): Double = {
     if (x > 0) {
       x + math.log1p(math.exp(-x))
@@ -254,12 +266,13 @@ protected[ml] object Utils {
   }
 
   /**
-   * Initialize the a zeros vector of the same type as the input prototype vector. I.e., if the prototype vector is
-   * a sparse vector, then the initialized zeros vector should also be initialized as a sparse vector, and if the
-   * prototype vector is a dense vector, then the initialized zeros vector should also be initialized as a dense vector.
-   * @param prototypeVector The input prototype vector
-   * @return The initialized vector
-   */
+    * Initialize the a zeros vector of the same type as the input prototype vector. I.e., if the prototype vector is
+    * a sparse vector, then the initialized zeros vector should also be initialized as a sparse vector, and if the
+    * prototype vector is a dense vector, then the initialized zeros vector should also be initialized as a dense vector.
+    *
+    * @param prototypeVector The input prototype vector
+    * @return The initialized vector
+    */
   def initializeZerosVectorOfSameType(prototypeVector: Vector[Double]): Vector[Double] = {
     prototypeVector match {
       case dense: DenseVector[Double] => DenseVector.zeros[Double](dense.length)
@@ -272,22 +285,22 @@ protected[ml] object Utils {
   }
 
   /**
-   * This is a slight modification of the default getOrElse method provided by scala.
-   *
-   * The method looks up the key in the given map from [[String]] to [[Any]]. If it finds something of the provided
-   * generic type [[T]], returns it. Otherwise, depending on the contents of the input [[Either]], an exception is
-   * thrown or a default value is returned.
-   *
-   * @param map input map to look up
-   * @param key the key to be looked up in the provided map
-   * @param elseBranch If one wants to fail on not finding a value of type [[T]] in the map, an
-   *                   [[IllegalArgumentException]] will be thrown with the error message provided. If one wants to
-   *                   continue without failure, a default value is expected that will be returned
-   * @tparam T Intended return type of the method
-   * @throws java.lang.IllegalArgumentException Exception thrown if a value of type [[T]] isn't found in the map and
-   *                                            the error message is non-empty
-   * @return A value of type [[T]] or throw an [[IllegalArgumentException]]
-   */
+    * This is a slight modification of the default getOrElse method provided by scala.
+    *
+    * The method looks up the key in the given map from [[String]] to [[Any]]. If it finds something of the provided
+    * generic type [[T]], returns it. Otherwise, depending on the contents of the input [[Either]], an exception is
+    * thrown or a default value is returned.
+    *
+    * @param map Input map to look up
+    * @param key The key to be looked up in the provided map
+    * @param elseBranch If one wants to fail on not finding a value of type [[T]] in the map, an
+    *                   [[IllegalArgumentException]] will be thrown with the error message provided. If one wants to
+    *                   continue without failure, a default value is expected that will be returned
+    * @tparam T Intended return type of the method
+    * @throws java.lang.IllegalArgumentException Exception thrown if a value of type [[T]] isn't found in the map and
+    *                                            the error message is non-empty
+    * @return A value of type [[T]] or throw an [[IllegalArgumentException]]
+    */
   @throws(classOf[IllegalArgumentException])
   def getKeyFromMapOrElse[T](map: Map[String, Any], key: String, elseBranch: Either[String, T]): T = {
     map.get(key) match {

@@ -14,23 +14,21 @@
  */
 package com.linkedin.photon.ml.data
 
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.constants.MathConst
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.constants.MathConst
-
-
 /**
- * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
- * offsets and residuals computed during each iteration. In the current implementation, the scores are of form
- * [[RDD]][([[Long]], [[Double]])], where the [[Long]] typed variable represents the unique ID of each data point,
- * while the [[Double]] typed variable represents the score.
- *
- * @param scores the scores consists of (unique Id, score) pairs as explained above.
- */
+  * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
+  * offsets and residuals computed during each iteration. In the current implementation, the scores are of form
+  * [[RDD]][([[Long]], [[Double]])], where the [[Long]] typed variable represents the unique ID of each data point,
+  * while the [[Double]] typed variable represents the score.
+  *
+  * @param scores the scores consists of (unique ID, score) pairs as explained above.
+  */
 protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
 
   override def sparkContext: SparkContext = scores.sparkContext
@@ -56,11 +54,11 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
-   * The plus operation for the key value scores
-   *
-   * @param that the other key value score instance
-   * @return a new key value score instance encapsulating the accumulated values
-   */
+    * The plus operation for the key value scores
+    *
+    * @param that The other key value score instance
+    * @return A new key value score instance encapsulating the accumulated values
+    */
   def +(that: KeyValueScore): KeyValueScore = {
     val addedScores =
       this.scores
@@ -70,11 +68,11 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
-   * The minus operation for the key value scores
-   *
-   * @param that the other key value score instance
-   * @return a new key value score instance encapsulating the subtracted values
-   */
+    * The minus operation for the key value scores
+    *
+    * @param that The other key value score instance
+    * @return A new key value score instance encapsulating the subtracted values
+    */
   def -(that: KeyValueScore): KeyValueScore = {
     val subtractedScores =
       this.scores

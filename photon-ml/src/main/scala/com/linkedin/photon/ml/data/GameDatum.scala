@@ -14,20 +14,20 @@
  */
 package com.linkedin.photon.ml.data
 
-import scala.collection.Map
-
 import breeze.linalg.Vector
 
+import scala.collection.Map
+
 /**
- * Representation of a single GAME data point
- *
- * @param response the response or label
- * @param offset the offset
- * @param weight the importance weight
- * @param featureShardContainer the sharded feature vectors
- * @param randomEffectIdToIndividualIdMap a map from random effect type id to actual individual id
- *   (e.g. "memberId" -> "1234" or "itemId" -> "abcd")
- */
+  * Representation of a single GAME data point
+  *
+  * @param response The response or label
+  * @param offset The offset
+  * @param weight The importance weight
+  * @param featureShardContainer The sharded feature vectors
+  * @param randomEffectIdToIndividualIdMap A map from random effect type id to actual individual id
+  *   (e.g. "memberId" -> "1234" or "itemId" -> "abcd")
+  */
 protected[ml] class GameDatum(
     val response: Double,
     val offset: Double,
@@ -36,11 +36,11 @@ protected[ml] class GameDatum(
     val randomEffectIdToIndividualIdMap: Map[String, String]) extends Serializable {
 
   /**
-   * Build a labeled point with sharded feature container
-   *
-   * @param featureShardId the feature shard id
-   * @return the new labeled point
-   */
+    * Build a labeled point with sharded feature container
+    *
+    * @param featureShardId The feature shard id
+    * @return The new labeled point
+    */
   def generateLabeledPointWithFeatureShardId(featureShardId: String): LabeledPoint = {
     LabeledPoint(response, featureShardContainer(featureShardId), offset, weight)
   }

@@ -14,21 +14,18 @@
  */
 package com.linkedin.photon.ml
 
-
 import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
 import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
-import com.linkedin.photon.ml.diagnostics.featureimportance.{
-  FeatureImportanceReport, ExpectedMagnitudeFeatureImportanceDiagnostic, VarianceFeatureImportanceDiagnostic}
+import com.linkedin.photon.ml.diagnostics.featureimportance.{ExpectedMagnitudeFeatureImportanceDiagnostic, FeatureImportanceReport, VarianceFeatureImportanceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.fitting.{FittingDiagnostic, FittingReport}
 import com.linkedin.photon.ml.diagnostics.hl.{HosmerLemeshowReport, HosmerLemeshowDiagnostic}
 import com.linkedin.photon.ml.diagnostics.independence.{PredictionErrorIndependenceReport,
 PredictionErrorIndependenceDiagnostic}
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{
-  DiagnosticReport, DiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.io.GLMSuite
@@ -52,29 +49,24 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.xml.PrettyPrinter
 
 /**
- * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main
- * components:
- * <ul>
- * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
- * internal data structure </li>
- * <li> Train, which trains the model given the user's specified configurations and parameters
- * (through [[Params]]) </li>
- * <li> Validate, which validates the trained model using the validating data set, if provided, and select the best
- * model given the validating results </li>
- * </ul>
- * More detailed documentation can be found either through the comments and notations in the source code, or at
- * [[https://github.com/linkedin/photon-ml#example-scripts]].
+  * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main
+  * components:
+  * <ul>
+  * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
+  * internal data structure </li>
+  * <li> Train, which trains the model given the user's specified configurations and parameters
+  * (through [[Params]]) </li>
+  * <li> Validate, which validates the trained model using the validating data set, if provided, and select the best
+  * model given the validating results </li>
+  * </ul>
+  * More detailed documentation can be found either through the comments and notations in the source code, or at
+  * [[https://github.com/linkedin/photon-ml#example-scripts]].
   *
   * @param params: The Photon-ML parameters [[Params]]], containing essential information
- *              for the underlying model training tasks.
- * @param sc: The Spark context.
- * @param logger: A temporary container to hold the driver's logs.
- * @author xazhang
- * @author yizhou
- * @author dpeng
- * @author bdrew
- * @author nkatariy
- */
+  *              for the underlying model training tasks.
+  * @param sc: The Spark context.
+  * @param logger: A temporary container to hold the driver's logs.
+  */
 protected[ml] class Driver(
   protected val params: Params,
   protected val sc: SparkContext,
@@ -154,7 +146,7 @@ protected[ml] class Driver(
       updateStage(DriverStage.DIAGNOSED)
     }
 
-    // Unpersist the training and validating data
+    // Unpersist the training and validation data
     trainingData.unpersist()
     if (params.validateDirOpt.isDefined) {
       validatingData.unpersist()
@@ -301,6 +293,7 @@ protected[ml] class Driver(
 
     lambdaModelTrackerTuplesOption.foreach { modelTrackersMap =>
       logger.info(s"optimization state tracker information:")
+
       modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
         logger.info(s"model with regularization weight $regularizationWeight: " +
                     s"${modelTracker.optimizationStateTrackerString}")
@@ -313,15 +306,21 @@ protected[ml] class Driver(
       // Calculate metrics for all (models, iterations)
       lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
         weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
-          val msg = modelTracker.models
-            .map(model => Evaluation.evaluate(model, validatingData))
+          val msg = modelTracker
+            .models
+            .map(Evaluation.evaluate(_, validatingData))
             .zipWithIndex
-            .map(x => {
+            .map { x =>
               val (m, idx) = x
-              m.keys.toSeq.sorted.map(y => {
-                f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}"
-              }).mkString("\n")
-            }).mkString("\n")
+
+              m.keys
+                .toSeq
+                .sorted
+                .map(y => f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}")
+                .mkString("\n")
+            }
+            .mkString("\n")
+
           logger.info(s"Model with lambda = $lambda:\n$msg")
         }
       }
@@ -329,11 +328,16 @@ protected[ml] class Driver(
       // Calculate metrics for all models
       lambdaModelTuples.foreach { case (lambda: Double, model: GeneralizedLinearModel) =>
         val metrics = Evaluation.evaluate(model, validatingData)
-        perModelMetrics += (lambda -> metrics)
-        val msg = metrics.keys.toSeq.sorted.map(y => {
-          f"    Metric: [$y] value: ${metrics.get(y).get}"
-        }).mkString("\n")
+        val msg = metrics
+          .keys
+          .toSeq
+          .sorted
+          .map(y => f"    Metric: [$y] value: ${metrics.get(y).get}")
+          .mkString("\n")
+
         logger.info(s"Model with lambda = $lambda:\n$msg")
+
+        perModelMetrics += (lambda -> metrics)
       }
     }
   }
@@ -528,12 +532,12 @@ protected[ml] class Driver(
 }
 
 /**
- * The container of the main function, where the input command line arguments are parsed into [[Params]] via
- * [[PhotonMLCmdLineParser]], which in turn is to be consumed by the main Driver class.
- *
- * An example of running Photon-ML through command line arguments can be found at
- * [[https://github.com/linkedin/photon-ml#example-scripts]].
- */
+  * The container of the main function, where the input command line arguments are parsed into [[Params]] via
+  * [[PhotonMLCmdLineParser]], which in turn is to be consumed by the main Driver class.
+  *
+  * An example of running Photon-ML through command line arguments can be found at
+  * [[https://github.com/linkedin/photon-ml#example-scripts]].
+  */
 object Driver {
   val DEFAULT_STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK
   val LEARNED_MODELS_TEXT = "learned-models-text"

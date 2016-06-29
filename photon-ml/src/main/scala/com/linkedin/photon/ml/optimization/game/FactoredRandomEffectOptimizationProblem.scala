@@ -14,29 +14,29 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.projector.ProjectionMatrix
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.SparkContext
-
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{RandomEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.projector.ProjectionMatrix
-import com.linkedin.photon.ml.supervised.TaskType._
 
 /**
- * An optimization problem for factored random effect datasets
- *
- * @param randomEffectOptimizationProblem the random effect optimization problem
- * @param latentFactorOptimizationProblem the latent factor optimization problem
- * @param numIterations number of iterations
- * @param latentSpaceDimension dimensionality of latent space
- * @author xazhang
- */
-protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFunction[LabeledPoint]](
-    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[F],
-    val latentFactorOptimizationProblem: OptimizationProblem[F],
+  * An optimization problem for factored random effect datasets
+  *
+  * @param randomEffectOptimizationProblem The random effect optimization problem
+  * @param latentFactorOptimizationProblem The latent factor optimization problem
+  * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
+  * @param latentSpaceDimension The dimensionality of the latent space
+  */
+protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
+  F <: DiffFunction[LabeledPoint]](
+    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F],
+    val latentFactorOptimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F],
     val numIterations: Int,
     val latentSpaceDimension: Int)
   extends RDDLike {
@@ -64,48 +64,69 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[F <: TwiceDiffFuncti
   }
 
   /**
-   * Compute the regularization term value
-   *
-   * @param coefficientsRDD the coefficients
-   * @param projectionMatrix the projection matrix
-   * @return regularization term value
-   */
-  def getRegularizationTermValue(
-      coefficientsRDD: RDD[(String, Coefficients)],
-      projectionMatrix: ProjectionMatrix): Double = {
+    * Create a default generalized linear model with 0-valued coefficients
+    *
+    * @param dimension The dimensionality of the model coefficients
+    * @return A model with zero coefficients
+    */
+  def initializeModel(dimension: Int): GLM = latentFactorOptimizationProblem.initializeZeroModel(dimension)
+
+  /**
+    * Compute the regularization term value
+    *
+    * @param modelsRDD The coefficients
+    * @param projectionMatrix The projection matrix
+    * @return Regularization term value
+    */
+  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)], projectionMatrix: ProjectionMatrix)
+    : Double = {
 
     val projectionMatrixAsCoefficients = new Coefficients(projectionMatrix.matrix.flatten(), variancesOption = None)
-    randomEffectOptimizationProblem.getRegularizationTermValue(coefficientsRDD) +
-        latentFactorOptimizationProblem.getRegularizationTermValue(projectionMatrixAsCoefficients)
+    val projectionMatrixModel = latentFactorOptimizationProblem
+      .initializeZeroModel(1)
+      .updateCoefficients(projectionMatrixAsCoefficients)
+
+    randomEffectOptimizationProblem.getRegularizationTermValue(modelsRDD) +
+        latentFactorOptimizationProblem.getRegularizationTermValue(projectionMatrixModel)
   }
 }
 
 object FactoredRandomEffectOptimizationProblem {
 
   /**
-   * Builds a factored random effect optimization problem
-   *
-   * @param taskType the task type
-   * @param randomEffectOptimizationConfiguration random effect configuration
-   * @param latentFactorOptimizationConfiguration latent factor configuration
-   * @param mfOptimizationConfiguration MF configuration
-   * @param randomEffectDataSet the dataset
-   * @return the new optimization problem
-   */
-  protected[ml] def buildFactoredRandomEffectOptimizationProblem(
-      taskType: TaskType,
+    * Builds a factored random effect optimization problem
+    *
+    * @param builder
+    * @param randomEffectOptimizationConfiguration Random effect configuration
+    * @param latentFactorOptimizationConfiguration Latent factor configuration
+    * @param mfOptimizationConfiguration MF configuration
+    * @param randomEffectDataSet The dataset
+    * @return The new optimization problem
+    */
+  protected[ml] def buildFactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
+    F <: DiffFunction[LabeledPoint]](
+      builder: (GLMOptimizationConfiguration, Int, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
       randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
       latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
       mfOptimizationConfiguration: MFOptimizationConfiguration,
-      randomEffectDataSet: RandomEffectDataSet)
-  : FactoredRandomEffectOptimizationProblem[TwiceDiffFunction[LabeledPoint]] = {
+      randomEffectDataSet: RandomEffectDataSet,
+      treeAggregateDepth: Int = 1,
+      isTrackingState: Boolean = false): FactoredRandomEffectOptimizationProblem[GLM, F] = {
 
-    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(taskType,
-      randomEffectOptimizationConfiguration, randomEffectDataSet)
-    val latentFactorOptimizationProblem = OptimizationProblem.buildOptimizationProblem(taskType,
-      latentFactorOptimizationConfiguration)
     val MFOptimizationConfiguration(numInnerIterations, latentSpaceDimension) = mfOptimizationConfiguration
-    new FactoredRandomEffectOptimizationProblem(randomEffectOptimizationProblem, latentFactorOptimizationProblem,
-      numInnerIterations, latentSpaceDimension)
+    val latentFactorOptimizationProblem = builder(
+      latentFactorOptimizationConfiguration,
+      treeAggregateDepth,
+      isTrackingState)
+    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(
+      builder,
+      randomEffectOptimizationConfiguration,
+      randomEffectDataSet)
+
+    new FactoredRandomEffectOptimizationProblem(
+      randomEffectOptimizationProblem,
+      latentFactorOptimizationProblem,
+      numInnerIterations,
+      latentSpaceDimension)
   }
 }

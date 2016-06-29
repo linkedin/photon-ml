@@ -14,25 +14,16 @@
  */
 package com.linkedin.photon.ml.data
 
+import com.linkedin.photon.ml.util.Summarizable
 
 /**
- * Interface for GAME dataset implementations
- *
- * @author xazhang
- */
-protected[ml] trait DataSet[D] {
-
+  * Interface for GAME dataset implementations
+  */
+protected[ml] trait DataSet[D] extends Summarizable {
   /**
-   * Add scores to data offsets
-   *
-   * @param keyScore the scores
-   */
+    * Add scores to data offsets
+    *
+    * @param keyScore The scores
+    */
   def addScoresToOffsets(keyScore: KeyValueScore): D
-
-  /**
-   * Build a summary string for the dataset
-   *
-   * @return string representation
-   */
-  def toSummaryString: String
 }

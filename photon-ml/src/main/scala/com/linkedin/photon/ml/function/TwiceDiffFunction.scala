@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-
 import com.linkedin.photon.ml.data.DataPoint
 import com.linkedin.photon.ml.optimization.{LBFGS, RegularizationContext}
 import com.linkedin.photon.ml.util.Utils
@@ -23,24 +22,23 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 /**
- * Trait for twice differentiable function. Similar to a differentiable function, the value/gradient/hessian of
- * a twice differentiable function depends two type of variables, the input datum/data and model coefficients
- * (e.g., the weighs of the features in a generalized linear model).
- * @tparam Datum Generic type of data point
- * @author xazhang
- */
-
+  * Trait for twice differentiable function. Similar to a differentiable function, the value/gradient/hessian of
+  * a twice differentiable function depends two type of variables, the input datum/data and model coefficients
+  * (e.g., the weighs of the features in a generalized linear model).
+  * @tparam Datum Generic type of data point
+  */
 trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
 
   /**
-   * First calculate the Hessian of the function given one data point and model coefficients, then multiply it with a
-   * given vector
-   * @param datum The given datum at which point to compute the hessian multiplied by a given vector
-   * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
-   * @return The computed Hessian multiplied by the given multiplyVector
-   */
+    * First calculate the Hessian of the function given one data point and model coefficients, then multiply it with a
+    * given vector
+    *
+    * @param datum The given datum at which point to compute the hessian multiplied by a given vector
+    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
+    * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+    *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+    * @return The computed Hessian multiplied by the given multiplyVector
+    */
   protected[ml] def hessianVectorAt(
       datum: Datum,
       coefficients: Vector[Double],
@@ -52,14 +50,15 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * First calculate the Hessian of the function under given one data point and model coefficients, then multiply it
-   * with a given multiplyVector and add to cumGradient in place.
-   * @param datum The given datum at which point to compute the hessian multiplied by a given vector
-   * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
-   * @param cumHessianVector The cumulative sum of the previously computed Hessian multiplyVector
-   */
+    * First calculate the Hessian of the function under given one data point and model coefficients, then multiply it
+    * with a given multiplyVector and add to cumGradient in place.
+    *
+    * @param datum The given datum at which point to compute the hessian multiplied by a given vector
+    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
+    * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+    *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+    * @param cumHessianVector The cumulative sum of the previously computed Hessian multiplyVector
+    */
   protected[ml] def hessianVectorAt(
     datum: Datum,
     coefficients: Vector[Double],
@@ -67,15 +66,16 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
     cumHessianVector: Vector[Double]): Unit
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
-   * multiplyVector.
-   * @param data The given data at which point to compute the hessian multiplied by a given vector
-   * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a given
-   *                                vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
-   * @return The computed Hessian multiplied by the given multiplyVector
-   */
+    * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
+    * multiplyVector.
+    *
+    * @param data The given data at which point to compute the hessian multiplied by a given vector
+    * @param broadcastedCoefficients The broadcasted model coefficients used to compute the hessian multiplied by a
+    *                                given vector
+    * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+    *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+    * @return The computed Hessian multiplied by the given multiplyVector
+    */
   protected[ml] def hessianVector(
       data: RDD[Datum],
       broadcastedCoefficients: Broadcast[Vector[Double]],
@@ -93,14 +93,15 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
-   * multiplyVector.
-   * @param data The given data at which point to compute the hessian multiplied by a given vector
-   * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
-   * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
-   * @return The computed Hessian multiplied by the given multiplyVector
-   */
+    * Compute the Hessian of the function under the given data and coefficients, then multiply it with a given
+    * multiplyVector.
+    *
+    * @param data The given data at which point to compute the hessian multiplied by a given vector
+    * @param coefficients The given model coefficients used to compute the hessian multiplied by a given vector
+    * @param multiplyVector The given multiplyVector to be multiplied with the Hessian. For example, in conjugate
+    *                       gradient method this multiplyVector would correspond to the gradient multiplyVector.
+    * @return The computed Hessian multiplied by the given multiplyVector
+    */
   protected[ml] def hessianVector(
       data: Iterable[Datum],
       coefficients: Vector[Double],
@@ -117,11 +118,12 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * Calculate and return the diagonal of the Hessian matrix with a given datum and model coefficients
-   * @param datum The given datum at which point to compute the diagonal of the Hessian matrix
-   * @param coefficients The given model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
-   */
+    * Calculate and return the diagonal of the Hessian matrix with a given datum and model coefficients
+    *
+    * @param datum The given datum at which point to compute the diagonal of the Hessian matrix
+    * @param coefficients The given model coefficients used to compute the diagonal of the Hessian matrix
+    * @return The computed diagonal of the Hessian matrix
+    */
   protected[ml] def hessianDiagonalAt(datum: Datum, coefficients: Vector[Double]): Vector[Double] = {
     val cumHessianDiagonal = Utils.initializeZerosVectorOfSameType(coefficients)
     hessianDiagonalAt(datum, coefficients, cumHessianDiagonal)
@@ -129,21 +131,23 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * First calculate the diagonal of the Hessian matrix with a given datum and model coefficients,
-   * then add to cumHessianDiagonal in place.
-   * @param datum The given datum at which point to compute the diagonal of the Hessian matrix
-   * @param coefficients The given model coefficients used to compute the diagonal of the Hessian matrix
-   * @param cumHessianDiagonal The cumulative sum of the previously computed diagonal of the Hessian matrix
-   */
+    * First calculate the diagonal of the Hessian matrix with a given datum and model coefficients,
+    * then add to cumHessianDiagonal in place.
+    *
+    * @param datum The given datum at which point to compute the diagonal of the Hessian matrix
+    * @param coefficients The given model coefficients used to compute the diagonal of the Hessian matrix
+    * @param cumHessianDiagonal The cumulative sum of the previously computed diagonal of the Hessian matrix
+    */
   protected[ml] def hessianDiagonalAt(datum: Datum, coefficients: Vector[Double], cumHessianDiagonal: Vector[Double])
   : Unit
 
   /**
-   * Compute the diagonal of Hessian of the function with the given data set and coefficients
-   * @param data The given data set with which to compute the diagonal of the Hessian matrix
-   * @param coefficientsBroadcast The broadcasted model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
-   */
+    * Compute the diagonal of Hessian of the function with the given data set and coefficients
+    *
+    * @param data The given data set with which to compute the diagonal of the Hessian matrix
+    * @param coefficientsBroadcast The broadcasted model coefficients used to compute the diagonal of the Hessian matrix
+    * @return The computed diagonal of the Hessian matrix
+    */
   protected[ml] def hessianDiagonal(data: RDD[Datum], coefficientsBroadcast: Broadcast[Vector[Double]])
   : Vector[Double] = {
 
@@ -158,11 +162,12 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
   }
 
   /**
-   * Compute the diagonal of Hessian of the function with the given data set and coefficients
-   * @param data The given data set with which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
-   */
+    * Compute the diagonal of Hessian of the function with the given data set and coefficients
+    *
+    * @param data The given data set with which to compute the diagonal of the Hessian matrix
+    * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+    * @return The computed diagonal of the Hessian matrix
+    */
   protected[ml] def hessianDiagonal(data: Iterable[Datum], coefficients: Vector[Double]): Vector[Double] = {
     val initialCumHessianDiagonal = Utils.initializeZerosVectorOfSameType(coefficients)
     data.aggregate(initialCumHessianDiagonal)(
@@ -178,13 +183,14 @@ trait TwiceDiffFunction[Datum <: DataPoint] extends DiffFunction[Datum] {
 
 object TwiceDiffFunction {
   /**
-   * An anonymous class for the twice differentiable function with L2 regularization
-   * @param func The twice differential function.
-   * @param regWeight The weight for the regularization term.
-   * @tparam Datum The generic type of the datum
-   * @return An anonymous class for the twice differentiable function with L2 regularization
-   */
-  private[ml] def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) =
+    * An anonymous class for the twice differentiable function with L2 regularization
+    * @param func The twice differential function.
+    *
+    * @param regWeight The weight for the regularization term.
+    * @tparam Datum The generic type of the datum
+    * @return An anonymous class for the twice differentiable function with L2 regularization
+    */
+  private def withL2Regularization[Datum <: DataPoint](func: TwiceDiffFunction[Datum], regWeight: Double) =
       new TwiceDiffFunction[Datum] {
 
     override protected[ml] def calculateAt(
@@ -277,14 +283,16 @@ object TwiceDiffFunction {
   }
 
   /**
-   * An anonymous class for the twice differentiable function with L1 regularization. The only effect of this binding is
-   * to label the function with the L1 regularization weight, with all function values, gradients, Hessian untouched.
-   * @param func The twice differential function.
-   * @param regWeight The weight for the regularization term.
-   * @tparam Datum The generic type of the datum
-   * @return An anonymous class for the twice differentiable function with L1 regularization
-   */
-  private[ml] def withL1Regularization[Datum <: DataPoint](
+    * An anonymous class for the twice differentiable function with L1 regularization. The only effect of this binding
+    * is to label the function with the L1 regularization weight, with all function values, gradients, Hessian
+    * untouched.
+    *
+    * @param func The twice differential function.
+    * @param regWeight The weight for the regularization term.
+    * @tparam Datum The generic type of the datum
+    * @return An anonymous class for the twice differentiable function with L1 regularization
+    */
+  private def withL1Regularization[Datum <: DataPoint](
       func: TwiceDiffFunction[Datum],
       regWeight: Double): TwiceDiffFunction[Datum]
     with L1RegularizationTerm = new TwiceDiffFunction[Datum] with L1RegularizationTerm {
@@ -355,17 +363,18 @@ object TwiceDiffFunction {
   }
 
   /**
-   * Add regularization to the twice differentiable function. Under the hood, the L2 regularization part is added to the
-   * loss function values/gradient/Hessian, but the L1 regularization has only a regularization weight to be further
-   * used by the optimizer (especially
-   * [[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.OWLQN breeze.optimize.OWLQN]] used in
-   * [[LBFGS LBFGS]]).
-   * @param func The differentiable function
-   * @param regularizationContext The regularization context
-   * @param regWeight The regularization weight
-   * @tparam Datum Datum type
-   * @return The twice differentiable function with necessary decorations
-   */
+    * Add regularization to the twice differentiable function. Under the hood, the L2 regularization part is added to
+    * the loss function values/gradient/Hessian, but the L1 regularization has only a regularization weight to be
+    * further used by the optimizer (especially
+    * [[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.OWLQN breeze.optimize.OWLQN]] used in
+    * [[LBFGS LBFGS]]).
+    *
+    * @param func The differentiable function
+    * @param regularizationContext The regularization context
+    * @param regWeight The regularization weight
+    * @tparam Datum Datum type
+    * @return The twice differentiable function with necessary decorations
+    */
   def withRegularization[Datum <: DataPoint](
       func: TwiceDiffFunction[Datum],
       regularizationContext: RegularizationContext,

@@ -16,22 +16,19 @@ package com.linkedin.photon.ml.avro.data
 
 import java.util.{List => JList}
 
-import scala.collection.{Map, Set}
-import scala.collection.JavaConverters._
-
 import breeze.linalg.Vector
-import org.apache.avro.generic.GenericRecord
-import org.apache.spark.rdd.RDD
-
 import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroUtils}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.util.{Utils, VectorUtils}
+import org.apache.avro.generic.GenericRecord
+import org.apache.spark.rdd.RDD
 
+import scala.collection.JavaConverters._
+import scala.collection.{Map, Set}
 
 /**
- * A collection of utility functions on Avro formatted data
- * @author xazhang
- */
+  * A collection of utility functions on Avro formatted data
+  */
 object DataProcessingUtils {
 
   private def getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
@@ -115,16 +112,17 @@ object DataProcessingUtils {
     } else {
       0.0
     }
-
     val weight = if (record.get(AvroFieldNames.WEIGHT) != null) {
       Utils.getDoubleAvro(record, AvroFieldNames.WEIGHT)
     } else {
       1.0
     }
+    val ids = randomEffectIdSet
+      .map { randomEffectId =>
+        (randomEffectId, Utils.getStringAvro(record, randomEffectId))
+      }
+      .toMap
 
-    val ids = randomEffectIdSet.map { randomEffectId =>
-      (randomEffectId, Utils.getStringAvro(record, randomEffectId))
-    }.toMap
     new GameDatum(response, offset, weight, featureShardContainer, ids)
   }
 

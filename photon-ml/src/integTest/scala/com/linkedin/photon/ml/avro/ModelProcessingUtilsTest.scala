@@ -27,6 +27,8 @@ import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model._
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
@@ -44,14 +46,19 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val featureShardIdToFeatureNameAndTermToIndexMapMap = Map(featureShardId -> featureNameAndTermToIndexMap)
 
     // Fixed effect model
-    val coefficientsBC = sc.broadcast(coefficients)
+    val glm: GeneralizedLinearModel = new LogisticRegressionModel(coefficients)
+
+    val coefficientsBC = sc.broadcast(glm)
     val fixedEffectModel = new FixedEffectModel(coefficientsBC, featureShardId)
 
     // Random effect model
     val numCoefficients = 5
     val randomEffectId = "randomEffectId"
-    val coefficientsRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, coefficients)))
-    val randomEffectModel = new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
+    val coefficientsRE = Seq.tabulate(numCoefficients)(i => (i.toString, coefficients))
+    val glmRE: GeneralizedLinearModel = new LogisticRegressionModel(coefficients)
+
+    val glmReRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glmRE)))
+    val randomEffectModel = new RandomEffectModel(glmReRDD, randomEffectId, featureShardId)
 
     // GAME model
     val fixedEffectModelName = "fixed"
@@ -79,8 +86,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
           s"found: $numRandomEffectModelFiles")
 
     // Check if the models loaded correctly and they are the same as the models saved previously
-    val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(featureShardIdToFeatureNameAndTermToIndexMapMap,
-      outputDir, sc)
+    val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+      featureShardIdToFeatureNameAndTermToIndexMapMap, outputDir, sc)
     assertEquals(loadedGameModel, gameModel)
   }
 

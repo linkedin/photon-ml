@@ -15,8 +15,10 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
+
 import com.linkedin.photon.ml.ModelTraining
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
 import com.linkedin.photon.ml.stat.BasicStatistics
 import com.linkedin.photon.ml.supervised.TaskType
@@ -61,7 +63,7 @@ class NormalizationIntegTest extends SparkTestUtils {
     Random.setSeed(seed)
     // The size of the vector is _dimension + 1 due to the intercept
     val coef = (for (i <- 0 to _dimension) yield Random.nextGaussian()).toArray
-    new LogisticRegressionModel(DenseVector(coef))
+    new LogisticRegressionModel(Coefficients(DenseVector(coef)))
   }
 
   /**

@@ -27,9 +27,9 @@ import org.testng.annotations.{Test, DataProvider}
 
 
 /**
- * Verify that core optimizers do reasonable things on small test problems.
- * @author bdrew
- */
+  * Verify that core optimizers do reasonable things on small test problems.
+  * @author bdrew
+  */
 class OptimizerIntegTest extends SparkTestUtils with Logging {
   @DataProvider(parallel = true)
   def optimizeEasyTestFunction(): Array[Array[Object]] = {
@@ -146,19 +146,19 @@ object OptimizerIntegTest extends Logging {
 
     history.getTrackedStates.foreach { state =>
       assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
-          "], previous=[" + lastValue + "])")
+        "], previous=[" + lastValue + "])")
       lastValue = state.value
     }
   }
 
   /**
-   * Common checks for the easy test function:
-   * <ul>
-   * <li>Did we get the expected parameters?</li>
-   * <li>Did we get the expected objective?</li>
-   * <li>Did we see monotonic convergence?</li>
-   * </ul>
-   */
+    * Common checks for the easy test function:
+    * <ul>
+    * <li>Did we get the expected parameters?</li>
+    * <li>Did we get the expected objective?</li>
+    * <li>Did we see monotonic convergence?</li>
+    * </ul>
+    */
   private def easyOptimizationStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
 
     logInfo(s"Optimizer state: $optimizerStatesTracker")
@@ -176,17 +176,17 @@ object OptimizerIntegTest extends Logging {
     if (optimizerStatesTracker.convergenceReason == Some(FunctionValuesConverged)) {
       // Expected answer in terms of optimal objective
       assertEquals(optimizedObj, 0, OBJECTIVE_TOLERANCE, "Optimized objective should be very close to zero (eps=[" +
-          OBJECTIVE_TOLERANCE + "])")
+        OBJECTIVE_TOLERANCE + "])")
     } else if (optimizerStatesTracker.convergenceReason == Some(GradientConverged)) {
       // Expected answer in terms of optimal gradient
       assertEquals(optimizedGradientNorm, 0, GRADIENT_TOLERANCE, "Optimized gradient norm should be very close to " +
-          "zero (eps=[" + GRADIENT_TOLERANCE + "])")
+        "zero (eps=[" + GRADIENT_TOLERANCE + "])")
     }
 
     // Expected answer in terms of optimal parameters
     optimizedParam.foreachPair { (idx, x) =>
       assertEquals(x, TestObjective.CENTROID, PARAMETER_TOLERANCE, "Optimized parameter for index [" + idx +
-          "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
+        "] should be close to TestObjective.CENTROID (eps=[" + PARAMETER_TOLERANCE + "]")
     }
 
     // Monotonic convergence

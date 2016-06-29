@@ -15,33 +15,41 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
 /**
- * Class for the classification model trained using Poisson Regression
- *
- * @param coefficients Weights estimated for every feature
- */
-class PoissonRegressionModel(override val coefficients: Vector[Double])
+  * Class for the classification model trained using Poisson Regression
+  *
+  * @param coefficients Weights estimated for every feature
+  */
+class PoissonRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
 
   /**
-   * Compute the mean of the Poisson regression model
-   *
-   * @param coefficients the estimated feature coefficients
-   * @param features the input data point's feature
-   * @param offset the input data point's offset
-   * @return
-   */
-  override protected[ml] def computeMean(coefficients: Vector[Double], features: Vector[Double], offset: Double)
-    : Double = math.exp(coefficients.dot(features) + offset)
+    * Compute the mean of the Poisson regression model
+    *
+    * @param features The input data point's feature
+    * @param offset The input data point's offset
+    * @return The mean for the passed features
+    */
+  override protected[ml] def computeMean(features: Vector[Double], offset: Double)
+    : Double = math.exp(coefficients.computeScore(features) + offset)
+
+  override def updateCoefficients(updatedCoefficients: Coefficients): PoissonRegressionModel =
+    new PoissonRegressionModel(updatedCoefficients)
+
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[PoissonRegressionModel]
+
+  override def toSummaryString: String =
+    s"Poisson Regression Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)
 
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
-    computeMeanFunctionsWithOffsets(featuresWithOffsets)
+    GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
 }

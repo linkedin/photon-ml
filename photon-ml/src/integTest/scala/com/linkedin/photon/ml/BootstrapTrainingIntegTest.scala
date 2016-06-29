@@ -16,6 +16,7 @@ package com.linkedin.photon.ml
 
 import breeze.linalg.DenseVector
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.CoefficientSummary
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
@@ -40,8 +41,9 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
 
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
       lambdas.map(l => {
-          (l, new LinearRegressionModel(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient))
-        })
+        (l, new LinearRegressionModel(
+          Coefficients(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient)))
+      })
         .toList
     }
   }

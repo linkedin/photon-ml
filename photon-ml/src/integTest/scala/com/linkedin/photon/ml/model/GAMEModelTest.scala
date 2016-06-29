@@ -15,10 +15,13 @@
 package com.linkedin.photon.ml.model
 
 import org.apache.spark.SparkContext
+import org.mockito.Mockito._
 import org.testng.annotations.Test
 import org.testng.Assert._
 
 import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.optimization.LogisticRegressionOptimizationProblem
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 class GAMEModelTest extends SparkTestUtils {
@@ -112,11 +115,11 @@ class GAMEModelTest extends SparkTestUtils {
     val randomEffectModel = getRandomEffectModel(sc, 1)
     val modelsMap = Map(randomEffectModelName -> randomEffectModel)
     val gameModel = new GAMEModel(modelsMap)
-    assertFalse(randomEffectModel.coefficientsRDD.getStorageLevel.isValid)
+    assertFalse(randomEffectModel.modelsRDD.getStorageLevel.isValid)
     gameModel.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    assertEquals(randomEffectModel.coefficientsRDD.getStorageLevel, StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    assertEquals(randomEffectModel.modelsRDD.getStorageLevel, StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     gameModel.unpersist
-    assertFalse(randomEffectModel.coefficientsRDD.getStorageLevel.isValid)
+    assertFalse(randomEffectModel.modelsRDD.getStorageLevel.isValid)
   }
 
   @Test
@@ -169,13 +172,13 @@ object GAMEModelTest {
     */
   protected def getFixedEffectModel(sc: SparkContext, coefficientDimension: Int): FixedEffectModel = {
     // Coefficients parameter
-    val coefficients = Coefficients.initializeZeroCoefficients(coefficientDimension)
+    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
 
     // Meta data
     val featureShardId = "featureShardId"
 
     // Fixed effect model
-    new FixedEffectModel(sc.broadcast(coefficients), featureShardId)
+    new FixedEffectModel(sc.broadcast(glm), featureShardId)
   }
 
   /**
@@ -187,7 +190,7 @@ object GAMEModelTest {
     */
   protected def getRandomEffectModel(sc: SparkContext, coefficientDimension: Int): RandomEffectModel = {
     // Coefficients parameter
-    val coefficients = Coefficients.initializeZeroCoefficients(coefficientDimension)
+    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
 
     // Meta data
     val featureShardId = "featureShardId"
@@ -195,7 +198,7 @@ object GAMEModelTest {
 
     // Random effect model
     val numCoefficients = 5
-    val coefficientsRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, coefficients)))
-    new RandomEffectModel(coefficientsRDD, randomEffectId, featureShardId)
+    val modelsRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glm)))
+    new RandomEffectModel(modelsRDD, randomEffectId, featureShardId)
   }
 }

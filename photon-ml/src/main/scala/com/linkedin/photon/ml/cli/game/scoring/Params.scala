@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
-import scala.collection.{Map, Set}
-
 import scopt.OptionParser
 
 /**

@@ -14,13 +14,12 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import com.linkedin.photon.ml.optimization.{RegularizationType, OptimizerType}
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 /**
  * Some simple tests for GLMOptimizationConfiguration
- * @author nkatariy
  */
 class GLMOptimizationConfigurationTest {
 
@@ -57,11 +56,14 @@ class GLMOptimizationConfigurationTest {
   @Test(dataProvider = "validStringConfigs")
   def testParseAndBuildWithValidString(configStr: String): Unit = {
     val config = GLMOptimizationConfiguration.parseAndBuildFromString(configStr)
-    assertEquals(config.maxNumberIterations, 10)
-    assertEquals(config.convergenceTolerance, 1e-2)
+    val optimizerConfig = config.optimizerConfig
+    val regularizationContext = config.regularizationContext
+
+    assertEquals(optimizerConfig.maximumIterations, 10)
+    assertEquals(optimizerConfig.tolerance, 1e-2)
+    assertEquals(optimizerConfig.optimizerType, OptimizerType.TRON)
+    assertEquals(regularizationContext.regularizationType, RegularizationType.L2)
     assertEquals(config.regularizationWeight, 1.0)
     assertEquals(config.downSamplingRate, 0.3)
-    assertEquals(config.optimizerType, OptimizerType.TRON)
-    assertEquals(config.regularizationType, RegularizationType.L2)
   }
 }
