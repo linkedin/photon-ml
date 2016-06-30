@@ -52,6 +52,9 @@ object OptionNames {
 
   val DELETE_OUTPUT_DIRS_IF_EXIST = "delete-output-dirs-if-exist"
 
+  val FEATURE_DIMENSION = "feature-dimension"
+  val INPUT_FILE_FORMAT = "input-file-format"
+
   @deprecated
   val TRAINING_DIAGNOSTICS = "training-diagnostics"
 }

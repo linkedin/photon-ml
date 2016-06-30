@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
-import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType}
+import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.TaskType
@@ -224,6 +224,12 @@ object PhotonMLCmdLineParser {
         .text(s"Delete the output directories (including the model and summarization output directories) if exist." +
             s"Default: ${defaultParams.deleteOutputDirsIfExist}")
         .foreach(x => params.deleteOutputDirsIfExist = x)
+      opt[String](INPUT_FILE_FORMAT)
+        .text("Indicating the input data format for PhotonML")
+        .foreach(x => params.inputFormatType = InputFormatType.withName(x.toUpperCase()))
+      opt[Int](FEATURE_DIMENSION)
+        .text("A preliminary indicator of how many features the input data contains (just an upper bound, not including intercept). Only used by LIBSVM foramt and is to be removed soon.")
+        .foreach(x => params.featureDimension = x)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true
     }

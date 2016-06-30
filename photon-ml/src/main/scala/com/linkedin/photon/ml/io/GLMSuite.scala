@@ -14,25 +14,23 @@
  */
 package com.linkedin.photon.ml.io
 
-import java.io.IOException
-import java.lang.{Double => JDouble}
-import java.util.{List => JList, Map => JMap}
 
 import breeze.linalg.SparseVector
 
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.avro.{AvroIOUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.io.FieldNamesType._
+import com.linkedin.photon.ml.avro.{TrainingExampleFieldNames, ResponsePredictionFieldNames, AvroIOUtils}
 import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
+
 import org.apache.avro.generic.GenericRecord
-import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
+import java.io.IOException
+import java.util.{List => JList}
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
 import scala.util.parsing.json.JSON
@@ -79,6 +77,8 @@ class GLMSuite(
   @transient var selectedFeatures: Set[String] = Set.empty[String]
 
   private var _indexMapLoader: IndexMapLoader = null
+
+  def indexMapLoader(): IndexMapLoader = _indexMapLoader
 
   /**
     * Read the [[data.LabeledPoint]] from a directory of Avro files
@@ -353,143 +353,13 @@ class GLMSuite(
   }
 
   /**
-    * Write a map of learned [[GeneralizedLinearModel]] to text files
-    *
-    * @param sc The Spark context
-    * @param models The map of (Model Id -> [[GeneralizedLinearModel]])
-    * @param modelDir The directory for the output text files
-    */
-  def writeModelsInText(
-      sc: SparkContext,
-      models: Iterable[(Double, GeneralizedLinearModel)],
-      modelDir: String): Unit = {
-
-    println("Models SIZE: " + models.size)
-    models.foreach{ case (lambda, m) => println(lambda + ": " + m.toString)}
-
-    sc.parallelize(models.toSeq, models.size)
-      .mapPartitions({ iter =>
-        val indexMap = _indexMapLoader.indexMapForRDD()
-        val modelStrs = new mutable.ArrayBuffer[String]()
-
-        while (iter.hasNext) {
-          val t = iter.next()
-          val regWeight = t._1
-          val model = t._2
-          val builder = new mutable.ArrayBuffer[String]()
-
-          model.coefficients
-            .means
-            .toArray
-            .zipWithIndex
-            .sortWith((p1, p2) => p1._1 > p2._1)
-            .foreach { case (value, index) =>
-              val nameAndTerm = indexMap.getFeatureName(index)
-              nameAndTerm.foreach { s =>
-                val tokens = s.split(GLMSuite.DELIMITER)
-                if (tokens.length == 1) {
-                  builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
-                } else if (tokens.length == 2) {
-                  builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
-                } else {
-                  throw new IOException(s"unknown name and terms: $s")
-                }
-              }
-            }
-
-          val s = builder.mkString("\n")
-          modelStrs += s
-        }
-
-        modelStrs.iterator
-      })
-      .saveAsTextFile(modelDir)
-  }
-
-  /**
-    * Write basic feature statistics in Avro format
-    *
-    * @param sc Spark context
-    * @param summary The summary of the features
-    * @param outputDir Output directory
-    */
-  def writeBasicStatistics(sc: SparkContext, summary: BasicStatisticalSummary, outputDir: String): Unit = {
-    val keyToIdMap = featureKeyToIdMap
-
-    def featureStringToTuple(str: String): (String, String) = {
-      val splits = str.split(GLMSuite.DELIMITER)
-      if (splits.length == 2) {
-        (splits(0), splits(1))
-      } else {
-        (splits(0), "")
-      }
-    }
-
-    val featureTuples = keyToIdMap
-      .toArray
-      .sortBy[Int] { case (key, id) => id }
-      .map { case (key, id) => featureStringToTuple(key) }
-
-    val summaryList = List(
-      summary.max.toArray,
-      summary.min.toArray,
-      summary.mean.toArray,
-      summary.normL1.toArray,
-      summary.normL2.toArray,
-      summary.numNonzeros.toArray,
-      summary.variance.toArray)
-      .transpose
-      .map {
-        case List(max, min, mean, normL1, normL2, numNonZeros, variance) =>
-          new BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
-      }
-
-    val outputAvro = featureTuples
-      .zip(summaryList)
-      .map {
-        case ((name, term), items) =>
-          val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(Map(
-            "max" -> items.max,
-            "min" -> items.min,
-            "mean" -> items.mean,
-            "normL1" -> items.normL1,
-            "normL2" -> items.normL2,
-            "numNonzeros" -> items.numNonzeros,
-            "variance" -> items.variance))
-
-          FeatureSummarizationResultAvro.newBuilder()
-            .setFeatureName(name)
-            .setFeatureTerm(term)
-            .setMetrics(jMap)
-            .build()
-      }
-    val outputFile = new Path(outputDir, GLMSuite.DEFAULT_AVRO_FILE_NAME).toString
-
-    AvroIOUtils.saveAsSingleAvro(
-      sc,
-      outputAvro,
-      outputFile,
-      FeatureSummarizationResultAvro.getClassSchema.toString,
-      forceOverwrite = true)
-  }
-
-  /**
-    * Get the intercept index. This is used especially for normalization because the intercept should be treated
-    * differently.
-    *
-    * @return The option for the intercept index value
-    */
+   * Get the intercept index. This is used especially for normalization because the intercept should be treated
+   * differently.
+   *
+   * @return The option for the intercept index value
+   */
   def getInterceptId: Option[Int] = featureKeyToIdMap.get(GLMSuite.INTERCEPT_NAME_TERM)
 }
-
-private case class BasicSummaryItems(
-    max: Double,
-    min: Double,
-    mean: Double,
-    normL1: Double,
-    normL2: Double,
-    numNonzeros: Double,
-    variance: Double)
 
 protected[ml] object GLMSuite {
   /**

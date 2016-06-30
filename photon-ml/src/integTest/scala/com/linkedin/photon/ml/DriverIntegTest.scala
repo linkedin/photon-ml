@@ -19,7 +19,7 @@ import org.apache.hadoop.fs.Path
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
-import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
+import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite, InputFormatType}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -30,12 +30,12 @@ import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapTest}
+import com.linkedin.photon.ml.util.{PalDBIndexMapTest, Utils}
 import org.apache.commons.io.FileUtils
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
-
 import java.io.File
+
 import scala.collection.mutable
 import scala.io.Source
 
@@ -72,6 +72,83 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     // No best model output dir
     assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
+  }
+
+  @Test
+  def testLibSVMRun(): Unit = sparkTest("testLibSVMRun") {
+    val outputDir = getTmpDir + "/testLibSVMRun"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir, fileSuffix = ".txt")
+
+    args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+    args += "LBFGS"
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
+
+    args += CommonTestUtils.fromOptionNameToArg(FEATURE_DIMENSION)
+    args += "13"
+    args += CommonTestUtils.fromOptionNameToArg(INPUT_FILE_FORMAT)
+    args += InputFormatType.LIBSVM.toString()
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = false,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
+
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
+    assertEquals(models.length, defaultParams.regularizationWeights.length)
+    // Verify lambdas
+    assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
+
+    // No best model output dir
+    assertFalse(new File(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString).exists())
+  }
+
+  @Test
+  def testLibSVMRunWithValidation(): Unit = sparkTest("testLibSVMRunWithValidation") {
+    val outputDir = getTmpDir + "/testLibSVMRunWithValidation"
+    val args = mutable.ArrayBuffer[String]()
+    appendCommonJobArgs(args, outputDir, isValidating = true, fileSuffix = ".txt")
+    args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
+    args += outputDir + "/summary"
+
+    args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
+    args += NormalizationType.SCALE_WITH_STANDARD_DEVIATION.toString
+    args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+    args += LIGHT_MAX_NUM_ITERATIONS.toString
+
+    args += CommonTestUtils.fromOptionNameToArg(FEATURE_DIMENSION)
+    args += "13"
+    args += CommonTestUtils.fromOptionNameToArg(INPUT_FILE_FORMAT)
+    args += InputFormatType.LIBSVM.toString()
+
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED),
+      expectedNumFeatures = EXPECTED_NUM_FEATURES,
+      expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.NONE)
+
+    val models = loadAllModels(new Path(outputDir, Driver.LEARNED_MODELS_TEXT).toString)
+    assertEquals(models.length, defaultParams.regularizationWeights.length)
+    // Verify lambdas
+    assertEquals(models.map(_._1), defaultParams.regularizationWeights.toArray)
+
+    // The selected best model is supposed to be of lambda 10.0 with features scaling with standard deviation
+    val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
+    assertEquals(bestModel.length, 1)
+    // Verify lambda
+    assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -866,13 +943,17 @@ object DriverIntegTest {
 
   val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
 
-  def appendCommonJobArgs(args: mutable.ArrayBuffer[String], outputDir: String, isValidating: Boolean = false): Unit = {
+  def appendCommonJobArgs(
+      args: mutable.ArrayBuffer[String],
+      outputDir: String,
+      isValidating: Boolean = false,
+      fileSuffix: String = ".avro"): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
-    args += TEST_DIR + "/input/heart.avro"
+    args += s"${TEST_DIR}/input/heart${fileSuffix}"
 
     if (isValidating) {
       args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
-      args += TEST_DIR + "/input/heart_validation.avro"
+      args += s"${TEST_DIR}/input/heart_validation${fileSuffix}"
     }
 
     args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)
@@ -881,8 +962,10 @@ object DriverIntegTest {
     args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
     args += TaskType.LOGISTIC_REGRESSION.toString
 
-    args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
-    args += FieldNamesType.TRAINING_EXAMPLE.toString
+    if (fileSuffix == ".avro") {
+      args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
+      args += FieldNamesType.TRAINING_EXAMPLE.toString
+    }
   }
 
   def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
