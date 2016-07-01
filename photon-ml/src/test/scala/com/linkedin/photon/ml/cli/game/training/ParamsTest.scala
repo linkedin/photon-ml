@@ -56,7 +56,7 @@ class ParamsTest {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testDuplicatedArgs(): Unit = {
     val args = requiredArgs()
-    val duplicatedArgs = args ++ Array(CommonTestUtils.fromOptionNameToArg(TRAIN_INPUT_DIRS), "duplicate")
+    val duplicatedArgs = mapToArray(args) ++ Array(CommonTestUtils.fromOptionNameToArg(TRAIN_INPUT_DIRS), "duplicate")
     Params.parseFromCommandLine(duplicatedArgs)
   }
 
@@ -297,6 +297,17 @@ class ParamsTest {
     val params = Params.parseFromCommandLine(setOneMoreArg(APPLICATION_NAME, "GAME_TEST"))
     assertEquals(params.applicationName, "GAME_TEST")
   }
+
+  @Test
+  def testOutputDir(): Unit = {
+    // When output directory contains ':'
+    val paramsWithColonAsPartOfOutputDir = Params.parseFromCommandLine(setOneMoreArg(OUTPUT_DIR, "hdfs://foo/bar/tar"))
+    assertEquals(paramsWithColonAsPartOfOutputDir.outputDir, "hdfs://foo/bar/tar")
+
+    // When output directory contains ',', the current logic will replace ',' with '_'
+    val paramsWithCommaAsPartOfOutputDir = Params.parseFromCommandLine(setOneMoreArg(OUTPUT_DIR, "linkedin,airbnb"))
+    assertEquals(paramsWithCommaAsPartOfOutputDir.outputDir, "linkedin_airbnb")
+  }
 }
 
 
@@ -334,44 +345,48 @@ object ParamsTest {
   val REQUIRED_OPTIONS = Array(TRAIN_INPUT_DIRS, OUTPUT_DIR, TASK_TYPE, FEATURE_NAME_AND_TERM_SET_PATH)
 
   // Get all required arguments
-  def requiredArgs(): Array[String] = {
-    val args = new Array[String](REQUIRED_OPTIONS.length * 2)
+  def requiredArgs(): Map[String, String] = {
+    val args = new Array[(String, String)](REQUIRED_OPTIONS.length)
     var i = 0
     REQUIRED_OPTIONS.foreach { option =>
-      args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i + 1) = option match {
+      val name = CommonTestUtils.fromOptionNameToArg(option)
+      val value = option match {
         case TASK_TYPE => TaskType.LINEAR_REGRESSION.toString
         case _ => "value"
       }
-      i += 2
+      args(i) = (name, value)
+      i += 1
     }
-    args
+    args.toMap
   }
 
   // Get all required arguments except the one with name missingArgName
-  def requiredArgsMissingOne(missingArgName: String): Array[String] = {
+  def requiredArgsMissingOne(missingArgName: String): Map[String, String] = {
     if (REQUIRED_OPTIONS.isEmpty) {
       throw new RuntimeException("No required option configured in test.")
     }
-
-    val args = new Array[String]((REQUIRED_OPTIONS.length - 1) * 2)
+    val args = new Array[(String, String)](REQUIRED_OPTIONS.length - 1)
     var i = 0
     REQUIRED_OPTIONS.filter(_ != missingArgName).foreach { option =>
-      args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i + 1) = option match {
+      val name = CommonTestUtils.fromOptionNameToArg(option)
+      val value = option match {
         case TASK_TYPE => TaskType.LINEAR_REGRESSION.toString
         case _ => "value"
       }
-      i += 2
+      args(i) = (name, value)
+      i += 1
     }
-    args
+    args.toMap
   }
 
   // Set one more optional argument besides the required arguments
-  def setOneMoreArg(argName: String, argValue: String): Array[String] = {
-    val args = new Array[String](2)
-    args(0) = CommonTestUtils.fromOptionNameToArg(argName)
-    args(1) = argValue
-    args ++ requiredArgs()
+  def setOneMoreArg(argName: String, argValue: String): Map[String, String] = {
+    val name = CommonTestUtils.fromOptionNameToArg(argName)
+    val value = argValue
+    requiredArgs().updated(name, value)
+  }
+
+  implicit def mapToArray(args: Map[String, String]): Array[String] = {
+    args.toArray.flatMap { case (name, value) => Seq(name, value) }
   }
 }
