@@ -216,7 +216,7 @@ object Params {
       opt[String]("output-dir")
         .required()
         .text(s"Output directory for logs and learned models.")
-        .foreach(x => params.outputDir = x.replace(',', '_').replace(':', '_'))
+        .foreach(x => params.outputDir = x.replace(',', '_'))
       opt[String]("feature-name-and-term-set-path")
         .required()
         .text(s"Input path to the features name-and-term lists.")
