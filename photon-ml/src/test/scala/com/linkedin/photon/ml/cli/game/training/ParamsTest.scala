@@ -54,6 +54,11 @@ class ParamsTest {
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testMissingRequiredArgUpdatingSequence(): Unit = {
+    Params.parseFromCommandLine(requiredArgsMissingOne(UPDATING_SEQUENCE))
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testDuplicatedArgs(): Unit = {
     val args = requiredArgs()
     val duplicatedArgs = mapToArray(args) ++ Array(CommonTestUtils.fromOptionNameToArg(TRAIN_INPUT_DIRS), "duplicate")
@@ -65,10 +70,11 @@ class ParamsTest {
     val params = Params.parseFromCommandLine(requiredArgs())
 
     // Verify required parameters values
-    assertEquals(params.trainDirs.deep, Array("value").deep)
-    assertEquals(params.outputDir, "value")
-    assertEquals(params.featureNameAndTermSetInputPath, "value")
+    assertEquals(params.trainDirs.deep, Array(TRAIN_INPUT_DIRS).deep)
+    assertEquals(params.outputDir, OUTPUT_DIR)
+    assertEquals(params.featureNameAndTermSetInputPath, FEATURE_NAME_AND_TERM_SET_PATH)
     assertEquals(params.taskType, TaskType.LINEAR_REGRESSION)
+    assertEquals(params.updatingSequence, Seq(UPDATING_SEQUENCE))
 
     // Verify optional parameters values, should be default values
     assertEquals(params.trainDateRangeOpt, defaultParams.trainDateRangeOpt)
@@ -80,7 +86,6 @@ class ParamsTest {
     assertEquals(params.featureShardIdToFeatureSectionKeysMap, defaultParams.featureShardIdToFeatureSectionKeysMap)
     assertEquals(params.featureShardIdToInterceptMap, defaultParams.featureShardIdToInterceptMap)
     assertEquals(params.numIterations, defaultParams.numIterations)
-    assertEquals(params.updatingSequence, defaultParams.updatingSequence)
     assertEquals(params.fixedEffectOptimizationConfigurations, defaultParams.fixedEffectOptimizationConfigurations)
     assertEquals(params.fixedEffectDataConfigurations, defaultParams.fixedEffectDataConfigurations)
     assertEquals(params.randomEffectOptimizationConfigurations, defaultParams.randomEffectOptimizationConfigurations)
@@ -319,6 +324,7 @@ object ParamsTest {
   val TASK_TYPE = "task-type"
   val OUTPUT_DIR = "output-dir"
   val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
+  val UPDATING_SEQUENCE = "updating-sequence"
 
   // Optional parameters
   val TRAIN_DATE_RANGE = "train-date-range"
@@ -330,7 +336,6 @@ object ParamsTest {
   val FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP = "feature-shard-id-to-feature-section-keys-map"
   val FEATURE_SHARD_ID_TO_INTERCEPT_MAP = "feature-shard-id-to-intercept-map"
   val NUM_ITERATIONS = "num-iterations"
-  val UPDATING_SEQUENCE = "updating-sequence"
   val FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS = "fixed-effect-optimization-configurations"
   val FIXED_EFFECT_DATA_CONFIGURATIONS = "fixed-effect-data-configurations"
   val RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "random-effect-optimization-configurations"
@@ -342,7 +347,8 @@ object ParamsTest {
   val DELETE_OUTPUT_DIR_IF_EXISTS = "delete-output-dir-if-exists"
   val APPLICATION_NAME = "application-name"
 
-  val REQUIRED_OPTIONS = Array(TRAIN_INPUT_DIRS, OUTPUT_DIR, TASK_TYPE, FEATURE_NAME_AND_TERM_SET_PATH)
+  val REQUIRED_OPTIONS =
+    Array(TRAIN_INPUT_DIRS, OUTPUT_DIR, TASK_TYPE, FEATURE_NAME_AND_TERM_SET_PATH, UPDATING_SEQUENCE)
 
   // Get all required arguments
   def requiredArgs(): Map[String, String] = {
@@ -352,7 +358,9 @@ object ParamsTest {
       val name = CommonTestUtils.fromOptionNameToArg(option)
       val value = option match {
         case TASK_TYPE => TaskType.LINEAR_REGRESSION.toString
-        case _ => "value"
+        // We don't really care what the value is, as long as it meets the type requirement. But here we use the
+        // option string itself as value, so that at least we can guarantee different names have different values.
+        case _ => option
       }
       args(i) = (name, value)
       i += 1

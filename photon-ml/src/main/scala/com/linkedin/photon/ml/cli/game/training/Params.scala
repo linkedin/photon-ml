@@ -221,6 +221,13 @@ object Params {
         .required()
         .text(s"Input path to the features name-and-term lists.")
         .foreach(x => params.featureNameAndTermSetInputPath = x)
+      opt[String]("updating-sequence")
+        .required()
+        .text(s"Updating order of the ordinates (separated by commas) in the coordinate descent algorithm. It is " +
+          s"recommended to order different fixed/random effect models based on their stability (e.g., by looking " +
+          s"at the variance of the feature distribution (or correlation with labels) for each of the " +
+          s"fixed/random effect model),")
+        .foreach(x => params.updatingSequence = x.split(","))
       opt[String]("train-date-range")
         .text(s"Date range for the training data represented in the form start.date-end.date, " +
           s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
@@ -308,9 +315,6 @@ object Params {
             }
             .toMap
         )
-      opt[String]("updating-sequence")
-        .text(s"Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.")
-        .foreach(x => params.updatingSequence = x.split(","))
       opt[String]("random-effect-optimization-configurations")
         .text("Optimization configurations for each random effect optimization problem. " +
           s"Expected format (if the GAME model contains two random effect model called model1 and mode2):\n" +
