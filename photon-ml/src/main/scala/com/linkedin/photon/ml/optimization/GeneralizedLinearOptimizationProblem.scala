@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.optimization
 import scala.collection.mutable
 
 import breeze.linalg.Vector
+import breeze.linalg.sum
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
@@ -27,6 +28,7 @@ import com.linkedin.photon.ml.sampler.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 
 import scala.reflect.ClassTag
+import scala.math.abs
 
 /**
   * GeneralizedOptimizationProblem implements methods to train a Generalized Linear Model (GLM).
@@ -219,16 +221,38 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     * @return regularization term value
     */
   def getRegularizationTermValue(model: GeneralizedLinearModel): Double = {
-    // TODO: L1 regularization?
-    GeneralizedLinearOptimizationProblem.getL2RegularizationTermValue(model, regularizationWeight)
+    import GeneralizedLinearOptimizationProblem._
+
+    regularizationContext.regularizationType match {
+      case RegularizationType.L1 => getL1RegularizationTermValue(model, regularizationWeight)
+      case RegularizationType.L2 => getL2RegularizationTermValue(model, regularizationWeight)
+      case RegularizationType.ELASTIC_NET => getElasticNetRegularizationTermValue(model, regularizationWeight,
+        regularizationContext)
+      case _ => 0.0
+    }
   }
 }
 
 object GeneralizedLinearOptimizationProblem {
   /**
+    * Compute the L1 regularization term value
+    *
+    * @param model the model
+    * @param regularizationWeight the weight of the regularization value
+    * @return L1 regularization term value
+    */
+  protected[ml] def getL1RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
+    : Double = {
+
+    val coefficients = model.coefficients.means
+    sum(coefficients.map(abs)) * regularizationWeight
+  }
+
+  /**
     * Compute the L2 regularization term value
     *
     * @param model the model
+    * @param regularizationWeight the weight of the regularization value
     * @return L2 regularization term value
     */
   protected[ml] def getL2RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
@@ -236,5 +260,21 @@ object GeneralizedLinearOptimizationProblem {
 
     val coefficients = model.coefficients.means
     coefficients.dot(coefficients) * regularizationWeight / 2
+  }
+
+  /**
+    * Compute the Elastic Net regularization term value
+    *
+    * @param model the model
+    * @param regularizationWeight the weight of the regularization value
+    * @param regularizationContext the regularization context
+    * @return Elastic Net regularization term value
+    */
+  protected[ml] def getElasticNetRegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double,
+      regularizationContext: RegularizationContext): Double = {
+
+    val (l1weight, l2weight) = (regularizationContext.getL1RegularizationWeight(regularizationWeight),
+      regularizationContext.getL2RegularizationWeight(regularizationWeight))
+    getL1RegularizationTermValue(model, l1weight) + getL2RegularizationTermValue(model, l2weight)
   }
 }
