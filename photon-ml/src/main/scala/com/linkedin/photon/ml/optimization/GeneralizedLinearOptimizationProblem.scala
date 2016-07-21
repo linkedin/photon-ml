@@ -15,9 +15,10 @@
 package com.linkedin.photon.ml.optimization
 
 import scala.collection.mutable
+import scala.math.abs
+import scala.reflect.ClassTag
 
-import breeze.linalg.Vector
-import breeze.linalg.sum
+import breeze.linalg.{Vector, sum}
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
@@ -26,9 +27,6 @@ import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.sampler.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
-
-import scala.reflect.ClassTag
-import scala.math.abs
 
 /**
   * GeneralizedOptimizationProblem implements methods to train a Generalized Linear Model (GLM).

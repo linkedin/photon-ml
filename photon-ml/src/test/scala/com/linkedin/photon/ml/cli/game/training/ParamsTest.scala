@@ -266,6 +266,14 @@ class ParamsTest {
   }
 
   @Test
+  def testComputeVariance(): Unit = {
+    val paramsAll = Params.parseFromCommandLine(setOneMoreArg(COMPUTE_VARIANCE, "trUE"))
+    assertEquals(paramsAll.computeVariance, true)
+    val paramsNone = Params.parseFromCommandLine(setOneMoreArg(COMPUTE_VARIANCE, "fAlSe"))
+    assertEquals(paramsNone.computeVariance, false)
+  }
+
+  @Test
   def testSaveModelsToHDFS(): Unit = {
     val paramsAll = Params.parseFromCommandLine(setOneMoreArg(SAVE_MODELS_TO_HDFS, "true"))
     assertEquals(paramsAll.modelOutputMode, ModelOutputMode.ALL)
@@ -336,6 +344,7 @@ object ParamsTest {
   val FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP = "feature-shard-id-to-feature-section-keys-map"
   val FEATURE_SHARD_ID_TO_INTERCEPT_MAP = "feature-shard-id-to-intercept-map"
   val NUM_ITERATIONS = "num-iterations"
+  val COMPUTE_VARIANCE = "compute-variance"
   val FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS = "fixed-effect-optimization-configurations"
   val FIXED_EFFECT_DATA_CONFIGURATIONS = "fixed-effect-data-configurations"
   val RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "random-effect-optimization-configurations"

@@ -37,8 +37,7 @@ import org.apache.spark.storage.StorageLevel
   *                            optimization problem
   */
 protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
-    val optimizationProblems: RDD[(String, GeneralizedLinearOptimizationProblem[GLM, F])],
-    baseOptimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F])
+    val optimizationProblems: RDD[(String, GeneralizedLinearOptimizationProblem[GLM, F])])
   extends RDDLike {
 
   def sparkContext: SparkContext = optimizationProblems.sparkContext
@@ -73,7 +72,7 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
     * @param dimension The dimensionality of the model coefficients
     * @return A model with zero coefficients
     */
-  def initializeModel(dimension: Int): GLM = baseOptimizationProblem.initializeZeroModel(dimension)
+  def initializeModel(dimension: Int): GLM = optimizationProblems.first()._2.initializeZeroModel(dimension)
 
   /**
     * Compute the regularization term value
@@ -92,6 +91,12 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
 }
 
 object RandomEffectOptimizationProblem {
+  // Random effect models should not track optimization states per random effect ID. This info is not currently used
+  // anywhere and would waste memory.
+  //
+  // In addition, when enabled the 'run' method in the GeneralizedLinearOptimizationProblem will fail due to an implicit
+  // cast of mutable.ListBuffer to mutable.ArrayBuffer, the cause of which is currently undetermined.
+  val TRACK_STATE = false
 
   /**
     * Build an instance of random effect optimization problem
@@ -100,23 +105,20 @@ object RandomEffectOptimizationProblem {
     * @param configuration Optimizer configuration
     * @param randomEffectDataSet The training dataset
     * @param treeAggregateDepth
-    * @param isTrackingState
     * @return A new optimization problem instance
     */
   protected[ml] def buildRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
-      builder: (GLMOptimizationConfiguration, Int, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
+      builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
       configuration: GLMOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet,
       treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[GLM, F] = {
+      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[GLM, F] = {
 
     // Build an optimization problem for each random effect type
     val optimizationProblems = randomEffectDataSet.activeData.mapValues(_ =>
-      builder(configuration, treeAggregateDepth, isTrackingState)
+      builder(configuration, treeAggregateDepth, TRACK_STATE, isComputingVariance)
     )
 
-    new RandomEffectOptimizationProblem(
-      optimizationProblems,
-      builder(configuration, treeAggregateDepth, isTrackingState))
+    new RandomEffectOptimizationProblem(optimizationProblems)
   }
 }

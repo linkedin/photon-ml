@@ -105,23 +105,27 @@ object FactoredRandomEffectOptimizationProblem {
     */
   protected[ml] def buildFactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
     F <: DiffFunction[LabeledPoint]](
-      builder: (GLMOptimizationConfiguration, Int, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
+      builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
       randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
       latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
       mfOptimizationConfiguration: MFOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet,
       treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = false): FactoredRandomEffectOptimizationProblem[GLM, F] = {
+      isTrackingState: Boolean = false,
+      isComputingVariance: Boolean = false): FactoredRandomEffectOptimizationProblem[GLM, F] = {
 
     val MFOptimizationConfiguration(numInnerIterations, latentSpaceDimension) = mfOptimizationConfiguration
     val latentFactorOptimizationProblem = builder(
       latentFactorOptimizationConfiguration,
       treeAggregateDepth,
-      isTrackingState)
+      isTrackingState,
+      isComputingVariance)
     val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(
       builder,
       randomEffectOptimizationConfiguration,
-      randomEffectDataSet)
+      randomEffectDataSet,
+      treeAggregateDepth,
+      isComputingVariance)
 
     new FactoredRandomEffectOptimizationProblem(
       randomEffectOptimizationProblem,

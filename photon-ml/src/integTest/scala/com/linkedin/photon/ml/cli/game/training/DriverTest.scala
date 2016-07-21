@@ -14,7 +14,13 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
+import java.nio.file.{FileSystems, Files, Path}
+
 import collection.JavaConversions._
+import org.apache.spark.SparkConf
+import org.testng.Assert._
+import org.testng.annotations.Test
+
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
@@ -23,18 +29,12 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{Utils, PhotonLogger}
-import org.apache.spark.SparkConf
-import org.testng.annotations.Test
-import org.testng.Assert._
-
-import java.nio.file.{Files, FileSystems, Path}
+import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
 
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
-  import DriverTest._
   import CommonTestUtils._
+  import DriverTest._
 
   @Test
   def testFixedEffectsWithIntercept() = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {

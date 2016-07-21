@@ -110,6 +110,11 @@ class Params {
   var numIterations: Int = 1
 
   /**
+   * Whether to compute coefficient variance
+   */
+  var computeVariance: Boolean = false
+
+  /**
    * Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
    */
   var updatingSequence: Seq[String] = Seq()
@@ -192,6 +197,7 @@ class Params {
             .map(_.mkString("\n")).mkString("\n")}\n" +
         s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}\n" +
         s"taskType: $taskType\n" +
+        s"computeVariance: $computeVariance\n" +
         s"modelOutputOption: $modelOutputMode\n" +
         s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
         s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
@@ -355,6 +361,9 @@ object Params {
             }
             .toMap
         )
+      opt[Boolean]("compute-variance")
+        .text(s"Whether to compute the coefficient variance, default: ${defaultParams.computeVariance}")
+        .foreach(x => params.computeVariance = x)
       opt[Boolean]("save-models-to-hdfs")
         .text(s"DEPRECATED -- USE model-output-mode")
         .foreach(x => params.modelOutputMode = if (x) ALL else NONE)
