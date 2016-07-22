@@ -17,15 +17,11 @@ package com.linkedin.photon.ml.function
 import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 
-
 /**
  * Class for the squared loss function: sum_i w_i/2*(theta'x_i + o_i - y_i)**2, where theta is the weight coefficients
  * of the data features to be estimated, (y_i, x_i, o_i, w_i) are the label, features, offset, and weight of
  * the i'th labeled data point, respectively.
- * @author xazhang
- * @author dpeng
  */
-
 class SquaredLossFunction(
     normalizationContext: ObjectProvider[NormalizationContext] =
       new SimpleObjectProvider[NormalizationContext](NoNormalization))
@@ -56,6 +52,7 @@ object PointwiseSquareLossFunction extends PointwiseLossFunction {
 
   /**
    * d^2^l/dz^2^ = 1
+   *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 2st derivative with respect to z

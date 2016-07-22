@@ -131,8 +131,6 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
 }
 
 object SmoothedHingeLossLinearSVMOptimizationProblem {
-  val COMPUTING_VARIANCE = false
-
   /**
     * Build a logistic regression optimization problem
     *
@@ -144,7 +142,8 @@ object SmoothedHingeLossLinearSVMOptimizationProblem {
   protected[ml] def buildOptimizationProblem(
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = true): SmoothedHingeLossLinearSVMOptimizationProblem = {
+      isTrackingState: Boolean = true,
+      isComputingVariance: Boolean = false): SmoothedHingeLossLinearSVMOptimizationProblem = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -168,7 +167,7 @@ object SmoothedHingeLossLinearSVMOptimizationProblem {
       regularizationWeight,
       if (isTrackingState) { Some(new mutable.ListBuffer[ModelTracker]())} else { None },
       treeAggregateDepth,
-      COMPUTING_VARIANCE)
+      isComputingVariance)
   }
 
   def initializeZeroModel(dimension: Int): SmoothedHingeLossLinearSVMModel =

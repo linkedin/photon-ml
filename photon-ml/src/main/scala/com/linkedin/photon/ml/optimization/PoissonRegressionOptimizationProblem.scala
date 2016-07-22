@@ -145,8 +145,6 @@ case class PoissonRegressionOptimizationProblem(
 }
 
 object PoissonRegressionOptimizationProblem {
-  val COMPUTING_VARIANCE = false
-
   /**
     * Build a logistic regression optimization problem
     *
@@ -158,7 +156,8 @@ object PoissonRegressionOptimizationProblem {
   protected[ml] def buildOptimizationProblem(
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = true): PoissonRegressionOptimizationProblem = {
+      isTrackingState: Boolean = true,
+      isComputingVariance: Boolean = false): PoissonRegressionOptimizationProblem = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -182,7 +181,7 @@ object PoissonRegressionOptimizationProblem {
       regularizationWeight,
       if (isTrackingState) { Some(new mutable.ListBuffer[ModelTracker]())} else { None },
       treeAggregateDepth,
-      COMPUTING_VARIANCE)
+      isComputingVariance)
   }
 
   def initializeZeroModel(dimension: Int): PoissonRegressionModel =

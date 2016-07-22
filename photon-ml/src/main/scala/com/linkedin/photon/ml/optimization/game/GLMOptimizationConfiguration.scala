@@ -26,9 +26,9 @@ import com.linkedin.photon.ml.optimization._
   */
 protected[ml] case class GLMOptimizationConfiguration (
     optimizerConfig: OptimizerConfig = OptimizerConfig(OptimizerType.TRON, 20, 1E-5, None),
-    regularizationContext: RegularizationContext = L2RegularizationContext,
-    regularizationWeight: Double = 50,
-    downSamplingRate: Double = 1) {
+    regularizationContext: RegularizationContext = NoRegularizationContext,
+    regularizationWeight: Double = 0D,
+    downSamplingRate: Double = 1D) {
 
   override def toString: String = {
     s"optimizerConfig: ${optimizerConfig.toSummaryString}," +

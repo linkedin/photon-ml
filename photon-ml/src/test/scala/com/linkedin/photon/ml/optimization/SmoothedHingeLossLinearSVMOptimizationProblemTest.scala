@@ -14,24 +14,24 @@
  */
 package com.linkedin.photon.ml.optimization
 
+import org.apache.spark.rdd.RDD
+import org.mockito.Mockito._
+import org.testng.Assert._
+import org.testng.annotations.Test
+
 import com.linkedin.photon.ml.data.{LabeledPoint, SimpleObjectProvider}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.test.CommonTestUtils
 
-import org.apache.spark.rdd.RDD
-import org.mockito.Mockito._
-import org.testng.Assert._
-import org.testng.annotations.Test
-
 class SmoothedHingeLossLinearSVMOptimizationProblemTest {
-  import SmoothedHingeLossLinearSVMOptimizationProblemTest._
   import CommonTestUtils._
+  import SmoothedHingeLossLinearSVMOptimizationProblemTest._
 
   @Test
   def testUpdateObjective(): Unit = {
-    val problem = createProblem
+    val problem = createProblem()
     val normalizationContext = new SimpleObjectProvider(mock(classOf[NormalizationContext]))
     val regularizationWeight = 1D
 
@@ -44,42 +44,53 @@ class SmoothedHingeLossLinearSVMOptimizationProblemTest {
 
   @Test
   def testInitializeZeroModel(): Unit = {
-    val problem = createProblem
-    val zeroModel = problem.initializeZeroModel(Dimensions)
+    val problem = createProblem()
+    val zeroModel = problem.initializeZeroModel(DIMENSIONS)
 
-    assertEquals(zeroModel.coefficients, Coefficients.initializeZeroCoefficients(Dimensions))
+    assertEquals(zeroModel.coefficients, Coefficients.initializeZeroCoefficients(DIMENSIONS))
   }
 
   @Test
   def testCreateModel(): Unit = {
-    val problem = createProblem
-    val coefficients = generateDenseVector(Dimensions)
+    val problem = createProblem()
+    val coefficients = generateDenseVector(DIMENSIONS)
     val model = problem.createModel(coefficients, None)
 
     assertEquals(model.coefficients.means, coefficients)
   }
 
   @Test
-  def testComputeVariances(): Unit = {
-    val problem = createProblem
+  def testComputeVariancesDisabled(): Unit = {
+    val problem = createProblem()
     val input = mock(classOf[RDD[LabeledPoint]])
-    val coefficients = generateDenseVector(Dimensions)
+    val coefficients = generateDenseVector(DIMENSIONS)
 
-    // TODO: computeVarainces is currently disabled. This test will need to be updated when the default changes
+    assertEquals(problem.computeVariances(input, coefficients), None)
+  }
+
+  @Test
+  def testComputeVariancesEnabled(): Unit = {
+    val problem = createProblem(computeVariance = true)
+    val input = mock(classOf[RDD[LabeledPoint]])
+    val coefficients = generateDenseVector(DIMENSIONS)
+
     assertEquals(problem.computeVariances(input, coefficients), None)
   }
 }
 
 object SmoothedHingeLossLinearSVMOptimizationProblemTest {
-  val Dimensions = 10
+  val DIMENSIONS = 10
 
-  def createProblem() = {
-    val optimizerConfig = OptimizerConfig(OptimizerType.LBFGS, 1, 1e-5, None)
-    val config = new GLMOptimizationConfiguration(optimizerConfig)
+  def createProblem(computeVariance: Boolean = false) = {
+    val config = new GLMOptimizationConfiguration(
+      optimizerConfig = OptimizerConfig(OptimizerType.LBFGS, 100, 1E-10, None))
     val treeAggregateDepth = 1
     val isTrackingState = false
 
     SmoothedHingeLossLinearSVMOptimizationProblem.buildOptimizationProblem(
-      config, treeAggregateDepth, isTrackingState)
+      config,
+      treeAggregateDepth,
+      isTrackingState,
+      computeVariance)
   }
 }

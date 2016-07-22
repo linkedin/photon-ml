@@ -145,8 +145,6 @@ case class LogisticRegressionOptimizationProblem(
 }
 
 object LogisticRegressionOptimizationProblem {
-  val COMPUTING_VARIANCE = false
-
   /**
     * Build a logistic regression optimization problem
     *
@@ -158,7 +156,8 @@ object LogisticRegressionOptimizationProblem {
   protected[ml] def buildOptimizationProblem(
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = true): LogisticRegressionOptimizationProblem = {
+      isTrackingState: Boolean = true,
+      isComputingVariance: Boolean = false): LogisticRegressionOptimizationProblem = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -184,7 +183,7 @@ object LogisticRegressionOptimizationProblem {
       regularizationWeight,
       if (isTrackingState) { Some(new mutable.ListBuffer[ModelTracker]())} else { None },
       treeAggregateDepth,
-      COMPUTING_VARIANCE)
+      isComputingVariance)
   }
 
   def initializeZeroModel(dimension: Int): LogisticRegressionModel =

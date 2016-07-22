@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, Vector}
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
  * The normalization approach for the optimization problem, especially for generalized linear model. This gives concrete
@@ -116,39 +116,44 @@ private[ml] object NormalizationContext {
    * @param interceptId The index of the intercept
    * @return The normalization context
    */
-  def apply(normalizationType: NormalizationType, summary: => BasicStatisticalSummary,
-      interceptId: Option[Int]): NormalizationContext = {
-    normalizationType match {
-      case NormalizationType.NONE =>
-        new NormalizationContext(None, None, interceptId)
-      case NormalizationType.SCALE_WITH_MAX_MAGNITUDE =>
-        val factors = summary.max.toArray.zip(summary.min.toArray).map {
-          case (max, min) =>
-            val magnitude = math.max(math.abs(max), math.abs(min))
-            if (magnitude == 0) 1.0 else 1.0 / magnitude
-          }
-        new NormalizationContext(Some(DenseVector(factors)), None, interceptId)
-      case NormalizationType.SCALE_WITH_STANDARD_DEVIATION =>
-        val factors = summary.variance.map(x => {
-          val std = math.sqrt(x)
-          if (std == 0) 1.0 else 1.0 / std
-        })
-        new NormalizationContext(Some(factors), None, interceptId)
-      case NormalizationType.STANDARDIZATION =>
-        val factors = summary.variance.map(x => {
-          val std = math.sqrt(x)
-          if (std == 0) 1.0 else 1.0 / std
-        })
-        val shifts = summary.mean.copy
-        // Do not transform intercept
-        interceptId.foreach(id => {
-          shifts(id) = 0.0
-          factors(id) = 1.0
-        })
-        new NormalizationContext(Some(factors), Some(shifts), interceptId)
-      case _ =>
-        throw new IllegalArgumentException(s"NormalizationType $normalizationType not recognized.")
-    }
+  def apply(
+      normalizationType: NormalizationType,
+      summary: => BasicStatisticalSummary,
+      interceptId: Option[Int]): NormalizationContext = normalizationType match {
+
+    case NormalizationType.NONE =>
+      new NormalizationContext(None, None, interceptId)
+
+    case NormalizationType.SCALE_WITH_MAX_MAGNITUDE =>
+      val factors = summary.max.toArray.zip(summary.min.toArray).map {
+        case (max, min) =>
+          val magnitude = math.max(math.abs(max), math.abs(min))
+          if (magnitude == 0) 1.0 else 1.0 / magnitude
+        }
+      new NormalizationContext(Some(DenseVector(factors)), None, interceptId)
+
+    case NormalizationType.SCALE_WITH_STANDARD_DEVIATION =>
+      val factors = summary.variance.map(x => {
+        val std = math.sqrt(x)
+        if (std == 0) 1.0 else 1.0 / std
+      })
+      new NormalizationContext(Some(factors), None, interceptId)
+
+    case NormalizationType.STANDARDIZATION =>
+      val factors = summary.variance.map(x => {
+        val std = math.sqrt(x)
+        if (std == 0) 1.0 else 1.0 / std
+      })
+      val shifts = summary.mean.copy
+      // Do not transform intercept
+      interceptId.foreach(id => {
+        shifts(id) = 0.0
+        factors(id) = 1.0
+      })
+      new NormalizationContext(Some(factors), Some(shifts), interceptId)
+
+    case _ =>
+      throw new IllegalArgumentException(s"NormalizationType $normalizationType not recognized.")
   }
 }
 
