@@ -21,7 +21,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -63,9 +62,9 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def endToEndRunWithYahooMusicDataSet(): Unit = sparkTest("endToEndRunWithYahooMusicDataSet") {
+  def endToEndRunWithFullGLMix(): Unit = sparkTest("endToEndRunWithFullGLMix") {
     val outputDir = getTmpDir
-    val args = DriverTest.yahooMusicArgs(outputDir, deleteOutputDirIfExists = true)
+    val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = false, deleteOutputDirIfExists = true)
     runDriver(CommonTestUtils.argArray(args))
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
@@ -77,6 +76,23 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     // Compare with the RMSE capture from an assumed-correct implementation on 5/20/2016
     assertEquals(rootMeanSquaredError, 1.32106, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+  }
+
+  @Test
+  def endToEndRunWithFixedEffectOnlyGLMix(): Unit = sparkTest("endToEndRunWithFixedEffectOnlyGLMix") {
+    val outputDir = getTmpDir
+    val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = true, deleteOutputDirIfExists = true)
+    runDriver(CommonTestUtils.argArray(args))
+
+    // Load the scores and compute the evaluation metric to see whether the scores make sense or not
+    val scoreDir = Driver.getScoresDir(outputDir)
+    val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
+        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
+
+    val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
+
+    // Compare with the RMSE capture from an assumed-correct implementation on 7/27/2016
+    assertEquals(rootMeanSquaredError, 1.321715, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   /**
@@ -112,18 +128,18 @@ object DriverTest {
     val inputDir = new Path(inputRoot, "input/test-with-uid").toString
     val featurePath = new Path(inputRoot, "input/feature-lists").toString
 
-    val (featureShardIdToFeatureSectionKeysMap, randomEffectIdSet, modelDir) =
+    val argumentsForGLMix =
       if (fixedEffectOnly) {
         val featureMap = "globalShard:features,songFeatures,userFeatures"
-        val idSet = ","
         val modelDir = new Path(inputRoot, "fixedEffectOnlyGAMEModel").toString
-        (featureMap, idSet, modelDir)
+        Map("feature-shard-id-to-feature-section-keys-map" -> featureMap, "game-model-input-dir" -> modelDir)
       } else {
         val featureMap = "globalShard:features,songFeatures,userFeatures|userShard:features,songFeatures" +
             "|songShard:features,userFeatures"
         val idSet = "userId,songId"
         val modelDir = new Path(inputRoot, "gameModel").toString
-        (featureMap, idSet, modelDir)
+        Map("feature-shard-id-to-feature-section-keys-map" -> featureMap, "game-model-input-dir" -> modelDir,
+          "random-effect-id-set" -> idSet)
       }
 
     val applicationName = "GAME-Scoring-Integ-Test"
@@ -131,14 +147,11 @@ object DriverTest {
     Map(
       "input-data-dirs" -> inputDir,
       "feature-name-and-term-set-path" -> featurePath,
-      "feature-shard-id-to-feature-section-keys-map" -> featureShardIdToFeatureSectionKeysMap,
-      "random-effect-id-set" -> randomEffectIdSet,
       "game-model-id" -> modelId,
-      "game-model-input-dir" -> modelDir,
       "output-dir" -> outputDir,
       "num-files" -> numOutputFiles.toString,
       "delete-output-dir-if-exists" -> deleteOutputDirIfExists.toString,
       "application-name" -> applicationName
-    )
+    ) ++ argumentsForGLMix
   }
 }
