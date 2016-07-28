@@ -14,54 +14,37 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-import scala.collection.{Map, Set}
-
 import com.linkedin.photon.ml.data.{RandomEffectDataConfiguration, FixedEffectDataConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.optimization.game.{MFOptimizationConfiguration, GLMOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.test.CommonTestUtils
+import com.linkedin.photon.ml.test.CommonTestUtils._
 
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 
 /**
- * Simple test for GAME's [[Params]]
+ * Simple test for GAME training's [[Params]]
  */
 class ParamsTest {
 
   import ParamsTest._
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArgTrainDir(): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(TRAIN_INPUT_DIRS))
+  @DataProvider
+  def requiredOptions(): Array[Array[Any]] = {
+    REQUIRED_OPTIONS.map(optionName => Array[Any](optionName))
   }
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArgOutputDir(): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(OUTPUT_DIR))
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArgTaskType(): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(TASK_TYPE))
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArgFeatureNameAndTermSetInputPath(): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(FEATURE_NAME_AND_TERM_SET_PATH))
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArgUpdatingSequence(): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(UPDATING_SEQUENCE))
+  @Test(dataProvider = "requiredOptions", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testMissingRequiredArg(optionName: String): Unit = {
+    Params.parseFromCommandLine(requiredArgsMissingOne(optionName))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testDuplicatedArgs(): Unit = {
     val args = requiredArgs()
-    val duplicatedArgs = mapToArray(args) ++ Array(CommonTestUtils.fromOptionNameToArg(TRAIN_INPUT_DIRS), "duplicate")
+    val duplicatedArgs = mapToArray(args) ++ Array(fromOptionNameToArg(TRAIN_INPUT_DIRS), "duplicate")
     Params.parseFromCommandLine(duplicatedArgs)
   }
 
@@ -364,7 +347,7 @@ object ParamsTest {
     val args = new Array[(String, String)](REQUIRED_OPTIONS.length)
     var i = 0
     REQUIRED_OPTIONS.foreach { option =>
-      val name = CommonTestUtils.fromOptionNameToArg(option)
+      val name = fromOptionNameToArg(option)
       val value = option match {
         case TASK_TYPE => TaskType.LINEAR_REGRESSION.toString
         // We don't really care what the value is, as long as it meets the type requirement. But here we use the
@@ -385,10 +368,10 @@ object ParamsTest {
     val args = new Array[(String, String)](REQUIRED_OPTIONS.length - 1)
     var i = 0
     REQUIRED_OPTIONS.filter(_ != missingArgName).foreach { option =>
-      val name = CommonTestUtils.fromOptionNameToArg(option)
+      val name = fromOptionNameToArg(option)
       val value = option match {
         case TASK_TYPE => TaskType.LINEAR_REGRESSION.toString
-        case _ => "value"
+        case _ => option
       }
       args(i) = (name, value)
       i += 1
@@ -398,12 +381,8 @@ object ParamsTest {
 
   // Set one more optional argument besides the required arguments
   def setOneMoreArg(argName: String, argValue: String): Map[String, String] = {
-    val name = CommonTestUtils.fromOptionNameToArg(argName)
+    val name = fromOptionNameToArg(argName)
     val value = argValue
     requiredArgs().updated(name, value)
-  }
-
-  implicit def mapToArray(args: Map[String, String]): Array[String] = {
-    args.toArray.flatMap { case (name, value) => Seq(name, value) }
   }
 }

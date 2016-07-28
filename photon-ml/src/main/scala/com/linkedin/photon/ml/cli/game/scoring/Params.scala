@@ -136,7 +136,6 @@ object Params {
             .toMap
         ))
       opt[String]("random-effect-id-set")
-        .required()
         .text("A set of random effect ids of the corresponding random effect models in the following format: " +
           s"randomEffectId1,randomEffectId2,randomEffectId3, Default: ${defaultParams.randomEffectIdSet}")
         .action((x, c) => c.copy(randomEffectIdSet = x.split(",").toSet))

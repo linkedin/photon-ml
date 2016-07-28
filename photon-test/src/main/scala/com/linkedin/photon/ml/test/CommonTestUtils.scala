@@ -22,8 +22,6 @@ import scala.util.Random
 
 /**
  * A collection of handy utils useful in tests
- *
- * @author yizhou
  */
 object CommonTestUtils {
 
@@ -85,8 +83,10 @@ object CommonTestUtils {
    * @param numDimensions the dimension of the generated feature vectors
    * @return A sequence of generated dense feature vectors
    */
-  def generateDenseFeatureVectors(numValidVectors: Int, numInvalidVectors: Int,
-                             numDimensions: Int): Seq[Vector[Double]] = {
+  def generateDenseFeatureVectors(
+      numValidVectors: Int, numInvalidVectors: Int,
+      numDimensions: Int): Seq[Vector[Double]] = {
+
     val r = new Random(System.currentTimeMillis())
     val result = new ListBuffer[Vector[Double]]
 
@@ -129,5 +129,12 @@ object CommonTestUtils {
   def argArray(map: Map[String, String]): Array[String] = map.foldLeft(Array[String]()) {
     case (array, (option, value)) =>
       array :+ CommonTestUtils.fromOptionNameToArg(option) :+ value
+  }
+
+  /**
+   * Implicitly convert a [[Map]] of option name and value into a [[Seq]] of arguments
+   */
+  implicit def mapToArray(args: Map[String, String]): Array[String] = {
+    args.toArray.flatMap { case (name, value) => Seq(name, value) }
   }
 }
