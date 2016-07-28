@@ -32,23 +32,27 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
 ## Features
 **Photon ML** currently supports:
 
-1. Generalized Linear Model:
-  * Logistic Regression with L1/L2/Elastic Net regularization
-  * Poisson Regression with L1/L2/Elastic Net regularization
-  * Lasso/Ridge Linear Regression
+1. Generalized Linear Models:
+  * Linear Regression
+  * Logistic Regression
+  * Poisson Regression
 
-2. Boxed constraints towards model coefficients, e.g. [0.1 <= wi <= 0.9] where wi is the model coefficient at dimension i
+2. Regularization:
+  * The LBFGS optimizer supports L1, L2, and Elastic Net regularization
+  * The TRON optimizer supports L2 regularization
 
-3. Feature scaling and normalization:
+3. Boxed constraints towards model coefficients, e.g. [0.1 <= wi <= 0.9] where wi is the model coefficient at dimension i
+
+4. Feature scaling and normalization:
   * Zero-mean, unit-variant normalization (with efficient optimization techniques that pertains vector sparsity)
   * Scaling by standard deviation
   * Scaling to range [-1, 1]
 
-4. Offset training: a typical naive way of training multi-layer models. Offset is a special feature with a fixed model coefficient as 1. It's used to insert a smaller model's response into a global model. For example, when doing a typical binary classification problem, we could train a different model against a subset of all the features, and then set that model's response score as an offset of the global model training data. In this way, the global model will only learn against the residuals of the 1st layer model's response while having the benefits of combining the two models together.
+5. Offset training: a typical naive way of training multi-layer models. Offset is a special feature with a fixed model coefficient as 1. It's used to insert a smaller model's response into a global model. For example, when doing a typical binary classification problem, we could train a different model against a subset of all the features, and then set that model's response score as an offset of the global model training data. In this way, the global model will only learn against the residuals of the 1st layer model's response while having the benefits of combining the two models together.
 
-5. Feature summarization: **note** it's a direct wrapper of Spark MLLIB Feature summarizer, providing typical metrics (mean, min, max, std, variance and etc.) on a per feature basis
+6. Feature summarization: **note** it's a direct wrapper of Spark MLLIB Feature summarizer, providing typical metrics (mean, min, max, std, variance and etc.) on a per feature basis
 
-6. Model diagnostic tools: metrics, plots and summarization page for diagnosing model performance. The supported functions include:
+7. Model diagnostic tools: metrics, plots and summarization page for diagnosing model performance. The supported functions include:
   * rocAUC, prAUC, precision, recall, F1, RMSE plotted under different regularization weights
   * Error / Prediction Independence Analysis
   * [Kendall Tau Independence Test](http://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/kend_tau.htm)
@@ -58,6 +62,9 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
 
 ## Experimental Features
 Photon ML currently contains a number of experimental features that have not been fully tested, and as such should not be used in production. These features center mostly around the **GAME (Generalized Additive Mixed Effect)** modules.
+
+#### Smoothed Hinge Loss Linear SVM
+In addition to the Generalized Linear Models described above, Photon-ML also supports an optimizer-friendly approximation for linear SVMs as described [here](http://qwone.com/~jason/writing/smoothHinge.pdf) by Jason D. M. Rennie.
 
 ### GAME - Generalized Additive Mixed Effect Model
 GAME is a specific expansion of traditional Generalized Linear Models that further provides entity level (e.g., per-user/per-item) or segment level (e.g., per-country/per-category) coefficients, also known as random effects in the statistics literature, in addition to global coefficients. It manages to scale model training up to hundreds of billions of coefficients while still solvable within Spark's framework.

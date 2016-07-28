@@ -20,11 +20,11 @@ import org.apache.spark.rdd.RDD
 /**
   * Evaluator for binary classification problems
   *
-  * @param labelAndOffsets A [[RDD]] of (id, (label, offset)) pairs
+  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
   * @param defaultScore The default score used to compute the metric
   */
 protected[ml] class BinaryClassificationEvaluator(
-    labelAndOffsets: RDD[(Long, (Double, Double))],
+    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
   /**
@@ -37,8 +37,8 @@ protected[ml] class BinaryClassificationEvaluator(
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
     val scoreAndLabels = scores
-      .rightOuterJoin(labelAndOffsets)
-      .mapValues { case (scoreOption, (label, offset)) =>
+      .rightOuterJoin(labelAndOffsetAndWeights)
+      .mapValues { case (scoreOption, (label, offset, _)) =>
         (scoreOption.getOrElse(defaultScore) + offset, label)
       }
       .values
