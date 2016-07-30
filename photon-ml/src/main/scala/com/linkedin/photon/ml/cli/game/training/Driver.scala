@@ -207,6 +207,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         new LogisticLossEvaluator(labelAndOffsetAndWeights)
       case LINEAR_REGRESSION =>
         new SquaredLossEvaluator(labelAndOffsetAndWeights)
+      case POISSON_REGRESSION =>
+        new PoissonLossEvaluator(labelAndOffsetAndWeights)
+      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
       case _ =>
         throw new UnsupportedOperationException(s"Task type: $taskType is not supported to create training evaluator")
     }
@@ -281,19 +285,19 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       logger.debug(s"responseSumStats for $randomEffectId: $responseSumStats")
     }
 
-    val validatingLabelAndOffsets = gameDataSet.mapValues(gameData => (gameData.response, gameData.offset))
-        .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    validatingLabelAndOffsets.count()
+    val validatingLabelsAndOffsetsAndWeights = gameDataSet
+      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
+      .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    validatingLabelsAndOffsetsAndWeights.count()
 
     val evaluator =
       taskType match {
-        case LOGISTIC_REGRESSION =>
-          new BinaryClassificationEvaluator(validatingLabelAndOffsets)
+        case LOGISTIC_REGRESSION | SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+          new BinaryClassificationEvaluator(validatingLabelsAndOffsetsAndWeights)
         case LINEAR_REGRESSION =>
-          val validatingLabelAndOffsetAndWeights = validatingLabelAndOffsets.mapValues { case (label, offset) =>
-            (label, offset, 1.0)
-          }
-          new RMSEEvaluator(validatingLabelAndOffsetAndWeights)
+          new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
+        case POISSON_REGRESSION =>
+          new PoissonLossEvaluator(validatingLabelsAndOffsetsAndWeights)
         case _ =>
           throw new UnsupportedOperationException(s"Task type: $taskType is not supported to create validating " +
               s"evaluator")

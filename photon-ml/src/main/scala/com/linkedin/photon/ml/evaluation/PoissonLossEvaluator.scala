@@ -16,15 +16,15 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.PointwiseSquareLossFunction
+import com.linkedin.photon.ml.function.PointwisePoissonLossFunction
 
 /**
- * Evaluator for squared loss
+ * Evaluator for Poisson loss
  *
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
  * @param defaultScore the default score used to compute the metric
  */
-protected[ml] class SquaredLossEvaluator(
+protected[ml] class PoissonLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
@@ -40,12 +40,12 @@ protected[ml] class SquaredLossEvaluator(
     val scoreAndLabelAndWeights = scores
       .rightOuterJoin(labelAndOffsetAndWeights)
       .mapValues { case (scoreOption, (label, offset, weight)) =>
-          (scoreOption.getOrElse(defaultScore) + offset, (label, weight))
-        }
+        (scoreOption.getOrElse(defaultScore) + offset, (label, weight))
+      }
       .values
 
     scoreAndLabelAndWeights.map { case (score, (label, weight)) =>
-        weight * PointwiseSquareLossFunction.loss(score, label)._1
+        weight * PointwisePoissonLossFunction.loss(score, label)._1
       }
       .reduce(_ + _)
   }

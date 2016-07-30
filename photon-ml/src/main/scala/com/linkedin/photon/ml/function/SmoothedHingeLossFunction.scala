@@ -15,6 +15,8 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg
+
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
@@ -22,15 +24,33 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * optimizer-friendly approximation for linear SVMs
  */
 class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
-
   override protected[ml] def calculateAt(
       datum: LabeledPoint,
       coefficients: linalg.Vector[Double],
       cumGradient: linalg.Vector[Double]): Double = {
 
-    val actualLabel = if (datum.label < 0.5) -1 else 1
     val margin = datum.computeMargin(coefficients)
-    val z = actualLabel * margin
+    val (loss, deriv) = SmoothedHingeLossFunction.lossAndDerivative(margin, datum.label)
+
+    // Eq. 5, page 2 (derivative multiplied by label in lossAndDerivative method)
+    breeze.linalg.axpy(datum.weight * deriv, datum.features, cumGradient)
+    datum.weight * loss
+  }
+}
+
+object SmoothedHingeLossFunction {
+  /**
+   * Compute the loss and derivative of the smoothed hinge loss function at a single point.
+   *
+   * Note that the derivative is multiplied element-wise by the label in advance.
+   *
+   * @param margin The margin, i.e. z in l(z, y)
+   * @param label The label, i.e. y in l(z, y)
+   * @return The value and the 1st derivative
+   */
+  def lossAndDerivative(margin: Double, label: Double): (Double, Double) = {
+    val modifiedLabel = if (label < MathConst.POSITIVE_RESPONSE_THRESHOLD) -1D else 1D
+    val z = modifiedLabel * margin
 
     // Eq: 2, page 2
     val loss = if (z <= 0) {
@@ -50,9 +70,6 @@ class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
       0.0
     }
 
-    // Eq. 4, page 2
-    // cumGradient += datum.weight * actualLabel * deriv * datum.features
-    breeze.linalg.axpy(datum.weight * actualLabel * deriv, datum.features, cumGradient)
-    datum.weight * loss
+    (loss, deriv * modifiedLabel)
   }
 }

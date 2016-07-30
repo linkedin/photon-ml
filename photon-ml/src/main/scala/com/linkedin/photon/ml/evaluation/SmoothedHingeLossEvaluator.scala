@@ -16,17 +16,17 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.PointwiseSquareLossFunction
+import com.linkedin.photon.ml.function.SmoothedHingeLossFunction
 
 /**
- * Evaluator for squared loss
+ * Evaluator for smoothed hinge loss
  *
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
  * @param defaultScore the default score used to compute the metric
  */
-protected[ml] class SquaredLossEvaluator(
-    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-    defaultScore: Double = 0.0) extends Evaluator {
+protected[ml] class SmoothedHingeLossEvaluator(
+  labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
+  defaultScore: Double = 0.0) extends Evaluator {
 
   /**
    * Evaluate the scores of the model
@@ -34,7 +34,7 @@ protected[ml] class SquaredLossEvaluator(
    * @param scores the scores to evaluate
    * @return score metric value
    */
-  override def evaluate(scores: RDD[(Long, Double)]): Double = {
+  def evaluate(scores: RDD[(Long, Double)]): Double = {
     val defaultScore = this.defaultScore
 
     val scoreAndLabelAndWeights = scores
@@ -45,7 +45,7 @@ protected[ml] class SquaredLossEvaluator(
       .values
 
     scoreAndLabelAndWeights.map { case (score, (label, weight)) =>
-        weight * PointwiseSquareLossFunction.loss(score, label)._1
+        weight * SmoothedHingeLossFunction.lossAndDerivative(score, label)._1
       }
       .reduce(_ + _)
   }

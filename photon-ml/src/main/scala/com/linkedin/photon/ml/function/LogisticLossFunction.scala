@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.function
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.util.Utils
@@ -62,7 +63,7 @@ object PointwiseLogisticLossFunction extends PointwiseLossFunction {
    * @return The value and the 1st derivative
    */
   override def loss(margin: Double, label: Double): (Double, Double) = {
-    if (label > 0) {
+    if (label > MathConst.POSITIVE_RESPONSE_THRESHOLD) {
       // The following is equivalent to log(1 + exp(-margin)) but more numerically stable.
       (Utils.log1pExp(-margin), - sigmoid(-margin))
     } else {
