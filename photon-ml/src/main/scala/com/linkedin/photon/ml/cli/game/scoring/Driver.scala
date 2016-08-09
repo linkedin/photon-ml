@@ -21,6 +21,9 @@ import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameA
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.evaluation.EvaluatorType.EvaluatorType
+import com.linkedin.photon.ml.evaluation._
+import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -151,6 +154,35 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
+   * Save the computed scores to HDFS with auxiliary info
+   *
+   * @param uids The unique ids
+   * @param gameDataSet The GAME data set
+   * @param scores The computed scores
+   */
+  protected def saveScoresToHDFS(
+      uids: RDD[(Long, Option[String])],
+      gameDataSet: RDD[(Long, GameDatum)],
+      scores: KeyValueScore): Unit = {
+
+    val scoredItems = uids.join(gameDataSet).join(scores.scores).map { case (_, ((uid, gameDatum), score)) =>
+      ScoredItem(score, uid, Some(gameDatum.response), gameDatum.randomEffectIdToIndividualIdMap)
+    }
+    scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val numScoredItems = scoredItems.count()
+    logger.info(s"Number of scored items to be written to HDFS: $numScoredItems (s)\n")
+    val scoredItemsToBeSaved =
+      if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
+        scoredItems.repartition(numOutputFilesForScores)
+      } else {
+        scoredItems
+      }
+    val scoresDir = Driver.getScoresDir(outputDir)
+    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = gameModelId, scoresDir)
+    scoredItems.unpersist()
+  }
+
+  /**
     * Run the driver
     */
   def run(): Unit = {
@@ -170,25 +202,22 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     startTime = System.nanoTime()
     val scores = scoreGameDataSet(featureShardIdToFeatureMapMap, gameDataSet)
-    val scoredItems = uids.join(gameDataSet).join(scores.scores).map { case (_, ((uid, gameDatum), score)) =>
-      ScoredItem(score, uid, Some(gameDatum.response), gameDatum.randomEffectIdToIndividualIdMap)
-    }
-    scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    val numScoredItems = scoredItems.count()
-    logger.info(s"Number of scored items: $numScoredItems (s)\n")
-    val scoredItemsToBeSaved =
-      if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
-        scoredItems.repartition(numOutputFilesForScores)
-      } else {
-        scoredItems
-      }
-    val scoresDir = Driver.getScoresDir(outputDir)
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = gameModelId, scoresDir)
+    scores.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val scoringTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed scoring and writing scores to HDFS: $scoringTime (s)\n")
+    logger.info(s"Time elapsed after computing scores: $scoringTime (s)\n")
 
-    val postprocessingTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after evaluation: $postprocessingTime (s)\n")
+    startTime = System.nanoTime()
+    saveScoresToHDFS(uids, gameDataSet, scores)
+    val savingTime = (System.nanoTime() - startTime) * 1e-9
+    logger.info(s"Time elapsed saving scores to HDFS: $savingTime (s)\n")
+
+    evaluatorType.foreach { evaluatorType =>
+      startTime = System.nanoTime()
+      val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
+      logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
+      val evaluationTime = (System.nanoTime() - startTime) * 1e-9
+      logger.info(s"Time elapsed after evaluating scores: $evaluationTime (s)\n")
+    }
   }
 }
 
@@ -202,6 +231,35 @@ object Driver {
 
   protected[scoring] def getLogsPath(outputDir: String): String = {
     new Path(outputDir, LOGS).toString
+  }
+
+  /**
+   * Evaluate the computed scores with the given evaluator type
+   * @param evaluatorType The evaluator type
+   * @param scores The computed scores
+   * @param gameDataSet The GAME data set
+   */
+  protected[scoring] def evaluateScores(
+      evaluatorType: EvaluatorType,
+      scores: KeyValueScore,
+      gameDataSet: RDD[(Long, GameDatum)]): Double = {
+
+    // Make sure the GAME data set makes sense
+    val numSamplesWithNaNResponse = gameDataSet.filter(_._2.response.isNaN).count()
+    require(numSamplesWithNaNResponse == 0, s"numSamplesWithNaNResponse: $numSamplesWithNaNResponse")
+
+    // The computed scores already take the offset into account
+    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameDatum => (gameDatum.response, 0.0, gameDatum.weight))
+    val evaluator = evaluatorType match {
+      case AUC => new BinaryClassificationEvaluator(labelAndOffsetAndWeights)
+      case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
+      case POISSON_LOSS => new PoissonLossEvaluator(labelAndOffsetAndWeights)
+      case LOGISTIC_LOSS => new LogisticLossEvaluator(labelAndOffsetAndWeights)
+      case SMOOTHED_HINGE_LOSS => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
+      case SQUARED_LOSS => new SquaredLossEvaluator(labelAndOffsetAndWeights)
+      case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
+    }
+    evaluator.evaluate(scores.scores)
   }
 
   /**
