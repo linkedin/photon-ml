@@ -16,6 +16,9 @@ package com.linkedin.photon.ml.cli.game.scoring
 
 import scopt.OptionParser
 
+import com.linkedin.photon.ml.evaluation.EvaluatorType
+import com.linkedin.photon.ml.evaluation.EvaluatorType._
+
 /**
  * Command line arguments for GAME scoring driver
  *
@@ -48,6 +51,7 @@ import scopt.OptionParser
  * @param outputDir Output directory for logs in text file and the scores in ScoringResultAvro format.
  * @param numOutputFilesForScores Number of output files to write for the computed scores.
  * @param deleteOutputDirIfExists Whether to delete the output directory if exists
+ * @param evaluatorType The type of the evaluator used to evaluate the computed scores
  * @param applicationName Name of this Spark application.
  */
 case class Params(
@@ -64,6 +68,7 @@ case class Params(
     outputDir: String = "",
     numOutputFilesForScores: Int = -1,
     deleteOutputDirIfExists: Boolean = false,
+    evaluatorType: Option[EvaluatorType] = None,
     applicationName: String = "Game-Scoring") {
 
   override def toString: String = {
@@ -80,6 +85,7 @@ case class Params(
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
+      s"evaluatorType: $evaluatorType\n " +
       s"applicationName: $applicationName"
   }
 }
@@ -161,6 +167,9 @@ object Params {
       opt[Boolean]("delete-output-dir-if-exists")
         .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
         .action((x, c) => c.copy(deleteOutputDirIfExists = x))
+      opt[String]("evaluator-type")
+        .text("Type of the evaluator used to evaluate the computed scores.")
+        .action((x, c) => c.copy(evaluatorType = Some(EvaluatorType.withName(x))))
       //TODO: remove the task-type option
       opt[String]("task-type")
         .text("A dummy option that does nothing and will be removed for the next major version bump")
