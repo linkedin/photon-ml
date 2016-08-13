@@ -225,8 +225,9 @@ object NameAndTermFeatureSetContainer {
         numExecutors * 5
       }
     val records = AvroUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
+    // numExecutors * 5 is too much for distinct operation when the data are huge. Use numExecutors instead.
     val nameAndTermFeatureSetContainer =
-      AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys)
+      AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys, numExecutors)
     nameAndTermFeatureSetContainer.saveAsTextFiles(featureNameAndTermSetOutputPath, sparkContext)
 
     sparkContext.stop()
