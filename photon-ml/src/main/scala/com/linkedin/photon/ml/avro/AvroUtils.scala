@@ -121,7 +121,8 @@ object AvroUtils {
     */
   protected[avro] def readNameAndTermSetFromGenericRecords(
     genericRecords: RDD[GenericRecord],
-    featureSectionKey: String): Set[NameAndTerm] = {
+    featureSectionKey: String,
+    numPartitions: Int): Set[NameAndTerm] = {
 
     genericRecords.flatMap(_.get(featureSectionKey) match {
       case recordList: JList[_] => recordList.asScala.map {
@@ -129,7 +130,7 @@ object AvroUtils {
         case any => throw new IllegalArgumentException(s"$any in features list is not a record")
       }
       case _ => throw new IllegalArgumentException(s"$featureSectionKey is not a list (and might be null)")
-    }).distinct().collect().toSet
+    }).distinct(numPartitions).collect().toSet
   }
 
   /**
@@ -141,10 +142,11 @@ object AvroUtils {
     */
   protected[avro] def readNameAndTermFeatureSetContainerFromGenericRecords(
     genericRecords: RDD[GenericRecord],
-    featureSectionKeys: Set[String]): NameAndTermFeatureSetContainer = {
+    featureSectionKeys: Set[String],
+    numPartitions: Int): NameAndTermFeatureSetContainer = {
 
     val nameAndTermFeatureSets = featureSectionKeys.map { featureSectionKey =>
-      (featureSectionKey, AvroUtils.readNameAndTermSetFromGenericRecords(genericRecords, featureSectionKey))
+      (featureSectionKey, AvroUtils.readNameAndTermSetFromGenericRecords(genericRecords, featureSectionKey, numPartitions))
     }.toMap
     new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
   }
