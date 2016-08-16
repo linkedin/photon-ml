@@ -19,6 +19,7 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
   - [Models](#models)
   - [Shaded Jar](#shaded-jar)
   - [Try It Out!](#try-it-out)
+    - [Tutorial Docker Image](#tutorial-docker-image)
     - [Install Spark](#install-spark)
     - [Get and Build the Code](#get-and-build-the-code)
     - [Grab a Dataset](#grab-a-dataset)
@@ -185,7 +186,38 @@ Below is a command to build the photon-all jar:
 
 ### Try It Out!
 
-Follow these steps to train a logistic regression model with Photon ML.
+Follow these steps to try Photon ML on your machine.
+
+#### Tutorial Docker Image
+
+We've made a docker image available with an interactive tutorial. This is the quickest way to get started, and it covers some of the key concepts and features of Photon ML.
+
+ 1. Install Docker
+    1. Visit https://docs.docker.com/engine/installation/ (search "install Docker", it's the first result)
+    2. Follow the instructions to download and install Docker for your operating system
+ 2. Launch the Docker daemon (this happens automatically on some systems)
+ 3. Install the Photon ML Tutorial Image
+    1. In your terminal, run:
+
+     ```
+    docker pull linkedin/photon-ml-tutorial
+    ```
+
+ 4. Launch the Photon ML Tutorial
+    1. Launch a container for the tutorial image:
+
+     ```
+    docker run -dit -p 5334:80 --name tutorial linkedin/photon-ml-tutorial
+    ```
+
+    2. Verify that a container is running the image:
+
+     ```
+    docker ps
+    ```
+
+ 5. Access the Photon-ML Tutorial App
+    1. Navigate to [http://localhost:5334/tutorial](http://localhost:5334/tutorial)
 
 #### Install Spark
 
