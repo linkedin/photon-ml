@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/linkedin/photon-ml.svg?branch=master)](https://travis-ci.org/linkedin/photon-ml)
 
+**New**: check out our [hands-on tutorial](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
+
 **Photon Machine Learning (Photon ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
 
 It's designed to be flexible, scalable and efficient, while providing handy analytical abilities to help modelers / data scientists make predictions easily and quickly.
@@ -19,7 +21,6 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
   - [Models](#models)
   - [Shaded Jar](#shaded-jar)
   - [Try It Out!](#try-it-out)
-    - [Tutorial Docker Image](#tutorial-docker-image)
     - [Install Spark](#install-spark)
     - [Get and Build the Code](#get-and-build-the-code)
     - [Grab a Dataset](#grab-a-dataset)
@@ -186,38 +187,9 @@ Below is a command to build the photon-all jar:
 
 ### Try It Out!
 
-Follow these steps to try Photon ML on your machine.
+The easiest way to get started with Photon ML is to try the tutorial we created to demonstrate how generalized linear mixed-effect models can be applied to build a personalized recommendation system. You can view the instructions on the wiki [here](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
 
-#### Tutorial Docker Image
-
-We've made a docker image available with an interactive tutorial. This is the quickest way to get started, and it covers some of the key concepts and features of Photon ML.
-
- 1. Install Docker
-    1. Visit https://docs.docker.com/engine/installation/ (search "install Docker", it's the first result)
-    2. Follow the instructions to download and install Docker for your operating system
- 2. Launch the Docker daemon (this happens automatically on some systems)
- 3. Install the Photon ML Tutorial Image
-    1. In your terminal, run:
-
-     ```
-    docker pull linkedin/photon-ml-tutorial
-    ```
-
- 4. Launch the Photon ML Tutorial
-    1. Launch a container for the tutorial image:
-
-     ```
-    docker run -dit -p 5334:80 --name tutorial linkedin/photon-ml-tutorial
-    ```
-
-    2. Verify that a container is running the image:
-
-     ```
-    docker ps
-    ```
-
- 5. Access the Photon-ML Tutorial App
-    1. Navigate to [http://localhost:5334/tutorial](http://localhost:5334/tutorial)
+Alternatively, you can follow these steps to try Photon ML on your machine.
 
 #### Install Spark
 
