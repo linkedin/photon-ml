@@ -342,7 +342,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       val modelConfig = fixedEffectOptimizationConfiguration.mkString("\n") + "\n" +
           randomEffectOptimizationConfiguration.mkString("\n") + "\n" +
           factoredRandomEffectOptimizationConfiguration.mkString("\n")
-      val startTime = System.nanoTime()
+
+      val timer = Timer.start()
       logger.info(s"Start to train the game model with the following config:\n$modelConfig\n")
 
       // For each model, create optimization coordinates for the fixed effect, random effect, and factored random effect
@@ -409,9 +410,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       val coordinateDescent = new CoordinateDescent(coordinates, trainingEvaluator, validatingDataAndEvaluatorOption,
         logger)
       val gameModel = coordinateDescent.run(numIterations)
-      val timeElapsed = (System.nanoTime() - startTime) * 1e-9
+
+      timer.stop()
       logger.info(s"Finished training model with the following config:\n$modelConfig\n" +
-          s"Time elapsed: $timeElapsed (s)\n")
+          s"Time elapsed: ${timer.durationSeconds} (s)\n")
 
       (modelConfig, gameModel)
     }
@@ -471,58 +473,59 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     * Run the driver
     */
   def run(): Unit = {
+    val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
     IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sparkContext.hadoopConfiguration)
 
-    var startTime = System.nanoTime()
+    timer.start()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
-    val initializationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after preparing feature maps: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     val gameDataSet = prepareGameDataSet(featureShardIdToFeatureMapMap)
-    val gameDataPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after game data set preparation: $gameDataPreparationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after game data set preparation: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     val trainingDataSet = prepareTrainingDataSet(gameDataSet)
-    val trainingDataSetPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after training data set preparation: $trainingDataSetPreparationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after training data set preparation: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     val trainingEvaluator = prepareTrainingEvaluator(gameDataSet)
-    val trainingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after training evaluator preparation: $trainingEvaluatorPreparationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after training evaluator preparation: ${timer.durationSeconds} (s)\n")
 
     // Get rid of the largest object, which is no longer needed in the following code
     gameDataSet.unpersist()
 
-    startTime = System.nanoTime()
+    timer.start()
     val validatingDataAndEvaluatorOption = validateDirsOpt match {
       case Some(validatingDirs) =>
         val validatingDataAndEvaluator = prepareValidatingEvaluator(validatingDirs, featureShardIdToFeatureMapMap)
-        val validatingEvaluatorPreparationTime = (System.nanoTime() - startTime) * 1e-9
+        timer.stop()
         logger.info("Time elapsed after validating data and evaluator preparation: " +
-                    s"$validatingEvaluatorPreparationTime (s)\n")
+                    s"${timer.durationSeconds} (s)\n")
 
         Option(validatingDataAndEvaluator)
       case None =>
         None
     }
 
-    startTime = System.nanoTime()
+    timer.start()
     val gameModelsMap = train(trainingDataSet, trainingEvaluator, validatingDataAndEvaluatorOption)
-    val trainingTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after game model training: $trainingTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after game model training: ${timer.durationSeconds} (s)\n")
 
     trainingDataSet.foreach { case (_, rddLike: RDDLike) => rddLike.unpersistRDD() }
 
     if (modelOutputMode != ModelOutputMode.NONE) {
-      startTime = System.nanoTime()
+      timer.start()
       saveModelToHDFS(featureShardIdToFeatureMapMap, validatingDataAndEvaluatorOption, gameModelsMap)
-      val savingModelTime = (System.nanoTime() - startTime) * 1e-9
-      logger.info(s"Time elapsed after saving game models to HDFS: $savingModelTime (s)\n")
+      timer.stop()
+      logger.info(s"Time elapsed after saving game models to HDFS: ${timer.durationSeconds} (s)\n")
     }
   }
 }
@@ -538,7 +541,7 @@ object Driver {
     */
   def main(args: Array[String]): Unit = {
 
-    val startTime = System.nanoTime()
+    val timer = Timer.start()
 
     val params = Params.parseFromCommandLine(args)
     import params._
@@ -556,8 +559,8 @@ object Driver {
       val job = new Driver(params, sc, logger)
       job.run()
 
-      val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
-      logger.info(s"Overall time elapsed $timeElapsed minutes")
+      timer.stop()
+      logger.info(s"Overall time elapsed ${timer.durationMinutes} minutes")
     } catch {
       case e: Exception =>
         logger.error("Failure while running the driver", e)

@@ -18,7 +18,7 @@ import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.{DataSet, GameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger}
+import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger, Timer}
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import org.apache.spark.rdd.RDD
 
@@ -109,15 +109,15 @@ class CoordinateDescent(
       .toMap
 
     for (iteration <- 0 until numIterations) {
-      val iterationStartTime = System.nanoTime()
+      val iterationTimer = Timer.start()
       logger.debug(s"Iteration $iteration of coordinate descent starts...\n")
       coordinates.foreach { case (coordinateId, coordinate) =>
 
-        val coordinateStartTime = System.nanoTime()
+        val coordinateTimer = Timer.start()
         logger.debug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
 
         // Update the model
-        val modelUpdatingStartTime = System.nanoTime()
+        val modelUpdatingTimer = Timer.start()
 
         val oldModel = updatedGAMEModel.getModel(coordinateId).get
         val (updatedModel, optimizationTracker) = if (updatedScoresContainer.keys.size > 1) {
@@ -147,9 +147,8 @@ class CoordinateDescent(
         updatedGAMEModel = updatedGAMEModel.updateModel(coordinateId, updatedModel)
 
         // Summarize the current progress
-        val modelUpdatingElapsedTime = (System.nanoTime() - modelUpdatingStartTime) * 1e-9
         logger.info(s"Finished training the model in coordinate $coordinateId, " +
-            s"time elapsed: $modelUpdatingElapsedTime (s).")
+            s"time elapsed: ${modelUpdatingTimer.stop().durationSeconds} (s).")
         logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
         logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
         optimizationTracker match {
@@ -179,7 +178,7 @@ class CoordinateDescent(
 
         // Update the validating score and evaluate the updated model on the validating data
         validatingScoresContainerOption = validatingDataAndEvaluatorOption.map { case (validatingData, evaluator) =>
-          val validationStartTime = System.nanoTime()
+          val validationTimer = Timer.start()
           var validatingScoresContainer = validatingScoresContainerOption.get
           val validatingScores = updatedModel
             .score(validatingData)
@@ -190,17 +189,19 @@ class CoordinateDescent(
           validatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
           val fullScore = validatingScoresContainer.values.reduce(_ + _)
           val evaluationMetric = evaluator.evaluate(fullScore.scores)
-          val validationElapsedTime = (System.nanoTime() - validationStartTime) * 1e-9
-          logger.debug(s"Finished validating the model, time elapsed: $validationElapsedTime (s).")
+          logger.debug(s"Finished validating the model, time elapsed: ${validationTimer.stop().durationSeconds} (s).")
           logger.info(s"Evaluation metric after updating coordinateId $coordinateId at iteration $iteration is " +
               s"$evaluationMetric")
           validatingScoresContainer
         }
-        val elapsedTime = (System.nanoTime() - coordinateStartTime) * 1e-9
-        logger.info(s"Updating coordinate $coordinateId finished, time elapsed: $elapsedTime (s)\n")
+
+        logger.info(
+          s"Updating coordinate $coordinateId finished, time elapsed: ${coordinateTimer.stop().durationSeconds} (s)\n")
       }
-      val elapsedTime = (System.nanoTime() - iterationStartTime) * 1e-9
-      logger.info(s"Iteration $iteration of coordinate descent finished, time elapsed: $elapsedTime (s)\n\n")
+
+      logger.info(
+        s"Iteration $iteration of coordinate descent finished, time elapsed: " +
+        s"${iterationTimer.stop().durationSeconds} (s)\n\n")
     }
 
     updatedGAMEModel
