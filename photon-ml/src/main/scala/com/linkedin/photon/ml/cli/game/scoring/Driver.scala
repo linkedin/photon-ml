@@ -186,37 +186,38 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     * Run the driver
     */
   def run(): Unit = {
+    val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
     IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sparkContext.hadoopConfiguration)
 
-    var startTime = System.nanoTime()
+    timer.start()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
-    val initializationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after preparing feature maps: $initializationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after preparing feature maps: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     val (uids, gameDataSet) = prepareGameDataSet(featureShardIdToFeatureMapMap)
-    val gameDataSetPreparationTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after game data set preparation: $gameDataSetPreparationTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after game data set preparation: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     val scores = scoreGameDataSet(featureShardIdToFeatureMapMap, gameDataSet)
     scores.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    val scoringTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed after computing scores: $scoringTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed after computing scores: ${timer.durationSeconds} (s)\n")
 
-    startTime = System.nanoTime()
+    timer.start()
     saveScoresToHDFS(uids, gameDataSet, scores)
-    val savingTime = (System.nanoTime() - startTime) * 1e-9
-    logger.info(s"Time elapsed saving scores to HDFS: $savingTime (s)\n")
+    timer.stop()
+    logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 
     evaluatorType.foreach { evaluatorType =>
-      startTime = System.nanoTime()
+      timer.start()
       val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
-      val evaluationTime = (System.nanoTime() - startTime) * 1e-9
-      logger.info(s"Time elapsed after evaluating scores: $evaluationTime (s)\n")
+      timer.stop()
+      logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
     }
   }
 }
@@ -267,7 +268,7 @@ object Driver {
     */
   def main(args: Array[String]): Unit = {
 
-    val startTime = System.nanoTime()
+    val timer = Timer.start()
 
     val params = Params.parseFromCommandLine(args)
     import params._
@@ -285,8 +286,8 @@ object Driver {
       val job = new Driver(params, sc, logger)
       job.run()
 
-      val timeElapsed = (System.nanoTime() - startTime) * 1e-9 / 60
-      logger.info(s"Overall time elapsed $timeElapsed minutes")
+      timer.stop()
+      logger.info(s"Overall time elapsed ${timer.durationMinutes} minutes")
 
     } catch {
       case e: Exception =>
