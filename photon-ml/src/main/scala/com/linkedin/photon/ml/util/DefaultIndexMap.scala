@@ -24,6 +24,12 @@ class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) exten
   @transient
   private var _idToNameMap: Map[Int, String] = null
 
+  private val _size: Int = featureNameToIdMap.size
+
+  override def size(): Int = _size
+
+  override def isEmpty(): Boolean = size == 0
+
   override def getFeatureName(idx: Int): Option[String] = {
     if (_idToNameMap == null) {
       _idToNameMap = featureNameToIdMap.map{case (k, v) => (v, k)}
