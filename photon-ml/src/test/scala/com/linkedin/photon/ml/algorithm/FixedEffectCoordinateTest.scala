@@ -14,25 +14,19 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, GameDatum, KeyValueScore, LabeledPoint}
-import com.linkedin.photon.ml.evaluation.Evaluator
+import com.linkedin.photon.ml.data.{FixedEffectDataSet, LabeledPoint}
 import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.optimization.game.OptimizationTracker
-import com.linkedin.photon.ml.model.{DatumScoringModel, GAMEModel, FixedEffectModel}
+import com.linkedin.photon.ml.model.FixedEffectModel
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, OptimizationStatesTracker}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.PhotonLogger
 
-import breeze.linalg.Vector
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.mockito.Matchers
 import org.mockito.Mockito._
-import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
+import org.testng.annotations.Test
 
 class FixedEffectCoordinateTest {
 
@@ -53,8 +47,7 @@ class FixedEffectCoordinateTest {
     val statesTracker = mock(classOf[OptimizationStatesTracker])
 
     // Optimization problem
-    doReturn(labeledPoints).when(optimizationProblem).downSample(
-      Matchers.eq(labeledPoints), Matchers.any(classOf[Long]))
+    doReturn(labeledPoints).when(optimizationProblem).downSample(Matchers.eq(labeledPoints))
     doReturn(Some(statesTracker)).when(optimizationProblem).getStatesTracker
     doReturn(updatedModel).when(optimizationProblem).run(labeledPointValues, model, NoNormalization)
 
@@ -76,7 +69,7 @@ class FixedEffectCoordinateTest {
 
     // Update model
     val coordinate = new FixedEffectCoordinate(dataset, optimizationProblem)
-    val (resultModel, tracker) = coordinate.updateModel(fixedEffectModel)
+    coordinate.updateModel(fixedEffectModel)
 
     verify(optimizationProblem, times(1)).run(
       Matchers.any(classOf[RDD[LabeledPoint]]), Matchers.eq(model), Matchers.eq(NoNormalization))

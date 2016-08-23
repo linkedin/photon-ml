@@ -49,10 +49,11 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
     regularizationWeight: Double,
     modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]],
     treeAggregateDepth: Int,
-    isComputingVariances: Boolean) extends Logging with DownSampler with Serializable {
+    isComputingVariances: Boolean) extends Logging with Serializable {
 
-  override def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long)
-    : RDD[(Long, LabeledPoint)] = sampler.downSample(labeledPoints, seed)
+   def downSample(labeledPoints: RDD[(Long, LabeledPoint)]): RDD[(Long, LabeledPoint)] = {
+     sampler.downSample(labeledPoints)
+   }
 
   /**
     * Get the optimization state trackers for the optimization problems solved
