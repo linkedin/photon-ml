@@ -138,7 +138,8 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
       val projectionMatrixBroadcast = factoredRandomEffectModel.projectionMatrixBroadcast
       val randomEffectModel = factoredRandomEffectModel.toRandomEffectModel
-      val randomEffectDataSetInProjectedSpace = projectionMatrixBroadcast.projectRandomEffectDataSet(randomEffectDataSet)
+      val randomEffectDataSetInProjectedSpace =
+        projectionMatrixBroadcast.projectRandomEffectDataSet(randomEffectDataSet)
       RandomEffectCoordinate.score(randomEffectDataSetInProjectedSpace, randomEffectModel)
 
     case _ =>
