@@ -332,6 +332,19 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
   }
 
+  @Test
+  def testNoValidatingDir() = sparkTest("noValidatingDir", useKryo = true) {
+    val outputDir = s"$getTmpDir/testNoValidatingDir"
+
+    // Verify that the system still works if we don't specify a validating dir
+    val driver = runDriver(argArray(fixedEffectSeriousRunArgs ++ Map(
+      "output-dir" -> outputDir) - "validate-input-dirs"))
+
+    val fixedEffectModelPath = modelPath(outputDir, "all/0", "fixed-effect", "global")
+
+    assertTrue(Files.exists(fixedEffectModelPath))
+  }
+
   /**
     * Overridden spark test provider that allows for specifying whether to use kryo serialization
     *
