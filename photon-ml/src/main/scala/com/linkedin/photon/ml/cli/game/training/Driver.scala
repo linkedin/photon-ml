@@ -501,9 +501,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // Get rid of the largest object, which is no longer needed in the following code
     gameDataSet.unpersist()
 
-    timer.start()
     val validatingDataAndEvaluatorOption = validateDirsOpt match {
       case Some(validatingDirs) =>
+        timer.start()
         val validatingDataAndEvaluator = prepareValidatingEvaluator(validatingDirs, featureShardIdToFeatureMapMap)
         timer.stop()
         logger.info("Time elapsed after validating data and evaluator preparation: " +
