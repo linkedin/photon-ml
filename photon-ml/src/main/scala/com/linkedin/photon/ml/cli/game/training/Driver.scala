@@ -65,7 +65,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           .toMap
 
         val indexMapLoader = new DefaultIndexMapLoader(featureMap)
-        indexMapLoader.prepare(sparkContext, null)
+        indexMapLoader.prepare(sparkContext, null, shardId)
         (shardId, indexMapLoader)
       }
     featureShardIdToFeatureMapLoader.foreach { case (shardId, featureMapLoader) =>

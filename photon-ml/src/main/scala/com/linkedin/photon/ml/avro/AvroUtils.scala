@@ -216,8 +216,7 @@ object AvroUtils {
       }
     }
 
-    val maxIndex = featureMap.values.max
-    val length = maxIndex + 1
+    val length = featureMap.featureDimension
     val coefficients = Coefficients(
       VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length))
 

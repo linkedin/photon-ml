@@ -27,13 +27,16 @@ import org.apache.spark.SparkContext
 class PalDBIndexMapLoader extends IndexMapLoader {
   private var _storeDir: String = null
   private var _numPartitions: Int = 0
+  private var _namespace: String = null
 
-  override def prepare(sc: SparkContext, params: Params): Unit = {
+  override def prepare(sc: SparkContext, params: Params, namespace: String = IndexMap.GLOBAL_NS): Unit = {
     if (!params.offHeapIndexMapDir.isEmpty && params.offHeapIndexMapNumPartitions != 0) {
       _storeDir = params.offHeapIndexMapDir.get
       _numPartitions = params.offHeapIndexMapNumPartitions
+      _namespace = namespace
+
       (0 until _numPartitions).foreach(i =>
-        sc.addFile(new Path(_storeDir, PalDBIndexMap.partitionFilename(i)).toUri().toString())
+        sc.addFile(new Path(_storeDir, PalDBIndexMap.partitionFilename(i, namespace)).toUri().toString())
       )
     } else {
       throw new IllegalArgumentException(s"offHeapIndexMapDir is empty or the offHeapIndexMapNumPartitions is zero." +
@@ -41,7 +44,7 @@ class PalDBIndexMapLoader extends IndexMapLoader {
     }
   }
 
-  override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions)
+  override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
 
-  override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions)
+  override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
 }

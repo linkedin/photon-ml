@@ -62,7 +62,7 @@ class FeatureIndexingJobTest {
 
       try {
         new FeatureIndexingJob(sc,
-          "src/integTest/resources/DriverIntegTest/input/heart.avro",
+          Seq("src/integTest/resources/DriverIntegTest/input/heart.avro"),
           numPartitions,
           outputDir,
           addIntercept,

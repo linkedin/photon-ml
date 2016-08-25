@@ -36,7 +36,7 @@ object DataProcessingUtils {
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Map[String, Int] = {
 
     featureShardIdToFeatureMapLoader.map { case (shardId, featureMapLoader) =>
-      (shardId, featureMapLoader.indexMapForDriver.values.max + 1)
+      (shardId, featureMapLoader.indexMapForDriver.featureDimension)
     }
   }
 

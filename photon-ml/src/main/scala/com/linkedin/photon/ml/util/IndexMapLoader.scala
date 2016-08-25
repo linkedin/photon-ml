@@ -38,7 +38,7 @@ trait IndexMapLoader extends Serializable {
     * @param sc the SparkContext
     * @param params the parameters object
     */
-  def prepare(sc: SparkContext, params: Params): Unit
+  def prepare(sc: SparkContext, params: Params, namespace: String = IndexMap.GLOBAL_NS): Unit
 
   /**
     * Should be called in driver. Whether or not this method returns a new instance or reuses an old one
