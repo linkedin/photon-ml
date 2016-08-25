@@ -127,6 +127,24 @@ protected[ml] object Utils {
   }
 
   /**
+    * Fetch the java map from an Avro map field.
+    *
+    * @param record The Avro generic record
+    * @param key The field key
+    * @return A java map of String -> Object
+    */
+  def getMapAvro(
+      record: GenericRecord,
+      key: String,
+      isNullOK: Boolean = false): java.util.Map[String, JObject] = {
+    record.get(key) match {
+      case map: java.util.Map[String, JObject] => map
+      case obj: JObject => throw new IllegalArgumentException(s"$obj is not map type.")
+      case _ => if (isNullOK) null else throw new IllegalArgumentException(s"field $key is null")
+    }
+  }
+
+  /**
     * Parse String to Double
     */
   private def atod(string: String): Double = {

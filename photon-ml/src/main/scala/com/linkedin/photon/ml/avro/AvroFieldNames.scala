@@ -25,4 +25,5 @@ object AvroFieldNames {
   protected[avro] val OFFSET: String = "offset"
   protected[avro] val WEIGHT: String = "weight"
   protected[avro] val UID: String = "uid"
+  protected[avro] val META_DATA_MAP: String = "metadataMap"
 }
