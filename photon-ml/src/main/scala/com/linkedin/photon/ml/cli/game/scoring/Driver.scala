@@ -15,8 +15,9 @@
 package com.linkedin.photon.ml.cli.game.scoring
 
 import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTermFeatureSetContainer, ScoreProcessingUtils}
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUtils}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
@@ -33,41 +34,13 @@ import scala.collection.Map
 /**
   * Driver for GAME full model scoring
   */
-class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
+class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
+    extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
 
   protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
-  protected val hadoopConfiguration = sparkContext.hadoopConfiguration
-
-  /**
-    * Builds feature name-and-term to index maps according to configuration
-    *
-    * @return A map of shard id to feature map
-    */
-  protected def prepareFeatureMaps(): Map[String, IndexMapLoader] = {
-
-    val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
-    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
-      featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
-
-    val featureShardIdToFeatureMapLoader =
-      featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
-        val featureMap = nameAndTermFeatureSetContainer
-          .getFeatureNameAndTermToIndexMap(featureSectionKeys, featureShardIdToInterceptMap.getOrElse(shardId, true))
-          .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
-          .toMap
-
-        val indexMapLoader = new DefaultIndexMapLoader(featureMap)
-        indexMapLoader.prepare(sparkContext, null, shardId)
-        (shardId, indexMapLoader)
-      }
-    featureShardIdToFeatureMapLoader.foreach { case (shardId, featureMapLoader) =>
-      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMapLoader.indexMapForDriver.size}")
-    }
-    featureShardIdToFeatureMapLoader
-  }
 
   /**
     * Builds a GAME data set according to input data configuration

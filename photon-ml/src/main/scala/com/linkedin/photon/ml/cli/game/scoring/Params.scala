@@ -16,60 +16,85 @@ package com.linkedin.photon.ml.cli.game.scoring
 
 import scopt.OptionParser
 
+import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.cli.game.FeatureParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
+import com.linkedin.photon.ml.util.PalDBIndexMapParams
 
 /**
  * Command line arguments for GAME scoring driver
- *
- * @param inputDirs Input directories of data to be scored. Multiple input directories are also accepted if they are
- *                  separated by commas, e.g., inputDir1,inputDir2,inputDir3.
- * @param dateRangeOpt Date range for the input data represented in the form start.date-end.date,
- *                     e.g. 20150501-20150631. If dateRangeOpt is specified, the input directory is expected
- *                     to be in the daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files).
- *                     Otherwise, the input paths are assumed to be flat directories of input files
- *                     (e.g., inputDir/input-data-files).
- * @param dateRangeDaysAgoOpt Date range for the input data represented in the form start.daysAgo-end.daysAgo,
- *                            e.g. 90-1. If dateRangeDaysAgoOpt is specified, the input directory is expected
- *                            to be in the daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files).
- *                            Otherwise, the input paths are assumed to be flat directories of input files
- *                            (e.g., inputDir/input-data-files).
- * @param featureNameAndTermSetInputPath Input path to the features name-and-term lists.
- * @param featureShardIdToFeatureSectionKeysMap A map between the feature shard id and it's corresponding feature
- *                                              section keys in the following format:
- *                                              shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
- * @param featureShardIdToInterceptMap A map between the feature shard id and a boolean variable that decides whether a
- *                                     dummy feature should be added to the corresponding shard in order to learn an
- *                                     intercept, for example, in the following format: shardId1:true|shardId2:false.
- *                                     The default is true for all shard ids.
- * @param randomEffectIdSet A set of random effect ids of the corresponding random effect models in the following
- *                          format: randomEffectId1,randomEffectId2,randomEffectId3,
- * @param minPartitionsForRandomEffectModel Minimum number of partitions for GAME's random effect model
- * @param gameModelId The GAME model's id that is used to populate the "modelId" field of ScoringResultAvro
- *                      (output format of the computed scores).
- * @param gameModelInputDir Input directory of the GAME model to be used to for scoring purpose
- * @param outputDir Output directory for logs in text file and the scores in ScoringResultAvro format.
- * @param numOutputFilesForScores Number of output files to write for the computed scores.
- * @param deleteOutputDirIfExists Whether to delete the output directory if exists
- * @param evaluatorType The type of the evaluator used to evaluate the computed scores
- * @param applicationName Name of this Spark application.
  */
-case class Params(
-    inputDirs: Array[String] = Array(),
-    dateRangeOpt: Option[String] = None,
-    dateRangeDaysAgoOpt: Option[String] = None,
-    featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]] = Map(),
-    featureShardIdToInterceptMap: Map[String, Boolean] = Map(),
-    randomEffectIdSet: Set[String] = Set(),
-    minPartitionsForRandomEffectModel: Int = 1,
-    featureNameAndTermSetInputPath: String = "",
-    gameModelInputDir: String = "",
-    gameModelId: String = "",
-    outputDir: String = "",
-    numOutputFilesForScores: Int = -1,
-    deleteOutputDirIfExists: Boolean = false,
-    evaluatorType: Option[EvaluatorType] = None,
-    applicationName: String = "Game-Scoring") {
+class Params extends FeatureParams with PalDBIndexMapParams {
+
+  /**
+    * Input directories of data to be scored. Multiple input directories are also accepted if they are separated by
+    * commas, e.g., inputDir1,inputDir2,inputDir3.
+    */
+  var inputDirs: Array[String] = Array()
+
+  /**
+    * Date range for the input data represented in the form start.date-end.date, e.g. 20150501-20150631. If dateRangeOpt
+    * is specified, the input directory is expected to be in the daily format structure
+    * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
+    * of input files (e.g., inputDir/input-data-files).
+    */
+  var dateRangeOpt: Option[String] = None
+
+  /**
+    * Date range for the input data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1. If dateRangeDaysAgoOpt
+    * is specified, the input directory is expected to be in the daily format structure
+    * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
+    * of input files (e.g., inputDir/input-data-files).
+    */
+  var dateRangeDaysAgoOpt: Option[String] = None
+
+  /**
+    * A set of random effect ids of the corresponding random effect models in the following format:
+    * randomEffectId1,randomEffectId2,randomEffectId3,
+    */
+  var randomEffectIdSet: Set[String] = Set()
+
+  /**
+    * Minimum number of partitions for GAME's random effect model
+    */
+  var minPartitionsForRandomEffectModel: Int = 1
+
+  /**
+    * Input directory of the GAME model to be used to for scoring purpose
+    */
+  var gameModelInputDir: String = ""
+
+  /**
+    * The GAME model's id that is used to populate the "modelId" field of ScoringResultAvro (output format of the
+    * computed scores).
+    */
+  var gameModelId: String = ""
+
+  /**
+    * Output directory for logs in text file and the scores in ScoringResultAvro format.
+    */
+  var outputDir: String = ""
+
+  /**
+    * Number of output files to write for the computed scores.
+    */
+  var numOutputFilesForScores: Int = -1
+
+  /**
+    * Whether to delete the output directory if exists
+    */
+  var deleteOutputDirIfExists: Boolean = false
+
+  /**
+    * The type of the evaluator used to evaluate the computed scores
+    */
+  var evaluatorType: Option[EvaluatorType] = None
+
+  /**
+    * Name of this Spark application.
+    */
+  var applicationName: String = "Game-Scoring"
 
   override def toString: String = {
     s"inputDirs: ${inputDirs.mkString(", ")}\n" +
@@ -86,99 +111,115 @@ case class Params(
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
       s"evaluatorType: $evaluatorType\n " +
-      s"applicationName: $applicationName"
+      s"applicationName: $applicationName\n" +
+      s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
+      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
   }
 }
 
 object Params {
 
   def parseFromCommandLine(args: Array[String]): Params = {
-    val defaultParams = Params()
-    val parser = new OptionParser[Params]("GLMix-Scoring-Params") {
+    val defaultParams = new Params()
+    val params = new Params()
+
+    val parser = new OptionParser[Unit]("GLMix-Scoring-Params") {
       opt[String]("input-data-dirs")
         .required()
         .text("Input directories of data to be scored. Multiple input directories are also accepted if they are " +
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
-        .action((x, c) => c.copy(inputDirs = x.split(",")))
+        .foreach(x => params.inputDirs = x.split(","))
       opt[String]("date-range")
         .text(s"Date range for the input data represented in the form start.date-end.date, " +
           s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
           s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
           s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
           s"Default: ${defaultParams.dateRangeOpt}.")
-        .action((x, c) => c.copy(dateRangeOpt = Some(x)))
+        .foreach(x => params.dateRangeOpt = Some(x))
       opt[String]("date-range-days-ago")
         .text(s"Date range for the input data represented in the form start.daysAgo-end.daysAgo, " +
           s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
           s"daily format structure (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
           s"are assumed to be flat directories of input files (e.g., inputDir/input-data-files). " +
           s"Default: ${defaultParams.dateRangeDaysAgoOpt}.")
-        .action((x, c) => c.copy(dateRangeDaysAgoOpt = Some(x)))
+        .foreach(x => params.dateRangeDaysAgoOpt = Some(x))
       opt[String]("feature-name-and-term-set-path")
         .required()
-        .text("Input path to the features name-and-term lists.")
-        .action((x, c) => c.copy(featureNameAndTermSetInputPath = x))
+        .text("Input path to the features name-and-term lists.\n" +
+          s"DEPRECATED -- This option will be removed in the next major version. Use the offheap index map " +
+          s"configuration instead")
+        .foreach(x => params.featureNameAndTermSetInputPath = x)
       opt[String]("feature-shard-id-to-feature-section-keys-map")
         .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
           s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
-        .action((x, c) => c.copy(featureShardIdToFeatureSectionKeysMap =
-          x.split("\\|")
-            .map { line => line.split(":") match {
-              case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
-              case Array(key) => (key, Set[String]())
-            }}
-            .toMap
-        ))
+        .foreach(x => params.featureShardIdToFeatureSectionKeysMap =
+            x.split("\\|")
+              .map { line => line.split(":") match {
+                case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
+                case Array(key) => (key, Set[String]())
+              }}
+              .toMap)
       opt[String]("feature-shard-id-to-intercept-map")
         .text(s"A map between the feature shard id and a boolean variable that decides whether a dummy feature " +
           s"should be added to the corresponding shard in order to learn an intercept, for example, in the " +
           s"following format: shardId1:true|shardId2:false. The default is true for all shard ids.")
-        .action((x, c) => c.copy(featureShardIdToInterceptMap =
-          x.split("\\|")
-            .map { line => line.split(":") match {
-              case Array(key, flag) => (key, flag.toBoolean)
-              case Array(key) => (key, true)
-            }}
-            .toMap
-        ))
+        .foreach(x => params.featureShardIdToInterceptMap =
+            x.split("\\|")
+              .map { line => line.split(":") match {
+                case Array(key, flag) => (key, flag.toBoolean)
+                case Array(key) => (key, true)
+              }}
+              .toMap)
       opt[String]("random-effect-id-set")
         .text("A set of random effect ids of the corresponding random effect models in the following format: " +
           s"randomEffectId1,randomEffectId2,randomEffectId3, Default: ${defaultParams.randomEffectIdSet}")
-        .action((x, c) => c.copy(randomEffectIdSet = x.split(",").toSet))
+        .foreach(x => params.randomEffectIdSet = x.split(",").toSet)
       opt[String]("game-model-id")
         .text(s"The GAME model's id that is used to populate the 'modelId' field of ScoringResultAvro " +
           s"(output format of the computed scores). Default: ${defaultParams.gameModelId}")
-          .action((x, c) => c.copy(gameModelId = x))
+        .foreach(x => params.gameModelId = x)
       opt[String]("game-model-input-dir")
         .required()
         .text(s"Input directory of the GAME model to be used to for scoring purpose.")
-        .action((x, c) => c.copy(gameModelInputDir = x))
+        .foreach(x => params.gameModelInputDir = x)
       opt[String]("output-dir")
         .required()
         .text(s"Output directory for logs and the scores.")
-        .action((x, c) => c.copy(outputDir = x.replaceAll(",|:", "_")))
+        .foreach(x => params.outputDir = x.replaceAll(",|:", "_"))
       opt[Int]("num-files")
         .text("Number of output files to write for the computed scores. " +
           s"Default: ${defaultParams.numOutputFilesForScores}")
-        .action((x, c) => c.copy(numOutputFilesForScores = x))
+        .foreach(x => params.numOutputFilesForScores = x)
       opt[String]("application-name")
         .text(s"Name of this Spark application. Default: ${defaultParams.applicationName}")
-        .action((x, c) => c.copy(applicationName = x))
+        .foreach(x => params.applicationName = x)
       opt[Boolean]("delete-output-dir-if-exists")
         .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
-        .action((x, c) => c.copy(deleteOutputDirIfExists = x))
+        .foreach(x => params.deleteOutputDirIfExists = x)
       opt[String]("evaluator-type")
         .text("Type of the evaluator used to evaluate the computed scores.")
-        .action((x, c) => c.copy(evaluatorType = Some(EvaluatorType.withName(x))))
+        .foreach(x => params.evaluatorType = Some(EvaluatorType.withName(x)))
       //TODO: remove the task-type option
       opt[String]("task-type")
         .text("A dummy option that does nothing and will be removed for the next major version bump")
+      opt[String](OFFHEAP_INDEXMAP_DIR)
+        .text("The offheap storage directory if offheap map is needed. DefaultIndexMap will be used if not specified.")
+        .foreach(x => params.offHeapIndexMapDir = Some(x))
+      opt[Int](OFFHEAP_INDEXMAP_NUM_PARTITIONS)
+        .text("The number of partitions for the offheap map storage. This partition number should be consistent with " +
+            "the number when offheap storage is built. This parameter affects only the execution speed during " +
+            "feature index building and has zero performance impact on training other than maintaining a " +
+            "convention.")
+        .foreach(x => params.offHeapIndexMapNumPartitions = x)
+
       help("help").text("Prints usage text")
     }
-    parser.parse(args, Params()) match {
-      case Some(parsedParams) => parsedParams
-      case None => throw new IllegalArgumentException(s"Parsing the command line arguments failed " +
-          s"(${args.mkString(", ")}),\n ${parser.usage}")
+
+    if (!parser.parse(args)) {
+      throw new IllegalArgumentException(s"Parsing the command line arguments failed.\n" +
+        s"(${args.mkString(", ")}),\n ${parser.usage}")
     }
+
+    params
   }
 }

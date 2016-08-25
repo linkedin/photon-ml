@@ -29,10 +29,17 @@ class PalDBIndexMapLoader extends IndexMapLoader {
   private var _numPartitions: Int = 0
   private var _namespace: String = null
 
-  override def prepare(sc: SparkContext, params: Params, namespace: String = IndexMap.GLOBAL_NS): Unit = {
-    if (!params.offHeapIndexMapDir.isEmpty && params.offHeapIndexMapNumPartitions != 0) {
-      _storeDir = params.offHeapIndexMapDir.get
-      _numPartitions = params.offHeapIndexMapNumPartitions
+  override def prepare(sc: SparkContext, params: IndexMapParams, namespace: String = IndexMap.GLOBAL_NS): Unit = {
+    val palDBParams = params match {
+      case p: PalDBIndexMapParams => p
+      case other =>
+        throw new IllegalArgumentException(s"PalDBIndexMapLoader requires a params object of type " +
+          s"PalDBIndexMapParams. ${other.getClass.getName}")
+    }
+
+    if (!palDBParams.offHeapIndexMapDir.isEmpty && palDBParams.offHeapIndexMapNumPartitions != 0) {
+      _storeDir = palDBParams.offHeapIndexMapDir.get
+      _numPartitions = palDBParams.offHeapIndexMapNumPartitions
       _namespace = namespace
 
       (0 until _numPartitions).foreach(i =>

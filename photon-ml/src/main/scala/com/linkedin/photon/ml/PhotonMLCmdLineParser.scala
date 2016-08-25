@@ -215,9 +215,9 @@ object PhotonMLCmdLineParser {
         .text("The offheap storage directory if offheap map is needed. DefaultIndexMap will be used if not specified.")
         .foreach(x => params.offHeapIndexMapDir = Some(x))
       opt[Int](OFFHEAP_INDEXMAP_NUM_PARTITIONS)
-        .text("The number of partitions for the offheap map storage. Such partition number should be consistent with " +
-            "the number when offheap storage is built. This is a parameter only affecting the execution speed at " +
-            "feature index building stage and has zero performance impact in training other than maintaining a " +
+        .text("The number of partitions for the offheap map storage. This partition number should be consistent with " +
+            "the number when offheap storage is built. This parameter affects only the execution speed during " +
+            "feature index building and has zero performance impact on training other than maintaining a " +
             "convention.")
         .foreach(x => params.offHeapIndexMapNumPartitions = x)
       opt[Boolean](DELETE_OUTPUT_DIRS_IF_EXIST)

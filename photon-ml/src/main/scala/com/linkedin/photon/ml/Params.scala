@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.optimization.OptimizerType._
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.supervised.TaskType._
+import com.linkedin.photon.ml.util.PalDBIndexMapParams
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -38,7 +39,7 @@ import scala.collection.mutable.ArrayBuffer
  * @author dpeng
  * @author nkatariy
  */
-class Params {
+class Params extends PalDBIndexMapParams {
   /**
    * Training data directory
    */
@@ -151,9 +152,6 @@ class Params {
    * The depth used in tree aggregate
    */
   var treeAggregateDepth: Int = 1
-
-  var offHeapIndexMapDir: Option[String] = None
-  var offHeapIndexMapNumPartitions: Int = 0
 
   /**
    * Whether to delete the output directories (including the model and summarization output directories) if exist
