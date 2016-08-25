@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermV
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{Utils, VectorUtils}
+import com.linkedin.photon.ml.util.{IndexMap, Utils, VectorUtils}
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.mapred.{AvroInputFormat, AvroWrapper}
 import org.apache.hadoop.io.NullWritable
@@ -68,8 +68,9 @@ object AvroUtils {
     * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
     * @return An array of Avro records that contains the information of the input vector
     */
-  private def convertVectorAsArrayOfNameTermValueAvros(vector: Vector[Double], featureMap: Map[Int, NameAndTerm])
-  : Array[NameTermValueAvro] = {
+  private def convertVectorAsArrayOfNameTermValueAvros(
+      vector: Vector[Double],
+      featureMap: IndexMap): Array[NameTermValueAvro] = {
 
     vector match {
       case dense: DenseVector[Double] =>
@@ -77,8 +78,10 @@ object AvroUtils {
           math.abs(value) > MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD
         }
           .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2)).map { case (index, value) =>
-          featureMap.get(index) match {
-            case Some(NameAndTerm(name, term)) =>
+          featureMap.getFeatureName(index) match {
+            case Some(featureKey: String) =>
+              val name = Utils.getFeatureNameFromKey(featureKey)
+              val term = Utils.getFeatureTermFromKey(featureKey)
               NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
             case None =>
               throw new NoSuchElementException(s"Feature index $index not found in the feature map")
@@ -89,8 +92,10 @@ object AvroUtils {
           math.abs(value) > MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD
         }.toArray
           .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2)).map { case (index, value) =>
-          featureMap.get(index) match {
-            case Some(NameAndTerm(name, term)) =>
+          featureMap.getFeatureName(index) match {
+            case Some(featureKey: String) =>
+              val name = Utils.getFeatureNameFromKey(featureKey)
+              val term = Utils.getFeatureTermFromKey(featureKey)
               NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
             case None =>
               throw new NoSuchElementException(s"Feature index $index not found in the feature map")
@@ -161,13 +166,13 @@ object AvroUtils {
   protected[avro] def convertGLMModelToBayesianLinearModelAvro(
       model: GeneralizedLinearModel,
       modelId: String,
-      intToNameAndTermMap: Map[Int, NameAndTerm]): BayesianLinearModelAvro = {
+      featureMap: IndexMap): BayesianLinearModelAvro = {
 
     val modelCoefficients = model.coefficients
-    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, intToNameAndTermMap)
+    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, featureMap)
     val variancesAvrosOption = modelCoefficients
       .variancesOption
-      .map(convertVectorAsArrayOfNameTermValueAvros(_, intToNameAndTermMap))
+      .map(convertVectorAsArrayOfNameTermValueAvros(_, featureMap))
     // TODO: Output type of model.
     val avroFile = BayesianLinearModelAvro
       .newBuilder()
@@ -191,7 +196,7 @@ object AvroUtils {
     */
   protected[avro] def convertBayesianLinearModelAvroToGLM(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
-      nameAndTermToIntMap: Map[NameAndTerm, Int]): GeneralizedLinearModel = {
+      featureMap: IndexMap): GeneralizedLinearModel = {
 
     val meansAvros = bayesianLinearModelAvro.getMeans
     val modelClass = bayesianLinearModelAvro.getModelClass.toString
@@ -202,16 +207,16 @@ object AvroUtils {
       val feature = iterator.next()
       val name = feature.getName.toString
       val term = feature.getTerm.toString
-      val nameAndTerm = NameAndTerm(name, term)
-      if (nameAndTermToIntMap.contains(nameAndTerm)) {
+      val featureKey = Utils.getFeatureKey(name, term)
+      if (featureMap.contains(featureKey)) {
         val value = feature.getValue
-        val index = nameAndTermToIntMap.getOrElse(nameAndTerm,
-          throw new NoSuchElementException(s"nameAndTerm $nameAndTerm not found in the feature map"))
+        val index = featureMap.getOrElse(featureKey,
+          throw new NoSuchElementException(s"nameAndTerm $featureKey not found in the feature map"))
         indexAndValueArrayBuffer += ((index, value))
       }
     }
 
-    val maxIndex = nameAndTermToIntMap.values.max
+    val maxIndex = featureMap.values.max
     val length = maxIndex + 1
     val coefficients = Coefficients(
       VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length))

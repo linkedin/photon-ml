@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
-
+import com.linkedin.photon.ml.util._
 
 /**
  * Simple tests for functions in [[AvroUtils]]
@@ -43,16 +43,19 @@ class AvroUtilsTest {
     val denseVector = new DenseVector[Double](data = Array(0.0, 1.0, 2.0, 3.0))
     val denseCoefficients = Coefficients(denseVector)
     val modelId = "modelId"
-    val intToNameAndTermMap = Map(0 -> NameAndTerm("0", "0"), 1 -> NameAndTerm("1", "1"), 2 -> NameAndTerm("2", "2"),
-      3 -> NameAndTerm("3", "3"))
-    val nameAndTermToIntMap = intToNameAndTermMap.map(_.swap)
+    val indexMap = new DefaultIndexMap(Map(
+      Utils.getFeatureKey("0", "0") -> 0,
+      Utils.getFeatureKey("1", "1") -> 1,
+      Utils.getFeatureKey("2", "2") -> 2,
+      Utils.getFeatureKey("3", "3") -> 3
+    ).toMap)
 
     val sparseGlm: GeneralizedLinearModel = new LogisticRegressionModel(sparseCoefficients)
 
     // Convert the sparse coefficients to Avro record, and convert it back to coefficients
     val sparseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(sparseGlm,
-      modelId, intToNameAndTermMap)
-    val recoveredSparseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(sparseCoefficientsAvro, nameAndTermToIntMap)
+      modelId, indexMap)
+    val recoveredSparseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(sparseCoefficientsAvro, indexMap)
 
     assertEquals(sparseCoefficients, recoveredSparseGlm.coefficients)
 
@@ -60,8 +63,8 @@ class AvroUtilsTest {
 
     // Convert the dense coefficients to Avro record, and convert it back to coefficients
     val denseCoefficientsAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(denseGlm,
-      modelId, intToNameAndTermMap)
-    val recoveredDenseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(denseCoefficientsAvro, nameAndTermToIntMap)
+      modelId, indexMap)
+    val recoveredDenseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(denseCoefficientsAvro, indexMap)
 
     assertEquals(denseCoefficients, recoveredDenseGlm.coefficients)
   }
