@@ -250,6 +250,46 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getLongAvro(record, "doubleField"), -4L)
   }
 
+  @Test
+  def testGetMapAvro(): Unit = {
+    val map = new java.util.HashMap[String, Long]()
+    map.put("aaa", 1L)
+    map.put("bbb", -2L)
+
+    val record = new TestRecordBuilder()
+      .setLongMap(map)
+      .build()
+
+    val readMap = Utils.getMapAvro(record, "longValMap")
+    assertEquals(readMap.size(), 2)
+    assertEquals(readMap.get("aaa"), 1L)
+    assertEquals(readMap.get("bbb"), -2L)
+
+    val map2 = new java.util.HashMap[String, String]()
+    map2.put("aaa", "111")
+    map2.put("bbb", "222")
+
+    val record2 = new TestRecordBuilder()
+      .setStringMap(map2)
+      .build()
+
+    val readMap2 = Utils.getMapAvro(record2, "stringValMap")
+    assertEquals(readMap2.size(), 2)
+    assertEquals(readMap2.get("aaa"), "111")
+    assertEquals(readMap2.get("bbb"), "222")
+
+    val emptyRecord = new TestRecordBuilder().build()
+
+    val readMap3 = Utils.getMapAvro(emptyRecord, "stringValMap", isNullOK = true)
+    assertNull(readMap3)
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testGetNonNullableMapAvro(): Unit = {
+    val emptyRecord = new TestRecordBuilder().build()
+    Utils.getMapAvro(emptyRecord, "stringValMap", isNullOK = false)
+  }
+
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetStringAvroNullableNotOk(): Unit = {
     Utils.getStringAvro(EMPTY_RECORD, "stringField")
@@ -389,7 +429,9 @@ object UtilsTest {
       |    {"name": "intField", "type": ["null", "int"]},
       |    {"name": "longField", "type": ["null", "long"]},
       |    {"name": "booleanField", "type": ["null", "boolean"]},
-      |    {"name": "fixedField", "type": ["null", {"name": "subrecord1", "type": "fixed", "size": 16}]}
+      |    {"name": "fixedField", "type": ["null", {"name": "subrecord1", "type": "fixed", "size": 16}]},
+      |    {"name": "stringValMap", "type": ["null", {"type": "map", "values": "string"}]},
+      |    {"name": "longValMap", "type": ["null", {"type": "map", "values": "long"}]}
       |  ]
       |}
     """.stripMargin
@@ -422,6 +464,16 @@ object UtilsTest {
 
   private class TestRecordBuilder {
     private val _record = new GenericData.Record(TEST_SCHEMA)
+
+    def setLongMap(map: java.util.Map[String, Long]): TestRecordBuilder = {
+      _record.put("longValMap", map)
+      this
+    }
+
+    def setStringMap(map: java.util.Map[String, String]): TestRecordBuilder = {
+      _record.put("stringValMap", map)
+      this
+    }
 
     def setStringValue(stringValue: String, utf8StringValue: String = null): TestRecordBuilder = {
       val utf8Val = if (utf8StringValue == null) new Utf8(stringValue) else new Utf8(utf8StringValue)
