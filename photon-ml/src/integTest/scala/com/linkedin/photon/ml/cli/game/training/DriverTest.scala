@@ -345,6 +345,44 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(Files.exists(fixedEffectModelPath))
   }
 
+  @Test
+  def testOffHeapIndexMap() = sparkTest("offHeapIndexMap", useKryo = true) {
+    val outputDir = s"$getTmpDir/offHeapIndexMap"
+
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 2.2
+
+    val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath
+    val driver = runDriver(argArray(
+      fixedAndRandomEffectSeriousRunArgs ++ Map(
+        "output-dir" -> outputDir,
+        "offheap-indexmap-dir" -> indexMapPath,
+        "offheap-indexmap-num-partitions" -> "1")))
+
+    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+
+    assertTrue(Files.exists(fixedEffectModelPath))
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 15032))
+    assertTrue(modelContainsIntercept(fixedEffectModelPath))
+
+    assertTrue(Files.exists(userModelPath))
+    assertTrue(modelSane(userModelPath, expectedNumCoefficients = 39))
+    assertTrue(modelContainsIntercept(userModelPath))
+
+    assertTrue(Files.exists(songModelPath))
+    assertTrue(modelSane(songModelPath, expectedNumCoefficients = 31))
+    assertTrue(modelContainsIntercept(songModelPath))
+
+    assertTrue(Files.exists(artistModelPath))
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 31))
+    assertTrue(modelContainsIntercept(artistModelPath))
+
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")) < errorThreshold)
+  }
+
   /**
     * Overridden spark test provider that allows for specifying whether to use kryo serialization
     *
