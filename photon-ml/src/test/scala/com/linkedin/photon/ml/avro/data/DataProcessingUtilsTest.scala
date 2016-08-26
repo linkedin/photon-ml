@@ -27,26 +27,32 @@ import org.testng.Assert._
   */
 class DataProcessingUtilsTest {
 
+  import DataProcessingUtilsTest._
+
   @Test
   def testMakeRandomEffectIdMapWithIdField(): Unit = {
     val record = new GenericData.Record(SchemaBuilder
       .record("testRecordForRandomIdFetch1")
       .namespace("com.linkedin.photon.ml.avro.data")
       .fields()
-      .name("userId").`type`().stringType().noDefault()
-      .name("jobId").`type`().longType().noDefault()
+      .name(USER_ID_NAME).`type`().stringType().noDefault()
+      .name(JOB_ID_NAME).`type`().longType().noDefault()
       .endRecord())
 
-    record.put("userId", "11A")
-    record.put("jobId", 112L)
-    val map1 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId"))
-    assertEquals(map1.size, 1)
-    assertEquals(map1("userId"), "11A")
+    val userIdStr = "11A"
+    val jobIdVal = 112L
+    val jobIdValStr = "112"
 
-    val map2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId", "jobId"))
+    record.put(USER_ID_NAME, userIdStr)
+    record.put(JOB_ID_NAME, jobIdVal)
+    val map1 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
+    assertEquals(map1.size, 1)
+    assertEquals(map1(USER_ID_NAME), userIdStr)
+
+    val map2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(map2.size, 2)
-    assertEquals(map2("userId"), "11A")
-    assertEquals(map2("jobId"), "112")
+    assertEquals(map2(USER_ID_NAME), userIdStr)
+    assertEquals(map2(JOB_ID_NAME), jobIdValStr)
   }
 
   @Test
@@ -58,19 +64,22 @@ class DataProcessingUtilsTest {
       .name(AvroFieldNames.META_DATA_MAP).`type`().map().values().stringType().noDefault()
       .endRecord())
 
+    val userIdStr = "11A"
+    val jobIdValStr = "112"
+
     val map = new java.util.HashMap[String, String]()
-    map.put("userId", "11A")
-    map.put("jobId", "112")
+    map.put(USER_ID_NAME, userIdStr)
+    map.put(JOB_ID_NAME, jobIdValStr)
     record.put(AvroFieldNames.META_DATA_MAP, map)
 
-    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId"))
+    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
     assertEquals(res.size, 1)
-    assertEquals(res("userId"), "11A")
+    assertEquals(res(USER_ID_NAME), userIdStr)
 
-    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId", "jobId"))
+    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(res2.size, 2)
-    assertEquals(res2("userId"), "11A")
-    assertEquals(res2("jobId"), "112")
+    assertEquals(res2(USER_ID_NAME), userIdStr)
+    assertEquals(res2(JOB_ID_NAME), jobIdValStr)
   }
 
   @Test
@@ -82,26 +91,33 @@ class DataProcessingUtilsTest {
       .namespace("com.linkedin.photon.ml.avro.data")
       .fields()
       .name(AvroFieldNames.META_DATA_MAP).`type`().map().values().stringType().noDefault()
-      .name("userId").`type`().stringType().noDefault()
-      .name("jobId").`type`().longType().noDefault()
+      .name(USER_ID_NAME).`type`().stringType().noDefault()
+      .name(JOB_ID_NAME).`type`().longType().noDefault()
       .endRecord())
 
-    record.put("userId", "11B")
-    record.put("jobId", 113L)
+    val userId1Str = "11B"
+    val userId2Str = "11A"
+    val jobId1Val = 113L
+    val jobId1Str = "113"
+    val jobId2Str = "112"
+
+    record.put(USER_ID_NAME, userId1Str)
+    record.put(JOB_ID_NAME, jobId1Val)
 
     val map = new java.util.HashMap[String, String]()
-    map.put("userId", "11A")
-    map.put("jobId", "112")
+    map.put(USER_ID_NAME, userId2Str)
+    map.put(JOB_ID_NAME, jobId2Str)
     record.put(AvroFieldNames.META_DATA_MAP, map)
 
-    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId"))
+    // Ids in metaDataMap will be ignored in this case
+    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
     assertEquals(res.size, 1)
-    assertEquals(res("userId"), "11B")
+    assertEquals(res(USER_ID_NAME), userId1Str)
 
-    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String]("userId", "jobId"))
+    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(res2.size, 2)
-    assertEquals(res2("userId"), "11B")
-    assertEquals(res2("jobId"), "113")
+    assertEquals(res2(USER_ID_NAME), userId1Str)
+    assertEquals(res2(JOB_ID_NAME), jobId1Str)
   }
 
   @Test
@@ -131,6 +147,11 @@ class DataProcessingUtilsTest {
       .name("foo").`type`().stringType().noDefault()
       .endRecord())
 
-    DataProcessingUtils.makeRandomEffectIdMap(emptyRecord, Set[String]("userId"))
+    DataProcessingUtils.makeRandomEffectIdMap(emptyRecord, Set[String](USER_ID_NAME))
   }
+}
+
+object DataProcessingUtilsTest{
+  val JOB_ID_NAME = "jobId"
+  val USER_ID_NAME = "userId"
 }
