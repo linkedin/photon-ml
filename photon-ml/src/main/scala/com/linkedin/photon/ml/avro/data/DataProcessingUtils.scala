@@ -93,18 +93,20 @@ object DataProcessingUtils {
     * @param randomEffectIdSet a set of random effect id names
     * @return the random effect id map of (name -> value)
     */
-  protected[avro] def makeRandomEffectIdMap(record: GenericRecord,
+  protected[avro] def makeRandomEffectIdMap(
+      record: GenericRecord,
       randomEffectIdSet: Set[String]): Map[String, String] = {
+
     val metaMap = Utils.getMapAvro(record, AvroFieldNames.META_DATA_MAP, isNullOK = true)
 
     randomEffectIdSet.map { randomEffectId =>
       val idValue = Utils.getStringAvro(record, randomEffectId, isNullOK = true)
 
-      val finalIdValue = if (idValue.isEmpty()) {
+      val finalIdValue = if (idValue.isEmpty) {
         val mapIdValue = if (metaMap != null) metaMap.get(randomEffectId) else null
         if (mapIdValue == null) {
           throw new IllegalArgumentException(s"Cannot find id in either record" +
-            s"field: ${randomEffectId} or in metadataMap with key: #${randomEffectId}")
+            s"field: $randomEffectId or in metadataMap with key: #$randomEffectId")
         }
         mapIdValue
       } else {
@@ -113,7 +115,7 @@ object DataProcessingUtils {
 
       // random effect group name -> random effect group id value
       // random effect ids are assumed to be strings
-      (randomEffectId, finalIdValue.toString())
+      (randomEffectId, finalIdValue.toString)
     }.toMap
   }
 
