@@ -51,6 +51,10 @@ import java.util.{List => JList}
   *   [TRAINING_EXAMPLE|RESPONSE_PREDICTION])
   * feature-shard-id-to-feature-section-keys-map: A map between the feature shard id and it's corresponding feature
   *   section keys, in the following format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.
+  * feature-shard-id-to-intercept-map: A map between the feature shard id and a boolean variable that decides whether a
+  *   dummy feature should be added to the corresponding shard in order to learn an intercept, for example, in the
+  *   following format: shardId1:true|shardId2:false. The default is the "add-intercept" setting for all or unspecified
+  *   shard ids.
   */
 class FeatureIndexingJob(
     val sc: SparkContext,
@@ -59,7 +63,8 @@ class FeatureIndexingJob(
     val outputPath: String,
     val addIntercept: Boolean,
     val fieldNames: FieldNames,
-    val featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None) {
+    val featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
+    val featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 
   private val logger: PhotonLogger = new PhotonLogger(new Path(outputPath, "_log"), sc)
 
@@ -84,6 +89,7 @@ class FeatureIndexingJob(
     */
   private def partitionedUniqueFeatures(
       inputRdd: RDD[GenericRecord],
+      addIntercept: Boolean,
       featureSections: Option[Set[String]] = None): RDD[(Int, Iterable[String])] = {
 
     // Copy it to avoid serialization of the entire class
@@ -175,13 +181,18 @@ class FeatureIndexingJob(
       case Some(shardToSectionsMap) =>
         // If a shard to feature section set was specified, build an index for each shard
         shardToSectionsMap.map { case (shardId, featureSections) =>
-          val featuresRdd = partitionedUniqueFeatures(inputRdd, Some(featureSections))
+          // Get whether we should add an intercept for this shard, defaulting to the global "addIntercept" setting
+          val addShardIntercept = featureShardIdToInterceptMap
+            .getOrElse(Map())
+            .getOrElse(shardId, addIntercept)
+
+          val featuresRdd = partitionedUniqueFeatures(inputRdd, addShardIntercept, Some(featureSections))
           buildIndexMap(featuresRdd, outputPath, shardId)
         }
 
       case _ => {
         // Otherwise, build a global index
-        val featuresRdd = partitionedUniqueFeatures(inputRdd)
+        val featuresRdd = partitionedUniqueFeatures(inputRdd, addIntercept)
         buildIndexMap(featuresRdd, outputPath)
       }
     }
@@ -235,7 +246,8 @@ object FeatureIndexingJob {
     dateRangeDaysAgoOpt: Option[String] = None,
     addIntercept: Boolean = true,
     fieldNames: FieldNames = TrainingExampleFieldNames,
-    featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None) {
+    featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
+    featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 
     override def toString: String = List(
       s"Input parameters:",
@@ -246,7 +258,8 @@ object FeatureIndexingJob {
       s"dateRangeDaysAgoOpt: $dateRangeDaysAgoOpt",
       s"addIntercept: $addIntercept",
       s"fieldNames: $fieldNames",
-      s"featureShardIdToFeatureSectionKeysMap: $featureShardIdToFeatureSectionKeysMap"
+      s"featureShardIdToFeatureSectionKeysMap: $featureShardIdToFeatureSectionKeysMap",
+      s"featureShardIdToInterceptMap: $featureShardIdToInterceptMap"
     ).mkString("\n")
   }
 
@@ -310,6 +323,18 @@ object FeatureIndexingJob {
             .map { line => line.split(":") match {
               case Array(key, names) => (key, names.split(",").map(_.trim).toSet)
               case Array(key) => (key, Set[String]())
+            }}
+            .toMap)))
+
+      opt[String]("feature-shard-id-to-intercept-map")
+        .text(s"A map between the feature shard id and a boolean variable that decides whether a dummy feature " +
+          s"should be added to the corresponding shard in order to learn an intercept, for example, in the " +
+          s"following format: shardId1:true|shardId2:false. The default is true for all shard ids.")
+        .action((x, c) => c.copy(featureShardIdToInterceptMap =
+          Some(x.split("\\|")
+            .map { line => line.split(":") match {
+              case Array(key, flag) => (key, flag.toBoolean)
+              case Array(key) => (key, true)
             }}
             .toMap)))
 

@@ -60,6 +60,11 @@ class FeatureIndexingJobTest {
       "shard2" -> Set("songFeatures")
     )
 
+    val featureShardIdToInterceptMap = Map(
+      "shard1" -> true,
+      "shard2" -> false
+    )
+
     val featureShardIdToExpectedDimension = Map(
       "shard1" -> 15014,
       "shard2" -> 30
@@ -68,16 +73,16 @@ class FeatureIndexingJobTest {
     for (partitionNum <- 1 to 2) {
       testShardedJob(
         tempFile.toString, partitionNum, addIntercept = true, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToExpectedDimension)
+        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
       testShardedJob(
         tempFile.toString, partitionNum, addIntercept = false, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToExpectedDimension)
+        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
       testShardedJob(
         tempFile.toString, partitionNum, addIntercept = true, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToExpectedDimension)
+        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
       testShardedJob(
         tempFile.toString, partitionNum, addIntercept = false, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToExpectedDimension)
+        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
     }
 
     FileUtils.deleteQuietly(tempFile)
@@ -127,6 +132,7 @@ class FeatureIndexingJobTest {
       numPartitions: Int,
       addIntercept: Boolean,
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
+      featureShardIdToInterceptMap: Map[String, Boolean],
       featureShardIdToExpectedDimension: Map[String, Int]): Unit = {
 
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
@@ -143,7 +149,8 @@ class FeatureIndexingJobTest {
           outputDir,
           addIntercept,
           ResponsePredictionFieldNames,
-          Some(featureShardIdToFeatureSectionKeysMap)
+          Some(featureShardIdToFeatureSectionKeysMap),
+          Some(featureShardIdToInterceptMap)
         ).run()
 
         // Add all partitions to cache
@@ -154,13 +161,14 @@ class FeatureIndexingJobTest {
 
         // Check each feature shard map
         featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, sections) => {
+          val addShardIntercept = featureShardIdToInterceptMap.getOrElse(shardId, true)
           var expectedFeatureDimension = featureShardIdToExpectedDimension(shardId)
-          if (addIntercept) {
+          if (addShardIntercept) {
             expectedFeatureDimension += 1
           }
 
           checkPalDBReadable(
-            outputDir, numPartitions, shardId, addIntercept, expectedFeatureDimension)
+            outputDir, numPartitions, shardId, addShardIntercept, expectedFeatureDimension)
         }}
 
       } finally {
