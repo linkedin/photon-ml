@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.util
 
 
 import com.linkedin.photon.ml.Params
+import java.net.URI
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 
@@ -43,7 +44,7 @@ class PalDBIndexMapLoader extends IndexMapLoader {
       _namespace = namespace
 
       (0 until _numPartitions).foreach(i =>
-        sc.addFile(new Path(_storeDir, PalDBIndexMap.partitionFilename(i, namespace)).toUri().toString())
+        sc.addFile(getPath(sc, new Path(_storeDir, PalDBIndexMap.partitionFilename(i, namespace))))
       )
     } else {
       throw new IllegalArgumentException(s"offHeapIndexMapDir is empty or the offHeapIndexMapNumPartitions is zero." +
@@ -54,4 +55,31 @@ class PalDBIndexMapLoader extends IndexMapLoader {
   override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
 
   override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
+
+  /**
+    * Converts a path object into a path string suitable for consumption by "sc.addFile". Implicitly converts a path
+    * with no specified scheme to the current default scheme (sc.addFiles doesn't do this automatically).
+    *
+    * @param path the input path
+    * @return the path string
+    */
+  protected[util] def getPath(sc: SparkContext, path: Path): String = {
+    var uri = path.toUri
+
+    Option(uri.getScheme) match {
+      case Some(scheme) => uri.toString
+      case _ =>
+        // If the path specifies no scheme, use the current default
+        val default = new Path(sc.hadoopConfiguration.get("fs.default.name")).toUri
+        new URI(
+          default.getScheme,
+          default.getUserInfo,
+          default.getHost,
+          default.getPort,
+          uri.getPath,
+          uri.getQuery,
+          uri.getFragment
+        ).toString
+    }
+  }
 }
