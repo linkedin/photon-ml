@@ -293,7 +293,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val evaluator =
       taskType match {
         case LOGISTIC_REGRESSION | SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-          new BinaryClassificationEvaluator(validatingLabelsAndOffsetsAndWeights)
+          new AreaUnderROCCurveEvaluator(validatingLabelsAndOffsetsAndWeights)
         case LINEAR_REGRESSION =>
           new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
         case POISSON_REGRESSION =>

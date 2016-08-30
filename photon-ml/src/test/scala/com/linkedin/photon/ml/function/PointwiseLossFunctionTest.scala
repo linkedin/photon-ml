@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.function
 
-
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 

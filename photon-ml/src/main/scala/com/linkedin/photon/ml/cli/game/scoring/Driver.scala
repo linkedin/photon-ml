@@ -252,7 +252,7 @@ object Driver {
     // The computed scores already take the offset into account
     val labelAndOffsetAndWeights = gameDataSet.mapValues(gameDatum => (gameDatum.response, 0.0, gameDatum.weight))
     val evaluator = evaluatorType match {
-      case AUC => new BinaryClassificationEvaluator(labelAndOffsetAndWeights)
+      case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
       case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
       case POISSON_LOSS => new PoissonLossEvaluator(labelAndOffsetAndWeights)
       case LOGISTIC_LOSS => new LogisticLossEvaluator(labelAndOffsetAndWeights)
