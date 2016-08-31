@@ -34,8 +34,8 @@ class PalDBIndexMapTest {
   // Two tests running in parallel could also detech if the readers are thread-safe.
   @Test
   def testNoInterceptMap(): Unit = {
-    val map = new PalDBIndexMap().load(OFFHEAP_HEART_STORE_NO_INTERCEPT,
-        OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, true)
+    val map = new PalDBIndexMap().load(
+      OFFHEAP_HEART_STORE_NO_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, true)
 
     assertEquals(map.size(), 13)
 
@@ -57,8 +57,8 @@ class PalDBIndexMapTest {
 
   @Test
   def testWithInterceptMap(): Unit = {
-    val map = new PalDBIndexMap().load(OFFHEAP_HEART_STORE_WITH_INTERCEPT,
-        OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, true)
+    val map = new PalDBIndexMap().load(
+      OFFHEAP_HEART_STORE_WITH_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, true)
 
     assertEquals(map.getIndex(GLMSuite.INTERCEPT_NAME_TERM), 7)
     assertFeatureIndexMapping(map, getFeatureName("1"), 0)

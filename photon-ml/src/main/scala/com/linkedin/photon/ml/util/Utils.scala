@@ -70,11 +70,10 @@ protected[ml] object Utils {
     * @return The feature name
     */
   def getFeatureNameFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
-    val tokens = key.split(delimiter)
-    if (tokens.size != 2) {
-      throw new IllegalArgumentException(s"Provided input [$key] is not a valid feature key")
-    }
-    tokens(0)
+    require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
+    key.split(delimiter)
+      .lift(0)
+      .getOrElse("")
   }
 
   /**
@@ -85,11 +84,10 @@ protected[ml] object Utils {
     * @return The feature term
     */
   def getFeatureTermFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
-    val tokens = key.split(delimiter)
-    if (tokens.size != 2) {
-      throw new IllegalArgumentException(s"Provided input [$key] is not a valid feature key")
-    }
-    tokens(1)
+    require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
+    key.split(delimiter)
+      .lift(1)
+      .getOrElse("")
   }
 
   /**

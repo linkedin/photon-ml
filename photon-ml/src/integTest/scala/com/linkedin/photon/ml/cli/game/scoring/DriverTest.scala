@@ -159,6 +159,26 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(computedMetric, expectedMetric, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }
 
+  @Test
+  def testOffHeapIndexMap() = sparkTest("offHeapIndexMap") {
+    val outputDir = getTmpDir
+    val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/test-with-uid-feature-indexes").getPath
+    val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = false, deleteOutputDirIfExists = true) ++ Map(
+      "offheap-indexmap-dir" -> indexMapPath,
+      "offheap-indexmap-num-partitions" -> "1")
+    runDriver(CommonTestUtils.argArray(args))
+
+    // Load the scores and compute the evaluation metric to see whether the scores make sense or not
+    val scoreDir = Driver.getScoresDir(outputDir)
+    val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
+        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
+
+    val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
+
+    // Compare with the RMSE capture from an assumed-correct implementation on 5/20/2016
+    assertEquals(rootMeanSquaredError, 1.32106, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+  }
+
   /**
    * Run the Game driver with the specified arguments
    *

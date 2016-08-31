@@ -25,6 +25,11 @@ import scala.collection.immutable.Map
 trait IndexMap extends Map[String, Int] with Serializable {
 
   /**
+    * Lazily compute and cache the feature dimension
+    */
+  lazy val featureDimension: Int = values.max + 1
+
+  /**
     * Given an index, reversely track down the corresponding feature name
     *
     * @param idx the feature index
@@ -44,4 +49,8 @@ trait IndexMap extends Map[String, Int] with Serializable {
 object IndexMap {
   // The key to indicate a feature is not existing in the map
   val NULL_KEY:Int = -1
+
+  // "global" namespace for situations where either there aren't multiple namespaces, or we want to set apart a global
+  // namespace from subspaces
+  val GLOBAL_NS: String = "global"
 }

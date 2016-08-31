@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.cli.game.scoring
 
 import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer,
-  ScoreProcessingUtils}
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUtils}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
@@ -34,36 +34,13 @@ import scala.collection.Map
 /**
   * Driver for GAME full model scoring
   */
-class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
+class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
+    extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
 
   protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
-  protected val hadoopConfiguration = sparkContext.hadoopConfiguration
-
-  /**
-    * Builds feature name-and-term to index maps according to configuration
-    *
-    * @return A map of shard id to feature map
-    */
-  protected def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
-
-    val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
-    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
-      featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
-
-    val featureShardIdToFeatureMapMap =
-      featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
-        val featureMap = nameAndTermFeatureSetContainer.getFeatureNameAndTermToIndexMap(featureSectionKeys,
-          featureShardIdToInterceptMap.getOrElse(shardId, true))
-        (shardId, featureMap)
-      }
-    featureShardIdToFeatureMapMap.foreach { case (shardId, featureMap) =>
-      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
-    }
-    featureShardIdToFeatureMapMap
-  }
 
   /**
     * Builds a GAME data set according to input data configuration
@@ -71,7 +48,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     * @param featureShardIdToFeatureMapMap A map of shard id to feature map
     * @return The prepared GAME data set
     */
-  protected def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
+  protected def prepareGameDataSet(featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader])
   : (RDD[(Long, Option[String])], RDD[(Long, GameDatum)]) = {
 
     val recordsPath = (dateRangeOpt, dateRangeDaysAgoOpt) match {
@@ -102,7 +79,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     val gameDataSetWithUIDs = DataProcessingUtils.getGameDataSetWithUIDFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapMap,
+      featureShardIdToFeatureMapLoader,
       randomEffectIdSet,
       isResponseRequired = false)
       .partitionBy(globalDataPartitioner)
@@ -137,14 +114,14 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     * @return The scores
     */
   protected def scoreGameDataSet(
-      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
+      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
     // TODO: make the number of files written to HDFS to be configurable
 
     // Load the model from HDFS
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToFeatureMapMap, gameModelInputDir, sparkContext)
+      featureShardIdToFeatureMapLoader, gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 

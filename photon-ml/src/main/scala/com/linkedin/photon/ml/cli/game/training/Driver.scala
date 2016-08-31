@@ -20,9 +20,10 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, NameAndTerm, NameAndTermFeatureSetContainer}
+import com.linkedin.photon.ml.avro.data.DataProcessingUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
@@ -41,33 +42,10 @@ import com.linkedin.photon.ml.{RDDLike, SparkContextConfiguration}
 /**
   * The driver class, which provides the main entrance to GAME model training
   */
-final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger) {
+final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
+    extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
-
-  private val hadoopConfiguration = sparkContext.hadoopConfiguration
-
-  /**
-    * Builds feature name-and-term to index maps according to configuration
-    *
-    * @return A map of shard id to feature map
-    */
-  protected[training] def prepareFeatureMaps(): Map[String, Map[NameAndTerm, Int]] = {
-    val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
-    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
-      featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
-
-    val featureShardIdToFeatureMapMap =
-      featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
-        val featureMap = nameAndTermFeatureSetContainer.getFeatureNameAndTermToIndexMap(featureSectionKeys,
-          featureShardIdToInterceptMap.getOrElse(shardId, true))
-        (shardId, featureMap)
-      }
-    featureShardIdToFeatureMapMap.foreach { case (shardId, featureMap) =>
-      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMap.size}")
-    }
-    featureShardIdToFeatureMapMap
-  }
 
   /**
     * Builds a GAME dataset according to input data configuration
@@ -75,7 +53,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     * @param featureShardIdToFeatureMapMap A map of shard id to feature map
     * @return The prepared GAME dataset
     */
-  protected[training] def prepareGameDataSet(featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]])
+  protected[training] def prepareGameDataSet(featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader])
     : RDD[(Long, GameDatum)] = {
 
     // Get the training records path
@@ -126,7 +104,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapMap,
+      featureShardIdToFeatureMapLoader,
       randomEffectIdSet,
       isResponseRequired = true)
       .partitionBy(globalDataPartitioner)
@@ -224,7 +202,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     */
   protected[training] def prepareValidatingEvaluator(
       validatingDirs: Seq[String],
-      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]]): (RDD[(Long, GameDatum)], Evaluator) = {
+      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): (RDD[(Long, GameDatum)], Evaluator) = {
 
     // Read and parse the validating activities
     val validatingRecordsPath = (validateDateRangeOpt, validateDateRangeDaysAgoOpt) match {
@@ -257,7 +235,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapMap,
+      featureShardIdToFeatureMapLoader,
       randomEffectIdSet,
       isResponseRequired = true)
       .partitionBy(partitioner).setName("Validating Game data set")
@@ -429,7 +407,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     * @param gameModelsMap GAME models
     */
   protected[training] def saveModelToHDFS(
-      featureShardIdToFeatureMapMap: Map[String, Map[NameAndTerm, Int]],
+      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
       gameModelsMap: Map[String, GAMEModel]) {
 
@@ -448,7 +426,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
         IOUtils.writeStringsToHDFS(Iterator(bestModelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-        ModelProcessingUtils.saveGameModelsToHDFS(bestGameModel, featureShardIdToFeatureMapMap, modelOutputDir,
+        ModelProcessingUtils.saveGameModelsToHDFS(bestGameModel, featureShardIdToFeatureMapLoader, modelOutputDir,
           numberOfOutputFilesForRandomEffectModel, sparkContext)
       case _ =>
         logger.info("No validation data provided: cannot determine best model, thus no 'best model' output.")
@@ -462,7 +440,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
         IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-        ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapMap, modelOutputDir,
+        ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapLoader, modelOutputDir,
           numberOfOutputFilesForRandomEffectModel, sparkContext)
         modelIdx += 1
       }

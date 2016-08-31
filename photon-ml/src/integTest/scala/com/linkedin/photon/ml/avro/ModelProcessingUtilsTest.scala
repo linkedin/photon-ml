@@ -30,6 +30,7 @@ import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.util._
 
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
@@ -43,7 +44,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     // Features
     val featureShardId = "featureShardId"
     val featureNameAndTermToIndexMap = Array.tabulate(coefficientDimension)( i => (NameAndTerm("n", "t"), i) ).toMap
-    val featureShardIdToFeatureNameAndTermToIndexMapMap = Map(featureShardId -> featureNameAndTermToIndexMap)
+    val indexMapLoader = new DefaultIndexMapLoader(
+      featureNameAndTermToIndexMap.map { case (nat, i) => (Utils.getFeatureKey(nat.name, nat.term), i) }.toMap)
+    indexMapLoader.prepare(sc, null)
+
+    val featureShardIdToFeatureNameAndTermToIndexMapMap = Map(featureShardId -> indexMapLoader)
 
     // Fixed effect model
     val glm: GeneralizedLinearModel = new LogisticRegressionModel(coefficients)

@@ -26,7 +26,7 @@ trait IndexMapBuilder {
     * @param partitionId The partition id of current builder
     * @return the current builder
     */
-  def init(outputDir: String, partitionId: Int): IndexMapBuilder
+  def init(outputDir: String, partitionId: Int, namespace: String): IndexMapBuilder
 
   /**
     * Close current builder

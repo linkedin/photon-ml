@@ -74,7 +74,7 @@ class IdentityIndexMapLoader(
     override def size:Int = d
   }
 
-  override def prepare(sc: SparkContext, params: Params): Unit = {}
+  override def prepare(sc: SparkContext, params: IndexMapParams, namespace: String): Unit = {}
 
   override def indexMapForDriver(): IndexMap = map
 
