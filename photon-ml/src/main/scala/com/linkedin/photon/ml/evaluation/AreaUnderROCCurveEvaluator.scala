@@ -18,12 +18,12 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.rdd.RDD
 
 /**
-  * Evaluator for binary classification problems
+  * Evaluator that computes area under the ROC curve
   *
   * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
   * @param defaultScore The default score used to compute the metric
   */
-protected[ml] class BinaryClassificationEvaluator(
+protected[ml] class AreaUnderROCCurveEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 

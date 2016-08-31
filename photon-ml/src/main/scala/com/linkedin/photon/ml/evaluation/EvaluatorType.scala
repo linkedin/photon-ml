@@ -16,5 +16,5 @@ package com.linkedin.photon.ml.evaluation
 
 object EvaluatorType extends Enumeration {
   type EvaluatorType = Value
-  val AUC, RMSE, LOGISTIC_LOSS, POISSON_LOSS, SMOOTHED_HINGE_LOSS, SQUARED_LOSS = Value
+  val AUC, RMSE, LOGISTIC_LOSS, POISSON_LOSS, SMOOTHED_HINGE_LOSS, SQUARED_LOSS, PRECISION_AT_K = Value
 }
