@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{IndexMap, PalDBIndexMap}
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.Path
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext, SparkException}
 import org.testng.Assert._
 import org.testng.annotations.Test
 
@@ -72,17 +72,49 @@ class FeatureIndexingJobTest {
 
     for (partitionNum <- 1 to 2) {
       testShardedJob(
-        tempFile.toString, partitionNum, addIntercept = true, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
+        tempFile.toString,
+        partitionNum,
+        addIntercept = true,
+        featureShardIdToFeatureSectionKeysMap,
+        featureShardIdToInterceptMap,
+        featureShardIdToExpectedDimension)
       testShardedJob(
-        tempFile.toString, partitionNum, addIntercept = false, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
+        tempFile.toString,
+        partitionNum,
+        addIntercept = false,
+        featureShardIdToFeatureSectionKeysMap,
+        featureShardIdToInterceptMap,
+        featureShardIdToExpectedDimension)
       testShardedJob(
-        tempFile.toString, partitionNum, addIntercept = true, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
+        tempFile.toString,
+        partitionNum,
+        addIntercept = true,
+        featureShardIdToFeatureSectionKeysMap,
+        featureShardIdToInterceptMap,
+        featureShardIdToExpectedDimension)
       testShardedJob(
-        tempFile.toString, partitionNum, addIntercept = false, featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap, featureShardIdToExpectedDimension)
+        tempFile.toString,
+        partitionNum,
+        addIntercept = false,
+        featureShardIdToFeatureSectionKeysMap,
+        featureShardIdToInterceptMap,
+        featureShardIdToExpectedDimension)
+
+      try {
+        testShardedJob(
+          tempFile.toString,
+          partitionNum,
+          addIntercept = false,
+          featureShardIdToFeatureSectionKeysMap ++ Map("shard3" -> Set("badsection")),
+          featureShardIdToInterceptMap,
+          featureShardIdToExpectedDimension)
+
+        fail("Expected failure didn't happen.")
+
+      } catch {
+        case se: SparkException => assertTrue(se.getMessage.contains("Feature section not found"))
+        case e: Exception => throw(e)
+      }
     }
 
     FileUtils.deleteQuietly(tempFile)

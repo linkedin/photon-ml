@@ -101,7 +101,8 @@ class FeatureIndexingJob(
       val features = featureSections match {
         case Some(sections) =>
           sections
-            .map(record.get(_)
+            .map(section => Option(record.get(section))
+              .getOrElse(throw new IllegalArgumentException(s"Feature section not found: $section"))
               .asInstanceOf[JList[GenericRecord]]
               .asScala
               .toSet)
