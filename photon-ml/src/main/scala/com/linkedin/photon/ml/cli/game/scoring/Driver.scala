@@ -21,9 +21,7 @@ import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUti
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
-import com.linkedin.photon.ml.evaluation.EvaluatorType.EvaluatorType
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -231,10 +229,10 @@ object Driver {
     val evaluator = evaluatorType match {
       case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
       case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
-      case POISSON_LOSS => new PoissonLossEvaluator(labelAndOffsetAndWeights)
-      case LOGISTIC_LOSS => new LogisticLossEvaluator(labelAndOffsetAndWeights)
-      case SMOOTHED_HINGE_LOSS => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
-      case SQUARED_LOSS => new SquaredLossEvaluator(labelAndOffsetAndWeights)
+      case PoissonLoss => new PoissonLossEvaluator(labelAndOffsetAndWeights)
+      case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
+      case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
+      case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
       case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
     }
     evaluator.evaluate(scores.scores)
