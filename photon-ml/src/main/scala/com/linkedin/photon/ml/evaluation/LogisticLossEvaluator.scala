@@ -28,6 +28,8 @@ protected[ml] class LogisticLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
+  protected val evaluatorType = LogisticLoss
+
   /**
    * Evaluate the scores of the model
    *

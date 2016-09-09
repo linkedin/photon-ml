@@ -16,12 +16,17 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.data.GameDatum
+
 /**
  * Interface for evaluation implementations at the [[RDD]] level
- *
- * @author xazhang
  */
 protected[ml] trait Evaluator {
+
+  /**
+   * The type of the evaluator
+   */
+  protected val evaluatorType: EvaluatorType
 
   /**
     * Evaluate the scores of the model
@@ -40,4 +45,27 @@ protected[ml] trait Evaluator {
     * @return true if the first score is better than the second
     */
   def betterThan(score1: Double, score2: Double): Boolean
+
+  def getEvaluatorName: String = evaluatorType.name
+}
+
+object Evaluator {
+
+  def buildEvaluator(evaluatorType: EvaluatorType, gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
+    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
+      (gameData.response, gameData.offset, gameData.weight)
+    )
+    evaluatorType match {
+      case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
+      case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
+      case PoissonLoss => new PoissonLossEvaluator(labelAndOffsetAndWeights)
+      case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
+      case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
+      case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
+      case PrecisionAtK(k, documentIdName) =>
+        val documentIds = gameDataSet.mapValues(_.idTypeToValueMap(documentIdName))
+        new PrecisionAtKEvaluator(k, labelAndOffsetAndWeights, documentIds, documentIdName)
+      case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
+    }
+  }
 }

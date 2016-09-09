@@ -75,7 +75,7 @@ class PrecisionAtKEvaluatorTest extends SparkTestUtils {
     expectedResult: Double): Unit = sparkTest("testEvaluate") {
 
     val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, 0.0, 1.0))
-    val evaluator = new PrecisionAtKEvaluator(k, labelAndOffsetAndWeights, sc.parallelize(documentIds))
+    val evaluator = new PrecisionAtKEvaluator(k, labelAndOffsetAndWeights, sc.parallelize(documentIds), "")
     val actualResult = evaluator.evaluate(sc.parallelize(scores))
     assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }
