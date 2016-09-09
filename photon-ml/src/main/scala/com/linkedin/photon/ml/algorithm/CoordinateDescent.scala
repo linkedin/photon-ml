@@ -23,20 +23,21 @@ import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import org.apache.spark.rdd.RDD
 
 /**
-  * Coordinate descent implementation
-  *
-  * @param coordinates The individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
-  *                    (coordinateName, [[Coordinate]] object) pairs.
-  * @param trainingLossFunctionEvaluator Training loss function evaluator
-  * @param validatingDataAndEvaluatorOption Optional validation data evaluator. The validating data is a [[RDD]]
-  *                                         consists of (global Id, [[GameDatum]] object pairs), there the global Id
-  *                                         is a unique identifier for each [[GameDatum]] object.
-  * @param logger A logger instance
-  */
+ * Coordinate descent implementation
+ *
+ * @param coordinates The individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
+ *                    (coordinateName, [[Coordinate]] object) pairs.
+ * @param trainingLossFunctionEvaluator Training loss function evaluator
+ * @param validatingDataAndEvaluatorsOption Optional validation data evaluator. The validating data is a [[RDD]]
+ *                                         consists of (global Id, [[GameDatum]] object pairs), there the global Id
+ *                                         is a unique identifier for each [[GameDatum]] object. The evaluators are
+ *                                         a [[Seq]] of evaluators
+ * @param logger A logger instance
+ */
 class CoordinateDescent(
     coordinates: Seq[(String, Coordinate[_ <: DataSet[_], _ <: Coordinate[_, _]])],
     trainingLossFunctionEvaluator: Evaluator,
-    validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
+    validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
     logger: PhotonLogger) {
 
   /**
@@ -89,7 +90,7 @@ class CoordinateDescent(
     }.toMap
 
     // Initialize the validating scores
-    var validatingScoresContainerOption = validatingDataAndEvaluatorOption.map { case (validatingData, _) =>
+    var validatingScoresContainerOption = validatingDataAndEvaluatorsOption.map { case (validatingData, _) =>
       val validatingScoresContainer = coordinates.map { case (coordinateId, _) =>
         val updatedModel = updatedGAMEModel.getModel(coordinateId).get
         val validatingScores = updatedModel.score(validatingData)
@@ -177,8 +178,7 @@ class CoordinateDescent(
             s"iteration $iteration is:\n$objectiveFunctionValue")
 
         // Update the validating score and evaluate the updated model on the validating data
-        validatingScoresContainerOption = validatingDataAndEvaluatorOption.map { case (validatingData, evaluator) =>
-          val validationTimer = Timer.start()
+        validatingScoresContainerOption = validatingDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
           var validatingScoresContainer = validatingScoresContainerOption.get
           val validatingScores = updatedModel
             .score(validatingData)
@@ -188,10 +188,13 @@ class CoordinateDescent(
           validatingScoresContainer(coordinateId).unpersistRDD()
           validatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
           val fullScore = validatingScoresContainer.values.reduce(_ + _)
-          val evaluationMetric = evaluator.evaluate(fullScore.scores)
-          logger.debug(s"Finished validating the model, time elapsed: ${validationTimer.stop().durationSeconds} (s).")
-          logger.info(s"Evaluation metric after updating coordinateId $coordinateId at iteration $iteration is " +
-              s"$evaluationMetric")
+          evaluators.foreach { evaluator =>
+            val validationTimer = Timer.start()
+            val evaluationMetric = evaluator.evaluate(fullScore.scores)
+            logger.debug(s"Finished validating the model, time elapsed: ${validationTimer.stop().durationSeconds} (s).")
+            logger.info(s"Evaluation metric computed with ${evaluator.getEvaluatorName} after updating " +
+                s"coordinateId $coordinateId at iteration $iteration is $evaluationMetric")
+          }
           validatingScoresContainer
         }
 

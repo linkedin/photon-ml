@@ -14,8 +14,14 @@
  */
 package com.linkedin.photon.ml.cli.game
 
+import com.linkedin.photon.ml.evaluation.EvaluatorType
+
 /**
  * Evaluator params common to GAME training and scoring.
  */
-class EvaluatorParams {
+trait EvaluatorParams {
+  /**
+   * A list of evaluators separated by comma. E.g, AUC,Precision@1:documentId,Precision@3:documentId,Logistic_Loss
+   */
+  var evaluatorTypes: Seq[EvaluatorType] = Seq()
 }

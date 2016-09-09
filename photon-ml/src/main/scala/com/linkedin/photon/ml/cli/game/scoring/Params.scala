@@ -17,15 +17,14 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.OptionNames._
-import com.linkedin.photon.ml.cli.game.FeatureParams
+import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.evaluation.EvaluatorType
-import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.util.PalDBIndexMapParams
 
 /**
  * Command line arguments for GAME scoring driver
  */
-class Params extends FeatureParams with PalDBIndexMapParams {
+class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
 
   /**
     * Input directories of data to be scored. Multiple input directories are also accepted if they are separated by
@@ -53,7 +52,7 @@ class Params extends FeatureParams with PalDBIndexMapParams {
     * A set of random effect ids of the corresponding random effect models in the following format:
     * randomEffectId1,randomEffectId2,randomEffectId3,
     */
-  var randomEffectIdSet: Set[String] = Set()
+  var randomEffectIdTypeSet: Set[String] = Set()
 
   /**
     * Minimum number of partitions for GAME's random effect model
@@ -87,11 +86,6 @@ class Params extends FeatureParams with PalDBIndexMapParams {
   var deleteOutputDirIfExists: Boolean = false
 
   /**
-    * The type of the evaluator used to evaluate the computed scores
-    */
-  var evaluatorType: Option[EvaluatorType] = None
-
-  /**
     * Name of this Spark application.
     */
   var applicationName: String = "Game-Scoring"
@@ -104,13 +98,13 @@ class Params extends FeatureParams with PalDBIndexMapParams {
             .mkString("\n")}\n" +
       s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
       s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
-      s"randomEffectIdSet: $randomEffectIdSet\n" +
+      s"randomEffectIdSet: $randomEffectIdTypeSet\n" +
       s"numPartitionsForRandomEffectModel: $minPartitionsForRandomEffectModel\n" +
       s"gameModelInputDir: $gameModelInputDir\n" +
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
-      s"evaluatorType: $evaluatorType\n " +
+      s"evaluatorTypes: ${evaluatorTypes.mkString("\t")}\n " +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
@@ -172,8 +166,8 @@ object Params {
               .toMap)
       opt[String]("random-effect-id-set")
         .text("A set of random effect ids of the corresponding random effect models in the following format: " +
-          s"randomEffectId1,randomEffectId2,randomEffectId3, Default: ${defaultParams.randomEffectIdSet}")
-        .foreach(x => params.randomEffectIdSet = x.split(",").toSet)
+          s"randomEffectId1,randomEffectId2,randomEffectId3, Default: ${defaultParams.randomEffectIdTypeSet}")
+        .foreach(x => params.randomEffectIdTypeSet = x.split(",").toSet)
       opt[String]("game-model-id")
         .text(s"The GAME model's id that is used to populate the 'modelId' field of ScoringResultAvro " +
           s"(output format of the computed scores). Default: ${defaultParams.gameModelId}")
@@ -196,9 +190,9 @@ object Params {
       opt[Boolean]("delete-output-dir-if-exists")
         .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
         .foreach(x => params.deleteOutputDirIfExists = x)
-      opt[String]("evaluator-type")
+      opt[String](EvaluatorType.cmdArgument)
         .text("Type of the evaluator used to evaluate the computed scores.")
-        .foreach(x => params.evaluatorType = Some(EvaluatorType.withName(x)))
+        .foreach(x => params.evaluatorTypes = x.split(",").map(EvaluatorType.withName))
       //TODO: remove the task-type option
       opt[String]("task-type")
         .text("A dummy option that does nothing and will be removed for the next major version bump")

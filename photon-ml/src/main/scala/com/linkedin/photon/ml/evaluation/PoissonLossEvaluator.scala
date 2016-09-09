@@ -28,7 +28,7 @@ protected[ml] class PoissonLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
-  protected val evaluatorType = LogisticLoss
+  protected val evaluatorType = PoissonLoss
 
   /**
    * Evaluate the scores of the model
