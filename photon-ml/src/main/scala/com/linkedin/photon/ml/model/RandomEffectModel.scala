@@ -121,7 +121,7 @@ object RandomEffectModel {
     * Compute the score for the dataset
     *
     * @param dataPoints The dataset to score
-    * @param coefficientsRDD The models to use for scoring
+    * @param modelsRDD The models to use for scoring
     * @param randomEffectId The random effect type id
     * @param featureShardId The feature shard id
     * @return The scores
@@ -134,7 +134,7 @@ object RandomEffectModel {
 
     val scores = dataPoints
       .map { case (globalId, gameData) =>
-        val individualId = gameData.randomEffectIdToIndividualIdMap(randomEffectId)
+        val individualId = gameData.idTypeToValueMap(randomEffectId)
         val features = gameData.featureShardContainer(featureShardId)
         (individualId, (globalId, features))
       }

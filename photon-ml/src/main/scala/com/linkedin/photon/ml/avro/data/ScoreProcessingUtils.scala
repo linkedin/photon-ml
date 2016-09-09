@@ -21,7 +21,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
-import com.linkedin.photon.ml.avro.AvroIOUtils
+import com.linkedin.photon.ml.avro.{AvroIOUtils, DefaultFieldNames}
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 
 
@@ -45,8 +45,15 @@ object ScoreProcessingUtils {
       val uid = Option(scoreAvro.getUid).map(_.toString)
       val label = Option(scoreAvro.getLabel()).map(_.toDouble)
       val ids = scoreAvro.getMetadataMap().asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
+      val idsWithUid =
+        if (uid.isDefined) {
+          ids + (DefaultFieldNames.UID -> uid.get)
+        } else {
+          ids
+        }
+      uid.foreach{ id => }
       val modelId = scoreAvro.getModelId.toString
-      (modelId, ScoredItem(score, uid, label, ids))
+      (modelId, ScoredItem(score, label, ids))
     }
   }
 
@@ -57,12 +64,12 @@ object ScoreProcessingUtils {
    * @param outputDir The given output directory
    */
   protected[ml] def saveScoredItemsToHDFS(scoredItems: RDD[ScoredItem], modelId: String, outputDir: String): Unit = {
-    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, uidOpt, labelOpt, ids) =>
+    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, ids) =>
       val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
       val builder = ScoringResultAvro.newBuilder()
       builder.setPredictionScore(predictionScore)
       builder.setModelId(modelId)
-      uidOpt.foreach(builder.setUid(_))
+      ids.get(DefaultFieldNames.UID).foreach(builder.setUid(_))
       labelOpt.foreach(builder.setLabel(_))
       builder.setMetadataMap(metaDataMap)
       builder.build()

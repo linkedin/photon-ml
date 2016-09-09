@@ -45,11 +45,11 @@ class DataProcessingUtilsTest {
 
     record.put(USER_ID_NAME, userIdStr)
     record.put(JOB_ID_NAME, jobIdVal)
-    val map1 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
+    val map1 = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME))
     assertEquals(map1.size, 1)
     assertEquals(map1(USER_ID_NAME), userIdStr)
 
-    val map2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
+    val map2 = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(map2.size, 2)
     assertEquals(map2(USER_ID_NAME), userIdStr)
     assertEquals(map2(JOB_ID_NAME), jobIdValStr)
@@ -72,11 +72,11 @@ class DataProcessingUtilsTest {
     map.put(JOB_ID_NAME, jobIdValStr)
     record.put(AvroFieldNames.META_DATA_MAP, map)
 
-    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
+    val res = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME))
     assertEquals(res.size, 1)
     assertEquals(res(USER_ID_NAME), userIdStr)
 
-    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
+    val res2 = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(res2.size, 2)
     assertEquals(res2(USER_ID_NAME), userIdStr)
     assertEquals(res2(JOB_ID_NAME), jobIdValStr)
@@ -110,11 +110,11 @@ class DataProcessingUtilsTest {
     record.put(AvroFieldNames.META_DATA_MAP, map)
 
     // Ids in metaDataMap will be ignored in this case
-    val res = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME))
+    val res = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME))
     assertEquals(res.size, 1)
     assertEquals(res(USER_ID_NAME), userId1Str)
 
-    val res2 = DataProcessingUtils.makeRandomEffectIdMap(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
+    val res2 = DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(record, Set[String](USER_ID_NAME, JOB_ID_NAME))
     assertEquals(res2.size, 2)
     assertEquals(res2(USER_ID_NAME), userId1Str)
     assertEquals(res2(JOB_ID_NAME), jobId1Str)
@@ -132,7 +132,7 @@ class DataProcessingUtilsTest {
       .name("foo").`type`().stringType().noDefault()
       .endRecord())
 
-    assertTrue(DataProcessingUtils.makeRandomEffectIdMap(emptyRecord, Set[String]()).isEmpty)
+    assertTrue(DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(emptyRecord, Set[String]()).isEmpty)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -147,7 +147,7 @@ class DataProcessingUtilsTest {
       .name("foo").`type`().stringType().noDefault()
       .endRecord())
 
-    DataProcessingUtils.makeRandomEffectIdMap(emptyRecord, Set[String](USER_ID_NAME))
+    DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(emptyRecord, Set[String](USER_ID_NAME))
   }
 }
 

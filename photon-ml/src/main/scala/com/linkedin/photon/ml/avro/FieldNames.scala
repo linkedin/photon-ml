@@ -18,7 +18,6 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Field names of the Avro formatted file used as input of [[GeneralizedLinearModel]]
- * @author xazhang
  */
 trait FieldNames extends Serializable {
   val features: String
@@ -28,4 +27,8 @@ trait FieldNames extends Serializable {
   val response: String
   val offset: String
   val weight: String
+}
+
+object DefaultFieldNames {
+  val UID = "uid"
 }

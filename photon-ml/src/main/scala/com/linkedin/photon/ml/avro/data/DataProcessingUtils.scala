@@ -36,23 +36,36 @@ object DataProcessingUtils {
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Map[String, Int] = {
 
     featureShardIdToFeatureMapLoader.map { case (shardId, featureMapLoader) =>
-      (shardId, featureMapLoader.indexMapForDriver.featureDimension)
+      (shardId, featureMapLoader.indexMapForDriver().featureDimension)
     }
   }
 
-  //TODO: Change the scope to protected[avro] after Avro related classes/functIons are decoupled from the rest of code
+  /**
+   * Parse a [[RDD]] of type [[GameDatum]] from a [[RDD]] of type [[GenericRecord]]
+   * @param records a [[RDD]] of type [[GenericRecord]]
+   * @param featureShardIdToFeatureSectionKeysMap a map from feature shard id (defined by the user) to feature
+   *                                              section keys (define in input data's Avro schema)
+   * @param featureShardIdToFeatureMapLoader a map from feature shard id (defined by the user) to the feature map loader
+   * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
+   * @param isResponseRequired whether the response variable is expected to be found in the Avro records. For example,
+   *                           if GAME data set to be parsed is used for model training, then the response variable is
+   *                           expected to be found from the Avro records. If the GAME data set is used for scoring,
+   *                           then we don't expect to find response.
+   * @todo Change the scope to protected[avro] after Avro related classes/functions are decoupled from the rest of code
+   * @return parsed [[RDD]] of type [[GameDatum]]
+   */
   protected[ml] def getGameDataSetFromGenericRecords(
       records: RDD[(Long, GenericRecord)],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      randomEffectIdSet: Set[String],
+      idTypeSet: Set[String],
       isResponseRequired: Boolean): RDD[(Long, GameDatum)] = {
 
     val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapLoader)
 
     records.mapPartitions { iter =>
       val featureShardIdToFeatureMap = featureShardIdToFeatureMapLoader.map { case (shardId, loader) =>
-        (shardId, loader.indexMapForRDD)
+        (shardId, loader.indexMapForRDD())
       }.toMap
 
       iter.map { case (id, record) => (id, getGameDatumFromGenericRecord(
@@ -60,70 +73,34 @@ object DataProcessingUtils {
         featureShardIdToFeatureSectionKeysMap,
         featureShardIdToFeatureMap,
         shardIdToFeatureDimensionMap,
-        randomEffectIdSet,
+        idTypeSet,
         isResponseRequired
       ))}
     }
   }
 
-  protected[ml] def getGameDataSetWithUIDFromGenericRecords(
-      records: RDD[(Long, GenericRecord)],
-      featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      randomEffectIdSet: Set[String],
-      isResponseRequired: Boolean): RDD[(Long, (GameDatum, Option[String]))] = {
-
-    val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapLoader)
-
-    records.mapPartitions { iter =>
-      val featureShardIdToFeatureMap = featureShardIdToFeatureMapLoader.map { case (shardId, loader) =>
-        (shardId, loader.indexMapForRDD)
-      }.toMap
-
-      iter.map { case (id, record) =>
-        val gameDatum = getGameDatumFromGenericRecord(
-          record,
-          featureShardIdToFeatureSectionKeysMap,
-          featureShardIdToFeatureMap,
-          shardIdToFeatureDimensionMap,
-          randomEffectIdSet,
-          isResponseRequired
-        )
-
-        val uid = if (record.get(AvroFieldNames.UID) != null) {
-          Some(Utils.getStringAvro(record, AvroFieldNames.UID))
-        } else {
-          None
-        }
-
-        (id, (gameDatum, uid))
-      }
-    }
-  }
-
   /**
-    * Given a GenericRecord, build the random effect id map:
-    *     (random effect name -> random effect id value)
-    *
-    * @note Exposed for testing purpose.
-    * @param record the avro generic record
-    * @param randomEffectIdSet a set of random effect id names
-    * @return the random effect id map of (name -> value)
-    */
-  protected[avro] def makeRandomEffectIdMap(
+   * Given a GenericRecord, build the id type to value map: (id type -> id value)
+   *
+   * @note Exposed for testing purpose.
+   * @param record the avro generic record
+   * @param idTypeSet the id types to look for from the generic record, either at the top layer or within "metadataMap"
+   * @return the id type to value map in the form of (id type -> id value)
+   */
+  protected[avro] def getIdTypeToValueMapFromGenericRecord(
       record: GenericRecord,
-      randomEffectIdSet: Set[String]): Map[String, String] = {
+      idTypeSet: Set[String]): Map[String, String] = {
 
     val metaMap = Utils.getMapAvro(record, AvroFieldNames.META_DATA_MAP, isNullOK = true)
 
-    randomEffectIdSet.map { randomEffectId =>
-      val idValue = Utils.getStringAvro(record, randomEffectId, isNullOK = true)
+    idTypeSet.map { idType =>
+      val idValue = Utils.getStringAvro(record, idType, isNullOK = true)
 
       val finalIdValue = if (idValue.isEmpty) {
-        val mapIdValue = if (metaMap != null) metaMap.get(randomEffectId) else null
+        val mapIdValue = if (metaMap != null) metaMap.get(idType) else null
         if (mapIdValue == null) {
           throw new IllegalArgumentException(s"Cannot find id in either record" +
-            s"field: $randomEffectId or in metadataMap with key: #$randomEffectId")
+            s"field: $idType or in metadataMap with key: #$idType")
         }
         mapIdValue
       } else {
@@ -132,19 +109,34 @@ object DataProcessingUtils {
 
       // random effect group name -> random effect group id value
       // random effect ids are assumed to be strings
-      (randomEffectId, finalIdValue.toString)
+      (idType, finalIdValue.toString)
     }.toMap
   }
 
+  /**
+   * Parse a [[GameDatum]] from a [[GenericRecord]]
+   * @param record an instance of [[GenericRecord]]
+   * @param featureShardIdToFeatureSectionKeysMap a map from feature shard id (defined by the user) to feature
+   *                                              section keys (define in input data's Avro schema)
+   * @param featureShardMaps a map from feature shard id (defined by the user) to the feature map
+   * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
+   * @param shardIdToFeatureDimensionMap a map from shard Id to that feature shard's dimension
+   * @param isResponseRequired whether the response variable is expected to be found in the Avro records. For example,
+   *                           if GAME data set to be parsed is used for model training, then the response variable is
+   *                           expected to be found from the Avro records. If the GAME data set is used for scoring,
+   *                           then we don't expect to find response.
+   * @todo Change the scope to protected[avro] after Avro related classes/functions are decoupled from the rest of code
+   * @return parsed [[GameDatum]]
+   */
   private def getGameDatumFromGenericRecord(
       record: GenericRecord,
-      featureShardSectionKeys: Map[String, Set[String]],
+      featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardMaps: Map[String, IndexMap],
       shardIdToFeatureDimensionMap: Map[String, Int],
-      randomEffectIdSet: Set[String],
+      idTypeSet: Set[String],
       isResponseRequired: Boolean): GameDatum = {
 
-    val featureShardContainer = featureShardSectionKeys.map { case (shardId, featureSectionKeys) =>
+    val featureShardContainer = featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
       val featureMap = featureShardMaps(shardId)
       val featureDimension = shardIdToFeatureDimensionMap(shardId)
       val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, featureDimension)
@@ -171,7 +163,7 @@ object DataProcessingUtils {
     }
 
     new GameDatum(response, offset, weight, featureShardContainer,
-        makeRandomEffectIdMap(record, randomEffectIdSet))
+        getIdTypeToValueMapFromGenericRecord(record, idTypeSet))
   }
 
   private def getFeaturesFromGenericRecord(

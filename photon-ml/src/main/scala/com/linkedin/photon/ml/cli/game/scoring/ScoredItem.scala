@@ -19,13 +19,12 @@ import scala.collection.Map
 /**
  * A compact representation of the scored item
  * @param predictionScore The prediction score
- * @param uid An optional unique Id of the score
  * @param label An optional label of the score
- * @param ids An map of random effect keys to random effect ids (e.g., item -> itemId or member -> memberId)
+ * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
+ *                         point, e.g. Map("userId" -> "1234", "itemId" -> "abcd").
  */
 case class ScoredItem(
     predictionScore: Double,
-    uid: Option[String],
     label: Option[Double],
-    ids: Map[String, String]
+    idTypeToValueMap: Map[String, String]
 )
