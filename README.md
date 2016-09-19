@@ -27,6 +27,7 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
     - [Train the Model](#train-the-model)
   - [Running Photon ML on Cluster Mode](#running-photon-ml-on-cluster-mode)
 - [How to Contribute](#how-to-contribute)
+- [Reference](#reference)
 
 <!-- /MarkdownTOC -->
 
@@ -71,15 +72,17 @@ In addition to the Generalized Linear Models described above, Photon-ML also sup
 ### GAME - Generalized Additive Mixed Effect Model
 GAME is a specific expansion of traditional Generalized Linear Models that further provides entity level (e.g., per-user/per-item) or segment level (e.g., per-country/per-category) coefficients, also known as random effects in the statistics literature, in addition to global coefficients. It manages to scale model training up to hundreds of billions of coefficients while still solvable within Spark's framework.
 
-GAME models consist of three components:
-  * One fixed effect model:
-    * The fixed effect model is effectively a conventional generalized linear model. Its parameters are "global" in the sense that they apply uniformly to all entities.
-  * Multiple random effect models:
-    * Random effect models consist of "local" parameters – entity-specific coefficients that can be seen as random deviations from the global mean. In other words, they are personalized models.
-  * Optionally a matrix factorization model:
-    * The matrix factorization model captures interactions between the different random effect models.
+Currently Photon-ML supports GAME models composed of the following three types of components:
+  * Fixed effect model:
+    * Each fixed effect model is effectively a conventional generalized linear model. Its parameters are "global" in the sense that they apply uniformly to all entities.
+  * Random effect model:
+    * Each random effect model consists of "local" parameters – entity-specific coefficients that can be seen as random deviations from the global mean. For example, a per-user random effect models each user's behavior through user-specific coefficients.
+  * Matrix factorization model:
+    * Conventional matrix factorization model that captures interactions between two types of random effects (e.g., user and item) in the latent space.
 
-The main difference between a GAME model and a conventional linear model is that GAME includes per-entity sub-models for personalization. An entity can be thought of as a logical grouping of data around some object or person, say a member. In GAME, each entity has its own RandomEffect optimization problem, where the training data have been grouped and partitioned by entity.
+For example, a GAME model for movie recommendation can be formulated as fixed effect model + per-user random effect model + per-movie random effect model + user-movie matrix factorization model. More details on GAME models can be found [here](https://docs.google.com/presentation/d/1vHanpK3KLIVgdDIHYRehUeyb04Hc2AasbBHs4InVPSU).
+
+One exemplary type of GAME model supported in Photon-ML is [GLMix](https://github.com/linkedin/photon-ml#reference), which has been adopted to serve the machine learning components of LinkedIn's core products, including: jobs search and recommendation, news feed ranking, Ads CTR prediction and "People Also Viewed". More details on GLMix models can be found [here](https://docs.google.com/presentation/d/1tYoelUma9-MMYdteWYS31LqVeoyPEncxJRk-k57gj0A/edit?usp=sharing).
 
 The relevant code can be found in the following namespaces:
  * com.linkedin.photon.ml.algorithm
@@ -298,3 +301,6 @@ Detailed usages are described via command:
 
 ## How to Contribute
 We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
+
+## Reference
+- XianXing Zhang, Yitong Zhou, Yiming Ma, Bee-Chung Chen, Liang Zhang and Deepak Agarwal. [GLMix: Generalized Linear Mixed Models For Large-Scale Response Prediction](http://www.kdd.org/kdd2016/papers/files/adf0562-zhangA.pdf). In 22nd SIGKDD Conference on Knowledge Discovery and Data Mining, 2016
