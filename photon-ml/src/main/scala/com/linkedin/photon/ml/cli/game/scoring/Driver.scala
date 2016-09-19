@@ -111,20 +111,21 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
-   * Score the game data set with the game model
-   * @param featureShardIdToFeatureMapLoader A map of feature shard id to feature map loader
+   * Load the GAME model and score the GAME data set.
+   *
+   * @param featureShardIdToIndexMapLoader A map of feature shard id to feature map loader
    * @param gameDataSet The game data set
    * @return The scores
    */
   protected def scoreGameDataSet(
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
     // TODO: make the number of files written to HDFS to be configurable
 
     // Load the model from HDFS
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToFeatureMapLoader, gameModelInputDir, sparkContext)
+      featureShardIdToIndexMapLoader, gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 

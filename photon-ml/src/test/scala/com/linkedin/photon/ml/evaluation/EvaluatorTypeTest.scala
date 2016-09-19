@@ -78,7 +78,7 @@ class EvaluatorTypeTest {
   }
 
   @Test(dataProvider = "generateUnrecognizedEvaluators",
-    expectedExceptions = Array(classOf[UnsupportedOperationException]))
+    expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testUnrecognizedEvaluatorsWithName(name: String): Unit = {
     EvaluatorType.withName(name)
   }

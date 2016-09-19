@@ -25,13 +25,13 @@ import org.apache.spark.rdd.RDD
 /**
  * Coordinate descent implementation
  *
- * @param coordinates The individual optimization problem coordinates. The coordinates is a [[Seq]] consists of
+ * @param coordinates The individual optimization problem coordinates. The coordinates are a [[Seq]] of
  *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator Training loss function evaluator
- * @param validatingDataAndEvaluatorsOption Optional validation data evaluator. The validating data is a [[RDD]]
- *                                         consists of (global Id, [[GameDatum]] object pairs), there the global Id
- *                                         is a unique identifier for each [[GameDatum]] object. The evaluators are
- *                                         a [[Seq]] of evaluators
+ * @param validatingDataAndEvaluatorsOption Optional validation data and evaluator. The validating data are a [[RDD]]
+ *                                          of (globalId, [[GameDatum]] object pairs), where globalId is a unique
+ *                                          identifier for each [[GameDatum]] object. The evaluators are
+ *                                          a [[Seq]] of evaluators
  * @param logger A logger instance
  */
 class CoordinateDescent(
@@ -41,12 +41,12 @@ class CoordinateDescent(
     logger: PhotonLogger) {
 
   /**
-    * Run coordinate descent
-    *
-    * @param numIterations Number of iterations
-    * @param seed Random seed (default: MathConst.RANDOM_SEED)
-    * @return A trained GAME model
-    */
+   * Run coordinate descent
+   *
+   * @param numIterations Number of iterations
+   * @param seed Random seed (default: MathConst.RANDOM_SEED)
+   * @return A trained GAME model
+   */
   def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): GAMEModel = {
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
       val initializedModel = coordinate.initializeModel(seed)
@@ -67,12 +67,12 @@ class CoordinateDescent(
   }
 
   /**
-    * Run coordinate descent
-    *
-    * @param numIterations Number of iterations
-    * @param gameModel The initial GAME model
-    * @return Trained GAME model
-    */
+   * Run coordinate descent
+   *
+   * @param numIterations Number of iterations
+   * @param gameModel The initial GAME model
+   * @return Trained GAME model
+   */
   def run(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
 
     coordinates.foreach { case (coordinateId, _) =>

@@ -27,22 +27,22 @@ class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   @DataProvider
   def scoredItemsProvider():Array[Array[Any]] = {
     val completeScoreItems = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("id1" -> "1", "id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("id1" -> "3", "id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("id1" -> "5", "id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("id1" -> "7", "id2" -> "8"))
+      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("uid" -> "1", "id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("uid" -> "3", "id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("uid" -> "5", "id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("uid" -> "7", "id2" -> "8"))
     )
     val scoredItemsWithoutUid = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("id1" -> "1", "id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("id1" -> "3", "id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("id1" -> "5", "id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("id1" -> "7", "id2" -> "8"))
+      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("id2" -> "8"))
     )
     val scoredItemsWithoutLabel = Array(
-      ScoredItem(predictionScore = 1.0, label = None, idTypeToValueMap = Map("id1" -> "1", "id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = None, idTypeToValueMap = Map("id1" -> "3", "id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = None, idTypeToValueMap = Map("id1" -> "5", "id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = None, idTypeToValueMap = Map("id1" -> "7", "id2" -> "8"))
+      ScoredItem(predictionScore = 1.0, label = None, idTypeToValueMap = Map("uid" -> "1", "id2" -> "2")),
+      ScoredItem(predictionScore = 0.0, label = None, idTypeToValueMap = Map("uid" -> "3", "id2" -> "4")),
+      ScoredItem(predictionScore = 0.5, label = None, idTypeToValueMap = Map("uid" -> "5", "id2" -> "6")),
+      ScoredItem(predictionScore = -1.0, label = None, idTypeToValueMap = Map("uid" -> "7", "id2" -> "8"))
     )
     val scoredItemsWithScoreAndLabel = Array(
       ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map[String, String]()),
@@ -89,5 +89,10 @@ class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // Same scored items
     assertEquals(loadedScoredItem.deep, scoredItems.deep)
+
+    // Same unique ids
+    val loadedUids = loadedScoredItem.map(_.idTypeToValueMap.get(DefaultFieldNames.UID))
+    val uids = scoredItems.map(_.idTypeToValueMap.get(DefaultFieldNames.UID))
+    assertEquals(loadedUids.deep, uids.deep)
   }
 }

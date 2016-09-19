@@ -86,7 +86,7 @@ object ModelProcessingUtils {
   }
 
   protected[ml] def loadGameModelFromHDFS(
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       inputDir: String,
       sparkContext: SparkContext): GAMEModel = {
 
@@ -106,7 +106,7 @@ object ModelProcessingUtils {
         val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the coefficients
-        val featureNameAndTermToIndexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
+        val featureNameAndTermToIndexMap = featureShardIdToIndexMapLoader(featureShardId).indexMapForDriver()
         val modelPath = new Path(innerPath, COEFFICIENTS)
         val glm = loadGLMFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
 
@@ -128,7 +128,7 @@ object ModelProcessingUtils {
         val Array(randomEffectId, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the models
-        val featureMapLoader = featureShardIdToFeatureMapLoader(featureShardId)
+        val featureMapLoader = featureShardIdToIndexMapLoader(featureShardId)
         val modelsRDDInputPath = new Path(innerPath, COEFFICIENTS)
         val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureMapLoader, sparkContext)
 

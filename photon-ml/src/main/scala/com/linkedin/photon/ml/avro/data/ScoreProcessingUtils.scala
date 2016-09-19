@@ -45,15 +45,12 @@ object ScoreProcessingUtils {
       val uid = Option(scoreAvro.getUid).map(_.toString)
       val label = Option(scoreAvro.getLabel()).map(_.toDouble)
       val ids = scoreAvro.getMetadataMap().asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
-      val idsWithUid =
-        if (uid.isDefined) {
-          ids + (DefaultFieldNames.UID -> uid.get)
-        } else {
-          ids
-        }
-      uid.foreach{ id => }
+      val idsWithUid = uid match {
+        case Some(id) => ids + (DefaultFieldNames.UID -> id)
+        case _ => ids
+      }
       val modelId = scoreAvro.getModelId.toString
-      (modelId, ScoredItem(score, label, ids))
+      (modelId, ScoredItem(score, label, idsWithUid))
     }
   }
 

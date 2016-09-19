@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.function.SmoothedHingeLossFunction
  */
 protected[ml] class SmoothedHingeLossEvaluator(
   labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-  defaultScore: Double = 0.0) extends Evaluator{
+  defaultScore: Double = 0.0) extends Evaluator {
 
   protected val evaluatorType = SmoothedHingeLoss
 

@@ -42,10 +42,12 @@ object DataProcessingUtils {
 
   /**
    * Parse a [[RDD]] of type [[GameDatum]] from a [[RDD]] of type [[GenericRecord]]
+   *
    * @param records a [[RDD]] of type [[GenericRecord]]
    * @param featureShardIdToFeatureSectionKeysMap a map from feature shard id (defined by the user) to feature
-   *                                              section keys (define in input data's Avro schema)
-   * @param featureShardIdToFeatureMapLoader a map from feature shard id (defined by the user) to the feature map loader
+   *                                              section keys (defined in the input data's Avro schema)
+   * @param featureShardIdToIndexMapLoader a map from feature shard id (defined by the user) to the index map loader
+   *                                       [[IndexMapLoader]].
    * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
    * @param isResponseRequired whether the response variable is expected to be found in the Avro records. For example,
    *                           if GAME data set to be parsed is used for model training, then the response variable is
@@ -57,21 +59,21 @@ object DataProcessingUtils {
   protected[ml] def getGameDataSetFromGenericRecords(
       records: RDD[(Long, GenericRecord)],
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       idTypeSet: Set[String],
       isResponseRequired: Boolean): RDD[(Long, GameDatum)] = {
 
-    val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToFeatureMapLoader)
+    val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToIndexMapLoader)
 
     records.mapPartitions { iter =>
-      val featureShardIdToFeatureMap = featureShardIdToFeatureMapLoader.map { case (shardId, loader) =>
+      val featureShardIdToIndexMap = featureShardIdToIndexMapLoader.map { case (shardId, loader) =>
         (shardId, loader.indexMapForRDD())
       }.toMap
 
       iter.map { case (id, record) => (id, getGameDatumFromGenericRecord(
         record,
         featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToFeatureMap,
+        featureShardIdToIndexMap,
         shardIdToFeatureDimensionMap,
         idTypeSet,
         isResponseRequired
@@ -117,8 +119,9 @@ object DataProcessingUtils {
    * Parse a [[GameDatum]] from a [[GenericRecord]]
    * @param record an instance of [[GenericRecord]]
    * @param featureShardIdToFeatureSectionKeysMap a map from feature shard id (defined by the user) to feature
-   *                                              section keys (define in input data's Avro schema)
-   * @param featureShardMaps a map from feature shard id (defined by the user) to the feature map
+   *                                              section keys (defined in the input data's Avro schema)
+   * @param featureShardIdToIndexMap a map from feature shard id (defined by the user) to that feature shard's index map
+   *                                    [[IndexMap]] (loaded by the [[IndexMapLoader]])
    * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
    * @param shardIdToFeatureDimensionMap a map from shard Id to that feature shard's dimension
    * @param isResponseRequired whether the response variable is expected to be found in the Avro records. For example,
@@ -131,13 +134,13 @@ object DataProcessingUtils {
   private def getGameDatumFromGenericRecord(
       record: GenericRecord,
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
-      featureShardMaps: Map[String, IndexMap],
+      featureShardIdToIndexMap: Map[String, IndexMap],
       shardIdToFeatureDimensionMap: Map[String, Int],
       idTypeSet: Set[String],
       isResponseRequired: Boolean): GameDatum = {
 
     val featureShardContainer = featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
-      val featureMap = featureShardMaps(shardId)
+      val featureMap = featureShardIdToIndexMap(shardId)
       val featureDimension = shardIdToFeatureDimensionMap(shardId)
       val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, featureDimension)
       (shardId, features)

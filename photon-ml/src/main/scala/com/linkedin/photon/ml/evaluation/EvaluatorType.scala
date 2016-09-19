@@ -75,6 +75,6 @@ object EvaluatorType {
     case PrecisionAtK.precisionAtKPattern(k, _) =>
       val PrecisionAtK.precisionAtKPattern(_, documentId) = name.trim
       PrecisionAtK(k.toInt, documentId)
-    case _ => throw new UnsupportedOperationException(s"Unsupported evaluator $name!")
+    case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name!")
   }
 }
