@@ -40,7 +40,10 @@ protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](
     */
   protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
 
-  protected[algorithm] def updateModel(model: DatumScoringModel, score: KeyValueScore): (DatumScoringModel, OptimizationTracker) = {
+  protected[algorithm] def updateModel(
+    model: DatumScoringModel,
+    score: KeyValueScore): (DatumScoringModel, OptimizationTracker) = {
+
     val dataSetWithUpdatedOffsets = dataSet.addScoresToOffsets(score)
     updateCoordinateWithDataSet(dataSetWithUpdatedOffsets).updateModel(model)
   }

@@ -27,6 +27,8 @@ protected[ml] class AreaUnderROCCurveEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
+  protected val evaluatorType = AUC
+
   /**
     * Evaluate the scores of the model
     *

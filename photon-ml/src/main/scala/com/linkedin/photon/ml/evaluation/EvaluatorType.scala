@@ -14,7 +14,67 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-object EvaluatorType extends Enumeration {
-  type EvaluatorType = Value
-  val AUC, RMSE, LOGISTIC_LOSS, POISSON_LOSS, SMOOTHED_HINGE_LOSS, SQUARED_LOSS, PRECISION_AT_K = Value
+/**
+ * Evaluator type
+ */
+trait EvaluatorType {
+  // name of the evaluator
+  val name: String
+}
+
+object AUC extends EvaluatorType {
+  val name = "AUC"
+}
+
+object RMSE extends EvaluatorType {
+  val name = "RMSE"
+}
+
+object LogisticLoss extends EvaluatorType {
+  val name = "LOGISTIC_LOSS"
+}
+
+object PoissonLoss extends EvaluatorType {
+  val name = "POISSON_LOSS"
+}
+
+object SmoothedHingeLoss extends EvaluatorType {
+  val name = "SMOOTHED_HINGE_LOSS"
+}
+
+object SquaredLoss extends EvaluatorType {
+  val name = "SQUARED_LOSS"
+}
+
+case class PrecisionAtK(k: Int, documentIdName: String) extends EvaluatorType {
+  val name = s"PRECISION@$k${PrecisionAtK.precisionAtKSplitter}$documentIdName"
+}
+
+object PrecisionAtK {
+  val precisionAtKSplitter = ":"
+  val precisionAtKPattern = s"(?i:PRECISION)@(\\d+)$precisionAtKSplitter(.*)".r
+}
+
+object EvaluatorType {
+
+  // Command line argument for evaluator type
+  val cmdArgument = "evaluator-type"
+
+  /**
+   * Parse the evaluator type with name
+   * @param name name of the evaluator type
+   * @return the parsed evaluator type
+   */
+  def withName(name: String): EvaluatorType = name.trim.toUpperCase match {
+    case AUC.name => AUC
+    case RMSE.name => RMSE
+    case LogisticLoss.name | "LOGISTICLOSS" => LogisticLoss
+    case PoissonLoss.name | "POISSONLOSS" => PoissonLoss
+    case SmoothedHingeLoss.name | "SMOOTHEDHINGELOSS" => SmoothedHingeLoss
+    case SquaredLoss.name | "SQUAREDLOSS" => SquaredLoss
+    case PrecisionAtK.precisionAtKPattern(k, _) =>
+      val PrecisionAtK.precisionAtKPattern(_, documentId) = name.trim
+      PrecisionAtK(k.toInt, documentId)
+    case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name!")
+  }
 }

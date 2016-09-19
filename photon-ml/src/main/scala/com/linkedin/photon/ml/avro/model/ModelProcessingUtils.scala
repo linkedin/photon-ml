@@ -19,20 +19,18 @@ import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 import com.linkedin.photon.ml.util.{IndexMap, IndexMapLoader, IOUtils, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import scala.collection.Map
 
 /**
-  * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
-  * using Avro format.
-  */
+ * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
+ * using Avro format.
+ */
 object ModelProcessingUtils {
 
   import com.linkedin.photon.ml.avro.Constants._
@@ -63,7 +61,7 @@ object ModelProcessingUtils {
           //Write the coefficients
           val coefficientsOutputDir = new Path(fixedEffectModelOutputDir, COEFFICIENTS).toString
           Utils.createHDFSDir(coefficientsOutputDir, configuration)
-          val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver
+          val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
           val model = fixedEffectModel.model
           saveModelToHDFS(model, indexMap, coefficientsOutputDir, sparkContext)
 
@@ -78,13 +76,17 @@ object ModelProcessingUtils {
           IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, configuration, forceOverwrite = false)
           val indexMapLoader = featureShardIdToFeatureMapLoader(featureShardId)
           saveRandomEffectModelToHDFS(
-            randomEffectModel, indexMapLoader, randomEffectModelOutputDir, numberOfOutputFilesForRandomEffectModel, configuration)
+            randomEffectModel,
+            indexMapLoader,
+            randomEffectModelOutputDir,
+            numberOfOutputFilesForRandomEffectModel,
+            configuration)
       }
     }
   }
 
   protected[ml] def loadGameModelFromHDFS(
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       inputDir: String,
       sparkContext: SparkContext): GAMEModel = {
 
@@ -104,7 +106,7 @@ object ModelProcessingUtils {
         val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the coefficients
-        val featureNameAndTermToIndexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver
+        val featureNameAndTermToIndexMap = featureShardIdToIndexMapLoader(featureShardId).indexMapForDriver()
         val modelPath = new Path(innerPath, COEFFICIENTS)
         val glm = loadGLMFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
 
@@ -126,7 +128,7 @@ object ModelProcessingUtils {
         val Array(randomEffectId, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the models
-        val featureMapLoader = featureShardIdToFeatureMapLoader(featureShardId)
+        val featureMapLoader = featureShardIdToIndexMapLoader(featureShardId)
         val modelsRDDInputPath = new Path(innerPath, COEFFICIENTS)
         val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureMapLoader, sparkContext)
 
@@ -206,7 +208,7 @@ object ModelProcessingUtils {
       outputDir: String): Unit = {
 
     val linearModelAvro = modelsRDD.mapPartitions { iter =>
-      val featureMap = featureMapLoader.indexMapForRDD
+      val featureMap = featureMapLoader.indexMapForRDD()
       iter.map { case (modelId, model) =>
         AvroUtils.convertGLMModelToBayesianLinearModelAvro(model, modelId, featureMap)
       }
@@ -227,7 +229,7 @@ object ModelProcessingUtils {
       minNumPartitions = sparkContext.defaultParallelism)
 
     modelAvros.mapPartitions { iter =>
-      val featureMap = featureMapLoader.indexMapForRDD
+      val featureMap = featureMapLoader.indexMapForRDD()
       iter.map { modelAvro =>
         val modelId = modelAvro.getModelId.toString
         val glm = AvroUtils.convertBayesianLinearModelAvroToGLM(modelAvro, featureMap)

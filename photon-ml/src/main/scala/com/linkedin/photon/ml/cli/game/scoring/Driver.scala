@@ -21,9 +21,7 @@ import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUti
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
-import com.linkedin.photon.ml.evaluation.EvaluatorType.EvaluatorType
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -43,13 +41,13 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
 
   /**
-    * Builds a GAME data set according to input data configuration
-    *
-    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
-    * @return The prepared GAME data set
-    */
+   * Builds a GAME data set according to input data configuration
+   *
+   * @param featureShardIdToFeatureMapLoader A map of shard id to feature map loader
+   * @return The prepared GAME data set
+   */
   protected def prepareGameDataSet(featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader])
-  : (RDD[(Long, Option[String])], RDD[(Long, GameDatum)]) = {
+  : RDD[(Long, GameDatum)] = {
 
     val recordsPath = (dateRangeOpt, dateRangeDaysAgoOpt) match {
       // Specified as date range
@@ -76,74 +74,77 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val gameDataSetWithUIDs = DataProcessingUtils.getGameDataSetWithUIDFromGenericRecords(
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
-      randomEffectIdSet,
+      randomEffectIdTypeSet,
       isResponseRequired = false)
       .partitionBy(globalDataPartitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-    val gameDataSet = gameDataSetWithUIDs.mapValues(_._1)
-    val uids = gameDataSetWithUIDs.mapValues(_._2)
+    logGameDataSet(gameDataSet)
+    gameDataSet
+  }
 
+  /**
+   * Log some statistics of the GAME data set for debugging purpose
+   *
+   * @param gameDataSet The GAME data set
+   */
+  private def logGameDataSet(gameDataSet: RDD[(Long, GameDatum)]): Unit = {
     // Log some simple summary info on the Game data set
     logger.debug(s"Summary for the GAME data set")
-    val numSamples = gameDataSetWithUIDs.count()
+    val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
-    randomEffectIdSet.foreach { randomEffectId =>
+    randomEffectIdTypeSet.foreach { idType =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
-        val individualId = gameData.randomEffectIdToIndividualIdMap(randomEffectId)
-        (individualId, 1)
+        val idValue = gameData.idTypeToValueMap(idType)
+        (idValue, 1)
       }
         .reduceByKey(_ + _)
         .values
         .stats()
-      logger.debug(s"numSamples for $randomEffectId: $numSamplesStats")
+      logger.debug(s"numSamples for $idType: $numSamplesStats")
     }
-    (uids, gameDataSet)
   }
 
   /**
-    * Score the game data set with the game model
-    *
-    * @param featureShardIdToFeatureMapMap A map of shard id to feature map
-    * @param gameDataSet The game data set
-    * @return The scores
-    */
+   * Load the GAME model and score the GAME data set.
+   *
+   * @param featureShardIdToIndexMapLoader A map of feature shard id to feature map loader
+   * @param gameDataSet The game data set
+   * @return The scores
+   */
   protected def scoreGameDataSet(
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
     // TODO: make the number of files written to HDFS to be configurable
 
     // Load the model from HDFS
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToFeatureMapLoader, gameModelInputDir, sparkContext)
+      featureShardIdToIndexMapLoader, gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 
-    val scores = gameModel.score(gameDataSet)
-    val offsets = new KeyValueScore(gameDataSet.mapValues(_.offset))
-    scores + offsets
+    gameModel.score(gameDataSet)
   }
 
   /**
    * Save the computed scores to HDFS with auxiliary info
    *
-   * @param uids The unique ids
    * @param gameDataSet The GAME data set
    * @param scores The computed scores
    */
   protected def saveScoresToHDFS(
-      uids: RDD[(Long, Option[String])],
       gameDataSet: RDD[(Long, GameDatum)],
       scores: KeyValueScore): Unit = {
 
-    val scoredItems = uids.join(gameDataSet).join(scores.scores).map { case (_, ((uid, gameDatum), score)) =>
-      ScoredItem(score, uid, Some(gameDatum.response), gameDatum.randomEffectIdToIndividualIdMap)
+    // Take the offset information into account when writing the scores to HDFS
+    val scoredItems = gameDataSet.join(scores.scores).map { case (_, (gameDatum, score)) =>
+      ScoredItem(score + gameDatum.offset, Some(gameDatum.response), gameDatum.idTypeToValueMap)
     }
     scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val numScoredItems = scoredItems.count()
@@ -160,8 +161,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   }
 
   /**
-    * Run the driver
-    */
+   * Run the driver
+   */
   def run(): Unit = {
     val timer = new Timer
 
@@ -174,7 +175,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.info(s"Time elapsed after preparing feature maps: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    val (uids, gameDataSet) = prepareGameDataSet(featureShardIdToFeatureMapMap)
+    val gameDataSet = prepareGameDataSet(featureShardIdToFeatureMapMap)
     timer.stop()
     logger.info(s"Time elapsed after game data set preparation: ${timer.durationSeconds} (s)\n")
 
@@ -185,17 +186,17 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.info(s"Time elapsed after computing scores: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    saveScoresToHDFS(uids, gameDataSet, scores)
+    saveScoresToHDFS(gameDataSet, scores)
     timer.stop()
     logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 
-    evaluatorType.foreach { evaluatorType =>
-      timer.start()
+    timer.start()
+    evaluatorTypes.foreach { evaluatorType =>
       val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
-      timer.stop()
-      logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
     }
+    timer.stop()
+    logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
   }
 }
 
@@ -224,25 +225,18 @@ object Driver {
 
     // Make sure the GAME data set makes sense
     val numSamplesWithNaNResponse = gameDataSet.filter(_._2.response.isNaN).count()
-    require(numSamplesWithNaNResponse == 0, s"numSamplesWithNaNResponse: $numSamplesWithNaNResponse")
+    require(numSamplesWithNaNResponse == 0,
+      s"Number of data points with NaN found as response: $numSamplesWithNaNResponse. Make sure the responses are " +
+        s"well defined in your data point in order to evaluate the computed scores with the specified " +
+        s"evaluator $evaluatorType!")
 
-    // The computed scores already take the offset into account
-    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameDatum => (gameDatum.response, 0.0, gameDatum.weight))
-    val evaluator = evaluatorType match {
-      case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
-      case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
-      case POISSON_LOSS => new PoissonLossEvaluator(labelAndOffsetAndWeights)
-      case LOGISTIC_LOSS => new LogisticLossEvaluator(labelAndOffsetAndWeights)
-      case SMOOTHED_HINGE_LOSS => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
-      case SQUARED_LOSS => new SquaredLossEvaluator(labelAndOffsetAndWeights)
-      case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
-    }
+    val evaluator = Evaluator.buildEvaluator(evaluatorType, gameDataSet)
     evaluator.evaluate(scores.scores)
   }
 
   /**
-    * Main entry point
-    */
+   * Main entry point
+   */
   def main(args: Array[String]): Unit = {
 
     val timer = Timer.start()

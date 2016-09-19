@@ -12,19 +12,16 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.cli.game.scoring
+package com.linkedin.photon.ml.cli.game
 
-import scala.collection.Map
+import com.linkedin.photon.ml.evaluation.EvaluatorType
 
 /**
- * A compact representation of the scored item
- * @param predictionScore The prediction score
- * @param label An optional label of the score
- * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
- *                         point, e.g. Map("userId" -> "1234", "itemId" -> "abcd").
+ * Evaluator params common to GAME training and scoring.
  */
-case class ScoredItem(
-    predictionScore: Double,
-    label: Option[Double],
-    idTypeToValueMap: Map[String, String]
-)
+trait EvaluatorParams {
+  /**
+   * A list of evaluators separated by comma. E.g, AUC,Precision@1:documentId,Precision@3:documentId,Logistic_Loss
+   */
+  var evaluatorTypes: Seq[EvaluatorType] = Seq()
+}

@@ -28,13 +28,17 @@ import com.linkedin.photon.ml.constants.MathConst
  *                    compute precision @ K. Such document ids can be thought as a recommendation context, e.g. in
  *                    evaluating the relevance of search results of given a query - one would use the query id as a
  *                    documentId.
+ * @param documentIdName Name of the document Id, e.g., documentId or queryId.
  * @param defaultScore The default score used to compute the metric
  */
 class PrecisionAtKEvaluator(
     k: Int,
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     documentIds: RDD[(Long, String)],
+    documentIdName: String,
     defaultScore: Double = 0.0) extends Evaluator {
+
+  protected val evaluatorType = PrecisionAtK(k, documentIdName)
 
   override def evaluate(scores: RDD[(Long, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes

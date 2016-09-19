@@ -28,6 +28,8 @@ protected[ml] class SquaredLossEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
 
+  protected val evaluatorType = SquaredLoss
+
   /**
    * Evaluate the scores of the model
    *

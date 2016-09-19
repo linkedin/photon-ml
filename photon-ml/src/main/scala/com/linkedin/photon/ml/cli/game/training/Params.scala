@@ -15,7 +15,8 @@
 package com.linkedin.photon.ml.cli.game.training
 
 import com.linkedin.photon.ml.OptionNames._
-import com.linkedin.photon.ml.cli.game.FeatureParams
+import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
+import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.optimization.game.{MFOptimizationConfiguration, GLMOptimizationConfiguration}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode
@@ -27,11 +28,12 @@ import scopt.OptionParser
 
 /**
  * A bean class for GAME training parameters to replace the original case class for input parameters.
+ *
  * @note Note that examples of how to configure GAME parameters can be found in the integration tests for the GAME
  *       driver.
  * @todo Making the way GAME being configured more user friendly
  */
-class Params extends FeatureParams with PalDBIndexMapParams {
+class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
 
   /**
    * Input directories of training data. Multiple input directories are also accepted if they are
@@ -377,6 +379,9 @@ object Params {
             "feature index building and has zero performance impact on training other than maintaining a " +
             "convention.")
         .foreach(x => params.offHeapIndexMapNumPartitions = x)
+      opt[String](EvaluatorType.cmdArgument)
+        .text("Type of the evaluator used to evaluate the computed scores.")
+        .foreach(x => params.evaluatorTypes = x.split(",").map(EvaluatorType.withName))
 
       help("help").text("prints usage text.")
       override def showUsageOnError = true

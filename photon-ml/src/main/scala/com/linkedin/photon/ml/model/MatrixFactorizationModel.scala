@@ -148,8 +148,8 @@ object MatrixFactorizationModel {
     val scores = dataPoints
       //For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
       .map { case (uniqueId, gameData) =>
-      val rowEffectId = gameData.randomEffectIdToIndividualIdMap(rowEffectType)
-      val colEffectId = gameData.randomEffectIdToIndividualIdMap(colEffectType)
+      val rowEffectId = gameData.idTypeToValueMap(rowEffectType)
+      val colEffectId = gameData.idTypeToValueMap(colEffectType)
       (rowEffectId, (colEffectId, uniqueId))
     }
       .cogroup(rowLatentFactors)

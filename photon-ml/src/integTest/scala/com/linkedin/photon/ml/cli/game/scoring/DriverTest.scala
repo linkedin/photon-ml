@@ -25,7 +25,6 @@ import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -33,18 +32,17 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithUnsupportedEvaluatorType(): Unit = sparkTest("failedTestRunWithUnsupportedEvaluatorType") {
-    val args = DriverTest.yahooMusicArgs(getTmpDir, evaluatorType = "UnknownEvaluator")
+    val args = DriverTest.yahooMusicArgs(getTmpDir, evaluatorTypes = Seq("UnknownEvaluator"))
     runDriver(CommonTestUtils.argArray(args))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithNaNInGAMEData(): Unit = sparkTest("failedTestRunWithNaNInGAMEData") {
-
     val gameDatum = new GameDatum(response = Double.NaN, offset = 0.0, weight = 1.0, featureShardContainer = Map(),
-      randomEffectIdToIndividualIdMap = Map())
+      idTypeToValueMap = Map())
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
     val scores = new KeyValueScore(sc.parallelize(Seq((1L, 0.0))))
-    Driver.evaluateScores(evaluatorType = EvaluatorType.SMOOTHED_HINGE_LOSS, scores = scores, gameDataSet)
+    Driver.evaluateScores(evaluatorType = SmoothedHingeLoss, scores = scores, gameDataSet)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -118,19 +116,19 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @DataProvider
   def evaluatorTypeProvider(): Array[Array[Any]] = {
-    Array(Array(EvaluatorType.AUC),
-      Array(EvaluatorType.LOGISTIC_LOSS),
-      Array(EvaluatorType.POISSON_LOSS),
-      Array(EvaluatorType.RMSE),
-      Array(EvaluatorType.SMOOTHED_HINGE_LOSS),
-      Array(EvaluatorType.SQUARED_LOSS)
+    Array(
+      Array(Seq(AUC, LogisticLoss)),
+      Array(Seq(PoissonLoss)),
+      Array(Seq(RMSE, SquaredLoss)),
+      Array(Seq(SmoothedHingeLoss)),
+      Array(Seq(PrecisionAtK(1, "queryId"), PrecisionAtK(5, "documentId")))
     )
   }
 
   @Test(dataProvider = "evaluatorTypeProvider")
-  def testEvaluateScores(evaluatorType: EvaluatorType): Unit = sparkTest("testEvaluateScores") {
+  def testEvaluateScores(evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("testEvaluateScores") {
     val numSamples = 10
-    val random = new Random(MathConst.RANDOM_SEED)
+    val random = new Random(MathConst.RANDOM_SEED).self
     val scores = new KeyValueScore(sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextDouble()))))
     val labels = sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextInt(2))))
     val gameDataSet = labels.mapValues(label =>
@@ -139,28 +137,19 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
         offset = 0.0,
         weight = 1.0,
         featureShardContainer = Map(),
-        randomEffectIdToIndividualIdMap = Map()
+        idTypeToValueMap = Map("queryId" -> random.nextInt(2).toString, "documentId" -> random.nextInt(2).toString)
       )
     )
-    val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
-
-    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameDatum => (gameDatum.response, 0.0, gameDatum.weight))
-    val evaluator = evaluatorType match {
-      case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
-      case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
-      case POISSON_LOSS => new PoissonLossEvaluator(labelAndOffsetAndWeights)
-      case LOGISTIC_LOSS => new LogisticLossEvaluator(labelAndOffsetAndWeights)
-      case SMOOTHED_HINGE_LOSS => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
-      case SQUARED_LOSS => new SquaredLossEvaluator(labelAndOffsetAndWeights)
-      case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
+    evaluatorTypes.foreach { evaluatorType =>
+      val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
+      val evaluator = Evaluator.buildEvaluator(evaluatorType, gameDataSet)
+      val expectedMetric = evaluator.evaluate(scores.scores)
+      assertEquals(computedMetric, expectedMetric, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
     }
-    val expectedMetric = evaluator.evaluate(scores.scores)
-
-    assertEquals(computedMetric, expectedMetric, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }
 
   @Test
-  def testOffHeapIndexMap() = sparkTest("offHeapIndexMap") {
+  def testOffHeapIndexMap(): Unit = sparkTest("offHeapIndexMap") {
     val outputDir = getTmpDir
     val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/test-with-uid-feature-indexes").getPath
     val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = false, deleteOutputDirIfExists = true) ++ Map(
@@ -207,7 +196,7 @@ object DriverTest {
       deleteOutputDirIfExists: Boolean = true,
       numOutputFiles: Int = 1,
       modelId: String = "",
-      evaluatorType: String = EvaluatorType.RMSE.toString): Map[String, String] = {
+      evaluatorTypes: Seq[String] = Seq("RMSE")): Map[String, String] = {
 
     val inputRoot = getClass.getClassLoader.getResource("GameIntegTest").getPath
     val inputDir = new Path(inputRoot, "input/test-with-uid").toString
@@ -237,7 +226,7 @@ object DriverTest {
       "num-files" -> numOutputFiles.toString,
       "delete-output-dir-if-exists" -> deleteOutputDirIfExists.toString,
       "application-name" -> applicationName,
-      "evaluator-type" -> evaluatorType
+      "evaluator-type" -> evaluatorTypes.mkString(",")
     ) ++ argumentsForGLMix
   }
 }
