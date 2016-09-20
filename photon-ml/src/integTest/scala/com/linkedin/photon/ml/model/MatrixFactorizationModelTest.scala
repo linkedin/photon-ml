@@ -66,7 +66,7 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
       val rowId = row.toString
       val colId = col.toString
       val randomEffectIdToIndividualIdMap = Map(rowEffectType -> rowId, colEffectType -> colId)
-      val gameDatum = new GameDatum(response = 1.0, offset = 0.0, weight = 0.0, featureShardContainer = Map(),
+      val gameDatum = new GameDatum(response = 1.0, offsetOpt = None, weightOpt = None, featureShardContainer = Map(),
         idTypeToValueMap = randomEffectIdToIndividualIdMap)
       val score = rowLatentFactors(row)._2.dot(colLatentFactors(col)._2)
       (gameDatum, score)

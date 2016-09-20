@@ -155,14 +155,14 @@ object DataProcessingUtils {
       }
     }
     val offset = if (record.get(AvroFieldNames.OFFSET) != null) {
-      Utils.getDoubleAvro(record, AvroFieldNames.OFFSET)
+      Some(Utils.getDoubleAvro(record, AvroFieldNames.OFFSET))
     } else {
-      0.0
+      None
     }
     val weight = if (record.get(AvroFieldNames.WEIGHT) != null) {
-      Utils.getDoubleAvro(record, AvroFieldNames.WEIGHT)
+      Some(Utils.getDoubleAvro(record, AvroFieldNames.WEIGHT))
     } else {
-      1.0
+      None
     }
 
     new GameDatum(response, offset, weight, featureShardContainer,

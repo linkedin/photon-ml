@@ -22,8 +22,8 @@ import scala.collection.Map
  * Representation of a single GAME data point
  *
  * @param response The response or label
- * @param offset The offset
- * @param weight The importance weight
+ * @param offsetOpt An optional field for offset
+ * @param weightOpt An optional field for importance weight
  * @param featureShardContainer The sharded feature vectors
  * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
  *                         point. A few examples of the ids types are: (i) ids used to build the random effect model
@@ -32,10 +32,15 @@ import scala.collection.Map
  */
 protected[ml] class GameDatum(
     val response: Double,
-    val offset: Double,
-    val weight: Double,
+    val offsetOpt: Option[Double],
+    val weightOpt: Option[Double],
     val featureShardContainer: Map[String, Vector[Double]],
     val idTypeToValueMap: Map[String, String]) extends Serializable {
+
+  import GameDatum._
+
+  val offset = offsetOpt.getOrElse(DEFAULT_OFFSET)
+  val weight = weightOpt.getOrElse(DEFAULT_WEIGHT)
 
   /**
    * Build a labeled point with sharded feature container
@@ -44,6 +49,11 @@ protected[ml] class GameDatum(
    * @return The new labeled point
    */
   def generateLabeledPointWithFeatureShardId(featureShardId: String): LabeledPoint = {
-    LabeledPoint(response, featureShardContainer(featureShardId), offset, weight)
+    LabeledPoint(label = response, features = featureShardContainer(featureShardId), offset = offset, weight = weight)
   }
+}
+
+object GameDatum {
+  val DEFAULT_OFFSET = 0.0
+  val DEFAULT_WEIGHT = 1.0
 }
