@@ -38,7 +38,11 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithNaNInGAMEData(): Unit = sparkTest("failedTestRunWithNaNInGAMEData") {
-    val gameDatum = new GameDatum(response = Double.NaN, offset = 0.0, weight = 1.0, featureShardContainer = Map(),
+    val gameDatum = new GameDatum(
+      response = Double.NaN,
+      offsetOpt = Some(0.0),
+      weightOpt = Some(1.0),
+      featureShardContainer = Map(),
       idTypeToValueMap = Map())
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
     val scores = new KeyValueScore(sc.parallelize(Seq((1L, 0.0))))
@@ -134,8 +138,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val gameDataSet = labels.mapValues(label =>
       new GameDatum(
         response = label,
-        offset = 0.0,
-        weight = 1.0,
+        offsetOpt = Some(0.0),
+        weightOpt = Some(1.0),
         featureShardContainer = Map(),
         idTypeToValueMap = Map("queryId" -> random.nextInt(2).toString, "documentId" -> random.nextInt(2).toString)
       )

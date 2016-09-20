@@ -226,7 +226,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
           "format.")
 
       // No range specified, just use the train dir
-      case (None, None) => validatingDirs.toSeq
+      case (None, None) => validatingDirs
     }
     logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
 

@@ -20,11 +20,13 @@ import scala.collection.Map
  * A compact representation of the scored item
  * @param predictionScore The prediction score
  * @param label An optional label of the score
+ * @param weight An optional weight of the score
  * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
  *                         point, e.g. Map("userId" -> "1234", "itemId" -> "abcd").
  */
 case class ScoredItem(
     predictionScore: Double,
     label: Option[Double],
+    weight: Option[Double],
     idTypeToValueMap: Map[String, String]
 )

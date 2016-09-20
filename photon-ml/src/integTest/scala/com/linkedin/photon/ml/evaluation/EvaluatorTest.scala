@@ -40,8 +40,8 @@ class EvaluatorTest extends SparkTestUtils {
   def testBuildEvaluator(evaluatorType: EvaluatorType): Unit = sparkTest("testBuildEvaluator") {
     val gameDatum = new GameDatum(
       response = 1.0,
-      offset = 0.0,
-      weight = 1.0,
+      offsetOpt = Some(0.0),
+      weightOpt = None,
       featureShardContainer = Map(),
       idTypeToValueMap = Map(EvaluatorTest.documentIdName -> "id"))
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))

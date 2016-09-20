@@ -144,7 +144,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     // Take the offset information into account when writing the scores to HDFS
     val scoredItems = gameDataSet.join(scores.scores).map { case (_, (gameDatum, score)) =>
-      ScoredItem(score + gameDatum.offset, Some(gameDatum.response), gameDatum.idTypeToValueMap)
+      ScoredItem(score + gameDatum.offset, Some(gameDatum.response), gameDatum.weightOpt, gameDatum.idTypeToValueMap)
     }
     scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val numScoredItems = scoredItems.count()
