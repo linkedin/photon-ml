@@ -15,7 +15,7 @@
         },
         {
             "default": null,
-            "doc": "label/response of the event. The Scorer will not populate this field and will leave it null. ScorerForEvaluation will populate this with the known label of the instance",
+            "doc": "label/response of the event.",
             "name": "label",
             "type": [
                 "null",
@@ -31,6 +31,15 @@
             "doc": "Score predicted by the model.",
             "name": "predictionScore",
             "type": "double"
+        },
+        {
+            "default": null,
+            "doc": "Weight of the event.",
+            "name": "weight",
+            "type": [
+                "null",
+                "double"
+            ]
         },
         {
             "default": null,

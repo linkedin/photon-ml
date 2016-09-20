@@ -24,51 +24,130 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
+  private val completeScoreItems = Array(
+    ScoredItem(
+      predictionScore = 1.0,
+      label = Some(1.0),
+      weight = Some(1.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "1", "id2" -> "2")),
+    ScoredItem(
+      predictionScore = 0.0,
+      label = Some(0.0),
+      weight = Some(2.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "3", "id2" -> "4")),
+    ScoredItem(
+      predictionScore = 0.5,
+      label = Some(0.5),
+      weight = Some(-1.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "5", "id2" -> "6")),
+    ScoredItem(
+      predictionScore = -1.0,
+      label = Some(-0.5),
+      weight = Some(0.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "7", "id2" -> "8"))
+  )
+
+  private val scoredItemsWithoutUid = Array(
+    ScoredItem(predictionScore = 1.0, label = Some(1.0), weight = Some(1.0), idTypeToValueMap = Map("id2" -> "2")),
+    ScoredItem(predictionScore = 0.0, label = Some(0.0), weight = Some(2.0), idTypeToValueMap = Map("id2" -> "4")),
+    ScoredItem(predictionScore = 0.5, label = Some(0.5), weight = Some(-1.0), idTypeToValueMap = Map("id2" -> "6")),
+    ScoredItem(predictionScore = -1.0, label = Some(-0.5), weight = Some(0.0), idTypeToValueMap = Map("id2" -> "8"))
+  )
+
+  private val scoredItemsWithoutLabel = Array(
+    ScoredItem(
+      predictionScore = 1.0,
+      label = None,
+      weight = Some(1.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "1", "id2" -> "2")),
+    ScoredItem(
+      predictionScore = 0.0,
+      label = None,
+      weight = Some(2.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "3", "id2" -> "4")),
+    ScoredItem(
+      predictionScore = 0.5,
+      label = None,
+      weight = Some(-1.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "5", "id2" -> "6")),
+    ScoredItem(
+      predictionScore = -1.0,
+      label = None,
+      weight = Some(0.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "7", "id2" -> "8"))
+  )
+
+  private val scoredItemsWithoutWeight = Array(
+    ScoredItem(
+      predictionScore = 1.0,
+      label = Some(1.0),
+      weight = None,
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "1", "id2" -> "2")),
+    ScoredItem(
+      predictionScore = 0.0,
+      label = Some(0.0),
+      weight = None,
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "3", "id2" -> "4")),
+    ScoredItem(
+      predictionScore = 0.5,
+      label = Some(0.5),
+      weight = None,
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "5", "id2" -> "6")),
+    ScoredItem(
+      predictionScore = -1.0,
+      label = Some(-0.5),
+      weight = None,
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "7", "id2" -> "8"))
+  )
+
+  private val scoredItemsWithoutIds = Array(
+    ScoredItem(predictionScore = 1.0, label = Some(1.0), weight = Some(1.0), idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = 0.0, label = Some(0.0), weight = Some(2.0), idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = 0.5, label = Some(0.5), weight = Some(-1.0), idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = -1.0, label = Some(-0.5), weight = Some(0.0), idTypeToValueMap = Map[String, String]())
+  )
+
+  private val scoredItemsWithOnlyScores = Array(
+    ScoredItem(predictionScore = 1.0, label = None, weight = None, idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = 0.0, label = None, weight = None, idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = 0.5, label = None, weight = None, idTypeToValueMap = Map[String, String]()),
+    ScoredItem(predictionScore = -1.0, label = None, weight = None, idTypeToValueMap = Map[String, String]())
+  )
+
+  private val mixedScoreItems = Array(
+    ScoredItem(
+      predictionScore = 1.0,
+      label = None,
+      weight = Some(1.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "1", "id2" -> "2")),
+    ScoredItem(
+      predictionScore = 0.0,
+      label = Some(0.0),
+      weight = None,
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "3", "id2" -> "4")),
+    ScoredItem(
+      predictionScore = 0.5,
+      label = Some(0.5),
+      weight = Some(-1.0),
+      idTypeToValueMap = Map[String, String]()),
+    ScoredItem(
+      predictionScore = -1.0,
+      label = Some(-0.5),
+      weight = Some(0.0),
+      idTypeToValueMap = Map(DefaultFieldNames.UID -> "7", "id2" -> "8"))
+  )
+
   @DataProvider
   def scoredItemsProvider():Array[Array[Any]] = {
-    val completeScoreItems = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("uid" -> "1", "id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("uid" -> "3", "id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("uid" -> "5", "id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("uid" -> "7", "id2" -> "8"))
-    )
-    val scoredItemsWithoutUid = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map("id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map("id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map("id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map("id2" -> "8"))
-    )
-    val scoredItemsWithoutLabel = Array(
-      ScoredItem(predictionScore = 1.0, label = None, idTypeToValueMap = Map("uid" -> "1", "id2" -> "2")),
-      ScoredItem(predictionScore = 0.0, label = None, idTypeToValueMap = Map("uid" -> "3", "id2" -> "4")),
-      ScoredItem(predictionScore = 0.5, label = None, idTypeToValueMap = Map("uid" -> "5", "id2" -> "6")),
-      ScoredItem(predictionScore = -1.0, label = None, idTypeToValueMap = Map("uid" -> "7", "id2" -> "8"))
-    )
-    val scoredItemsWithScoreAndLabel = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map[String, String]())
-    )
-    val scoredItemsWithoutIds = Array(
-      ScoredItem(predictionScore = 1.0, label = Some(1.0), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.0, label = Some(0.0), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.5, label = Some(0.5), idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = -1.0, label = Some(-0.5), idTypeToValueMap = Map[String, String]())
-    )
-    val scoredItemsWithOnlyScores = Array(
-      ScoredItem(predictionScore = 1.0, label = None, idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.0, label = None, idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = 0.5, label = None, idTypeToValueMap = Map[String, String]()),
-      ScoredItem(predictionScore = -1.0, label = None, idTypeToValueMap = Map[String, String]())
-    )
+
     Array(
       Array("completeScoreItems", completeScoreItems),
       Array("scoredItemsWithoutUid", scoredItemsWithoutUid),
       Array("scoredItemsWithoutLabel", scoredItemsWithoutLabel),
-      Array("scoredItemsWithScoreAndLabel", scoredItemsWithScoreAndLabel),
+      Array("scoredItemsWithoutWeight", scoredItemsWithoutWeight),
       Array("scoredItemsWithoutIds", scoredItemsWithoutIds),
-      Array("scoredItemsWithOnlyScores", scoredItemsWithOnlyScores)
+      Array("scoredItemsWithOnlyScores", scoredItemsWithOnlyScores),
+      Array("mixedScoreItems", mixedScoreItems)
     )
   }
 

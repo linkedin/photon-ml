@@ -44,13 +44,14 @@ object ScoreProcessingUtils {
       val score = scoreAvro.getPredictionScore
       val uid = Option(scoreAvro.getUid).map(_.toString)
       val label = Option(scoreAvro.getLabel()).map(_.toDouble)
+      val weight = Option(scoreAvro.getWeight()).map(_.toDouble)
       val ids = scoreAvro.getMetadataMap().asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
       val idsWithUid = uid match {
         case Some(id) => ids + (DefaultFieldNames.UID -> id)
         case _ => ids
       }
       val modelId = scoreAvro.getModelId.toString
-      (modelId, ScoredItem(score, label, idsWithUid))
+      (modelId, ScoredItem(score, label, weight, idsWithUid))
     }
   }
 
@@ -61,13 +62,14 @@ object ScoreProcessingUtils {
    * @param outputDir The given output directory
    */
   protected[ml] def saveScoredItemsToHDFS(scoredItems: RDD[ScoredItem], modelId: String, outputDir: String): Unit = {
-    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, ids) =>
+    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, weightOpt, ids) =>
       val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
       val builder = ScoringResultAvro.newBuilder()
       builder.setPredictionScore(predictionScore)
       builder.setModelId(modelId)
       ids.get(DefaultFieldNames.UID).foreach(builder.setUid(_))
       labelOpt.foreach(builder.setLabel(_))
+      weightOpt.foreach(builder.setWeight(_))
       builder.setMetadataMap(metaDataMap)
       builder.build()
     }
