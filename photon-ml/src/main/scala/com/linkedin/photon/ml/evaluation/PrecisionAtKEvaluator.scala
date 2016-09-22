@@ -19,9 +19,10 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.constants.MathConst
 
 /**
- * Evaluator for Precision@k. Definition of this evaluator along with terminologies used here (documentId) can be
+ * Evaluator for Precision@k. Definition of this evaluator along with terminologies used here (e.g., documentId) can be
  * found at [[https://en.wikipedia.org/wiki/Information_retrieval#Precision_at_K]]. No special tiebreaker is used if
  * there are ties in scores, and one of them will be picked randomly.
+ *
  * @param k The cut-off rank based on which the precision is computed (precision @ k)
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
  * @param documentIds Document ids based on which the labels and scores are grouped to form documents in order to

@@ -17,7 +17,8 @@ package com.linkedin.photon.ml.cli.game.training
 import java.nio.file.{FileSystems, Files, Path}
 
 import collection.JavaConversions._
-import org.apache.spark.SparkConf
+
+import org.apache.spark.{SparkConf, SparkException}
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
@@ -227,8 +228,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val args = argArray(fixedEffectToyRunArgs() ++ Map("output-dir" -> outputDir))
 
-    val driver = new Driver(
-      Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
+    val driver = new Driver(Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
 
     val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
     val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
@@ -340,16 +340,16 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def multipleEvaluatorTypeProvider(): Array[Array[Any]] = {
     Array(
       Array(Seq(RMSE, SquaredLoss)),
-      Array(Seq(LogisticLoss, AUC)),
+      Array(Seq(LogisticLoss, AUC, PrecisionAtK(1, "userId"), PrecisionAtK(10, "songId"))),
       Array(Seq(PoissonLoss))
     )
   }
 
   @Test(dataProvider = "multipleEvaluatorTypeProvider")
-  def testMultipleEvaluators(evaluatorTypes: Seq[EvaluatorType]): Unit
-    = sparkTest("testMultipleEvaluators", useKryo = true) {
+  def testMultipleEvaluatorsWithFixedEffectModel(evaluatorTypes: Seq[EvaluatorType])
+  : Unit = sparkTest("testMultipleEvaluatorsWithFixedEffectModel", useKryo = true) {
 
-    val outputDir = s"$getTmpDir/testMultipleEvaluators"
+    val outputDir = s"$getTmpDir/testMultipleEvaluatorsWithFixedEffectModel"
 
     val driver = runDriver(argArray(fixedEffectToyRunArgs() ++ Map(
       "output-dir" -> outputDir,
@@ -361,6 +361,43 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     evaluators
         .zip(evaluatorTypes)
         .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
+  }
+
+  @Test(dataProvider = "multipleEvaluatorTypeProvider")
+  def testMultipleEvaluatorsWithFullModel(evaluatorTypes: Seq[EvaluatorType])
+  : Unit = sparkTest("testMultipleEvaluatorsWithFullModel", useKryo = true) {
+
+    val outputDir = s"$getTmpDir/testMultipleEvaluatorsWithFullModel"
+
+    val driver = runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(
+      "output-dir" -> outputDir,
+      EvaluatorType.cmdArgument -> evaluatorTypes.map(_.name).mkString(","))))
+
+    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
+    val (_, evaluators) = driver.prepareValidatingEvaluators(
+      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
+    evaluators
+      .zip(evaluatorTypes)
+      .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
+  }
+
+  @DataProvider
+  def precisionAtKOfUnknownIdProvider(): Array[Array[Any]] = {
+    Array(
+      Array(Seq(AUC, PrecisionAtK(1, "foo"))),
+      Array(Seq(PrecisionAtK(1, "foo"), PrecisionAtK(10, "bar"))),
+      Array(Seq(PrecisionAtK(1, "foo")))
+    )
+  }
+
+  @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "precisionAtKOfUnknownIdProvider")
+  def evaluateFullModelWithPrecisionAtKOfUnknownId(evaluatorTypes: Seq[EvaluatorType])
+  : Unit = sparkTest("evaluateFullModelWithPrecisionAtKOfUnknownId") {
+
+    val outputDir = s"$getTmpDir/evaluateFullModelWithPrecisionAtKOfUnknownId"
+    runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(
+      "output-dir" -> outputDir,
+      EvaluatorType.cmdArgument -> evaluatorTypes.map(_.name).mkString(","))))
   }
 
   @DataProvider

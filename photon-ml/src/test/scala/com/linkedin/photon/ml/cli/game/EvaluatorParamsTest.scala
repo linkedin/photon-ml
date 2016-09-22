@@ -14,24 +14,21 @@
  */
 package com.linkedin.photon.ml.cli.game
 
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, PrecisionAtK}
+import org.testng.Assert._
+import org.testng.annotations.Test
 
-/**
- * Evaluator params common to GAME training and scoring.
- */
-trait EvaluatorParams {
-  /**
-   * A list of evaluators separated by comma. E.g, AUC,Precision@1:documentId,Precision@3:documentId,Logistic_Loss
-   */
-  var evaluatorTypes: Seq[EvaluatorType] = Seq()
+import com.linkedin.photon.ml.evaluation._
 
-  /**
-   * Get all id types used to compute precision@K
-   */
-  def getPrecisionAtKIdTypeSet: Set[String] = {
-    evaluatorTypes
-      .filter(_.isInstanceOf[PrecisionAtK])
-      .map { case PrecisionAtK(_, documentIdName) => documentIdName }
-      .toSet
+class EvaluatorParamsTest {
+
+  @Test
+  def precisionAtKIdTypeSetTest(): Unit = {
+    val expectedIdTypeSet = Set("documentId", "queryId", "foo", "bar")
+    val precisionAtKEvaluators = expectedIdTypeSet.toSeq.flatMap(t => Seq(1, 3, 5, 10).map(PrecisionAtK(_, t)))
+    val allEvaluators = Seq(AUC, RMSE, LogisticLoss) ++ precisionAtKEvaluators
+
+    val evaluatorParamsMocker = new EvaluatorParams {}
+    evaluatorParamsMocker.evaluatorTypes = allEvaluators
+    assertEquals(evaluatorParamsMocker.getPrecisionAtKIdTypeSet, expectedIdTypeSet)
   }
 }
