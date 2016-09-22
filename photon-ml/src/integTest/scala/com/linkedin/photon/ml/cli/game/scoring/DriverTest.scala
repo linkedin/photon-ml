@@ -17,13 +17,14 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scala.util.Random
 
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkException
 import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
@@ -116,6 +117,41 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     // Compare with the RMSE capture from an assumed-correct implementation on 7/27/2016
     assertEquals(rootMeanSquaredError, 1.321715, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+  }
+
+  @Test
+  def evaluateFixedEffectOnlyGLMixWithPrecisionAtK(): Unit = sparkTest("evaluateFixedEffectOnlyGLMixWithPrecisionAtK") {
+    val args = DriverTest.yahooMusicArgs(
+      getTmpDir,
+      fixedEffectOnly = true,
+      deleteOutputDirIfExists = true,
+      evaluatorTypes = Seq("precision@1:userId, precision@5:songId, precision@10:numFeatures"))
+
+    val driver = runDriver(CommonTestUtils.argArray(args))
+    assertEquals(driver.idTypeSet, Set("userId", "songId", "numFeatures"))
+  }
+
+  @Test(expectedExceptions = Array(classOf[SparkException]))
+  def evaluateFixedEffectModelWithPrecisionAtKOfUnknownId()
+  : Unit = sparkTest("evaluateFixedEffectModelWithPrecisionAtKOfUnknownId") {
+
+    val args = DriverTest.yahooMusicArgs(
+      getTmpDir,
+      fixedEffectOnly = true,
+      deleteOutputDirIfExists = true,
+      evaluatorTypes = Seq("precision@1:userId, precision@5:foo, precision@10:bar"))
+
+    runDriver(CommonTestUtils.argArray(args))
+  }
+
+  @Test(expectedExceptions = Array(classOf[SparkException]))
+  def evaluateFullModelWithPrecisionAtKOfUnknownId(): Unit = sparkTest("evaluateFullModelWithPrecisionAtKOfUnknownId") {
+    val args = DriverTest.yahooMusicArgs(
+      getTmpDir,
+      deleteOutputDirIfExists = true,
+      evaluatorTypes = Seq("precision@1:userId, precision@5:foo, precision@10:bar"))
+
+    runDriver(CommonTestUtils.argArray(args))
   }
 
   @DataProvider

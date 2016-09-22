@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.model
 
 import org.apache.spark.SparkContext
-import org.mockito.Mockito._
 import org.testng.annotations.Test
 import org.testng.Assert._
 

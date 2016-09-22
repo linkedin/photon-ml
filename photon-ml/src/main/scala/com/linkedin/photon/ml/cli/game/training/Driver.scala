@@ -50,6 +50,11 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
   import params._
 
+  protected[game] val idTypeSet: Set[String] = {
+    val randomEffectIdTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
+    randomEffectIdTypeSet ++ getPrecisionAtKIdTypeSet
+  }
+
   /**
    * Builds a GAME dataset according to input data configuration
    *
@@ -103,12 +108,11 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val randomEffectIdTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
-      randomEffectIdTypeSet,
+      idTypeSet,
       isResponseRequired = true)
       .partitionBy(globalDataPartitioner)
       .setName("GAME training data")
@@ -233,13 +237,12 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val partitioner = new LongHashPartitioner(records.partitions.length)
-    // filter out features that validating data are included in the black list
-    val randomEffectIdSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
+
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
-      randomEffectIdSet,
+      idTypeSet,
       isResponseRequired = true)
       .partitionBy(partitioner).setName("Validating Game data set")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)

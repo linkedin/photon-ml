@@ -37,8 +37,9 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
   import params._
 
-  protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
-    s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
+  protected[game] val idTypeSet: Set[String] = {
+    randomEffectIdTypeSet ++ getPrecisionAtKIdTypeSet
+  }
 
   /**
    * Builds a GAME data set according to input data configuration
@@ -78,7 +79,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       recordsWithUniqueId,
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
-      randomEffectIdTypeSet,
+      idTypeSet,
       isResponseRequired = false)
       .partitionBy(globalDataPartitioner)
       .setName("Game data set with UIDs for scoring")

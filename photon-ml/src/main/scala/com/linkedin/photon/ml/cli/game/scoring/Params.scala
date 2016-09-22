@@ -104,7 +104,7 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
-      s"evaluatorTypes: ${evaluatorTypes.mkString("\t")}\n " +
+      s"evaluatorTypes: ${evaluatorTypes.map(_.name).mkString("\t")}\n" +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"

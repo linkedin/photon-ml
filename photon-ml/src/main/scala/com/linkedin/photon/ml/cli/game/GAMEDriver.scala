@@ -22,7 +22,7 @@ import org.apache.spark.SparkContext
 /**
   * Contains common functions for GAME training and scoring drivers.
   */
-class GAMEDriver(
+abstract class GAMEDriver(
     params: FeatureParams with PalDBIndexMapParams,
     sparkContext: SparkContext,
     logger: PhotonLogger) {
@@ -30,6 +30,15 @@ class GAMEDriver(
   import params._
 
   protected val hadoopConfiguration = sparkContext.hadoopConfiguration
+
+  protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
+    s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
+
+  /**
+   * All id types that are necessary for GAME driver. E.g., random effect id types for model training and scoring, or
+   * ids for model evaluation with precision@K, for example, documentId or queryId
+   */
+  protected[game] val idTypeSet: Set[String]
 
   /**
     * Builds feature key to index map loaders according to configuration

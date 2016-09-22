@@ -14,8 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{DataSet, GameDatum, KeyValueScore, LabeledPoint}
+import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.optimization.game.OptimizationTracker
@@ -23,11 +22,8 @@ import com.linkedin.photon.ml.model.{GAMEModel, DatumScoringModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.PhotonLogger
 
-import breeze.linalg.Vector
-import org.apache.spark.rdd.RDD
 import org.mockito.Matchers
 import org.mockito.Mockito._
-import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 /**
@@ -47,7 +43,7 @@ class CoordinateDescentTest {
     // Create Coordinate mocks
     val coordinateIds = (0 until coordinateCount).map("coordinate" + _)
     val coordinates: Seq[(String,
-        FixedEffectCoordinate[_ <: GeneralizedLinearModel, _ <: DiffFunction[LabeledPoint]])] =
+      FixedEffectCoordinate[_ <: GeneralizedLinearModel, _ <: DiffFunction[LabeledPoint]])] =
       coordinateIds.map { coordinateId =>
         val coordinate = mock(
           classOf[FixedEffectCoordinate[_ <: GeneralizedLinearModel, _ <: DiffFunction[LabeledPoint]]])
@@ -88,7 +84,7 @@ class CoordinateDescentTest {
 
     // Verify the calls to updateModel
     if (coordinates.length == 1) {
-      verify(coordinates(0)._2, times(numIterations)).updateModel(models(0))
+      verify(coordinates.head._2, times(numIterations)).updateModel(models.head)
 
     } else {
       (coordinates zip models).map { case ((coordinateId, coordinate), model) =>

@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.util
 
 import org.mockito.Mockito._
-import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
+import org.testng.annotations.Test
 import org.testng.Assert._
 
 /**
