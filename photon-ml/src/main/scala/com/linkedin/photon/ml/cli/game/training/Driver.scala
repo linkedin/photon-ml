@@ -113,7 +113,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
       idTypeSet,
-      isResponseRequired = true)
+      isForModelTraining = true)
       .partitionBy(globalDataPartitioner)
       .setName("GAME training data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -243,7 +243,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
       idTypeSet,
-      isResponseRequired = true)
+      isForModelTraining = true)
       .partitionBy(partitioner).setName("Validating Game data set")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 

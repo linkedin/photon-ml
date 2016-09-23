@@ -80,7 +80,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       featureShardIdToFeatureSectionKeysMap,
       featureShardIdToFeatureMapLoader,
       idTypeSet,
-      isResponseRequired = false)
+      isForModelTraining = false)
       .partitionBy(globalDataPartitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)

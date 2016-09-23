@@ -21,7 +21,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
-import com.linkedin.photon.ml.avro.{AvroIOUtils, DefaultFieldNames}
+import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroFieldNames}
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 
 
@@ -47,7 +47,7 @@ object ScoreProcessingUtils {
       val weight = Option(scoreAvro.getWeight()).map(_.toDouble)
       val ids = scoreAvro.getMetadataMap().asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
       val idsWithUid = uid match {
-        case Some(id) => ids + (DefaultFieldNames.UID -> id)
+        case Some(id) => ids + (AvroFieldNames.UID -> id)
         case _ => ids
       }
       val modelId = scoreAvro.getModelId.toString
@@ -67,7 +67,7 @@ object ScoreProcessingUtils {
       val builder = ScoringResultAvro.newBuilder()
       builder.setPredictionScore(predictionScore)
       builder.setModelId(modelId)
-      ids.get(DefaultFieldNames.UID).foreach(builder.setUid(_))
+      ids.get(AvroFieldNames.UID).foreach(builder.setUid(_))
       labelOpt.foreach(builder.setLabel(_))
       weightOpt.foreach(builder.setWeight(_))
       builder.setMetadataMap(metaDataMap)
