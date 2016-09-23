@@ -22,12 +22,12 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * A class for projection matrix that is used to project the features from their original space to a different
-  * (usually, a lower dimensional) space
-  *
-  * @param matrix The projection matrix. Currently, only dense matrices are supported for projection. An exception
-  *               is thrown if any other type of matrix is passed
-  */
+ * A class for projection matrix that is used to project the features from their original space to a different
+ * (usually, a lower dimensional) space
+ *
+ * @param matrix The projection matrix. Currently, only dense matrices are supported for projection. An exception
+ *               is thrown if any other type of matrix is passed
+ */
 protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector with Summarizable {
   matrix match {
     case x: DenseMatrix[Double] =>
@@ -39,21 +39,21 @@ protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projec
   override val originalSpaceDimension = matrix.cols
 
   /**
-    * Project features into the new space
-    *
-    * @param features The features
-    * @return Projected features
-    */
+   * Project features into the new space
+   *
+   * @param features The features
+   * @return Projected features
+   */
   override def projectFeatures(features: Vector[Double]): Vector[Double] = {
     matrix * features
   }
 
   /**
-    * Project coefficients into the new space
-    *
-    * @param coefficients The coefficients
-    * @return Projected coefficients
-    */
+   * Project coefficients into the new space
+   *
+   * @param coefficients The coefficients
+   * @return Projected coefficients
+   */
   override def projectCoefficients(coefficients: Vector[Double]): Vector[Double] = {
     matrix match {
       case dm: DenseMatrix[Double] =>  dm.t * coefficients
@@ -74,19 +74,19 @@ protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projec
 object ProjectionMatrix {
 
   /**
-    * Creating a randomly generated matrix where components are drawn from the normal distribution
-    * N(0, 1/projectedSpaceDimension).
-    *
-    * @param projectedSpaceDimension The dimension of the projected space, and within our context, this equals to the
-    *                                number of rows of the random projection matrix
-    * @param originalSpaceDimension The dimension of the original space, and within our context, this equals to the
-    *                               number of columns of the random projection matrix
-    * @param isKeepingInterceptTerm Whether to keep the intercept term in the original feature vector, which will be
-    *                               done by adding a dummy row to the random projection matrix with all 0 but the last
-    *                               element set to 1
-    * @param seed The seed of random number generator
-    * @return The dense Gaussian random projection matrix
-    */
+   * Creating a randomly generated matrix where components are drawn from the normal distribution
+   * N(0, 1/projectedSpaceDimension).
+   *
+   * @param projectedSpaceDimension The dimension of the projected space, and within our context, this equals to the
+   *                                number of rows of the random projection matrix
+   * @param originalSpaceDimension The dimension of the original space, and within our context, this equals to the
+   *                               number of columns of the random projection matrix
+   * @param isKeepingInterceptTerm Whether to keep the intercept term in the original feature vector, which will be
+   *                               done by adding a dummy row to the random projection matrix with all 0 but the last
+   *                               element set to 1
+   * @param seed The seed of random number generator
+   * @return The dense Gaussian random projection matrix
+   */
   protected[ml] def buildGaussianRandomProjectionMatrix(
       projectedSpaceDimension: Int,
       originalSpaceDimension: Int,

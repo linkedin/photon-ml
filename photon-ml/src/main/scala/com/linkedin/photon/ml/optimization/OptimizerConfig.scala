@@ -18,8 +18,8 @@ import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * Contains configuration information for Optimizer instances.
-  */
+ * Contains configuration information for Optimizer instances.
+ */
 case class OptimizerConfig(
     optimizerType: OptimizerType,
     maximumIterations: Int,

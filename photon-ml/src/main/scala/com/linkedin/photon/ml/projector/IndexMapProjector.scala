@@ -38,8 +38,6 @@ import scala.collection.Map
  * @param originalSpaceDimension dimensionality of the original space
  * @param projectedSpaceDimension dimensionality of the projected space
  *
- * @author xazhang
- * @author nkatariy
  */
 protected[ml] class IndexMapProjector private (
     val originalToProjectedSpaceMap: Map[Int, Int],

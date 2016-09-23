@@ -49,12 +49,12 @@ case class LinearRegressionOptimizationProblem(
     isComputingVariances) {
 
   /**
-    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
-    *
-    * @param normalizationContext new normalization context
-    * @param regularizationWeight new regulariation weight
-    * @return a new optimization problem with updated objective
-    */
+   * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
+   *
+   * @param normalizationContext new normalization context
+   * @param regularizationWeight new regulariation weight
+   * @return a new optimization problem with updated objective
+   */
   override def updateObjective(
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationWeight: Double): LinearRegressionOptimizationProblem = {
@@ -79,33 +79,33 @@ case class LinearRegressionOptimizationProblem(
   }
 
   /**
-    * Create a default linear regression model with 0-valued coefficients
-    *
-    * @param dimension The dimensionality of the model coefficients
-    * @return A model with zero coefficients
-    */
+   * Create a default linear regression model with 0-valued coefficients
+   *
+   * @param dimension The dimensionality of the model coefficients
+   * @return A model with zero coefficients
+   */
   override def initializeZeroModel(dimension: Int): LinearRegressionModel =
     LinearRegressionOptimizationProblem.initializeZeroModel(dimension)
 
   /**
-    * Create a model given the coefficients
-    *
-    * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
-    * @param variances The coefficient variances
-    * @return A generalized linear model with coefficients parameters
-    */
+   * Create a model given the coefficients
+   *
+   * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+   * @param variances The coefficient variances
+   * @return A generalized linear model with coefficients parameters
+   */
   override protected[optimization] def createModel(
       coefficients: Vector[Double],
       variances: Option[Vector[Double]]): LinearRegressionModel =
     new LinearRegressionModel(Coefficients(coefficients, variances))
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   override protected[optimization] def computeVariances(
       labeledPoints: RDD[LabeledPoint],
       coefficients: Vector[Double]): Option[Vector[Double]] = {
@@ -124,12 +124,12 @@ case class LinearRegressionOptimizationProblem(
   }
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   override protected[optimization] def computeVariances(
       labeledPoints: Iterable[LabeledPoint],
       coefficients: Vector[Double]): Option[Vector[Double]] = {
@@ -146,13 +146,13 @@ case class LinearRegressionOptimizationProblem(
 
 object LinearRegressionOptimizationProblem {
   /**
-    * Build a logistic regression optimization problem
-    *
-    * @param configuration The optimizer configuration
-    * @param treeAggregateDepth The Spark tree aggregation depth
-    * @param isTrackingState Should intermediate model states be tracked?
-    * @return A logistic regression optimization problem instance
-    */
+   * Build a logistic regression optimization problem
+   *
+   * @param configuration The optimizer configuration
+   * @param treeAggregateDepth The Spark tree aggregation depth
+   * @param isTrackingState Should intermediate model states be tracked?
+   * @return A logistic regression optimization problem instance
+   */
   protected[ml] def buildOptimizationProblem(
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int = 1,

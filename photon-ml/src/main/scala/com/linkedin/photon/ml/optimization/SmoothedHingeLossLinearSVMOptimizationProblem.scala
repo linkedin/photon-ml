@@ -28,6 +28,17 @@ import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DownSamp
 import com.linkedin.photon.ml.supervised.classification.SmoothedHingeLossLinearSVMModel
 import com.linkedin.photon.ml.supervised.model.ModelTracker
 
+/**
+ * Optimization problem for smoothed hinge loss linear SVM
+ * @param optimizer The underlying optimizer who does the job
+ * @param sampler The sampler used to down-sample the training data points
+ * @param objectiveFunction The objective function upon which to optimize
+ * @param regularizationContext The regularization context
+ * @param regularizationWeight The regularization weight of the optimization problem
+ * @param modelTrackerBuilder The builder of model tracker
+ * @param treeAggregateDepth The depth used in treeAggregate
+ * @param isComputingVariances Whether compute variance for the learned model coefficients
+ */
 case class SmoothedHingeLossLinearSVMOptimizationProblem(
     optimizer: Optimizer[LabeledPoint, DiffFunction[LabeledPoint]],
     sampler: DownSampler,
@@ -48,12 +59,12 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
     isComputingVariances) {
 
   /**
-    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
-    *
-    * @param normalizationContext new normalization context
-    * @param regularizationWeight new regulariation weight
-    * @return a new optimization problem with updated objective
-    */
+   * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
+   *
+   * @param normalizationContext new normalization context
+   * @param regularizationWeight new regulariation weight
+   * @return a new optimization problem with updated objective
+   */
   override def updateObjective(
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationWeight: Double): SmoothedHingeLossLinearSVMOptimizationProblem = {
@@ -79,33 +90,33 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
   }
 
   /**
-    * Create a default smoothed hinge SVM model with 0-valued coefficients
-    *
-    * @param dimension The dimensionality of the model coefficients
-    * @return A model with zero coefficients
-    */
+   * Create a default smoothed hinge SVM model with 0-valued coefficients
+   *
+   * @param dimension The dimensionality of the model coefficients
+   * @return A model with zero coefficients
+   */
   override def initializeZeroModel(dimension: Int): SmoothedHingeLossLinearSVMModel =
     SmoothedHingeLossLinearSVMOptimizationProblem.initializeZeroModel(dimension)
 
   /**
-    * Create a model given the coefficients
-    *
-    * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
-    * @param variances The coefficient variances
-    * @return A generalized linear model with coefficients parameters
-    */
+   * Create a model given the coefficients
+   *
+   * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+   * @param variances The coefficient variances
+   * @return A generalized linear model with coefficients parameters
+   */
   override protected[optimization] def createModel(
       coefficients: Vector[Double],
       variances: Option[Vector[Double]]): SmoothedHingeLossLinearSVMModel =
     new SmoothedHingeLossLinearSVMModel(Coefficients(coefficients, variances))
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   override protected[optimization] def computeVariances(
       labeledPoints: RDD[LabeledPoint],
       coefficients: Vector[Double]): Option[Vector[Double]] = {
@@ -115,12 +126,12 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
   }
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   override protected[optimization] def computeVariances(
       labeledPoints: Iterable[LabeledPoint],
       coefficients: Vector[Double]): Option[Vector[Double]] = {
@@ -132,13 +143,13 @@ case class SmoothedHingeLossLinearSVMOptimizationProblem(
 
 object SmoothedHingeLossLinearSVMOptimizationProblem {
   /**
-    * Build a logistic regression optimization problem
-    *
-    * @param configuration The optimizer configuration
-    * @param treeAggregateDepth The Spark tree aggregation depth
-    * @param isTrackingState Should intermediate model states be tracked?
-    * @return A logistic regression optimization problem instance
-    */
+   * Build a logistic regression optimization problem
+   *
+   * @param configuration The optimizer configuration
+   * @param treeAggregateDepth The Spark tree aggregation depth
+   * @param isTrackingState Should intermediate model states be tracked?
+   * @return A logistic regression optimization problem instance
+   */
   protected[ml] def buildOptimizationProblem(
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int = 1,

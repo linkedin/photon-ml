@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.io
 
 /**
-  * Supported options for model output.
-  */
+ * Supported options for model output.
+ */
 object ModelOutputMode extends Enumeration {
   type ModelOutputMode = Value
   val ALL, BEST, NONE = Value

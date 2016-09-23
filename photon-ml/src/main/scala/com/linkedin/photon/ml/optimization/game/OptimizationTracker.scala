@@ -17,6 +17,6 @@ package com.linkedin.photon.ml.optimization.game
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * Optimization tracker
-  */
+ * Optimization tracker
+ */
 protected[ml] trait OptimizationTracker extends Summarizable

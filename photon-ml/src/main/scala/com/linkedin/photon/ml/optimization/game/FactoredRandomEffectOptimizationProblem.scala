@@ -26,13 +26,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * An optimization problem for factored random effect datasets
-  *
-  * @param randomEffectOptimizationProblem The random effect optimization problem
-  * @param latentFactorOptimizationProblem The latent factor optimization problem
-  * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
-  * @param latentSpaceDimension The dimensionality of the latent space
-  */
+ * An optimization problem for factored random effect datasets
+ *
+ * @param randomEffectOptimizationProblem The random effect optimization problem
+ * @param latentFactorOptimizationProblem The latent factor optimization problem
+ * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
+ * @param latentSpaceDimension The dimensionality of the latent space
+ */
 protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
   F <: DiffFunction[LabeledPoint]](
     val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F],
@@ -64,22 +64,23 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLi
   }
 
   /**
-    * Create a default generalized linear model with 0-valued coefficients
-    *
-    * @param dimension The dimensionality of the model coefficients
-    * @return A model with zero coefficients
-    */
+   * Create a default generalized linear model with 0-valued coefficients
+   *
+   * @param dimension The dimensionality of the model coefficients
+   * @return A model with zero coefficients
+   */
   def initializeModel(dimension: Int): GLM = latentFactorOptimizationProblem.initializeZeroModel(dimension)
 
   /**
-    * Compute the regularization term value
-    *
-    * @param modelsRDD The coefficients
-    * @param projectionMatrix The projection matrix
-    * @return Regularization term value
-    */
-  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)], projectionMatrix: ProjectionMatrix)
-    : Double = {
+   * Compute the regularization term value
+   *
+   * @param modelsRDD The coefficients
+   * @param projectionMatrix The projection matrix
+   * @return Regularization term value
+   */
+  def getRegularizationTermValue(
+    modelsRDD: RDD[(String, GeneralizedLinearModel)],
+    projectionMatrix: ProjectionMatrix): Double = {
 
     val projectionMatrixAsCoefficients = new Coefficients(projectionMatrix.matrix.flatten(), variancesOption = None)
     val projectionMatrixModel = latentFactorOptimizationProblem
@@ -94,15 +95,15 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLi
 object FactoredRandomEffectOptimizationProblem {
 
   /**
-    * Builds a factored random effect optimization problem
-    *
-    * @param builder
-    * @param randomEffectOptimizationConfiguration Random effect configuration
-    * @param latentFactorOptimizationConfiguration Latent factor configuration
-    * @param mfOptimizationConfiguration MF configuration
-    * @param randomEffectDataSet The dataset
-    * @return The new optimization problem
-    */
+   * Builds a factored random effect optimization problem
+   *
+   * @param builder Builder of the factored random effect optimization problem
+   * @param randomEffectOptimizationConfiguration Random effect configuration
+   * @param latentFactorOptimizationConfiguration Latent factor configuration
+   * @param mfOptimizationConfiguration MF configuration
+   * @param randomEffectDataSet The dataset
+   * @return The new optimization problem
+   */
   protected[ml] def buildFactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
     F <: DiffFunction[LabeledPoint]](
       builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],

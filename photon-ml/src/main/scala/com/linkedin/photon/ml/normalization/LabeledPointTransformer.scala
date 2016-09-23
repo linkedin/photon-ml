@@ -21,7 +21,6 @@ import com.linkedin.photon.ml.data.LabeledPoint
 /**
  * A scaler to scale [[http://www.scalanlp.org/api/breeze/#breeze.linalg.Vector breeze.linalg.Vector]] in the
  * [[data.LabeledPoint LabeledPoint]].
- * @author dpeng
  */
 @SerialVersionUID(1L)
 class LabeledPointTransformer(vectorTransformer: Transformer[Vector[Double]]) extends Transformer[LabeledPoint] {

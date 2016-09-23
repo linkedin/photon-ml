@@ -18,20 +18,20 @@ import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * The regularization context holds the information of the regularization type (L1, L2, Elastic net) and the alpha value
-  * if the regularization type is elastic net.
-  *
-  * The regularization term will be lambda [ (1-alpha)/2 ||w||,,2,,^2^ + alpha ||w||,,1,, ]
-  *
-  * Alpha is computed according to the following rules:
-  *
-  * <ul>
-  *   <li>[[RegularizationType.ELASTIC_NET]] has a default alpha of 0.5</li>
-  *   <li>[[RegularizationType.L1]] has a fixed alpha of 1.0</li>
-  *   <li>[[RegularizationType.L2]] has a fixed alpha of 0.0</li>
-  *   <li>[[RegularizationType.NONE]] has a fixed alpha of 0.0</li>
-  * </ul>
-  */
+ * The regularization context holds the information of the regularization type (L1, L2, Elastic net) and the alpha value
+ * if the regularization type is elastic net.
+ *
+ * The regularization term will be lambda [ (1-alpha)/2 ||w||,,2,,^2^ + alpha ||w||,,1,, ]
+ *
+ * Alpha is computed according to the following rules:
+ *
+ * <ul>
+ *   <li>[[RegularizationType.ELASTIC_NET]] has a default alpha of 0.5</li>
+ *   <li>[[RegularizationType.L1]] has a fixed alpha of 1.0</li>
+ *   <li>[[RegularizationType.L2]] has a fixed alpha of 0.0</li>
+ *   <li>[[RegularizationType.NONE]] has a fixed alpha of 0.0</li>
+ * </ul>
+ */
 class RegularizationContext(val regularizationType: RegularizationType, elasticNetParam: Option[Double] = None)
   extends Summarizable with Serializable {
 
@@ -49,33 +49,33 @@ class RegularizationContext(val regularizationType: RegularizationType, elasticN
     s"regularizationType = $regularizationType" + elasticNetParam.foreach(", elasticNetParam = " + _.toString)
 
   /**
-    * Return the weight for the L1 regularization
-    *
-    * @param lambda The regularization parameter
-    * @return The weight for L1 regularization
-    */
+   * Return the weight for the L1 regularization
+   *
+   * @param lambda The regularization parameter
+   * @return The weight for L1 regularization
+   */
   def getL1RegularizationWeight(lambda: Double): Double = alpha * lambda
 
   /**
-    * Return the weight for the L2 regularization
-    *
-    * @param lambda The regularization parameter
-    * @return The weight for L2 regularization
-    */
+   * Return the weight for the L2 regularization
+   *
+   * @param lambda The regularization parameter
+   * @return The weight for L2 regularization
+   */
   def getL2RegularizationWeight(lambda: Double): Double = (1 - alpha) * lambda
 }
 
 /**
-  * A singleton object for no regularization
-  */
+ * A singleton object for no regularization
+ */
 object NoRegularizationContext extends RegularizationContext(RegularizationType.NONE)
 
 /**
-  * A singleton object for L1 regularization
-  */
+ * A singleton object for L1 regularization
+ */
 object L1RegularizationContext extends RegularizationContext(RegularizationType.L1)
 
 /**
-  * A singleton object for L2 regularization
-  */
+ * A singleton object for L2 regularization
+ */
 object L2RegularizationContext extends RegularizationContext(RegularizationType.L2)

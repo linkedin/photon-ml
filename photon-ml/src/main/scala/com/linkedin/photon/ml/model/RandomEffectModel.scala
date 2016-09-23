@@ -23,12 +23,12 @@ import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * Representation of a random effect model
-  *
-  * @param modelsRDD The models
-  * @param randomEffectId The random effect type id
-  * @param featureShardId The feature shard id
-  */
+ * Representation of a random effect model
+ *
+ * @param modelsRDD The models
+ * @param randomEffectId The random effect type id
+ * @param featureShardId The feature shard id
+ */
 protected[ml] class RandomEffectModel(
     val modelsRDD: RDD[(String, GeneralizedLinearModel)],
     val randomEffectId: String,
@@ -58,19 +58,19 @@ protected[ml] class RandomEffectModel(
   }
 
   /**
-    * Compute the score for the dataset
-    *
-    * @param dataPoints The dataset
-    * @return The score
-    */
+   * Compute the score for the dataset
+   *
+   * @param dataPoints The dataset
+   * @return The score
+   */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
     RandomEffectModel.score(dataPoints, modelsRDD, randomEffectId, featureShardId)
 
   /**
-    * Build a summary string for the model
-    *
-    * @return String representation
-    */
+   * Build a summary string for the model
+   *
+   * @return String representation
+   */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model of randomEffectId $randomEffectId, " +
         s"featureShardId $featureShardId summary:")
@@ -83,11 +83,11 @@ protected[ml] class RandomEffectModel(
   }
 
   /**
-    * Update the random effect model with new underlying models
-    *
-    * @param updatedModelsRdd The new underlying models, one per individual
-    * @return The updated random effect model
-    */
+   * Update the random effect model with new underlying models
+   *
+   * @param updatedModelsRdd The new underlying models, one per individual
+   * @return The updated random effect model
+   */
   def updateRandomEffectModel(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel =
     new RandomEffectModel(updatedModelsRdd, randomEffectId, featureShardId)
 
@@ -118,14 +118,14 @@ protected[ml] class RandomEffectModel(
 object RandomEffectModel {
 
   /**
-    * Compute the score for the dataset
-    *
-    * @param dataPoints The dataset to score
-    * @param modelsRDD The models to use for scoring
-    * @param randomEffectId The random effect type id
-    * @param featureShardId The feature shard id
-    * @return The scores
-    */
+   * Compute the score for the dataset
+   *
+   * @param dataPoints The dataset to score
+   * @param modelsRDD The models to use for scoring
+   * @param randomEffectId The random effect type id
+   * @param featureShardId The feature shard id
+   * @return The scores
+   */
   protected def score(
       dataPoints: RDD[(Long, GameDatum)],
       modelsRDD: RDD[(String, GeneralizedLinearModel)],

@@ -20,8 +20,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
-  * A general input format supporting reading Avro data
-  */
+ * A general input format supporting reading Avro data
+ */
 class AvroInputDataFormat(val suite: GLMSuite) extends InputDataFormat {
 
   override def loadLabeledPoints(

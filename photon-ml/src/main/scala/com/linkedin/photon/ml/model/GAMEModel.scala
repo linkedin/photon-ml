@@ -22,28 +22,28 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.Map
 
 /**
-  * Representation of the generalized additive mixed effect (GAME) model
-  *
-  * @param gameModels A (modelName -> model) map representation of the models that consist of the GAME model
-  */
+ * Representation of the generalized additive mixed effect (GAME) model
+ *
+ * @param gameModels A (modelName -> model) map representation of the models that consist of the GAME model
+ */
 class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
 
   /**
-    * Get the model by name
-    *
-    * @param name The model name
-    * @return An option value containing the value associated with model name `name` in the GAME model, or `None`
-    *         if none exists.
-    */
+   * Get the model by name
+   *
+   * @param name The model name
+   * @return An option value containing the value associated with model name `name` in the GAME model, or `None`
+   *         if none exists.
+   */
   def getModel(name: String): Option[DatumScoringModel] = gameModels.get(name)
 
   /**
-    * Creates a updated GAME model obtained by updating it's model with name `name`
-    *
-    * @param name The name of the model to be updated
-    * @param model The model used to update the previous model
-    * @return The GAME model with updated model
-    */
+   * Creates a updated GAME model obtained by updating it's model with name `name`
+   *
+   * @param name The name of the model to be updated
+   * @param model The model used to update the previous model
+   * @return The GAME model with updated model
+   */
   def updateModel(name: String, model: DatumScoringModel): GAMEModel = {
     getModel(name).foreach { oldModel =>
       if (!oldModel.getClass.equals(model.getClass)) {
@@ -55,18 +55,18 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
   }
 
   /**
-    * Convert the GAME model into a (modelName -> model) map representation
-    *
-    * @return The (modelName -> model) map representation of the models
-    */
+   * Convert the GAME model into a (modelName -> model) map representation
+   *
+   * @return The (modelName -> model) map representation of the models
+   */
   protected[ml] def toMap: Map[String, DatumScoringModel] = gameModels
 
   /**
-    * Persist each model with the specified storage level if it's a RDD
-    *
-    * @param storageLevel The storage level
-    * @return Myself with all RDD like models persisted
-    */
+   * Persist each model with the specified storage level if it's a RDD
+   *
+   * @param storageLevel The storage level
+   * @return Myself with all RDD like models persisted
+   */
   def persist(storageLevel: StorageLevel): this.type = {
     gameModels.values.foreach {
       case rddLike: RDDLike => rddLike.persistRDD(storageLevel)
@@ -76,10 +76,10 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
   }
 
   /**
-    * Unpersist each model if it's a RDD
-    *
-    * @return Myself with all RDD like models unpersisted
-    */
+   * Unpersist each model if it's a RDD
+   *
+   * @return Myself with all RDD like models unpersisted
+   */
   def unpersist: this.type = {
     gameModels.values.foreach {
       case rddLike: RDDLike => rddLike.unpersistRDD()

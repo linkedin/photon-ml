@@ -28,7 +28,6 @@ import breeze.linalg.Vector
  *   during the model storing nad postprocessing phase.
  * </li>
  * </ul>
- * @author xazhang
  */
 protected[ml] trait Projector {
 

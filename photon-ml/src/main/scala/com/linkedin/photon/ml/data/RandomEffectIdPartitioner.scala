@@ -25,7 +25,6 @@ import org.apache.spark.rdd.RDD
  * random effects into account (e.g., a popular item may be associated with more data points than a less popular one)
  *
  * @param idToPartitionMap random effect id to partition map
- * @author xazhang
  */
 protected[ml] class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
 

@@ -19,8 +19,8 @@ import com.linkedin.photon.ml.util.PalDBIndexMapLoader
 import org.apache.spark.SparkContext
 
 /**
-  * This is a factory that produces different input format object accordingly
-  */
+ * This is a factory that produces different input format object accordingly
+ */
 object InputFormatFactory {
   def createInputFormat(sc: SparkContext, params: Params): InputDataFormat = {
     params.inputFormatType match {
@@ -42,7 +42,7 @@ object InputFormatFactory {
 
         new AvroInputDataFormat(suite)
       }
-      case InputFormatType.LIBSVM => {
+      case InputFormatType.LIBSVM =>
         if (params.featureDimension <= 0) {
           throw new IllegalArgumentException(
             "LibSVM format must know the total feature dimension beforehand. (A rough upper bound is okay)")
@@ -51,10 +51,8 @@ object InputFormatFactory {
         new LibSVMInputDataFormat(params.featureDimension,
           params.addIntercept
         )
-      }
-      case _ => {
+      case _ =>
         throw new IllegalArgumentException("InputFormat unsupported.")
-      }
     }
   }
 }

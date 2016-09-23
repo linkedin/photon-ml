@@ -24,7 +24,6 @@ import com.linkedin.photon.ml.data
  * @param features A vector (could be either dense or sparse) representing the features for this data point
  * @param offset The offset of this data point (e.g., is used in warm start training)
  * @param weight The weight of this data point
- * @author xazhang
  */
 class LabeledPoint(val label: Double,
                    override val features: Vector[Double],

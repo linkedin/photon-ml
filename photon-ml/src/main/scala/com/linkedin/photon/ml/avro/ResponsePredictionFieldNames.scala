@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.avro
 
 /**
  * ADMM's Response prediction format fields name
- * @author xazhang
  */
 object ResponsePredictionFieldNames extends FieldNames {
   val features: String = "features"

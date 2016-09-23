@@ -74,10 +74,6 @@ import org.apache.spark.rdd.RDD
  * any improvement failure in this cases should be resulted by some bug and we should not tolerate it.
  * However, for optimizers like TRON, maxNumImprovementFailures is set to 5, because occasional improvement failure is
  * acceptable.
-
- * @author xazhang
- * @author dpeng
- * @author bdrew
  */
 class TRON[Datum <: DataPoint](
     var maxNumImprovementFailures: Int = TRON.DEFAULT_MAX_NUM_FAILURE)

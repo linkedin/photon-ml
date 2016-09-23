@@ -34,7 +34,6 @@ import com.linkedin.photon.ml.constants.StorageLevel
  * @param passiveDataIndividualIdsOption passive data individual ids
  * @param randomEffectId the random effect type id (e.g. "memberId")
  * @param featureShardId the feature shard id
- * @author xazhang
  */
 protected[ml] class RandomEffectDataSet(
     val activeData: RDD[(String, LocalDataSet)],
