@@ -30,6 +30,46 @@ class DataProcessingUtilsTest {
   import DataProcessingUtilsTest._
 
   @Test
+  def testGetGameDatumFromGenericRecordWithUID(): Unit = {
+    val record = new GenericData.Record(SchemaBuilder
+        .record("testGetGameDatumFromGenericRecordWithUID")
+        .namespace("com.linkedin.photon.ml.avro.data")
+        .fields()
+        .name(AvroFieldNames.UID).`type`().stringType().noDefault()
+        .endRecord())
+    val uid = "foo"
+    record.put(AvroFieldNames.UID, uid)
+
+    val gameDatum = DataProcessingUtils.getGameDatumFromGenericRecord(
+      record = record,
+      featureShardIdToFeatureSectionKeysMap = Map(),
+      featureShardIdToIndexMap = Map(),
+      shardIdToFeatureDimensionMap = Map(),
+      idTypeSet = Set(),
+      isForModelTraining = false)
+
+    assertEquals(gameDatum.idTypeToValueMap.get(AvroFieldNames.UID), Some(uid))
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testGetGameDatumFromGenericRecordWithNoResponse(): Unit = {
+    val record = new GenericData.Record(SchemaBuilder
+        .record("testGetGameDatumFromGenericRecordWithNoResponse")
+        .namespace("com.linkedin.photon.ml.avro.data")
+        .fields()
+        .name(AvroFieldNames.RESPONSE).`type`().stringType().noDefault()
+        .endRecord())
+
+    DataProcessingUtils.getGameDatumFromGenericRecord(
+      record = record,
+      featureShardIdToFeatureSectionKeysMap = Map(),
+      featureShardIdToIndexMap = Map(),
+      shardIdToFeatureDimensionMap = Map(),
+      idTypeSet = Set(),
+      isForModelTraining = true)
+  }
+
+  @Test
   def testMakeRandomEffectIdMapWithIdField(): Unit = {
     val record = new GenericData.Record(SchemaBuilder
       .record("testRecordForRandomIdFetch1")

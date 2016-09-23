@@ -28,7 +28,3 @@ trait FieldNames extends Serializable {
   val offset: String
   val weight: String
 }
-
-object DefaultFieldNames {
-  val UID = "uid"
-}

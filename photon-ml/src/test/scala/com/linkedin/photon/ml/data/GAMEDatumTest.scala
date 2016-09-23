@@ -20,8 +20,6 @@ import breeze.linalg.Vector
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.avro.DefaultFieldNames
-
 class GAMEDatumTest {
 
   import GAMEDatumTest._
@@ -31,7 +29,7 @@ class GAMEDatumTest {
     offsetOpt = Some(-10.0),
     weightOpt = Some(5.0),
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map(DefaultFieldNames.UID -> "uid")
+    idTypeToValueMap = Map("foo" -> "bar")
   )
 
   private val gameDatumWithoutOffset = new GameDatum(
@@ -39,7 +37,7 @@ class GAMEDatumTest {
     offsetOpt = None,
     weightOpt = Some(5.0),
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map(DefaultFieldNames.UID -> "uid")
+    idTypeToValueMap = Map("foo" -> "bar")
   )
 
   private val gameDatumWithoutWeight = new GameDatum(
@@ -47,7 +45,7 @@ class GAMEDatumTest {
     offsetOpt = Some(-10.0),
     weightOpt = None,
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map(DefaultFieldNames.UID -> "uid")
+    idTypeToValueMap = Map("uid" -> "uid")
   )
 
   private val gameDatumWithoutIdTypeToValueMap = new GameDatum(
