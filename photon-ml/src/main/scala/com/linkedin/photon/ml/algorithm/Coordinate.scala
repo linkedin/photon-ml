@@ -19,25 +19,25 @@ import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.game.OptimizationTracker
 
 /**
-  * The optimization problem coordinate for each effect model
-  *
-  * @param dataSet the training dataset
-  */
+ * The optimization problem coordinate for each effect model
+ *
+ * @param dataSet the training dataset
+ */
 protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
 
   /**
-    * Score the effect-specific data set in the coordinate with the input model
-    *
-    * @param model The input model
-    * @return The output scores
-    */
+   * Score the effect-specific data set in the coordinate with the input model
+   *
+   * @param model The input model
+   * @return The output scores
+   */
   protected[algorithm] def score(model: DatumScoringModel): KeyValueScore
 
   /**
-    * Initialize the model
-    *
-    * @param seed A random seed
-    */
+   * Initialize the model
+   *
+   * @param seed A random seed
+   */
   protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
 
   protected[algorithm] def updateModel(

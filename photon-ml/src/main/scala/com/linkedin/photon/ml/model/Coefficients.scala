@@ -19,11 +19,11 @@ import breeze.stats.meanAndVariance
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * Representation of model coefficients
-  *
-  * @param means The mean of the model coefficients
-  * @param variancesOption Optional variance of the model coefficients
-  */
+ * Representation of model coefficients
+ *
+ * @param means The mean of the model coefficients
+ * @param variancesOption Optional variance of the model coefficients
+ */
 protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
   extends Summarizable {
 
@@ -31,13 +31,14 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
 
   /**
-    * Compute the score for the given features
-    *
-    * @param features Features to score
-    * @return The score
-    */
+   * Compute the score for the given features
+   *
+   * @param features Features to score
+   * @return The score
+   */
   def computeScore(features: Vector[Double]): Double = {
-    require(means.length == features.length, s"Coefficients length (${means.length}) != features length (${features.length})")
+    require(means.length == features.length,
+      s"Coefficients length (${means.length}) != features length (${features.length})")
     means.dot(features)
   }
 
@@ -70,11 +71,11 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
 
 protected[ml] object Coefficients {
   /**
-    * Create a zero coefficient vector
-    *
-    * @param dimension Dimensionality of the coefficient vector
-    * @return Zero coefficient vector
-    */
+   * Create a zero coefficient vector
+   *
+   * @param dimension Dimensionality of the coefficient vector
+   * @return Zero coefficient vector
+   */
   def initializeZeroCoefficients(dimension: Int): Coefficients = {
     Coefficients(Vector.zeros[Double](dimension), variancesOption = None)
   }

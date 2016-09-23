@@ -20,13 +20,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * Representation of a random effect model in projected space
-  *
-  * @param modelsInProjectedSpaceRDD The underlying models with coefficients in projected space
-  * @param randomEffectProjector The projector between the original and projected spaces
-  * @param randomEffectId The random effect type id
-  * @param featureShardId The feature shard id
-  */
+ * Representation of a random effect model in projected space
+ *
+ * @param modelsInProjectedSpaceRDD The underlying models with coefficients in projected space
+ * @param randomEffectProjector The projector between the original and projected spaces
+ * @param randomEffectId The random effect type id
+ * @param featureShardId The feature shard id
+ */
 protected[ml] class RandomEffectModelInProjectedSpace(
     val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
     val randomEffectProjector: RandomEffectProjector,
@@ -58,10 +58,10 @@ protected[ml] class RandomEffectModelInProjectedSpace(
   }
 
   /**
-    * Build a summary string for the model
-    *
-    * @return String representation
-    */
+   * Build a summary string for the model
+   *
+   * @return String representation
+   */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model with projector with randomEffectId $randomEffectId, " +
         s"featureShardId $featureShardId summary:")
@@ -76,19 +76,19 @@ protected[ml] class RandomEffectModelInProjectedSpace(
   }
 
   /**
-    * Convert the projected space model into a random effect model
-    *
-    * @return The random effect model
-    */
+   * Convert the projected space model into a random effect model
+   *
+   * @return The random effect model
+   */
   def toRandomEffectModel: RandomEffectModel =
     new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectId, featureShardId)
 
   /**
-    * Update the random effect model in projected space with new underlying models per individual
-    *
-    * @param updatedModelsRDDInProjectedSpace The new models with coefficients in projected space
-    * @return The updated random effect model in projected space
-    */
+   * Update the random effect model in projected space with new underlying models per individual
+   *
+   * @param updatedModelsRDDInProjectedSpace The new models with coefficients in projected space
+   * @return The updated random effect model in projected space
+   */
   def updateRandomEffectModelInProjectedSpace(updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)])
     : RandomEffectModelInProjectedSpace =
     new RandomEffectModelInProjectedSpace(

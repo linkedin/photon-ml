@@ -19,7 +19,8 @@ import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDat
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NoNormalization
-import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem, RandomEffectOptimizationTracker}
+import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem,
+RandomEffectOptimizationTracker}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -27,22 +28,22 @@ import org.apache.spark.rdd.RDD
 import scala.collection.Set
 
 /**
-  * The optimization problem coordinate for a random effect model
-  *
-  * @param randomEffectDataSet The training dataset
-  * @param randomEffectOptimizationProblem The random effect optimization problem
-  */
+ * The optimization problem coordinate for a random effect model
+ *
+ * @param randomEffectDataSet The training dataset
+ * @param randomEffectOptimizationProblem The random effect optimization problem
+ */
 protected[ml] abstract class RandomEffectCoordinate[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F])
   extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[GLM, F]](randomEffectDataSet) {
 
   /**
-    * Score the model
-    *
-    * @param model The model to score
-    * @return Scores
-    */
+   * Score the model
+   *
+   * @param model The model to score
+   * @return Scores
+   */
   protected[algorithm] override def score(model: DatumScoringModel): KeyValueScore = {
     model match {
       case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(randomEffectDataSet, randomEffectModel)
@@ -52,10 +53,10 @@ protected[ml] abstract class RandomEffectCoordinate[GLM <: GeneralizedLinearMode
   }
 
   /**
-    * Update the model
-    *
-    * @param model The model to update
-    */
+   * Update the model
+   *
+   * @param model The model to update
+   */
   protected[algorithm] override def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) = {
     model match {
       case randomEffectModel: RandomEffectModel =>
@@ -67,11 +68,11 @@ protected[ml] abstract class RandomEffectCoordinate[GLM <: GeneralizedLinearMode
   }
 
   /**
-    * Compute the regularization term value
-    *
-    * @param model The model
-    * @return Regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param model The model
+   * @return Regularization term value
+   */
   protected[algorithm] override def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case randomEffectModel: RandomEffectModel =>
       randomEffectOptimizationProblem.getRegularizationTermValue(randomEffectModel.modelsRDD)
@@ -84,12 +85,12 @@ protected[ml] abstract class RandomEffectCoordinate[GLM <: GeneralizedLinearMode
 object RandomEffectCoordinate {
 
   /**
-    * Score the model
-    *
-    * @param randomEffectDataSet The dataset
-    * @param randomEffectModel The model
-    * @return Scores
-    */
+   * Score the model
+   *
+   * @param randomEffectDataSet The dataset
+   * @param randomEffectModel The model
+   * @return Scores
+   */
   protected[algorithm] def score(randomEffectDataSet: RandomEffectDataSet, randomEffectModel: RandomEffectModel)
     : KeyValueScore = {
 
@@ -123,13 +124,13 @@ object RandomEffectCoordinate {
 
   // TODO: Explain passive data
   /**
-    * Computes passive scores
-    *
-    * @param passiveData The dataset
-    * @param passiveDataIndividualIds The set of individual random effect entity ids
-    * @param modelsRDD Model coefficients
-    * @return Scores
-    */
+   * Computes passive scores
+   *
+   * @param passiveData The dataset
+   * @param passiveDataIndividualIds The set of individual random effect entity ids
+   * @param modelsRDD Model coefficients
+   * @return Scores
+   */
   private def computePassiveScores(
       passiveData: RDD[(Long, (String, LabeledPoint))],
       passiveDataIndividualIds: Broadcast[Set[String]],
@@ -154,13 +155,13 @@ object RandomEffectCoordinate {
   }
 
   /**
-    * Update the model (i.e. run the coordinate optimizer)
-    *
-    * @param randomEffectDataSet The dataset
-    * @param randomEffectOptimizationProblem The optimization problem
-    * @param randomEffectModel The model
-    * @return Tuple of updated model and optimization tracker
-    */
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param randomEffectDataSet The dataset
+   * @param randomEffectOptimizationProblem The optimization problem
+   * @param randomEffectModel The model
+   * @return Tuple of updated model and optimization tracker
+   */
   protected[algorithm] def updateModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F],

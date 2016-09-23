@@ -24,7 +24,6 @@ import com.linkedin.photon.ml.projector.{ProjectorType, RandomEffectProjector}
  *
  * @param randomEffectDataSetInProjectedSpace input random effect dataset
  * @param randomEffectProjector the random effect projector
- * @author xazhang
  */
 class RandomEffectDataSetInProjectedSpace(
     val randomEffectDataSetInProjectedSpace: RandomEffectDataSet,

@@ -18,11 +18,11 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.rdd.RDD
 
 /**
-  * Evaluator that computes area under the ROC curve
-  *
-  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
-  * @param defaultScore The default score used to compute the metric
-  */
+ * Evaluator that computes area under the ROC curve
+ *
+ * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
+ * @param defaultScore The default score used to compute the metric
+ */
 protected[ml] class AreaUnderROCCurveEvaluator(
     labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
     defaultScore: Double = 0.0) extends Evaluator {
@@ -30,11 +30,11 @@ protected[ml] class AreaUnderROCCurveEvaluator(
   protected val evaluatorType = AUC
 
   /**
-    * Evaluate the scores of the model
-    *
-    * @param scores The scores to evaluate
-    * @return Score metric value
-    */
+   * Evaluate the scores of the model
+   *
+   * @param scores The scores to evaluate
+   * @return Score metric value
+   */
   override def evaluate(scores: RDD[(Long, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
@@ -49,12 +49,12 @@ protected[ml] class AreaUnderROCCurveEvaluator(
   }
 
   /**
-    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
-    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
-    *
-    * @param score1 The first score to compare
-    * @param score2 The second score to compare
-    * @return True if the first score is better than the second
-    */
+   * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
+   * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
+   *
+   * @param score1 The first score to compare
+   * @param score2 The second score to compare
+   * @return True if the first score is better than the second
+   */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
 }

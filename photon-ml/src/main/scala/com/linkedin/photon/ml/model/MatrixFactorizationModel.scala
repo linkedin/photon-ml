@@ -22,13 +22,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * Representation of a matrix factorization model
-  *
-  * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
-  * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
-  * @param rowLatentFactors Latent factors for row effect
-  * @param colLatentFactors Latent factors for column effect
-  */
+ * Representation of a matrix factorization model
+ *
+ * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
+ * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
+ * @param rowLatentFactors Latent factors for row effect
+ * @param colLatentFactors Latent factors for column effect
+ */
 class MatrixFactorizationModel(
     val rowEffectType: String,
     val colEffectType: String,
@@ -36,8 +36,8 @@ class MatrixFactorizationModel(
     val colLatentFactors: RDD[(String, Vector[Double])]) extends DatumScoringModel with RDDLike {
 
   /**
-    * Number of latent factors of the matrix factorization model (or the rank)
-    */
+   * Number of latent factors of the matrix factorization model (or the rank)
+   */
   lazy val numLatentFactors =
     if (!rowLatentFactors.isEmpty()) {
       rowLatentFactors.first()._2.length
@@ -112,12 +112,12 @@ class MatrixFactorizationModel(
 object MatrixFactorizationModel {
 
   /**
-    * Check whether two latent factors are the same
-    *
-    * @param latentFactors1 The first latent factor
-    * @param latentFactors2 The second latent factor
-    * @return True if the two latent factors are the same, false otherwise
-    */
+   * Check whether two latent factors are the same
+   *
+   * @param latentFactors1 The first latent factor
+   * @param latentFactors2 The second latent factor
+   * @return True if the two latent factors are the same, false otherwise
+   */
   protected def isSameLatentFactors(
     latentFactors1: RDD[(String, Vector[Double])],
     latentFactors2: RDD[(String, Vector[Double])]): Boolean = {
@@ -129,15 +129,15 @@ object MatrixFactorizationModel {
   }
 
   /**
-    * Score the given GAME data points with the row and column latent factors
-    *
-    * @param dataPoints The GAME data points
-    * @param rowEffectType The type of row effect used to retrieve row effect id from each GAME data point
-    * @param colEffectType The type of column effect used to retrieve column effect id from each GAME data point
-    * @param rowLatentFactors The row latent factors
-    * @param colLatentFactors The col latent factors
-    * @return The computed scores
-    */
+   * Score the given GAME data points with the row and column latent factors
+   *
+   * @param dataPoints The GAME data points
+   * @param rowEffectType The type of row effect used to retrieve row effect id from each GAME data point
+   * @param colEffectType The type of column effect used to retrieve column effect id from each GAME data point
+   * @param rowLatentFactors The row latent factors
+   * @param colLatentFactors The col latent factors
+   * @return The computed scores
+   */
   protected def score(
       dataPoints: RDD[(Long, GameDatum)],
       rowEffectType: String,

@@ -38,18 +38,18 @@ import scala.collection.{Map, Set, mutable}
 // classes/functons are decoupled from the rest of code
 
 /**
-  * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
-  */
+ * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
+ */
 object AvroUtils {
 
   /**
-    * Read Avro generic records from the input paths
-    *
-    * @param sc The Spark context
-    * @param inputPaths The input paths of the generic records
-    * @param minPartitions Minimum number of partitions of the output RDD
-    * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
-    */
+   * Read Avro generic records from the input paths
+   *
+   * @param sc The Spark context
+   * @param inputPaths The input paths of the generic records
+   * @param minPartitions Minimum number of partitions of the output RDD
+   * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
+   */
   protected[ml] def readAvroFiles(sc: SparkContext, inputPaths: Seq[String], minPartitions: Int)
   : RDD[GenericRecord] = {
 
@@ -62,12 +62,12 @@ object AvroUtils {
   }
 
   /**
-    * Convert the vector of type [[Vector[Double]]] to an array of Avro records of type [[NameTermValueAvro]]
-    *
-    * @param vector The input vector
-    * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
-    * @return An array of Avro records that contains the information of the input vector
-    */
+   * Convert the vector of type [[Vector[Double]]] to an array of Avro records of type [[NameTermValueAvro]]
+   *
+   * @param vector The input vector
+   * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @return An array of Avro records that contains the information of the input vector
+   */
   private def convertVectorAsArrayOfNameTermValueAvros(
       vector: Vector[Double],
       featureMap: IndexMap): Array[NameTermValueAvro] = {
@@ -105,11 +105,11 @@ object AvroUtils {
   }
 
   /**
-    * Read the nameAndTerm of type [[NameAndTerm]] from Avro record of type [[GenericRecord]]
-    *
-    * @param record The input Avro record
-    * @return The nameAndTerm parsed from the Avro record
-    */
+   * Read the nameAndTerm of type [[NameAndTerm]] from Avro record of type [[GenericRecord]]
+   *
+   * @param record The input Avro record
+   * @return The nameAndTerm parsed from the Avro record
+   */
   protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
     val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
     val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
@@ -117,13 +117,13 @@ object AvroUtils {
   }
 
   /**
-    * Parse a set of nameAndTerm of type [[NameAndTerm]] from a RDD of Avro record of type [[GenericRecord]] with the
-    * user specified feature section keys
-    *
-    * @param genericRecords The input Avro records
-    * @param featureSectionKey The user specified feature section keys
-    * @return A set of nameAndTerms parsed from the input Avro records
-    */
+   * Parse a set of nameAndTerm of type [[NameAndTerm]] from a RDD of Avro record of type [[GenericRecord]] with the
+   * user specified feature section keys
+   *
+   * @param genericRecords The input Avro records
+   * @param featureSectionKey The user specified feature section keys
+   * @return A set of nameAndTerms parsed from the input Avro records
+   */
   protected[avro] def readNameAndTermSetFromGenericRecords(
     genericRecords: RDD[GenericRecord],
     featureSectionKey: String,
@@ -139,12 +139,12 @@ object AvroUtils {
   }
 
   /**
-    * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
-    *
-    * @param genericRecords The input [[RDD]] of [[GenericRecord]]s.
-    * @param featureSectionKeys The set of feature section keys of interest in the input generic records
-    * @return The generated [[NameAndTermFeatureSetContainer]]
-    */
+   * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
+   *
+   * @param genericRecords The input [[RDD]] of [[GenericRecord]]s.
+   * @param featureSectionKeys The set of feature section keys of interest in the input generic records
+   * @return The generated [[NameAndTermFeatureSetContainer]]
+   */
   protected[avro] def readNameAndTermFeatureSetContainerFromGenericRecords(
     genericRecords: RDD[GenericRecord],
     featureSectionKeys: Set[String],
@@ -157,12 +157,12 @@ object AvroUtils {
   }
 
   /**
-    * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]]
-    *
-    * @param modelId The model's id
-    * @param intToNameAndTermMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
-    * @return The Avro record that contains the information of the input coefficients
-    */
+   * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]]
+   *
+   * @param modelId The model's id
+   * @param intToNameAndTermMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @return The Avro record that contains the information of the input coefficients
+   */
   protected[avro] def convertGLMModelToBayesianLinearModelAvro(
       model: GeneralizedLinearModel,
       modelId: String,
@@ -188,12 +188,12 @@ object AvroUtils {
   }
 
   /**
-    * Convert the Avro record of type [[BayesianLinearModelAvro]] to the model type [[GeneralizedLinearModel]]
-    *
-    * @param bayesianLinearModelAvro The input Avro record
-    * @param nameAndTermToIntMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
-    * @return The generalized linear model converted from the Avro record
-    */
+   * Convert the Avro record of type [[BayesianLinearModelAvro]] to the model type [[GeneralizedLinearModel]]
+   *
+   * @param bayesianLinearModelAvro The input Avro record
+   * @param nameAndTermToIntMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
+   * @return The generalized linear model converted from the Avro record
+   */
   protected[avro] def convertBayesianLinearModelAvroToGLM(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
       featureMap: IndexMap): GeneralizedLinearModel = {
@@ -235,12 +235,12 @@ object AvroUtils {
   }
 
   /**
-    * Convert the latent factor of type [[Vector[Double]]] to Avro record of type [[LatentFactorAvro]]
-    *
-    * @param effectId The id of the latent factor, e.g., row Id, col Id, user Id or itemId
-    * @param latentFactor The latent factor of the matrix factorization model
-    * @return The Avro record that contains the information of the input latent factor
-    */
+   * Convert the latent factor of type [[Vector[Double]]] to Avro record of type [[LatentFactorAvro]]
+   *
+   * @param effectId The id of the latent factor, e.g., row Id, col Id, user Id or itemId
+   * @param latentFactor The latent factor of the matrix factorization model
+   * @return The Avro record that contains the information of the input latent factor
+   */
   protected[avro] def convertLatentFactorToLatentFactorAvro(effectId: String, latentFactor: Vector[Double])
     : LatentFactorAvro = {
 
@@ -250,11 +250,11 @@ object AvroUtils {
   }
 
   /**
-    * Convert the given Avro record of type [[LatentFactorAvro]] to the latent factor of type [[Vector[Double]]]
-    *
-    * @param latentFactorAvro The given Avro record
-    * @return The (effectId, latentFactor) pair converted from the input Avro record
-    */
+   * Convert the given Avro record of type [[LatentFactorAvro]] to the latent factor of type [[Vector[Double]]]
+   *
+   * @param latentFactorAvro The given Avro record
+   * @return The (effectId, latentFactor) pair converted from the input Avro record
+   */
   protected[avro] def convertLatentFactorAvroToLatentFactor(latentFactorAvro: LatentFactorAvro)
     : (String, Vector[Double]) = {
 

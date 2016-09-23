@@ -27,67 +27,67 @@ import com.linkedin.photon.ml.util.PalDBIndexMapParams
 class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
 
   /**
-    * Input directories of data to be scored. Multiple input directories are also accepted if they are separated by
-    * commas, e.g., inputDir1,inputDir2,inputDir3.
-    */
+   * Input directories of data to be scored. Multiple input directories are also accepted if they are separated by
+   * commas, e.g., inputDir1,inputDir2,inputDir3.
+   */
   var inputDirs: Array[String] = Array()
 
   /**
-    * Date range for the input data represented in the form start.date-end.date, e.g. 20150501-20150631. If dateRangeOpt
-    * is specified, the input directory is expected to be in the daily format structure
-    * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
-    * of input files (e.g., inputDir/input-data-files).
-    */
+   * Date range for the input data represented in the form start.date-end.date, e.g. 20150501-20150631. If dateRangeOpt
+   * is specified, the input directory is expected to be in the daily format structure
+   * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
+   * of input files (e.g., inputDir/input-data-files).
+   */
   var dateRangeOpt: Option[String] = None
 
   /**
-    * Date range for the input data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1. If dateRangeDaysAgoOpt
-    * is specified, the input directory is expected to be in the daily format structure
-    * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
-    * of input files (e.g., inputDir/input-data-files).
-    */
+   * Date range for the input data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1. If dateRangeDaysAgoOpt
+   * is specified, the input directory is expected to be in the daily format structure
+   * (e.g., inputDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat directories
+   * of input files (e.g., inputDir/input-data-files).
+   */
   var dateRangeDaysAgoOpt: Option[String] = None
 
   /**
-    * A set of random effect ids of the corresponding random effect models in the following format:
-    * randomEffectId1,randomEffectId2,randomEffectId3,
-    */
+   * A set of random effect ids of the corresponding random effect models in the following format:
+   * randomEffectId1,randomEffectId2,randomEffectId3,
+   */
   var randomEffectIdTypeSet: Set[String] = Set()
 
   /**
-    * Minimum number of partitions for GAME's random effect model
-    */
+   * Minimum number of partitions for GAME's random effect model
+   */
   var minPartitionsForRandomEffectModel: Int = 1
 
   /**
-    * Input directory of the GAME model to be used to for scoring purpose
-    */
+   * Input directory of the GAME model to be used to for scoring purpose
+   */
   var gameModelInputDir: String = ""
 
   /**
-    * The GAME model's id that is used to populate the "modelId" field of ScoringResultAvro (output format of the
-    * computed scores).
-    */
+   * The GAME model's id that is used to populate the "modelId" field of ScoringResultAvro (output format of the
+   * computed scores).
+   */
   var gameModelId: String = ""
 
   /**
-    * Output directory for logs in text file and the scores in ScoringResultAvro format.
-    */
+   * Output directory for logs in text file and the scores in ScoringResultAvro format.
+   */
   var outputDir: String = ""
 
   /**
-    * Number of output files to write for the computed scores.
-    */
+   * Number of output files to write for the computed scores.
+   */
   var numOutputFilesForScores: Int = -1
 
   /**
-    * Whether to delete the output directory if exists
-    */
+   * Whether to delete the output directory if exists
+   */
   var deleteOutputDirIfExists: Boolean = false
 
   /**
-    * Name of this Spark application.
-    */
+   * Name of this Spark application.
+   */
   var applicationName: String = "Game-Scoring"
 
   override def toString: String = {

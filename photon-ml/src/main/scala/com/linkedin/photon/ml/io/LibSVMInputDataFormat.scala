@@ -21,13 +21,13 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
-  * An input format supporting reading LibSVM txt, the assumed format is:
-  * [label] [feature_index]:[feature_value] [feature_index]:[feature_value] ....
-  * (delimited by space)
-  *
-  * By default, libsvm feature indices start from 1, but if zeroBased is true, we will assume it
-  * starts from 0.
-  */
+ * An input format supporting reading LibSVM txt, the assumed format is:
+ * [label] [feature_index]:[feature_value] [feature_index]:[feature_value] ....
+ * (delimited by space)
+ *
+ * By default, libsvm feature indices start from 1, but if zeroBased is true, we will assume it
+ * starts from 0.
+ */
 class LibSVMInputDataFormat(
     val featureDimension: Int,
     val useIntercept: Boolean = true,
@@ -36,7 +36,7 @@ class LibSVMInputDataFormat(
     val idxValueDelim: String = ":"
   ) extends InputDataFormat {
 
-  private val trueFeatureDimension: Int = if (useIntercept) (featureDimension + 1) else featureDimension
+  private val trueFeatureDimension: Int = if (useIntercept) featureDimension + 1 else featureDimension
 
   private val _indexMapLoader = new IdentityIndexMapLoader(trueFeatureDimension, useIntercept)
 

@@ -21,47 +21,47 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 /**
-  * Representation of a fixed effect model
-  *
-  * @param modelBroadcast The coefficients
-  * @param featureShardId The feature shard id
-  */
+ * Representation of a fixed effect model
+ *
+ * @param modelBroadcast The coefficients
+ * @param featureShardId The feature shard id
+ */
 protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLinearModel], val featureShardId: String)
   extends DatumScoringModel with BroadcastLike {
 
   def model: GeneralizedLinearModel = modelBroadcast.value
 
   /**
-    * Clean up coefficient broadcast
-    */
+   * Clean up coefficient broadcast
+   */
   override def unpersistBroadcast(): this.type = {
     modelBroadcast.unpersist()
     this
   }
 
   /**
-    * Compute the score for the dataset
-    *
-    * @param dataPoints The dataset
-    * @return The score
-    */
+   * Compute the score for the dataset
+   *
+   * @param dataPoints The dataset
+   * @return The score
+   */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
     FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
 
   /**
-    * Build a summary string for the coefficients
-    *
-    * @return String representation
-    */
+   * Build a summary string for the coefficients
+   *
+   * @return String representation
+   */
   override def toSummaryString: String =
     s"Fixed effect model with featureShardId $featureShardId summary:\n${model.toSummaryString}"
 
   /**
-    * Create an updated model with the coefficients
-    *
-    * @param updatedModelBroadcast new coefficients
-    * @return updated model
-    */
+   * Create an updated model with the coefficients
+   *
+   * @param updatedModelBroadcast new coefficients
+   * @return updated model
+   */
   def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
     new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
@@ -81,13 +81,13 @@ protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLi
 
 object FixedEffectModel {
   /**
-    * Compute the score for the dataset
-    *
-    * @param dataPoints The dataset to score
-    * @param modelBroadcast The model to use for scoring
-    * @param featureShardId The feature shard id
-    * @return The score
-    */
+   * Compute the score for the dataset
+   *
+   * @param dataPoints The dataset to score
+   * @param modelBroadcast The model to use for scoring
+   * @param featureShardId The feature shard id
+   * @return The score
+   */
   private def score(
       dataPoints: RDD[(Long, GameDatum)],
       modelBroadcast: Broadcast[GeneralizedLinearModel],

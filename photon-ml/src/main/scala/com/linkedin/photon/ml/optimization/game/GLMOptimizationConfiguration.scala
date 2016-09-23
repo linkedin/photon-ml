@@ -17,13 +17,13 @@ package com.linkedin.photon.ml.optimization.game
 import com.linkedin.photon.ml.optimization._
 
 /**
-  * Configuration object for GLM optimization
-  *
-  * @param optimizerConfig Optimizer configuration
-  * @param regularizationContext Regularization context
-  * @param regularizationWeight Regularization weight
-  * @param downSamplingRate Down-sampling rate
-  */
+ * Configuration object for GLM optimization
+ *
+ * @param optimizerConfig Optimizer configuration
+ * @param regularizationContext Regularization context
+ * @param regularizationWeight Regularization weight
+ * @param downSamplingRate Down-sampling rate
+ */
 protected[ml] case class GLMOptimizationConfiguration (
     optimizerConfig: OptimizerConfig = OptimizerConfig(OptimizerType.TRON, 20, 1E-5, None),
     regularizationContext: RegularizationContext = NoRegularizationContext,
@@ -47,19 +47,19 @@ object GLMOptimizationConfiguration {
   protected[ml] val EXPECTED_NUM_CONFIGS = 6
 
   /**
-    * Parse and build the configuration object from a string representation.
-    * The string is expected to be a comma separated list with order of elements being
-    * <ol>
-    *  <li> Maximum number of iterations
-    *  <li> Convergence tolerance
-    *  <li> Regularization weight
-    *  <li> Down-sampling rate
-    *  <li> Optimizer Type
-    *  <li> Regularization type
-    * </ol>
-    *
-    * @param string The string representation
-    */
+   * Parse and build the configuration object from a string representation.
+   * The string is expected to be a comma separated list with order of elements being
+   * <ol>
+   *  <li> Maximum number of iterations
+   *  <li> Convergence tolerance
+   *  <li> Regularization weight
+   *  <li> Down-sampling rate
+   *  <li> Optimizer Type
+   *  <li> Regularization type
+   * </ol>
+   *
+   * @param string The string representation
+   */
   protected[ml] def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
 
     val configParams = string.split(SPLITTER).map(_.trim)

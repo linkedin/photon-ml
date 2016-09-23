@@ -26,7 +26,6 @@ import org.apache.spark.broadcast.Broadcast
  * RDD data are separated out in [[com.linkedin.photon.ml.function.DiffFunction]] and
  * [[com.linkedin.photon.ml.function.TwiceDiffFunction]] classes.
  *
- * @author dpeng
  */
 trait ObjectProvider[T <: Serializable] extends Serializable {
   def get: T

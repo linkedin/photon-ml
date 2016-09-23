@@ -44,7 +44,7 @@ case class BasicStatisticalSummary(
 object BasicStatisticalSummary extends Logging {
   /**
    * Convert a
-  *[[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.MultivariateStatisticalSummary
+   *[[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.
    * MultivariateStatisticalSummary]]
    * of mllib to a case instance with breeze vectors.
    *

@@ -23,10 +23,10 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 /**
-  * Represents a broadcast projection matrix
-  *
-  * @param projectionMatrixBroadcast The projection matrix
-  */
+ * Represents a broadcast projection matrix
+ *
+ * @param projectionMatrixBroadcast The projection matrix
+ */
 protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadcast[ProjectionMatrix])
     extends RandomEffectProjector with BroadcastLike with Serializable {
 
@@ -70,14 +70,14 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
 object ProjectionMatrixBroadcast {
 
   /**
-    * Generate random projection based broadcast projector
-    *
-    * @param randomEffectDataSet The input random effect data set
-    * @param projectedSpaceDimension The dimension of the projected feature space
-    * @param isKeepingInterceptTerm Whether to keep the intercept in the original feature space
-    * @param seed The seed of random number generator
-    * @return The generated random projection based broadcast projector
-    */
+   * Generate random projection based broadcast projector
+   *
+   * @param randomEffectDataSet The input random effect data set
+   * @param projectedSpaceDimension The dimension of the projected feature space
+   * @param isKeepingInterceptTerm Whether to keep the intercept in the original feature space
+   * @param seed The seed of random number generator
+   * @return The generated random projection based broadcast projector
+   */
   protected[ml] def buildRandomProjectionBroadcastProjector(
       randomEffectDataSet: RandomEffectDataSet,
       projectedSpaceDimension: Int,

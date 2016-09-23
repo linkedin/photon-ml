@@ -21,21 +21,22 @@ import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffe
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
-  * The optimization problem coordinate for a random effect model in projected space
-  *
-  * @param randomEffectDataSetInProjectedSpace The training dataset
-  * @param randomEffectOptimizationProblem The fixed effect optimization problem
-  */
-protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
+ * The optimization problem coordinate for a random effect model in projected space
+ *
+ * @param randomEffectDataSetInProjectedSpace The training dataset
+ * @param randomEffectOptimizationProblem The fixed effect optimization problem
+ */
+protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLinearModel,
+  F <: DiffFunction[LabeledPoint]](
     randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F])
   extends RandomEffectCoordinate[GLM, F](randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
 
   /**
-    * Initialize the model
-    *
-    * @param seed Random seed
-    */
+   * Initialize the model
+   *
+   * @param seed Random seed
+   */
   protected[algorithm] override def initializeModel(seed: Long): RandomEffectModelInProjectedSpace = {
     RandomEffectCoordinateInProjectedSpace.initializeModel(
       randomEffectDataSetInProjectedSpace,
@@ -43,11 +44,11 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLin
   }
 
   /**
-    * Update the model (i.e. run the coordinate optimizer)
-    *
-    * @param model The model
-    * @return Tuple of updated model and optimization tracker
-    */
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param model The model
+   * @return Tuple of updated model and optimization tracker
+   */
   protected[algorithm] override def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
     model match {
       case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
@@ -65,11 +66,11 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLin
     }
 
   /**
-    * Score the model
-    *
-    * @param model The model to score
-    * @return Scores
-    */
+   * Score the model
+   *
+   * @param model The model to score
+   * @return Scores
+   */
   protected[algorithm] override def score(model: DatumScoringModel): KeyValueScore = model match {
     case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
       val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
@@ -81,11 +82,11 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLin
   }
 
   /**
-    * Compute the regularization term value
-    *
-    * @param model The model
-    * @return Regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param model The model
+   * @return Regularization term value
+   */
   protected[algorithm] override def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
       val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
@@ -97,11 +98,11 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLin
   }
 
   /**
-    * Update the coordinate with a dataset
-    *
-    * @param updatedRandomEffectDataSet The updated dataset
-    * @return The updated coordinate
-    */
+   * Update the coordinate with a dataset
+   *
+   * @param updatedRandomEffectDataSet The updated dataset
+   * @return The updated coordinate
+   */
   override protected def updateCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
     : RandomEffectCoordinate[GLM, F] = {
 
@@ -118,10 +119,10 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[GLM <: GeneralizedLin
 object RandomEffectCoordinateInProjectedSpace {
 
   /**
-    * Initialize a zero model
-    *
-    * @param randomEffectDataSetInProjectedSpace The dataset
-    */
+   * Initialize a zero model
+   *
+   * @param randomEffectDataSetInProjectedSpace The dataset
+   */
   private def initializeModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F]): RandomEffectModelInProjectedSpace = {

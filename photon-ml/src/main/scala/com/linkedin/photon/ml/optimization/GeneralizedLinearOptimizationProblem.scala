@@ -29,16 +29,16 @@ import com.linkedin.photon.ml.sampler.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 
 /**
-  * GeneralizedOptimizationProblem implements methods to train a Generalized Linear Model (GLM).
-  * This class should be extended with a loss function and the createModel function to create a new GLM.
-  *
-  * @param optimizer The underlying optimizer who does the job
-  * @param objectiveFunction The objective function upon which to optimize
-  * @param regularizationWeight The regularization weight of the optimization problem
-  * @param sampler The sampler used to down-sample the training data points
-  * @tparam GLM The type of returned generalized linear model
-  * @tparam F The type of loss function of the generalized linear algorithm
-  */
+ * GeneralizedOptimizationProblem implements methods to train a Generalized Linear Model (GLM).
+ * This class should be extended with a loss function and the createModel function to create a new GLM.
+ *
+ * @param optimizer The underlying optimizer who does the job
+ * @param objectiveFunction The objective function upon which to optimize
+ * @param regularizationWeight The regularization weight of the optimization problem
+ * @param sampler The sampler used to down-sample the training data points
+ * @tparam GLM The type of returned generalized linear model
+ * @tparam F The type of loss function of the generalized linear algorithm
+ */
 abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearModel : ClassTag,
   // TODO: covariance here is temporary measure -- let's revisit this
   +F <: DiffFunction[LabeledPoint]](
@@ -56,55 +56,55 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
    }
 
   /**
-    * Get the optimization state trackers for the optimization problems solved
-    *
-    * @return Some(OptimizationStatesTracker) if one was kept, otherwise None
-    */
+   * Get the optimization state trackers for the optimization problems solved
+   *
+   * @return Some(OptimizationStatesTracker) if one was kept, otherwise None
+   */
   def getStatesTracker: Option[OptimizationStatesTracker] = optimizer.getStateTracker
 
   /**
-    * Get models for the intermediate optimization states of the optimization problems solved
-    *
-    * @return Some(list of ModelTrackers) if ModelTrackers were being kept, otherwise None
-    */
+   * Get models for the intermediate optimization states of the optimization problems solved
+   *
+   * @return Some(list of ModelTrackers) if ModelTrackers were being kept, otherwise None
+   */
   def getModelTracker: Option[List[ModelTracker]] = modelTrackerBuilder.map(_.toList)
 
   /**
-    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
-    *
-    * @param normalizationContext new normalization context
-    * @param regularizationWeight new regulariation weight
-    * @return a new optimization problem with updated objective
-    */
+   * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
+   *
+   * @param normalizationContext new normalization context
+   * @param regularizationWeight new regulariation weight
+   * @return a new optimization problem with updated objective
+   */
   def updateObjective(
       normalizationContext: ObjectProvider[NormalizationContext],
       regularizationWeight: Double): GeneralizedLinearOptimizationProblem[GLM, F]
 
   /**
-    * Create a default generalized linear model with 0-valued coefficients
-    *
-    * @param dimension The dimensionality of the model coefficients
-    * @return A model with zero coefficients
-    */
+   * Create a default generalized linear model with 0-valued coefficients
+   *
+   * @param dimension The dimensionality of the model coefficients
+   * @return A model with zero coefficients
+   */
   def initializeZeroModel(dimension: Int): GLM
 
   /**
-    * Create a model given the coefficients
-    *
-    * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
-    * @param variances The coefficient variances
-    * @return A generalized linear model with coefficients parameters
-    */
+   * Create a model given the coefficients
+   *
+   * @param coefficients The coefficients parameter of each feature (and potentially including intercept)
+   * @param variances The coefficient variances
+   * @return A generalized linear model with coefficients parameters
+   */
   protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GLM
 
   /**
-    * Create a model given the coefficients
-    *
-    * @param normalizationContext The normalization context
-    * @param coefficients A vector of feature coefficients (and potentially including intercept)
-    * @param variances The coefficient variances
-    * @return A generalized linear model with intercept and coefficients parameters
-    */
+   * Create a model given the coefficients
+   *
+   * @param normalizationContext The normalization context
+   * @param coefficients A vector of feature coefficients (and potentially including intercept)
+   * @param variances The coefficient variances
+   * @return A generalized linear model with intercept and coefficients parameters
+   */
   protected def createModel(
     normalizationContext: NormalizationContext,
     coefficients: Vector[Double],
@@ -116,31 +116,31 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
   }
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   protected def computeVariances(labeledPoints: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]]
 
   /**
-    * Compute coefficient variances
-    *
-    * @param labeledPoints The training dataset
-    * @param coefficients The model coefficients
-    * @return The coefficient variances
-    */
+   * Compute coefficient variances
+   *
+   * @param labeledPoints The training dataset
+   * @param coefficients The model coefficients
+   * @return The coefficient variances
+   */
   protected def computeVariances(labeledPoints: Iterable[LabeledPoint], coefficients: Vector[Double])
     : Option[Vector[Double]]
 
   /**
-    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
-    *
-    * @param input A RDD of input labeled data points in the original scale
-    * @param normalizationContext The normalization context
-    * @return The learned generalized linear models of each regularization weight and iteration.
-    */
+   * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries.
+   *
+   * @param input A RDD of input labeled data points in the original scale
+   * @param normalizationContext The normalization context
+   * @return The learned generalized linear models of each regularization weight and iteration.
+   */
   def run(input: RDD[LabeledPoint], normalizationContext: NormalizationContext): GLM = {
     val numFeatures = input.first().features.size
     val initialWeight = Vector.zeros[Double](numFeatures)
@@ -150,14 +150,14 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
   }
 
   /**
-    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries
-    * starting from the initial model provided.
-    *
-    * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
-    * @param initialModel The initial model
-    * @param normalizationContext The normalization context
-    * @return The learned generalized linear models of each regularization weight and iteration.
-    */
+   * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries
+   * starting from the initial model provided.
+   *
+   * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
+   * @param initialModel The initial model
+   * @param normalizationContext The normalization context
+   * @return The learned generalized linear models of each regularization weight and iteration.
+   */
   def run(
       input: RDD[LabeledPoint],
       initialModel: GeneralizedLinearModel,
@@ -182,14 +182,14 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
   }
 
   /**
-    * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries
-    * starting from the initial model provided.
-    *
-    * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
-    * @param initialModel The initial model
-    * @param normalizationContext The normalization context
-    * @return The learned generalized linear models of each regularization weight and iteration.
-    */
+   * Run the algorithm with the configured parameters on an input RDD of LabeledPoint entries
+   * starting from the initial model provided.
+   *
+   * @param input A RDD of input labeled data points in the normalized scale (if normalization is enabled)
+   * @param initialModel The initial model
+   * @param normalizationContext The normalization context
+   * @return The learned generalized linear models of each regularization weight and iteration.
+   */
   def run(
       input: Iterable[LabeledPoint],
       initialModel: GeneralizedLinearModel,
@@ -214,11 +214,11 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
   }
 
   /**
-    * Compute the regularization term value
-    *
-    * @param model the model
-    * @return regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param model the model
+   * @return regularization term value
+   */
   def getRegularizationTermValue(model: GeneralizedLinearModel): Double = {
     import GeneralizedLinearOptimizationProblem._
 
@@ -234,12 +234,12 @@ abstract class GeneralizedLinearOptimizationProblem[+GLM <: GeneralizedLinearMod
 
 object GeneralizedLinearOptimizationProblem {
   /**
-    * Compute the L1 regularization term value
-    *
-    * @param model the model
-    * @param regularizationWeight the weight of the regularization value
-    * @return L1 regularization term value
-    */
+   * Compute the L1 regularization term value
+   *
+   * @param model the model
+   * @param regularizationWeight the weight of the regularization value
+   * @return L1 regularization term value
+   */
   protected[ml] def getL1RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
     : Double = {
 
@@ -248,12 +248,12 @@ object GeneralizedLinearOptimizationProblem {
   }
 
   /**
-    * Compute the L2 regularization term value
-    *
-    * @param model the model
-    * @param regularizationWeight the weight of the regularization value
-    * @return L2 regularization term value
-    */
+   * Compute the L2 regularization term value
+   *
+   * @param model the model
+   * @param regularizationWeight the weight of the regularization value
+   * @return L2 regularization term value
+   */
   protected[ml] def getL2RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
     : Double = {
 
@@ -262,13 +262,13 @@ object GeneralizedLinearOptimizationProblem {
   }
 
   /**
-    * Compute the Elastic Net regularization term value
-    *
-    * @param model the model
-    * @param regularizationWeight the weight of the regularization value
-    * @param regularizationContext the regularization context
-    * @return Elastic Net regularization term value
-    */
+   * Compute the Elastic Net regularization term value
+   *
+   * @param model the model
+   * @param regularizationWeight the weight of the regularization value
+   * @param regularizationContext the regularization context
+   * @return Elastic Net regularization term value
+   */
   protected[ml] def getElasticNetRegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double,
       regularizationContext: RegularizationContext): Double = {
 

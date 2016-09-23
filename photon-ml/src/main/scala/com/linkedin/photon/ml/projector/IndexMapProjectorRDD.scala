@@ -23,10 +23,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * A class that holds the projectors for a sharded data set
-  *
-  * @param indexMapProjectorRDD The projectors
-  */
+ * A class that holds the projectors for a sharded data set
+ *
+ * @param indexMapProjectorRDD The projectors
+ */
 protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
   extends RandomEffectProjector with RDDLike {
 

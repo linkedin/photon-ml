@@ -25,21 +25,21 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.PhotonLogger
 
 /**
-  * The optimization problem coordinate for a fixed effect model
-  *
-  * @param fixedEffectDataSet The training dataset
-  * @param optimizationProblem The fixed effect optimization problem
-  */
+ * The optimization problem coordinate for a fixed effect model
+ *
+ * @param fixedEffectDataSet The training dataset
+ * @param optimizationProblem The fixed effect optimization problem
+ */
 protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     fixedEffectDataSet: FixedEffectDataSet,
     private var optimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F])
   extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[GLM, F]](fixedEffectDataSet) {
 
   /**
-    * Initialize the model
-    *
-    * @param seed Random seed
-    */
+   * Initialize the model
+   *
+   * @param seed Random seed
+   */
   protected[algorithm] def initializeModel(seed: Long): FixedEffectModel = {
     val numFeatures = fixedEffectDataSet.numFeatures
     val generalizedLinearModel = optimizationProblem.initializeZeroModel(numFeatures)
@@ -50,19 +50,19 @@ protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: Di
   }
 
   /**
-    * Update the coordinate with a dataset
-    *
-    * @param fixedEffectDataSet The updated dataset
-    * @return The updated coordinate
-    */
+   * Update the coordinate with a dataset
+   *
+   * @param fixedEffectDataSet The updated dataset
+   * @return The updated coordinate
+   */
   override protected def updateCoordinateWithDataSet(fixedEffectDataSet: FixedEffectDataSet)
     : FixedEffectCoordinate[GLM, F] = new FixedEffectCoordinate[GLM, F](fixedEffectDataSet, optimizationProblem)
 
   /**
-    * Update the model
-    *
-    * @param model The model to update
-    */
+   * Update the model
+   *
+   * @param model The model to update
+   */
   protected[algorithm] override def updateModel(model: DatumScoringModel)
     : (DatumScoringModel, OptimizationTracker) = model match {
 
@@ -85,11 +85,11 @@ protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: Di
   }
 
   /**
-    * Score the model
-    *
-    * @param model The model to score
-    * @return Scores
-    */
+   * Score the model
+   *
+   * @param model The model to score
+   * @return Scores
+   */
   protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
@@ -102,11 +102,11 @@ protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: Di
   }
 
   /**
-    * Compute the regularization term value
-    *
-    * @param model The model
-    * @return Regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param model The model
+   * @return Regularization term value
+   */
   protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
@@ -119,10 +119,10 @@ protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: Di
   }
 
   /**
-    * Summarize the coordinate state
-    *
-    * @param logger A logger instance
-    */
+   * Summarize the coordinate state
+   *
+   * @param logger A logger instance
+   */
   protected[algorithm] def summarize(logger: PhotonLogger): Unit = {
     logger.debug(s"Optimization stats: ${optimizationProblem.getStatesTracker.get}")
   }
@@ -130,13 +130,13 @@ protected[ml] class FixedEffectCoordinate[GLM <: GeneralizedLinearModel, F <: Di
 
 object FixedEffectCoordinate {
   /**
-    * Update the model (i.e. run the coordinate optimizer)
-    *
-    * @param fixedEffectDataSet The dataset
-    * @param optimizationProblem The optimization problem
-    * @param fixedEffectModel The model
-    * @return Tuple of updated model and optimization tracker
-    */
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param fixedEffectDataSet The dataset
+   * @param optimizationProblem The optimization problem
+   * @param fixedEffectModel The model
+   * @return Tuple of updated model and optimization tracker
+   */
   private def updateModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       fixedEffectDataSet: FixedEffectDataSet,
       optimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F],
@@ -159,12 +159,12 @@ object FixedEffectCoordinate {
   }
 
   /**
-    * Compute updated scores
-    *
-    * @param fixedEffectDataSet The dataset
-    * @param fixedEffectModel The model
-    * @return Scores
-    */
+   * Compute updated scores
+   *
+   * @param fixedEffectDataSet The dataset
+   * @param fixedEffectModel The model
+   * @return Scores
+   */
   private def updateScore(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): KeyValueScore = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
     val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>

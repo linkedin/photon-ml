@@ -21,7 +21,6 @@ import com.linkedin.photon.ml.data
  * A general data point contains features and other auxiliary information
  * @param features A vector (could be either dense or sparse) representing the features for this data point
  * @param weight The weight of this data point
- * @author xazhang
  */
 class DataPoint(val features: Vector[Double], val weight: Double = 1.0) extends Serializable {
   override def toString: String = {

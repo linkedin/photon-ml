@@ -24,18 +24,18 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
-  * Representation for a random effect optimization problem
-  *
-  * - Why sharding the optimizers?
-  * Because we may want to preserve the optimization state of each sharded optimization problem
-  *
-  * - Why sharding the objective functions?
-  * Because the regularization weight for each sharded optimization problem may be different, which leads to different
-  * objective functions.
-  *
-  * @param optimizationProblems The component optimization problems (one per individual) for a random effect
-  *                            optimization problem
-  */
+ * Representation for a random effect optimization problem
+ *
+ * - Why sharding the optimizers?
+ * Because we may want to preserve the optimization state of each sharded optimization problem
+ *
+ * - Why sharding the objective functions?
+ * Because the regularization weight for each sharded optimization problem may be different, which leads to different
+ * objective functions.
+ *
+ * @param optimizationProblems The component optimization problems (one per individual) for a random effect
+ *                             optimization problem
+ */
 protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     val optimizationProblems: RDD[(String, GeneralizedLinearOptimizationProblem[GLM, F])])
   extends RDDLike {
@@ -67,19 +67,19 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
   }
 
   /**
-    * Create a default generalized linear model with 0-valued coefficients
-    *
-    * @param dimension The dimensionality of the model coefficients
-    * @return A model with zero coefficients
-    */
+   * Create a default generalized linear model with 0-valued coefficients
+   *
+   * @param dimension The dimensionality of the model coefficients
+   * @return A model with zero coefficients
+   */
   def initializeModel(dimension: Int): GLM = optimizationProblems.first()._2.initializeZeroModel(dimension)
 
   /**
-    * Compute the regularization term value
-    *
-    * @param modelsRDD The trained models
-    * @return The combined regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param modelsRDD The trained models
+   * @return The combined regularization term value
+   */
   def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)]): Double = {
     optimizationProblems
       .join(modelsRDD)
@@ -99,15 +99,16 @@ object RandomEffectOptimizationProblem {
   val TRACK_STATE = false
 
   /**
-    * Build an instance of random effect optimization problem
-    *
-    * @param builder
-    * @param configuration Optimizer configuration
-    * @param randomEffectDataSet The training dataset
-    * @param treeAggregateDepth
-    * @return A new optimization problem instance
-    */
-  protected[ml] def buildRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
+   * Build an instance of random effect optimization problem
+   *
+   * @param builder builder of the random effect optimization problem
+   * @param configuration Optimizer configuration
+   * @param randomEffectDataSet The training dataset
+   * @param treeAggregateDepth The depth used in treeAggregate
+   * @return A new optimization problem instance
+   */
+  protected[ml] def buildRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
+  F <: DiffFunction[LabeledPoint]](
       builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
       configuration: GLMOptimizationConfiguration,
       randomEffectDataSet: RandomEffectDataSet,

@@ -20,20 +20,19 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
-  * This trait defines a general way of loading an input path into RDDs for training.
-  *
-  */
+ * This trait defines a general way of loading an input path into RDDs for training.
+ */
 trait InputDataFormat {
 
   /**
-    * Load an RDD of LabeledPoints
-    *
-    * @param sc
-    * @param inputPath
-    * @param selectedFeaturesPath
-    * @param minPartitions
-    * @return an RDD of LabeledPoints
-    */
+   * Load an RDD of LabeledPoints
+   *
+   * @param sc the spark context
+   * @param inputPath input path of labeled points
+   * @param selectedFeaturesPath optional path of selected features
+   * @param minPartitions minimum number of partitions
+   * @return an RDD of LabeledPoints
+   */
   def loadLabeledPoints(
       sc: SparkContext,
       inputPath: String,
@@ -41,10 +40,10 @@ trait InputDataFormat {
       minPartitions: Int): RDD[LabeledPoint]
 
   /**
-    * Provide an IndexMapLoader for the current format
-    *
-    * @return IndexMapLoader
-    */
+   * Provide an IndexMapLoader for the current format
+   *
+   * @return IndexMapLoader
+   */
   def indexMapLoader(): IndexMapLoader
 
   def constraintFeatureMap(): Option[Map[Int, (Double, Double)]] = None

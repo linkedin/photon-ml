@@ -43,8 +43,8 @@ import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{RDDLike, SparkContextConfiguration}
 
 /**
-  * The driver class, which provides the main entrance to GAME model training
-  */
+ * The driver class, which provides the main entrance to GAME model training
+ */
 final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
     extends GAMEDriver(params, sparkContext, logger) {
 

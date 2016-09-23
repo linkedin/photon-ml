@@ -36,13 +36,13 @@ import scala.collection.mutable
 import scala.util.parsing.json.JSON
 
 /**
-  * A suite responsible for transforming raw data into [[data.LabeledPoint]]
-  * and write the learned [[GeneralizedLinearModel]] in text or avro files.
-  *
-  * @param fieldNamesType Input Avro file's format, which contains the information of each field's name
-  * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning
-  *                     purpose
-  */
+ * A suite responsible for transforming raw data into [[data.LabeledPoint]]
+ * and write the learned [[GeneralizedLinearModel]] in text or avro files.
+ *
+ * @param fieldNamesType Input Avro file's format, which contains the information of each field's name
+ * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning
+ *                     purpose
+ */
 @SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
 class GLMSuite(
     fieldNamesType: FieldNamesType,
@@ -55,8 +55,8 @@ class GLMSuite(
   // and fragile style that could easily require method signature replacements
 
   /**
-    * The input avro files' field names
-    */
+   * The input avro files' field names
+   */
   private val fieldNames = fieldNamesType match {
     case RESPONSE_PREDICTION => ResponsePredictionFieldNames
     case TRAINING_EXAMPLE => TrainingExampleFieldNames
@@ -64,10 +64,10 @@ class GLMSuite(
   }
 
   /**
-    * Mapping the String based feature names to integer based Ids, for more efficient memory usage when persisting data
-    * into memory. Making it transient in order to avoid it being serialized to the executors, which could be expensive
-    * and is unnecessary.
-    */
+   * Mapping the String based feature names to integer based Ids, for more efficient memory usage when persisting data
+   * into memory. Making it transient in order to avoid it being serialized to the executors, which could be expensive
+   * and is unnecessary.
+   */
   @transient var featureKeyToIdMap: IndexMap = null
 
   /* Map of feature indices to their (lowerBound, upperBound) constraints */
@@ -81,20 +81,20 @@ class GLMSuite(
   def indexMapLoader(): IndexMapLoader = _indexMapLoader
 
   /**
-    * Read the [[data.LabeledPoint]] from a directory of Avro files
-    *
-    * @param sc The Spark context
-    * @param inputDir Input directory of the Avro files
-    * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
-    *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
-    * @param minNumPartitions Set the minimum number of Hadoop splits to generate. This would be potentially helpful when
-    *                         the number of default Hadoop splits is small. Note that when the default number of Hadoop
-    *                         splits (from HDFS) is larger than minNumPartitions, then minNumPartitions will be ignored
-    *                         and the number of partitions of the resulting RDD will be same as the default number of
-    *                         Hadoop splits. In short, minNumPartitions will *only* be able to increase the number of
-    *                         partitions.
-    * @return Tuple of (number of features in dataset, number of selected features, A RDD of [[data.LabeledPoint]])
-    */
+   * Read the [[data.LabeledPoint]] from a directory of Avro files
+   *
+   * @param sc The Spark context
+   * @param inputDir Input directory of the Avro files
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
+   * @param minNumPartitions Set the minimum number of Hadoop splits to generate. This would be potentially helpful when
+   *                         the number of default Hadoop splits is small. Note that when the default number of Hadoop
+   *                         splits (from HDFS) is larger than minNumPartitions, then minNumPartitions will be ignored
+   *                         and the number of partitions of the resulting RDD will be same as the default number of
+   *                         Hadoop splits. In short, minNumPartitions will *only* be able to increase the number of
+   *                         partitions.
+   * @return Tuple of (number of features in dataset, number of selected features, A RDD of [[data.LabeledPoint]])
+   */
   def readLabeledPointsFromAvro(
       sc: SparkContext,
       inputDir: String,
@@ -131,13 +131,13 @@ class GLMSuite(
   }
 
   /**
-    * Takes the selected features file and returns the set of keys corresponding to the these features
-    *
-    * @param sc The spark context
-    * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
-    *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
-    * @return Set of selected features
-    */
+   * Takes the selected features file and returns the set of keys corresponding to the these features
+   *
+   * @param sc The spark context
+   * @param selectedFeaturesFile Path to the file containing features that should be used in training. This file is
+   *                             expected to be an avro file containing records with the schema FeatureNameTermAvro
+   * @return Set of selected features
+   */
   def getSelectedFeatureSetFromFile(
       sc: SparkContext,
       selectedFeaturesFile: Option[String]): Set[String] = selectedFeaturesFile match {
@@ -148,15 +148,15 @@ class GLMSuite(
   }
 
   /**
-    * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids. Only
-    * use features provided by the given selected features set. If the set is empty however, all features will
-    * be used.
-    *
-    * @param avroRDD The avro files that contains feature information
-    * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
-    * @return Tuple of (number of distinct features, map that maps String based features keys to integer based
-    *   featureIds)
-    */
+   * Load the featureKeyToIdMap that maps the String based feature keys into Integer based feature Ids. Only
+   * use features provided by the given selected features set. If the set is empty however, all features will
+   * be used.
+   *
+   * @param avroRDD The avro files that contains feature information
+   * @param selectedFeatures Set of selected features in the feature key form ({@see Utils#getFeatureKey})
+   * @return Tuple of (number of distinct features, map that maps String based features keys to integer based
+   *   featureIds)
+   */
   private def createDefaultIndexMapLoader[T <: GenericRecord](
       avroRDD: RDD[T],
       selectedFeatures: Set[String]): IndexMapLoader = {
@@ -187,22 +187,22 @@ class GLMSuite(
   }
 
   /**
-    * Take the constraint string which is a JSON array of maps to create the constraint map from feature index to their
-    * bounds that can be used by the optimizers. There are several expectations from the input constraint string which
-    * if violated, an exception will be thrown
-    * 1. Every map in the constraint string is expected to contain both [[ConstraintMapKeys.name]] and
-    *    [[ConstraintMapKeys.term]] keys
-    * 2. The lower bound must not be greater than the upper bound in some constraint
-    * 3. If the name is a wildcard, the term must also be a wildcard. Currently, we only support wildcards in term or in
-    *    both which implies the constraint is to be applied to all features
-    * 4. There must not be an overlap among constraints. For instance, specifying an explicit feature constraint as well
-    *    as a wildcard constraint that is applicable to that same feature or specifying an all-feature constraint using
-    *    a wildcard in both name and term as well as specifying some individual feature constraints are examples of
-    *    overlaps. Please note that we flag the moment we see the same feature and we do not check whether the earlier
-    *    constraint is same as the specified overlap
-    *
-    * @return None if the map is empty at the end else return the constraint map
-    */
+   * Take the constraint string which is a JSON array of maps to create the constraint map from feature index to their
+   * bounds that can be used by the optimizers. There are several expectations from the input constraint string which
+   * if violated, an exception will be thrown
+   * 1. Every map in the constraint string is expected to contain both [[ConstraintMapKeys.name]] and
+   *    [[ConstraintMapKeys.term]] keys
+   * 2. The lower bound must not be greater than the upper bound in some constraint
+   * 3. If the name is a wildcard, the term must also be a wildcard. Currently, we only support wildcards in term or in
+   *    both which implies the constraint is to be applied to all features
+   * 4. There must not be an overlap among constraints. For instance, specifying an explicit feature constraint as well
+   *    as a wildcard constraint that is applicable to that same feature or specifying an all-feature constraint using
+   *    a wildcard in both name and term as well as specifying some individual feature constraints are examples of
+   *    overlaps. Please note that we flag the moment we see the same feature and we do not check whether the earlier
+   *    constraint is same as the specified overlap
+   *
+   * @return None if the map is empty at the end else return the constraint map
+   */
   @throws(classOf[IllegalArgumentException])
   def createConstraintFeatureMap(): Option[Map[Int, (Double, Double)]] = {
     val constraintMap = mutable.Map[Int, (Double, Double)]()
@@ -285,11 +285,11 @@ class GLMSuite(
   }
 
   /**
-    * Transform the Avro files into LabeledPoints
-    *
-    * @param avroRDD A RDD of Avro files
-    * @return A RDD of [[data.LabeledPoint]]
-    */
+   * Transform the Avro files into LabeledPoints
+   *
+   * @param avroRDD A RDD of Avro files
+   * @return A RDD of [[data.LabeledPoint]]
+   */
   private def toLabeledPoints[T <: GenericRecord](avroRDD: RDD[T]): RDD[LabeledPoint] = {
     // Returns None if no features in the record are in the featureKeyToIdMap
     def parseAvroRecord(avroRecord: GenericRecord, indexMap: IndexMap): LabeledPoint = {
@@ -363,20 +363,20 @@ class GLMSuite(
 
 protected[ml] object GLMSuite {
   /**
-    * Delimiter used to concatenate feature name and term into feature key
-    */
+   * Delimiter used to concatenate feature name and term into feature key
+   */
   val DELIMITER = "\u0001"
 
   /**
-    * Wildcard character used for specifying the feature constraints. Only the term is allowed to be a wildcard normally
-    * unless one wants to apply bounds to all features in which case both name and term can be specified as wildcards.
-    * Currently, we do not support wildcards in name alone.
-    */
+   * Wildcard character used for specifying the feature constraints. Only the term is allowed to be a wildcard normally
+   * unless one wants to apply bounds to all features in which case both name and term can be specified as wildcards.
+   * Currently, we do not support wildcards in name alone.
+   */
   val WILDCARD = "*"
 
   /**
-    * Name of the intercept
-    */
+   * Name of the intercept
+   */
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
   val INTERCEPT_NAME_TERM = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)

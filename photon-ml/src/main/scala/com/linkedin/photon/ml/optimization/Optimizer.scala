@@ -25,8 +25,6 @@ import org.apache.spark.rdd.RDD
  * Trait for optimization problem solvers.
  * @tparam Datum Generic type of input data point
  * @tparam Function Generic type of the objective function to be optimized.
- * @author xazhang
- * @author bdrew
  */
 trait Optimizer[Datum <: DataPoint, -Function <: DiffFunction[Datum]] extends Serializable with Logging {
 

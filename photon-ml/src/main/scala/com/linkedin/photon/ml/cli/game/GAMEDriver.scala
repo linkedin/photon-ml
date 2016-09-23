@@ -20,8 +20,8 @@ import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
 import org.apache.spark.SparkContext
 
 /**
-  * Contains common functions for GAME training and scoring drivers.
-  */
+ * Contains common functions for GAME training and scoring drivers.
+ */
 abstract class GAMEDriver(
     params: FeatureParams with PalDBIndexMapParams,
     sparkContext: SparkContext,
@@ -41,11 +41,11 @@ abstract class GAMEDriver(
   protected[game] val idTypeSet: Set[String]
 
   /**
-    * Builds feature key to index map loaders according to configuration
-    *
-    * @return A map of shard id to feature map loader
-    * @deprecated This function will be removed in the next major version.
-    */
+   * Builds feature key to index map loaders according to configuration
+   *
+   * @return A map of shard id to feature map loader
+   * @deprecated This function will be removed in the next major version.
+   */
   protected[game] def prepareFeatureMapsDefault(): Map[String, IndexMapLoader] = {
     val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
@@ -69,10 +69,10 @@ abstract class GAMEDriver(
   }
 
   /**
-    * Builds PalDB off-heap feature name-and-term to index map loaders according to configuration
-    *
-    * @return A map of shard id to feature map
-    */
+   * Builds PalDB off-heap feature name-and-term to index map loaders according to configuration
+   *
+   * @return A map of shard id to feature map
+   */
   protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] = {
     featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSections) => {
       val indexMapLoader = new PalDBIndexMapLoader
@@ -82,10 +82,10 @@ abstract class GAMEDriver(
   }
 
   /**
-    * Builds feature name-and-term to index maps according to configuration
-    *
-    * @return A map of shard id to feature map
-    */
+   * Builds feature name-and-term to index maps according to configuration
+   *
+   * @return A map of shard id to feature map
+   */
   protected[game] def prepareFeatureMaps(): Map[String, IndexMapLoader] = {
     params.offHeapIndexMapDir match {
       // If an off-heap map path is specified, use the paldb loader

@@ -20,7 +20,6 @@ import com.linkedin.photon.ml.util.Utils
 
 /**
  * General purpose utils that can be leveraged by the various optimizers
- * @author nkatariy
  */
 object OptimizationUtils {
   /**

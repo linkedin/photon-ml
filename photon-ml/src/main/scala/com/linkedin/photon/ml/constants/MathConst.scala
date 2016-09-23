@@ -16,8 +16,6 @@ package com.linkedin.photon.ml.constants
 
 /**
  * Math constants
- *
- * @author xazhang
  */
 object MathConst {
   protected[ml] val HIGH_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-12

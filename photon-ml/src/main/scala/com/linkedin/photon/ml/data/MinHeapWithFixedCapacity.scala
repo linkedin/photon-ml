@@ -25,7 +25,6 @@ import scala.reflect.ClassTag
  * reached
  *
  * @param capacity buffer capacity
- * @author xazhang
  */
 protected[ml] class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capacity: Int) extends Serializable {
 

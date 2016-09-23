@@ -15,13 +15,13 @@
 package com.linkedin.photon.ml.io
 
 /**
-  * An enum type that indicates the input data file formats.
-  *
-  * Currently supports:
-  *   AVRO: serialized format using Avro: https://avro.apache.org/
-  *   LIBSVM: a text format following conventions indicated
-  *       by LIBSVM: https://www.csie.ntu.edu.tw/~cjlin/libsvm/
-  */
+ * An enum type that indicates the input data file formats.
+ *
+ * Currently supports:
+ *   AVRO: serialized format using Avro: https://avro.apache.org/
+ *   LIBSVM: a text format following conventions indicated
+ *       by LIBSVM: https://www.csie.ntu.edu.tw/~cjlin/libsvm/
+ */
 object InputFormatType extends Enumeration {
   type InputFormatType = Value
   val AVRO, LIBSVM, NONE = Value

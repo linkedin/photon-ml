@@ -28,21 +28,21 @@ import com.linkedin.photon.ml.util.VectorUtils
 import org.apache.spark.rdd.RDD
 
 /**
-  * The optimization problem coordinate for a factored random effect model
-  *
-  * @param randomEffectDataSet The training dataset
-  * @param factoredRandomEffectOptimizationProblem The fixed effect optimization problem
-  */
+ * The optimization problem coordinate for a factored random effect model
+ *
+ * @param randomEffectDataSet The training dataset
+ * @param factoredRandomEffectOptimizationProblem The fixed effect optimization problem
+ */
 protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
     randomEffectDataSet: RandomEffectDataSet,
     factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[GLM, F])
   extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[GLM, F]](randomEffectDataSet) {
 
   /**
-    * Initialize the model
-    *
-    * @param seed Random seed
-    */
+   * Initialize the model
+   *
+   * @param seed Random seed
+   */
   protected[algorithm] override def initializeModel(seed: Long): DatumScoringModel = {
     val latentSpaceDimension = factoredRandomEffectOptimizationProblem.latentSpaceDimension
     FactoredRandomEffectCoordinate.initializeModel(
@@ -53,11 +53,11 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
   }
 
   /**
-    * Update the model (i.e. run the coordinate optimizer)
-    *
-    * @param model Rhe model
-    * @return Tuple of updated model and optimization tracker
-    */
+   * Update the model (i.e. run the coordinate optimizer)
+   *
+   * @param model Rhe model
+   * @return Tuple of updated model and optimization tracker
+   */
   protected[algorithm] override def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
     model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
@@ -129,11 +129,11 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
   }
 
   /**
-    * Score the model
-    *
-    * @param model The model to score
-    * @return Scores
-    */
+   * Score the model
+   *
+   * @param model The model to score
+   * @return Scores
+   */
   protected[algorithm] override def score(model: DatumScoringModel): KeyValueScore = model match {
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
       val projectionMatrixBroadcast = factoredRandomEffectModel.projectionMatrixBroadcast
@@ -148,11 +148,11 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
   }
 
   /**
-    * Compute the regularization term value
-    *
-    * @param model The model
-    * @return Regularization term value
-    */
+   * Compute the regularization term value
+   *
+   * @param model The model
+   * @return Regularization term value
+   */
   protected[algorithm] override def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
       val modelsRDD = factoredRandomEffectModel.modelsInProjectedSpaceRDD
@@ -165,11 +165,11 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
   }
 
   /**
-    * Update the coordinate with a dataset
-    *
-    * @param updatedRandomEffectDataSet The updated dataset
-    * @return The updated coordinate
-    */
+   * Update the coordinate with a dataset
+   *
+   * @param updatedRandomEffectDataSet The updated dataset
+   * @return The updated coordinate
+   */
   override protected[algorithm] def updateCoordinateWithDataSet(updatedRandomEffectDataSet: RandomEffectDataSet)
     : FactoredRandomEffectCoordinate[GLM, F] =
     new FactoredRandomEffectCoordinate(updatedRandomEffectDataSet, factoredRandomEffectOptimizationProblem)
@@ -178,12 +178,12 @@ protected[ml] class FactoredRandomEffectCoordinate[GLM <: GeneralizedLinearModel
 
 object FactoredRandomEffectCoordinate {
   /**
-    * Initialize the model
-    *
-    * @param randomEffectDataSet The training dataset
-    * @param latentSpaceDimension Dimensionality of the latent space
-    * @param seed Random seed
-    */
+   * Initialize the model
+   *
+   * @param randomEffectDataSet The training dataset
+   * @param latentSpaceDimension Dimensionality of the latent space
+   * @param seed Random seed
+   */
   private def initializeModel[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[GLM, F],
@@ -207,14 +207,14 @@ object FactoredRandomEffectCoordinate {
   }
 
   /**
-    * Update the latent projection matrix
-    *
-    * @param randomEffectDataSet The dataset
-    * @param randomEffectModel The model
-    * @param projectionMatrix The projection matrix
-    * @param latentFactorOptimizationProblem The optimization problem
-    * @return Updated projection matrix
-    */
+   * Update the latent projection matrix
+   *
+   * @param randomEffectDataSet The dataset
+   * @param randomEffectModel The model
+   * @param projectionMatrix The projection matrix
+   * @param latentFactorOptimizationProblem The optimization problem
+   * @return Updated projection matrix
+   */
   private def updateLatentProjectionMatrix[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectModel: RandomEffectModel,
@@ -253,17 +253,17 @@ object FactoredRandomEffectCoordinate {
   }
 
   /**
-    * Computes the kronecker product between the dataset's features and the coefficients. Here the kronercker product is
-    * defined as in [[https://en.wikipedia.org/wiki/Kronecker_product]], which is sometimes used interchangeably with
-    * the terminology "cross product" or "outer product".
-    *
-    * @param localDataSetRDD The dataset
-    * @param modelsRDD The coefficients
-    * @param sparsityToleranceThreshold If the product between a certain feature and coefficient is smaller than
-    *                                   sparsityToleranceThreshold, then it will be stored as 0 for sparsity
-    *                                   consideration.
-    * @return Kronecker product result
-    */
+   * Computes the kronecker product between the dataset's features and the coefficients. Here the kronercker product is
+   * defined as in [[https://en.wikipedia.org/wiki/Kronecker_product]], which is sometimes used interchangeably with
+   * the terminology "cross product" or "outer product".
+   *
+   * @param localDataSetRDD The dataset
+   * @param modelsRDD The coefficients
+   * @param sparsityToleranceThreshold If the product between a certain feature and coefficient is smaller than
+   *                                   sparsityToleranceThreshold, then it will be stored as 0 for sparsity
+   *                                   consideration.
+   * @return Kronecker product result
+   */
   private def kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD: RDD[(String, LocalDataSet)],
       modelsRDD: RDD[(String, GeneralizedLinearModel)],

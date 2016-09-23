@@ -28,8 +28,8 @@ import scala.collection.JavaConverters._
 import scala.collection.{Map, Set}
 
 /**
-  * A collection of utility functions on Avro formatted data
-  */
+ * A collection of utility functions on Avro formatted data
+ */
 object DataProcessingUtils {
 
   private def getShardIdToFeatureDimensionMap(

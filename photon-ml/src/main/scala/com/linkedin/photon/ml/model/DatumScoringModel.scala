@@ -19,16 +19,16 @@ import com.linkedin.photon.ml.util.Summarizable
 import org.apache.spark.rdd.RDD
 
 /**
-  * Interface for the implementation of a GAME model
-  */
+ * Interface for the implementation of a GAME model
+ */
 protected[ml] trait DatumScoringModel extends Summarizable {
   /**
-    * Compute the score for the GAME data set.
-    *
-    * @param dataPoints The dataset, which is a RDD consists of the (global Id, GameDatum) pairs. Note that the Long in
-    *                   the RDD above is a unique identifier for which GenericRecord the GameData object was created,
-    *                   referred to in the GAME code as the "global ID".
-    * @return The score
-    */
+   * Compute the score for the GAME data set.
+   *
+   * @param dataPoints The dataset, which is a RDD consists of the (global Id, GameDatum) pairs. Note that the Long in
+   *                   the RDD above is a unique identifier for which GenericRecord the GameData object was created,
+   *                   referred to in the GAME code as the "global ID".
+   * @return The score
+   */
   def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore
 }
