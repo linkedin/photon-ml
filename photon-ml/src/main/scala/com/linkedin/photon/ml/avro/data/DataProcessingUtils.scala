@@ -49,10 +49,8 @@ object DataProcessingUtils {
    * @param featureShardIdToIndexMapLoader a map from feature shard id (defined by the user) to the index map loader
    *                                       [[IndexMapLoader]].
    * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
-   * @param isForModelTraining If GAME data set to be parsed is used for model training, then the response variable is
-   *                           expected to be found from the Avro records. If the GAME data set is used for scoring,
-   *                           then we don't expect to find response, but we will try to find whether the uid field is
-   *                           in the record.
+   * @param isResponseRequired If GAME data set to be parsed is used for model training, then the response variable is
+   *                           expected to be found from the Avro records.
    * @todo Change the scope to protected[avro] after Avro related classes/functions are decoupled from the rest of code
    * @return parsed [[RDD]] of type [[GameDatum]]
    */
@@ -61,7 +59,7 @@ object DataProcessingUtils {
       featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
       featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       idTypeSet: Set[String],
-      isForModelTraining: Boolean): RDD[(Long, GameDatum)] = {
+      isResponseRequired: Boolean): RDD[(Long, GameDatum)] = {
 
     val shardIdToFeatureDimensionMap = getShardIdToFeatureDimensionMap(featureShardIdToIndexMapLoader)
 
@@ -76,7 +74,7 @@ object DataProcessingUtils {
         featureShardIdToIndexMap,
         shardIdToFeatureDimensionMap,
         idTypeSet,
-        isForModelTraining
+        isResponseRequired
       ))}
     }
   }
@@ -117,6 +115,7 @@ object DataProcessingUtils {
 
   /**
    * Parse a [[GameDatum]] from a [[GenericRecord]]
+   *
    * @param record an instance of [[GenericRecord]]
    * @param featureShardIdToFeatureSectionKeysMap a map from feature shard id (defined by the user) to feature
    *                                              section keys (defined in the input data's Avro schema)
@@ -124,10 +123,8 @@ object DataProcessingUtils {
    *                                    [[IndexMap]] (loaded by the [[IndexMapLoader]])
    * @param idTypeSet a set of id types expected to be found and parsed in the Avro records
    * @param shardIdToFeatureDimensionMap a map from shard Id to that feature shard's dimension
-   * @param isForModelTraining If GAME data set to be parsed is used for model training, then the response variable is
-   *                           expected to be found from the Avro records. If the GAME data set is used for scoring,
-   *                           then we don't expect to find response, but we will try to find whether the uid field is
-   *                           in the record.
+   * @param isResponseRequired If GAME data set to be parsed is used for model training, then the response variable is
+   *                           expected to be found from the Avro records.
    * @todo Change the scope to protected[avro] after Avro related classes/functions are decoupled from the rest of code
    * @return parsed [[GameDatum]]
    */
@@ -137,7 +134,7 @@ object DataProcessingUtils {
       featureShardIdToIndexMap: Map[String, IndexMap],
       shardIdToFeatureDimensionMap: Map[String, Int],
       idTypeSet: Set[String],
-      isForModelTraining: Boolean): GameDatum = {
+      isResponseRequired: Boolean): GameDatum = {
 
     val featureShardContainer = featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
       val featureMap = featureShardIdToIndexMap(shardId)
@@ -145,7 +142,7 @@ object DataProcessingUtils {
       val features = getFeaturesFromGenericRecord(record, featureMap, featureSectionKeys, featureDimension)
       (shardId, features)
     }
-    val response = if (isForModelTraining) {
+    val response = if (isResponseRequired) {
       Utils.getDoubleAvro(record, AvroFieldNames.RESPONSE)
     } else {
       if (record.get(AvroFieldNames.RESPONSE) != null) {
@@ -165,8 +162,8 @@ object DataProcessingUtils {
       None
     }
     val idTypeToValueMap =
-      if (!isForModelTraining && record.get(AvroFieldNames.UID) != null) {
-        // ScoringResultAvro is expecting a field "uid"
+      //TODO: find a better way to handle the field "uid", which is used in ScoringResultAvro
+      if (record.get(AvroFieldNames.UID) != null) {
         getIdTypeToValueMapFromGenericRecord(record, idTypeSet) +
             (AvroFieldNames.UID -> Utils.getStringAvro(record, AvroFieldNames.UID))
       } else {

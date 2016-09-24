@@ -40,15 +40,14 @@ class DataProcessingUtilsTest {
     val uid = "foo"
     record.put(AvroFieldNames.UID, uid)
 
-    val gameDatum = DataProcessingUtils.getGameDatumFromGenericRecord(
+    val gameDatumWithoutResponse = DataProcessingUtils.getGameDatumFromGenericRecord(
       record = record,
       featureShardIdToFeatureSectionKeysMap = Map(),
       featureShardIdToIndexMap = Map(),
       shardIdToFeatureDimensionMap = Map(),
       idTypeSet = Set(),
-      isForModelTraining = false)
-
-    assertEquals(gameDatum.idTypeToValueMap.get(AvroFieldNames.UID), Some(uid))
+      isResponseRequired = false)
+    assertEquals(gameDatumWithoutResponse.idTypeToValueMap.get(AvroFieldNames.UID), Some(uid))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -66,7 +65,7 @@ class DataProcessingUtilsTest {
       featureShardIdToIndexMap = Map(),
       shardIdToFeatureDimensionMap = Map(),
       idTypeSet = Set(),
-      isForModelTraining = true)
+      isResponseRequired = true)
   }
 
   @Test
