@@ -14,58 +14,58 @@
  */
 package com.linkedin.photon.ml
 
+import java.util.concurrent.atomic.AtomicLong
+
+import org.apache.spark.HashPartitioner
+
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.{FixedEffectModel, RandomEffectModelInProjectedSpace}
-import com.linkedin.photon.ml.optimization.LogisticRegressionOptimizationProblem
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, IndividualGLMLossFunction, LogisticLossFunction}
+import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModelInProjectedSpace}
+import com.linkedin.photon.ml.normalization.NoNormalization
+import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
+import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, GLMOptimizationConfiguration}
 import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
-import org.apache.spark.HashPartitioner
-import org.apache.spark.SparkContext
-
-import java.util.concurrent.atomic.AtomicLong
-
 /**
-  * A set of utility functions for GAME unit and integration tests
-  */
+ * A set of utility functions for GAME unit and integration tests
+ */
 trait GameTestUtils {
   self: SparkTestUtils =>
 
   /**
-    * Default random seed
-    */
+   * Default random seed
+   */
   var DefaultSeed = 7
 
   /**
-    * Holds the next value in a unique id sequence
-    */
+   * Holds the next value in a unique id sequence
+   */
   var nextId: AtomicLong = new AtomicLong(0)
 
   /**
-    * Adds a unique id to the item
-    *
-    * @param item the item
-    * @return a tuple with unique id and the item
-    */
+   * Adds a unique id to the item
+   *
+   * @param item The item
+   * @return A tuple with global id and the item
+   */
   def addUniqueId[T](item: T): (Long, T) = (nextId.incrementAndGet, item)
 
   /**
-    * Generates Photon ML labeled points
-    *
-    * @param size the size of the set to of labeled points to generate
-    * @param dimensions the number of dimensions
-    * @param seed random seed
-    * @return a set of newly generated labeled points
-    */
+   * Generates Photon ML labeled points
+   *
+   * @param size The size of the set to of labeled points to generate
+   * @param dimensions The number of dimensions
+   * @param seed Random seed
+   * @return A set of newly generated labeled points
+   */
   def generateLabeledPoints(
-      size: Int,
-      dimensions: Int,
-      seed: Int = DefaultSeed) = {
+    size: Int,
+    dimensions: Int,
+    seed: Int = DefaultSeed): Iterator[LabeledPoint] = {
 
     val data = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       seed, size, dimensions)
@@ -76,69 +76,77 @@ trait GameTestUtils {
   }
 
   /**
-    * Generates a fixed effect dataset
-    *
-    * @param featureShardId the feature shard id of the dataset
-    * @param size the size of the dataset
-    * @param dimensions the number of dimensions
-    * @param seed random seed
-    * @return the newly generated fixed effect dataset
-    */
+   * Generates a fixed effect dataset
+   *
+   * @param featureShardId The feature shard id of the dataset
+   * @param size The number of training samples in the dataset
+   * @param dimensions The feature dimension
+   * @param seed A random seed
+   * @return A newly generated fixed effect dataset
+   */
   def generateFixedEffectDataSet(
-      featureShardId: String,
-      size: Int,
-      dimensions: Int,
-      seed: Int = DefaultSeed) = {
+    featureShardId: String,
+    size: Int,
+    dimensions: Int,
+    seed: Int = DefaultSeed): FixedEffectDataSet = {
 
-    val data = sc.parallelize(
-      generateLabeledPoints(size, dimensions, seed)
-        .map(addUniqueId)
-        .toSeq)
+    val data = sc.parallelize(generateLabeledPoints(size, dimensions, seed).map(addUniqueId).toSeq)
 
     new FixedEffectDataSet(data, featureShardId)
   }
 
   /**
-    * Generates a fixed effect optimization problem
-    *
-    * @param treeAggregateDepth the Spark treeAggregateDepth setting
-    * @param isTrackingState true if state tracking should be enabled
-    * @return the newly generated fixed effect optimization problem
-    */
-  def generateFixedEffectOptimizationProblem(treeAggregateDepth: Int = 1, isTrackingState: Boolean = true) =
-    LogisticRegressionOptimizationProblem.buildOptimizationProblem(
-      GLMOptimizationConfiguration(), treeAggregateDepth, isTrackingState)
+   * Generates a fixed effect optimization problem
+   *
+   * @return A newly generated fixed effect optimization problem
+   */
+  def generateFixedEffectOptimizationProblem: DistributedOptimizationProblem[DistributedGLMLossFunction] = {
+    val configuration = GLMOptimizationConfiguration()
+
+    DistributedOptimizationProblem.createOptimizationProblem(
+      configuration,
+      DistributedGLMLossFunction.createLossFunction(
+        configuration,
+        LogisticLossFunction,
+        sc,
+        1),
+      None,
+      LogisticRegressionModel.createModel,
+      sc.broadcast(NoNormalization()),
+      isTrackingState = false,
+      isComputingVariance = false)
+  }
 
   /**
-    * Generates a fixed effect model
-    *
-    * @param featureShardId the feature shard id of the model
-    * @param dimensions the number of dimensions
-    * @return the newly generated fixed effect model
-    */
+   * Generates a fixed effect model
+   *
+   * @param featureShardId The feature shard id of the model
+   * @param dimensions The model dimension
+   * @return The newly generated fixed effect model
+   */
   def generateFixedEffectModel(featureShardId: String, dimensions: Int) = new FixedEffectModel(
-    sc.broadcast(LogisticRegressionOptimizationProblem.initializeZeroModel(dimensions)),
+    sc.broadcast(LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(dimensions))),
     featureShardId)
 
   /**
-    * Generates a fixed effect coordinate and model
-    *
-    * @param featureShardId the feature shard id of the model
-    * @param size the size of the dataset
-    * @param dimensions the number of dimensions
-    * @param seed the random seed
-    * @return problem coordinate and random effect model
-    */
+   * Generates a fixed effect coordinate and model
+   *
+   * @param featureShardId The feature shard id of the model
+   * @param size The number of training samples in the dataset
+   * @param dimensions The feature/model dimension
+   * @param seed A random seed
+   * @return A fixed effect problem coordinate and model
+   */
   def generateFixedEffectCoordinateAndModel(
       featureShardId: String,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed) = {
+      seed: Int = DefaultSeed)
+    : (FixedEffectCoordinate[DistributedGLMLossFunction], FixedEffectModel) = {
 
     val dataset = generateFixedEffectDataSet(featureShardId, size, dimensions, seed)
-    val optimizationProblem = generateFixedEffectOptimizationProblem()
-    val coordinate = new FixedEffectCoordinate[LogisticRegressionModel, TwiceDiffFunction[LabeledPoint]](
-      dataset, optimizationProblem)
+    val optimizationProblem = generateFixedEffectOptimizationProblem
+    val coordinate = new FixedEffectCoordinate(dataset, optimizationProblem)
 
     val model = generateFixedEffectModel(featureShardId, dimensions)
 
@@ -146,17 +154,17 @@ trait GameTestUtils {
   }
 
   /**
-    * Generates a random effect dataset
-    *
-    * @param randomEffectIds a set of random effect ids
-    * @param randomEffectType the random effect type
-    * @param featureShardId the feature shard id
-    * @param size the size of the dataset
-    * @param dimensions the number of dimensions
-    * @param seed the random seed
-    * @param numPartitions the number of spark partitions
-    * @return the newly generated random effect dataset
-    */
+   * Generates a random effect dataset
+   *
+   * @param randomEffectIds A set of random effect IDs
+   * @param randomEffectType The random effect type
+   * @param featureShardId The feature shard ID
+   * @param size The number of training samples in the dataset
+   * @param dimensions The feature dimension
+   * @param seed The random seed
+   * @param numPartitions The number of Spark partitions
+   * @return A newly generated random effect dataset
+   */
   def generateRandomEffectDataSet(
       randomEffectIds: Seq[String],
       randomEffectType: String,
@@ -164,7 +172,7 @@ trait GameTestUtils {
       size: Int,
       dimensions: Int,
       seed: Int = DefaultSeed,
-      numPartitions: Int = 4) = {
+      numPartitions: Int = 4): RandomEffectDataSet = {
 
     val datasets = randomEffectIds.map((_,
       new LocalDataSet(
@@ -182,42 +190,51 @@ trait GameTestUtils {
   }
 
   /**
-    * Generates linear models for random effect models
-    *
-    * @param randomEffectIds a set of random effect ids for which to generate models
-    * @param dimensions the number of dimensions
-    * @return the newly generated random effect model
-    */
+   * Generates linear models for random effect models
+   *
+   * @param randomEffectIds A set of random effect IDs for which to generate models
+   * @param dimensions The model dimension
+   * @return A newly generated random effect model
+   */
   def generateLinearModelsForRandomEffects(
       randomEffectIds: Seq[String],
       dimensions: Int): Seq[(String, GeneralizedLinearModel)] =
     randomEffectIds.map((_, LogisticRegressionOptimizationProblem.initializeZeroModel(dimensions)))
 
   /**
-    * Generates a random effect optimization problem
-    *
-    * @param dataset the dataset
-    * @return the newly generated random effect optimization problem
-    */
-  def generateRandomEffectOptimizationProblem(dataset: RandomEffectDataSet) = {
-    val optimizationProblemBuilder = LogisticRegressionOptimizationProblem.buildOptimizationProblem _
+   * Generates a random effect optimization problem
+   *
+   * @param dataset The random effect dataset
+   * @return A newly generated random effect optimization problem
+   */
+  def generateRandomEffectOptimizationProblem(
+    dataset: RandomEffectDataSet): RandomEffectOptimizationProblem[IndividualGLMLossFunction] = {
 
-    RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem[
-        LogisticRegressionModel, TwiceDiffFunction[LabeledPoint]](
-      optimizationProblemBuilder, GLMOptimizationConfiguration(), dataset)
+    val configuration = GLMOptimizationConfiguration()
+
+    RandomEffectOptimizationProblem.createRandomEffectOptimizationProblem(
+      dataset,
+      configuration,
+      IndividualGLMLossFunction.createLossFunction(
+        configuration,
+        LogisticLossFunction),
+      LogisticRegressionModel.createModel,
+      sc.broadcast(NoNormalization()),
+      isTrackingState = false,
+      isComputingVariance = false)
   }
 
   /**
-    * Generate a random effect coordinate and model
-    *
-    * @param randomEffectType the random effect type
-    * @param featureShardId the feature shard id
-    * @param numEntities the number of random effect entities
-    * @param size the size of each random effect dataset
-    * @param dimensions the number of dimensions of each random effect dataset
-    * @param seed the random seed
-    * @return problem coordinate and random effect model
-    */
+   * Generate a random effect coordinate and model
+   *
+   * @param randomEffectType The random effect type
+   * @param featureShardId The feature shard ID
+   * @param numEntities The number of random effect entities
+   * @param size The number of training samples per dataset
+   * @param dimensions The feature dimension of each dataset
+   * @param seed A random seed
+   * @return A random effect problem coordinate and model
+   */
   def generateRandomEffectCoordinateAndModel(
       randomEffectType: String,
       featureShardId: String,
@@ -229,19 +246,23 @@ trait GameTestUtils {
     val randomEffectIds = (1 to numEntities).map("re" + _).toSeq
 
     val randomEffectDataset = generateRandomEffectDataSet(
-      randomEffectIds, randomEffectType, featureShardId, size, dimensions, seed)
+      randomEffectIds,
+      randomEffectType,
+      featureShardId,
+      size,
+      dimensions,
+      seed)
     val dataset = RandomEffectDataSetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
 
     val optimizationProblem = generateRandomEffectOptimizationProblem(dataset)
-    val coordinate = new RandomEffectCoordinateInProjectedSpace[
-        LogisticRegressionModel, TwiceDiffFunction[LabeledPoint]](
-      dataset, optimizationProblem)
-
+    val coordinate = new RandomEffectCoordinateInProjectedSpace[IndividualGLMLossFunction](dataset, optimizationProblem)
     val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
     val model = new RandomEffectModelInProjectedSpace(
-      models, dataset.randomEffectProjector, randomEffectType, featureShardId)
+      models,
+      dataset.randomEffectProjector,
+      randomEffectType,
+      featureShardId)
 
     (coordinate, model)
   }
-
 }

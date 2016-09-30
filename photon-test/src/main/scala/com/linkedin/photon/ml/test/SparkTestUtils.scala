@@ -14,16 +14,16 @@
  */
 package com.linkedin.photon.ml.test
 
-import scala.collection.immutable.TreeMap
-import scala.collection.mutable.ListBuffer
-
 import breeze.linalg.{SparseVector, Vector}
 import org.apache.commons.math3.distribution.PascalDistribution
 import org.apache.commons.math3.random.{RandomGenerator, Well19937a}
 import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.collection.immutable.TreeMap
+import scala.collection.mutable.ListBuffer
 
+// TODO: Additional documentation required
 trait SparkTestUtils {
   var sc: SparkContext = _
 
@@ -33,9 +33,8 @@ trait SparkTestUtils {
    *
    * @param name the test job name
    * @param body the execution closure
-   * @return
    */
-  def sparkTestSelfServeContext(name: String)(body: => Unit) {
+  def sparkTestSelfServeContext(name: String)(body: => Unit): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
       try {
         body
@@ -52,9 +51,8 @@ trait SparkTestUtils {
    *
    * @param name the test job name
    * @param body the execution closure
-   * @return
    */
-  def sparkTest(name: String)(body: => Unit) {
+  def sparkTest(name: String)(body: => Unit): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
 
       val conf: SparkConf = new SparkConf()

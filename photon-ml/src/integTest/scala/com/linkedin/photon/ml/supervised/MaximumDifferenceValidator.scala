@@ -14,12 +14,13 @@
  */
 package com.linkedin.photon.ml.supervised
 
+import scala.reflect.ClassTag
+
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
-import org.apache.spark.rdd.RDD
-
-import scala.reflect.ClassTag
 
 // TODO: Documentation
 /**

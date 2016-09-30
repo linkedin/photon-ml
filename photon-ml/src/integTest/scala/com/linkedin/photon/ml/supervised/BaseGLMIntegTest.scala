@@ -15,22 +15,22 @@
 package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.data.{LabeledPoint, SimpleObjectProvider}
-import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.normalization.{NormalizationContext, NoNormalization}
+import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
+import org.testng.Assert.assertTrue
+import org.testng.annotations.{DataProvider, Test}
+
+import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
-import org.testng.Assert.assertTrue
-import org.testng.Assert.fail
-import org.testng.annotations.{DataProvider, Test}
 
+// TODO: Update test to match all possible test scenarios
 /**
  * Integration test scenarios to generate:
  *
@@ -47,13 +47,15 @@ import org.testng.annotations.{DataProvider, Test}
  * Unfortunately, we need a sensible subset of the cartesian product of all of these (e.g. TRON doesn't make sense
  * with L1).
  *
- * For now, we focus only on the happy path tests. For now, we define those to be:
+ * For now, we focus only on the main tests. For now, we define those to be:
  * <ul>
  *   <li>LBFGS as the solver</li>
- *   <li>Each kind of GLA (LogisticRegression, LinearRegression, PoissonRegression when it's ready)</li>
+ *   <li>Each kind of GLA (LogisticRegression, LinearRegression, PoissonRegression)</li>
+ *   <li>L2 Regularization</li>
  *   <li>Valid regularization weight (1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4)</li>
+ *   <li>TreeAggregateDepth is 1</li>
  *   <li>Summary is none</li>
- *   <li>Normalization is st. dev</li>
+ *   <li>No normalization</li>
  *   <li>Input is "easy"</li>
  * </ul>
  *
@@ -66,89 +68,106 @@ import org.testng.annotations.{DataProvider, Test}
  * </ul>
  */
 class BaseGLMIntegTest extends SparkTestUtils {
-  /**
-   * Enumerate valid sets of (description, generalized linear algorithm, data set) tuples.
-   */
-  private def getGeneralizedLinearOptimizationProblems: Array[(Object, Object, Object, Object)] = {
-    val treeAggregateDepth = 1
-    val enableStateTracker = true
+  def generateDataSetIterable(data: Iterator[(Double, Vector[Double])]): Seq[LabeledPoint] =
+    data.map( x => new LabeledPoint(label = x._1, features = x._2)).toList
 
+  /**
+   * Enumerate valid sets of (description, optimization problem builder, data set, validator) tuples.
+   */
+  @DataProvider
+  def getGeneralizedLinearOptimizationProblems: Array[Array[Object]] = {
     val lbfgsConfig = GLMOptimizationConfiguration(
       OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
       L2RegularizationContext)
+//    val tronConfig = GLMOptimizationConfiguration(
+//      OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),
+//      L2RegularizationContext)
 
-    val tronConfig = GLMOptimizationConfiguration(
-      OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),
-      L2RegularizationContext)
+    val linearRegressionData = generateDataSetIterable(
+      drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
+    val poissonRegressionData = generateDataSetIterable(
+      drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
+    val logisticRegressionData = generateDataSetIterable(
+      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
+//    val smoothedHingeData = generateDataSetIterable(
+//      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
+//        BaseGLMIntegTest.RANDOM_SEED,
+//        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+//        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
 
     Array(
-      Tuple4("Linear regression, easy problem",
-        LinearRegressionOptimizationProblem.buildOptimizationProblem(
-          lbfgsConfig, treeAggregateDepth, enableStateTracker),
-        drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-        new CompositeModelValidator[LinearRegressionModel](new PredictionFiniteValidator(),
+      Array(
+        "Linear regression, easy problem",
+        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+          DistributedOptimizationProblem.createOptimizationProblem(
+            lbfgsConfig,
+            DistributedGLMLossFunction.createLossFunction(
+              lbfgsConfig,
+              SquaredLossFunction,
+              sc,
+              treeAggregateDepth = 1),
+            None,
+            LinearRegressionModel.createModel,
+            normalizationContext,
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
+        linearRegressionData,
+        new CompositeModelValidator[LinearRegressionModel](
+          new PredictionFiniteValidator(),
           new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMIntegTest.MAXIMUM_ERROR_MAGNITUDE))),
 
-      Tuple4("Poisson regression, easy problem",
-        PoissonRegressionOptimizationProblem.buildOptimizationProblem(
-          lbfgsConfig, treeAggregateDepth, enableStateTracker),
-        drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-        new CompositeModelValidator[PoissonRegressionModel](new PredictionFiniteValidator,
+      Array(
+        "Poisson regression, easy problem",
+        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+          DistributedOptimizationProblem.createOptimizationProblem(
+            lbfgsConfig,
+            DistributedGLMLossFunction.createLossFunction(
+              lbfgsConfig,
+              PoissonLossFunction,
+              sc,
+              treeAggregateDepth = 1),
+            None,
+            PoissonRegressionModel.createModel,
+            normalizationContext,
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
+        poissonRegressionData,
+        new CompositeModelValidator[PoissonRegressionModel](
+          new PredictionFiniteValidator,
           new NonNegativePredictionValidator[PoissonRegressionModel]
         )
       ),
 
-      Tuple4("Logistic regression, easy problem",
-        LogisticRegressionOptimizationProblem.buildOptimizationProblem(
-          tronConfig, treeAggregateDepth, enableStateTracker),
-        drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-        new CompositeModelValidator[LogisticRegressionModel](new PredictionFiniteValidator(),
-          new BinaryPredictionValidator[LogisticRegressionModel](),
-          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC))),
-
-      Tuple4("Linear SVM, easy problem",
-        SmoothedHingeLossLinearSVMOptimizationProblem.buildOptimizationProblem(
-          lbfgsConfig, treeAggregateDepth, enableStateTracker),
-        drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(BaseGLMIntegTest.RANDOM_SEED,
-          BaseGLMIntegTest.NUMBER_OF_SAMPLES, BaseGLMIntegTest.NUMBER_OF_DIMENSIONS),
-        new CompositeModelValidator[SmoothedHingeLossLinearSVMModel](new PredictionFiniteValidator(),
-          new BinaryPredictionValidator[SmoothedHingeLossLinearSVMModel](),
-          new BinaryClassifierAUCValidator[SmoothedHingeLossLinearSVMModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
-    )
-  }
-
-  @DataProvider
-  def generateHappyPathCases() : Array[Array[Object]] = {
-    val toGenerate = getGeneralizedLinearOptimizationProblems
-
-    toGenerate.map( x => {
       Array(
-        s"Happy path [$x._1]",   // Description
-        x._2,                    // Optimization Problem
-        x._3,                    // data
-        x._4                     // validator
-      )
-    })
-  }
-
-  @Test(dataProvider = "generateHappyPathCases")
-  def checkHappyPath[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
-      desc: String,
-      optimizationProblem: GeneralizedLinearOptimizationProblem[GLM, Function],
-      data: Iterator[(Double, Vector[Double])],
-      validator: ModelValidator[GLM]) = {
-
-    runGeneralizedLinearOptimizationProblemScenario(
-      desc,
-      optimizationProblem,
-      List(1.0),
-      None,
-      NoNormalization,
-      data,
-      validator)
+        "Logistic regression, easy problem",
+        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+          DistributedOptimizationProblem.createOptimizationProblem(
+            lbfgsConfig,
+            DistributedGLMLossFunction.createLossFunction(
+              lbfgsConfig,
+              LogisticLossFunction,
+              sc,
+              treeAggregateDepth = 1),
+            None,
+            LogisticRegressionModel.createModel,
+            normalizationContext,
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
+        logisticRegressionData,
+        new CompositeModelValidator[LogisticRegressionModel](
+          new PredictionFiniteValidator(),
+          new BinaryPredictionValidator[LogisticRegressionModel](),
+          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
+    )
   }
 
   /**
@@ -156,35 +175,34 @@ class BaseGLMIntegTest extends SparkTestUtils {
    * data providers to exercise different paths) -- hopefully the majority of tests can be constructed by creating
    * the right bindings.
    */
-  def runGeneralizedLinearOptimizationProblemScenario[GLM <: GeneralizedLinearModel, Function <: DiffFunction[LabeledPoint]](
+  @Test(dataProvider = "getGeneralizedLinearOptimizationProblems")
+  def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
-      optimizationProblem: GeneralizedLinearOptimizationProblem[GLM, Function],
-      lambdas: List[Double],
-      summary: Option[BasicStatisticalSummary],
-      norm: NormalizationContext,
-      data: Iterator[(Double, Vector[Double])],
-      validator: ModelValidator[GLM]) = sparkTest(desc) {
+      optimizationProblemBuilder: (SparkContext, Broadcast[NormalizationContext]) =>
+        DistributedOptimizationProblem[DistributedGLMLossFunction],
+      data: Seq[LabeledPoint],
+      validator: ModelValidator[GeneralizedLinearModel]) = sparkTest(desc) {
 
-    val normalizationContextProvider = new SimpleObjectProvider[NormalizationContext](norm)
+    val normalizationContext = sc.broadcast(NoNormalization())
 
-    // Step 1: generate our input RDD
-    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data.map( x => {
-      new LabeledPoint(label = x._1, features = x._2)
-    }).toList).repartition(BaseGLMIntegTest.NUM_PARTITIONS)
+    // Step 1: Generate input RDD
+    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data).repartition(BaseGLMIntegTest.NUM_PARTITIONS)
+    val optimizationProblem = optimizationProblemBuilder(sc, normalizationContext)
 
-    // Step 2: actually run
-    val models = lambdas.map { lambda =>
-      val problem = optimizationProblem.updateObjective(normalizationContextProvider, lambda)
-      problem.run(trainingSet, norm)
+    // Step 2: Run optimization
+    val models = BaseGLMIntegTest.LAMBDAS.map { lambda =>
+      optimizationProblem.updateRegularizationWeight(lambda)
+      val result = optimizationProblem.run(trainingSet)
+      val statesTracker = optimizationProblem.getStatesTracker
+
+      // Step 3: Check convergence
+      assertTrue(statesTracker.isDefined, "State tracking was enabled")
+      BaseGLMIntegTest.checkConvergence(statesTracker.get)
+
+      result
     }
 
-    // Step 3: check convergence
-    // TODO: Figure out if this test continues to make sense when we have multiple lambdas and, if not, how it should
-    // TODO: be fixed.
-    assertTrue(optimizationProblem.getStatesTracker.isDefined, "State tracking was enabled")
-    OptimizerIntegTest.checkConvergence(optimizationProblem.getStatesTracker.get)
-
-    // Step 4: validate the models
+    // Step 4: Validate the models
     models.foreach( m => {
       m.validateCoefficients()
       validator.validateModelPredictions(m, trainingSet)
@@ -193,18 +211,34 @@ class BaseGLMIntegTest extends SparkTestUtils {
 }
 
 /**
- * Mostly constants controlling this test
+ * Constants controlling this test
  */
 object BaseGLMIntegTest {
+  val LAMBDAS: Seq[Double] = List(1.0)
+  // Failures for MaximumDifferenceValidator with all lambas enabled. Need to revisit settings.
+  //val LAMBDAS: Seq[Double] = List(1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4)
+  val TREE_AGGREGATE_DEPTH = 1
   val NUM_PARTITIONS = 4
-  val RANDOM_SEED:Int = 0
+  val RANDOM_SEED: Int = 0
   // 10,000 samples would be good enough
-  val NUMBER_OF_SAMPLES:Int = 10000
-  // dimension of 10 would be sufficient to test the problem
-  val NUMBER_OF_DIMENSIONS:Int = 10
-  /** Minimum required AUROC */
-  val MINIMUM_CLASSIFIER_AUCROC:Double = 0.95
-  /** Maximum allowable magnitude difference between predictions and labels for regression problems
-    * (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)*/
-  val MAXIMUM_ERROR_MAGNITUDE:Double = 10 * SparkTestUtils.INLIER_STANDARD_DEVIATION
+  val NUMBER_OF_SAMPLES: Int = 10000
+  // Dimension of 10 should be sufficient to test these problems
+  val NUMBER_OF_DIMENSIONS: Int = 10
+  // Minimum required AUROC
+  val MINIMUM_CLASSIFIER_AUCROC: Double = 0.95
+  // Maximum allowable magnitude difference between predictions and labels for regression problems
+  // (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)
+  val MAXIMUM_ERROR_MAGNITUDE: Double = 10 * SparkTestUtils.INLIER_STANDARD_DEVIATION
+  val TRACK_STATES = true
+  val COMPUTE_VARIANCES = false
+
+  def checkConvergence(history: OptimizationStatesTracker) {
+    var lastValue: Double = Double.MaxValue
+
+    history.getTrackedStates.foreach { state =>
+      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
+        "], previous=[" + lastValue + "])")
+      lastValue = state.value
+    }
+  }
 }

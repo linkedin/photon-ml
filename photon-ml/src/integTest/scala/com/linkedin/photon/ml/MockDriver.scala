@@ -38,9 +38,21 @@ class MockDriver(
     override val seed: Long)
   extends Driver(params: Params, sc: SparkContext, logger: PhotonLogger, seed) {
 
+  /**
+    * Have the input features been summarized
+    */
   var isSummarized = false
+
+  /**
+    * Diagnostic status for current run
+    */
   val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
 
+  /**
+    * Get the sequence of completed stages up to and including the current stage
+    *
+    * @return An array of DriverStage objects
+    */
   def stages(): Array[DriverStage] = {
     (stageHistory += stage).toArray
   }
@@ -71,10 +83,20 @@ class MockDriver(
 }
 
 object MockDriver {
-
   // Use a static random seed for deterministic test results
   val seed = 3L
 
+  /**
+   * Setup a mock Photon-ML Driver and run it, then verify that the actual results match the expected results
+   *
+   * @param args The Driver runtime arguments
+   * @param sparkContext The Spark context
+   * @param expectedStages The Photon-ML stages the mock run is expected to pass through
+   * @param expectedNumFeatures The expected number of features in the input data
+   * @param expectedNumTrainingData The expected number of training records
+   * @param expectedIsSummarized Whether feature summarization was expected or not
+   * @param expectedDiagnosticMode The expected levels of diagnostics run
+   */
   def runLocally(
       args: Array[String],
       sparkContext: SparkContext,
@@ -84,7 +106,7 @@ object MockDriver {
       expectedIsSummarized: Boolean,
       expectedDiagnosticMode: DiagnosticMode): Unit = {
 
-    /* Parse the parameters from command line, should always be the 1st line in main*/
+    // Parse the parameters from command line, should always be the 1st line in main
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
     val logPath = new Path(params.outputDir, "log-message.txt")
     val logger = new PhotonLogger(logPath, sparkContext)

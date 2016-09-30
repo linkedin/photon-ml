@@ -14,13 +14,12 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.testng.annotations.Test
 import org.testng.Assert._
+import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.optimization.LogisticRegressionOptimizationProblem
 import com.linkedin.photon.ml.test.SparkTestUtils
-
 
 /**
  * Test the random effect model
@@ -29,10 +28,10 @@ class RandomEffectModelTest extends SparkTestUtils {
 
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForRandomEffectModel") {
-
     // Coefficients parameter
     val coefficientDimension = 1
-    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
+    val glm: GeneralizedLinearModel =
+      LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"
