@@ -14,100 +14,215 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import com.linkedin.photon.ml.data.{LabeledPoint, SimpleObjectProvider}
-import com.linkedin.photon.ml.function.TwiceDiffFunction
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.sampler.DownSampler
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
-import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
-import com.linkedin.photon.ml.test.CommonTestUtils
+import scala.math.abs
 
-import breeze.linalg.Vector
-import breeze.linalg.sum
-import org.apache.spark.rdd.RDD
-import org.mockito.Matchers
+import breeze.linalg.{Vector, sum}
 import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import scala.collection.mutable
-import scala.math.abs
+import com.linkedin.photon.ml.constants.MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function._
+import com.linkedin.photon.ml.function.svm.IndividualSmoothedHingeLossFunction
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
+import com.linkedin.photon.ml.test.CommonTestUtils
 
+/**
+ * Test the base function in GeneralizedLinearOptimizationProblem common to all optimization problems.
+ */
 class GeneralizedLinearOptimizationProblemTest {
-  import GeneralizedLinearOptimizationProblemTest._
   import CommonTestUtils._
+  import GeneralizedLinearOptimizationProblemTest._
 
   @Test
-  def testRun(): Unit = {
-    val (problem, optimizer, objectiveFunction) = createProblem()
-
-    val dim = 10
-    val data = mock(classOf[RDD[LabeledPoint]])
-    val initialModel = LogisticRegressionOptimizationProblem.initializeZeroModel(dim)
-    val normalizationContext = mock(classOf[NormalizationContext])
-
-    val coefficients = new Coefficients(generateDenseVector(dim))
-
-    doReturn(coefficients.means).when(normalizationContext).transformModelCoefficients(coefficients.means)
-    doReturn((coefficients.means, None))
-      .when(optimizer)
-      .optimize(Matchers.eq(data), Matchers.eq(objectiveFunction), Matchers.any(classOf[Vector[Double]]))
-
+  def testInitializeZeroModel(): Unit = {
+    val optimizer = mock(classOf[Optimizer[ObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
-    val state = OptimizerState(coefficients.means, 0, generateDenseVector(dim), 0)
+    val objective = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val regularization = NoRegularizationContext
 
-    doReturn(Array(state)).when(statesTracker).getTrackedStates
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
-    val model = problem.run(data, initialModel, normalizationContext)
+    val logisticProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      LogisticRegressionModel.createModel,
+      regularization)
+    val linearProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      LinearRegressionModel.createModel,
+      regularization)
+    val poissonProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      PoissonRegressionModel.createModel,
+      regularization)
+    val hingeProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      SmoothedHingeLossLinearSVMModel.createModel,
+      regularization)
 
-    assertEquals(coefficients, model.coefficients)
-    assertEquals(problem.getModelTracker.get.length, 1)
+    val logisticModel = logisticProblem.publicInitializeZeroModel(DIMENSION)
+    val linearModel = linearProblem.publicInitializeZeroModel(DIMENSION)
+    val poissonModel = poissonProblem.publicInitializeZeroModel(DIMENSION)
+    val hingeModel = hingeProblem.publicInitializeZeroModel(DIMENSION)
+
+    assertTrue(logisticModel.isInstanceOf[LogisticRegressionModel])
+    assertEquals(logisticModel.coefficients.means.length, DIMENSION)
+
+    assertTrue(linearModel.isInstanceOf[LinearRegressionModel])
+    assertEquals(linearModel.coefficients.means.length, DIMENSION)
+
+    assertTrue(poissonModel.isInstanceOf[PoissonRegressionModel])
+    assertEquals(poissonModel.coefficients.means.length, DIMENSION)
+
+    assertTrue(hingeModel.isInstanceOf[SmoothedHingeLossLinearSVMModel])
+    assertEquals(hingeModel.coefficients.means.length, DIMENSION)
   }
 
   @Test
-  def testGetRegularizationTermValue: Unit = {
-    val epsilon = 1E-5D
-    val dim = 10
-    val regWeight = 0.8
+  def testCreateModel(): Unit = {
+    val optimizer = mock(classOf[Optimizer[ObjectiveFunction]])
+    val statesTracker = mock(classOf[OptimizationStatesTracker])
+    val objective = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val regularization = NoRegularizationContext
+
+    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+
+    val logisticProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      LogisticRegressionModel.createModel,
+      regularization)
+    val linearProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      LinearRegressionModel.createModel,
+      regularization)
+    val poissonProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      PoissonRegressionModel.createModel,
+      regularization)
+    val hingeProblem = new MockOptimizationProblem(
+      optimizer,
+      objective,
+      SmoothedHingeLossLinearSVMModel.createModel,
+      regularization)
+    val coefficients = generateDenseVector(DIMENSION)
+
+    val logisticModel = logisticProblem.publicCreateModel(coefficients, None)
+    val linearModel = linearProblem.publicCreateModel(coefficients, None)
+    val poissonModel = poissonProblem.publicCreateModel(coefficients, None)
+    val hingeModel = hingeProblem.publicCreateModel(coefficients, None)
+
+    assertTrue(logisticModel.isInstanceOf[LogisticRegressionModel])
+    assertEquals(coefficients, logisticModel.coefficients.means)
+
+    assertTrue(linearModel.isInstanceOf[LinearRegressionModel])
+    assertEquals(coefficients, linearModel.coefficients.means)
+
+    assertTrue(poissonModel.isInstanceOf[PoissonRegressionModel])
+    assertEquals(coefficients, poissonModel.coefficients.means)
+
+    assertTrue(hingeModel.isInstanceOf[SmoothedHingeLossLinearSVMModel])
+    assertEquals(coefficients, hingeModel.coefficients.means)
+  }
+
+  @Test
+  def testGetRegularizationTermValue(): Unit = {
+    val coefficients = new Coefficients(generateDenseVector(DIMENSION))
+    val regWeight = 10D
     val alpha = 0.25
-    val coefficients = new Coefficients(generateDenseVector(dim))
-    val simpleModel = new LogisticRegressionModel(coefficients)
+    val l1RegWeight = alpha * regWeight
+    val l2RegWeight = (1 - alpha) * regWeight
+    val expectedL1Term = sum(coefficients.means.map(abs)) * l1RegWeight
+    val expectedL2Term = coefficients.means.dot(coefficients.means) * l2RegWeight / 2.0
+    val expectedElasticNetTerm = expectedL1Term + expectedL2Term
 
-    val expectedL1Term = sum(coefficients.means.map(abs)) * regWeight
-    val expectedL2Term = coefficients.means.dot(coefficients.means) * regWeight / 2.0
-    val expectedElasticNetTerm = alpha * expectedL1Term + (1 - alpha) * expectedL2Term
+    val optimizerNoReg = mock(classOf[LBFGS])
+    val optimizerL1Reg = mock(classOf[OWLQN])
+    val objectiveNoReg = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val objectiveL2Reg = mock(classOf[L2LossFunction])
+    val statesTracker = mock(classOf[OptimizationStatesTracker])
+    val initialModel = mock(classOf[GeneralizedLinearModel])
 
-    val (withL1, _, _) = createProblem(L1RegularizationContext, regWeight)
-    assertEquals(expectedL1Term, withL1.getRegularizationTermValue(simpleModel), epsilon)
+    doReturn(Some(statesTracker)).when(optimizerNoReg).getStateTracker
+    doReturn(Some(statesTracker)).when(optimizerL1Reg).getStateTracker
 
-    val(withL2, _, _) = createProblem(L2RegularizationContext, regWeight)
-    assertEquals(expectedL2Term, withL2.getRegularizationTermValue(simpleModel), epsilon)
+    val problemNone = new MockOptimizationProblem(
+      optimizerNoReg,
+      objectiveNoReg,
+      LogisticRegressionModel.createModel,
+      NoRegularizationContext)
+    val problemL1 = new MockOptimizationProblem(
+      optimizerL1Reg,
+      objectiveNoReg,
+      LogisticRegressionModel.createModel,
+      L1RegularizationContext)
+    val problemL2 = new MockOptimizationProblem(
+      optimizerNoReg,
+      objectiveL2Reg,
+      LogisticRegressionModel.createModel,
+      L2RegularizationContext)
+    val problemElasticNet = new MockOptimizationProblem(
+      optimizerL1Reg,
+      objectiveL2Reg,
+      LogisticRegressionModel.createModel,
+      ElasticNetRegularizationContext(alpha))
 
-    val ElasticNetRegularizationContext = new RegularizationContext(RegularizationType.ELASTIC_NET, Some(alpha))
-    val(withElasticNet, _, _) = createProblem(ElasticNetRegularizationContext, regWeight)
-    assertEquals(expectedElasticNetTerm, withElasticNet.getRegularizationTermValue(simpleModel), epsilon)
+    doReturn(l1RegWeight).when(optimizerL1Reg).l1RegularizationWeight
+    doReturn(l2RegWeight).when(objectiveL2Reg).l2RegularizationWeight
+    doReturn(coefficients).when(initialModel).coefficients
 
-    val(withNoReg, _, _) = createProblem(NoRegularizationContext, regWeight)
-    assertEquals(0.0, withNoReg.getRegularizationTermValue(simpleModel), epsilon)
+    assertEquals(0.0, problemNone.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(expectedL1Term, problemL1.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(expectedL2Term, problemL2.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(
+      expectedElasticNetTerm,
+      problemElasticNet.getRegularizationTermValue(initialModel),
+      HIGH_PRECISION_TOLERANCE_THRESHOLD)
   }
 }
 
 object GeneralizedLinearOptimizationProblemTest {
-  def createProblem(regularizationContext: RegularizationContext = mock(classOf[RegularizationContext]),
-      regularizationWeight: Double = 0D) = {
-    val optimizer = mock(classOf[Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]]])
-    val sampler = mock(classOf[DownSampler])
-    val objectiveFunction = mock(classOf[TwiceDiffFunction[LabeledPoint]])
-    val modelTrackerBuilder = Some(new mutable.ListBuffer[ModelTracker]())
-    val treeAggregateDepth = 1
-    val isComputingVariances: Boolean = false
+  val DIMENSION = 10
 
-    val problem = new LogisticRegressionOptimizationProblem(
-      optimizer, sampler, objectiveFunction, regularizationContext, regularizationWeight, modelTrackerBuilder,
-      treeAggregateDepth, isComputingVariances)
+  private class MockOptimizationProblem(
+      optimizer: Optimizer[IndividualSmoothedHingeLossFunction],
+      objectiveFunction: IndividualSmoothedHingeLossFunction,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      regularizationContext: RegularizationContext)
+    extends GeneralizedLinearOptimizationProblem[IndividualSmoothedHingeLossFunction](
+      optimizer,
+      objectiveFunction,
+      glmConstructor,
+      false) {
 
-    (problem, optimizer, objectiveFunction)
+    val mockGLM = mock(classOf[GeneralizedLinearModel])
+
+    // Public versions of protected methods for testing
+    def publicInitializeZeroModel(dimension: Int): GeneralizedLinearModel = initializeZeroModel(dimension)
+
+    def publicCreateModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GeneralizedLinearModel =
+      createModel(coefficients, variances)
+
+    // Override abstract methods for testing
+    override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
+      None
+
+    override def run(input: Iterable[LabeledPoint]): GeneralizedLinearModel = mockGLM
+
+    override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel =
+      mockGLM
   }
+
+  // No way to pass Mixin class type to Mockito, need to define a concrete class
+  private class L2LossFunction extends IndividualSmoothedHingeLossFunction with L2RegularizationDiff
 }

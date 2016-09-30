@@ -14,23 +14,20 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint}
-import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.optimization.game.OptimizationTracker
-import com.linkedin.photon.ml.model.{GAMEModel, DatumScoringModel}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.PhotonLogger
-
 import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
-/**
-  * Tests for the CoordinateDescent implementation
-  */
-class CoordinateDescentTest {
+import com.linkedin.photon.ml.data.KeyValueScore
+import com.linkedin.photon.ml.evaluation.Evaluator
+import com.linkedin.photon.ml.function.DistributedObjectiveFunction
+import com.linkedin.photon.ml.model.{DatumScoringModel, GAMEModel}
+import com.linkedin.photon.ml.util.PhotonLogger
 
+/**
+ * Tests for the CoordinateDescent implementation
+ */
+class CoordinateDescentTest {
   @DataProvider
   def coordinateCountProvider(): Array[Array[Integer]] = {
     (1 to 5).map(x => Array(Int.box(x))).toArray
@@ -43,10 +40,10 @@ class CoordinateDescentTest {
     // Create Coordinate mocks
     val coordinateIds = (0 until coordinateCount).map("coordinate" + _)
     val coordinates: Seq[(String,
-      FixedEffectCoordinate[_ <: GeneralizedLinearModel, _ <: DiffFunction[LabeledPoint]])] =
+        FixedEffectCoordinate[_ <: DistributedObjectiveFunction])] =
       coordinateIds.map { coordinateId =>
         val coordinate = mock(
-          classOf[FixedEffectCoordinate[_ <: GeneralizedLinearModel, _ <: DiffFunction[LabeledPoint]]])
+          classOf[FixedEffectCoordinate[_ <: DistributedObjectiveFunction]])
 
         (coordinateId, coordinate)
       }

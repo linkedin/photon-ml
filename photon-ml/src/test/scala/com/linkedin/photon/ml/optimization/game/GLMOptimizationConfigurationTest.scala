@@ -14,9 +14,10 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
+
+import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, OptimizerType, RegularizationType}
 
 /**
  * Some simple tests for GLMOptimizationConfiguration

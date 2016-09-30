@@ -14,46 +14,42 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, LabeledPoint}
-import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.model.FixedEffectModel
-import com.linkedin.photon.ml.normalization.NoNormalization
-import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, OptimizationStatesTracker}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-
+import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.Test
 
-class FixedEffectCoordinateTest {
+import com.linkedin.photon.ml.data.{FixedEffectDataSet, LabeledPoint}
+import com.linkedin.photon.ml.function.DistributedObjectiveFunction
+import com.linkedin.photon.ml.model.FixedEffectModel
+import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, OptimizationStatesTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
+/**
+ * Tests for the FixedEffectCoordinate implementation
+ */
+class FixedEffectCoordinateTest {
   @Test
   def testUpdateModel(): Unit = {
     // Create mocks
     val dataset = mock(classOf[FixedEffectDataSet])
-    val optimizationProblem = mock(
-      classOf[GeneralizedLinearOptimizationProblem[GeneralizedLinearModel, DiffFunction[LabeledPoint]]])
+    val optimizationProblem = mock(classOf[DistributedOptimizationProblem[DistributedObjectiveFunction]])
 
     val fixedEffectModel = mock(classOf[FixedEffectModel])
     val model = mock(classOf[GeneralizedLinearModel])
     val updatedModel = mock(classOf[GeneralizedLinearModel])
     val labeledPoints = mock(classOf[RDD[(Long, LabeledPoint)]])
-    val labeledPointValues = mock(classOf[RDD[LabeledPoint]])
     val sparkContext = mock(classOf[SparkContext])
     val modelBroadcast = mock(classOf[Broadcast[GeneralizedLinearModel]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
 
     // Optimization problem
-    doReturn(labeledPoints).when(optimizationProblem).downSample(Matchers.eq(labeledPoints))
+    doReturn(updatedModel).when(optimizationProblem).runWithSampling(labeledPoints, model)
     doReturn(Some(statesTracker)).when(optimizationProblem).getStatesTracker
-    doReturn(updatedModel).when(optimizationProblem).run(labeledPointValues, model, NoNormalization)
 
     // Fixed effect model
     doReturn(model).when(fixedEffectModel).model
-    doReturn(fixedEffectModel).when(fixedEffectModel).update(modelBroadcast)
 
     // Dataset
     doReturn(labeledPoints).when(dataset).labeledPoints
@@ -62,16 +58,10 @@ class FixedEffectCoordinateTest {
     // Spark context
     doReturn(modelBroadcast).when(sparkContext).broadcast(updatedModel)
 
-    // Labeled points
-    doReturn(labeledPoints).when(labeledPoints).setName(Matchers.any(classOf[String]))
-    doReturn(labeledPoints).when(labeledPoints).persist(Matchers.any())
-    doReturn(labeledPointValues).when(labeledPoints).values
-
     // Update model
     val coordinate = new FixedEffectCoordinate(dataset, optimizationProblem)
     coordinate.updateModel(fixedEffectModel)
 
-    verify(optimizationProblem, times(1)).run(
-      Matchers.any(classOf[RDD[LabeledPoint]]), Matchers.eq(model), Matchers.eq(NoNormalization))
+    verify(optimizationProblem, times(1)).runWithSampling(labeledPoints, model)
   }
 }
