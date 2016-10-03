@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.PointwiseLogisticLossFunction
+import com.linkedin.photon.ml.function.glm.LogisticLossFunction
 
 /**
  * Evaluator for logistic loss
@@ -32,7 +32,7 @@ protected[ml] class LogisticLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights
-      .map { case (_, (score, label, weight)) => weight * PointwiseLogisticLossFunction.loss(score, label)._1 }
+      .map { case (_, (score, label, weight)) => weight * LogisticLossFunction.loss(score, label)._1 }
       .reduce(_ + _)
   }
 

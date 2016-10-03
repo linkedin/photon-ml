@@ -14,29 +14,36 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
-import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.projector.ProjectionMatrix
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, IndividualObjectiveFunction}
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.projector.ProjectionMatrix
+import com.linkedin.photon.ml.sampler.DownSampler
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+
 /**
- * An optimization problem for factored random effect datasets
+ * Representation for a factored random effect optimization problem.
  *
+ * @tparam RandomFunc The type of the random effect objective function
+ * @tparam LatentFunc The type of the latent effect objective function
  * @param randomEffectOptimizationProblem The random effect optimization problem
  * @param latentFactorOptimizationProblem The latent factor optimization problem
  * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
  * @param latentSpaceDimension The dimensionality of the latent space
  */
-protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
-  F <: DiffFunction[LabeledPoint]](
-    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[GLM, F],
-    val latentFactorOptimizationProblem: GeneralizedLinearOptimizationProblem[GLM, F],
+protected[ml] class FactoredRandomEffectOptimizationProblem[
+    RandomFunc <: IndividualObjectiveFunction,
+    LatentFunc <: DistributedObjectiveFunction](
+    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[RandomFunc],
+    val latentFactorOptimizationProblem: DistributedOptimizationProblem[LatentFunc],
     val numIterations: Int,
     val latentSpaceDimension: Int)
   extends RDDLike {
@@ -69,7 +76,8 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLi
    * @param dimension The dimensionality of the model coefficients
    * @return A model with zero coefficients
    */
-  def initializeModel(dimension: Int): GLM = latentFactorOptimizationProblem.initializeZeroModel(dimension)
+  def initializeModel(dimension: Int): GeneralizedLinearModel =
+    latentFactorOptimizationProblem.initializeZeroModel(dimension)
 
   /**
    * Compute the regularization term value
@@ -78,9 +86,8 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLi
    * @param projectionMatrix The projection matrix
    * @return Regularization term value
    */
-  def getRegularizationTermValue(
-    modelsRDD: RDD[(String, GeneralizedLinearModel)],
-    projectionMatrix: ProjectionMatrix): Double = {
+  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)], projectionMatrix: ProjectionMatrix)
+    : Double = {
 
     val projectionMatrixAsCoefficients = new Coefficients(projectionMatrix.matrix.flatten(), variancesOption = None)
     val projectionMatrixModel = latentFactorOptimizationProblem
@@ -93,40 +100,58 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLi
 }
 
 object FactoredRandomEffectOptimizationProblem {
-
   /**
-   * Builds a factored random effect optimization problem
+   * Factory method to create new RandomEffectOptimizationProblems.
    *
-   * @param builder Builder of the factored random effect optimization problem
-   * @param randomEffectOptimizationConfiguration Random effect configuration
-   * @param latentFactorOptimizationConfiguration Latent factor configuration
-   * @param mfOptimizationConfiguration MF configuration
-   * @param randomEffectDataSet The dataset
-   * @return The new optimization problem
+   * @param randomEffectDataSet The training data
+   * @param randomEffectOptimizationConfiguration The optimizer configuration for the random effect optimization
+   *                                              problems
+   * @param latentFactorOptimizationConfiguration The optimizer configuration for the latent effect optimization problem
+   * @param mfOptimizationConfiguration The configuration for the factorization matrix used to compute the latent
+   *                                    effects
+   * @param randomObjectiveFunction The objective function to optimize for the random effects
+   * @param latentObjectiveFunction The objective function to optimize for the latent effects matrix
+   * @param latentSamplerOption (Optional) A sampler to use for down-sampling the training data prior to optimization of
+   *                            the latent effects matrix
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param isTrackingState Should the optimization problems record the internal optimizer states?
+   * @param isComputingVariance Should coefficient variances be computed in addition to the means?
+   * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def buildFactoredRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
-    F <: DiffFunction[LabeledPoint]](
-      builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
-      randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
-      latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
-      mfOptimizationConfiguration: MFOptimizationConfiguration,
-      randomEffectDataSet: RandomEffectDataSet,
-      treeAggregateDepth: Int = 1,
-      isTrackingState: Boolean = false,
-      isComputingVariance: Boolean = false): FactoredRandomEffectOptimizationProblem[GLM, F] = {
+  protected[ml] def buildFactoredRandomEffectOptimizationProblem[
+    RandomFunc <: IndividualObjectiveFunction,
+    LatentFunc <: DistributedObjectiveFunction](
+    randomEffectDataSet: RandomEffectDataSet,
+    randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
+    latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
+    mfOptimizationConfiguration: MFOptimizationConfiguration,
+    randomObjectiveFunction: RandomFunc,
+    latentObjectiveFunction: LatentFunc,
+    latentSamplerOption: Option[DownSampler],
+    glmConstructor: Coefficients => GeneralizedLinearModel,
+    normalizationContext: Broadcast[NormalizationContext],
+    isTrackingState: Boolean = false,
+    isComputingVariance: Boolean = false): FactoredRandomEffectOptimizationProblem[RandomFunc, LatentFunc] = {
 
     val MFOptimizationConfiguration(numInnerIterations, latentSpaceDimension) = mfOptimizationConfiguration
-    val latentFactorOptimizationProblem = builder(
-      latentFactorOptimizationConfiguration,
-      treeAggregateDepth,
+    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.createRandomEffectOptimizationProblem(
+      randomEffectDataSet,
+      randomEffectOptimizationConfiguration,
+      randomObjectiveFunction,
+      glmConstructor,
+      normalizationContext,
       isTrackingState,
       isComputingVariance)
-    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.buildRandomEffectOptimizationProblem(
-      builder,
-      randomEffectOptimizationConfiguration,
-      randomEffectDataSet,
-      treeAggregateDepth,
-      isComputingVariance)
+    val latentFactorOptimizationProblem = DistributedOptimizationProblem.createOptimizationProblem(
+      latentFactorOptimizationConfiguration,
+      latentObjectiveFunction,
+      latentSamplerOption,
+      glmConstructor,
+      normalizationContext,
+      isTrackingState,
+      // Don't want to compute variance of the projection matrix
+      isComputingVariance = false)
 
     new FactoredRandomEffectOptimizationProblem(
       randomEffectOptimizationProblem,

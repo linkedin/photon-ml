@@ -14,30 +14,32 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
-import com.linkedin.photon.ml.function.DiffFunction
-import com.linkedin.photon.ml.optimization.GeneralizedLinearOptimizationProblem
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.function.IndividualObjectiveFunction
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, IndividualOptimizationProblem}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+
 /**
- * Representation for a random effect optimization problem
+ * Representation for a random effect optimization problem.
  *
- * - Why sharding the optimizers?
- * Because we may want to preserve the optimization state of each sharded optimization problem
- *
- * - Why sharding the objective functions?
- * Because the regularization weight for each sharded optimization problem may be different, which leads to different
- * objective functions.
+ * Q: Why shard the optimization problems?
+ * A: In the future, we want to be able to have unique regularization weights per optimization problem. In addition, it
+ *    may be useful to have access to the optimization state of each individual problem.
  *
  * @param optimizationProblems The component optimization problems (one per individual) for a random effect
  *                             optimization problem
  */
-protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel, F <: DiffFunction[LabeledPoint]](
-    val optimizationProblems: RDD[(String, GeneralizedLinearOptimizationProblem[GLM, F])])
+protected[ml] class RandomEffectOptimizationProblem[Function <: IndividualObjectiveFunction](
+    val optimizationProblems: RDD[(String, IndividualOptimizationProblem[Function])],
+    val isTrackingState: Boolean)
   extends RDDLike {
 
   def sparkContext: SparkContext = optimizationProblems.sparkContext
@@ -72,7 +74,8 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
    * @param dimension The dimensionality of the model coefficients
    * @return A model with zero coefficients
    */
-  def initializeModel(dimension: Int): GLM = optimizationProblems.first()._2.initializeZeroModel(dimension)
+  def initializeModel(dimension: Int): GeneralizedLinearModel =
+    optimizationProblems.first()._2.initializeZeroModel(dimension)
 
   /**
    * Compute the regularization term value
@@ -91,35 +94,37 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
 }
 
 object RandomEffectOptimizationProblem {
-  // Random effect models should not track optimization states per random effect type. This info is not currently used
-  // anywhere and would waste memory.
-  //
-  // In addition, when enabled the 'run' method in the GeneralizedLinearOptimizationProblem will fail due to an implicit
-  // cast of mutable.ListBuffer to mutable.ArrayBuffer, the cause of which is currently undetermined.
-  val TRACK_STATE = false
-
   /**
-   * Build an instance of random effect optimization problem
+   * Factory method to create new RandomEffectOptimizationProblems.
    *
-   * @param builder builder of the random effect optimization problem
-   * @param configuration Optimizer configuration
-   * @param randomEffectDataSet The training dataset
-   * @param treeAggregateDepth The depth used in treeAggregate
-   * @return A new optimization problem instance
+   * @param randomEffectDataSet The training data
+   * @param configuration The optimizer configuration
+   * @param objectiveFunction The objective function to optimize
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param isComputingVariance Should coefficient variances be computed in addition to the means?
+   * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def buildRandomEffectOptimizationProblem[GLM <: GeneralizedLinearModel,
-  F <: DiffFunction[LabeledPoint]](
-      builder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) => GeneralizedLinearOptimizationProblem[GLM, F],
-      configuration: GLMOptimizationConfiguration,
-      randomEffectDataSet: RandomEffectDataSet,
-      treeAggregateDepth: Int = 1,
-      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[GLM, F] = {
+  protected[ml] def createRandomEffectOptimizationProblem[Function <: IndividualObjectiveFunction](
+    randomEffectDataSet: RandomEffectDataSet,
+    configuration: GLMOptimizationConfiguration,
+    objectiveFunction: Function,
+    glmConstructor: Coefficients => GeneralizedLinearModel,
+    normalizationContext: Broadcast[NormalizationContext],
+    isTrackingState: Boolean = false,
+    isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[Function] = {
 
-    // Build an optimization problem for each random effect type
-    val optimizationProblems = randomEffectDataSet.activeData.mapValues(_ =>
-      builder(configuration, treeAggregateDepth, TRACK_STATE, isComputingVariance)
-    )
+    // Build an optimization problem for each random effect type.
+    val optimizationProblems = randomEffectDataSet
+      .activeData
+      .mapValues(_ => IndividualOptimizationProblem.createOptimizationProblem(
+        configuration,
+        objectiveFunction,
+        glmConstructor,
+        normalizationContext,
+        isTrackingState,
+        isComputingVariance))
 
-    new RandomEffectOptimizationProblem(optimizationProblems)
+    new RandomEffectOptimizationProblem(optimizationProblems, isTrackingState)
   }
 }

@@ -12,9 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.optimization.game
-
-import com.linkedin.photon.ml.optimization._
+package com.linkedin.photon.ml.optimization
 
 /**
  * Configuration object for GLM optimization
@@ -39,7 +37,6 @@ protected[ml] case class GLMOptimizationConfiguration (
 }
 
 object GLMOptimizationConfiguration {
-
   protected[ml] val SPLITTER = ","
   protected[ml] val EXPECTED_FORMAT: String =
     s"maxNumberIterations${SPLITTER}convergenceTolerance${SPLITTER}regularizationWeight$SPLITTER" +
@@ -61,11 +58,10 @@ object GLMOptimizationConfiguration {
    * @param string The string representation
    */
   protected[ml] def parseAndBuildFromString(string: String): GLMOptimizationConfiguration = {
-
     val configParams = string.split(SPLITTER).map(_.trim)
     require(configParams.length == EXPECTED_NUM_CONFIGS,
       s"Parsing $string failed! The expected GLM optimization configuration should contain $EXPECTED_NUM_CONFIGS " +
-          s"parts separated by \'$SPLITTER\', but found ${configParams.length}. Expected format: $EXPECTED_FORMAT")
+        s"parts separated by \'$SPLITTER\', but found ${configParams.length}. Expected format: $EXPECTED_FORMAT")
 
     val Array(maxNumberIterationsStr,
       convergenceToleranceStr,
@@ -73,7 +69,6 @@ object GLMOptimizationConfiguration {
       downSamplingRateStr,
       optimizerTypeStr,
       regularizationTypeStr) = configParams
-
     val maxNumberIterations = maxNumberIterationsStr.toInt
     val convergenceTolerance = convergenceToleranceStr.toDouble
     val regularizationWeight = regularizationWeightStr.toDouble

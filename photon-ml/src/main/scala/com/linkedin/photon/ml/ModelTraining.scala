@@ -119,37 +119,54 @@ object ModelTraining extends Logging {
     // Initialize the broadcasted normalization context
     val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
 
-    // Choose the generalized linear algorithm
-    val initOptimizationProblem:
-        GeneralizedLinearOptimizationProblem[GeneralizedLinearModel, DiffFunction[LabeledPoint]] = taskType match {
+    // Construct the generalized linear optimization problem
+    val (glmConstructor, objectiveFunction) = taskType match {
+      case LOGISTIC_REGRESSION =>
+        val constructor = LogisticRegressionModel.createModel _
+        val objective = DistributedGLMLossFunction.createLossFunction(
+          optimizationConfig,
+          LogisticLossFunction,
+          trainingData.sparkContext,
+          treeAggregateDepth)
+        (constructor, objective)
 
-      case LOGISTIC_REGRESSION => LogisticRegressionOptimizationProblem.buildOptimizationProblem(
-        optimizationConfig,
-        treeAggregateDepth,
-        enableOptimizationStateTracker)
+      case LINEAR_REGRESSION =>
+        val constructor = LinearRegressionModel.createModel _
+        val objective = DistributedGLMLossFunction.createLossFunction(
+          optimizationConfig,
+          SquaredLossFunction,
+          trainingData.sparkContext,
+          treeAggregateDepth)
+        (constructor, objective)
 
-      case LINEAR_REGRESSION => LinearRegressionOptimizationProblem.buildOptimizationProblem(
-        optimizationConfig,
-        treeAggregateDepth,
-        enableOptimizationStateTracker)
+      case POISSON_REGRESSION =>
+        val constructor = PoissonRegressionModel.createModel _
+        val objective = DistributedGLMLossFunction.createLossFunction(
+          optimizationConfig,
+          PoissonLossFunction,
+          trainingData.sparkContext,
+          treeAggregateDepth)
+        (constructor, objective)
 
-      case POISSON_REGRESSION => PoissonRegressionOptimizationProblem.buildOptimizationProblem(
-        optimizationConfig,
-        treeAggregateDepth,
-        enableOptimizationStateTracker)
-
-      case SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossLinearSVMOptimizationProblem.buildOptimizationProblem(
-        optimizationConfig,
-        treeAggregateDepth,
-        enableOptimizationStateTracker)
+      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        val constructor = SmoothedHingeLossLinearSVMModel.createModel _
+        val objective = DistributedSmoothedHingeLossFunction.createLossFunction(
+          optimizationConfig,
+          trainingData.sparkContext,
+          treeAggregateDepth)
+        (constructor, objective)
 
       case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
     }
-
-    // Initialize the broadcasted normalization context
-    val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
-    val normalizationContextProvider =
-      new BroadcastedObjectProvider[NormalizationContext](broadcastNormalizationContext)
+    val optimizationProblem = DistributedOptimizationProblem.createOptimizationProblem(
+      optimizationConfig,
+      objectiveFunction,
+      samplerOption = None,
+      glmConstructor,
+      broadcastNormalizationContext,
+      enableOptimizationStateTracker,
+      isComputingVariance = false
+    )
 
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)

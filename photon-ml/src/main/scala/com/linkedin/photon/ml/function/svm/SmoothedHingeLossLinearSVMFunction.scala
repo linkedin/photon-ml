@@ -12,33 +12,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function
+package com.linkedin.photon.ml.function.svm
 
-import breeze.linalg
+import breeze.linalg.Vector
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
- * optimizer-friendly approximation for linear SVMs
+ * optimizer-friendly approximation for linear SVMs. This Object is to the individual/distributed smoothed hinge loss
+ * functions is as the PointwiseLossFunction is to the individual/distributed GLM loss functions.
  */
-class SmoothedHingeLossFunction extends DiffFunction[LabeledPoint] {
-  override protected[ml] def calculateAt(
-      datum: LabeledPoint,
-      coefficients: linalg.Vector[Double],
-      cumGradient: linalg.Vector[Double]): Double = {
-
-    val margin = datum.computeMargin(coefficients)
-    val (loss, deriv) = SmoothedHingeLossFunction.lossAndDerivative(margin, datum.label)
-
-    // Eq. 5, page 2 (derivative multiplied by label in lossAndDerivative method)
-    breeze.linalg.axpy(datum.weight * deriv, datum.features, cumGradient)
-    datum.weight * loss
-  }
-}
-
-object SmoothedHingeLossFunction {
+object SmoothedHingeLossLinearSVMFunction {
   /**
    * Compute the loss and derivative of the smoothed hinge loss function at a single point.
    *
@@ -71,5 +57,26 @@ object SmoothedHingeLossFunction {
     }
 
     (loss, deriv * modifiedLabel)
+  }
+
+  /**
+   * Compute the loss and derivative of the smoothed hinge loss function at a single point.
+   *
+   * @param datum A single data point
+   * @param coefficients The model coefficients
+   * @param cumGradient The cumulative Gradient vector for all points in the dataset
+   * @return The value at the given data point
+   */
+  def calculateAt(
+    datum: LabeledPoint,
+    coefficients: Vector[Double],
+    cumGradient: Vector[Double]): Double = {
+
+    val margin = datum.computeMargin(coefficients)
+    val (loss, deriv) = lossAndDerivative(margin, datum.label)
+
+    // Eq. 5, page 2 (derivative multiplied by label in lossAndDerivative method)
+    breeze.linalg.axpy(datum.weight * deriv, datum.features, cumGradient)
+    datum.weight * loss
   }
 }

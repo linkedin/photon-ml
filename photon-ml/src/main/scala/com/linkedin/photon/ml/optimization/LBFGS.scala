@@ -15,123 +15,142 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import breeze.optimize.{DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS, OWLQN => BreezeOWLQN}
-import com.linkedin.photon.ml.data.DataPoint
-import com.linkedin.photon.ml.function.{DiffFunction, L1RegularizationTerm}
-import org.apache.spark.rdd.RDD
+import breeze.optimize.{DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS}
+import org.apache.spark.broadcast.Broadcast
+
+import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.normalization.NormalizationContext
 
 /**
  * Class used to solve an optimization problem using Limited-memory BFGS (LBFGS).
  * Reference: [[http://en.wikipedia.org/wiki/Limited-memory_BFGS]].
- * L1 regularization has to be done differently because the gradient of L1 penalty term may be discontinuous.
- * For optimization with L1 penalty term, the optimization algorithm is a modified Quasi-Newton algorithm called OWL-QN.
- * Reference: [[http://research.microsoft.com/en-us/downloads/b1eb1016-1738-4bd5-83a9-370c9d498a03/]]
  *
- * @param numCorrections
- * The number of corrections used in the LBFGS update. Default 10.
- * Values of numCorrections less than 3 are not recommended; large values
- * of numCorrections will result in excessive computing time.
- * 3 < numCorrections < 10 is recommended.
- * Restriction: numCorrections > 0
- * @tparam Datum Generic type of input data point
+ * @param normalizationContext The normalization context
+ * @param tolerance The tolerance threshold for improvement between iterations as a percentage of the initial loss
+ * @param maxNumIterations The cut-off for number of optimization iterations to perform.
+ * @param numCorrections The number of corrections used in the LBFGS update. Default 10. Values of numCorrections less
+ *                       than 3 are not recommended; large values of numCorrections will result in excessive computing
+ *                       time.
+ *                       Recommended:  3 < numCorrections < 10
+ *                       Restriction:  numCorrections > 0
+ * @param constraintMap (Optional) The map of constraints on the feature coefficients
+ * @param isTrackingState Whether to track intermediate states during optimization
+ * @param isReusingPreviousInitialState Whether to reuse the previous initial state or not. When warm-start training is
+ *                                      desired, i.e. in grid-search based hyper-parameter tuning, this field is
+ *                                      recommended to set to true for consistent convergence check.
  */
-class LBFGS[Datum <: DataPoint](
-    var numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS)
-  extends AbstractOptimizer[Datum, DiffFunction[Datum]](
-    maxNumIterations = LBFGS.DEFAULT_MAX_ITER, tolerance = LBFGS.DEFAULT_TOLERANCE) {
+class LBFGS(
+    normalizationContext: Broadcast[NormalizationContext],
+    numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
+    tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
+    maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
+    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
+    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
+    isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+  extends Optimizer[DiffFunction](
+    tolerance,
+    maxNumIterations,
+    normalizationContext,
+    constraintMap,
+    isTrackingState,
+    isReusingPreviousInitialState) {
 
   /**
    * Under the hood, this adaptor uses an LBFGS
    * ([[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.LBFGS breeze.optimize.LBFGS]]) optimizer from
-   * Breeze to optimize functions without L1 penalty term, and OWLQN
-   * ([[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.OWLQN breeze.optimize.OWLQN]]) optimizer from
-   * Breeze to optimize functions with L1 penalty term. The diffFunction is also translated to a form these breeze
-   * optimizer can understand.
-   * The L1 penalty is implemented in the optimizer level. See
-   * [[http://www.scalanlp.org/api/breeze/index.html#breeze.optimize.OWLQN breeze.optimize.OWLQN]].
+   * Breeze to optimize functions. The DiffFunction is modified into a Breeze DiffFunction which the Breeze optimizer
+   * can understand.
    */
-  protected[ml] class BreezeOptimization(
-      data: Either[RDD[Datum], Iterable[Datum]],
-      diffFunction: DiffFunction[Datum],
-      initialCoef: Vector[Double]) {
-
-    // Initialize the solver (L-BFGS for L2 and OWLQN for L1/Elastic net)
-    private val lbfgs: BreezeLBFGS[Vector[Double]] = diffFunction match {
-      case diffFunc: DiffFunction[Datum] with L1RegularizationTerm =>
-        val l1Weight = diffFunc.getL1RegularizationParam
-        new BreezeOWLQN[Int, Vector[Double]](maxNumIterations, numCorrections, (_: Int) => l1Weight, tolerance)
-      case diffFunc: DiffFunction[Datum] =>
-        new BreezeLBFGS[Vector[Double]](maxNumIterations, numCorrections, tolerance)
-    }
-
-    // The objective function that is passed to the solver
-    private val breezeDiffFunction = new BreezeDiffFunction[Vector[Double]]() {
-      //calculating the gradient and value of the objective function
-      override def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
-        data match {
-          //the calculation will be done in a distributed fashion
-          case Left(dataAsRDD) =>
-            val broadcastedCoefficients = dataAsRDD.context.broadcast(coefficients)
-            val (value, gradient) = diffFunction.calculate(dataAsRDD, broadcastedCoefficients)
-            broadcastedCoefficients.unpersist()
-            (value, gradient)
-          //the calculation will be done on a local machine.
-          case Right(dataAsIterable) => diffFunction.calculate(dataAsIterable, coefficients)
-        }
-      }
-    }
+  protected class BreezeOptimization(
+      diffFunction: BreezeDiffFunction[Vector[Double]],
+      initCoefficients: Vector[Double]) {
 
     // The actual workhorse
-    private val breezeStates = lbfgs.iterations(breezeDiffFunction, initialCoef)
+    private val breezeStates = breezeOptimizer.iterations(diffFunction, initCoefficients)
     breezeStates.next()
 
     def next(state: OptimizerState): OptimizerState = {
       if (breezeStates.hasNext) {
         val breezeState = breezeStates.next()
-        /* project coefficients into constrained space, if any, before updating the state */
+        // Project coefficients into constrained space, if any, before updating the state
         OptimizerState(
-          OptimizationUtils.projectCoefficientsToHypercube(breezeState.x, constraintMap), breezeState.adjustedValue,
-            breezeState.adjustedGradient, state.iter + 1)
+          OptimizationUtils.projectCoefficientsToHypercube(breezeState.x, constraintMap),
+          breezeState.adjustedValue,
+          breezeState.adjustedGradient,
+          state.iter + 1)
+
       } else {
-        //lbfgs is converged
+        // LBFGS is converged
         state
       }
     }
   }
 
-  @transient private var breezeOptimization: BreezeOptimization = _
+  protected val breezeOptimizer = new BreezeLBFGS[Vector[Double]](maxNumIterations, numCorrections, tolerance)
+  @transient
+  protected var breezeOptimization: BreezeOptimization = _
 
   /**
    * Initialize breeze optimization engine.
-   * @param state The optimizer state for validation, debugging and logging purposes
-   * @param data Input data
-   * @param diffFunction The loss function to be optimized
-   * @param initialCoef Initial coefficients for the optimization
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param initState The initial state of the optimizer, prior to starting optimization
+   * @param data The training data
    */
-  def init(
-      state: OptimizerState,
-      data: Either[RDD[Datum], Iterable[Datum]],
-      diffFunction: DiffFunction[Datum],
-      initialCoef: Vector[Double]): Unit = {
+  override def init(objectiveFunction: DiffFunction, initState: OptimizerState)(data: objectiveFunction.Data): Unit = {
+    val breezeDiffFunction = new BreezeDiffFunction[Vector[Double]]() {
+        // Calculating the gradient and value of the objective function
+        override def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
+          val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
+          val result = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
 
-    breezeOptimization = new BreezeOptimization(data, diffFunction, initialCoef)
+          objectiveFunction.cleanupCoefficients(convertedCoefficients)
+          result
+        }
+      }
+    breezeOptimization = new BreezeOptimization(breezeDiffFunction, initState.coefficients)
   }
 
-  override def clearOptimizerInnerState(): Unit = {
-    breezeOptimization = _:BreezeOptimization
+  /**
+   * Get the optimizer's state
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param coefficients The model coefficients
+   * @param iter The current iteration of the optimizer
+   * @param data The training data
+   * @return The current optimizer state
+   */
+  override protected def getState
+    (objectiveFunction: DiffFunction, coefficients: Vector[Double], iter: Int = 0)
+    (data: objectiveFunction.Data) : OptimizerState = {
+
+    val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
+    val (value, gradient) = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
+
+    objectiveFunction.cleanupCoefficients(convertedCoefficients)
+    OptimizerState(coefficients, value, gradient, iter)
   }
 
-  protected def runOneIteration(
-      data: Either[RDD[Datum], Iterable[Datum]],
-      objectiveFunction: DiffFunction[Datum],
-      state: OptimizerState): OptimizerState = {
+  /**
+   * Clear the [[OptimizationStatesTracker]]
+   */
+  override def clearOptimizerInnerState(): Unit = breezeOptimization = _: BreezeOptimization
 
-    breezeOptimization.next(state)
-  }
+  /**
+   * Run one iteration of the optimizer given the current state
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param currState The current optimizer state
+   * @param data The training data
+   * @return The updated state of the optimizer
+   */
+  override protected def runOneIteration
+    (objectiveFunction: DiffFunction, currState: OptimizerState)
+    (data: objectiveFunction.Data): OptimizerState = breezeOptimization.next(currState)
 }
 
 object LBFGS {
+  val DEFAULT_MAX_ITER = 100
   val DEFAULT_NUM_CORRECTIONS = 10
-  val DEFAULT_MAX_ITER = 80
   val DEFAULT_TOLERANCE = 1.0E-7
 }

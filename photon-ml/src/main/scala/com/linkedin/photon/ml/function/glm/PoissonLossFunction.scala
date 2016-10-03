@@ -12,30 +12,23 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function
-
-import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
-import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
+package com.linkedin.photon.ml.function.glm
 
 /**
- * Class for the Poisson loss function: sum_i (w_i*(exp(theta'x_i + o_i) - y_i*(theta'x_i + o_i))),
- * where \theta is the coefficients of the data features to be estimated, (y_i, x_i, o_i, w_i) are the tuple
- * for label, features, offset, and weight of the i'th labeled data point, respectively.
- */
-class PoissonLossFunction(
-    normalizationContext: ObjectProvider[NormalizationContext] =
-      new SimpleObjectProvider[NormalizationContext](NoNormalization))
-  extends GeneralizedLinearModelLossFunction(PointwisePoissonLossFunction, normalizationContext)
-
-/**
- * Poisson regression single loss function
+ * Class for the Poisson loss function:
+ *    sum_i (w_i*(exp(theta'x_i + o_i) - y_i*(theta'x_i + o_i)))
  *
- * l(z, y) = exp(z) - y * z
+ * where:
  *
- * Used for Poisson regression
+ *  - \theta is the vector of estimated coefficient weights for the data features
+ *  - (y_i, x_i, o_i, w_i) are the tuple (label, features, offset, weight) of the i'th labeled data point
+ *
+ * Poisson regression single loss function:
+ *
+ *    l(z, y) = exp(z) - y * z
  */
 @SerialVersionUID(1L)
-object PointwisePoissonLossFunction extends PointwiseLossFunction {
+object PoissonLossFunction extends PointwiseLossFunction {
   /**
    * l(z, y) = exp(z) - y * z
    * dl/dz   = exp(z) - y
@@ -51,12 +44,10 @@ object PointwisePoissonLossFunction extends PointwiseLossFunction {
 
   /**
    * d^2^l/dz^2^ = exp(z)
-   * 
+   *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 2st derivative with respect to z
    */
-  override def d2lossdz2(margin: Double, label: Double): Double = {
-    math.exp(margin)
-  }
+  override def d2lossdz2(margin: Double, label: Double): Double = math.exp(margin)
 }

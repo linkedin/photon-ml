@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.PointwiseSquareLossFunction
+import com.linkedin.photon.ml.function.glm.SquaredLossFunction
 
 /**
  * Evaluator for squared loss
@@ -32,7 +32,7 @@ protected[ml] class SquaredLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
-        weight * PointwiseSquareLossFunction.loss(score, label)._1
+        weight * SquaredLossFunction.loss(score, label)._1
       }
       .reduce(_ + _)
   }

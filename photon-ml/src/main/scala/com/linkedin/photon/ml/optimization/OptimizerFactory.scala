@@ -14,59 +14,74 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.{DiffFunction, TwiceDiffFunction}
+import org.apache.spark.broadcast.Broadcast
+
+import com.linkedin.photon.ml.function.TwiceDiffFunction
+import com.linkedin.photon.ml.normalization.NormalizationContext
 
 /**
- * Creates instances of Optimizer according to the objective function type and configuration. The factory methods in
- * this class enforce the runtime rules for compatibility between user-selected loss functions and optimizers.
+ * Creates instances of Optimizer according to the user-requested optimizer type and regularization. The factory
+ * methods in this class do not enforce the runtime rules for compatibility between user-selected loss functions and
+ * optimizers: mixing incompatible optimizers and objective functions will result in a runtime error.
  */
 protected[ml] object OptimizerFactory {
-
   /**
-   * Creates an optimizer for DiffFunction objective functions.
+   * Creates an optimizer.
    *
-   * @param config Optimizer configuration
-   * @return A new DiffFunction Optimizer created according to the configuration
+   * @param config The Optimizer configuration
+   * @param normalizationContext The normalization context
+   * @param regularizationContext The regularization context
+   * @param regularizationWeight The regularization weight
+   * @param isTrackingState Should the Optimizer track intermediate states during optimization?
+   * @param isReusingPreviousInitialState Should the Optimizer reuse the initial starting state during warm-start
+   *                                      model training?
+   * @return A new Optimizer
    */
-  def diffOptimizer(config: OptimizerConfig): Optimizer[LabeledPoint, DiffFunction[LabeledPoint]] = {
-    val optimizer = config.optimizerType match {
-      case OptimizerType.LBFGS =>
-        new LBFGS[LabeledPoint]
+  def createOptimizer(
+      config: OptimizerConfig,
+      normalizationContext: Broadcast[NormalizationContext],
+      regularizationContext: RegularizationContext,
+      regularizationWeight: Double = 0,
+      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
+      isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+    : Optimizer[TwiceDiffFunction] =
 
-      case optType =>
-        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with DiffFunction.");
+    (config.optimizerType, regularizationContext.regularizationType) match {
+      case (OptimizerType.LBFGS, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>
+        new OWLQN(
+          l1RegWeight = regularizationContext.getL1RegularizationWeight(regularizationWeight),
+          normalizationContext = normalizationContext,
+          tolerance = config.tolerance,
+          maxNumIterations = config.maximumIterations,
+          constraintMap = config.constraintMap,
+          isTrackingState = isTrackingState,
+          isReusingPreviousInitialState = isReusingPreviousInitialState)
+
+      case (OptimizerType.LBFGS, RegularizationType.L2 | RegularizationType.NONE) =>
+        new LBFGS(
+          normalizationContext = normalizationContext,
+          tolerance = config.tolerance,
+          maxNumIterations = config.maximumIterations,
+          constraintMap = config.constraintMap,
+          isTrackingState = isTrackingState,
+          isReusingPreviousInitialState = isReusingPreviousInitialState)
+
+      case (OptimizerType.TRON, RegularizationType.L2 | RegularizationType.NONE) =>
+        new TRON(
+          normalizationContext = normalizationContext,
+          tolerance = config.tolerance,
+          maxNumIterations = config.maximumIterations,
+          constraintMap = config.constraintMap,
+          isTrackingState = isTrackingState,
+          isReusingPreviousInitialState = isReusingPreviousInitialState)
+
+      case (OptimizerType.TRON, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>
+        throw new IllegalArgumentException("TRON optimizer incompatible with L1 regularization")
+
+      case (OptimizerType.LBFGS | OptimizerType.TRON, regType) =>
+        throw new IllegalArgumentException(s"Incompatible regularization selected: $regType")
+
+      case (optType, _) =>
+        throw new IllegalArgumentException(s"Incompatible optimizer selected: $optType")
     }
-
-    optimizer.setMaximumIterations(config.maximumIterations)
-    optimizer.setTolerance(config.tolerance)
-    optimizer.setConstraintMap(config.constraintMap)
-
-    optimizer
-  }
-
-  /**
-   * Creates an optimizer for TwiceDiffFunction objective functions.
-   *
-   * @param config Optimizer configuration
-   * @return A new TwiceDiffFunction Optimizer created according to the configuration
-   */
-  def twiceDiffOptimizer(config: OptimizerConfig): Optimizer[LabeledPoint, TwiceDiffFunction[LabeledPoint]] = {
-    val optimizer = config.optimizerType match {
-      case OptimizerType.LBFGS =>
-        new LBFGS[LabeledPoint]
-
-      case OptimizerType.TRON =>
-        new TRON[LabeledPoint]
-
-      case optType =>
-        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with TwiceDiffFunction.");
-    }
-
-    optimizer.setMaximumIterations(config.maximumIterations)
-    optimizer.setTolerance(config.tolerance)
-    optimizer.setConstraintMap(config.constraintMap)
-
-    optimizer
-  }
 }

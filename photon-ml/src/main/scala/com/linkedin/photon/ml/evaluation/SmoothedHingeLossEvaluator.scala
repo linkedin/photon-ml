@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.SmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 
 /**
  * Evaluator for smoothed hinge loss

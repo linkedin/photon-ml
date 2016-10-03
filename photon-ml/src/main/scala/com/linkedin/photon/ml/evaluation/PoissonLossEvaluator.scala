@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.PointwisePoissonLossFunction
+import com.linkedin.photon.ml.function.glm.PoissonLossFunction
 
 /**
  * Evaluator for Poisson loss
@@ -32,7 +32,7 @@ protected[ml] class PoissonLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
-        weight * PointwisePoissonLossFunction.loss(score, label)._1
+        weight * PoissonLossFunction.loss(score, label)._1
       }
       .reduce(_ + _)
   }
