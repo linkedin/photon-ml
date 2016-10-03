@@ -14,18 +14,19 @@
  */
 package com.linkedin.photon.ml.avro.model
 
+import scala.collection.Map
+
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
-import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{IndexMap, IndexMapLoader, IOUtils, Utils}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import scala.collection.Map
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
+import com.linkedin.photon.ml.model._
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.{IndexMap, IndexMapLoader, IOUtils, Utils}
 
 /**
  * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
@@ -34,6 +35,8 @@ import scala.collection.Map
 object ModelProcessingUtils {
 
   import com.linkedin.photon.ml.avro.Constants._
+
+  // TODO: This object needs additional documentation
 
   // TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
   // classes/functions are decoupled from the rest of code
@@ -140,9 +143,12 @@ object ModelProcessingUtils {
 
     val gameModels = fixedEffectModels ++ randomEffectModels
     val gameModelNames = gameModels.map(_._1)
+    val gameModelsLength = gameModels.length
 
-    require(gameModelNames.toSet.size == gameModelNames.length,
-      s"Duplicated model names found: ${gameModelNames.mkString("\t")}")
+    require(gameModelsLength > 0, s"No models could be loaded from given path: $inputDir")
+    require(
+      gameModelsLength == gameModelNames.toSet.size,
+      s"Duplicated model names found:\n${gameModelNames.mkString("\t")}")
 
     new GAMEModel(gameModels.toMap)
   }
@@ -240,14 +246,14 @@ object ModelProcessingUtils {
   }
 
   /**
-    * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files
-    *
-    * @param matrixFactorizationModel The given matrix factorization model
-    * @param outputDir The HDFS output directory for the matrix factorization model
-    * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix
-    *                       factorization model
-    * @param sparkContext The Spark context
-    */
+   * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files
+   *
+   * @param matrixFactorizationModel The given matrix factorization model
+   * @param outputDir The HDFS output directory for the matrix factorization model
+   * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix
+   *                       factorization model
+   * @param sparkContext The Spark context
+   */
   protected[ml] def saveMatrixFactorizationModelToHDFS(
       matrixFactorizationModel: MatrixFactorizationModel,
       outputDir: String,
@@ -278,14 +284,14 @@ object ModelProcessingUtils {
   }
 
   /**
-    * Load the matrix factorization model of type [[MatrixFactorizationModel]] from the Avro files on HDFS
-    *
-    * @param inputDir The input directory of the Avro files on HDFS
-    * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
-    * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
-    * @param sparkContext The Spark context
-    * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
-    */
+   * Load the matrix factorization model of type [[MatrixFactorizationModel]] from the Avro files on HDFS
+   *
+   * @param inputDir The input directory of the Avro files on HDFS
+   * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
+   * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
+   * @param sparkContext The Spark context
+   * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
+   */
   protected[ml] def loadMatrixFactorizationModelFromHDFS(
       inputDir: String,
       rowEffectType: String,

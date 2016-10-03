@@ -16,6 +16,17 @@ package com.linkedin.photon.ml
 
 import java.io.{IOException, OutputStreamWriter, PrintWriter}
 
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.xml.PrettyPrinter
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{SparkConf, SparkContext}
+import org.slf4j.Logger
+
 import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
@@ -35,37 +46,27 @@ import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.{IOUtils, PalDBIndexMapLoader, PhotonLogger, Utils}
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.{SparkConf, SparkContext}
-import org.slf4j.Logger
-
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import scala.xml.PrettyPrinter
+import com.linkedin.photon.ml.util.{IOUtils, PhotonLogger, Utils}
 
 /**
-  * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main
-  * components:
-  * <ul>
-  * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
-  * internal data structure </li>
-  * <li> Train, which trains the model given the user's specified configurations and parameters
-  * (through [[Params]]) </li>
-  * <li> Validate, which validates the trained model using the validating data set, if provided, and select the best
-  * model given the validating results </li>
-  * </ul>
-  * More detailed documentation can be found either through the comments and notations in the source code, or at
-  * [[https://github.com/linkedin/photon-ml#example-scripts]].
-  *
-  * @param params: The Photon-ML parameters [[Params]]], containing essential information
-  *              for the underlying model training tasks.
-  * @param sc: The Spark context.
-  * @param logger: A temporary container to hold the driver's logs.
-  */
+ * Driver for the Photon-ML core machine learning algorithms. The processing done in the driver include three main
+ * components:
+ * <ul>
+ * <li> Preprocess, which reads in the data in the raw form (e.g., Avro) and transform and index them into Photon-ML's
+ * internal data structure </li>
+ * <li> Train, which trains the model given the user's specified configurations and parameters
+ * (through [[Params]]) </li>
+ * <li> Validate, which validates the trained model using the validating data set, if provided, and select the best
+ * model given the validating results </li>
+ * </ul>
+ * More detailed documentation can be found either through the comments and notations in the source code, or at
+ * [[https://github.com/linkedin/photon-ml#example-scripts]].
+ *
+ * @param params: The Photon-ML parameters [[Params]]], containing essential information
+ *              for the underlying model training tasks.
+ * @param sc: The Spark context.
+ * @param logger: A temporary container to hold the driver's logs.
+ */
 protected[ml] class Driver(
   protected val params: Params,
   protected val sc: SparkContext,
@@ -88,7 +89,7 @@ protected[ml] class Driver(
   private[this] var trainingDataNum: Int = -1
 
   private[this] var summaryOption: Option[BasicStatisticalSummary] = None
-  private[this] var normalizationContext: NormalizationContext = NoNormalization
+  private[this] var normalizationContext: NormalizationContext = NoNormalization()
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
@@ -528,12 +529,12 @@ protected[ml] class Driver(
 }
 
 /**
-  * The container of the main function, where the input command line arguments are parsed into [[Params]] via
-  * [[PhotonMLCmdLineParser]], which in turn is to be consumed by the main Driver class.
-  *
-  * An example of running Photon-ML through command line arguments can be found at
-  * [[https://github.com/linkedin/photon-ml#example-scripts]].
-  */
+ * The container of the main function, where the input command line arguments are parsed into [[Params]] via
+ * [[PhotonMLCmdLineParser]], which in turn is to be consumed by the main Driver class.
+ *
+ * An example of running Photon-ML through command line arguments can be found at
+ * [[https://github.com/linkedin/photon-ml#example-scripts]].
+ */
 object Driver {
   val DEFAULT_STORAGE_LEVEL = StorageLevel.MEMORY_AND_DISK
   val LEARNED_MODELS_TEXT = "learned-models-text"

@@ -18,44 +18,47 @@ import org.apache.commons.math3.distribution.NormalDistribution
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+// TODO: Add additional documentation
+
 /**
  * Implement tests of independence based on [[https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient]]
- *
  */
 class KendallTauAnalysis {
   import KendallTauAnalysis._
 
   /**
+   *
+   *
    * @param data (a, b) draws from the joint distribution P_{A,B}
-   * @return analysis of independence.
+   * @return Analysis of independence.
    */
-  def analyze(data:RDD[(Double, Double)]): KendallTauReport = {
+  def analyze(data: RDD[(Double, Double)]): KendallTauReport = {
     val count = data.count
     val rate = math.min(1.0, math.sqrt(count.toDouble)/count)
     val sampled = data.sample(false, rate, System.nanoTime()).persist(StorageLevel.MEMORY_AND_DISK_SER)
-    val pairTypes = sampled.cartesian(sampled).map(x => {
-      checkConcordance(x._1, x._2)
-    }).aggregateByKey(0L)(seqOp = _ + _, combOp = _ + _).collect.toMap
+    val pairTypes = sampled
+      .cartesian(sampled)
+      .map(x => checkConcordance(x._1, x._2))
+      .aggregateByKey(0L)(seqOp = _ + _, combOp = _ + _)
+      .collect
+      .toMap
 
-    sampled.unpersist(false)
+    sampled.unpersist()
     analyze(pairTypes, sampled.count)
   }
 
   /**
+   *
+   *
    * @param data (a, b) draws from the joint distribution P_{A,B}
    * @return analysis of independence.
    */
-  def analyze(data:Array[(Double, Double)]): KendallTauReport = {
-    val pairTypes = (for {
-      x <- 0 until data.size;
-      y <- (x + 1) until data.size
-    } yield {
-        checkConcordance(data(x), data(y))
-    }).groupBy(_._1).map( x => {
-      (x._1, x._2.size.toLong)
-    })
+  def analyze(data: Array[(Double, Double)]): KendallTauReport = {
+    val pairTypes = (for (x <- data.indices; y <- (x + 1) until data.length) yield checkConcordance(data(x), data(y)))
+      .groupBy(_._1)
+      .map( x => (x._1, x._2.size.toLong))
 
-    analyze(pairTypes, data.size)
+    analyze(pairTypes, data.length)
   }
 
   def analyze(numConcordant:Long, numDiscordant:Long, numTiesA:Long, numTiesB:Long, numItems:Long): KendallTauReport = {
@@ -73,7 +76,7 @@ class KendallTauAnalysis {
 
     val msg = if (numTiesA + numTiesB > 0) {
       s"""
-         |Note: detected ties (ties in first variable: ${numTiesA}, ties in second variable: ${numTiesB}). This means
+         |Note: detected ties (ties in first variable: $numTiesA, ties in second variable: $numTiesB). This means
          |that the computed z score / p value for tau-alpha over-estimates the degree of independence between A and B.
        """.stripMargin
     } else {

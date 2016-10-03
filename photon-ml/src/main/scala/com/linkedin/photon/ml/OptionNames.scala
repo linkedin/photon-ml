@@ -52,6 +52,6 @@ object OptionNames {
   val FEATURE_DIMENSION = "feature-dimension"
   val INPUT_FILE_FORMAT = "input-file-format"
 
-  @deprecated
+  @deprecated("Use 'diagnostic-mode'", "1.0")
   val TRAINING_DIAGNOSTICS = "training-diagnostics"
 }

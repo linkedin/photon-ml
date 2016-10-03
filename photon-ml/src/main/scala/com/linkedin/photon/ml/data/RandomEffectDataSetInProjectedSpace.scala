@@ -22,8 +22,8 @@ import com.linkedin.photon.ml.projector.{ProjectorType, RandomEffectProjector}
 /**
  * Dataset implementation for random effect datasets in projected space
  *
- * @param randomEffectDataSetInProjectedSpace input random effect dataset
- * @param randomEffectProjector the random effect projector
+ * @param randomEffectDataSetInProjectedSpace Input random effect dataset
+ * @param randomEffectProjector The random effect projector
  */
 class RandomEffectDataSetInProjectedSpace(
     val randomEffectDataSetInProjectedSpace: RandomEffectDataSet,
@@ -74,13 +74,12 @@ class RandomEffectDataSetInProjectedSpace(
 }
 
 object RandomEffectDataSetInProjectedSpace {
-
   /**
-   * Build an instance of random effect dataset in projected space with the given projector type
+   * Build an instance of a random effect dataset in projected space with the given projector type
    *
-   * @param randomEffectDataSet the input dataset
-   * @param projectorType the projector type
-   * @return new dataset projected with the given projector
+   * @param randomEffectDataSet The input dataset
+   * @param projectorType The projector type
+   * @return A new dataset projected with the given projector
    */
   def buildWithProjectorType(
       randomEffectDataSet: RandomEffectDataSet,

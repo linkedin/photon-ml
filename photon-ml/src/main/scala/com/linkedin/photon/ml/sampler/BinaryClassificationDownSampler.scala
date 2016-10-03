@@ -16,11 +16,12 @@ package com.linkedin.photon.ml.sampler
 
 import java.util.Random
 
-import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.LabeledPoint
+import scala.util.hashing.byteswap64
+
 import org.apache.spark.rdd.RDD
 
-import scala.util.hashing.byteswap64
+import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
  * Down-sampler implementation for binary classification problems. The positive instances are left as is. The negatives
@@ -29,8 +30,7 @@ import scala.util.hashing.byteswap64
  * @param downSamplingRate The down sampling rate
  */
 protected[ml] class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
-
-  require((downSamplingRate > 0D) && (downSamplingRate <= 1D), s"Invalid down-sampling rate: $downSamplingRate")
+  require((downSamplingRate > 0D) && (downSamplingRate < 1D), s"Invalid down-sampling rate: $downSamplingRate")
 
   /**
    * Down-sample the negatives in the dataset

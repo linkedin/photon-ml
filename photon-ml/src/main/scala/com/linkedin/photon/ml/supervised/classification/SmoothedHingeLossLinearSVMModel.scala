@@ -15,16 +15,17 @@
 package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
-import org.apache.spark.rdd.RDD
 
 /**
-  * Class for the classification model trained using soft hinge loss linear SVM
-  *
-  * @param coefficients Weights estimated for every feature
-  */
+ * Class for the classification model trained using soft hinge loss linear SVM
+ *
+ * @param coefficients Weights estimated for every feature
+ */
 class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
@@ -32,12 +33,12 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   with Serializable {
 
   /**
-    * Compute the mean of the soft hinge loss linear SVM model
-    *
-    * @param features The input data point's feature
-    * @param offset The input data point's offset
-    * @return The mean for the passed features
-    */
+   * Compute the mean of the soft hinge loss linear SVM model
+   *
+   * @param features The input data point's feature
+   * @param offset The input data point's offset
+   * @return The mean for the passed features
+   */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = coefficients.computeScore(features) + offset
 
@@ -68,4 +69,15 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
       BinaryClassifier.positiveClassLabel
     }
   }
+}
+
+object SmoothedHingeLossLinearSVMModel {
+  /**
+   * Create a new smoothed hinge loss SVM model with the provided coefficients (means) and variances
+   *
+   * @param coefficients The feature coefficient means and variances for the model
+   * @return A smoothed hinge loss SVM model
+   */
+  def createModel(coefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
+    new SmoothedHingeLossLinearSVMModel(coefficients)
 }

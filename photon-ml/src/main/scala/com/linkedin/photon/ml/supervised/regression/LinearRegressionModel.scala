@@ -15,27 +15,28 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+
 /**
-  * Class for the classification model trained using Logistic Regression
-  *
-  * @param coefficients Weights estimated for every feature
-  */
+ * Class for the classification model trained using Logistic Regression
+ *
+ * @param coefficients Weights estimated for every feature
+ */
 class LinearRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
 
   /**
-    * Compute the mean of the linear regression model
-    *
-    * @param features The input data point's feature
-    * @param offset The input data point's offset
-    * @return
-    */
+   * Compute the mean of the linear regression model
+   *
+   * @param features The input data point's feature
+   * @param offset The input data point's offset
+   * @return
+   */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = coefficients.computeScore(features) + offset
 
@@ -52,4 +53,15 @@ class LinearRegressionModel(override val coefficients: Coefficients)
 
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
     GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
+}
+
+object LinearRegressionModel {
+  /**
+   * Create a new linear regression model with the provided coefficients (means) and variances
+   *
+   * @param coefficients The feature coefficient means and variances for the model
+   * @return A linear regression model
+   */
+  def createModel(coefficients: Coefficients): LinearRegressionModel =
+    new LinearRegressionModel(coefficients)
 }

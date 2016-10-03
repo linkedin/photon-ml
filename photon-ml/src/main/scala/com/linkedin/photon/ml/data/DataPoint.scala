@@ -15,10 +15,12 @@
 package com.linkedin.photon.ml.data
 
 import breeze.linalg.Vector
+
 import com.linkedin.photon.ml.data
 
 /**
  * A general data point contains features and other auxiliary information
+ *
  * @param features A vector (could be either dense or sparse) representing the features for this data point
  * @param weight The weight of this data point
  */
@@ -26,14 +28,15 @@ class DataPoint(val features: Vector[Double], val weight: Double = 1.0) extends 
   override def toString: String = {
     s"(features $features\nweight $weight)"
   }
+
   /**
    * Calculate the margin, i.e. z = theta^T^ features
+   *
    * @param coef The coefficient
    * @return The margin
    */
   def computeMargin(coef: Vector[Double]): Double = features.dot(coef)
 }
-
 
 /**
  * Companion object of [[data.DataPoint]] for factories and pattern matching purpose
@@ -41,6 +44,10 @@ class DataPoint(val features: Vector[Double], val weight: Double = 1.0) extends 
 object DataPoint {
   /**
    * Apply methods give you a nice syntactic sugar for when a class or object has one main use.
+   *
+   * @param features Input features
+   * @param weight Input weight
+   * @return A new DataPoint
    */
   def apply(features: Vector[Double], weight: Double): DataPoint = {
     new DataPoint(features, weight)
@@ -48,6 +55,8 @@ object DataPoint {
 
   /**
    * The extractor
+   *
+   * @return The construction parameters of the given DataPoint
    */
   def unapply(data: DataPoint): Option[(Vector[Double], Double)] =
     Some((data.features, data.weight))

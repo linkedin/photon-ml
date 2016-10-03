@@ -16,27 +16,35 @@ package com.linkedin.photon.ml.data
 
 import java.util.Random
 
-import scala.collection.{Map, Set, mutable}
-import scala.reflect.ClassTag
-
 import breeze.linalg.{SparseVector, Vector}
-
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
+
+import scala.collection.{Map, Set, mutable}
+import scala.reflect.ClassTag
 
 /**
  * Local dataset implementation
  *
- * @param dataPoints Local data points consists of (uniqueId, labeledPoint) pairs
- * @todo Use Array or Map to represent the local data structure?
- *       Array: overhead in sorting the entries by key
- *       Map: overhead in accessing value by key
+ * @param dataPoints Local data points consists of (globalId, labeledPoint) pairs
  */
+ // TODO Use Array or Map to represent the local data structure?
+ //      Array: overhead in sorting the entries by key
+ //      Map: overhead in accessing value by key
 protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 
   val numDataPoints = dataPoints.length
   val numFeatures = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
   val numActiveFeatures = if (numDataPoints > 0) dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size else 0
+
+  private lazy val featureIndexCountMap: Map[Int, Int] = {
+    dataPoints
+      .map(_._2.features)
+      .flatMap(_.activeKeysIterator)
+      .map((_, 1))
+      .groupBy(_._1)
+      .map { case (index, counts) => (index, counts.map(_._2).sum) }
+  }
 
   def getLabels: Array[(Long, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.label) }
 
@@ -76,20 +84,11 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
     LocalDataSet(projectedDataPoints)
   }
 
-  private lazy val featureIndexCountMap: Map[Int, Int] = {
-    dataPoints
-      .map(_._2.features)
-      .flatMap(_.activeKeysIterator)
-      .map((_, 1))
-      .groupBy(_._1)
-      .map { case (index, counts) => (index, counts.map(_._2).sum) }
-  }
-
   /**
    * Filter features by support
    *
-   * @param minNumSupportThreshold minimum support threshold
-   * @return filtered dataset
+   * @param minNumSupportThreshold The minimum support threshold
+   * @return The filtered dataset
    */
   def filterFeaturesBySupport(minNumSupportThreshold: Int): LocalDataSet = {
     if (minNumSupportThreshold > 0) {
@@ -111,8 +110,8 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   /**
    * Filter features by Pearson correlation score
    *
-   * @param numFeaturesToKeep number of features to keep
-   * @return filtered dataset
+   * @param numFeaturesToKeep The number of features to keep
+   * @return The filtered dataset
    */
   def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet = {
     if (numFeaturesToKeep < numActiveFeatures) {
@@ -137,8 +136,8 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   /**
    * Reservoir sampling on all samples
    *
-   * @param numSamplesToKeep number of samples to keep
-   * @return sampled dataset
+   * @param numSamplesToKeep The number of samples to keep
+   * @return The sampled dataset
    */
   def reservoirSamplingOnAllSamples(numSamplesToKeep: Int): LocalDataSet = {
     if (numSamplesToKeep == 0) {
@@ -156,7 +155,13 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 }
 
 object LocalDataSet {
-
+  /**
+   * Factory method for LocalDataSet
+   *
+   * @param dataPoints The array of underlying data
+   * @param isSortedByFirstIndex Whether or not to sort the data by global ID
+   * @return A new LocalDataSet
+   */
   protected[ml] def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
     if (isSortedByFirstIndex) {
       LocalDataSet(dataPoints)
@@ -168,9 +173,9 @@ object LocalDataSet {
   /**
    * Filter features by feature index
    *
-   * @param features the original feature set
-   * @param featureIndexSet feature index set
-   * @return filtered feature vector
+   * @param features The original feature set
+   * @param featureIndexSet The feature index set
+   * @return The filtered feature vector
    */
   private def filterFeaturesWithFeatureIndexSet(
       features: Vector[Double],
@@ -191,8 +196,8 @@ object LocalDataSet {
   /**
    * Compute Pearson correlation scores
    *
-   * @param labelAndFeatures array over label, feature tuples
-   * @return correlation scores
+   * @param labelAndFeatures An array of (label, feature) tuples
+   * @return The Pearson correlation scores for each tuple
    */
   protected[ml] def computePearsonCorrelationScore(
       labelAndFeatures: Array[(Double, Vector[Double])]): Map[Int, Double] = {
@@ -258,11 +263,11 @@ object LocalDataSet {
   }
 
   /**
-   * Reservoir sampling
+   * Perform reservoir sampling
    *
-   * @param dataPoints input data points
-   * @param numDataPointsToKeep number of data points to keep
-   * @return filtered data points
+   * @param dataPoints The input data
+   * @param numDataPointsToKeep The number of data points to keep
+   * @return The filtered array of data points
    */
   protected[ml] def reservoirSampling[T: ClassTag](dataPoints: Iterator[T], numDataPointsToKeep: Int): Array[T] = {
     val reservoir = new Array[T](numDataPointsToKeep)

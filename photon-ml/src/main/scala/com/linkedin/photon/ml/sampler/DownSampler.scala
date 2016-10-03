@@ -16,9 +16,10 @@ package com.linkedin.photon.ml.sampler
 
 import java.util.Random
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
-import org.apache.spark.rdd.RDD
 
 /**
  * Interface for down-sampler implementations
@@ -37,5 +38,10 @@ protected[ml] trait DownSampler {
 object DownSampler {
   private val random = new Random(MathConst.RANDOM_SEED)
 
+  /**
+   * Get a random seed for down-sampling.
+   *
+   * @return A random Long
+   */
   protected[sampler] def getSeed: Long = random.nextLong()
 }

@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.cli.game
 
 /**
-  * Feature params common to GAME training and scoring.
-  */
+ * Feature params common to GAME training and scoring.
+ */
 trait FeatureParams {
 
   /**
@@ -36,5 +36,4 @@ trait FeatureParams {
    * in the following format: shardId1:true|shardId2:false. The default is true for all or unspecified shard ids.
    */
   var featureShardIdToInterceptMap: Map[String, Boolean] = Map()
-
 }

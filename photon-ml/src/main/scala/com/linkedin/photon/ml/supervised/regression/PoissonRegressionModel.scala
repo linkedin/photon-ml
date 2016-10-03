@@ -15,27 +15,28 @@
 package com.linkedin.photon.ml.supervised.regression
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+
 /**
-  * Class for the classification model trained using Poisson Regression
-  *
-  * @param coefficients Weights estimated for every feature
-  */
+ * Class for the classification model trained using Poisson Regression
+ *
+ * @param coefficients Weights estimated for every feature
+ */
 class PoissonRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with Regression
   with Serializable {
 
   /**
-    * Compute the mean of the Poisson regression model
-    *
-    * @param features The input data point's feature
-    * @param offset The input data point's offset
-    * @return The mean for the passed features
-    */
+   * Compute the mean of the Poisson regression model
+   *
+   * @param features The input data point's feature
+   * @param offset The input data point's offset
+   * @return The mean for the passed features
+   */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = math.exp(coefficients.computeScore(features) + offset)
 
@@ -52,4 +53,15 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
 
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
     GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
+}
+
+object PoissonRegressionModel {
+  /**
+   * Create a new Poisson regression model with the provided coefficients (means) and variances
+   *
+   * @param coefficients The feature coefficient means and variances for the model
+   * @return A Poisson regression model
+   */
+  def createModel(coefficients: Coefficients): PoissonRegressionModel =
+    new PoissonRegressionModel(coefficients)
 }
