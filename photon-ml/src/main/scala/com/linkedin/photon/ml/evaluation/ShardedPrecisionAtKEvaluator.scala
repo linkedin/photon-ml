@@ -26,7 +26,6 @@ import org.apache.spark.rdd.RDD
  *            shard/group. Such ids can be thought as a recommendation context, e.g. in evaluating the relevance of
  *            search results of given a query, the id can be the query itself.
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * Interface for evaluation implementations at the [[RDD]] level
  */
 protected[ml] class ShardedPrecisionAtKEvaluator(
     k: Int,

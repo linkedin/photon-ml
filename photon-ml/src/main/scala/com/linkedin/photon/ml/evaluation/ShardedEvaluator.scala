@@ -43,8 +43,4 @@ protected[ml] abstract class ShardedEvaluator(
       .map(scoreLabelAndWeights => localEvaluator.evaluate(scoreLabelAndWeights.toArray))
       .mean()
   }
-
-  def voidFunction(): Unit = {
-
-  }
 }

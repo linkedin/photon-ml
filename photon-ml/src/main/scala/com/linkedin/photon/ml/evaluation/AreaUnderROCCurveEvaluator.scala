@@ -23,7 +23,7 @@ import org.apache.spark.rdd.RDD
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
  */
 protected[ml] class AreaUnderROCCurveEvaluator(
-    protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
   protected[ml] val evaluatorType = AUC
 

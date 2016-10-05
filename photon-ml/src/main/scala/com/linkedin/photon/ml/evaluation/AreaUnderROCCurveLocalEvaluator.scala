@@ -27,7 +27,7 @@ protected[ml] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
 
   protected[ml] override def evaluate(scoreLabelAndWeights: Array[(Double, Double, Double)]): Double = {
 
-    // directly calling scoresAndLabelAndWeight.sort in Scala would cause some performance issue with large arrays
+    //Directly calling scoresAndLabelAndWeight.sort would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {
       override def compare(tuple1: (Double, Double, Double), tuple2: (Double, Double, Double)): Int = {
         JDouble.compare(tuple1._1, tuple2._1)

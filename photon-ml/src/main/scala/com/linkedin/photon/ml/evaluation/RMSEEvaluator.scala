@@ -23,7 +23,7 @@ import org.apache.spark.rdd.RDD
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class RMSEEvaluator(
-    protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
   protected[ml]  val evaluatorType = RMSE
 

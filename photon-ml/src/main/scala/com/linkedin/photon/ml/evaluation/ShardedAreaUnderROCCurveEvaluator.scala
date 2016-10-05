@@ -19,12 +19,12 @@ import org.apache.spark.rdd.RDD
 
 /**
  * Sharded version of the AUC evaluator
+ *
  * @param idType Type of the id, e.g., documentId or queryId.
  * @param ids Ids based on which the labels and scores are grouped (sharded) to compute the evaluation metric for each
  *            shard/group. Such ids can be thought as a recommendation context, e.g. in evaluating the relevance of
  *            search results of given a query, the id can be the query itself.
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * Interface for evaluation implementations at the [[RDD]] level
  */
 protected[ml] class ShardedAreaUnderROCCurveEvaluator(
     idType: String,

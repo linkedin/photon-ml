@@ -56,7 +56,7 @@ object EvaluatorType {
 
   /**
    * Parse the evaluator type with name
- *
+   *
    * @param name name of the evaluator type
    * @return the parsed evaluator type
    */
