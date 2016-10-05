@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.cli.game
 
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, PrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedEvaluatorType}
 
 /**
  * Evaluator params common to GAME training and scoring.
@@ -28,10 +28,11 @@ trait EvaluatorParams {
   /**
    * Get all id types used to compute precision@K
    */
-  def getPrecisionAtKIdTypeSet: Set[String] = {
-    evaluatorTypes
-      .filter(_.isInstanceOf[PrecisionAtK])
-      .map { case PrecisionAtK(_, documentIdName) => documentIdName }
+  def getShardedEvaluatorIdTypes: Set[String] = {
+    evaluatorTypes.flatMap {
+      case shardedEvaluatorType: ShardedEvaluatorType => Some(shardedEvaluatorType.idType)
+      case _ => None
+    }
       .toSet
   }
 }

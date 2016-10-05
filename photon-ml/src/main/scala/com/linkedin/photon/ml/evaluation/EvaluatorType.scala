@@ -18,7 +18,10 @@ package com.linkedin.photon.ml.evaluation
  * Evaluator type
  */
 trait EvaluatorType {
-  // name of the evaluator
+  /**
+   * Name of the evaluator
+   * @note It is currently also used as the cli input argument for evaluator types in integTests
+   */
   val name: String
 }
 
@@ -46,15 +49,6 @@ object SquaredLoss extends EvaluatorType {
   val name = "SQUARED_LOSS"
 }
 
-case class PrecisionAtK(k: Int, documentIdName: String) extends EvaluatorType {
-  val name = s"PRECISION@$k${PrecisionAtK.precisionAtKSplitter}$documentIdName"
-}
-
-object PrecisionAtK {
-  val precisionAtKSplitter = ":"
-  val precisionAtKPattern = s"(?i:PRECISION)@(\\d+)$precisionAtKSplitter(.*)".r
-}
-
 object EvaluatorType {
 
   // Command line argument for evaluator type
@@ -62,6 +56,7 @@ object EvaluatorType {
 
   /**
    * Parse the evaluator type with name
+ *
    * @param name name of the evaluator type
    * @return the parsed evaluator type
    */
@@ -72,9 +67,12 @@ object EvaluatorType {
     case PoissonLoss.name | "POISSONLOSS" => PoissonLoss
     case SmoothedHingeLoss.name | "SMOOTHEDHINGELOSS" => SmoothedHingeLoss
     case SquaredLoss.name | "SQUAREDLOSS" => SquaredLoss
-    case PrecisionAtK.precisionAtKPattern(k, _) =>
-      val PrecisionAtK.precisionAtKPattern(_, documentId) = name.trim
-      PrecisionAtK(k.toInt, documentId)
+    case ShardedPrecisionAtK.shardedPrecisionAtKPattern(k, _) =>
+      val ShardedPrecisionAtK.shardedPrecisionAtKPattern(_, idName) = name.trim
+      ShardedPrecisionAtK(k.toInt, idName)
+    case ShardedAUC.shardedAUCPattern(_) =>
+      val ShardedAUC.shardedAUCPattern(idName) = name.trim
+      ShardedAUC(idName)
     case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name!")
   }
 }

@@ -22,34 +22,17 @@ import com.linkedin.photon.ml.function.PointwiseLogisticLossFunction
  * Evaluator for logistic loss
  *
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * @param defaultScore the default score used to compute the metric
  */
 protected[ml] class LogisticLossEvaluator(
-    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-    defaultScore: Double = 0.0) extends Evaluator {
+    protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected val evaluatorType = LogisticLoss
+  protected[ml]  val evaluatorType = LogisticLoss
 
-  /**
-   * Evaluate the scores of the model
-   *
-   * @param scores the scores to evaluate
-   * @return score metric value
-   */
-  def evaluate(scores: RDD[(Long, Double)]): Double = {
-    val defaultScore = this.defaultScore
+  override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
+    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
-    val scoreAndLabelAndWeights = scores
-      .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoreOption, (label, offset, weight)) =>
-          (scoreOption.getOrElse(defaultScore) + offset, (label, weight))
-        }
-      .values
-
-    scoreAndLabelAndWeights
-      .map { case (score, (label, weight)) =>
-        weight * PointwiseLogisticLossFunction.loss(score, label)._1
-      }
+    scoresAndLabelsAndWeights
+      .map { case (_, (score, label, weight)) => weight * PointwiseLogisticLossFunction.loss(score, label)._1 }
       .reduce(_ + _)
   }
 
