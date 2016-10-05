@@ -340,7 +340,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def multipleEvaluatorTypeProvider(): Array[Array[Any]] = {
     Array(
       Array(Seq(RMSE, SquaredLoss)),
-      Array(Seq(LogisticLoss, AUC, PrecisionAtK(1, "userId"), PrecisionAtK(10, "songId"))),
+      Array(Seq(LogisticLoss, AUC, ShardedPrecisionAtK(1, "userId"), ShardedPrecisionAtK(10, "songId"))),
+      Array(Seq(AUC, ShardedAUC("userId"), ShardedAUC("songId"))),
       Array(Seq(PoissonLoss))
     )
   }
@@ -382,17 +383,17 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @DataProvider
-  def precisionAtKOfUnknownIdProvider(): Array[Array[Any]] = {
+  def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] = {
     Array(
-      Array(Seq(AUC, PrecisionAtK(1, "foo"))),
-      Array(Seq(PrecisionAtK(1, "foo"), PrecisionAtK(10, "bar"))),
-      Array(Seq(PrecisionAtK(1, "foo")))
+      Array(Seq(AUC, ShardedAUC("foo"))),
+      Array(Seq(ShardedAUC("foo"), ShardedPrecisionAtK(10, "bar"))),
+      Array(Seq(ShardedPrecisionAtK(1, "foo")))
     )
   }
 
-  @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "precisionAtKOfUnknownIdProvider")
-  def evaluateFullModelWithPrecisionAtKOfUnknownId(evaluatorTypes: Seq[EvaluatorType])
-  : Unit = sparkTest("evaluateFullModelWithPrecisionAtKOfUnknownId") {
+  @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "shardedEvaluatorOfUnknownIdTypeProvider")
+  def evaluateFullModelWithShardedEvaluatorOfUnknownIdType(evaluatorTypes: Seq[EvaluatorType])
+  : Unit = sparkTest("evaluateFullModelWithShardedEvaluatorOfUnknownIdType") {
 
     val outputDir = s"$getTmpDir/evaluateFullModelWithPrecisionAtKOfUnknownId"
     runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(

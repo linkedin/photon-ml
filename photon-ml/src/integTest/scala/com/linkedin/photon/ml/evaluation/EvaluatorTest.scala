@@ -31,8 +31,9 @@ class EvaluatorTest extends SparkTestUtils {
       Array(LogisticLoss),
       Array(SmoothedHingeLoss),
       Array(SquaredLoss),
-      Array(PrecisionAtK(1, EvaluatorTest.documentIdName)),
-      Array(PrecisionAtK(5, EvaluatorTest.documentIdName))
+      Array(ShardedPrecisionAtK(1, EvaluatorTest.idType)),
+      Array(ShardedPrecisionAtK(5, EvaluatorTest.idType)),
+      Array(ShardedAUC(EvaluatorTest.idType))
     )
   }
 
@@ -43,7 +44,7 @@ class EvaluatorTest extends SparkTestUtils {
       offsetOpt = Some(0.0),
       weightOpt = None,
       featureShardContainer = Map(),
-      idTypeToValueMap = Map(EvaluatorTest.documentIdName -> "id"))
+      idTypeToValueMap = Map(EvaluatorTest.idType -> "id"))
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
     val evaluator = Evaluator.buildEvaluator(evaluatorType, gameDataSet)
     assertEquals(evaluator.getEvaluatorName, evaluatorType.name)
@@ -51,5 +52,5 @@ class EvaluatorTest extends SparkTestUtils {
 }
 
 object EvaluatorTest {
-  val documentIdName = "documentIdName"
+  val idType = "idType"
 }

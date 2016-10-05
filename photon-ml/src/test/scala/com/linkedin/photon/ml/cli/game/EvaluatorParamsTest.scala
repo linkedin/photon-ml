@@ -22,13 +22,16 @@ import com.linkedin.photon.ml.evaluation._
 class EvaluatorParamsTest {
 
   @Test
-  def precisionAtKIdTypeSetTest(): Unit = {
+  def testGetShardedEvaluatorIdTypes(): Unit = {
     val expectedIdTypeSet = Set("documentId", "queryId", "foo", "bar")
-    val precisionAtKEvaluators = expectedIdTypeSet.toSeq.flatMap(t => Seq(1, 3, 5, 10).map(PrecisionAtK(_, t)))
-    val allEvaluators = Seq(AUC, RMSE, LogisticLoss) ++ precisionAtKEvaluators
+    val shardedPrecisionAtKEvaluators = Set("documentId", "foo")
+      .toSeq
+      .flatMap(t => Seq(1, 3, 5, 10).map(ShardedPrecisionAtK(_, t)))
+    val shardedAreaUnderROCCurveEvaluators = Set("queryId", "bar").toSeq.map(ShardedAUC(_))
+    val allEvaluators = Seq(AUC, RMSE) ++ shardedPrecisionAtKEvaluators ++ shardedAreaUnderROCCurveEvaluators
 
     val evaluatorParamsMocker = new EvaluatorParams {}
     evaluatorParamsMocker.evaluatorTypes = allEvaluators
-    assertEquals(evaluatorParamsMocker.getPrecisionAtKIdTypeSet, expectedIdTypeSet)
+    assertEquals(evaluatorParamsMocker.getShardedEvaluatorIdTypes, expectedIdTypeSet)
   }
 }
