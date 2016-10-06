@@ -47,9 +47,6 @@ class EvaluatorTypeTest {
     assertEquals(SquaredLoss, EvaluatorType.withName(squareLoss1))
     val squareLoss2 = "SquAREd_LOss"
     assertEquals(SquaredLoss, EvaluatorType.withName(squareLoss2))
-
-    val precisionAt10 = " prEcIsiON@10:queryId   "
-    assertEquals(PrecisionAtK(10, "queryId"), EvaluatorType.withName(precisionAt10))
   }
 
   @DataProvider
@@ -64,16 +61,7 @@ class EvaluatorTypeTest {
       Array("SVM"),
       Array("squared"),
       Array("121"),
-      Array("null"),
-      Array("precision"),
-      Array("precision@"),
-      Array("precision@k"),
-      Array("precision@1k"),
-      Array("precision@10"),
-      Array("precision@queryId"),
-      Array("precision@10queryId"),
-      Array("precision@10|queryId"),
-      Array("precision@10-queryId")
+      Array("null")
     )
   }
 

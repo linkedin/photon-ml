@@ -14,15 +14,15 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-/**
- * Interface for evaluation implementations at the local level
- */
-protected[ml] trait LocalEvaluator extends Serializable {
-  /**
-   * Evaluate the scores of the model
-   *
-   * @param scoreLabelAndWeight an [[Iterable]] of (score, label, weight) used to for evaluation
-   * @return score metric value
-   */
-  protected[ml] def evaluate(scoreLabelAndWeight: Array[(Double, Double, Double)]): Double
+object TestUtilFunctions {
+  protected[evaluation] def getScoreLabelAndWeights(
+    scores: Array[Double],
+    labels: Array[Double],
+    weight: Double = 1.0): Array[(Double, Double, Double)] = {
+    scores.zip(labels).map { case (score, label) => (score, label, weight) }
+  }
+
+  protected[evaluation] def zipWithIndex[T](arr: Iterable[T], startIndex: Int = 0) = {
+    arr.zipWithIndex.map { case (t, idx) => ((idx + startIndex).toLong, t) }.toArray
+  }
 }

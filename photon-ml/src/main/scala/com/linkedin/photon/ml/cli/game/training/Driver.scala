@@ -52,7 +52,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
   protected[game] val idTypeSet: Set[String] = {
     val randomEffectIdTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-    randomEffectIdTypeSet ++ getPrecisionAtKIdTypeSet
+    randomEffectIdTypeSet ++ getShardedEvaluatorIdTypes
   }
 
   /**

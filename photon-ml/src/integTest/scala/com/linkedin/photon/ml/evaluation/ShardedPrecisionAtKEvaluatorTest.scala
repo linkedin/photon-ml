@@ -22,16 +22,16 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.constants.MathConst
 
 
-class PrecisionAtKEvaluatorTest extends SparkTestUtils {
+class ShardedPrecisionAtKEvaluatorTest extends SparkTestUtils {
 
-  private def zipWithIndex[T](arr: Iterable[T]) = arr.zipWithIndex.map { case (t, idx) => (idx.toLong, t) }.toArray
+  import TestUtilFunctions.zipWithIndex
 
   @DataProvider
   def getEvaluateTestCases: Array[Array[Any]] = {
 
     // A trivial case but with different Ks
     val trivialScores = zipWithIndex(Array(1.0, 0.5, 0.0))
-    val trivialDocumentIds = zipWithIndex(Array("1", "1", "1"))
+    val trivialIds = zipWithIndex(Array("1", "1", "1"))
     val labelsWithPosOn1 = zipWithIndex(Array(1.0, 0.0, 0.0))
     val labelsWithPosOn2 = zipWithIndex(Array(0.0, 1.0, 0.0))
     val labelsWithPosOn3 = zipWithIndex(Array(0.0, 0.0, 1.0))
@@ -39,28 +39,28 @@ class PrecisionAtKEvaluatorTest extends SparkTestUtils {
     val ks = (1 to 4).toArray
     val trivialCase1 = ks.map{ k =>
       val expectedResult = 1.0 / k
-      Array(k, labelsWithPosOn1, trivialDocumentIds, trivialScores, expectedResult)
+      Array(k, labelsWithPosOn1, trivialIds, trivialScores, expectedResult)
     }
     val trivialCase2 = ks.map{ k =>
       val expectedResult = if (k == 1) 0.0 else 1.0 / k
-      Array(k, labelsWithPosOn2, trivialDocumentIds, trivialScores, expectedResult)
+      Array(k, labelsWithPosOn2, trivialIds, trivialScores, expectedResult)
     }
     val trivialCase3 = ks.map{ k =>
       val expectedResult = if (k <= 2) 0.0 else 1.0 / k
-      Array(k, labelsWithPosOn3, trivialDocumentIds, trivialScores, expectedResult)
+      Array(k, labelsWithPosOn3, trivialIds, trivialScores, expectedResult)
     }
     val trivialCase4 = ks.map{ k =>
       val expectedResult = 0.0
-      Array(k, labelsWithNoPos, trivialDocumentIds, trivialScores, expectedResult)
+      Array(k, labelsWithNoPos, trivialIds, trivialScores, expectedResult)
     }
 
     // A case adopted from Metronome
     val labels = zipWithIndex(Array[Double](0, 0, 1, 0, 1, 0, 0, 1, 1, 0))
-    val documentIds = zipWithIndex(Array("1", "1", "1", "1", "2", "2", "2", "2", "2", "2"))
+    val ids = zipWithIndex(Array("1", "1", "1", "1", "2", "2", "2", "2", "2", "2"))
     val scores = zipWithIndex(Array(1, 0.75, 0.5, 0.25, 1, 0.75, 0.5, 0.25, 0.2, 0.1))
     val expectedResults = Array(0.5, 0.25, 1.0/3, 0.375, 0.4, 1.0/3)
     val metronomeCase = (1 to 6).toArray.map { k =>
-      Array(k, labels, documentIds, scores, expectedResults(k-1))
+      Array(k, labels, ids, scores, expectedResults(k-1))
     }
 
     trivialCase1 ++ trivialCase2 ++ trivialCase3 ++ trivialCase4 ++ metronomeCase
@@ -70,12 +70,14 @@ class PrecisionAtKEvaluatorTest extends SparkTestUtils {
   def testEvaluate(
     k: Int,
     labels: Array[(Long, Double)],
-    documentIds: Array[(Long, String)],
+    ids: Array[(Long, String)],
     scores: Array[(Long, Double)],
     expectedResult: Double): Unit = sparkTest("testEvaluate") {
 
-    val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, 0.0, 1.0))
-    val evaluator = new PrecisionAtKEvaluator(k, labelAndOffsetAndWeights, sc.parallelize(documentIds), "")
+    val defaultOffset = 0.0
+    val defaultWeight = 1.0
+    val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, defaultOffset, defaultWeight))
+    val evaluator = new ShardedPrecisionAtKEvaluator(k, idType = "", sc.parallelize(ids), labelAndOffsetAndWeights)
     val actualResult = evaluator.evaluate(sc.parallelize(scores))
     assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }

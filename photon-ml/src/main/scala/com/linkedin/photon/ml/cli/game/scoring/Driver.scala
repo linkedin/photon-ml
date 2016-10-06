@@ -38,7 +38,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   import params._
 
   protected[game] val idTypeSet: Set[String] = {
-    randomEffectIdTypeSet ++ getPrecisionAtKIdTypeSet
+    randomEffectIdTypeSet ++ getShardedEvaluatorIdTypes
   }
 
   /**

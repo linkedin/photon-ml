@@ -161,7 +161,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       Array(Seq(PoissonLoss)),
       Array(Seq(RMSE, SquaredLoss)),
       Array(Seq(SmoothedHingeLoss)),
-      Array(Seq(PrecisionAtK(1, "queryId"), PrecisionAtK(5, "documentId")))
+      Array(Seq(ShardedPrecisionAtK(1, "queryId"), ShardedPrecisionAtK(5, "documentId"))),
+      Array(Seq(ShardedAUC("queryId"), ShardedAUC("documentId")))
     )
   }
 

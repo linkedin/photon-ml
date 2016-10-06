@@ -21,30 +21,16 @@ import org.apache.spark.rdd.RDD
  * Evaluator that computes area under the ROC curve
  *
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
- * @param defaultScore The default score used to compute the metric
  */
 protected[ml] class AreaUnderROCCurveEvaluator(
-    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-    defaultScore: Double = 0.0) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected val evaluatorType = AUC
+  protected[ml] val evaluatorType = AUC
 
-  /**
-   * Evaluate the scores of the model
-   *
-   * @param scores The scores to evaluate
-   * @return Score metric value
-   */
-  override def evaluate(scores: RDD[(Long, Double)]): Double = {
-    // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
-    val defaultScore = this.defaultScore
-    val scoreAndLabels = scores
-      .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoreOption, (label, offset, _)) =>
-        (scoreOption.getOrElse(defaultScore) + offset, label)
-      }
-      .values
+  override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
+    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
+    val scoreAndLabels = scoresAndLabelsAndWeights.map { case (uniqueId, (score, label, weight)) => (score, label) }
     new BinaryClassificationMetrics(scoreAndLabels).areaUnderROC()
   }
 

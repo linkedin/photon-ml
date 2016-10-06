@@ -24,17 +24,45 @@ import com.linkedin.photon.ml.data.GameDatum
 protected[ml] trait Evaluator {
 
   /**
+   * A [[RDD]] of (id, (labels, offsets, weights)) pairs
+   */
+  protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]
+
+  /**
+   * The default score used to compute the metric
+   */
+  protected[ml] var defaultScore: Double = 0.0
+
+  /**
    * The type of the evaluator
    */
-  protected val evaluatorType: EvaluatorType
+  protected[ml] val evaluatorType: EvaluatorType
 
   /**
    * Evaluate the scores of the model
    *
    * @param scores the scores to evaluate
-   * @return score metric value
+   * @return evaluation metric value
    */
-  def evaluate(scores: RDD[(Long, Double)]): Double
+  protected[ml] def evaluate(scores: RDD[(Long, Double)]): Double = {
+    // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
+    val defaultScore = this.defaultScore
+    val scoreAndLabelAndWeights = scores
+      .rightOuterJoin(labelAndOffsetAndWeights)
+      .mapValues { case (scoreOption, (label, offset, weight)) =>
+        (scoreOption.getOrElse(defaultScore) + offset, label, weight)
+      }
+    evaluateWithScoresAndLabelsAndWeights(scoreAndLabelAndWeights)
+  }
+
+  /**
+   * Evaluate scores with labels and weights
+   *
+   * @param scoresAndLabelsAndWeights a [[RDD]] of pairs (uniqueId, (score, label, weight)).
+   * @return evaluation metric value
+   */
+  protected[ml] def evaluateWithScoresAndLabelsAndWeights(
+    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double
 
   /**
    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
@@ -46,12 +74,19 @@ protected[ml] trait Evaluator {
    */
   def betterThan(score1: Double, score2: Double): Boolean
 
-  def getEvaluatorName: String = evaluatorType.name
+  protected[ml] def getEvaluatorName: String = evaluatorType.name
 }
 
 object Evaluator {
 
-  def buildEvaluator(evaluatorType: EvaluatorType, gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
+  /**
+   * Factory for different types of [[Evaluator]]
+   * @param evaluatorType The type of the evaluator
+   * @param gameDataSet A [[RDD]] of (uniqueId: [[Long]], gameDatum: [[GameDatum]]), which are usually the
+   *                    validation/test data, used to construct the evaluator
+   * @return The evaluator
+   */
+  protected[ml] def buildEvaluator(evaluatorType: EvaluatorType, gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
     val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
       (gameData.response, gameData.offset, gameData.weight)
     )
@@ -62,9 +97,12 @@ object Evaluator {
       case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
       case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
       case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
-      case PrecisionAtK(k, documentIdName) =>
-        val documentIds = gameDataSet.mapValues(_.idTypeToValueMap(documentIdName))
-        new PrecisionAtKEvaluator(k, labelAndOffsetAndWeights, documentIds, documentIdName)
+      case ShardedPrecisionAtK(k, idType) =>
+        val ids = gameDataSet.mapValues(_.idTypeToValueMap(idType))
+        new ShardedPrecisionAtKEvaluator(k, idType, ids, labelAndOffsetAndWeights)
+      case ShardedAUC(idType) =>
+        val ids = gameDataSet.mapValues(_.idTypeToValueMap(idType))
+        new ShardedAreaUnderROCCurveEvaluator(idType, ids, labelAndOffsetAndWeights)
       case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
     }
   }

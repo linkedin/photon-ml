@@ -22,31 +22,16 @@ import com.linkedin.photon.ml.function.PointwisePoissonLossFunction
  * Evaluator for Poisson loss
  *
  * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
- * @param defaultScore the default score used to compute the metric
  */
 protected[ml] class PoissonLossEvaluator(
-    labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))],
-    defaultScore: Double = 0.0) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected val evaluatorType = PoissonLoss
+  protected[ml]  val evaluatorType = PoissonLoss
 
-  /**
-   * Evaluate the scores of the model
-   *
-   * @param scores the scores to evaluate
-   * @return score metric value
-   */
-  override def evaluate(scores: RDD[(Long, Double)]): Double = {
-    val defaultScore = this.defaultScore
+  override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
+    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
-    val scoreAndLabelAndWeights = scores
-      .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoreOption, (label, offset, weight)) =>
-        (scoreOption.getOrElse(defaultScore) + offset, (label, weight))
-      }
-      .values
-
-    scoreAndLabelAndWeights.map { case (score, (label, weight)) =>
+    scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
         weight * PointwisePoissonLossFunction.loss(score, label)._1
       }
       .reduce(_ + _)
