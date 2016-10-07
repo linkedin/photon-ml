@@ -66,13 +66,13 @@ object ModelProcessingUtils {
           saveModelToHDFS(model, indexMap, coefficientsOutputDir, sparkContext)
 
         case randomEffectModel: RandomEffectModel =>
-          val randomEffectId = randomEffectModel.randomEffectId
+          val randomEffectType = randomEffectModel.randomEffectType
           val featureShardId = randomEffectModel.featureShardId
 
           val randomEffectModelOutputDir = new Path(outputDir, s"$RANDOM_EFFECT/$name")
           //Write the model ID info
           val modelIdInfoPath = new Path(randomEffectModelOutputDir, ID_INFO)
-          val ids = Array(randomEffectId, featureShardId)
+          val ids = Array(randomEffectType, featureShardId)
           IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, configuration, forceOverwrite = false)
           val indexMapLoader = featureShardIdToFeatureMapLoader(featureShardId)
           saveRandomEffectModelToHDFS(
@@ -125,14 +125,14 @@ object ModelProcessingUtils {
 
         // Load the model ID info
         val idInfoPath = new Path(innerPath, ID_INFO)
-        val Array(randomEffectId, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+        val Array(randomEffectType, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the models
         val featureMapLoader = featureShardIdToIndexMapLoader(featureShardId)
         val modelsRDDInputPath = new Path(innerPath, COEFFICIENTS)
         val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureMapLoader, sparkContext)
 
-        (name, new RandomEffectModel(modelsRDD, randomEffectId, featureShardId))
+        (name, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId))
       }
     } else {
       Array[(String, RandomEffectModel)]()

@@ -51,8 +51,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   import params._
 
   protected[game] val idTypeSet: Set[String] = {
-    val randomEffectIdTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectId).toSet
-    randomEffectIdTypeSet ++ getShardedEvaluatorIdTypes
+    val randomEffectTypeTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectType).toSet
+    randomEffectTypeTypeSet ++ getShardedEvaluatorIdTypes
   }
 
   /**
@@ -106,7 +106,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
     val records = AvroUtils.readAvroFiles(sparkContext, trainingRecordsPath, numPartitions)
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
-    val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
+    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
@@ -114,7 +114,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       featureShardIdToFeatureMapLoader,
       idTypeSet,
       isResponseRequired = true)
-      .partitionBy(globalDataPartitioner)
+      .partitionBy(gameDataPartitioner)
       .setName("GAME training data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     gameDataSet.count()
@@ -141,9 +141,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // Prepare the per-random effect partitioner
     val randomEffectPartitionerMap = randomEffectDataConfigurations.map { case (id, randomEffectDataConfiguration) =>
       val numPartitions = randomEffectDataConfiguration.numPartitions
-      val randomEffectId = randomEffectDataConfiguration.randomEffectId
-      (id, RandomEffectIdPartitioner.generateRandomEffectIdPartitionerFromGameDataSet(numPartitions,
-        randomEffectId, gameDataSet))
+      val randomEffectType = randomEffectDataConfiguration.randomEffectType
+      (id, RandomEffectDataSetPartitioner.generateRandomEffectDataSetPartitionerFromGameDataSet(numPartitions,
+        randomEffectType, gameDataSet))
     }
 
     // Prepare the random effect data sets
@@ -164,7 +164,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             .materialize()
           // Only un-persist the active data and passive data, because randomEffectDataSet and
-          // randomEffectDataSetInProjectedSpace share globalIdToIndividualIds and other RDDs/Broadcasts
+          // randomEffectDataSetInProjectedSpace share uniqueIdToRandomEffectIds and other RDDs/Broadcasts
           rawRandomEffectDataSet.activeData.unpersist()
           rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
           randomEffectDataSetInProjectedSpace
@@ -255,18 +255,18 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     logger.debug(s"responseSum: $responseSum")
     val weightSum = gameDataSet.values.map(_.weight).sum()
     logger.debug(s"weightSum: $weightSum")
-    val randomEffectIdToIndividualIdMap = gameDataSet.values.first().idTypeToValueMap
-    randomEffectIdToIndividualIdMap.keySet.foreach { randomEffectId =>
+    val randomEffectTypeToIdMap = gameDataSet.values.first().idTypeToValueMap
+    randomEffectTypeToIdMap.keySet.foreach { randomEffectType =>
       val dataStats = gameDataSet.values.map { gameData =>
-        val individualId = gameData.idTypeToValueMap(randomEffectId)
-        (individualId, (gameData.response, 1))
+        val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
+        (randomEffectId, (gameData.response, 1))
       }.reduceByKey { case ((responseSum1, numSample1), (responseSum2, numSample2)) =>
         (responseSum1 + responseSum2, numSample1 + numSample2)
       }.cache()
       val responseSumStats = dataStats.values.map(_._1).stats()
       val numSamplesStats = dataStats.values.map(_._2).stats()
-      logger.debug(s"numSamplesStats for $randomEffectId: $numSamplesStats")
-      logger.debug(s"responseSumStats for $randomEffectId: $responseSumStats")
+      logger.debug(s"numSamplesStats for $randomEffectType: $numSamplesStats")
+      logger.debug(s"responseSumStats for $randomEffectType: $responseSumStats")
     }
 
     val validatingLabelsAndOffsetsAndWeights = gameDataSet

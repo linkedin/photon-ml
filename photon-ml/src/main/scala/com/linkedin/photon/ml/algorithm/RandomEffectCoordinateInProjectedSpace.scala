@@ -132,10 +132,14 @@ object RandomEffectCoordinateInProjectedSpace {
       glm.updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
         .asInstanceOf[GeneralizedLinearModel]
     }
-    val randomEffectId = randomEffectDataSetInProjectedSpace.randomEffectId
+    val randomEffectType = randomEffectDataSetInProjectedSpace.randomEffectType
     val featureShardId = randomEffectDataSetInProjectedSpace.featureShardId
     val randomEffectProjector = randomEffectDataSetInProjectedSpace.randomEffectProjector
 
-    new RandomEffectModelInProjectedSpace(randomEffectModelsRDD, randomEffectProjector, randomEffectId, featureShardId)
+    new RandomEffectModelInProjectedSpace(
+      randomEffectModelsRDD,
+      randomEffectProjector,
+      randomEffectType,
+      featureShardId)
   }
 }

@@ -42,17 +42,17 @@ trait GameTestUtils {
   var DefaultSeed = 7
 
   /**
-    * Holds the next value in a global id sequence
+    * Holds the next value in a unique id sequence
     */
   var nextId: AtomicLong = new AtomicLong(0)
 
   /**
-    * Adds a global id to the item
+    * Adds a unique id to the item
     *
     * @param item the item
-    * @return a tuple with global id and the item
+    * @return a tuple with unique id and the item
     */
-  def addGlobalId[T](item: T): (Long, T) = (nextId.incrementAndGet, item)
+  def addUniqueId[T](item: T): (Long, T) = (nextId.incrementAndGet, item)
 
   /**
     * Generates Photon ML labeled points
@@ -92,7 +92,7 @@ trait GameTestUtils {
 
     val data = sc.parallelize(
       generateLabeledPoints(size, dimensions, seed)
-        .map(addGlobalId)
+        .map(addUniqueId)
         .toSeq)
 
     new FixedEffectDataSet(data, featureShardId)
@@ -148,8 +148,8 @@ trait GameTestUtils {
   /**
     * Generates a random effect dataset
     *
-    * @param individualIds a set of random effect individual ids
-    * @param randomEffectId the random effect id
+    * @param randomEffectIds a set of random effect ids
+    * @param randomEffectType the random effect type
     * @param featureShardId the feature shard id
     * @param size the size of the dataset
     * @param dimensions the number of dimensions
@@ -158,40 +158,40 @@ trait GameTestUtils {
     * @return the newly generated random effect dataset
     */
   def generateRandomEffectDataSet(
-      individualIds: Seq[String],
-      randomEffectId: String,
+      randomEffectIds: Seq[String],
+      randomEffectType: String,
       featureShardId: String,
       size: Int,
       dimensions: Int,
       seed: Int = DefaultSeed,
       numPartitions: Int = 4) = {
 
-    val datasets = individualIds.map((_,
+    val datasets = randomEffectIds.map((_,
       new LocalDataSet(
         generateLabeledPoints(size, dimensions, seed)
-          .map(addGlobalId)
+          .map(addUniqueId)
           .toArray)))
 
     val partitioner = new HashPartitioner(numPartitions)
-    val globalIdToIndividualIds = sc.parallelize(
-      individualIds.map(addGlobalId)).partitionBy(partitioner)
+    val uniqueIdToRandomEffectIds = sc.parallelize(
+      randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
 
     new RandomEffectDataSet(
-      activeData, globalIdToIndividualIds, None, None, randomEffectId, featureShardId)
+      activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
   }
 
   /**
     * Generates linear models for random effect models
     *
-    * @param individualIds a set of random effect individual ids for which to generate models
+    * @param randomEffectIds a set of random effect ids for which to generate models
     * @param dimensions the number of dimensions
     * @return the newly generated random effect model
     */
   def generateLinearModelsForRandomEffects(
-      individualIds: Seq[String],
+      randomEffectIds: Seq[String],
       dimensions: Int): Seq[(String, GeneralizedLinearModel)] =
-    individualIds.map((_, LogisticRegressionOptimizationProblem.initializeZeroModel(dimensions)))
+    randomEffectIds.map((_, LogisticRegressionOptimizationProblem.initializeZeroModel(dimensions)))
 
   /**
     * Generates a random effect optimization problem
@@ -210,7 +210,7 @@ trait GameTestUtils {
   /**
     * Generate a random effect coordinate and model
     *
-    * @param randomEffectId the random effect id
+    * @param randomEffectType the random effect type
     * @param featureShardId the feature shard id
     * @param numEntities the number of random effect entities
     * @param size the size of each random effect dataset
@@ -219,17 +219,17 @@ trait GameTestUtils {
     * @return problem coordinate and random effect model
     */
   def generateRandomEffectCoordinateAndModel(
-      randomEffectId: String,
+      randomEffectType: String,
       featureShardId: String,
       numEntities: Int,
       size: Int,
       dimensions: Int,
       seed: Int = DefaultSeed) = {
 
-    val individualIds = (1 to numEntities).map("re" + _).toSeq
+    val randomEffectIds = (1 to numEntities).map("re" + _).toSeq
 
     val randomEffectDataset = generateRandomEffectDataSet(
-      individualIds, randomEffectId, featureShardId, size, dimensions, seed)
+      randomEffectIds, randomEffectType, featureShardId, size, dimensions, seed)
     val dataset = RandomEffectDataSetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
 
     val optimizationProblem = generateRandomEffectOptimizationProblem(dataset)
@@ -237,9 +237,9 @@ trait GameTestUtils {
         LogisticRegressionModel, TwiceDiffFunction[LabeledPoint]](
       dataset, optimizationProblem)
 
-    val models = sc.parallelize(generateLinearModelsForRandomEffects(individualIds, dimensions))
+    val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
     val model = new RandomEffectModelInProjectedSpace(
-      models, dataset.randomEffectProjector, randomEffectId, featureShardId)
+      models, dataset.randomEffectProjector, randomEffectType, featureShardId)
 
     (coordinate, model)
   }

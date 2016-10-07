@@ -156,7 +156,7 @@ object MatrixFactorizationModel {
       // Decorate rowEffectId with row latent factors
       .flatMap { case (rowEffectId, (colEffectIdAndUniqueIdsIterable, rowLatentFactorIterable)) =>
       assert(rowLatentFactorIterable.size <= 1, s"More than one row latent factor (${rowLatentFactorIterable.size}) " +
-        s"found for random effect Id $rowEffectId of random effect type $rowEffectType")
+        s"found for random effect id $rowEffectId of random effect type $rowEffectType")
       colEffectIdAndUniqueIdsIterable.flatMap { case (colEffectId, uniqueId) =>
         rowLatentFactorIterable.map(rowLatentFactor => (colEffectId, (rowLatentFactor, uniqueId)))
       }
@@ -165,7 +165,7 @@ object MatrixFactorizationModel {
       .cogroup(colLatentFactors)
       .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsIterable, colLatentFactorIterable)) =>
         val size = colLatentFactorIterable.size
-      assert(size <= 1, s"More than one column latent factor ($size) found for random effect Id $colEffectId of " +
+      assert(size <= 1, s"More than one column latent factor ($size) found for random effect id $colEffectId of " +
         s"random effect type $colEffectType")
       rowLatentFactorAndUniqueIdsIterable.flatMap { case (rowLatentFactor, uniqueId) =>
         colLatentFactorIterable.map(colLatentFactor => (uniqueId, (rowLatentFactor, colLatentFactor)))

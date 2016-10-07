@@ -30,10 +30,10 @@ class RandomEffectDataSetInProjectedSpace(
     val randomEffectProjector: RandomEffectProjector)
     extends RandomEffectDataSet(
       randomEffectDataSetInProjectedSpace.activeData,
-      randomEffectDataSetInProjectedSpace.globalIdToIndividualIds,
+      randomEffectDataSetInProjectedSpace.uniqueIdToRandomEffectIds,
       randomEffectDataSetInProjectedSpace.passiveDataOption,
-      randomEffectDataSetInProjectedSpace.passiveDataIndividualIdsOption,
-      randomEffectDataSetInProjectedSpace.randomEffectId,
+      randomEffectDataSetInProjectedSpace.passiveDataRandomEffectIdsOption,
+      randomEffectDataSetInProjectedSpace.randomEffectType,
       randomEffectDataSetInProjectedSpace.featureShardId) {
 
   override def setName(name: String): this.type = {

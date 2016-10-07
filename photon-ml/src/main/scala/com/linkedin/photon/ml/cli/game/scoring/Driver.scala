@@ -38,7 +38,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   import params._
 
   protected[game] val idTypeSet: Set[String] = {
-    randomEffectIdTypeSet ++ getShardedEvaluatorIdTypes
+    randomEffectTypeTypeSet ++ getShardedEvaluatorIdTypes
   }
 
   /**
@@ -73,7 +73,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
     val records = AvroUtils.readAvroFiles(sparkContext, recordsPath, parallelism)
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
-    val globalDataPartitioner = new LongHashPartitioner(records.partitions.length)
+    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
@@ -81,7 +81,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       featureShardIdToFeatureMapLoader,
       idTypeSet,
       isResponseRequired = false)
-      .partitionBy(globalDataPartitioner)
+      .partitionBy(gameDataPartitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
@@ -99,7 +99,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.debug(s"Summary for the GAME data set")
     val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
-    randomEffectIdTypeSet.foreach { idType =>
+    randomEffectTypeTypeSet.foreach { idType =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
         val idValue = gameData.idTypeToValueMap(idType)
         (idValue, 1)

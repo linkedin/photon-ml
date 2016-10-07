@@ -27,14 +27,14 @@ class RandomEffectDataConfigurationTest {
   @DataProvider
   def invalidStringConfigs(): Array[Array[Any]] = {
     Array(
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20${F}randomNoLatentFactor"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20${F}randomMissingSplitter5"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20${F}randomNoLatentFactor"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20${F}randomMissingSplitter5"),
       Array(s"missOneConfig${F}1${F}10${F}5${F}20${F}random=5"),
-      Array(s"randomEffectId${F}featureShardId${F}notANumber${F}10${F}5${F}20${F}random${S}5"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}notANumber${F}index_map"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}notANumber${F}20${F}identity"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}notANumber${F}5${F}20${F}identity"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20${F}unknownProjector")
+      Array(s"randomEffectType${F}featureShardId${F}notANumber${F}10${F}5${F}20${F}random${S}5"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}notANumber${F}index_map"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}notANumber${F}20${F}identity"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}notANumber${F}5${F}20${F}identity"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20${F}unknownProjector")
     )
   }
 
@@ -47,18 +47,18 @@ class RandomEffectDataConfigurationTest {
   @DataProvider
   def validStringConfigs(): Array[Array[Any]] = {
     Array(
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}random${S}5"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}index_map"),
-      Array(s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}identity"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}random${S}5"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}index_map"),
+      Array(s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}identity"),
       // With space before/after the splitters
-      Array(s"randomEffectId   $F    featureShardId  $F   1  $F  10 $F 5 $F 20d$F random   $S  5")
+      Array(s"randomEffectType   $F    featureShardId  $F   1  $F  10 $F 5 $F 20d$F random   $S  5")
     )
   }
 
   @Test(dataProvider = "validStringConfigs")
   def testParseAndBuildWithValidString(configStr: String): Unit = {
     val config = RandomEffectDataConfiguration.parseAndBuildFromString(configStr)
-    assertEquals(config.randomEffectId, "randomEffectId")
+    assertEquals(config.randomEffectType, "randomEffectType")
     assertEquals(config.featureShardId, "featureShardId")
     assertEquals(config.numPartitions, 1)
     assertEquals(config.numActiveDataPointsToKeepUpperBound, 10)

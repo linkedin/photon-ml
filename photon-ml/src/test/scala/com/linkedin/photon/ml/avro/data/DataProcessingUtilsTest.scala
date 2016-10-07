@@ -69,7 +69,7 @@ class DataProcessingUtilsTest {
   }
 
   @Test
-  def testMakeRandomEffectIdMapWithIdField(): Unit = {
+  def testMakerandomEffectTypeMapWithIdField(): Unit = {
     val record = new GenericData.Record(SchemaBuilder
       .record("testRecordForRandomIdFetch1")
       .namespace("com.linkedin.photon.ml.avro.data")
@@ -95,7 +95,7 @@ class DataProcessingUtilsTest {
   }
 
   @Test
-  def testMakeRandomEffectIdMapWithMetadataMap(): Unit = {
+  def testMakerandomEffectTypeMapWithMetadataMap(): Unit = {
     val record = new GenericData.Record(SchemaBuilder
       .record("testRecordForRandomIdFetch2")
       .namespace("com.linkedin.photon.ml.avro.data")
@@ -122,7 +122,7 @@ class DataProcessingUtilsTest {
   }
 
   @Test
-  def testMakeRandomEffectIdMapWithBothFields(): Unit = {
+  def testMakerandomEffectTypeMapWithBothFields(): Unit = {
     // Expecting 1st layer fields override the metadataMap fields
 
     val record = new GenericData.Record(SchemaBuilder
@@ -160,7 +160,7 @@ class DataProcessingUtilsTest {
   }
 
   @Test
-  def testNoRandomEffectIdAtAll(): Unit = {
+  def testNorandomEffectTypeAtAll(): Unit = {
     // Excepting the method to still proceed but return an empty map
 
     val emptyRecord = new GenericData.Record(SchemaBuilder
@@ -175,7 +175,7 @@ class DataProcessingUtilsTest {
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMakeRandomEffectIdMapWithMissingField(): Unit = {
+  def testMakerandomEffectTypeMapWithMissingField(): Unit = {
     // Expecting errors to be raised since nothing is present
 
     val emptyRecord = new GenericData.Record(SchemaBuilder

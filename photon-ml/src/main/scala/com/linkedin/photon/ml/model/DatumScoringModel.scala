@@ -25,9 +25,9 @@ protected[ml] trait DatumScoringModel extends Summarizable {
   /**
    * Compute the score for the GAME data set.
    *
-   * @param dataPoints The dataset, which is a RDD consists of the (global Id, GameDatum) pairs. Note that the Long in
+   * @param dataPoints The dataset, which is a RDD consists of the (unique id, GameDatum) pairs. Note that the Long in
    *                   the RDD above is a unique identifier for which GenericRecord the GameData object was created,
-   *                   referred to in the GAME code as the "global ID".
+   *                   referred to in the GAME code as the "unique id".
    * @return The score
    */
   def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore

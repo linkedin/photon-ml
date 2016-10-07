@@ -108,7 +108,7 @@ object DataProcessingUtils {
       }
 
       // random effect group name -> random effect group id value
-      // random effect ids are assumed to be strings
+      // random effect types are assumed to be strings
       (idType, finalIdValue.toString)
     }.toMap
   }

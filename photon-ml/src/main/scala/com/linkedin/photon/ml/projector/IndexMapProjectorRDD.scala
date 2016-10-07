@@ -33,7 +33,7 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
-    val passiveDataIndividualIdsOption = randomEffectDataSet.passiveDataIndividualIdsOption
+    val passiveDataRandomEffectIdsOption = randomEffectDataSet.passiveDataRandomEffectIdsOption
     val projectedActiveData =
       activeData
         // Make sure the activeData retains its partitioner, especially when the partitioner of featureMaps is
@@ -43,9 +43,9 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
 
     val projectedPassiveData =
       if (passiveDataOption.isDefined) {
-        val passiveDataIndividualIds = passiveDataIndividualIdsOption.get
-        val projectorsForPassiveData = indexMapProjectorRDD.filter { case (individualId, _) =>
-          passiveDataIndividualIds.value.contains(individualId)
+        val passiveDataRandomEffectIds = passiveDataRandomEffectIdsOption.get
+        val projectorsForPassiveData = indexMapProjectorRDD.filter { case (randomEffectId, _) =>
+          passiveDataRandomEffectIds.value.contains(randomEffectId)
         }.collectAsMap()
 
         //TODO: When and how to properly unpersist the broadcasted variables afterwards

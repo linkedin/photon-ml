@@ -201,9 +201,9 @@ object FactoredRandomEffectCoordinate {
       numCols,
       isKeepingInterceptTerm = false,
       seed)
-    val randomEffectId = randomEffectDataSet.randomEffectId
+    val randomEffectType = randomEffectDataSet.randomEffectType
     val featureShardId = randomEffectDataSet.featureShardId
-    new FactoredRandomEffectModel(randomEffectModelsRDD, latentProjectionMatrix, randomEffectId, featureShardId)
+    new FactoredRandomEffectModel(randomEffectModelsRDD, latentProjectionMatrix, randomEffectType, featureShardId)
   }
 
   /**
@@ -227,14 +227,14 @@ object FactoredRandomEffectCoordinate {
     val latentProjectionMatrix = projectionMatrix.matrix
     val numRows = latentProjectionMatrix.rows
     val numCols = latentProjectionMatrix.cols
-    val globalIdPartitioner = randomEffectDataSet.globalIdPartitioner
+    val uniqueIdPartitioner = randomEffectDataSet.uniqueIdPartitioner
     val generatedTrainingData = kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD,
       modelsRDD,
       sparsityToleranceThreshold = MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
     val downSampledTrainingData = latentFactorOptimizationProblem
       .downSample(generatedTrainingData)
-      .partitionBy(globalIdPartitioner)
+      .partitionBy(uniqueIdPartitioner)
       .setName("Generated training data for latent projection matrix")
       .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val flattenedLatentProjectionMatrix = latentProjectionMatrix.flatten()
@@ -270,7 +270,7 @@ object FactoredRandomEffectCoordinate {
       sparsityToleranceThreshold: Double = 0.0): RDD[(Long, LabeledPoint)] = {
 
     localDataSetRDD.join(modelsRDD).flatMap { case (_, (localDataSet, model)) =>
-      localDataSet.dataPoints.map { case (globalId, labeledPoint) =>
+      localDataSet.dataPoints.map { case (uniqueId, labeledPoint) =>
         val generatedFeatures = VectorUtils.kroneckerProduct(
           labeledPoint.features,
           model.coefficients.means,
@@ -278,7 +278,7 @@ object FactoredRandomEffectCoordinate {
         val generatedLabeledPoint =
           new LabeledPoint(labeledPoint.label, generatedFeatures, labeledPoint.offset, labeledPoint.weight)
 
-        (globalId, generatedLabeledPoint)
+        (uniqueId, generatedLabeledPoint)
       }
     }
   }
