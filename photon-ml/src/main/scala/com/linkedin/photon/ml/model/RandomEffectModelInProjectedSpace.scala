@@ -24,17 +24,17 @@ import org.apache.spark.storage.StorageLevel
  *
  * @param modelsInProjectedSpaceRDD The underlying models with coefficients in projected space
  * @param randomEffectProjector The projector between the original and projected spaces
- * @param randomEffectId The random effect type id
+ * @param randomEffectType The random effect type
  * @param featureShardId The feature shard id
  */
 protected[ml] class RandomEffectModelInProjectedSpace(
     val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
     val randomEffectProjector: RandomEffectProjector,
-    override val randomEffectId: String,
+    override val randomEffectType: String,
     override val featureShardId: String)
   extends RandomEffectModel(
     randomEffectProjector.projectCoefficientsRDD(modelsInProjectedSpaceRDD),
-    randomEffectId,
+    randomEffectType,
     featureShardId) {
 
   override def persistRDD(storageLevel: StorageLevel): this.type = {
@@ -63,8 +63,8 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    * @return String representation
    */
   override def toSummaryString: String = {
-    val stringBuilder = new StringBuilder(s"Random effect model with projector with randomEffectId $randomEffectId, " +
-        s"featureShardId $featureShardId summary:")
+    val stringBuilder = new StringBuilder(s"Random effect model with projector with " +
+      s"randomEffectType $randomEffectType, featureShardId $featureShardId summary:")
     stringBuilder.append("\ncoefficientsRDDInProjectedSpace:")
     stringBuilder.append(s"\nLength: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.means.length).stats()}")
     stringBuilder.append(s"\nMean: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.meansL2Norm).stats()}")
@@ -81,7 +81,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    * @return The random effect model
    */
   def toRandomEffectModel: RandomEffectModel =
-    new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectId, featureShardId)
+    new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectType, featureShardId)
 
   /**
    * Update the random effect model in projected space with new underlying models per individual
@@ -94,6 +94,6 @@ protected[ml] class RandomEffectModelInProjectedSpace(
     new RandomEffectModelInProjectedSpace(
       updatedModelsRDDInProjectedSpace,
       randomEffectProjector,
-      randomEffectId,
+      randomEffectType,
       featureShardId)
 }

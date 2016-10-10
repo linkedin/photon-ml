@@ -35,7 +35,7 @@ abstract class GAMEDriver(
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
 
   /**
-   * All id types that are necessary for GAME driver. E.g., random effect id types for model training and scoring, or
+   * All id types that are necessary for GAME driver. E.g., random effect type types for model training and scoring, or
    * ids for model evaluation with precision@K, for example, documentId or queryId
    */
   protected[game] val idTypeSet: Set[String]

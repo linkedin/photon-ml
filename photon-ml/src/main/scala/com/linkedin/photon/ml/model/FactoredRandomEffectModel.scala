@@ -24,18 +24,18 @@ import org.apache.spark.rdd.RDD
  *
  * @param modelsInProjectedSpaceRDD The underlying model coefficients in projected space
  * @param projectionMatrixBroadcast The projector between the original and projected spaces
- * @param randomEffectId The random effect type id
+ * @param randomEffectType The random effect type
  * @param featureShardId The feature shard id
  */
 protected[ml] class FactoredRandomEffectModel(
     override val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
     val projectionMatrixBroadcast: ProjectionMatrixBroadcast,
-    override val randomEffectId: String,
+    override val randomEffectType: String,
     override val featureShardId: String)
   extends RandomEffectModelInProjectedSpace(
     modelsInProjectedSpaceRDD,
     projectionMatrixBroadcast,
-    randomEffectId,
+    randomEffectType,
     featureShardId) with BroadcastLike {
 
   override def unpersistBroadcast(): this.type = {
@@ -69,7 +69,7 @@ protected[ml] class FactoredRandomEffectModel(
     new FactoredRandomEffectModel(
       updatedModelsInProjectedSpaceRDD,
       updatedProjectionMatrixBroadcast,
-      randomEffectId,
+      randomEffectType,
       featureShardId)
   }
 }

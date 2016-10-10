@@ -97,21 +97,21 @@ object RandomEffectCoordinate {
     val activeScores = randomEffectDataSet
       .activeData
       .join(randomEffectModel.modelsRDD)
-      .flatMap { case (individualId, (localDataSet, model)) =>
-        localDataSet.dataPoints.map { case (globalId, labeledPoint) =>
-          (globalId, model.computeScore(labeledPoint.features))
+      .flatMap { case (randomEffectId, (localDataSet, model)) =>
+        localDataSet.dataPoints.map { case (uniqueId, labeledPoint) =>
+          (uniqueId, model.computeScore(labeledPoint.features))
         }
       }
-      .partitionBy(randomEffectDataSet.globalIdPartitioner)
+      .partitionBy(randomEffectDataSet.uniqueIdPartitioner)
       .setName("Active scores")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     val passiveDataOption = randomEffectDataSet.passiveDataOption
     if (passiveDataOption.isDefined) {
-      val passiveDataIndividualIdsOption = randomEffectDataSet.passiveDataIndividualIdsOption
+      val passiveDataRandomEffectIdsOption = randomEffectDataSet.passiveDataRandomEffectIdsOption
       val passiveScores = computePassiveScores(
           passiveDataOption.get,
-          passiveDataIndividualIdsOption.get,
+          passiveDataRandomEffectIdsOption.get,
           randomEffectModel.modelsRDD)
         .setName("Passive scores")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -127,25 +127,25 @@ object RandomEffectCoordinate {
    * Computes passive scores
    *
    * @param passiveData The dataset
-   * @param passiveDataIndividualIds The set of individual random effect entity ids
+   * @param passiveDataRandomEffectIds The set of random effect ids
    * @param modelsRDD Model coefficients
    * @return Scores
    */
   private def computePassiveScores(
       passiveData: RDD[(Long, (String, LabeledPoint))],
-      passiveDataIndividualIds: Broadcast[Set[String]],
+      passiveDataRandomEffectIds: Broadcast[Set[String]],
       modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
 
     val modelsForPassiveData = modelsRDD
       .filter { case (shardId, _) =>
-        passiveDataIndividualIds.value.contains(shardId)
+        passiveDataRandomEffectIds.value.contains(shardId)
       }
       .collectAsMap()
 
     //TODO: Need a better design that properly unpersists the broadcasted variables and persists the computed RDD
     val modelsForPassiveDataBroadcast = passiveData.sparkContext.broadcast(modelsForPassiveData)
-    val passiveScores = passiveData.mapValues { case (individualId, labeledPoint) =>
-      modelsForPassiveDataBroadcast.value(individualId).computeScore(labeledPoint.features)
+    val passiveScores = passiveData.mapValues { case (randomEffectId, labeledPoint) =>
+      modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features)
     }
 
     passiveScores.setName("passive scores").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).count()

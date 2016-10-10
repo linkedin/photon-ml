@@ -20,7 +20,7 @@ import com.linkedin.photon.ml.projector.ProjectorType._
 /**
  * Configurations needed in order to generate a [[RandomEffectDataSet]]
  *
- * @param randomEffectId The corresponding random effect Id of the data set
+ * @param randomEffectType The corresponding random effect type of the data set
  * @param featureShardId Key of the feature shard used to generate the data set
  * @param numPartitions Number of partitions of the data
  * @param numActiveDataPointsToKeepUpperBound The upper bound on the number of samples to keep (via reservoir sampling)
@@ -40,7 +40,7 @@ import com.linkedin.photon.ml.projector.ProjectorType._
  *                      into a different space, usually one with lower dimension.
  */
 protected[ml] case class RandomEffectDataConfiguration private (
-    randomEffectId: String,
+    randomEffectType: String,
     featureShardId: String,
     numPartitions: Int,
     numActiveDataPointsToKeepUpperBound: Int,
@@ -53,7 +53,7 @@ protected[ml] case class RandomEffectDataConfiguration private (
   def isFeatureSelectionNeeded: Boolean = numFeaturesToSamplesRatioUpperBound < Double.MaxValue
 
   override def toString: String = {
-    s"randomEffectId: $randomEffectId, featureShardId: $featureShardId, numPartitions: $numPartitions, " +
+    s"randomEffectType: $randomEffectType, featureShardId: $featureShardId, numPartitions: $numPartitions, " +
         s"numActiveDataPointsToKeepUpperBound: $numActiveDataPointsToKeepUpperBound, " +
         s"numPassiveDataPointsToKeepLowerBound: $numPassiveDataPointsToKeepLowerBound, " +
         s"numFeaturesToSamplesRatioUpperBound: $numFeaturesToSamplesRatioUpperBound, " +
@@ -66,7 +66,7 @@ object RandomEffectDataConfiguration {
   protected[ml] val FIRST_LEVEL_SPLITTER = ","
   protected[ml] val SECOND_LEVEL_SPLITTER = "="
   protected[ml] val EXPECTED_NUM_CONFIGS = 7
-  protected[ml] val EXPECTED_FORMAT = s"randomEffectId${FIRST_LEVEL_SPLITTER}featureShardId$FIRST_LEVEL_SPLITTER" +
+  protected[ml] val EXPECTED_FORMAT = s"randomEffectType${FIRST_LEVEL_SPLITTER}featureShardId$FIRST_LEVEL_SPLITTER" +
     s"numActiveDataPointsToKeepUpperBound$FIRST_LEVEL_SPLITTER" +
     s"numPassiveDataPointsToKeepLowerBound$FIRST_LEVEL_SPLITTER" +
     s"numFeaturesToSamplesRatioUpperBound$FIRST_LEVEL_SPLITTER" +
@@ -85,7 +85,7 @@ object RandomEffectDataConfiguration {
       s"parts separated by \'$FIRST_LEVEL_SPLITTER\', but found ${configParams.length}. " +
       s"Expected format: $EXPECTED_FORMAT")
 
-    val randomEffectId = configParams(0)
+    val randomEffectType = configParams(0)
     val featureShardKey = configParams(1)
     val numPartitions = configParams(2).toInt
     val rawUpperBoundNumActiveDataPointsToKeep = configParams(3).toInt
@@ -121,7 +121,7 @@ object RandomEffectDataConfiguration {
       case _ => throw new UnsupportedOperationException(s"Unsupported projector name $projectorTypeName")
     }
 
-    RandomEffectDataConfiguration(randomEffectId, featureShardKey, numPartitions, upperBoundNumActiveDataPointsToKeep,
+    RandomEffectDataConfiguration(randomEffectType, featureShardKey, numPartitions, upperBoundNumActiveDataPointsToKeep,
       lowerBoundNumPassiveDataPointsToKeep, upperBoundNumFeaturesToSamplesRatio, projectorType)
   }
 }

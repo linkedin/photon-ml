@@ -26,12 +26,12 @@ import org.apache.spark.storage.StorageLevel
  * Representation of a random effect model
  *
  * @param modelsRDD The models
- * @param randomEffectId The random effect type id
+ * @param randomEffectType The random effect type
  * @param featureShardId The feature shard id
  */
 protected[ml] class RandomEffectModel(
     val modelsRDD: RDD[(String, GeneralizedLinearModel)],
-    val randomEffectId: String,
+    val randomEffectType: String,
     val featureShardId: String)
   extends DatumScoringModel with RDDLike {
 
@@ -64,7 +64,7 @@ protected[ml] class RandomEffectModel(
    * @return The score
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
-    RandomEffectModel.score(dataPoints, modelsRDD, randomEffectId, featureShardId)
+    RandomEffectModel.score(dataPoints, modelsRDD, randomEffectType, featureShardId)
 
   /**
    * Build a summary string for the model
@@ -72,7 +72,7 @@ protected[ml] class RandomEffectModel(
    * @return String representation
    */
   override def toSummaryString: String = {
-    val stringBuilder = new StringBuilder(s"Random effect model of randomEffectId $randomEffectId, " +
+    val stringBuilder = new StringBuilder(s"Random effect model of randomEffectType $randomEffectType, " +
         s"featureShardId $featureShardId summary:")
     stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
     stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
@@ -89,12 +89,12 @@ protected[ml] class RandomEffectModel(
    * @return The updated random effect model
    */
   def updateRandomEffectModel(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel =
-    new RandomEffectModel(updatedModelsRdd, randomEffectId, featureShardId)
+    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId)
 
   override def equals(that: Any): Boolean = {
     that match {
       case other: RandomEffectModel =>
-        val sameMetaData = this.randomEffectId == other.randomEffectId && this.featureShardId == other.featureShardId
+        val sameMetaData = this.randomEffectType == other.randomEffectType && this.featureShardId == other.featureShardId
         val sameCoefficientsRDD = this
           .modelsRDD
           .fullOuterJoin(other.modelsRDD)
@@ -122,34 +122,34 @@ object RandomEffectModel {
    *
    * @param dataPoints The dataset to score
    * @param modelsRDD The models to use for scoring
-   * @param randomEffectId The random effect type id
+   * @param randomEffectType The random effect type
    * @param featureShardId The feature shard id
    * @return The scores
    */
   protected def score(
       dataPoints: RDD[(Long, GameDatum)],
       modelsRDD: RDD[(String, GeneralizedLinearModel)],
-      randomEffectId: String,
+      randomEffectType: String,
       featureShardId: String): KeyValueScore = {
 
     val scores = dataPoints
-      .map { case (globalId, gameData) =>
-        val individualId = gameData.idTypeToValueMap(randomEffectId)
+      .map { case (uniqueId, gameData) =>
+        val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
         val features = gameData.featureShardContainer(featureShardId)
-        (individualId, (globalId, features))
+        (randomEffectId, (uniqueId, features))
       }
       .cogroup(modelsRDD)
-      .flatMap { case (individualId, (globalIdAndFeaturesIterable, modelsIterable)) =>
+      .flatMap { case (randomEffectId, (uniqueIdAndFeaturesIterable, modelsIterable)) =>
         assert(modelsIterable.size <= 1,
-          s"More than one model (${modelsIterable.size}) found for individual Id $individualId of " +
-            s"random effect Id $randomEffectId")
+          s"More than one model (${modelsIterable.size}) found for individual Id $randomEffectId of " +
+            s"random effect type $randomEffectType")
 
         if (modelsIterable.isEmpty) {
-          globalIdAndFeaturesIterable.map { case (globalId, _) => (globalId, 0.0) }
+          uniqueIdAndFeaturesIterable.map { case (uniqueId, _) => (uniqueId, 0.0) }
         } else {
           val model = modelsIterable.head
-          globalIdAndFeaturesIterable.map { case (globalId, features) =>
-            (globalId, model.computeScore(features))
+          uniqueIdAndFeaturesIterable.map { case (uniqueId, features) =>
+            (uniqueId, model.computeScore(features))
           }
         }
       }

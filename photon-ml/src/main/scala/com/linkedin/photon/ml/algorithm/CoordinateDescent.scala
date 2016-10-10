@@ -29,7 +29,7 @@ import org.apache.spark.rdd.RDD
  *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator Training loss function evaluator
  * @param validatingDataAndEvaluatorsOption Optional validation data and evaluator. The validating data are a [[RDD]]
- *                                          of (globalId, [[GameDatum]] object pairs), where globalId is a unique
+ *                                          of (uniqueId, [[GameDatum]] object pairs), where uniqueId is a unique
  *                                          identifier for each [[GameDatum]] object. The evaluators are
  *                                          a [[Seq]] of evaluators
  * @param logger A logger instance

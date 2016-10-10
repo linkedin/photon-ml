@@ -45,7 +45,7 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 
   def getOffsets: Array[(Long, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.offset) }
 
-  def getGlobalIds: Array[Long] = dataPoints.map(_._1)
+  def getUniqueIds: Array[Long] = dataPoints.map(_._1)
 
   /**
    * Add the residual scores to the offsets

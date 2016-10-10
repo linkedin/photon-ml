@@ -193,11 +193,11 @@ object GAMEModelTest {
 
     // Meta data
     val featureShardId = "featureShardId"
-    val randomEffectId = "randomEffectId"
+    val randomEffectType = "randomEffectType"
 
     // Random effect model
     val numCoefficients = 5
     val modelsRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glm)))
-    new RandomEffectModel(modelsRDD, randomEffectId, featureShardId)
+    new RandomEffectModel(modelsRDD, randomEffectType, featureShardId)
   }
 }

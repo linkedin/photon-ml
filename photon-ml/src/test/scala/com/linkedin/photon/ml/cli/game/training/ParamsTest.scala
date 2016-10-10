@@ -235,9 +235,9 @@ class ParamsTest {
     import RandomEffectDataConfiguration.{FIRST_LEVEL_SPLITTER => F}
     import RandomEffectDataConfiguration.{SECOND_LEVEL_SPLITTER => S}
 
-    val config1InStr = s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}random${S}5"
-    val config2InStr = s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}index_map"
-    val config3InStr = s"randomEffectId${F}featureShardId${F}1${F}10${F}5${F}20d${F}identity"
+    val config1InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}random${S}5"
+    val config2InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}index_map"
+    val config3InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}identity"
 
     val argValueInStr = s"random1:$config1InStr|random2:$config2InStr|random3:$config3InStr"
     val params = Params.parseFromCommandLine(setOneMoreArg(RANDOM_EFFECT_DATA_CONFIGURATIONS, argValueInStr))

@@ -91,7 +91,7 @@ protected[ml] class RandomEffectOptimizationProblem[GLM <: GeneralizedLinearMode
 }
 
 object RandomEffectOptimizationProblem {
-  // Random effect models should not track optimization states per random effect ID. This info is not currently used
+  // Random effect models should not track optimization states per random effect type. This info is not currently used
   // anywhere and would waste memory.
   //
   // In addition, when enabled the 'run' method in the GeneralizedLinearOptimizationProblem will fail due to an implicit

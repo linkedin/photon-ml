@@ -36,31 +36,31 @@ class RandomEffectModelTest extends SparkTestUtils {
 
     // Meta data
     val featureShardId = "featureShardId"
-    val randomEffectId = "randomEffectId"
+    val randomEffectType = "randomEffectType"
 
     // Random effect model
     val numCoefficients = 5
     val modelsRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glm)))
 
-    val randomEffectModel = new RandomEffectModel(modelsRDD, randomEffectId, featureShardId)
+    val randomEffectModel = new RandomEffectModel(modelsRDD, randomEffectType, featureShardId)
 
     // Should equal to itself
     assertEquals(randomEffectModel, randomEffectModel)
 
-    // Should equal to the random effect model with same featureShardId, randomEffectId and coefficientsRDD
-    val randomEffectModelCopy = new RandomEffectModel(modelsRDD, randomEffectId, featureShardId)
+    // Should equal to the random effect model with same featureShardId, randomEffectType and coefficientsRDD
+    val randomEffectModelCopy = new RandomEffectModel(modelsRDD, randomEffectType, featureShardId)
     assertEquals(randomEffectModel, randomEffectModelCopy)
 
     // Should not equal to the random effect model with different featureShardId
     val featureShardId1 = "featureShardId1"
     val randomEffectModelWithDiffFeatureShardId =
-      new RandomEffectModel(modelsRDD, randomEffectId, featureShardId1)
+      new RandomEffectModel(modelsRDD, randomEffectType, featureShardId1)
     assertNotEquals(randomEffectModel, randomEffectModelWithDiffFeatureShardId)
 
-    // Should not equal to the random effect model with different randomEffectId
-    val randomEffectId1 = "randomEffectId1"
+    // Should not equal to the random effect model with different randomEffectType
+    val randomEffectType1 = "randomEffectType1"
     val randomEffectModelWithDiffRandomEffectShardId =
-      new RandomEffectModel(modelsRDD, randomEffectId1, featureShardId)
+      new RandomEffectModel(modelsRDD, randomEffectType1, featureShardId)
     assertNotEquals(randomEffectModel, randomEffectModelWithDiffRandomEffectShardId)
 
     // Should not equal to the random effect model with different coefficientsRDD
@@ -68,7 +68,7 @@ class RandomEffectModelTest extends SparkTestUtils {
     val modelsRDD1 = sc.parallelize(Seq.tabulate(numCoefficients1)(i => (i.toString, glm)))
 
     val randomEffectModelWithDiffCoefficientsRDD =
-      new RandomEffectModel(modelsRDD1, randomEffectId, featureShardId)
+      new RandomEffectModel(modelsRDD1, randomEffectType, featureShardId)
     assertNotEquals(randomEffectModel, randomEffectModelWithDiffCoefficientsRDD)
   }
 }

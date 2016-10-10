@@ -58,12 +58,12 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // Random effect model
     val numCoefficients = 5
-    val randomEffectId = "randomEffectId"
+    val randomEffectType = "randomEffectType"
     val coefficientsRE = Seq.tabulate(numCoefficients)(i => (i.toString, coefficients))
     val glmRE: GeneralizedLinearModel = new LogisticRegressionModel(coefficients)
 
     val glmReRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glmRE)))
-    val randomEffectModel = new RandomEffectModel(glmReRDD, randomEffectId, featureShardId)
+    val randomEffectModel = new RandomEffectModel(glmReRDD, randomEffectType, featureShardId)
 
     // GAME model
     val fixedEffectModelName = "fixed"

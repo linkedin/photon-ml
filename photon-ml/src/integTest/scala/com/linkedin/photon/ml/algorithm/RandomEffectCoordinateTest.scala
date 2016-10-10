@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   import RandomEffectCoordinateTest._
 
-  val randomEffectId = "random-effect-1"
+  val randomEffectType = "random-effect-1"
   val featureShardId = "shard1"
 
   @DataProvider
@@ -37,7 +37,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test(dataProvider = "numEntitiesDataProvider")
   def testUpdateModel(numEntities: Int): Unit = sparkTest("testUpdateModel") {
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectId, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
+      randomEffectType, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
 
     // Score before model update
     val score = coordinate.score(model)
@@ -55,7 +55,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test(dataProvider = "numEntitiesDataProvider")
   def testScore(numEntities: Int): Unit = sparkTest("testScore") {
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectId, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
+      randomEffectType, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
 
     val score = coordinate.score(model)
 

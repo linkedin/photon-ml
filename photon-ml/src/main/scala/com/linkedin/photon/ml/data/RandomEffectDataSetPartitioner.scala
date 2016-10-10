@@ -24,16 +24,16 @@ import org.apache.spark.rdd.RDD
  * Spark partitioner implementation for random effect datasets, that takes the imbalanced data size across different
  * random effects into account (e.g., a popular item may be associated with more data points than a less popular one)
  *
- * @param idToPartitionMap random effect id to partition map
+ * @param idToPartitionMap random effect type to partition map
  */
-protected[ml] class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
+protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
 
   val partitions = idToPartitionMap.value.values.max + 1
 
   def numPartitions: Int = partitions
 
   override def equals(other: Any): Boolean = other match {
-    case rep: RandomEffectIdPartitioner =>
+    case rep: RandomEffectDataSetPartitioner =>
       idToPartitionMap.value.forall { case (key, partition) => rep.getPartition(key) == partition }
     case _ => false
   }
@@ -50,29 +50,29 @@ protected[ml] class RandomEffectIdPartitioner(idToPartitionMap: Broadcast[Map[St
   override def hashCode: Int = idToPartitionMap.hashCode()
 }
 
-object RandomEffectIdPartitioner {
+object RandomEffectDataSetPartitioner {
 
   /**
    * Generate a partitioner from the random effect dataset
    *
    * @param numPartitions number of partitions
-   * @param randomEffectId the random effect type id (e.g. "memberId")
+   * @param randomEffectType the random effect type (e.g. "memberId")
    * @param gameDataSet the dataset
    * @param partitionerCapacity partitioner capacity
    * @return the partitioner
    */
-  def generateRandomEffectIdPartitionerFromGameDataSet(
+  def generateRandomEffectDataSetPartitionerFromGameDataSet(
       numPartitions: Int,
-      randomEffectId: String,
+      randomEffectType: String,
       gameDataSet: RDD[(Long, GameDatum)],
-      partitionerCapacity: Int = 10000): RandomEffectIdPartitioner = {
+      partitionerCapacity: Int = 10000): RandomEffectDataSetPartitioner = {
 
     assert(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")
-    val sortedRandomEffectIds =
+    val sortedRandomEffectTypes =
       gameDataSet
           .values
-          .filter(_.idTypeToValueMap.contains(randomEffectId))
-          .map(gameData => (gameData.idTypeToValueMap(randomEffectId), 1))
+          .filter(_.idTypeToValueMap.contains(randomEffectType))
+          .map(gameData => (gameData.idTypeToValueMap(randomEffectType), 1))
           .reduceByKey(_ + _)
           .collect()
           .sortBy(_._2 * -1)
@@ -87,12 +87,12 @@ object RandomEffectIdPartitioner {
     val idToPartitionMapBuilder = immutable.Map.newBuilder[String, Int]
     idToPartitionMapBuilder.sizeHint(numPartitions)
 
-    sortedRandomEffectIds.foreach { case (id, size) =>
+    sortedRandomEffectTypes.foreach { case (id, size) =>
       val (partition, currentSize) = minHeap.dequeue()
       idToPartitionMapBuilder += id -> partition
       minHeap.enqueue((partition, currentSize + size))
     }
 
-    new RandomEffectIdPartitioner(gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
+    new RandomEffectDataSetPartitioner(gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
   }
 }
