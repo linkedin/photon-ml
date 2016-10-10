@@ -71,14 +71,18 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       case (None, None) => inputDirs.toSeq
     }
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
-    val records = AvroUtils.readAvroFiles(sparkContext, recordsPath, parallelism)
-    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
-    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
-      recordsWithUniqueId,
-      featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapLoader,
+    val gameDataPartitioner = new LongHashPartitioner(parallelism)
+
+    val dataReader = new AvroDataReader(sparkContext)
+    val data = dataReader.readMerged(
+      recordsPath,
+      featureShardIdToFeatureMapLoader.toMap,
+      featureShardIdToFeatureSectionKeysMap)
+
+    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
+      data,
+      featureShardIdToFeatureSectionKeysMap.keys.toSet,
       idTypeSet,
       isResponseRequired = false)
       .partitionBy(gameDataPartitioner)

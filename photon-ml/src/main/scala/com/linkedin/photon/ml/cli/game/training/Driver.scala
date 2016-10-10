@@ -108,10 +108,15 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
     val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
-      recordsWithUniqueId,
-      featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapLoader,
+    val dataReader = new AvroDataReader(sparkContext)
+    val data = dataReader.readMerged(
+      trainingRecordsPath,
+      featureShardIdToFeatureMapLoader.toMap,
+      featureShardIdToFeatureSectionKeysMap)
+
+    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
+      data,
+      featureShardIdToFeatureSectionKeysMap.keys.toSet,
       idTypeSet,
       isResponseRequired = true)
       .partitionBy(gameDataPartitioner)
@@ -234,9 +239,14 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     }
     logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
 
-    val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
-    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
-    val partitioner = new LongHashPartitioner(records.partitions.length)
+    val dataReader = new AvroDataReader(sparkContext)
+    val data = dataReader.readMerged(
+      validatingRecordsPath,
+      featureShardIdToFeatureMapLoader.toMap,
+      featureShardIdToFeatureSectionKeysMap)
+
+    val numPartitions = Math.max(data.rdd.partitions.length, minPartitionsForValidation)
+    val partitioner = new LongHashPartitioner(numPartitions)
 
     val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
       recordsWithUniqueId,
