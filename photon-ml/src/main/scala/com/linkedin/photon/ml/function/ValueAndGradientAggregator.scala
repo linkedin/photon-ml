@@ -30,8 +30,6 @@ import org.apache.spark.rdd.RDD
  *
  * @param func A single loss function for the generalized linear model
  * @param dim Dimension of the aggregator (# of features)
- *
- * @author dpeng
  */
 @SerialVersionUID(1L)
 protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val dim: Int) extends Serializable {
@@ -77,7 +75,7 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
   // The accumulator to calculate the prefactor of the vector shift.
   // For DiffFunction, this is \sum l', which sums up to the prefactor for gradient shift
   //      gradient_j = factor_j * [vectorSum - shift_j * vectorShiftPrefactorSum]
-  // For TwiceDiffFuntion, this is \sum_i l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k,
+  // For TwiceDiffFunction, this is \sum_i l''(z_i, y_i) * \sum_k (x_{ki} - shift_k) * factor_k * v_k,
   // which sums up to the prefactor for Hessian vector product shift
   //      hv_j = factor_j * (vectorSum - shift_j * vectorShiftPrefactorSum)
   protected var vectorShiftPrefactorSum = 0.0d

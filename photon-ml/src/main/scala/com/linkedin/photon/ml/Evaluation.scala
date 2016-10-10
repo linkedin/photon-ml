@@ -149,7 +149,7 @@ object Evaluation extends Logging {
 
   private def averageRDD(toAverage: RDD[Double]): Double = {
     toAverage.mapPartitions(toAverage => {
-      // Compute per-partion partial mean
+      // Compute per-partition partial mean
       var count = 0
       var mean = 0.0
       toAverage.foreach(x => {

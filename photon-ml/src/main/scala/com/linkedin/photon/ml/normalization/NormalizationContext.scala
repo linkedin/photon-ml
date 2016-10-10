@@ -52,7 +52,7 @@ private[ml] case class NormalizationContext(
    * Transform the coefficients of the transformed space to the original space. This is typically used to
    * transform models in the transformed space to the models in the original space for other usages.
    *
-   * The key requirement for the transformation is to keep the margin consistant in both space, i.e.
+   * The key requirement for the transformation is to keep the margin consistent in both space, i.e.
    *
    * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
    *

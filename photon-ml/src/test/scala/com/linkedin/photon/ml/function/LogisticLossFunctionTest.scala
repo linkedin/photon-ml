@@ -26,8 +26,6 @@ import org.testng.annotations.Test
 /**
  * Test some edge cases of the functions in [[com.linkedin.photon.ml.function.LogisticLossFunction]]
  * More tests by numerical methods please see [[com.linkedin.photon.ml.function.ObjectiveFunctionTest]]
- * @author yali
- * @author dpeng
  */
 class LogisticLossFunctionTest {
 
@@ -40,19 +38,19 @@ class LogisticLossFunctionTest {
     val _offset = 1.5
     val _weight = 1.0
     var _datum = LabeledPoint(_label, _features, _offset, _weight)
-    val _coff = DenseVector[Double](1.0, 12.3, -21.0, 0.0)
+    val _coeff = DenseVector[Double](1.0, 12.3, -21.0, 0.0)
 
     val logisticLossFunc = new LogisticLossFunction()
-    val (value1, _) = logisticLossFunc.calculate(Seq(_datum), _coff)
+    val (value1, _) = logisticLossFunc.calculate(Seq(_datum), _coeff)
     //compute the expected value by explicit computation
-    val margin = _features.dot(_coff) + _offset
+    val margin = _features.dot(_coeff) + _offset
     var expected = _label * math.log(1 + math.exp(-margin)) + (1 - _label) * math.log(1 + math.exp(margin))
     assertEquals(value1, expected, _delta)
 
     //test label 0.0
     _label = 0.0
     _datum = LabeledPoint(_label, _features, _offset, _weight)
-    val (value2, _) = logisticLossFunc.calculate(Seq(_datum), _coff)
+    val (value2, _) = logisticLossFunc.calculate(Seq(_datum), _coeff)
     expected = _label * math.log(1 + math.exp(-margin)) + (1 - _label) * math.log(1 + math.exp(margin))
     assertEquals(value2, expected, _delta)
   }
@@ -66,13 +64,13 @@ class LogisticLossFunctionTest {
     val _offset = 0
     val _weight = 1.0
     var _datum = LabeledPoint(_label, _features, _offset, _weight)
-    val _coff = DenseVector[Double](1.0, 1.0, 1.0, 1.0)
+    val _coeff = DenseVector[Double](1.0, 1.0, 1.0, 1.0)
 
     val logisticLossFunc = new LogisticLossFunction()
-    val (_, gradient) = logisticLossFunc.calculate(Seq(_datum), _coff)
+    val (_, gradient) = logisticLossFunc.calculate(Seq(_datum), _coeff)
 
     //calculate it explicitly
-    val margin = _features.dot(_coff) + _offset
+    val margin = _features.dot(_coeff) + _offset
     val expected = _features * (1.0 / (1.0 + math.exp(-margin)) - 1.0)
     assertIterableEqualsWithTolerance(gradient.toArray, expected.toArray, _delta)
   }

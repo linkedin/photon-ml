@@ -18,9 +18,7 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert
 import org.testng.annotations.Test
 
-/**
- * @author nkatariy
- */
+
 class IndexMapProjectorTest {
   val projector = IndexMapProjector.buildIndexMapProjector(
     List[Vector[Double]](

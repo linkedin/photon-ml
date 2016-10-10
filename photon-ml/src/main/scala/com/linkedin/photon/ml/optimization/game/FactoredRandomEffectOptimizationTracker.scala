@@ -20,10 +20,9 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.RDDLike
 
 /**
- * Optimization tracker for factored randon effects
+ * Optimization tracker for factored random effects
  *
  * @param optimizationStatesTrackers state trackers for random effect and fixed effect problems
- * @author xazhang
  */
 protected[ml] class FactoredRandomEffectOptimizationTracker(
     optimizationStatesTrackers: Array[(RandomEffectOptimizationTracker, FixedEffectOptimizationTracker)])

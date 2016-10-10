@@ -27,8 +27,6 @@ import org.testng.annotations.{DataProvider, Test}
 /**
  * Test the functions in trait [[function.DiffFunction]]
  * Only test the computeMargin() method, other derived methods are tested in ObjectiveFunctionTest
- *
- * @author yali
  */
 class DiffFunctionTest extends SparkTestUtils {
 

@@ -19,9 +19,6 @@ import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
 
-/**
- * @author nkatariy
- */
 class OptimizationUtilsTest {
   @DataProvider
   def generateCoefficientsAndConstraintMap(): Array[Array[Object]] = {

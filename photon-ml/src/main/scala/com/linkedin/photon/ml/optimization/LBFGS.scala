@@ -34,9 +34,6 @@ import org.apache.spark.rdd.RDD
  * 3 < numCorrections < 10 is recommended.
  * Restriction: numCorrections > 0
  * @tparam Datum Generic type of input data point
- * @author xazhang
- * @author dpeng
- * @author bdrew
  */
 class LBFGS[Datum <: DataPoint](
     var numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS)

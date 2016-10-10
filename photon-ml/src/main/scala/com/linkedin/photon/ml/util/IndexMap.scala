@@ -19,8 +19,6 @@ import scala.collection.immutable.Map
 
 /**
   * The trait defines the methods supposed should be supported by an index map
-  *
-  * @author yizhou
   */
 trait IndexMap extends Map[String, Int] with Serializable {
 

@@ -26,7 +26,6 @@ import org.testng.annotations.Test
 
 /**
  * Test basic statistics result.
- * @author dpeng
  */
 class BasicStatisticsIntegTest extends SparkTestUtils {
   private val DELTA: Double = 1.0e-8

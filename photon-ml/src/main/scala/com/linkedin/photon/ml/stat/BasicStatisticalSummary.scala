@@ -27,8 +27,6 @@ import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
  * of mllib to use breeze vectors instead of mllib vectors.
  * The summary provides mean, variance, max, min, normL1 and normL2 for each features, as well as the expected magnitude
  * of features (meanAbs) to assist in computing feature importance.
- *
- * @author dpeng
  */
 case class BasicStatisticalSummary(
     mean: Vector[Double],

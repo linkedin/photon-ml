@@ -253,7 +253,7 @@ object FactoredRandomEffectCoordinate {
   }
 
   /**
-   * Computes the kronecker product between the dataset's features and the coefficients. Here the kronercker product is
+   * Computes the kronecker product between the dataset's features and the coefficients. Here the kronecker product is
    * defined as in [[https://en.wikipedia.org/wiki/Kronecker_product]], which is sometimes used interchangeably with
    * the terminology "cross product" or "outer product".
    *

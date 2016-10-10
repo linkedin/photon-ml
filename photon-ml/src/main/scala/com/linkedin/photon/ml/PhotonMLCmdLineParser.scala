@@ -27,10 +27,6 @@ import scala.util.parsing.json.JSON
 
 /**
  * A collection of functions used to parse Photon-ML's parameters [[Params]]
- *
- * @author xazhang
- * @author dpeng
- * @author nkatariy
  */
 object PhotonMLCmdLineParser {
 
@@ -93,7 +89,7 @@ object PhotonMLCmdLineParser {
                       s"1. Validation is optional\n" +
                       s"2. If validation data set is provided, then model validating will be performed and " +
                         s"best model will be provided\n" +
-                      s"3. No matter 1 or 2, all learned models will be provided, so users can always peform " +
+                      s"3. No matter 1 or 2, all learned models will be provided, so users can always perform " +
                         s"an independent model selection job")
               .foreach(x => params.validateDirOpt = Some(x))
       opt[Boolean](INTERCEPT_OPTION)
@@ -229,7 +225,7 @@ object PhotonMLCmdLineParser {
         .text("Indicating the input data format for PhotonML")
         .foreach(x => params.inputFormatType = InputFormatType.withName(x.toUpperCase()))
       opt[Int](FEATURE_DIMENSION)
-        .text("A preliminary indicator of how many features the input data contains (just an upper bound, not including intercept). Only used by LIBSVM foramt and is to be removed soon.")
+        .text("A preliminary indicator of how many features the input data contains (just an upper bound, not including intercept). Only used by LIBSVM format and is to be removed soon.")
         .foreach(x => params.featureDimension = x)
       help(HELP_OPTION).text("prints Photon-ML's usage text")
       override def showUsageOnError = true

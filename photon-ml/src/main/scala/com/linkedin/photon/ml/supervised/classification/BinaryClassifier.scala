@@ -19,7 +19,6 @@ import org.apache.spark.rdd.RDD
 
 /**
  * Represents a binary classifier, with 1 representing the positive label and 0 representing the negative label.
- * @author xazhang
  */
 trait BinaryClassifier extends Serializable {
 

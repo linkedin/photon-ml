@@ -17,8 +17,6 @@ package com.linkedin.photon.ml.util
 /**
   * Use the default system HashMap to construct an index map, highly inefficient in terms of memory usage; but easier to
   * handle. Recommended for small feature space cases (<= 200k).
-  *
-  * @author yizhou
   */
 class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMap {
   @transient

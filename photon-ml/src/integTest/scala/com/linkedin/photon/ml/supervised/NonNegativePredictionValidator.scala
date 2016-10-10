@@ -23,8 +23,6 @@ import scala.reflect.ClassTag
 
 /**
  * Verify that on a particular data set, the model only produces nonnegative predictions
- *
- * @author asaha
  */
 class NonNegativePredictionValidator[-GLM <: GeneralizedLinearModel with Regression: ClassTag]
     extends ModelValidator[GLM] {

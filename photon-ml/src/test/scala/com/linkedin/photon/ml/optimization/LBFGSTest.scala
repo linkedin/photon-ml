@@ -30,9 +30,6 @@ import org.testng.annotations.{DataProvider, Test}
  * The objective function is (x-1)^2 + (y-4)^2, with L1 regularization C(|x| + |y|). We are only interested in the behavior around
  * the minimum, where x > 0 and y > 0. Thus the function to be optimized then become (x-1)^2 + (y-4)^2 + C(x+y) which has obvious analytic
  * solution. The test is based on this function and verifies the shrinkage of x and y.
- *
- * @author dpeng
- * @author nkatariy
  */
 
 class LBFGSTest {

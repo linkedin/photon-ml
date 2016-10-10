@@ -21,9 +21,6 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.constants.MathConst
 
 
-/**
- * @author xazhang
- */
 class CoefficientsTest {
 
   private def getVector(indices: Array[Int], values: Array[Double], length: Int, isDenseVector: Boolean)

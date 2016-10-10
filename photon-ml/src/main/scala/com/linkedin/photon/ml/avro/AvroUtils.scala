@@ -35,7 +35,7 @@ import scala.collection.JavaConverters._
 import scala.collection.{Map, Set, mutable}
 
 // TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
-// classes/functons are decoupled from the rest of code
+// classes/functions are decoupled from the rest of the code
 
 /**
  * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.

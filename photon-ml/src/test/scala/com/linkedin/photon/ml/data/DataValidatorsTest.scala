@@ -19,9 +19,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils
 import org.testng.Assert
 import org.testng.annotations.Test
 
-/**
- * @author nkatariy
- */
+
 class DataValidatorsTest {
   @Test
   def testNonNegativeLabels(): Unit = {

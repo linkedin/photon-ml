@@ -158,7 +158,7 @@ private[ml] class Timer {
   /**
    * Returns the current time
    *
-   * @return curren time
+   * @return current time
    */
   private[util] def now: Long = System.nanoTime
 

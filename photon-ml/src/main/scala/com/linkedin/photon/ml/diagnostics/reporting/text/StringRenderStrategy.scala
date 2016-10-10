@@ -18,9 +18,7 @@ import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.RendererWrapper
 import com.linkedin.photon.ml.diagnostics.reporting._
 
-/**
- * Created by bdrew on 10/9/15.
- */
+
 class StringRenderStrategy extends RenderStrategy[PhysicalReport, String] {
   val chapterSectionNumberingContext = new NumberingContext()
   val listNumberingContext = new NumberingContext()

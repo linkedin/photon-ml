@@ -16,9 +16,7 @@ package com.linkedin.photon.ml.diagnostics.hl
 
 import org.testng.annotations.{DataProvider, Test}
 
-/**
- * Created by bdrew on 10/7/15.
- */
+
 class PredictedProbabilityVersusObservedFrequencyHistogramBinTest {
 
   import org.testng.Assert._

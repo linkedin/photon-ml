@@ -26,9 +26,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 /**
  * This class tests PhotonMLCmdLineParser, verifying that all params castings and verifications are good
- *
- * @author yizhou
- * @author dpeng
  */
 class PhotonMLCmdLineParserTest {
   import com.linkedin.photon.ml.PhotonMLCmdLineParserTest._

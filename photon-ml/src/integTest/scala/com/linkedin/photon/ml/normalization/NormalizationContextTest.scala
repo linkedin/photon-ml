@@ -23,7 +23,6 @@ import scala.util.Random
 
 /**
  * Test [[NormalizationContext]]
- * @author dpeng
  */
 class NormalizationContextTest {
   val dim = 5

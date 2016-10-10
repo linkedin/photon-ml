@@ -34,10 +34,6 @@ import scala.collection.mutable.ArrayBuffer
 
 /**
  *  A bean class for PhotonML parameters to replace the original case class for input parameters.
- *
- * @author xazhang
- * @author dpeng
- * @author nkatariy
  */
 class Params extends PalDBIndexMapParams {
   /**

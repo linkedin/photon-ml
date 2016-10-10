@@ -21,8 +21,6 @@ import org.testng.annotations.{DataProvider, Test}
 /**
  * This tests the validity of first and second derivatives of single loss functions
  * using finite difference.
- *
- * @author dpeng
  */
 class PointwiseLossFunctionTest {
   val delta = 1.0E-3

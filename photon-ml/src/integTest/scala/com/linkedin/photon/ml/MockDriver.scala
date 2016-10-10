@@ -30,9 +30,6 @@ import org.testng.Assert._
 /**
  * This is a mock Driver which extends from Photon-ML Driver. It's used to expose protected fields/methods for test
  * purpose.
- *
- * @author yizhou
- * @author dpeng
  */
 class MockDriver(
     override val params: Params,

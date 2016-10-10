@@ -42,7 +42,7 @@ import java.util.{List => JList}
   * partition-num: The number of partitions to break the storage into. This is merely introduced as an optimization at
   *   the index building stage, so that we don't need to shuffle all features into the same partition. A heuristically
   *   good number would be 1-10, or even as large as 20; but please avoid setting it into an arbitrarily large number.
-  *   Usejust 1 or 2 if you find the indexing job is already fast enough.
+  *   Use just 1 or 2 if you find the indexing job is already fast enough.
   * output-path: The output path
   * date-range: Date range for the input data represented in the form start.date-end.date, e.g. 20150501-20150631
   * date-range-days-ago: Date range for the input data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1

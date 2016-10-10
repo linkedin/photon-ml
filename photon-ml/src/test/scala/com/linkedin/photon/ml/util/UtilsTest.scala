@@ -30,8 +30,6 @@ import org.testng.annotations.Test
 
 /**
  * Test the functions in [[Utils]]
- *
- * @author yizhou
  */
 class UtilsTest extends TestTemplateWithTmpDir {
 

@@ -28,7 +28,6 @@ import org.testng.annotations.Test
 
 /**
  * This class tests basic IO utilities.
- * @author dpeng
  */
 class AvroIOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test

@@ -19,7 +19,6 @@ import org.testng.Assert.assertEquals
 
 /**
  * This object provides utility for complex assertions.
- * @author dpeng
  */
 object Assertions {
 

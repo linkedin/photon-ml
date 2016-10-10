@@ -28,8 +28,6 @@ import org.testng.annotations.{Test, DataProvider}
  *
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in
- *
- * @author nkatariy
  */
 class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
   val numTimesToRun = 100

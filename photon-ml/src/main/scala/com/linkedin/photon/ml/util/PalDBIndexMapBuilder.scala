@@ -25,8 +25,6 @@ import org.apache.hadoop.fs.{Path, FileSystem}
 
 /**
   * A IndexMapBuilder implemented via PalDB: [[https://github.com/linkedin/paldb]]
-  *
-  * @author yizhou
   */
 class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
   @transient

@@ -21,9 +21,7 @@ import com.linkedin.photon.ml.function.TwiceDiffFunction
 /**
  * Test function used solely to exercise the optimizers.
  * This function has known minimum at {@link TestFunction.CENTROID}.
- * @author bdrew
  */
-
 class TestObjective extends TwiceDiffFunction[LabeledPoint] {
 
   override def calculateAt(dataPoint: LabeledPoint, parameter: Vector[Double], cumGradient: Vector[Double]): Double = {
