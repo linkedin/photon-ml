@@ -178,6 +178,16 @@ class PhotonMLCmdLineParserTest {
     assertEquals(weights, List(0.0))
   }
 
+  @Test
+  def testDuplicateRegularizationWeights(): Unit = {
+    val rawArgs = requiredArgs()
+    val regularization = rawArgs ++
+      Array(CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION), RegularizationType.L1.toString,
+        CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION), Array(0.2, 1.0, 1.0, 2.0).mkString(","))
+    val weights = PhotonMLCmdLineParser.parseFromCommandLine(regularization).regularizationWeights
+    assertEquals(weights, List(0.2, 1.0, 2.0))
+  }
+
   @DataProvider
   def generateUnparseableConstraintStrings(): Array[Array[Object]] = {
     Array(

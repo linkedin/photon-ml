@@ -100,10 +100,11 @@ object PhotonMLCmdLineParser {
               .text(s"Whether to learn the intercept. Default ${defaultParams.addIntercept}.")
               .foreach(x => params.addIntercept = x)
       opt[String](REGULARIZATION_WEIGHTS_OPTION)
-              .text(s"Comma separated list of regularization weights. The regularization weight will be ignored if " +
+              .text(s"Comma separated list of distinct regularization weights. The regularization weight will be " +
+                      s"ignored if " +
                       s"$REGULARIZATION_TYPE_OPTION is set ${RegularizationType.NONE}. " +
                       s"Default ${defaultParams.regularizationWeights.mkString(",")}.")
-              .foreach(x => params.regularizationWeights = x.split(",").map(_.toDouble).toList)
+              .foreach(x => params.regularizationWeights = x.split(",").map(_.toDouble).toList.distinct)
       opt[String](REGULARIZATION_TYPE_OPTION)
               .text(s"The type of regularization that will be used to train the model. Options: " +
                       s"[${RegularizationType.values.mkString("|")}}]. If ${RegularizationType.NONE} is used, " +
