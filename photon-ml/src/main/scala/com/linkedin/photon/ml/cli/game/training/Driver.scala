@@ -22,8 +22,6 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.DataProcessingUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
@@ -104,9 +102,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val numPartitions = math.max(numFixedEffectPartitions, numRandomEffectPartitions)
     require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
 
-    val records = AvroUtils.readAvroFiles(sparkContext, trainingRecordsPath, numPartitions)
-    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
-    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
+    val gameDataPartitioner = new LongHashPartitioner(numPartitions)
 
     val dataReader = new AvroDataReader(sparkContext)
     val data = dataReader.readMerged(
@@ -122,6 +118,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       .partitionBy(gameDataPartitioner)
       .setName("GAME training data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
     gameDataSet.count()
     gameDataSet
   }
@@ -248,13 +245,13 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val numPartitions = Math.max(data.rdd.partitions.length, minPartitionsForValidation)
     val partitioner = new LongHashPartitioner(numPartitions)
 
-    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
-      recordsWithUniqueId,
-      featureShardIdToFeatureSectionKeysMap,
-      featureShardIdToFeatureMapLoader,
+    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
+      data,
+      featureShardIdToFeatureSectionKeysMap.keys.toSet,
       idTypeSet,
       isResponseRequired = true)
-      .partitionBy(partitioner).setName("Validating Game data set")
+      .partitionBy(partitioner)
+      .setName("Validating Game data set")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     // Log some simple summary info on the Game data set

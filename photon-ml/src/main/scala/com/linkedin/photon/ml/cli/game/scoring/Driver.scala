@@ -16,11 +16,10 @@ package com.linkedin.photon.ml.cli.game.scoring
 
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.cli.game.GAMEDriver
-import com.linkedin.photon.ml.avro.AvroUtils
-import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUtils}
+import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters, GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.util._
 import org.apache.hadoop.fs.Path
