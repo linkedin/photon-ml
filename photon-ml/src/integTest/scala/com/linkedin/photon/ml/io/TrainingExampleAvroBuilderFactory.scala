@@ -23,8 +23,6 @@ import org.apache.avro.generic.GenericRecord
  * This class is a factory that provides builders for building TrainingExampleAvroRecord.
  *
  * It's intended to be used for test purposes.
- *
- * @author yizhou
  */
 class TrainingExampleAvroBuilderFactory extends TrainingAvroBuilderFactory {
   import TrainingExampleAvroBuilderFactory._

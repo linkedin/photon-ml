@@ -27,7 +27,7 @@ import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
 /**
-  * Tests for the CoordinateDescent implementaion
+  * Tests for the CoordinateDescent implementation
   */
 class CoordinateDescentTest {
 

@@ -32,8 +32,6 @@ import org.testng.annotations.{DataProvider, Test}
  * Test building NormalizationContext from summary.
  * A sophisticated test with the heart data set is also performed to verify the standardization
  * is correct numerically.
- *
- * @author dpeng
  */
 class NormalizationContextIntegTest extends SparkTestUtils {
   /*
@@ -71,7 +69,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
     val factors = normalizationContext.factors
     (factors, expectedFactors) match {
       case (Some(_), None) | (None, Some(_)) =>
-        throw new AssertionError("Calculated fators and expected factors don't match.")
+        throw new AssertionError("Calculated factors and expected factors don't match.")
       case (Some(f1), Some(f2)) =>
         assertIterableEqualsWithTolerance(f1.toArray, f2, _delta)
       case (None, None) => ;
@@ -185,7 +183,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
     println("Model 2: " + model2)
     println("Objective 2: " + objective2)
 
-    // The two objective function/optimization should be exactly the same upto numerical accuracy.
+    // The two objective function/optimization should be exactly the same up to numerical accuracy.
     assertEquals(objective1, objective2, _delta)
     assertIterableEqualsWithTolerance(model1.toArray, model2.toArray, _delta)
   }

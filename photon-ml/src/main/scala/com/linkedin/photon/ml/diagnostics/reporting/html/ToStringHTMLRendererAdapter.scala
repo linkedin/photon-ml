@@ -20,9 +20,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, S
 import scala.reflect.ClassTag
 import scala.xml.{NamespaceBinding, Node}
 
-/**
- * Created by bdrew on 10/12/15.
- */
+
 class ToStringHTMLRendererAdapter[-P <: PhysicalReport : ClassTag](
     namespaceMap: NamespaceBinding,
     htmlPrefix: String,

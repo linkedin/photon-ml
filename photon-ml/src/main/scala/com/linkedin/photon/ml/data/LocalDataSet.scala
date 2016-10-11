@@ -28,7 +28,6 @@ import com.linkedin.photon.ml.projector.Projector
  * Local dataset implementation
  *
  * @param dataPoints Local data points consists of (uniqueId, labeledPoint) pairs
- * @author xazhang
  * @todo Use Array or Map to represent the local data structure?
  *       Array: overhead in sorting the entries by key
  *       Map: overhead in accessing value by key

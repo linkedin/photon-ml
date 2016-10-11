@@ -21,7 +21,7 @@ import org.apache.commons.io.FileUtils
 
 /**
  * Thread safe test template to provide a temporary directory per method.
- * @author dpeng
+ *
  */
 trait TestTemplateWithTmpDir {
 

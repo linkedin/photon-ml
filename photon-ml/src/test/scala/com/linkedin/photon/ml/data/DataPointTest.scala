@@ -22,9 +22,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 /**
  * Test the functions in [[DataPoint]]
- *
- * @author yali
- * @author dpeng
  */
 class DataPointTest {
   val delta = 1.0E-9

@@ -21,7 +21,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
- * Implementation of a min heap datastructure that defers heapification until the given buffer capacity has been
+ * Implementation of a min heap data structure that defers heapification until the given buffer capacity has been
  * reached
  *
  * @param capacity buffer capacity

@@ -24,9 +24,7 @@ import org.apache.spark.rdd.RDD
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
-/**
- * @author nkatariy
- */
+
 class DataValidatorsIntegTest extends SparkTestUtils {
   @DataProvider
   def getArgumentsForDataSanityCheck: Array[Array[Any]] = {
@@ -122,7 +120,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
   }
 
   /*
-  // TODO nkatariy This test does not work because the spark context ends up being null in the data provider. Unlike other tests 
+  // TODO This test does not work because the spark context ends up being null in the data provider. Unlike other tests
   // we have, this test requires the spark context in the data provider and not the test. I believe this test does not
   // work because our sparkTest framework initializes the context after the data provider rather than before. I have
   // temporarily implemented the test without using DataProvider annotation

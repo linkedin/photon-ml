@@ -18,9 +18,7 @@ import breeze.linalg.{CSCMatrix, DenseMatrix, DenseVector}
 import org.testng.Assert
 import org.testng.annotations.Test
 
-/**
-  * @author nkatariy
-  */
+
 class ProjectionMatrixTest {
    // matrix is [[1.0, 0.0, 3.0], [0.0, 2.0, 4.0]]
    val projectionMatrix = new ProjectionMatrix(new DenseMatrix[Double](2, 3, Array(1.0, 0.0, 0.0, 2.0, 3.0, 4.0)))

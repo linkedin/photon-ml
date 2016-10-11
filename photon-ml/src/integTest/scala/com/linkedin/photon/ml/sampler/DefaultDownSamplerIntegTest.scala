@@ -29,8 +29,6 @@ import scala.util.Random
  *
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in
- *
- * @author nkatariy
  */
 class DefaultDownSamplerIntegTest extends SparkTestUtils {
   val numTimesToRun = 100

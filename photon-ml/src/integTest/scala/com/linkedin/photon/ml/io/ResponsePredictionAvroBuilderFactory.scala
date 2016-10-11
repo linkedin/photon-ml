@@ -28,8 +28,6 @@ import com.linkedin.photon.ml.avro.ResponsePredictionFieldNames
  * This class is a factory that provides builders for building ResponsePredictionAvroRecord.
  *
  * It's intended to be used for test purposes.
- *
- * @author yizhou
  */
 class ResponsePredictionAvroBuilderFactory extends TrainingAvroBuilderFactory {
   import ResponsePredictionAvroBuilderFactory._

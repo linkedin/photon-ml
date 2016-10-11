@@ -19,8 +19,6 @@ import org.testng.annotations.Test
 
 /**
  * Test DriverStage
- *
- * @author yizhou
  */
 class DriverStageTest {
 

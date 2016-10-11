@@ -27,9 +27,8 @@ import org.testng.annotations.{Test, DataProvider}
 
 
 /**
-  * Verify that core optimizers do reasonable things on small test problems.
-  * @author bdrew
-  */
+ * Verify that core optimizers do reasonable things on small test problems.
+ */
 class OptimizerIntegTest extends SparkTestUtils with Logging {
   @DataProvider(parallel = true)
   def optimizeEasyTestFunction(): Array[Array[Object]] = {

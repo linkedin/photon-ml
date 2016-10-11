@@ -42,7 +42,6 @@ import org.apache.spark.rdd.RDD
  * gradient vector to avoid memory allocation.
  *
  * @tparam Datum Generic type of data point
- * @author xazhang
  */
 
 trait DiffFunction[Datum <: DataPoint] extends Serializable {

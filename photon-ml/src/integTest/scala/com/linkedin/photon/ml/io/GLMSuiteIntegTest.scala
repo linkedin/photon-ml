@@ -40,9 +40,6 @@ import org.testng.Assert._
 /**
  * This class tests components of GLMSuite that requires integration with real RDD or other runtime environments.
  * Also see [[GLMSuiteTest]].
- *
- * @author yizhou
- * @author nkatariy
  */
 class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   import GLMSuiteIntegTest._

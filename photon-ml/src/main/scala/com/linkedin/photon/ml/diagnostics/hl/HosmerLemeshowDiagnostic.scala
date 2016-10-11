@@ -77,15 +77,15 @@ class HosmerLemeshowDiagnostic(
 
     // Step 3: now do the Chi^2 test and update the report with relevant numbers (e.g. computed Chi^2, d.o.f,
     // probability / loglik of such an extreme result, cutoffs for 90, 95, 99, 99.999999% likelihood)
-    val degressOfFreedom: Int = binnedScores.size - 2
-    val chiSquareDF: RealDistribution = new ChiSquaredDistribution(degressOfFreedom)
+    val degreesOfFreedom: Int = binnedScores.size - 2
+    val chiSquareDF: RealDistribution = new ChiSquaredDistribution(degreesOfFreedom)
 
     val cutoffs = HosmerLemeshowDiagnostic.STANDARD_CONFIDENCE_LEVELS
       .map(x => (x, chiSquareDF.inverseCumulativeProbability(x)))
 
     val probAtChiSquare = chiSquareDF.cumulativeProbability(chiSquaredScore)
 
-    new HosmerLemeshowReport(binMsg, chiSquaredMsg, chiSquaredScore, degressOfFreedom,
+    new HosmerLemeshowReport(binMsg, chiSquaredMsg, chiSquaredScore, degreesOfFreedom,
       probAtChiSquare, cutoffs, binnedScores)
   }
 }

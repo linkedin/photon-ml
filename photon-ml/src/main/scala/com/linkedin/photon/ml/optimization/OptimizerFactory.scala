@@ -35,7 +35,7 @@ protected[ml] object OptimizerFactory {
         new LBFGS[LabeledPoint]
 
       case optType =>
-        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with DiffFuntion.");
+        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with DiffFunction.");
     }
 
     optimizer.setMaximumIterations(config.maximumIterations)
@@ -60,7 +60,7 @@ protected[ml] object OptimizerFactory {
         new TRON[LabeledPoint]
 
       case optType =>
-        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with TwiceDiffFuntion.");
+        throw new IllegalArgumentException(s"Selected optimizer $optType incompatible with TwiceDiffFunction.");
     }
 
     optimizer.setMaximumIterations(config.maximumIterations)

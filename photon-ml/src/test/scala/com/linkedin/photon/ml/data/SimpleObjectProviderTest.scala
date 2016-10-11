@@ -23,8 +23,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 /**
  * Test SimpleObjectProvider
- *
- * @author dpeng
  */
 class SimpleObjectProviderTest {
   @Test(dataProvider = "dataProvider")

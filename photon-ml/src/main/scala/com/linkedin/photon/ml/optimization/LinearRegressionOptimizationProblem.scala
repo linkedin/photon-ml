@@ -52,7 +52,7 @@ case class LinearRegressionOptimizationProblem(
    * Updates properties of the objective function. Useful in cases of data-related changes or parameter sweep.
    *
    * @param normalizationContext new normalization context
-   * @param regularizationWeight new regulariation weight
+   * @param regularizationWeight new regularization weight
    * @return a new optimization problem with updated objective
    */
   override def updateObjective(

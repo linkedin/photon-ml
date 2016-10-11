@@ -19,9 +19,7 @@ import org.gradle.api.Project
 import static ScalaUtils.getScalaVersionSuffix
 
 /**
- * This plugin helps resolve Scala dependencies with the corect Scala version.
- *
- * @author cfreeman
+ * This plugin helps resolve Scala dependencies with the correct Scala version.
  */
 class ScalaResolverPlugin implements Plugin<Project> {
 

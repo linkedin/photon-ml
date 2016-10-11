@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.util
 
 /**
  * A compact representation of the objective function's value.
- * @author xazhang
  */
 protected[ml] case class ObjectiveFunctionValue(lossFunctionValue: Double, regularizationTermValue: Double) {
   val objectiveFunctionValue: Double = lossFunctionValue + regularizationTermValue

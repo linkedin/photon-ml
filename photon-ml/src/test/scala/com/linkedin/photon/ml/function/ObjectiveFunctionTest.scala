@@ -29,8 +29,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 /**
  * Unit tests to check to verify the gradients / Hessians and other methods
- * @author bdrew
- * @author yali
  */
 class ObjectiveFunctionTest extends SparkTestUtils {
 

@@ -26,7 +26,6 @@ import com.linkedin.photon.ml.RDDLike
  *
  * @param labeledPoints the input data
  * @param featureShardId the feature shard id
- * @author xazhang
  */
 protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: String)
   extends DataSet[FixedEffectDataSet] with RDDLike {

@@ -22,8 +22,6 @@ import org.testng.annotations.Test
 
 /**
  * This class tests the SparkContextConfiguration object
- *
- * @author yizhou
  */
 class SparkContextConfigurationIntegTest extends SparkTestUtils {
 

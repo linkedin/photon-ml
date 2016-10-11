@@ -20,7 +20,6 @@ import org.apache.spark.storage.StorageLevel
 
 /**
  * A trait to hold some simple operations on the RDDs
- * @author xazhang
  */
 protected[ml] trait RDDLike {
 

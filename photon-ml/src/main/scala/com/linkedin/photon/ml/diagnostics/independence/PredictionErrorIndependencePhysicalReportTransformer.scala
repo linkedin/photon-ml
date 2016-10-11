@@ -24,7 +24,7 @@ class PredictionErrorIndependencePhysicalReportTransformer
 
   override def transform(report: PredictionErrorIndependenceReport): SectionPhysicalReport = {
     val plotSection = generatePlot(report.errorSample, report.predictionSample)
-    val kendallSection = generateKendall(report.kentallTau)
+    val kendallSection = generateKendall(report.kendallTau)
     new SectionPhysicalReport(Seq(plotSection, kendallSection), SECTION_TITLE)
   }
 }

@@ -16,8 +16,6 @@ package com.linkedin.photon.ml
 
 /**
  * This is an Enum class that enumerates all stages of Photon-ML Driver
- *
- * @author yizhou
  */
 class DriverStage private(val name: String, val order: Int) {
   def ==(that: DriverStage): Boolean = {

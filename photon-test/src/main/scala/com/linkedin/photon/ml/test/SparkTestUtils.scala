@@ -23,9 +23,6 @@ import org.apache.commons.math3.random.{RandomGenerator, Well19937a}
 import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.{SparkConf, SparkContext}
 
-/**
- * @author bdrew
- */
 
 trait SparkTestUtils {
   var sc: SparkContext = _
@@ -511,7 +508,7 @@ object SparkTestUtils {
 
     // Fill in the rest with dummy binary variables
     //
-    // Trick: instead of generating exactly desiredDimensinality calls to nextDouble() to
+    // Trick: instead of generating exactly desiredDimensionality calls to nextDouble() to
     // simulate a coin toss for each element in the vector, instead generate a sample from
     // NB(1, desiredSparsity) which tells us how far to skip ahead to the next successful
     // coin toss. This is *WAY* faster
@@ -550,7 +547,7 @@ object SparkTestUtils {
 
     // Fill in the rest with dummy binary variables
     //
-    // Trick: instead of generating exactly desiredDimensinality calls to nextDouble() to
+    // Trick: instead of generating exactly desiredDimensionality calls to nextDouble() to
     // simulate a coin toss for each element in the vector, instead generate a sample from
     // NB(1, desiredSparsity) which tells us how far to skip ahead to the next successful
     // coin toss. This is *WAY* faster
@@ -599,7 +596,7 @@ object SparkTestUtils {
 
     // Fill in the rest with dummy binary variables
     //
-    // Trick: instead of generating exactly desiredDimensinality calls to nextDouble() to
+    // Trick: instead of generating exactly desiredDimensionality calls to nextDouble() to
     // simulate a coin toss for each element in the vector, instead generate a sample from
     // NB(1, desiredSparsity) which tells us how far to skip ahead to the next successful
     // coin toss. This is *WAY* faster

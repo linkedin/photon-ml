@@ -16,9 +16,6 @@ package com.linkedin.photon.ml
 
 /**
  * A collection of option names used in Photon-ML
- * @author xazhang
- * @author dpeng
- * @author nkatariy
  */
 object OptionNames {
   val HELP_OPTION = "help"

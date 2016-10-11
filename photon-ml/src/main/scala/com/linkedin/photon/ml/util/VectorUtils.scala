@@ -22,7 +22,6 @@ import scala.collection.mutable
 
 /**
  * A utility object that contains some operations on [[Vector]].
- * @author xazhang
  */
 object VectorUtils {
 
@@ -93,7 +92,7 @@ object VectorUtils {
   }
 
   /**
-   * The Kronecker product between two vectors: vector1 \otimes vector2
+   * The Kronecker product between two vectors: vector1 and vector2
    * Wiki reference on the Kronecker product: [[https://en.wikipedia.org/wiki/Kronecker_product]]
    * @param vector1 The left vector
    * @param vector2 The right vector
