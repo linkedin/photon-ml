@@ -50,9 +50,9 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
 
   /**
    * A set of random effect types of the corresponding random effect models in the following format:
-   * randomEffectType1,randomEffectType2,randomEffectType3,
+   * randomEffectType1,randomEffectType2,randomEffectType3
    */
-  var randomEffectTypeTypeSet: Set[String] = Set()
+  var randomEffectTypeSet: Set[String] = Set()
 
   /**
    * Minimum number of partitions for GAME's random effect model
@@ -98,7 +98,7 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
             .mkString("\n")}\n" +
       s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
       s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
-      s"randomEffectTypeSet: $randomEffectTypeTypeSet\n" +
+      s"randomEffectTypeSet: $randomEffectTypeSet\n" +
       s"numPartitionsForRandomEffectModel: $minPartitionsForRandomEffectModel\n" +
       s"gameModelInputDir: $gameModelInputDir\n" +
       s"outputDir: $outputDir\n" +
@@ -166,8 +166,8 @@ object Params {
               .toMap)
       opt[String]("random-effect-id-set")
         .text("A set of random effect types of the corresponding random effect models in the following format: " +
-          s"randomEffectType1,randomEffectType2,randomEffectType3, Default: ${defaultParams.randomEffectTypeTypeSet}")
-        .foreach(x => params.randomEffectTypeTypeSet = x.split(",").toSet)
+          s"randomEffectType1,randomEffectType2,randomEffectType3, Default: ${defaultParams.randomEffectTypeSet}")
+        .foreach(x => params.randomEffectTypeSet = x.split(",").toSet)
       opt[String]("game-model-id")
         .text(s"The GAME model's id that is used to populate the 'modelId' field of ScoringResultAvro " +
           s"(output format of the computed scores). Default: ${defaultParams.gameModelId}")

@@ -38,7 +38,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   import params._
 
   protected[game] val idTypeSet: Set[String] = {
-    randomEffectTypeTypeSet ++ getShardedEvaluatorIdTypes
+    randomEffectTypeSet ++ getShardedEvaluatorIdTypes
   }
 
   /**
@@ -99,7 +99,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.debug(s"Summary for the GAME data set")
     val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
-    randomEffectTypeTypeSet.foreach { idType =>
+    randomEffectTypeSet.foreach { idType =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
         val idValue = gameData.idTypeToValueMap(idType)
         (idValue, 1)

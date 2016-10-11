@@ -327,14 +327,14 @@ object RandomEffectDataSet {
     val numPassiveDataPointsToKeepLowerBound = randomEffectDataConfiguration.numPassiveDataPointsToKeepLowerBound
 
     // The remaining data not included in the active data will be kept as passive data
-    val activeDatauniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
+    val activeDataUniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
     val keyedRandomEffectDataSet = gameDataSet.mapValues { gameData =>
       val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, labeledPoint)
     }
 
-    val passiveData = keyedRandomEffectDataSet.subtractByKey(activeDatauniqueIds, gameDataPartitioner)
+    val passiveData = keyedRandomEffectDataSet.subtractByKey(activeDataUniqueIds, gameDataPartitioner)
         .setName("tmp passive data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
