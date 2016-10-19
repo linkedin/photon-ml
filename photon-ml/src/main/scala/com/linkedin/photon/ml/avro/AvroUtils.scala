@@ -55,10 +55,10 @@ object AvroUtils {
 
     assert(inputPaths.nonEmpty, "The number of input paths is zero.")
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
-    inputPaths.map { path =>
+    sc.union(inputPaths.map { path =>
       sc.hadoopFile[AvroWrapper[GenericRecord], NullWritable, AvroInputFormat[GenericRecord]](path,
         minPartitionsPerPath)
-    }.reduce(_ ++ _).map(_._1.datum())
+    }).map(_._1.datum())
   }
 
   /**
