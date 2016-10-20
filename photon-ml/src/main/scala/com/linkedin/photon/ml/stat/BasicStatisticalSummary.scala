@@ -14,9 +14,10 @@
  */
 package com.linkedin.photon.ml.stat
 
+import com.linkedin.photon.ml.util.VectorUtils
+
 import breeze.linalg.Vector
 import org.apache.spark.Logging
-import org.apache.spark.mllib.linalg.VectorsWrapper
 import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
 
 
@@ -50,13 +51,13 @@ object BasicStatisticalSummary extends Logging {
    * @return The summary with breeze vectors
    */
   def apply(mllibSummary: MultivariateStatisticalSummary, meanAbs: Vector[Double]): BasicStatisticalSummary = {
-    val tMean = VectorsWrapper.mllibToBreeze(mllibSummary.mean)
-    val tVariance = VectorsWrapper.mllibToBreeze(mllibSummary.variance)
-    val tNumNonZeros = VectorsWrapper.mllibToBreeze(mllibSummary.numNonzeros)
-    val tMax = VectorsWrapper.mllibToBreeze(mllibSummary.max)
-    val tMin = VectorsWrapper.mllibToBreeze(mllibSummary.min)
-    val tNormL1 = VectorsWrapper.mllibToBreeze(mllibSummary.normL1)
-    val tNormL2 = VectorsWrapper.mllibToBreeze(mllibSummary.normL2)
+    val tMean = VectorUtils.mllibToBreeze(mllibSummary.mean)
+    val tVariance = VectorUtils.mllibToBreeze(mllibSummary.variance)
+    val tNumNonZeros = VectorUtils.mllibToBreeze(mllibSummary.numNonzeros)
+    val tMax = VectorUtils.mllibToBreeze(mllibSummary.max)
+    val tMin = VectorUtils.mllibToBreeze(mllibSummary.min)
+    val tNormL1 = VectorUtils.mllibToBreeze(mllibSummary.normL1)
+    val tNormL2 = VectorUtils.mllibToBreeze(mllibSummary.normL2)
 
     val adjustedCount = tVariance.activeIterator.foldLeft(0)((count, idxValuePair) => {
       if (idxValuePair._2.isNaN || idxValuePair._2.isInfinite || idxValuePair._2 < 0) {
