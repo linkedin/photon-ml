@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.stat
 import breeze.linalg.Vector
 import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
-import org.apache.spark.mllib.linalg.VectorsWrapper
+import com.linkedin.photon.ml.util.VectorUtils
 import org.apache.spark.mllib.stat.Statistics
 import org.apache.spark.rdd.RDD
 
@@ -33,9 +33,9 @@ private[ml] object BasicStatistics {
    * @param inputData Input data as [[data.LabeledPoint]] RDD
    */
   def getBasicStatistics(inputData: RDD[LabeledPoint]): BasicStatisticalSummary = {
-    val mllibSummary = Statistics.colStats(inputData.map(x => VectorsWrapper.breezeToMllib(x.features)))
+    val mllibSummary = Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features)))
     val scale = if (mllibSummary.count > 0) { mllibSummary.count.toDouble } else { 1.0 }
-    val meanAbs:Vector[Double] = VectorsWrapper.mllibToBreeze(mllibSummary.normL1) / scale
+    val meanAbs:Vector[Double] = VectorUtils.mllibToBreeze(mllibSummary.normL1) / scale
     BasicStatisticalSummary(mllibSummary, meanAbs)
   }
 
