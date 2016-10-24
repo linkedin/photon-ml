@@ -14,15 +14,20 @@
  */
 package com.linkedin.photon.ml.util
 
-import breeze.linalg.{DenseVector, SparseVector}
+import breeze.linalg.{DenseVector, SparseVector, Vector}
+import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SparkVector}
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
+import scala.util.Random
 
 /**
  * Simple tests for functions in [[VectorUtils]]
  * @todo Test [[VectorUtils.kroneckerProduct()]]
  */
 class VectorUtilsTest {
+  val seed = 7
+  val random = new Random(seed)
+
   @Test
   def testConvertIndexAndValuePairArrayToSparseVector() = {
     val length = 6
@@ -82,5 +87,86 @@ class VectorUtilsTest {
     assertTrue(denseVector.isInstanceOf[DenseVector[Double]])
     assertEquals(denseVector.activeSize, length)
     assertEquals(denseVector.length, length)
+  }
+
+  @DataProvider
+  def featureValsProvider() = {
+    val n = 10
+    val dim = 100
+    val mean = 0.0
+    val sd = 1.0
+
+    (0 until n).map { i =>
+      Array(Seq.fill(dim)({ (random.nextGaussian * sd) + mean }).toArray)
+    }.toArray
+  }
+
+  @Test(dataProvider = "featureValsProvider")
+  def testSparseBreezeToMllib(featureVals: Array[Double]) = {
+    val dim = featureVals.length
+    val indexes = (0 until dim).toArray
+    val vector = new SparseVector(indexes, featureVals, dim)
+    val converted = VectorUtils.breezeToMllib(vector)
+
+    converted match {
+      case v: SSV =>
+        assertVectorsEqual(vector, converted)
+
+      case v => fail(s"Unexpected vector type: ${v.getClass.getName}")
+    }
+  }
+
+  @Test(dataProvider = "featureValsProvider")
+  def testDenseBreezeToMllib(featureVals: Array[Double]) = {
+    val vector = new DenseVector(featureVals)
+    val converted = VectorUtils.breezeToMllib(vector)
+
+    converted match {
+      case v: SDV =>
+        assertVectorsEqual(vector, converted)
+
+      case v => fail(s"Unexpected vector type: ${v.getClass.getName}")
+    }
+  }
+
+  @Test(dataProvider = "featureValsProvider")
+  def testSparseMllibToBreeze(featureVals: Array[Double]) = {
+    val dim = featureVals.length
+    val indexes = (0 until dim).toArray
+    val vector = new SSV(dim, indexes, featureVals)
+    val converted = VectorUtils.mllibToBreeze(vector)
+
+    converted match {
+      case v: SparseVector[Double] =>
+        assertVectorsEqual(converted, vector)
+
+      case v => fail(s"Unexpected vector type: ${v.getClass.getName}")
+    }
+  }
+
+  @Test(dataProvider = "featureValsProvider")
+  def testDenseMllibToBreeze(featureVals: Array[Double]) = {
+    val vector = new SDV(featureVals)
+    val converted = VectorUtils.mllibToBreeze(vector)
+
+    converted match {
+      case v: DenseVector[Double] =>
+        assertVectorsEqual(converted, vector)
+
+      case v => fail(s"Unexpected vector type: ${v.getClass.getName}")
+    }
+  }
+
+  /**
+    * Asserts that the breeze and spark vectors are equal.
+    *
+    * @param breezeVector the Breeze vector
+    * @param sparkVector the Spark vector
+    */
+  def assertVectorsEqual(breezeVector: Vector[Double], sparkVector: SparkVector): Unit = {
+    assertEquals(breezeVector.size, sparkVector.size)
+    for (i <- 0 until breezeVector.size) {
+      assertEquals(breezeVector(i), sparkVector(i))
+    }
   }
 }
