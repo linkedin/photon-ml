@@ -17,8 +17,10 @@ package com.linkedin.photon.ml.data
 import scala.collection.{Map, immutable, mutable}
 
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.{HashPartitioner, Partitioner}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{HashPartitioner, Partitioner}
+
+import com.linkedin.photon.ml.BroadcastLike
 
 /**
  * Spark partitioner implementation for random effect datasets, that takes the imbalanced data size across different
@@ -26,17 +28,26 @@ import org.apache.spark.rdd.RDD
  *
  * @param idToPartitionMap random effect type to partition map
  */
-protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[Map[String, Int]]) extends Partitioner {
+protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[Map[String, Int]])
+  extends Partitioner
+  with BroadcastLike {
 
   val partitions = idToPartitionMap.value.values.max + 1
 
-  def numPartitions: Int = partitions
+  override def unpersistBroadcast(): this.type = {
+    idToPartitionMap.unpersist()
+    this
+  }
 
   override def equals(other: Any): Boolean = other match {
     case rep: RandomEffectDataSetPartitioner =>
       idToPartitionMap.value.forall { case (key, partition) => rep.getPartition(key) == partition }
     case _ => false
   }
+
+  override def hashCode: Int = idToPartitionMap.hashCode()
+
+  def numPartitions: Int = partitions
 
   def getPartition(key: Any): Int = key match {
     case string: String =>
@@ -46,12 +57,9 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   }
 
   def defaultPartitioner: HashPartitioner = new HashPartitioner(partitions)
-
-  override def hashCode: Int = idToPartitionMap.hashCode()
 }
 
 object RandomEffectDataSetPartitioner {
-
   /**
    * Generate a partitioner from the random effect dataset
    *

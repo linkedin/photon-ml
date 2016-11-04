@@ -14,14 +14,15 @@
  */
 package com.linkedin.photon.ml.optimization
 
+import scala.collection.mutable
+
 import breeze.linalg.norm
 import breeze.optimize.FirstOrderMinimizer.{ConvergenceReason, FunctionValuesConverged, GradientConverged}
 import org.apache.spark.Logging
 
-import scala.collection.mutable
-
 /**
  * Class to track the history of an optimizer's states and wall-clock time elapsed per iteration
+ *
  * @param maxNumStates The maximum number of states to track. This is used to prevent the OptimizationHistoryTracker
  *                     from using too much memory to track the history of the states.
  *
@@ -29,28 +30,37 @@ import scala.collection.mutable
  *        changed or removed in future releases.
  */
 protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable with Logging {
-
   private val _times = new mutable.ArrayBuffer[Long]
   private val _states = new mutable.ArrayBuffer[OptimizerState]
-  private var _startTime = System.currentTimeMillis()
 
+  private var _startTime = System.currentTimeMillis()
+  private var numStates = 0
   var convergenceReason: Option[ConvergenceReason] = None
 
   /**
-    * @return True if the optimizer is done because either function values converged or gradient converged
-    */
+   * Check if optimization ended because either the objective function value or gradient converged.
+   *
+   * @return True if either the function values or gradient converged, false otherwise
+   */
   def converged: Boolean =
-    convergenceReason == Some(FunctionValuesConverged) || convergenceReason == Some(GradientConverged)
+    convergenceReason.forall(_ == FunctionValuesConverged) || convergenceReason.forall(_ == GradientConverged)
 
-  private var numStates = 0
-
-  def clear() {
+  /**
+   * Clear the cache of states and reset the start time.
+   */
+  def clear(): Unit = {
     _startTime = System.currentTimeMillis()
     _times.clear()
     _states.clear()
     numStates = 0
   }
 
+  /**
+   * Add the most recent state to the list of tracked states. If the limit of cached states is reached, remove the
+   * oldest state.
+   *
+   * @param state The most recent state
+   */
   def track(state: OptimizerState): Unit = {
     _times += System.currentTimeMillis() - _startTime
     _states += state
@@ -62,8 +72,18 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
     }
   }
 
+  /**
+   * Get the sequence of times between states as an Array.
+   *
+   * @return The times between states
+   */
   def getTrackedTimeHistory: Array[Long] = _times.toArray
 
+  /**
+   * Get the sequence of recorded states as an Array.
+   *
+   * @return The recorded states
+   */
   def getTrackedStates: Array[OptimizerState] = _states.toArray
 
   override def toString: String = {

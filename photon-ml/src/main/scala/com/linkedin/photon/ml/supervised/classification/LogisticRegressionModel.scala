@@ -16,16 +16,17 @@ package com.linkedin.photon.ml.supervised.classification
 
 import breeze.linalg.Vector
 import breeze.numerics.sigmoid
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
-import org.apache.spark.rdd.RDD
 
 /**
-  * Class for the classification model trained using Logistic Regression
-  *
-  * @param coefficients Model coefficients estimated for every feature
-  */
+ * Class for the classification model trained using Logistic Regression
+ *
+ * @param coefficients Model coefficients estimated for every feature
+ */
 class LogisticRegressionModel(override val coefficients: Coefficients)
   extends GeneralizedLinearModel(coefficients)
   with BinaryClassifier
@@ -33,12 +34,12 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
   with Serializable {
 
   /**
-    * Compute the mean of the logistic regression model
-    *
-    * @param features The input data point's feature
-    * @param offset The input data point's offset
-    * @return The mean for the passed features
-    */
+   * Compute the mean of the logistic regression model
+   *
+   * @param features The input data point's feature
+   * @param offset The input data point's offset
+   * @return The mean for the passed features
+   */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = sigmoid(coefficients.computeScore(features) + offset)
 
@@ -69,4 +70,15 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
       BinaryClassifier.positiveClassLabel
     }
   }
+}
+
+object LogisticRegressionModel {
+  /**
+   * Create a new logistic regression model with the provided coefficients (means) and variances
+   *
+   * @param coefficients The feature coefficient means and variances for the model
+   * @return A logistic regression model
+   */
+  def create(coefficients: Coefficients): LogisticRegressionModel =
+    new LogisticRegressionModel(coefficients)
 }

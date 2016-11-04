@@ -15,64 +15,63 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.Vector
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.util.Summarizable
 import org.apache.spark.rdd.RDD
 
-import scala.reflect._
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.util.Summarizable
 
 /**
-  * GeneralizedLinearModel (GLM) represents a model trained using GeneralizedLinearAlgorithm.
-  * Reference: [[http://en.wikipedia.org/wiki/Generalized_linear_model]].
-  * Note that this class is modified based on MLLib's GeneralizedLinearModel.
-  *
-  * @param coefficients The generalized linear model's coefficients (or called weights in some scenarios) of the features
-  */
+ * GeneralizedLinearModel (GLM) represents a model trained using GeneralizedLinearAlgorithm.
+ * Reference: [[http://en.wikipedia.org/wiki/Generalized_linear_model]].
+ * Note that this class is modified based on MLLib's GeneralizedLinearModel.
+ *
+ * @param coefficients The generalized linear model's coefficients (or called weights in some scenarios) of the features
+ */
 abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Serializable with Summarizable {
 
   /**
-    * Compute the mean of the model
-    *
-    * @param features The input data point's features
-    * @param offset The input data point's offset
-    * @return The mean for the passed features
-    */
+   * Compute the mean of the model
+   *
+   * @param features The input data point's features
+   * @param offset The input data point's offset
+   * @return The mean for the passed features
+   */
   protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
 
   /**
-    * Compute the score for the given features
-    *
-    * @param features The input data point's feature
-    * @return The score for the passed features
-    */
+   * Compute the score for the given features
+   *
+   * @param features The input data point's feature
+   * @return The score for the passed features
+   */
   def computeScore(features: Vector[Double]): Double = coefficients.computeScore(features)
 
   /**
-    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-    * coefficients
-    *
-    * @param features Vector representing a single data point's features
-    * @return Computed mean function value
-    */
+   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+   * coefficients
+   *
+   * @param features Vector representing a single data point's features
+   * @return Computed mean function value
+   */
   def computeMeanFunction(features: Vector[Double]): Double = computeMeanFunctionWithOffset(features, 0.0)
 
   /**
-    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-    * coefficients
-    *
-    * @param features Vector representing a single data point's features
-    * @param offset Offset of the data point
-    * @return Computed mean function value
-    */
+   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
+   * coefficients
+   *
+   * @param features Vector representing a single data point's features
+   * @param offset Offset of the data point
+   * @return Computed mean function value
+   */
   def computeMeanFunctionWithOffset(features: Vector[Double], offset: Double): Double =
     computeMean(features, offset)
 
   /**
-    * Create a new model of the same type with updated coefficients.
-    *
-    * @param updateCoefficients The new coefficients
-    * @return A new generalized linear model with the passed coefficients
-    */
+   * Create a new model of the same type with updated coefficients.
+   *
+   * @param updateCoefficients The new coefficients
+   * @return A new generalized linear model with the passed coefficients
+   */
   def updateCoefficients(updateCoefficients: Coefficients): GeneralizedLinearModel
 
   /**
@@ -107,34 +106,34 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
   }
 
   /**
-    * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
-    * what circumstances this class can equal another class.
-    *
-    * @param other Some object
-    * @return Whether this object can equal the other object
-    */
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
+   *
+   * @param other Some object
+   * @return Whether this object can equal the other object
+   */
   def canEqual(other: Any): Boolean = other.isInstanceOf[GeneralizedLinearModel]
 
-  override def hashCode = coefficients.hashCode
+  override def hashCode = coefficients.hashCode()
 }
 
 object GeneralizedLinearModel {
   /**
-    * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
-    * estimated coefficients and intercept
-    * @param features RDD representing data points' features
-    * @return Computed mean function value
-    */
+   * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
+   * estimated coefficients and intercept
+   * @param features RDD representing data points' features
+   * @return Computed mean function value
+   */
   def computeMeanFunctions(model: GeneralizedLinearModel, features: RDD[Vector[Double]]): RDD[Double] =
     computeMeanFunctionsWithOffsets(model, features.map(feature => (feature, 0.0)))
 
   /**
-    * Compute the value of the mean functions of a generalized linear model given a RDD of data points
-    *
-    * @param model Generalized linear model to use
-    * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
-    * @return Computed mean function values
-    */
+   * Compute the value of the mean functions of a generalized linear model given a RDD of data points
+   *
+   * @param model Generalized linear model to use
+   * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
+   * @return Computed mean function values
+   */
   def computeMeanFunctionsWithOffsets(model: GeneralizedLinearModel, featuresWithOffsets: RDD[(Vector[Double], Double)])
     : RDD[Double] = {
 

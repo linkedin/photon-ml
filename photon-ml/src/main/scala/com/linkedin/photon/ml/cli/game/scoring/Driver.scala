@@ -14,6 +14,12 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
+import scala.collection.Map
+
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
@@ -22,17 +28,12 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters, GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.util._
-import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-
-import scala.collection.Map
 
 /**
-  * Driver for GAME full model scoring
-  */
+ * Driver for GAME full model scoring
+ */
 class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
-    extends GAMEDriver(params, sparkContext, logger) {
+  extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
 
@@ -46,8 +47,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
    * @param featureShardIdToFeatureMapLoader A map of shard id to feature map loader
    * @return The prepared GAME data set
    */
-  protected def prepareGameDataSet(featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader])
-  : RDD[(Long, GameDatum)] = {
+  protected def prepareGameDataSet(
+    featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): RDD[(Long, GameDatum)] = {
 
     val recordsPath = (dateRangeOpt, dateRangeDaysAgoOpt) match {
       // Specified as date range
@@ -104,9 +105,9 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     logger.debug(s"numSamples: $numSamples")
     randomEffectTypeSet.foreach { idType =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
-        val idValue = gameData.idTypeToValueMap(idType)
-        (idValue, 1)
-      }
+          val idValue = gameData.idTypeToValueMap(idType)
+          (idValue, 1)
+        }
         .reduceByKey(_ + _)
         .values
         .stats()
@@ -133,7 +134,10 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 
-    gameModel.score(gameDataSet)
+    val scores = gameModel.score(gameDataSet).persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+
+    gameModel.unpersist
+    scores
   }
 
   /**
@@ -185,7 +189,6 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
 
     timer.start()
     val scores = scoreGameDataSet(featureShardIdToFeatureMapMap, gameDataSet)
-    scores.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     timer.stop()
     logger.info(s"Time elapsed after computing scores: ${timer.durationSeconds} (s)\n")
 
@@ -218,9 +221,11 @@ object Driver {
 
   /**
    * Evaluate the computed scores with the given evaluator type
+   *
    * @param evaluatorType The evaluator type
    * @param scores The computed scores
    * @param gameDataSet The GAME data set
+   * @return The evaluation metric
    */
   protected[scoring] def evaluateScores(
       evaluatorType: EvaluatorType,

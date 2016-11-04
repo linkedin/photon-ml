@@ -14,13 +14,14 @@
  */
 package com.linkedin.photon.ml.algorithm
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.{DataSet, GameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger, Timer}
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
-import org.apache.spark.rdd.RDD
 
 /**
  * Coordinate descent implementation
@@ -112,8 +113,8 @@ class CoordinateDescent(
     for (iteration <- 0 until numIterations) {
       val iterationTimer = Timer.start()
       logger.debug(s"Iteration $iteration of coordinate descent starts...\n")
-      coordinates.foreach { case (coordinateId, coordinate) =>
 
+      coordinates.foreach { case (coordinateId, coordinate) =>
         val coordinateTimer = Timer.start()
         logger.debug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
 
@@ -121,7 +122,7 @@ class CoordinateDescent(
         val modelUpdatingTimer = Timer.start()
 
         val oldModel = updatedGAMEModel.getModel(coordinateId).get
-        val (updatedModel, optimizationTracker) = if (updatedScoresContainer.keys.size > 1) {
+        val (updatedModel, optimizationTrackerOption) = if (updatedScoresContainer.keys.size > 1) {
           // If there are other coordinates, collect their scores into a partial score and optimize
           val partialScore = updatedScoresContainer.filterKeys(_ != coordinateId).values.reduce(_ + _)
           coordinate.updateModel(oldModel, partialScore)
@@ -133,8 +134,11 @@ class CoordinateDescent(
 
         updatedModel match {
           case rddLike: RDDLike =>
-            rddLike.setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+            rddLike
+              .setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+              .materialize()
+
           case _ =>
         }
         oldModel match {
@@ -150,12 +154,14 @@ class CoordinateDescent(
         // Summarize the current progress
         logger.info(s"Finished training the model in coordinate $coordinateId, " +
             s"time elapsed: ${modelUpdatingTimer.stop().durationSeconds} (s).")
-        logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
-        logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
-        optimizationTracker match {
-          case rddLike: RDDLike => rddLike.unpersistRDD()
-          case _ =>
+        optimizationTrackerOption.foreach { optimizationTracker =>
+          logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
+          optimizationTracker match {
+            case rddLike: RDDLike => rddLike.unpersistRDD()
+            case _ =>
+          }
         }
+        logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
 
         // Update the training score
         val updatedScores = coordinate.score(updatedModel)

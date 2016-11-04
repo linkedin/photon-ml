@@ -21,8 +21,8 @@ import com.linkedin.photon.ml.GameTestUtils
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
-  * Tests for the RandomEffectCoordinate implementation
-  */
+ * Tests for the RandomEffectCoordinate implementation
+ */
 class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   import RandomEffectCoordinateTest._
 
@@ -37,7 +37,11 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test(dataProvider = "numEntitiesDataProvider")
   def testUpdateModel(numEntities: Int): Unit = sparkTest("testUpdateModel") {
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectType, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
+      randomEffectType,
+      featureShardId,
+      numEntities,
+      NUM_TRAINING_SAMPLES,
+      DIMENSIONALITY)
 
     // Score before model update
     val score = coordinate.score(model)
@@ -55,17 +59,21 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test(dataProvider = "numEntitiesDataProvider")
   def testScore(numEntities: Int): Unit = sparkTest("testScore") {
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectType, featureShardId, numEntities, NumTrainingSamples, Dimensionality)
+      randomEffectType,
+      featureShardId,
+      numEntities,
+      NUM_TRAINING_SAMPLES,
+      DIMENSIONALITY)
 
     val score = coordinate.score(model)
 
-    assertEquals(score.scores.count, numEntities * NumTrainingSamples)
+    assertEquals(score.scores.count, numEntities * NUM_TRAINING_SAMPLES)
     assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
   }
 }
 
 object RandomEffectCoordinateTest {
-  val NumTrainingSamples = 1000
-  val Dimensionality = 10
-  val NumPartitions = 4
+  val NUM_TRAINING_SAMPLES = 1000
+  val DIMENSIONALITY = 10
+  val NUM_PARTITIONS = 4
 }

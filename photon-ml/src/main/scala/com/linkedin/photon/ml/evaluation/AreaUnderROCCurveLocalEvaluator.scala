@@ -19,7 +19,6 @@ import java.lang.{Double => JDouble}
 
 import com.linkedin.photon.ml.constants.MathConst._
 
-
 /**
  * Local evaluator for Area Under ROC curve
  */

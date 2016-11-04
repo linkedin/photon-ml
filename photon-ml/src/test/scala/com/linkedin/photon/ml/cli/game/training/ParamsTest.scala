@@ -14,15 +14,15 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-import com.linkedin.photon.ml.data.{RandomEffectDataConfiguration, FixedEffectDataConfiguration}
-import com.linkedin.photon.ml.io.ModelOutputMode
-import com.linkedin.photon.ml.optimization.game.{MFOptimizationConfiguration, GLMOptimizationConfiguration}
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.test.CommonTestUtils._
-
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
+import com.linkedin.photon.ml.io.ModelOutputMode
+import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
  * Simple test for GAME training's [[Params]]
@@ -232,8 +232,7 @@ class ParamsTest {
 
   @Test
   def testRandomEffectDataConfigurations(): Unit = {
-    import RandomEffectDataConfiguration.{FIRST_LEVEL_SPLITTER => F}
-    import RandomEffectDataConfiguration.{SECOND_LEVEL_SPLITTER => S}
+    import RandomEffectDataConfiguration.{FIRST_LEVEL_SPLITTER => F, SECOND_LEVEL_SPLITTER => S}
 
     val config1InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}random${S}5"
     val config2InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}index_map"

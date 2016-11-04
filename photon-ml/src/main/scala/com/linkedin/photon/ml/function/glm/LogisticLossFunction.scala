@@ -12,38 +12,41 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function
+package com.linkedin.photon.ml.function.glm
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
-import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.util.Utils
 
 /**
  * Class for the logistic loss function:
+ *
  *   sum_i (w_i*(y_i*log(1 + exp(-(theta'x_i + o_i))) + (1-y_i)*log(1 + exp(theta'x_i + o_i)))),
- * where \theta is the coefficients of the data features to be estimated, (y_i, x_i, o_i, w_i) are the tuple
- * for label, features, offset, and weight of the i'th labeled data point, respectively.
- * Note that the above equation assumes the label y_i \in {0, 1}. However, the code below would also work when
- * y_i \in {-1, 1}.
- */
-class LogisticLossFunction(normalizationContext: ObjectProvider[NormalizationContext] =
-    new SimpleObjectProvider[NormalizationContext](NoNormalization))
-  extends GeneralizedLinearModelLossFunction(PointwiseLogisticLossFunction, normalizationContext)
-
-/**
- * A single logistic loss function
+ *
+ * where:
+ *
+ *  - \theta is the vector of estimated coefficient weights for the data features
+ *  - (y_i, x_i, o_i, w_i) are the tuple (label, features, offset, weight) of the i'th labeled data point
+ *
+ * Note that the above equation assumes that:
+ *
+ *    y_i \in {0, 1}.
+ *
+ * However, the code below would also work when:
+ *
+ *    y_i \in {-1, 1}.
+ *
+ * Logistic regression single loss function:
  *
  * l(z, y) = - log [1 / (1 + exp(-z))]           if this is a positive sample
  *
  *           - log [1 - (1 / (1 + exp(-z)))]     if this is a negative sample
  */
 @SerialVersionUID(1L)
-object PointwiseLogisticLossFunction extends PointwiseLossFunction {
+object LogisticLossFunction extends PointwiseLossFunction {
   /**
    * The sigmoid function 1 / (1 + exp(-z))
    *
-   * @param z z
+   * @param z The margin, i.e. z in l(z, y)
    * @return The value
    */
   private def sigmoid(z: Double): Double = 1.0 / (1.0 + math.exp(-z))
@@ -65,7 +68,7 @@ object PointwiseLogisticLossFunction extends PointwiseLossFunction {
   override def loss(margin: Double, label: Double): (Double, Double) = {
     if (label > MathConst.POSITIVE_RESPONSE_THRESHOLD) {
       // The following is equivalent to log(1 + exp(-margin)) but more numerically stable.
-      (Utils.log1pExp(-margin), - sigmoid(-margin))
+      (Utils.log1pExp(-margin), -sigmoid(-margin))
     } else {
       (Utils.log1pExp(margin), sigmoid(margin))
     }

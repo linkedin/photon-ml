@@ -15,14 +15,14 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.GameTestUtils
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
-  * Tests for the FixedEffectCoordinate implementation
-  */
+ * Tests for the FixedEffectCoordinate implementation
+ */
 class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   import FixedEffectCoordinateTest._
 
@@ -31,7 +31,9 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test
   def testUpdateModel(): Unit = sparkTest("testUpdateModel") {
     val (coordinate, model) = generateFixedEffectCoordinateAndModel(
-      featureShardId, NumTrainingSamples, Dimensionality)
+      featureShardId,
+      NUM_TRAINING_SAMPLES,
+      DIMENSIONALITY)
 
     // Score before model update
     val score = coordinate.score(model)
@@ -49,18 +51,19 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   @Test
   def testScore(): Unit = sparkTest("testScore") {
     val (coordinate, model) = generateFixedEffectCoordinateAndModel(
-      featureShardId, NumTrainingSamples, Dimensionality)
+      featureShardId,
+      NUM_TRAINING_SAMPLES,
+      DIMENSIONALITY)
 
     val score = coordinate.score(model)
 
-    assertEquals(score.scores.count, NumTrainingSamples)
+    assertEquals(score.scores.count, NUM_TRAINING_SAMPLES)
     assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
   }
 }
 
 object FixedEffectCoordinateTest {
-  val Seed = 7
-  val NumTrainingSamples = 1000
-  val Dimensionality = 10
-  val NumPartitions = 4
+  val NUM_TRAINING_SAMPLES = 1000
+  val DIMENSIONALITY = 10
+  val NUM_PARTITIONS = 4
 }

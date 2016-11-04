@@ -19,7 +19,6 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
 
-
 /**
  * Test functions in [[AreaUnderROCCurveLocalEvaluator]]
  */

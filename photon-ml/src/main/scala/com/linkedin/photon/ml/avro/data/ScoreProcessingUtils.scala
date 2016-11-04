@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.avro.data
 
-
 import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkContext
@@ -23,7 +22,6 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.avro.generated.ScoringResultAvro
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroFieldNames}
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
-
 
 /**
  * Some basic functions to read/write scores computed with GAME model from/to HDFS. The current implementation assumes

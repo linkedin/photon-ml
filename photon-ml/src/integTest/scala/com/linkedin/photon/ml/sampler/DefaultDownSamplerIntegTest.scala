@@ -14,21 +14,22 @@
  */
 package com.linkedin.photon.ml.sampler
 
-import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
+import scala.util.Random
+
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
-import scala.util.Random
+import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- * Tests that using the DefaultDownSampler generates a new RDD with approximately correct number of instances as per
- * the down-sampling rate
+ * Tests that using the DefaultDownSampler generates a new RDD with an approximately correct number of instances as per
+ * the down-sampling rate.
  *
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
- * numbers to kick in
+ * numbers to kick in.
  */
 class DefaultDownSamplerIntegTest extends SparkTestUtils {
   val numTimesToRun = 100
@@ -39,7 +40,8 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
    * Generates a random labeled point with given number of features having a random label, default offset (0.0)
    * and default weight (1.0)
    *
-   * @return labeled point
+   * @param numFeatures The feature dimension of the dummy data
+   * @return A labeled point
    */
   private def generateRandomLabeledPoint(numFeatures: Integer): LabeledPoint = {
     new LabeledPoint(new Random().nextDouble(), CommonTestUtils.generateDenseFeatureVectors(1, 0, numFeatures).head)
@@ -48,26 +50,31 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
   /**
    * Generate a dummy RDD[(Long, LabeledPoint)] for testing the DefaultDownSampler
    *
-   * @param numFeatures number of features in the generated examples
-   *
+   * @param sc The Spark context used to convert the list of points to and RDD
+   * @param numInstances The number of training samples
+   * @param numFeatures The feature dimension of the dummy data
+   * @return An RDD of dummy training data
    * @return RDD
    */
-  private def generateDummyDataset(sc: SparkContext, numInstances: Integer,
-                                   numFeatures: Integer): RDD[(Long, LabeledPoint)] = {
+  private def generateDummyDataset(
+    sc: SparkContext,
+    numInstances: Integer,
+    numFeatures: Integer): RDD[(Long, LabeledPoint)] =
     sc.parallelize((0 until numInstances).map(i => (i.toLong, generateRandomLabeledPoint(numFeatures))))
+
+  @DataProvider
+  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
+    Array(Array(0.25), Array(0.5), Array(0.75))
   }
 
   @DataProvider
-  def downSamplingRatesProvider(): Array[Array[Any]] = {
-    Array(Array(0.25), Array(0.5), Array(0.75), Array(1.0))
+  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
+    Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
   }
 
-  @Test(dataProvider = "downSamplingRatesProvider")
-  def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling")  {
-    val dataset = generateDummyDataset(
-      sc,
-      numInstancesToGenerate,
-      numFeatures)
+  @Test(dataProvider = "validDownSamplingRatesProvider")
+  def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
+    val dataset = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
 
     var numInstancesInSampled: Long = 0
     for (x <- 0 until numTimesToRun) {
@@ -76,14 +83,15 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
         .count()
     }
 
-    if (downSamplingRate == 1.0) {
-      Assert.assertEquals(numInstancesInSampled, numTimesToRun * numInstancesToGenerate)
-    } else {
-      val mean = numTimesToRun * numInstancesToGenerate * downSamplingRate
-      val variance = mean * (1 - downSamplingRate)
-      // tolerance = standard deviation * 5
-      val tolerance = math.sqrt(variance) * 5
-      Assert.assertEquals(numInstancesInSampled, mean, tolerance)
-    }
+    val mean = numTimesToRun * numInstancesToGenerate * downSamplingRate
+    val variance = mean * (1 - downSamplingRate)
+    // tolerance = standard deviation * 5
+    val tolerance = math.sqrt(variance) * 5
+    Assert.assertEquals(numInstancesInSampled, mean, tolerance)
+  }
+
+  @Test(dataProvider = "invalidDownSamplingRatesProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testBadRates(downSamplingRate: Double): Unit = sparkTest("testBadRates") {
+    new DefaultDownSampler(downSamplingRate)
   }
 }

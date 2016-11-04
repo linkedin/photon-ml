@@ -14,15 +14,12 @@
  */
 package com.linkedin.photon.ml.util
 
-
-import com.linkedin.photon.ml.Params
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 
-
 /**
-  * A loader that provides instances of DefaultIndexMap
-  */
+ * A loader that provides instances of DefaultIndexMap
+ */
 class DefaultIndexMapLoader(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMapLoader {
   @transient
   private var _indexMap: IndexMap = null
@@ -30,8 +27,8 @@ class DefaultIndexMapLoader(@transient val featureNameToIdMap: Map[String, Int])
   private var _mapBroadCaster: Broadcast[Map[String, Int]] = null
 
   /**
-    * Prepare a loader, should be called early before anything
-    */
+   * Prepare a loader, should be called early before anything
+   */
   override def prepare(sc: SparkContext, params: IndexMapParams, namespace: String): Unit = {
     // do nothing
     _indexMap = new DefaultIndexMap(featureNameToIdMap)

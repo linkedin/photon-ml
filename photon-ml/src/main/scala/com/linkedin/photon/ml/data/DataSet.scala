@@ -21,9 +21,10 @@ import com.linkedin.photon.ml.util.Summarizable
  */
 protected[ml] trait DataSet[D] extends Summarizable {
   /**
-   * Add scores to data offsets
+   * Add residual scores to the data offsets
    *
-   * @param keyScore The scores
+   * @param keyScore The residual scores
+   * @return The dataset with updated offsets
    */
   def addScoresToOffsets(keyScore: KeyValueScore): D
 }

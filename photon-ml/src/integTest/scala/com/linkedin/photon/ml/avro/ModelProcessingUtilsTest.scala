@@ -27,8 +27,8 @@ import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
 
@@ -36,7 +36,6 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
   @Test
   def testLoadAndSaveGameModels(): Unit = sparkTest("loadAndSaveRandomEffectModelToHDFS") {
-
     // Coefficients parameter
     val coefficientDimension = 1
     val coefficients = Coefficients.initializeZeroCoefficients(coefficientDimension)
@@ -59,7 +58,6 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     // Random effect model
     val numCoefficients = 5
     val randomEffectType = "randomEffectType"
-    val coefficientsRE = Seq.tabulate(numCoefficients)(i => (i.toString, coefficients))
     val glmRE: GeneralizedLinearModel = new LogisticRegressionModel(coefficients)
 
     val glmReRDD = sc.parallelize(Seq.tabulate(numCoefficients)(i => (i.toString, glmRE)))
@@ -97,7 +95,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   @DataProvider
-  def matrixFactorizationConfigProvider():Array[Array[Any]] = {
+  def matrixFactorizationConfigProvider(): Array[Array[Any]] = {
     Array(
       Array(0, 0, 0),
       Array(1, 0, 0),
@@ -109,28 +107,28 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   @Test(dataProvider = "matrixFactorizationConfigProvider")
-  def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int)
-  : Unit = sparkTest("loadAndSaveRandomEffectModelToHDFS") {
+  def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
+    sparkTest("loadAndSaveRandomEffectModelToHDFS") {
+      import MatrixFactorizationModelTest._
 
-    import MatrixFactorizationModelTest._
-    // Meta data
-    val rowEffectType = "rowEffectType"
-    val colEffectType = "colEffectType"
+      // Meta data
+      val rowEffectType = "rowEffectType"
+      val colEffectType = "colEffectType"
 
-    // Generate the random matrix
-    val random = new Random(MathConst.RANDOM_SEED)
-    def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-    def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-    val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
-      randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
+      // Generate the random matrix
+      val random = new Random(MathConst.RANDOM_SEED)
+      def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+      def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+      val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
+        randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
 
-    val tmpDir = getTmpDir
-    val numOutputFiles = 1
-    // Save the model to HDFS
-    ModelProcessingUtils.saveMatrixFactorizationModelToHDFS(randomMFModel, tmpDir, numOutputFiles, sc)
-    // Load the model from HDFS
-    val loadedRandomMFModel =
-      ModelProcessingUtils.loadMatrixFactorizationModelFromHDFS(tmpDir, rowEffectType, colEffectType, sc)
-    assertEquals(loadedRandomMFModel, randomMFModel)
-  }
+      val tmpDir = getTmpDir
+      val numOutputFiles = 1
+      // Save the model to HDFS
+      ModelProcessingUtils.saveMatrixFactorizationModelToHDFS(randomMFModel, tmpDir, numOutputFiles, sc)
+      // Load the model from HDFS
+      val loadedRandomMFModel =
+        ModelProcessingUtils.loadMatrixFactorizationModelFromHDFS(tmpDir, rowEffectType, colEffectType, sc)
+      assertEquals(loadedRandomMFModel, randomMFModel)
+    }
 }

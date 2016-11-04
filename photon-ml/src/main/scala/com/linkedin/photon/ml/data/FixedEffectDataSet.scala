@@ -20,28 +20,30 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 
-
 /**
  * DataSet implementation for fixed effect data sets
  *
- * @param labeledPoints the input data
- * @param featureShardId the feature shard id
+ * @param labeledPoints The input data
+ * @param featureShardId The feature shard id
  */
 protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: String)
-  extends DataSet[FixedEffectDataSet] with RDDLike {
+  extends DataSet[FixedEffectDataSet]
+  with RDDLike {
 
   lazy val numFeatures = labeledPoints.first()._2.features.length
 
   /**
    * Add scores to data offsets
    *
-   * @param scores the scores used throughout the coordinate descent algorithm
+   * @param scores The scores used throughout the coordinate descent algorithm
+   * @return An updated dataset with scores added to offsets
    */
-  def addScoresToOffsets(scores: KeyValueScore): FixedEffectDataSet = {
-    val updatedLabeledPoints = labeledPoints.leftOuterJoin(scores.scores)
-        .mapValues { case (LabeledPoint(label, features, offset, weight), scoreOption) =>
-      LabeledPoint(label, features, offset + scoreOption.getOrElse(0.0), weight)
-    }
+  override def addScoresToOffsets(scores: KeyValueScore): FixedEffectDataSet = {
+    val updatedLabeledPoints = labeledPoints
+      .leftOuterJoin(scores.scores)
+      .mapValues { case (LabeledPoint(label, features, offset, weight), scoreOption) =>
+        LabeledPoint(label, features, offset + scoreOption.getOrElse(0.0), weight)
+      }
     new FixedEffectDataSet(updatedLabeledPoints, featureShardId)
   }
 
@@ -70,7 +72,7 @@ protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoin
   /**
    * Build a summary string for the dataset
    *
-   * @return string representation
+   * @return A String representation of the dataset
    */
   override def toSummaryString: String = {
     val numSamples = labeledPoints.count()
@@ -83,13 +85,12 @@ protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoin
 }
 
 object FixedEffectDataSet {
-
   /**
-   * Build an instance of fixed effect dataset with the given configuration
+   * Build an instance of a fixed effect dataset with the given configuration
    *
-   * @param gameDataSet the input dataset
-   * @param fixedEffectDataConfiguration the data configuration
-   * @return new dataset with given configuration
+   * @param gameDataSet The input dataset
+   * @param fixedEffectDataConfiguration The data configuration object
+   * @return A new dataset with given configuration
    */
   protected[ml] def buildWithConfiguration(
       gameDataSet: RDD[(Long, GameDatum)],

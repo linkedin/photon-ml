@@ -14,6 +14,4 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting
 
-
-class SequencePhysicalReport[+Q <: PhysicalReport](val items:Seq[Q]) extends AbstractPhysicalReport {
-}
+class SequencePhysicalReport[+Q <: PhysicalReport](val items:Seq[Q]) extends AbstractPhysicalReport

@@ -14,13 +14,14 @@
  */
 package com.linkedin.photon.ml.projector
 
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
 
 /**
  * A class that holds the projectors for a sharded data set
@@ -28,7 +29,8 @@ import org.apache.spark.storage.StorageLevel
  * @param indexMapProjectorRDD The projectors
  */
 protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(String, IndexMapProjector)])
-  extends RandomEffectProjector with RDDLike {
+  extends RandomEffectProjector
+  with RDDLike {
 
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
     val activeData = randomEffectDataSet.activeData
@@ -48,14 +50,18 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
           passiveDataRandomEffectIds.value.contains(randomEffectId)
         }.collectAsMap()
 
-        //TODO: When and how to properly unpersist the broadcasted variables afterwards
         val projectorsForPassiveDataBroadcast = passiveDataOption.get.sparkContext.broadcast(projectorsForPassiveData)
-        passiveDataOption.map(_.mapValues { case (shardId, LabeledPoint(response, features, offset, weight)) =>
-          val projector = projectorsForPassiveDataBroadcast.value(shardId)
-          val projectedFeatures = projector.projectFeatures(features)
+        val result = passiveDataOption.map {
+          _.mapValues { case (shardId, LabeledPoint(response, features, offset, weight)) =>
+            val projector = projectorsForPassiveDataBroadcast.value(shardId)
+            val projectedFeatures = projector.projectFeatures(features)
 
-          (shardId, LabeledPoint(response, projectedFeatures, offset, weight))
-        })
+            (shardId, LabeledPoint(response, projectedFeatures, offset, weight))
+          }
+        }
+
+        projectorsForPassiveDataBroadcast.unpersist()
+        result
       } else {
         None
       }
@@ -103,7 +109,6 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
 }
 
 object IndexMapProjectorRDD {
-
   /**
    * Generate index map based RDD projectors
    *

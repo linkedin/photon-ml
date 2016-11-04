@@ -16,12 +16,12 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.function.SmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 
 /**
  * Evaluator for smoothed hinge loss
  *
- * @param labelAndOffsetAndWeights a [[RDD]] of (id, (labels, offsets, weights)) pairs
+ * @param labelAndOffsetAndWeights An [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class SmoothedHingeLossEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
@@ -41,9 +41,9 @@ protected[ml] class SmoothedHingeLossEvaluator(
    * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
    *
-   * @param score1 the first score to compare
-   * @param score2 the second score to compare
-   * @return true if the first score is better than the second
+   * @param score1 The first score to compare
+   * @param score2 The second score to compare
+   * @return True if the first score is better than the second, otherwise false
    */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
 }

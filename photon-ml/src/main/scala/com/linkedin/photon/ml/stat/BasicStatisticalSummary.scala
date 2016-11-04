@@ -20,7 +20,6 @@ import breeze.linalg.Vector
 import org.apache.spark.Logging
 import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
 
-
 /**
  * A wrapper of
  * [[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.MultivariateStatisticalSummary
@@ -70,7 +69,7 @@ object BasicStatisticalSummary extends Logging {
 
     if (adjustedCount > 0) {
       logWarning(s"Found $adjustedCount features where variance was either non-positive, not-a-number, or infinite. " +
-                 s"The variances for these features have been re-set to 1.0.")
+                 "The variances for these features have been re-set to 1.0.")
     }
 
     this(

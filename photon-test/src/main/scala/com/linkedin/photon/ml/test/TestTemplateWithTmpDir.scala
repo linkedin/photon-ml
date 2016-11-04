@@ -14,17 +14,14 @@
  */
 package com.linkedin.photon.ml.test
 
-import java.nio.file.{Paths, Files}
+import java.nio.file.{Files, Paths}
 
 import org.apache.commons.io.FileUtils
 
-
 /**
  * Thread safe test template to provide a temporary directory per method.
- *
  */
 trait TestTemplateWithTmpDir {
-
   /**
    * Return the temporary directory as a string.
    * @return the temporary directory as a string.

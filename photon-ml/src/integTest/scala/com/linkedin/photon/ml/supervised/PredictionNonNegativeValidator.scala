@@ -14,12 +14,12 @@
  */
 package com.linkedin.photon.ml.supervised
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
-import org.apache.spark.rdd.RDD
-
 
 class PredictionNonNegativeValidator extends ModelValidator[GeneralizedLinearModel] {
 

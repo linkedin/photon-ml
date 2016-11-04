@@ -15,12 +15,12 @@
 package com.linkedin.photon.ml.model
 
 import org.apache.spark.SparkContext
-import org.testng.annotations.Test
 import org.testng.Assert._
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.optimization.LogisticRegressionOptimizationProblem
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 class GAMEModelTest extends SparkTestUtils {
@@ -161,17 +161,17 @@ class GAMEModelTest extends SparkTestUtils {
 }
 
 object GAMEModelTest {
-
   /**
-    * Generate a toy fixed effect model
-    *
-    * @param sc the Spark context
-    * @param coefficientDimension the dimension of the coefficients
-    * @return a fixed effect model
-    */
+   * Generate a toy fixed effect model.
+   *
+   * @param sc The Spark context
+   * @param coefficientDimension The dimension of the coefficients
+   * @return A fixed effect model
+   */
   protected def getFixedEffectModel(sc: SparkContext, coefficientDimension: Int): FixedEffectModel = {
     // Coefficients parameter
-    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
+    val glm: GeneralizedLinearModel =
+      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"
@@ -181,15 +181,16 @@ object GAMEModelTest {
   }
 
   /**
-    * Generate a toy random effect model
-    *
-    * @param sc the Spark context
-    * @param coefficientDimension the dimension of the coefficients
-    * @return a random effect model
-    */
+   * Generate a toy random effect model.
+   *
+   * @param sc The Spark context
+   * @param coefficientDimension The dimension of the coefficients
+   * @return A random effect model
+   */
   protected def getRandomEffectModel(sc: SparkContext, coefficientDimension: Int): RandomEffectModel = {
     // Coefficients parameter
-    val glm: GeneralizedLinearModel = LogisticRegressionOptimizationProblem.initializeZeroModel(coefficientDimension)
+    val glm: GeneralizedLinearModel =
+      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"

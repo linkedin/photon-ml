@@ -16,8 +16,6 @@ package com.linkedin.photon.ml.diagnostics.reporting.text
 
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
-import com.linkedin.photon.ml.diagnostics.reporting._
-
 
 class ChapterToStringRenderer(
     renderStrategy: RenderStrategy[SectionPhysicalReport, String],

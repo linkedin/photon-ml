@@ -14,19 +14,22 @@
  */
 package com.linkedin.photon.ml
 
+import scala.collection.mutable
+
 import breeze.linalg.{DenseMatrix, DenseVector, Matrix, SparseVector, Vector}
+import org.apache.spark.serializer.KryoSerializer
+import org.apache.spark.{SparkConf, SparkContext}
+
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore, LabeledPoint, LocalDataSet}
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, LBFGS, RegularizationContext, TRON}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.spark.serializer.KryoSerializer
-import org.apache.spark.{SparkConf, SparkContext}
-
-import scala.collection.mutable
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
 /**
  * Factory for creating SparkContext instances. This handles the tricky details of things like setting up serialization,
@@ -38,29 +41,38 @@ object SparkContextConfiguration {
   val CONF_SPARK_KRYO_CLASSES_TO_REGISTER = "spark.kryo.classesToRegister"
   val KRYO_CLASSES_TO_REGISTER = Array[Class[_]](
     classOf[mutable.BitSet],
+    classOf[mutable.ListBuffer[_]],
     classOf[Coefficients],
     classOf[DenseMatrix[Double]],
     classOf[DenseVector[Double]],
     classOf[GLMOptimizationConfiguration],
     classOf[GameDatum],
     classOf[GeneralizedLinearModel],
-    classOf[GeneralizedLinearModelLossFunction],
-    classOf[GeneralizedLinearOptimizationProblem[_, _]],
+    classOf[GeneralizedLinearOptimizationProblem[_]],
     classOf[HessianVectorAggregator],
+    classOf[SingleNodeObjectiveFunction],
+    classOf[SingleNodeOptimizationProblem[_]],
     classOf[KeyValueScore],
-    classOf[LBFGS[LabeledPoint]],
+    classOf[LBFGS],
     classOf[LabeledPoint],
+    classOf[LinearRegressionModel],
     classOf[LocalDataSet],
-    classOf[LogisticLossFunction],
-    classOf[MFOptimizationConfiguration],
+    classOf[LogisticRegressionModel],
     classOf[Matrix[Double]],
+    classOf[MFOptimizationConfiguration],
+    classOf[ModelTracker],
     classOf[NameAndTerm],
     classOf[NormalizationContext],
+    classOf[ObjectiveFunction],
+    classOf[OptimizationStatesTracker],
+    classOf[Option[_]],
+    classOf[OWLQN],
+    classOf[PoissonRegressionModel],
     classOf[RegularizationContext],
     classOf[Set[Int]],
+    classOf[SmoothedHingeLossLinearSVMModel],
     classOf[SparseVector[Double]],
-    classOf[SquaredLossFunction],
-    classOf[TRON[LabeledPoint]],
+    classOf[TRON],
     classOf[ValueAndGradientAggregator],
     classOf[Vector[Double]])
 

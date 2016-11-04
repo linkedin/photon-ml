@@ -14,16 +14,17 @@
  */
 package com.linkedin.photon.ml.diagnostics.fitting
 
-import com.linkedin.photon.ml.{Evaluation, ModelTraining}
+import org.apache.spark.rdd.RDD
+import org.testng.Assert._
+import org.testng.annotations.Test
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
-import org.apache.spark.rdd.RDD
-import org.testng.annotations.Test
-import org.testng.Assert._
+import com.linkedin.photon.ml.{Evaluation, ModelTraining}
 
 /**
  * Integration tests for FittingDiagnostic
@@ -32,11 +33,8 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
 
   import FittingDiagnosticIntegTest._
 
-  /**
-   * Happy path
-   */
   @Test
-  def checkHappyPath():Unit = sparkTest("checkHappyPath") {
+  def testFittingDiagnostic(): Unit = sparkTest("testFittingDiagnostic") {
     val data = sc.parallelize(
       drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, SIZE, DIMENSION)
           .map( x => new LabeledPoint(x._1, x._2))
@@ -51,7 +49,7 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         OptimizerType.TRON,
         L2RegularizationContext,
         LAMBDAS,
-        NoNormalization,
+        NoNormalization(),
         NUM_ITERATIONS,
         TOLERANCE,
         enableOptimizationStateTracker = false,
@@ -61,30 +59,40 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
     }
 
     val diagnostic = new FittingDiagnostic()
-
     val reports = diagnostic.diagnose(modelFit, data, None)
 
     assertFalse(reports.isEmpty)
     assertEquals(reports.size, LAMBDAS.length)
     LAMBDAS.foreach(lambda => assertTrue(reports.contains(lambda), s"Report contains lambda $lambda"))
 
-    reports.foreach(x => {
+    reports.foreach { x =>
       val (_, report) = x
+      val expectedKeys = List(
+        Evaluation.ROOT_MEAN_SQUARE_ERROR,
+        Evaluation.MEAN_ABSOLUTE_ERROR,
+        Evaluation.MEAN_SQUARE_ERROR)
 
       assertFalse(report.metrics.isEmpty)
-      val expectedKeys = List(Evaluation.ROOT_MEAN_SQUARE_ERROR, Evaluation.MEAN_ABSOLUTE_ERROR,
-        Evaluation.MEAN_SQUARE_ERROR)
-      expectedKeys.foreach(y => {
+
+      expectedKeys.foreach { y =>
         assertTrue(report.metrics.contains(y))
         assertEquals(report.metrics.get(y).get._1.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
         assertEquals(report.metrics.get(y).get._2.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
         assertEquals(report.metrics.get(y).get._3.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+
         // Make sure that training set fraction is monotonically increasing
-        assertTrue(report.metrics.get(y).get._1.foldLeft((0.0, true))((prev, current) =>
-          (current, prev._2 && current > prev._1))._2
-        )
-      })
-    })
+        assertTrue(
+          report
+            .metrics
+            .get(y)
+            .get
+            ._1
+            .foldLeft((0.0, true)) { (prev, current) =>
+              (current, prev._2 && current > prev._1)
+            }
+            ._2)
+      }
+    }
   }
 }
 

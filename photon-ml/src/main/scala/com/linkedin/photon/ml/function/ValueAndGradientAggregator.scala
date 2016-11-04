@@ -15,22 +15,21 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.{DenseVector, Vector, axpy}
-import com.linkedin.photon.ml.data.{LabeledPoint, ObjectProvider}
-import com.linkedin.photon.ml.normalization.NormalizationContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
+import com.linkedin.photon.ml.normalization.NormalizationContext
 
+// TODO: Better document this algorithm, especially normalization.
 /**
- * An aggregator to perform calculation on value and gradient for generalized linear model loss function, especially
- * in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
- *
- * Refer to [TODO wiki url] for a better
- * understanding of the algorithm.
- *
- * @param func A single loss function for the generalized linear model
- * @param dim Dimension of the aggregator (# of features)
- */
+  * An aggregator to perform calculation on value and gradient for generalized linear model loss function, especially
+  * in the context of normalization. Both iterable data and rdd data share the same logic for data aggregate.
+  *
+  * @param func A single loss function for the generalized linear model
+  * @param dim Dimension of the aggregator (# of features)
+  */
 @SerialVersionUID(1L)
 protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val dim: Int) extends Serializable {
 
@@ -82,26 +81,39 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
 
   protected var initialized: Boolean = false
 
-  def init(datum: LabeledPoint, coef: Vector[Double], normalizationContext: NormalizationContext): Unit = {
+  /**
+   * Initialize the aggregator with proper coefficient vector and margin shifts if normalization is used.
+   *
+   * @param coef The current model coefficients
+   * @param normalizationContext The normalization context
+   * @return The aggregator
+   */
+  def init(coef: Vector[Double], normalizationContext: NormalizationContext): Unit = {
     // The transformation for a feature will be
     // x_i' = (x_i - shift_i) * factor_i
     val NormalizationContext(factorsOption, shiftsOption, interceptIdOption) = normalizationContext
     effectiveCoefficients = factorsOption match {
       case Some(factors) =>
         interceptIdOption.foreach(id =>
-                                    require(factors(id) == 1.0, "The intercept should not be transformed. Intercept " +
-                                            s"scaling factor: ${factors(id)}"))
-        require(factors.size == dim, s"Size mismatch. Factors vector size: ${factors.size} != ${dim}.")
+          require(
+            factors(id) == 1.0,
+            s"The intercept should not be transformed. Intercept scaling factor: ${factors(id)}"))
+        require(factors.size == dim, s"Size mismatch. Factors vector size: ${factors.size} != $dim.")
+
         coef :* factors
+
       case None =>
         coef
     }
     marginShift = shiftsOption match {
       case Some(shifts) =>
         interceptIdOption.foreach(id =>
-          require(shifts(id) == 0.0,
+          require(
+            shifts(id) == 0.0,
             s"The intercept should not be transformed. Intercept shift: ${shifts(shifts.length- 1)}"))
+
         - effectiveCoefficients.dot(shifts)
+
       case None =>
         0.0
     }
@@ -111,39 +123,46 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
   }
 
   /**
-   * Add a data point
-   * @param datum a data point
-   * @return The aggregator
+   * Add a data point to the aggregator
+   *
+   * @param datum The data point
+   * @param coef The current model coefficients
+   * @param normalizationContext The normalization context
+   * @return The aggregator itself
    */
   def add(datum: LabeledPoint, coef: Vector[Double], normalizationContext: NormalizationContext): this.type = {
     if (!initialized) {
       this.synchronized {
-        init(datum, coef, normalizationContext)
+        init(coef, normalizationContext)
         initialized = true
       }
     }
-    val LabeledPoint(label, features, _, weight) = datum
-    require(features.size == effectiveCoefficients.size,
-      s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
-    totalCnt += 1
-    val margin = datum.computeMargin(effectiveCoefficients) + marginShift
 
+    val LabeledPoint(label, features, _, weight) = datum
+    require(
+      features.size == effectiveCoefficients.size,
+      s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
+    val margin = datum.computeMargin(effectiveCoefficients) + marginShift
     val (l, dldz) = func.loss(margin, label)
 
+    totalCnt += 1
     valueSum += weight * l
     vectorShiftPrefactorSum += weight * dldz
     axpy(weight * dldz, features, vectorSum)
+
     this
   }
 
   /**
    * Merge two aggregators
+   *
    * @param that The other aggregator
    * @return A merged aggregator
    */
   def merge(that: ValueAndGradientAggregator): this.type = {
     require(dim == that.dim, s"Dimension mismatch. this.dim=$dim, that.dim=${that.dim}")
     require(that.getClass.eq(getClass), s"Class mismatch. this.class=$getClass, that.class=${that.getClass}")
+
     if (vectorSum == null) {
       vectorSum = DenseVector.zeros[Double](dim)
     }
@@ -153,26 +172,29 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
       vectorShiftPrefactorSum += that.vectorShiftPrefactorSum
       axpy(1.0, that.vectorSum, vectorSum)
     }
+
     this
   }
 
   /**
    * Get the count
-   * @return The  count
+   *
+   * @return The count
    */
   def count: Long = totalCnt
 
   /**
    * Return the objective value for ValueAndGradientAggregator. Not used in the HessianVectorAggregator
+   *
    * @return Return the objective value
    */
   def getValue: Double = valueSum
 
   /**
-   * Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator,
+   * Return the cumulative gradient for ValueAndGradientAggregator, or the Hessian vector product for HessianVectorAggregator,
    * especially in the context of normalization.
-   * @return Return the gradient for ValueAndGradientAggregator, or the Hessian vector product for
-   *   HessianVectorAggregator
+   *
+   * @return The cumulative gradient
    */
   def getVector(normalizationContext: NormalizationContext): Vector[Double] = {
     val NormalizationContext(factorsOption, shiftsOption, _) = normalizationContext
@@ -200,34 +222,54 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
 }
 
 object ValueAndGradientAggregator {
+  /**
+   * Calculate the value and gradient for an objective function in Spark
+   *
+   * @param input An RDD of data points
+   * @param coef The current model coefficients
+   * @param singleLossFunction The function used to compute loss for predictions
+   * @param normalizationContext The normalization context
+   * @param treeAggregateDepth The tree aggregate depth
+   * @return A tuple of the value and gradient
+   */
   def calculateValueAndGradient(
-      rdd: RDD[LabeledPoint],
+      input: RDD[LabeledPoint],
       coef: Broadcast[Vector[Double]],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext],
+      normalizationContext: Broadcast[NormalizationContext],
       treeAggregateDepth: Int): (Double, Vector[Double]) = {
 
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.value.size)
-    val resultAggregator = rdd.treeAggregate(aggregator)(
-      seqOp = (ag, datum) => ag.add(datum, coef.value, normalizationContext.get),
+    val resultAggregator = input.treeAggregate(aggregator)(
+      seqOp = (ag, datum) => ag.add(datum, coef.value, normalizationContext.value),
       combOp = (ag1, ag2) => ag1.merge(ag2),
       depth = treeAggregateDepth
     )
-    val result = (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.get))
-    result
+
+    (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.value))
   }
 
+  /**
+   * Calculate the value and gradient for an objective function locally
+   *
+   * @param input An iterable set of data points
+   * @param coef The current model coefficients
+   * @param singleLossFunction The function used to compute loss for predictions
+   * @param normalizationContext The normalization context
+   * @return A tuple of the value and gradient
+   */
   def calculateValueAndGradient(
-      data: Iterable[LabeledPoint],
+      input: Iterable[LabeledPoint],
       coef: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: ObjectProvider[NormalizationContext]): (Double, Vector[Double]) = {
+      normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
 
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.size)
-    val resultAggregator = data.aggregate(aggregator)(
-      seqop = (ag, datum) => ag.add(datum, coef, normalizationContext.get),
+    val resultAggregator = input.aggregate(aggregator)(
+      seqop = (ag, datum) => ag.add(datum, coef, normalizationContext.value),
       combop = (ag1, ag2) => ag1.merge(ag2)
     )
-    (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.get))
+
+    (resultAggregator.getValue, resultAggregator.getVector(normalizationContext.value))
   }
 }

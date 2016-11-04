@@ -26,25 +26,26 @@ import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.function.DiffFunction
+import com.linkedin.photon.ml.function.glm._
+import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, SingleNodeSmoothedHingeLossFunction}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, FactoredRandomEffectOptimizationProblem,
-  RandomEffectOptimizationProblem}
-import com.linkedin.photon.ml.optimization.{GeneralizedLinearOptimizationProblem, LinearRegressionOptimizationProblem,
-  LogisticRegressionOptimizationProblem, PoissonRegressionOptimizationProblem,
-  SmoothedHingeLossLinearSVMOptimizationProblem}
+import com.linkedin.photon.ml.normalization.NoNormalization
+import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.projector.IdentityProjection
+import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DefaultDownSampler}
 import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.{RDDLike, SparkContextConfiguration}
+import com.linkedin.photon.ml.{BroadcastLike, RDDLike, SparkContextConfiguration}
 
 /**
  * The driver class, which provides the main entrance to GAME model training
  */
 final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
-    extends GAMEDriver(params, sparkContext, logger) {
+  extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
 
@@ -52,6 +53,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val randomEffectTypeSet = randomEffectDataConfigurations.values.map(_.randomEffectType).toSet
     randomEffectTypeSet ++ getShardedEvaluatorIdTypes
   }
+  protected[game] val defaultNormalizationContext = sparkContext.broadcast(NoNormalization())
 
   /**
    * Builds a GAME dataset according to input data configuration
@@ -59,8 +61,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @param featureShardIdToFeatureMapLoader A map of feature shard id to feature map loader
    * @return The prepared GAME dataset
    */
-  protected[training] def prepareGameDataSet(featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader])
-    : RDD[(Long, GameDatum)] = {
+  protected[training] def prepareGameDataSet(
+    featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): RDD[(Long, GameDatum)] = {
 
     // Get the training records path
     val trainingRecordsPath = (trainDateRangeOpt, trainDateRangeDaysAgoOpt) match {
@@ -129,8 +131,8 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @param gameDataSet The input dataset
    * @return The training dataset
    */
-  protected[training] def prepareTrainingDataSet(gameDataSet: RDD[(Long, GameDatum)])
-    : Map[String, DataSet[_ <: DataSet[_]]] = {
+  protected[training] def prepareTrainingDataSet(
+    gameDataSet: RDD[(Long, GameDatum)]): Map[String, DataSet[_ <: DataSet[_]]] = {
 
     val fixedEffectDataSets = fixedEffectDataConfigurations.map { case (id, fixedEffectDataConfiguration) =>
       val fixedEffectDataSet = FixedEffectDataSet.buildWithConfiguration(gameDataSet, fixedEffectDataConfiguration)
@@ -143,13 +145,15 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     // Prepare the per-random effect partitioner
     val randomEffectPartitionerMap = randomEffectDataConfigurations.map { case (id, randomEffectDataConfiguration) =>
       val numPartitions = randomEffectDataConfiguration.numPartitions
-      val randomEffectType = randomEffectDataConfiguration.randomEffectType
-      (id, RandomEffectDataSetPartitioner.generateRandomEffectDataSetPartitionerFromGameDataSet(numPartitions,
-        randomEffectType, gameDataSet))
+      val randomEffectId = randomEffectDataConfiguration.randomEffectType
+      (id, RandomEffectDataSetPartitioner.generateRandomEffectDataSetPartitionerFromGameDataSet(
+        numPartitions,
+        randomEffectId,
+        gameDataSet))
     }
 
     // Prepare the random effect data sets
-    val randomEffectDataSet = randomEffectDataConfigurations.map { case (id, randomEffectDataConfiguration) =>
+    val randomEffectDataSets = randomEffectDataConfigurations.map { case (id, randomEffectDataConfiguration) =>
       val randomEffectPartitioner = randomEffectPartitionerMap(id)
       val rawRandomEffectDataSet = RandomEffectDataSet
         .buildWithConfiguration(gameDataSet, randomEffectDataConfiguration, randomEffectPartitioner)
@@ -175,7 +179,9 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       (id, randomEffectDataSet)
     }
 
-    fixedEffectDataSets ++ randomEffectDataSet
+    randomEffectPartitionerMap.foreach(_._2.unpersistBroadcast())
+
+    fixedEffectDataSets ++ randomEffectDataSets
   }
 
   /**
@@ -185,9 +191,11 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @return The training evaluator
    */
   protected[training] def prepareTrainingLossFunctionEvaluator(gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
-    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
-      (gameData.response, gameData.offset, gameData.weight)
-    ).setName("Training label and offset and weights").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val labelAndOffsetAndWeights = gameDataSet
+      .mapValues(gameData =>
+        (gameData.response, gameData.offset, gameData.weight))
+      .setName("Training label and offset and weights")
+      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     labelAndOffsetAndWeights.count()
     taskType match {
       case LOGISTIC_REGRESSION =>
@@ -207,6 +215,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * Creates the validation evaluator
    *
    * @param validatingDirs The input path for validating data set
+   * @param featureShardIdToFeatureMapLoader A map of shard id to feature indices
    * @return The validating game data sets and the companion evaluator
    */
   protected[training] def prepareValidatingEvaluators(
@@ -322,18 +331,6 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       trainingEvaluator: Evaluator,
       validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])]): Map[String, GAMEModel] = {
 
-    val optimizationProblemBuilder: (GLMOptimizationConfiguration, Int, Boolean, Boolean) =>
-        GeneralizedLinearOptimizationProblem[GeneralizedLinearModel, DiffFunction[LabeledPoint]] = taskType match {
-
-      case LOGISTIC_REGRESSION => LogisticRegressionOptimizationProblem.buildOptimizationProblem
-      case LINEAR_REGRESSION => LinearRegressionOptimizationProblem.buildOptimizationProblem
-      case POISSON_REGRESSION => PoissonRegressionOptimizationProblem.buildOptimizationProblem
-      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        SmoothedHingeLossLinearSVMOptimizationProblem.buildOptimizationProblem
-
-      case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
-    }
-
     val gameModels = for (
         fixedEffectOptimizationConfiguration <- fixedEffectOptimizationConfigurations;
         randomEffectOptimizationConfiguration <- randomEffectOptimizationConfigurations;
@@ -346,39 +343,114 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       val timer = Timer.start()
       logger.info(s"Start to train the game model with the following config:\n$modelConfig\n")
 
+      val glmConstructor = taskType match {
+        case LOGISTIC_REGRESSION => LogisticRegressionModel.create _
+        case LINEAR_REGRESSION => LinearRegressionModel.create _
+        case POISSON_REGRESSION => PoissonRegressionModel.create _
+        case SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossLinearSVMModel.create _
+        case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
+      }
+
       // For each model, create optimization coordinates for the fixed effect, random effect, and factored random effect
       // models
       val coordinates = updatingSequence.map { coordinateId =>
         val coordinate = dataSets(coordinateId) match {
+          // Fixed effect coordinate
           case fixedEffectDataSet: FixedEffectDataSet =>
-            // Fixed effect coordinate
             val optimizationConfiguration = fixedEffectOptimizationConfiguration(coordinateId)
+            val downSamplingRate = optimizationConfiguration.downSamplingRate
             // If number of features is from moderate to large (>200000), then use tree aggregate,
             // otherwise use aggregate.
-            val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < 200000) {
-                Driver.DEFAULT_TREE_AGGREGATE_DEPTH
-              } else {
-                Driver.DEEP_TREE_AGGREGATE_DEPTH
+            val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < Driver.FIXED_EFFECT_FEATURE_THRESHOLD) {
+              Driver.DEFAULT_TREE_AGGREGATE_DEPTH
+            } else {
+              Driver.DEEP_TREE_AGGREGATE_DEPTH
+            }
+            val objectiveFunction = taskType match {
+              case LOGISTIC_REGRESSION =>
+                DistributedGLMLossFunction.create(
+                  optimizationConfiguration,
+                  LogisticLossFunction,
+                  sparkContext,
+                  treeAggregateDepth)
+
+              case LINEAR_REGRESSION =>
+                DistributedGLMLossFunction.create(
+                  optimizationConfiguration,
+                  SquaredLossFunction,
+                  sparkContext,
+                  treeAggregateDepth)
+
+              case POISSON_REGRESSION =>
+                DistributedGLMLossFunction.create(
+                  optimizationConfiguration,
+                  PoissonLossFunction,
+                  sparkContext,
+                  treeAggregateDepth)
+
+              case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+                DistributedSmoothedHingeLossFunction.create(
+                  optimizationConfiguration,
+                  sparkContext,
+                  treeAggregateDepth)
+            }
+            val samplerOption = if (downSamplingRate > 0D && downSamplingRate < 1D) {
+              taskType match {
+                case LOGISTIC_REGRESSION | SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+                  Some(new BinaryClassificationDownSampler(downSamplingRate))
+                case LINEAR_REGRESSION | POISSON_REGRESSION =>
+                  Some(new DefaultDownSampler(downSamplingRate))
               }
-            val optimizationProblem = optimizationProblemBuilder(
+            } else {
+              None
+            }
+            val optimizationProblem = DistributedOptimizationProblem.create(
               optimizationConfiguration,
-              treeAggregateDepth,
+              objectiveFunction,
+              samplerOption,
+              glmConstructor,
+              defaultNormalizationContext,
               Driver.TRACK_STATE,
-              computeVariance)
+              computeVariance
+            )
+
             new FixedEffectCoordinate(fixedEffectDataSet, optimizationProblem)
 
           case randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace =>
             // Random effect coordinate
             val optimizationConfiguration = randomEffectOptimizationConfiguration(coordinateId)
+            val objectiveFunction = taskType match {
+              case LOGISTIC_REGRESSION =>
+                SingleNodeGLMLossFunction.create(
+                  optimizationConfiguration,
+                  LogisticLossFunction)
+
+              case LINEAR_REGRESSION =>
+                SingleNodeGLMLossFunction.create(
+                  optimizationConfiguration,
+                  SquaredLossFunction)
+
+              case POISSON_REGRESSION =>
+                SingleNodeGLMLossFunction.create(
+                  optimizationConfiguration,
+                  PoissonLossFunction)
+
+              case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+                SingleNodeSmoothedHingeLossFunction.create(
+                  optimizationConfiguration)
+            }
             val randomEffectOptimizationProblem = RandomEffectOptimizationProblem
-              .buildRandomEffectOptimizationProblem(
-                optimizationProblemBuilder,
-                optimizationConfiguration,
+              .create(
                 randomEffectDataSetInProjectedSpace,
-                Driver.DEFAULT_TREE_AGGREGATE_DEPTH,
+                optimizationConfiguration,
+                objectiveFunction,
+                glmConstructor,
+                defaultNormalizationContext,
+                Driver.TRACK_STATE,
                 computeVariance)
               .setName(s"Random effect optimization problem of coordinate $coordinateId")
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
             new RandomEffectCoordinateInProjectedSpace(
               randomEffectDataSetInProjectedSpace,
               randomEffectOptimizationProblem)
@@ -388,18 +460,77 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             val (randomEffectOptimizationConfiguration,
               latentFactorOptimizationConfiguration,
               mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
+
+            val downSamplingRate = latentFactorOptimizationConfiguration.downSamplingRate
+            val samplerOption = if (downSamplingRate > 0D && downSamplingRate < 1D) {
+              taskType match {
+                case LOGISTIC_REGRESSION | SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+                  Some(new BinaryClassificationDownSampler(downSamplingRate))
+                case LINEAR_REGRESSION | POISSON_REGRESSION =>
+                  Some(new DefaultDownSampler(downSamplingRate))
+              }
+            } else {
+              None
+            }
+            val (randomObjectiveFunction, latentObjectiveFunction) = taskType match {
+              case LOGISTIC_REGRESSION =>
+                val random = SingleNodeGLMLossFunction.create(
+                  randomEffectOptimizationConfiguration,
+                  LogisticLossFunction)
+                val latent = DistributedGLMLossFunction.create(
+                  latentFactorOptimizationConfiguration,
+                  LogisticLossFunction,
+                  sparkContext,
+                  Driver.DEFAULT_TREE_AGGREGATE_DEPTH)
+                (random, latent)
+
+              case LINEAR_REGRESSION =>
+                val random = SingleNodeGLMLossFunction.create(
+                  randomEffectOptimizationConfiguration,
+                  SquaredLossFunction)
+                val latent = DistributedGLMLossFunction.create(
+                  latentFactorOptimizationConfiguration,
+                  SquaredLossFunction,
+                  sparkContext,
+                  Driver.DEFAULT_TREE_AGGREGATE_DEPTH)
+                (random, latent)
+
+              case POISSON_REGRESSION =>
+                val random = SingleNodeGLMLossFunction.create(
+                  randomEffectOptimizationConfiguration,
+                  PoissonLossFunction)
+                val latent = DistributedGLMLossFunction.create(
+                  latentFactorOptimizationConfiguration,
+                  PoissonLossFunction,
+                  sparkContext,
+                  Driver.DEFAULT_TREE_AGGREGATE_DEPTH)
+                (random, latent)
+
+              case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+                val random = SingleNodeSmoothedHingeLossFunction.create(
+                  randomEffectOptimizationConfiguration)
+                val latent = DistributedSmoothedHingeLossFunction.create(
+                  latentFactorOptimizationConfiguration,
+                  sparkContext,
+                  Driver.DEFAULT_TREE_AGGREGATE_DEPTH)
+                (random, latent)
+            }
             val factoredRandomEffectOptimizationProblem = FactoredRandomEffectOptimizationProblem
-              .buildFactoredRandomEffectOptimizationProblem(
-                optimizationProblemBuilder,
+              .create(
+                randomEffectDataSet,
                 randomEffectOptimizationConfiguration,
                 latentFactorOptimizationConfiguration,
                 mfOptimizationConfiguration,
-                randomEffectDataSet,
-                Driver.DEFAULT_TREE_AGGREGATE_DEPTH,
+                randomObjectiveFunction,
+                latentObjectiveFunction,
+                samplerOption,
+                glmConstructor,
+                defaultNormalizationContext,
                 Driver.TRACK_STATE,
                 computeVariance)
               .setName(s"Factored random effect optimization problem of coordinate $coordinateId")
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
             new FactoredRandomEffectCoordinate(randomEffectDataSet, factoredRandomEffectOptimizationProblem)
 
           case dataSet =>
@@ -431,7 +562,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
-      gameModelsMap: Map[String, GAMEModel]) {
+      gameModelsMap: Map[String, GAMEModel]): Unit = {
 
     // Write the best model to HDFS
     validatingDataAndEvaluatorOption match {
@@ -519,12 +650,23 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     timer.stop()
     logger.info(s"Time elapsed after game model training: ${timer.durationSeconds} (s)\n")
 
-    trainingDataSet.foreach { case (_, rddLike: RDDLike) => rddLike.unpersistRDD() }
+    trainingDataSet.foreach { (pair: (String, DataSet[_])) =>
+      val dataset = pair._2
+
+      dataset match {
+        case rddLike: RDDLike => rddLike.unpersistRDD()
+        case _ =>
+      }
+      dataset match {
+        case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
+        case _ =>
+      }
+    }
 
     if (modelOutputMode != ModelOutputMode.NONE) {
       timer.start()
-      val validatingDataAndEvaluatorOption = validatingDataAndEvaluatorsOption
-          .map { case (validationData, evaluators) => (validationData, evaluators.head) }
+      val validatingDataAndEvaluatorOption =
+        validatingDataAndEvaluatorsOption.map { case (validationData, evaluators) => (validationData, evaluators.head) }
       saveModelToHDFS(featureShardIdToFeatureMapMap, validatingDataAndEvaluatorOption, gameModelsMap)
       timer.stop()
       logger.info(s"Time elapsed after saving game models to HDFS: ${timer.durationSeconds} (s)\n")
@@ -533,9 +675,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 }
 
 object Driver {
+  val FIXED_EFFECT_FEATURE_THRESHOLD = 200000
   val DEFAULT_TREE_AGGREGATE_DEPTH = 1
   val DEEP_TREE_AGGREGATE_DEPTH = 2
-  val TRACK_STATE = false
+  val TRACK_STATE = true
   val LOGS = "logs"
 
   /**

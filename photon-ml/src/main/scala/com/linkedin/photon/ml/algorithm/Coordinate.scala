@@ -24,7 +24,6 @@ import com.linkedin.photon.ml.optimization.game.OptimizationTracker
  * @param dataSet the training dataset
  */
 protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
-
   /**
    * Score the effect-specific data set in the coordinate with the input model
    *
@@ -34,23 +33,50 @@ protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](
   protected[algorithm] def score(model: DatumScoringModel): KeyValueScore
 
   /**
-   * Initialize the model
+   * Initialize a basic model for scoring GAME data
    *
    * @param seed A random seed
+   * @return The basic model
    */
   protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
 
+  /**
+   * Update the coordinate with a new dataset
+   *
+   * @param dataSet The updated dataset
+   * @return A new coordinate with the updated dataset
+   */
+  protected[algorithm] def updateCoordinateWithDataSet(dataSet: D): C
+
+  /**
+   * Optimize an existing model for the new scores of the other coordinates
+   *
+   * @param model The existing model
+   * @param score The combined scores of the other coordinates for each record
+   * @return A tuple of the updated model and the optimization states tracker
+   */
   protected[algorithm] def updateModel(
     model: DatumScoringModel,
-    score: KeyValueScore): (DatumScoringModel, OptimizationTracker) = {
+    score: KeyValueScore): (DatumScoringModel, Option[OptimizationTracker]) = {
 
     val dataSetWithUpdatedOffsets = dataSet.addScoresToOffsets(score)
     updateCoordinateWithDataSet(dataSetWithUpdatedOffsets).updateModel(model)
   }
 
-  protected def updateCoordinateWithDataSet(dataSet: D): C
+  /**
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
+   * a starting point
+   *
+   * @param model The model to use as a starting point
+   * @return A tuple of the updated model and the optimization states tracker
+   */
+  protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
 
-  protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker)
-
+  /**
+   * Compute the regularization term value of the coordinate for a given model
+   *
+   * @param model The model
+   * @return The regularization term value
+   */
   protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double
 }

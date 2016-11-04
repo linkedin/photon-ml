@@ -14,12 +14,10 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
-import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, SpecificRenderer, PhysicalReport}
-
 import scala.reflect.ClassTag
 import scala.xml.{NamespaceBinding, Node}
 
+import com.linkedin.photon.ml.diagnostics.reporting.{PhysicalReport, SimpleTextPhysicalReport, SpecificRenderer}
 
 class ToStringHTMLRendererAdapter[-P <: PhysicalReport : ClassTag](
     namespaceMap: NamespaceBinding,
@@ -37,5 +35,4 @@ class ToStringHTMLRendererAdapter[-P <: PhysicalReport : ClassTag](
       )
     )
   }
-
 }

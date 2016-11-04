@@ -21,10 +21,9 @@ import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.test.SparkTestUtils
-
 
 /**
  * test the matrix factorization model
@@ -44,22 +43,21 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
   }
 
   @Test(dataProvider = "matrixFactorizationConfigProvider")
-  def testScore(numLatentFactors: Int, numRows: Int, numCols: Int)
-  : Unit = sparkTest("testScoreForMatrixFactorizationModel") {
+  def testScore(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
+    sparkTest("testScoreForMatrixFactorizationModel") {
+      // Meta data, the actual value doesn't matter for this test
+      val rowEffectType = "rowEffectType"
+      val colEffectType = "colEffectType"
 
-    // Meta data, the actual value doesn't matter for this test
-    val rowEffectType = "rowEffectType"
-    val colEffectType = "colEffectType"
+      // The row and column latent factor generator
+      val random = new Random(MathConst.RANDOM_SEED)
+      def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+      def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
 
-    // The row and column latent factor generator
-    val random = new Random(MathConst.RANDOM_SEED)
-    def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-    def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-
-    val rowLatentFactors = Array.tabulate(numRows)(i => (i.toString, randomRowLatentFactorGenerator))
-    val colLatentFactors = Array.tabulate(numCols)(j => (j.toString, randomColLatentFactorGenerator))
-    val rowRange = 0 until numRows
-    val colRange = 0 until numCols
+      val rowLatentFactors = Array.tabulate(numRows)(i => (i.toString, randomRowLatentFactorGenerator))
+      val colLatentFactors = Array.tabulate(numCols)(j => (j.toString, randomColLatentFactorGenerator))
+      val rowRange = 0 until numRows
+      val colRange = 0 until numCols
 
     // generate the synthetic game data and scores
     val (gameData, syntheticScores) = rowRange.zip(colRange).map { case (row, col) =>
@@ -75,54 +73,53 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
       .map { case ((gameDatum, score), uniqueId) => ((uniqueId.toLong, gameDatum), (uniqueId.toLong, score)) }
       .unzip
 
-    // Construct the matrix
-    val randomMFModel = new MatrixFactorizationModel(rowEffectType, colEffectType,
-      rowLatentFactors = sc.parallelize(rowLatentFactors), colLatentFactors = sc.parallelize(colLatentFactors))
+      // Construct the matrix
+      val randomMFModel = new MatrixFactorizationModel(rowEffectType, colEffectType,
+        rowLatentFactors = sc.parallelize(rowLatentFactors), colLatentFactors = sc.parallelize(colLatentFactors))
 
-    val expectedScores = new KeyValueScore(sc.parallelize(syntheticScores))
-    val computedScores = randomMFModel.score(sc.parallelize(gameData))
+      val expectedScores = new KeyValueScore(sc.parallelize(syntheticScores))
+      val computedScores = randomMFModel.score(sc.parallelize(gameData))
 
-    assertEquals(computedScores, expectedScores)
-  }
+      assertEquals(computedScores, expectedScores)
+    }
 
   @Test(dataProvider = "matrixFactorizationConfigProvider")
-  def testEquals(numLatentFactors: Int, numRows: Int, numCols: Int)
-  : Unit = sparkTest("testEqualsForMatrixFactorizationModel") {
+  def testEquals(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
+    sparkTest("testEqualsForMatrixFactorizationModel") {
+      // A random matrix factorization model
+      val rowEffectType = "rowEffectType"
+      val colEffectType = "colEffectType"
+      val random = new Random(MathConst.RANDOM_SEED)
+      def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+      def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
+      val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
+        randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
 
-    // A random matrix factorization model
-    val rowEffectType = "rowEffectType"
-    val colEffectType = "colEffectType"
-    val random = new Random(MathConst.RANDOM_SEED)
-    def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-    def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-    val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
-      randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
+      // Should equal to itself
+      assertEquals(randomMFModel, randomMFModel)
 
-    // Should equal to itself
-    assertEquals(randomMFModel, randomMFModel)
+      // Should equal to the matrix factorization model with same meta data and latent factors
+      val randomMFModelCopy = new MatrixFactorizationModel(randomMFModel.rowEffectType, randomMFModel.colEffectType,
+        randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
+      assertEquals(randomMFModel, randomMFModelCopy)
 
-    // Should equal to the matrix factorization model with same meta data and latent factors
-    val randomMFModelCopy = new MatrixFactorizationModel(randomMFModel.rowEffectType, randomMFModel.colEffectType,
-      randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
-    assertEquals(randomMFModel, randomMFModelCopy)
+      // Should not equal to the matrix factorization model with different row effect Id
+      val rowEffectType1 = "rowEffectType1"
+      val randomMFModelWithDiffRowEffectId = new MatrixFactorizationModel(rowEffectType1, randomMFModel.colEffectType,
+        randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
+      assertNotEquals(randomMFModel, randomMFModelWithDiffRowEffectId)
 
-    // Should not equal to the matrix factorization model with different row effect Id
-    val rowEffectType1 = "rowEffectType1"
-    val randomMFModelWithDiffRowEffectId = new MatrixFactorizationModel(rowEffectType1, randomMFModel.colEffectType,
-      randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
-    assertNotEquals(randomMFModel, randomMFModelWithDiffRowEffectId)
+      // Should not equal to the matrix factorization model with different col effect Id
+      val colEffectType1 = "colEffectType1"
+      val randomMFModelWithDiffColEffectId = new MatrixFactorizationModel(randomMFModel.rowEffectType, colEffectType1,
+        randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
+      assertNotEquals(randomMFModel, randomMFModelWithDiffColEffectId)
 
-    // Should not equal to the matrix factorization model with different col effect Id
-    val colEffectType1 = "colEffectType1"
-    val randomMFModelWithDiffColEffectId = new MatrixFactorizationModel(randomMFModel.rowEffectType, colEffectType1,
-      randomMFModel.rowLatentFactors, randomMFModel.colLatentFactors)
-    assertNotEquals(randomMFModel, randomMFModelWithDiffColEffectId)
-
-    // Should not equal to the matrix factorization model with different latent factors
-    val zeroMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
-      generateZerosLatentFactor(numLatentFactors), generateZerosLatentFactor(numLatentFactors), sc)
-    assertNotEquals(randomMFModel, zeroMFModel)
-  }
+      // Should not equal to the matrix factorization model with different latent factors
+      val zeroMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
+        generateZerosLatentFactor(numLatentFactors), generateZerosLatentFactor(numLatentFactors), sc)
+      assertNotEquals(randomMFModel, zeroMFModel)
+    }
 }
 
 object MatrixFactorizationModelTest {

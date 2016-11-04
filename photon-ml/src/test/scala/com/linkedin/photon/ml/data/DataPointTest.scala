@@ -14,11 +14,12 @@
  */
 package com.linkedin.photon.ml.data
 
-import breeze.linalg.{SparseVector, Vector, DenseVector}
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import scala.util.Random
 
 /**
  * Test the functions in [[DataPoint]]
@@ -26,7 +27,9 @@ import org.testng.annotations.{DataProvider, Test}
 class DataPointTest {
   val delta = 1.0E-9
 
-  //test the class and object
+  /**
+    * Test the class and object
+    */
   @Test
   def testApply(): Unit = {
     val features = DenseVector[Double](1.0, 10.0, 0.0, -100.0)
@@ -37,7 +40,9 @@ class DataPointTest {
     assertEquals(dataPoint.weight, expected.weight, delta)
   }
 
-  //test unapply()
+  /**
+    * Test unapply
+    */
   @Test
   def testUnapply(): Unit = {
     val features = DenseVector[Double](1.5, 13.0, -3.3, 1350.02)
@@ -48,7 +53,9 @@ class DataPointTest {
     assertEquals(dataPoint.weight, featuresAndWeight.get._2, delta)
   }
 
-  //test the extractor by case class
+  /**
+    * Test the extractor by base class
+    */
   @Test
   def testExtractor(): Unit = {
     val features = DenseVector[Double](2.09, 113.0, -3.3, 150.30)
@@ -75,10 +82,35 @@ class DataPointTest {
   @DataProvider(name = "dataProvider")
   def dataProvider(): Array[Array[Any]] = {
     Array(
+      Array(DenseVector(1.0, 0.0, 0.4, 0.5), DenseVector(0.0, 0.0, 0.0, 0.0), 0.0),
       Array(DenseVector(1.0, 0.0, 0.4, 0.5), DenseVector(-1.0, -0.5, 0.1, 0.0), -0.96),
       Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), DenseVector(-1.0, -0.5, 0.1, 0.0), -0.96),
       Array(DenseVector(1.0, 0.0, 0.4, 0.5), SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -0.96),
       Array(SparseVector(4)((0, 1.0), (2, 0.4), (3, 0.5)), SparseVector(4)((0, -1.0), (1, -0.5), (2, 0.1)), -0.96)
     )
   }
+
+  /**
+    * Test computeMargin() by comparing to the explicit form of calculation on random samples
+    */
+  @Test
+  def testComputeMarginOnRandomlyGeneratedPoints(): Unit =
+  {
+    // Init random coefficients
+    val r: Random = new Random(DataPointTest.PARAMETER_RANDOM_SEED)
+    val features: Vector[Double] = DenseVector.fill[Double](DataPointTest.PROBLEM_DIMENSION){ r.nextDouble() }
+    val coef: Vector[Double] = DenseVector.fill[Double](DataPointTest.PROBLEM_DIMENSION){ r.nextDouble() }
+    val dataPoint = DataPoint(features, 1)
+    val margin = dataPoint.computeMargin(coef)
+    // Compute margin explicitly
+    val expectedMargin = (for (idx <- 0 until DataPointTest.PROBLEM_DIMENSION) yield features(idx) * coef(idx)).sum
+
+    assertEquals(margin, expectedMargin, DataPointTest.TOLERANCE, "Computed margin and expected margin don't match")
+  }
+}
+
+object DataPointTest {
+  val PARAMETER_RANDOM_SEED = 999
+  val PROBLEM_DIMENSION = 10
+  val TOLERANCE = 1.0E-9
 }

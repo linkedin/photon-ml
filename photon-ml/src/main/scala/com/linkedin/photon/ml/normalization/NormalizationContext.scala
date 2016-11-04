@@ -158,6 +158,8 @@ private[ml] object NormalizationContext {
 }
 
 /**
- * An singleton object to represent no normalization.
+ * Factory to create contexts for no normalization.
  */
-private[ml] object NoNormalization extends NormalizationContext(factors = None, shifts = None, interceptId = None)
+private[ml] object NoNormalization {
+  def apply(): NormalizationContext = NormalizationContext(factors = None, shifts = None, interceptId = None)
+}

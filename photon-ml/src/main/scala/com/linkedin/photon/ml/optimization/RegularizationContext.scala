@@ -79,3 +79,12 @@ object L1RegularizationContext extends RegularizationContext(RegularizationType.
  * A singleton object for L2 regularization
  */
 object L2RegularizationContext extends RegularizationContext(RegularizationType.L2)
+
+/**
+  * A factory object for constructing Elastic Net regularization contexts
+  */
+object ElasticNetRegularizationContext {
+  def apply(alpha: Double): RegularizationContext = {
+    new RegularizationContext(RegularizationType.ELASTIC_NET, Some(alpha))
+  }
+}

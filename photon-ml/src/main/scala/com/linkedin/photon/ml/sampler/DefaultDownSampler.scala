@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.sampler
 
-import com.linkedin.photon.ml.data.LabeledPoint
 import org.apache.spark.rdd.RDD
+
+import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
  * Default sampler implementation. This will act as a standard simple random sampler on the dataset.
@@ -24,8 +25,7 @@ import org.apache.spark.rdd.RDD
  * @param downSamplingRate The down sampling rate
  */
 protected[ml] class DefaultDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
-
-  require((downSamplingRate > 0D) && (downSamplingRate <= 1D), s"Invalid down-sampling rate: $downSamplingRate")
+  require((downSamplingRate > 0D) && (downSamplingRate < 1D), s"Invalid down-sampling rate: $downSamplingRate")
 
   /**
    * Samples from the given dataset
@@ -34,9 +34,8 @@ protected[ml] class DefaultDownSampler(downSamplingRate: Double) extends DownSam
    * @param seed Random seed
    * @return Down-sampled dataset
    */
-  override def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = DownSampler.getSeed)
-    : RDD[(Long, LabeledPoint)] = {
-
+  override def downSample(
+    labeledPoints: RDD[(Long, LabeledPoint)],
+    seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)] =
     labeledPoints.sample(withReplacement = false, fraction = downSamplingRate, seed = seed)
-  }
 }

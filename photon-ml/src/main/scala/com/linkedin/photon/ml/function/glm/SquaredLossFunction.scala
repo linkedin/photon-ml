@@ -12,30 +12,24 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function
-
-import com.linkedin.photon.ml.data.{ObjectProvider, SimpleObjectProvider}
-import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
+package com.linkedin.photon.ml.function.glm
 
 /**
- * Class for the squared loss function: sum_i w_i/2*(theta'x_i + o_i - y_i)**2, where theta is the weight coefficients
- * of the data features to be estimated, (y_i, x_i, o_i, w_i) are the label, features, offset, and weight of
- * the i'th labeled data point, respectively.
- */
-class SquaredLossFunction(
-    normalizationContext: ObjectProvider[NormalizationContext] =
-      new SimpleObjectProvider[NormalizationContext](NoNormalization))
-  extends GeneralizedLinearModelLossFunction(PointwiseSquareLossFunction, normalizationContext)
-
-/**
- * A single square loss function to represent
+ * Class for the squared loss function:
  *
- * l(z, y) = 1/2 (z - y)^2^
+ *    sum_i w_i/2*(theta'x_i + o_i - y_i)**2
  *
- * It is the single loss function used in linear regression.
+ * where:
+ *
+ *  - theta is the vector of estimated coefficient weights for the data features
+ *  - (y_i, x_i, o_i, w_i) are the tuple (label, features, offset, weight) of the i'th labeled data point
+ *
+ * Linear regression single loss function:
+ *
+ *    l(z, y) = 1/2 (z - y)^2^
  */
 @SerialVersionUID(1L)
-object PointwiseSquareLossFunction extends PointwiseLossFunction {
+object SquaredLossFunction extends PointwiseLossFunction {
   /**
    * l(z, y) = 1/2 (z - y)^2^
    *
