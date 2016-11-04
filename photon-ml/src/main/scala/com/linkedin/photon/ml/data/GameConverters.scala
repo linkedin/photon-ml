@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.data
 
-import breeze.linalg.SparseVector
-import org.apache.spark.mllib.linalg.{SparseVector => SparkSparseVector}
+import com.linkedin.photon.ml.util.VectorUtils
+
+import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -119,8 +120,8 @@ object GameConverters {
       isResponseRequired: Boolean): GameDatum = {
 
     val featureShardContainer = featureShards.map { shardId =>
-      val features = row.getAs[SparkSparseVector](shardId)
-      (shardId, new SparseVector(features.indices, features.values, features.size))
+      val features = row.getAs[SparseVector](shardId)
+      (shardId, VectorUtils.mllibToBreeze(features))
     }.toMap
 
     val response = if (isResponseRequired) {
