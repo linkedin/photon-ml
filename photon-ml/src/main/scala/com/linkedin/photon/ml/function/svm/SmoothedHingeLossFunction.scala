@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * optimizer-friendly approximation for linear SVMs. This Object is to the individual/distributed smoothed hinge loss
  * functions is as the PointwiseLossFunction is to the individual/distributed GLM loss functions.
  */
-object SmoothedHingeLossLinearSVMFunction {
+object SmoothedHingeLossFunction {
   /**
    * Compute the loss and derivative of the smoothed hinge loss function at a single point.
    *

@@ -19,7 +19,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, IndividualObjectiveFunction}
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
 import com.linkedin.photon.ml.optimization.game._
@@ -30,17 +30,21 @@ import com.linkedin.photon.ml.util.VectorUtils
 /**
  * The optimization problem coordinate for a random effect model using matrix factorization
  *
+ * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
+ *                               problems
+ * @tparam LatentEffectObjective The type of objective function used to solve the latent factors optimization problem
  * @param randomEffectDataSet The training dataset
- * @param factoredRandomEffectOptimizationProblem The factored random effect optimization problem
- * @tparam RandomFunc The type of objective function used to solve individual random effect optimization problems
- * @tparam LatentFunc The type of objective function used to solve the latent factors optimization problem
+ * @param optimizationProblem The factored random effect optimization problem
  */
 protected[ml] class FactoredRandomEffectCoordinate[
-    RandomFunc <: IndividualObjectiveFunction,
-    LatentFunc <: DistributedObjectiveFunction](
+    RandomEffectObjective <: SingleNodeObjectiveFunction,
+    LatentEffectObjective <: DistributedObjectiveFunction](
     randomEffectDataSet: RandomEffectDataSet,
-    factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[RandomFunc, LatentFunc])
-  extends Coordinate[RandomEffectDataSet, FactoredRandomEffectCoordinate[RandomFunc, LatentFunc]](randomEffectDataSet) {
+    optimizationProblem: FactoredRandomEffectOptimizationProblem[RandomEffectObjective, LatentEffectObjective])
+  extends Coordinate[
+    RandomEffectDataSet,
+    FactoredRandomEffectCoordinate[RandomEffectObjective, LatentEffectObjective]](
+    randomEffectDataSet) {
 
   /**
    * Score the effect-specific data set in the coordinate with the input model
@@ -67,10 +71,10 @@ protected[ml] class FactoredRandomEffectCoordinate[
    * @return The basic model
    */
   override protected[algorithm] def initializeModel(seed: Long): DatumScoringModel = {
-    val latentSpaceDimension = factoredRandomEffectOptimizationProblem.latentSpaceDimension
+    val latentSpaceDimension = optimizationProblem.latentSpaceDimension
     FactoredRandomEffectCoordinate.initializeModel(
       randomEffectDataSet,
-      factoredRandomEffectOptimizationProblem,
+      optimizationProblem,
       latentSpaceDimension,
       seed)
   }
@@ -82,8 +86,8 @@ protected[ml] class FactoredRandomEffectCoordinate[
    * @return A new coordinate with the updated dataset
    */
   override protected[algorithm] def updateCoordinateWithDataSet(
-    dataSet: RandomEffectDataSet): FactoredRandomEffectCoordinate[RandomFunc, LatentFunc] =
-    new FactoredRandomEffectCoordinate(dataSet, factoredRandomEffectOptimizationProblem)
+    dataSet: RandomEffectDataSet): FactoredRandomEffectCoordinate[RandomEffectObjective, LatentEffectObjective] =
+    new FactoredRandomEffectCoordinate(dataSet, optimizationProblem)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -96,10 +100,10 @@ protected[ml] class FactoredRandomEffectCoordinate[
     model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) = model match {
       case factoredRandomEffectModel: FactoredRandomEffectModel =>
         val sparkContext = randomEffectDataSet.sparkContext
-        val randomEffectOptimizationProblem = factoredRandomEffectOptimizationProblem.randomEffectOptimizationProblem
-        val latentFactorOptimizationProblem = factoredRandomEffectOptimizationProblem.latentFactorOptimizationProblem
+        val randomEffectOptimizationProblem = optimizationProblem.randomEffectOptimizationProblem
+        val latentFactorOptimizationProblem = optimizationProblem.latentFactorOptimizationProblem
         val isTrackingState = randomEffectOptimizationProblem.isTrackingState
-        val numIterations = factoredRandomEffectOptimizationProblem.numIterations
+        val numIterations = optimizationProblem.numIterations
         val factoredRandomEffectOptimizationTrackerArray =
           new Array[(RandomEffectOptimizationTracker, FixedEffectOptimizationTracker)](numIterations)
 
@@ -169,7 +173,7 @@ protected[ml] class FactoredRandomEffectCoordinate[
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
       val modelsRDD = factoredRandomEffectModel.modelsInProjectedSpaceRDD
       val projectionMatrix = factoredRandomEffectModel.projectionMatrixBroadcast.projectionMatrix
-      factoredRandomEffectOptimizationProblem.getRegularizationTermValue(modelsRDD, projectionMatrix)
+      optimizationProblem.getRegularizationTermValue(modelsRDD, projectionMatrix)
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
@@ -189,7 +193,7 @@ object FactoredRandomEffectCoordinate {
    * @param seed A random seed
    * @return A factored random effect model for scoring GAME data
    */
-  private def initializeModel[RandomFunc <: IndividualObjectiveFunction, LatentFunc <: DistributedObjectiveFunction](
+  private def initializeModel[RandomFunc <: SingleNodeObjectiveFunction, LatentFunc <: DistributedObjectiveFunction](
       randomEffectDataSet: RandomEffectDataSet,
       factoredRandomEffectOptimizationProblem: FactoredRandomEffectOptimizationProblem[RandomFunc, LatentFunc],
       latentSpaceDimension: Int,

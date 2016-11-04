@@ -33,7 +33,13 @@ trait L2Regularization extends ObjectiveFunction {
   def l2RegularizationWeight: Double = l2RegWeight
 
   /**
-   * Setter
+   * Setter.
+   *
+   * Note: This function definition uses the setter syntactic sugar trick. Statements like:
+   *
+   *    objectiveFunction.l2RegularizationWeight = 10
+   *
+   * will call this function.
    *
    * @param newRegWeight The new L2 regularization weight
    */

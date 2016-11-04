@@ -24,7 +24,7 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.constants.MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
-import com.linkedin.photon.ml.function.svm.IndividualSmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -42,7 +42,7 @@ class GeneralizedLinearOptimizationProblemTest {
   def testInitializeZeroModel(): Unit = {
     val optimizer = mock(classOf[Optimizer[ObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
-    val objective = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val objective = mock(classOf[SingleNodeSmoothedHingeLossFunction])
     val regularization = NoRegularizationContext
 
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
@@ -50,22 +50,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       regularization)
     val linearProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LinearRegressionModel.createModel,
+      LinearRegressionModel.create,
       regularization)
     val poissonProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      PoissonRegressionModel.createModel,
+      PoissonRegressionModel.create,
       regularization)
     val hingeProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      SmoothedHingeLossLinearSVMModel.createModel,
+      SmoothedHingeLossLinearSVMModel.create,
       regularization)
 
     val logisticModel = logisticProblem.publicInitializeZeroModel(DIMENSION)
@@ -90,7 +90,7 @@ class GeneralizedLinearOptimizationProblemTest {
   def testCreateModel(): Unit = {
     val optimizer = mock(classOf[Optimizer[ObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
-    val objective = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val objective = mock(classOf[SingleNodeSmoothedHingeLossFunction])
     val regularization = NoRegularizationContext
 
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
@@ -98,22 +98,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       regularization)
     val linearProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LinearRegressionModel.createModel,
+      LinearRegressionModel.create,
       regularization)
     val poissonProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      PoissonRegressionModel.createModel,
+      PoissonRegressionModel.create,
       regularization)
     val hingeProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      SmoothedHingeLossLinearSVMModel.createModel,
+      SmoothedHingeLossLinearSVMModel.create,
       regularization)
     val coefficients = generateDenseVector(DIMENSION)
 
@@ -148,7 +148,7 @@ class GeneralizedLinearOptimizationProblemTest {
 
     val optimizerNoReg = mock(classOf[LBFGS])
     val optimizerL1Reg = mock(classOf[OWLQN])
-    val objectiveNoReg = mock(classOf[IndividualSmoothedHingeLossFunction])
+    val objectiveNoReg = mock(classOf[SingleNodeSmoothedHingeLossFunction])
     val objectiveL2Reg = mock(classOf[L2LossFunction])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val initialModel = mock(classOf[GeneralizedLinearModel])
@@ -159,22 +159,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val problemNone = new MockOptimizationProblem(
       optimizerNoReg,
       objectiveNoReg,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       NoRegularizationContext)
     val problemL1 = new MockOptimizationProblem(
       optimizerL1Reg,
       objectiveNoReg,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       L1RegularizationContext)
     val problemL2 = new MockOptimizationProblem(
       optimizerNoReg,
       objectiveL2Reg,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       L2RegularizationContext)
     val problemElasticNet = new MockOptimizationProblem(
       optimizerL1Reg,
       objectiveL2Reg,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       ElasticNetRegularizationContext(alpha))
 
     doReturn(l1RegWeight).when(optimizerL1Reg).l1RegularizationWeight
@@ -195,11 +195,11 @@ object GeneralizedLinearOptimizationProblemTest {
   val DIMENSION = 10
 
   private class MockOptimizationProblem(
-      optimizer: Optimizer[IndividualSmoothedHingeLossFunction],
-      objectiveFunction: IndividualSmoothedHingeLossFunction,
+      optimizer: Optimizer[SingleNodeSmoothedHingeLossFunction],
+      objectiveFunction: SingleNodeSmoothedHingeLossFunction,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       regularizationContext: RegularizationContext)
-    extends GeneralizedLinearOptimizationProblem[IndividualSmoothedHingeLossFunction](
+    extends GeneralizedLinearOptimizationProblem[SingleNodeSmoothedHingeLossFunction](
       optimizer,
       objectiveFunction,
       glmConstructor,
@@ -224,5 +224,5 @@ object GeneralizedLinearOptimizationProblemTest {
   }
 
   // No way to pass Mixin class type to Mockito, need to define a concrete class
-  private class L2LossFunction extends IndividualSmoothedHingeLossFunction with L2RegularizationDiff
+  private class L2LossFunction extends SingleNodeSmoothedHingeLossFunction with L2RegularizationDiff
 }

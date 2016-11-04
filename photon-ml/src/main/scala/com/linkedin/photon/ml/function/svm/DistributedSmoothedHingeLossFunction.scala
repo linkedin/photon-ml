@@ -89,7 +89,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sparkContext: SparkCont
     val result = input.treeAggregate((0.0, initialCumGradient))(
       seqOp = {
         case ((loss, cumGradient), datum) =>
-          val v = SmoothedHingeLossLinearSVMFunction.calculateAt(datum, coefficients.value, cumGradient)
+          val v = SmoothedHingeLossFunction.calculateAt(datum, coefficients.value, cumGradient)
           (loss + v, cumGradient)
       },
       combOp = {
@@ -104,14 +104,15 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sparkContext: SparkCont
 
 object DistributedSmoothedHingeLossFunction {
   /**
-   * Factory method to create new DistributedSmoothedHingeLossFunction.
+   * Factory method to create a new objective function with DistributedSmoothedHingeLossFunction as the base loss
+   * function.
    *
    * @param configuration The optimization problem configuration
    * @param sparkContext The current Spark context
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedSmoothedHingeLossFunction
    */
-  def createLossFunction(
+  def create(
     configuration: GLMOptimizationConfiguration,
     sparkContext: SparkContext,
     treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
@@ -120,11 +121,9 @@ object DistributedSmoothedHingeLossFunction {
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
-        val objectiveFunction = new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth)
-          with L2RegularizationDiff
-        objectiveFunction.l2RegularizationWeight = regularizationContext
-          .getL2RegularizationWeight(configuration.regularizationWeight)
-        objectiveFunction
+        new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth) with L2RegularizationDiff {
+          l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+        }
 
       case _ => new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth)
     }

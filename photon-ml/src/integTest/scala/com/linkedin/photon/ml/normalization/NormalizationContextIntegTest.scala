@@ -155,21 +155,21 @@ class NormalizationContextIntegTest extends SparkTestUtils {
       val configuration = GLMOptimizationConfiguration()
       val objectiveFunction = taskType match {
         case TaskType.LOGISTIC_REGRESSION =>
-          DistributedGLMLossFunction.createLossFunction(
+          DistributedGLMLossFunction.create(
             configuration,
             LogisticLossFunction,
             sc,
             treeAggregateDepth = 1)
 
         case TaskType.LINEAR_REGRESSION =>
-          DistributedGLMLossFunction.createLossFunction(
+          DistributedGLMLossFunction.create(
             configuration,
             SquaredLossFunction,
             sc,
             treeAggregateDepth = 1)
 
         case TaskType.POISSON_REGRESSION =>
-          DistributedGLMLossFunction.createLossFunction(
+          DistributedGLMLossFunction.create(
             configuration,
             PoissonLossFunction,
             sc,

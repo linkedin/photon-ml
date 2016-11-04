@@ -14,12 +14,11 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import com.linkedin.photon.ml.test.SparkTestUtils
 import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
-
+import com.linkedin.photon.ml.test.SparkTestUtils
 
 class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
 

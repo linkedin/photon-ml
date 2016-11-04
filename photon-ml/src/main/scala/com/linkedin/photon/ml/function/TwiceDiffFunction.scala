@@ -24,7 +24,9 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  */
 trait TwiceDiffFunction extends DiffFunction {
   /**
-   * Compute the Hessian of the function over the given data for the given model coefficients.
+   * Compute (Hessian * d_i) of the function over the given data for the given model coefficients.
+   *
+   * @note For more information, see [[http://www.csie.ntu.edu.tw/%7Ecjlin/papers/logistic.pdf]]
    *
    * @param input The given data over which to compute the Hessian
    * @param coefficients The model coefficients used to compute the function's hessian, multiplied by a given vector

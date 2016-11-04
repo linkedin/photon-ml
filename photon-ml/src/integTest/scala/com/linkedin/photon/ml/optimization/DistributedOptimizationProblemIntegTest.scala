@@ -206,21 +206,21 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       optimizerL1,
       objectiveFunction,
       samplerOption = None,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       L1RegularizationContext,
       isComputingVariances = false)
     val l2Problem = new DistributedOptimizationProblem(
       optimizer,
       objectiveFunctionL2,
       samplerOption = None,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       L2RegularizationContext,
       isComputingVariances = false)
     val elasticProblem = new DistributedOptimizationProblem(
       optimizerL1,
       objectiveFunctionL2,
       samplerOption = None,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       ElasticNetRegularizationContext(alpha),
       isComputingVariances = false)
 
@@ -270,7 +270,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
       val configuration = GLMOptimizationConfiguration()
-      val objective = DistributedGLMLossFunction.createLossFunction(
+      val objective = DistributedGLMLossFunction.create(
         configuration,
         lossFunction,
         sc,
@@ -318,7 +318,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       val configuration = GLMOptimizationConfiguration(
         regularizationContext = L2RegularizationContext,
         regularizationWeight = regularizationWeight)
-      val objective = DistributedGLMLossFunction.createLossFunction(
+      val objective = DistributedGLMLossFunction.create(
         configuration,
         lossFunction,
         sc,
@@ -364,7 +364,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       optimizer,
       objectiveFunction,
       samplerOption = None,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       NoRegularizationContext,
       isComputingVariances = false)
 

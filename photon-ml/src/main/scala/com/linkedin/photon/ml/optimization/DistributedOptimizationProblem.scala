@@ -30,6 +30,7 @@ import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTra
  * An optimization problem solved by multiple tasks on one or more executors. Used for solving the global optimization
  * problems of a fixed effect model.
  *
+ * @tparam Objective The objective function to optimize, using one or more nodes (executors)
  * @param optimizer The underlying optimizer which iteratively solves the convex problem
  * @param objectiveFunction The objective function to optimize
  * @param samplerOption (Optional) A sampler to use for down-sampling the training data prior to optimization
@@ -37,14 +38,14 @@ import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTra
  * @param regularizationContext The regularization context
  * @param isComputingVariances Should coefficient variances be computed in addition to the means?
  */
-protected[ml] class DistributedOptimizationProblem[Function <: DistributedObjectiveFunction] protected[optimization] (
-    optimizer: Optimizer[Function],
-    objectiveFunction: Function,
+protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization] (
+    optimizer: Optimizer[Objective],
+    objectiveFunction: Objective,
     samplerOption: Option[DownSampler],
     glmConstructor: Coefficients => GeneralizedLinearModel,
     regularizationContext: RegularizationContext,
     isComputingVariances: Boolean)
-  extends GeneralizedLinearOptimizationProblem[Function](
+  extends GeneralizedLinearOptimizationProblem[Objective](
     optimizer,
     objectiveFunction,
     glmConstructor,
@@ -78,13 +79,12 @@ protected[ml] class DistributedOptimizationProblem[Function <: DistributedObject
   override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
     (isComputingVariances, objectiveFunction) match {
       case (true, twiceDiffFunc: TwiceDiffFunction) =>
-        val convertedCoefficients = input.sparkContext.broadcast(coefficients)
+        val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
         val result = Some(twiceDiffFunc
-          .hessianDiagonal(input, convertedCoefficients)
+          .hessianDiagonal(input, broadcastCoefficients)
           .map(v => 1.0 / (v + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)))
 
-        convertedCoefficients.unpersist()
-
+        broadcastCoefficients.unpersist()
         result
 
       case _ =>
@@ -110,22 +110,17 @@ protected[ml] class DistributedOptimizationProblem[Function <: DistributedObject
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   def runWithSampling(input: RDD[(Long, LabeledPoint)], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
-    samplerOption match {
-      case Some(sampler) =>
-        val sampledData = sampler
-          .downSample(input)
-          .values
-          .setName("In memory fixed effect training data set")
-          .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-        val result = run(sampledData, initialModel)
+    val data = (samplerOption match {
+        case Some(sampler) => sampler.downSample(input).values
+        case None => input.values
+      })
+      .setName("In memory fixed effect training data set")
+      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val result = run(data, initialModel)
 
-        sampledData.unpersist()
+    data.unpersist()
 
-        result
-
-      case None =>
-        run(input.values, initialModel)
-    }
+    result
   }
 
   /**
@@ -169,7 +164,7 @@ object DistributedOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new DistributedOptimizationProblem
    */
-  def createOptimizationProblem[Function <: DistributedObjectiveFunction](
+  def create[Function <: DistributedObjectiveFunction](
     configuration: GLMOptimizationConfiguration,
     objectiveFunction: Function,
     samplerOption: Option[DownSampler],
@@ -184,7 +179,7 @@ object DistributedOptimizationProblem {
     // Will result in a runtime error if created Optimizer cannot be cast to an Optimizer that can handle the given
     // objective function.
     val optimizer = OptimizerFactory
-      .createOptimizer(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
+      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
       .asInstanceOf[Optimizer[Function]]
 
     new DistributedOptimizationProblem(

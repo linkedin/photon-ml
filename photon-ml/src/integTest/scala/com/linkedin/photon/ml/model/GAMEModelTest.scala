@@ -171,7 +171,7 @@ object GAMEModelTest {
   protected def getFixedEffectModel(sc: SparkContext, coefficientDimension: Int): FixedEffectModel = {
     // Coefficients parameter
     val glm: GeneralizedLinearModel =
-      LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(coefficientDimension))
+      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"
@@ -190,7 +190,7 @@ object GAMEModelTest {
   protected def getRandomEffectModel(sc: SparkContext, coefficientDimension: Int): RandomEffectModel = {
     // Coefficients parameter
     val glm: GeneralizedLinearModel =
-      LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(coefficientDimension))
+      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"

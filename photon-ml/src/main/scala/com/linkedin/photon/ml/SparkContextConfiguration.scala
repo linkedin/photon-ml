@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
 /**
@@ -41,6 +41,7 @@ object SparkContextConfiguration {
   val CONF_SPARK_KRYO_CLASSES_TO_REGISTER = "spark.kryo.classesToRegister"
   val KRYO_CLASSES_TO_REGISTER = Array[Class[_]](
     classOf[mutable.BitSet],
+    classOf[mutable.ListBuffer[_]],
     classOf[Coefficients],
     classOf[DenseMatrix[Double]],
     classOf[DenseVector[Double]],
@@ -49,20 +50,22 @@ object SparkContextConfiguration {
     classOf[GeneralizedLinearModel],
     classOf[GeneralizedLinearOptimizationProblem[_]],
     classOf[HessianVectorAggregator],
-    classOf[IndividualObjectiveFunction],
-    classOf[IndividualOptimizationProblem[_]],
+    classOf[SingleNodeObjectiveFunction],
+    classOf[SingleNodeOptimizationProblem[_]],
     classOf[KeyValueScore],
     classOf[LBFGS],
     classOf[LabeledPoint],
     classOf[LinearRegressionModel],
     classOf[LocalDataSet],
     classOf[LogisticRegressionModel],
-    classOf[MFOptimizationConfiguration],
     classOf[Matrix[Double]],
+    classOf[MFOptimizationConfiguration],
+    classOf[ModelTracker],
     classOf[NameAndTerm],
     classOf[NormalizationContext],
     classOf[ObjectiveFunction],
     classOf[OptimizationStatesTracker],
+    classOf[Option[_]],
     classOf[OWLQN],
     classOf[PoissonRegressionModel],
     classOf[RegularizationContext],

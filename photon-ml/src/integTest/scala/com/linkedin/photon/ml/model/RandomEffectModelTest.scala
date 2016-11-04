@@ -31,7 +31,7 @@ class RandomEffectModelTest extends SparkTestUtils {
     // Coefficients parameter
     val coefficientDimension = 1
     val glm: GeneralizedLinearModel =
-      LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(coefficientDimension))
+      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"

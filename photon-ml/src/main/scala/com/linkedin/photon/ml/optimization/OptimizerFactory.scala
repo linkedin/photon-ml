@@ -37,7 +37,7 @@ protected[ml] object OptimizerFactory {
    *                                      model training?
    * @return A new Optimizer
    */
-  def createOptimizer(
+  def build(
       config: OptimizerConfig,
       normalizationContext: Broadcast[NormalizationContext],
       regularizationContext: RegularizationContext,

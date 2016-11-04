@@ -135,12 +135,12 @@ object HessianVectorAggregator {
    * @return The Hessian vector
    */
   def calcHessianVector(
-    input: RDD[LabeledPoint],
-    coef: Broadcast[Vector[Double]],
-    multiplyVector: Broadcast[Vector[Double]],
-    singleLossFunction: PointwiseLossFunction,
-    normalizationContext: Broadcast[NormalizationContext],
-    treeAggregateDepth: Int): Vector[Double] = {
+      input: RDD[LabeledPoint],
+      coef: Broadcast[Vector[Double]],
+      multiplyVector: Broadcast[Vector[Double]],
+      singleLossFunction: PointwiseLossFunction,
+      normalizationContext: Broadcast[NormalizationContext],
+      treeAggregateDepth: Int): Vector[Double] = {
 
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.value.size)
     val resultAggregator = input.treeAggregate(aggregator)(
@@ -163,11 +163,11 @@ object HessianVectorAggregator {
    * @return The Hessian vector
    */
   def calcHessianVector(
-    input: Iterable[LabeledPoint],
-    coef: Vector[Double],
-    multiplyVector: Vector[Double],
-    singleLossFunction: PointwiseLossFunction,
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double] = {
+      input: Iterable[LabeledPoint],
+      coef: Vector[Double],
+      multiplyVector: Vector[Double],
+      singleLossFunction: PointwiseLossFunction,
+      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] = {
 
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.size)
     val resultAggregator = input.aggregate(aggregator)(

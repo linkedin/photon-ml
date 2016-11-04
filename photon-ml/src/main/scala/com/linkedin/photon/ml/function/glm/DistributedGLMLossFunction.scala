@@ -32,13 +32,13 @@ import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, Regula
  *
  * with:
  *
- * z_i = w^T^ z_i.
+ * z_i = w^T^ x_i.
  *
  * Different generalized linear models will have different l(z, y). The functionality of l(z, y) is provided by a
  * [[PointwiseLossFunction]]. Since the loss function could change for different types of normalization, a normalization
  * context object indicates which normalization strategy is used to evaluate the loss function.
  *
- * @param singleLossFunction A single loss function l(z, y) used for the generalized linear model
+ * @param singlePointLossFunction A single loss function l(z, y) used for the generalized linear model
  * @param sparkContext The Spark context
  * @param treeAggregateDepth The depth used by treeAggregate. Depth 1 indicates normal linear aggregate. Using
  *                           depth > 1 can reduce memory consumption in the Driver and may also speed up the
@@ -46,7 +46,7 @@ import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, Regula
  *                           versions 1.4 and 1.5.
  */
 protected[ml] class DistributedGLMLossFunction private (
-    singleLossFunction: PointwiseLossFunction,
+    singlePointLossFunction: PointwiseLossFunction,
     sparkContext: SparkContext,
     treeAggregateDepth: Int)
   extends DistributedObjectiveFunction(sparkContext, treeAggregateDepth)
@@ -93,9 +93,10 @@ protected[ml] class DistributedGLMLossFunction private (
     input: RDD[LabeledPoint],
     coefficients: Broadcast[Vector[Double]],
     normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) =
-    ValueAndGradientAggregator.calculateValueAndGradient(input,
+    ValueAndGradientAggregator.calculateValueAndGradient(
+      input,
       coefficients,
-      singleLossFunction,
+      singlePointLossFunction,
       normalizationContext,
       treeAggregateDepth)
 
@@ -118,12 +119,12 @@ protected[ml] class DistributedGLMLossFunction private (
       input,
       coefficients,
       multiplyVector,
-      singleLossFunction,
+      singlePointLossFunction,
       normalizationContext,
       treeAggregateDepth)
 
   /**
-   * Compute the diagonal of Hessian matrix of the function over the given data for the given model coefficients.
+   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the diagonal of the Hessian matrix
    * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
@@ -132,12 +133,12 @@ protected[ml] class DistributedGLMLossFunction private (
   override protected[ml] def hessianDiagonal(
     input: RDD[LabeledPoint],
     coefficients: Broadcast[Vector[Double]]) : Vector[Double] =
-    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singleLossFunction, treeAggregateDepth)
+    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction, treeAggregateDepth)
 }
 
 object DistributedGLMLossFunction {
   /**
-   * Factory method to create new DistributedGLMLossFunctions.
+   * Factory method to create a new objective function with DistributedGLMLossFunctions as the base loss function.
    *
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
@@ -145,7 +146,7 @@ object DistributedGLMLossFunction {
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedGLMLossFunction
    */
-  def createLossFunction(
+  def create(
     configuration: GLMOptimizationConfiguration,
     singleLossFunction: PointwiseLossFunction,
     sparkContext: SparkContext,
@@ -155,12 +156,11 @@ object DistributedGLMLossFunction {
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
-        val objectiveFunction =
-          new DistributedGLMLossFunction(singleLossFunction, sparkContext, treeAggregateDepth)
-            with L2RegularizationTwiceDiff
-        objectiveFunction.l2RegularizationWeight = regularizationContext
-          .getL2RegularizationWeight(configuration.regularizationWeight)
-        objectiveFunction
+        new DistributedGLMLossFunction(singleLossFunction, sparkContext, treeAggregateDepth)
+          with L2RegularizationTwiceDiff {
+
+          l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+        }
 
       case _ => new DistributedGLMLossFunction(singleLossFunction, sparkContext, treeAggregateDepth)
     }

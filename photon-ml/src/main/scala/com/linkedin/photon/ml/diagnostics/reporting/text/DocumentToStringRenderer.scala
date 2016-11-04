@@ -15,9 +15,7 @@
 package com.linkedin.photon.ml.diagnostics.reporting.text
 
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
-
 
 class DocumentToStringRenderer(
     renderStrategy: RenderStrategy[ChapterPhysicalReport, String],
@@ -39,5 +37,4 @@ class DocumentToStringRenderer(
     println(s"Rendering ${c.items.length} chapters in this document")
     s"${c.title}\n${baseRenderer.render(c)}\n"
   }
-
 }

@@ -21,10 +21,10 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.RandomEffectDataSet
-import com.linkedin.photon.ml.function.IndividualObjectiveFunction
+import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, IndividualOptimizationProblem}
+import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, SingleNodeOptimizationProblem}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -34,11 +34,12 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * A: In the future, we want to be able to have unique regularization weights per optimization problem. In addition, it
  *    may be useful to have access to the optimization state of each individual problem.
  *
+ * @tparam Objective The objective function to optimize
  * @param optimizationProblems The component optimization problems (one per individual) for a random effect
  *                             optimization problem
  */
-protected[ml] class RandomEffectOptimizationProblem[Function <: IndividualObjectiveFunction](
-    val optimizationProblems: RDD[(String, IndividualOptimizationProblem[Function])],
+protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjectiveFunction](
+    val optimizationProblems: RDD[(String, SingleNodeOptimizationProblem[Objective])],
     val isTrackingState: Boolean)
   extends RDDLike {
 
@@ -105,19 +106,19 @@ object RandomEffectOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def createRandomEffectOptimizationProblem[Function <: IndividualObjectiveFunction](
-    randomEffectDataSet: RandomEffectDataSet,
-    configuration: GLMOptimizationConfiguration,
-    objectiveFunction: Function,
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    normalizationContext: Broadcast[NormalizationContext],
-    isTrackingState: Boolean = false,
-    isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[Function] = {
+  protected[ml] def create[RandomEffectObjective <: SingleNodeObjectiveFunction](
+      randomEffectDataSet: RandomEffectDataSet,
+      configuration: GLMOptimizationConfiguration,
+      objectiveFunction: RandomEffectObjective,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean = false,
+      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
 
     // Build an optimization problem for each random effect type.
     val optimizationProblems = randomEffectDataSet
       .activeData
-      .mapValues(_ => IndividualOptimizationProblem.createOptimizationProblem(
+      .mapValues(_ => SingleNodeOptimizationProblem.create(
         configuration,
         objectiveFunction,
         glmConstructor,

@@ -122,8 +122,8 @@ object ModelTraining extends Logging {
     // Construct the generalized linear optimization problem
     val (glmConstructor, objectiveFunction) = taskType match {
       case LOGISTIC_REGRESSION =>
-        val constructor = LogisticRegressionModel.createModel _
-        val objective = DistributedGLMLossFunction.createLossFunction(
+        val constructor = LogisticRegressionModel.create _
+        val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           LogisticLossFunction,
           trainingData.sparkContext,
@@ -131,8 +131,8 @@ object ModelTraining extends Logging {
         (constructor, objective)
 
       case LINEAR_REGRESSION =>
-        val constructor = LinearRegressionModel.createModel _
-        val objective = DistributedGLMLossFunction.createLossFunction(
+        val constructor = LinearRegressionModel.create _
+        val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           SquaredLossFunction,
           trainingData.sparkContext,
@@ -140,8 +140,8 @@ object ModelTraining extends Logging {
         (constructor, objective)
 
       case POISSON_REGRESSION =>
-        val constructor = PoissonRegressionModel.createModel _
-        val objective = DistributedGLMLossFunction.createLossFunction(
+        val constructor = PoissonRegressionModel.create _
+        val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           PoissonLossFunction,
           trainingData.sparkContext,
@@ -149,8 +149,8 @@ object ModelTraining extends Logging {
         (constructor, objective)
 
       case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val constructor = SmoothedHingeLossLinearSVMModel.createModel _
-        val objective = DistributedSmoothedHingeLossFunction.createLossFunction(
+        val constructor = SmoothedHingeLossLinearSVMModel.create _
+        val objective = DistributedSmoothedHingeLossFunction.create(
           optimizationConfig,
           trainingData.sparkContext,
           treeAggregateDepth)
@@ -158,7 +158,7 @@ object ModelTraining extends Logging {
 
       case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
     }
-    val optimizationProblem = DistributedOptimizationProblem.createOptimizationProblem(
+    val optimizationProblem = DistributedOptimizationProblem.create(
       optimizationConfig,
       objectiveFunction,
       samplerOption = None,

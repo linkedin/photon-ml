@@ -62,6 +62,6 @@ object PoissonRegressionModel {
    * @param coefficients The feature coefficient means and variances for the model
    * @return A Poisson regression model
    */
-  def createModel(coefficients: Coefficients): PoissonRegressionModel =
+  def create(coefficients: Coefficients): PoissonRegressionModel =
     new PoissonRegressionModel(coefficients)
 }

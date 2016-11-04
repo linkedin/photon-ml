@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, IndividualSmoothedHingeLossFunction}
+import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, SingleNodeSmoothedHingeLossFunction}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.NoNormalization
@@ -344,10 +344,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       logger.info(s"Start to train the game model with the following config:\n$modelConfig\n")
 
       val glmConstructor = taskType match {
-        case LOGISTIC_REGRESSION => LogisticRegressionModel.createModel _
-        case LINEAR_REGRESSION => LinearRegressionModel.createModel _
-        case POISSON_REGRESSION => PoissonRegressionModel.createModel _
-        case SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossLinearSVMModel.createModel _
+        case LOGISTIC_REGRESSION => LogisticRegressionModel.create _
+        case LINEAR_REGRESSION => LinearRegressionModel.create _
+        case POISSON_REGRESSION => PoissonRegressionModel.create _
+        case SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossLinearSVMModel.create _
         case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
       }
 
@@ -368,28 +368,28 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             }
             val objectiveFunction = taskType match {
               case LOGISTIC_REGRESSION =>
-                DistributedGLMLossFunction.createLossFunction(
+                DistributedGLMLossFunction.create(
                   optimizationConfiguration,
                   LogisticLossFunction,
                   sparkContext,
                   treeAggregateDepth)
 
               case LINEAR_REGRESSION =>
-                DistributedGLMLossFunction.createLossFunction(
+                DistributedGLMLossFunction.create(
                   optimizationConfiguration,
                   SquaredLossFunction,
                   sparkContext,
                   treeAggregateDepth)
 
               case POISSON_REGRESSION =>
-                DistributedGLMLossFunction.createLossFunction(
+                DistributedGLMLossFunction.create(
                   optimizationConfiguration,
                   PoissonLossFunction,
                   sparkContext,
                   treeAggregateDepth)
 
               case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-                DistributedSmoothedHingeLossFunction.createLossFunction(
+                DistributedSmoothedHingeLossFunction.create(
                   optimizationConfiguration,
                   sparkContext,
                   treeAggregateDepth)
@@ -404,7 +404,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             } else {
               None
             }
-            val optimizationProblem = DistributedOptimizationProblem.createOptimizationProblem(
+            val optimizationProblem = DistributedOptimizationProblem.create(
               optimizationConfiguration,
               objectiveFunction,
               samplerOption,
@@ -421,26 +421,26 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             val optimizationConfiguration = randomEffectOptimizationConfiguration(coordinateId)
             val objectiveFunction = taskType match {
               case LOGISTIC_REGRESSION =>
-                IndividualGLMLossFunction.createLossFunction(
+                SingleNodeGLMLossFunction.create(
                   optimizationConfiguration,
                   LogisticLossFunction)
 
               case LINEAR_REGRESSION =>
-                IndividualGLMLossFunction.createLossFunction(
+                SingleNodeGLMLossFunction.create(
                   optimizationConfiguration,
                   SquaredLossFunction)
 
               case POISSON_REGRESSION =>
-                IndividualGLMLossFunction.createLossFunction(
+                SingleNodeGLMLossFunction.create(
                   optimizationConfiguration,
                   PoissonLossFunction)
 
               case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-                IndividualSmoothedHingeLossFunction.createLossFunction(
+                SingleNodeSmoothedHingeLossFunction.create(
                   optimizationConfiguration)
             }
             val randomEffectOptimizationProblem = RandomEffectOptimizationProblem
-              .createRandomEffectOptimizationProblem(
+              .create(
                 randomEffectDataSetInProjectedSpace,
                 optimizationConfiguration,
                 objectiveFunction,
@@ -474,10 +474,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
             }
             val (randomObjectiveFunction, latentObjectiveFunction) = taskType match {
               case LOGISTIC_REGRESSION =>
-                val random = IndividualGLMLossFunction.createLossFunction(
+                val random = SingleNodeGLMLossFunction.create(
                   randomEffectOptimizationConfiguration,
                   LogisticLossFunction)
-                val latent = DistributedGLMLossFunction.createLossFunction(
+                val latent = DistributedGLMLossFunction.create(
                   latentFactorOptimizationConfiguration,
                   LogisticLossFunction,
                   sparkContext,
@@ -485,10 +485,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
                 (random, latent)
 
               case LINEAR_REGRESSION =>
-                val random = IndividualGLMLossFunction.createLossFunction(
+                val random = SingleNodeGLMLossFunction.create(
                   randomEffectOptimizationConfiguration,
                   SquaredLossFunction)
-                val latent = DistributedGLMLossFunction.createLossFunction(
+                val latent = DistributedGLMLossFunction.create(
                   latentFactorOptimizationConfiguration,
                   SquaredLossFunction,
                   sparkContext,
@@ -496,10 +496,10 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
                 (random, latent)
 
               case POISSON_REGRESSION =>
-                val random = IndividualGLMLossFunction.createLossFunction(
+                val random = SingleNodeGLMLossFunction.create(
                   randomEffectOptimizationConfiguration,
                   PoissonLossFunction)
-                val latent = DistributedGLMLossFunction.createLossFunction(
+                val latent = DistributedGLMLossFunction.create(
                   latentFactorOptimizationConfiguration,
                   PoissonLossFunction,
                   sparkContext,
@@ -507,16 +507,16 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
                 (random, latent)
 
               case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-                val random = IndividualSmoothedHingeLossFunction.createLossFunction(
+                val random = SingleNodeSmoothedHingeLossFunction.create(
                   randomEffectOptimizationConfiguration)
-                val latent = DistributedSmoothedHingeLossFunction.createLossFunction(
+                val latent = DistributedSmoothedHingeLossFunction.create(
                   latentFactorOptimizationConfiguration,
                   sparkContext,
                   Driver.DEFAULT_TREE_AGGREGATE_DEPTH)
                 (random, latent)
             }
             val factoredRandomEffectOptimizationProblem = FactoredRandomEffectOptimizationProblem
-              .buildFactoredRandomEffectOptimizationProblem(
+              .create(
                 randomEffectDataSet,
                 randomEffectOptimizationConfiguration,
                 latentFactorOptimizationConfiguration,
@@ -678,7 +678,7 @@ object Driver {
   val FIXED_EFFECT_FEATURE_THRESHOLD = 200000
   val DEFAULT_TREE_AGGREGATE_DEPTH = 1
   val DEEP_TREE_AGGREGATE_DEPTH = 2
-  val TRACK_STATE = false
+  val TRACK_STATE = true
   val LOGS = "logs"
 
   /**

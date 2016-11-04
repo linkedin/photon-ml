@@ -30,15 +30,15 @@ import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTra
  * An abstract base for the convex optimization problem which produce trained generalized linear models (GLMs) when
  * solved.
  *
+ * @tparam Objective The objective function to optimize
  * @param optimizer The underlying optimizer which iteratively solves the convex problem
  * @param objectiveFunction The objective function to optimize
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
  * @param isComputingVariances Should coefficient variances be computed in addition to the means?
- * @tparam Function The type of loss function of the generalized linear algorithm
  */
-protected[ml] abstract class GeneralizedLinearOptimizationProblem[Function <: ObjectiveFunction](
-    optimizer: Optimizer[Function],
-    objectiveFunction: Function,
+protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: ObjectiveFunction](
+    optimizer: Optimizer[Objective],
+    objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
     isComputingVariances: Boolean) extends Logging {
 

@@ -20,7 +20,7 @@ import org.apache.spark.HashPartitioner
 
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, IndividualGLMLossFunction, LogisticLossFunction}
+import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, SingleNodeGLMLossFunction, LogisticLossFunction}
 import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
@@ -103,15 +103,15 @@ trait GameTestUtils {
   def generateFixedEffectOptimizationProblem: DistributedOptimizationProblem[DistributedGLMLossFunction] = {
     val configuration = GLMOptimizationConfiguration()
 
-    DistributedOptimizationProblem.createOptimizationProblem(
+    DistributedOptimizationProblem.create(
       configuration,
-      DistributedGLMLossFunction.createLossFunction(
+      DistributedGLMLossFunction.create(
         configuration,
         LogisticLossFunction,
         sc,
         1),
       None,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       sc.broadcast(NoNormalization()),
       isTrackingState = false,
       isComputingVariance = false)
@@ -125,7 +125,7 @@ trait GameTestUtils {
    * @return The newly generated fixed effect model
    */
   def generateFixedEffectModel(featureShardId: String, dimensions: Int) = new FixedEffectModel(
-    sc.broadcast(LogisticRegressionModel.createModel(Coefficients.initializeZeroCoefficients(dimensions))),
+    sc.broadcast(LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(dimensions))),
     featureShardId)
 
   /**
@@ -199,7 +199,7 @@ trait GameTestUtils {
   def generateLinearModelsForRandomEffects(
       randomEffectIds: Seq[String],
       dimensions: Int): Seq[(String, GeneralizedLinearModel)] =
-    randomEffectIds.map((_, LogisticRegressionOptimizationProblem.initializeZeroModel(dimensions)))
+    randomEffectIds.map((_, LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(dimensions))))
 
   /**
    * Generates a random effect optimization problem
@@ -208,17 +208,17 @@ trait GameTestUtils {
    * @return A newly generated random effect optimization problem
    */
   def generateRandomEffectOptimizationProblem(
-    dataset: RandomEffectDataSet): RandomEffectOptimizationProblem[IndividualGLMLossFunction] = {
+    dataset: RandomEffectDataSet): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
 
     val configuration = GLMOptimizationConfiguration()
 
-    RandomEffectOptimizationProblem.createRandomEffectOptimizationProblem(
+    RandomEffectOptimizationProblem.create(
       dataset,
       configuration,
-      IndividualGLMLossFunction.createLossFunction(
+      SingleNodeGLMLossFunction.create(
         configuration,
         LogisticLossFunction),
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       sc.broadcast(NoNormalization()),
       isTrackingState = false,
       isComputingVariance = false)
@@ -255,7 +255,7 @@ trait GameTestUtils {
     val dataset = RandomEffectDataSetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
 
     val optimizationProblem = generateRandomEffectOptimizationProblem(dataset)
-    val coordinate = new RandomEffectCoordinateInProjectedSpace[IndividualGLMLossFunction](dataset, optimizationProblem)
+    val coordinate = new RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction](dataset, optimizationProblem)
     val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
     val model = new RandomEffectModelInProjectedSpace(
       models,

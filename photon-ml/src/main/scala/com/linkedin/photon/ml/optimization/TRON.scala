@@ -156,6 +156,7 @@ class TRON(
     (data: objectiveFunction.Data): OptimizerState = {
 
     val prevCoefficients = currState.coefficients
+    val convertedPrevCoefficients = objectiveFunction.convertFromVector(prevCoefficients)
     val prevFunctionValue = currState.value
     val prevFunctionGradient = currState.gradient
     val prevIter = currState.iter
@@ -170,23 +171,22 @@ class TRON(
       // 2. The maximum number of improvement failures reached.
       val (cgIter, step, residual) = TRON.truncatedConjugateGradientMethod(
         objectiveFunction,
-        prevCoefficients,
         prevFunctionGradient,
         normalizationContext,
-        delta)(data)
+        delta)(data, convertedPrevCoefficients)
 
       val updatedCoefficients = prevCoefficients + step
-      val convertedCoefficients = objectiveFunction.convertFromVector(updatedCoefficients)
+      val convertedUpdatedCoefficients = objectiveFunction.convertFromVector(updatedCoefficients)
       val gs = prevFunctionGradient.dot(step)
       // Compute the predicted reduction
       val predictedReduction = -0.5 * (gs - step.dot(residual))
       // Function value
       val (updatedFunctionValue, updatedFunctionGradient) = objectiveFunction.calculate(
         data,
-        convertedCoefficients,
+        convertedUpdatedCoefficients,
         normalizationContext)
 
-      objectiveFunction.cleanupCoefficients(convertedCoefficients)
+      objectiveFunction.cleanupCoefficients(convertedUpdatedCoefficients)
 
       // Compute the actual reduction.
       val actualReduction = prevFunctionValue - updatedFunctionValue
@@ -249,6 +249,9 @@ class TRON(
         numImprovementFailure += 1
       }
     } while (!improved && numImprovementFailure < maxNumImprovementFailures)
+
+    objectiveFunction.cleanupCoefficients(convertedPrevCoefficients)
+
     finalState
   }
 }
@@ -275,15 +278,14 @@ object TRON extends Logging {
    * @param data The training data
    * @return Tuple3(number of CG iterations, solution, residual)
    */
-  private def truncatedConjugateGradientMethod[Data](
+  private def truncatedConjugateGradientMethod(
     objectiveFunction: TwiceDiffFunction,
-    coefficients: Vector[Double],
     gradient: Vector[Double],
     normalizationContext: Broadcast[NormalizationContext],
     truncationBoundary: Double)
-    (data: objectiveFunction.Data): (Int, Vector[Double], Vector[Double]) = {
+    (data: objectiveFunction.Data,
+    coefficients: objectiveFunction.Coefficients): (Int, Vector[Double], Vector[Double]) = {
 
-    val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
     val step = Utils.initializeZerosVectorOfSameType(gradient)
     val residual = gradient * -1.0
     val direction = residual.copy
@@ -298,7 +300,7 @@ object TRON extends Logging {
         iteration += 1
         /* compute the hessianVector */
         val convertedDirection = objectiveFunction.convertFromVector(direction)
-        val Hd = objectiveFunction.hessianVector(data, convertedCoefficients, convertedDirection, normalizationContext)
+        val Hd = objectiveFunction.hessianVector(data, coefficients, convertedDirection, normalizationContext)
         var alpha = rTr / direction.dot(Hd)
 
         objectiveFunction.cleanupCoefficients(convertedDirection)
@@ -334,8 +336,6 @@ object TRON extends Logging {
         }
       }
     }
-
-    objectiveFunction.cleanupCoefficients(convertedCoefficients)
 
     (iteration, step, residual)
   }

@@ -108,15 +108,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
       Array(
         "Linear regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.createOptimizationProblem(
+          DistributedOptimizationProblem.create(
             lbfgsConfig,
-            DistributedGLMLossFunction.createLossFunction(
+            DistributedGLMLossFunction.create(
               lbfgsConfig,
               SquaredLossFunction,
               sc,
               treeAggregateDepth = 1),
             None,
-            LinearRegressionModel.createModel,
+            LinearRegressionModel.create,
             normalizationContext,
             BaseGLMIntegTest.TRACK_STATES,
             BaseGLMIntegTest.COMPUTE_VARIANCES),
@@ -128,15 +128,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
       Array(
         "Poisson regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.createOptimizationProblem(
+          DistributedOptimizationProblem.create(
             lbfgsConfig,
-            DistributedGLMLossFunction.createLossFunction(
+            DistributedGLMLossFunction.create(
               lbfgsConfig,
               PoissonLossFunction,
               sc,
               treeAggregateDepth = 1),
             None,
-            PoissonRegressionModel.createModel,
+            PoissonRegressionModel.create,
             normalizationContext,
             BaseGLMIntegTest.TRACK_STATES,
             BaseGLMIntegTest.COMPUTE_VARIANCES),
@@ -150,15 +150,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
       Array(
         "Logistic regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.createOptimizationProblem(
+          DistributedOptimizationProblem.create(
             lbfgsConfig,
-            DistributedGLMLossFunction.createLossFunction(
+            DistributedGLMLossFunction.create(
               lbfgsConfig,
               LogisticLossFunction,
               sc,
               treeAggregateDepth = 1),
             None,
-            LogisticRegressionModel.createModel,
+            LogisticRegressionModel.create,
             normalizationContext,
             BaseGLMIntegTest.TRACK_STATES,
             BaseGLMIntegTest.COMPUTE_VARIANCES),

@@ -18,7 +18,7 @@ import breeze.linalg.{Vector, sum}
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.{IndividualObjectiveFunction, TwiceDiffFunction}
+import com.linkedin.photon.ml.function.{SingleNodeObjectiveFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.Utils
@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.util.Utils
 /**
  * Test objective function used solely to exercise the optimizers.
  */
-class TestObjective extends IndividualObjectiveFunction with TwiceDiffFunction {
+class TestObjective extends SingleNodeObjectiveFunction with TwiceDiffFunction {
   override protected[ml] def value(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],

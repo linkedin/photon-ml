@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-
 /**
  * Sharded version of the precision@k evaluator
  *

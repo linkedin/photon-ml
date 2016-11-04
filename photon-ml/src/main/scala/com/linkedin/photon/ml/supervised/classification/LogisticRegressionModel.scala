@@ -79,6 +79,6 @@ object LogisticRegressionModel {
    * @param coefficients The feature coefficient means and variances for the model
    * @return A logistic regression model
    */
-  def createModel(coefficients: Coefficients): LogisticRegressionModel =
+  def create(coefficients: Coefficients): LogisticRegressionModel =
     new LogisticRegressionModel(coefficients)
 }

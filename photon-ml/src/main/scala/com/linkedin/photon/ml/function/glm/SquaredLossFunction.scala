@@ -21,7 +21,7 @@ package com.linkedin.photon.ml.function.glm
  *
  * where:
  *
- *  - \theta is the vector of estimated coefficient weights for the data features
+ *  - theta is the vector of estimated coefficient weights for the data features
  *  - (y_i, x_i, o_i, w_i) are the tuple (label, features, offset, weight) of the i'th labeled data point
  *
  * Linear regression single loss function:

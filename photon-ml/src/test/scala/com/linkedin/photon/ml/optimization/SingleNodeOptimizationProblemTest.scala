@@ -21,7 +21,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.IndividualGLMLossFunction
+import com.linkedin.photon.ml.function.glm.SingleNodeGLMLossFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
@@ -29,25 +29,25 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.CommonTestUtils
 
 /**
- * Test that the IndividualOptimizationProblem runs properly and can correctly skip variance computation if it is
+ * Test that the SingleNodeOptimizationProblem runs properly and can correctly skip variance computation if it is
  * disabled. For additional variance computation tests, see the DistributedOptimizationProblemIntegTest.
  */
-class IndividualOptimizationProblemTest {
+class SingleNodeOptimizationProblemTest {
   import CommonTestUtils._
-  import IndividualOptimizationProblemTest._
+  import SingleNodeOptimizationProblemTest._
 
   @Test
   def testComputeVariancesDisabled(): Unit = {
-    val optimizer = mock(classOf[Optimizer[IndividualGLMLossFunction]])
-    val objectiveFunction = mock(classOf[IndividualGLMLossFunction])
+    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val objectiveFunction = mock(classOf[SingleNodeGLMLossFunction])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
 
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
-    val problem = new IndividualOptimizationProblem(
+    val problem = new SingleNodeOptimizationProblem(
       optimizer,
       objectiveFunction,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       isComputingVariances = false)
     val trainingData = mock(classOf[Iterable[LabeledPoint]])
     val coefficients = mock(classOf[Vector[Double]])
@@ -59,9 +59,9 @@ class IndividualOptimizationProblemTest {
   def testRun(): Unit = {
     val coefficients = new Coefficients(generateDenseVector(DIMENSIONS))
 
-    val optimizer = mock(classOf[Optimizer[IndividualGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
-    val objectiveFunction = mock(classOf[IndividualGLMLossFunction])
+    val objectiveFunction = mock(classOf[SingleNodeGLMLossFunction])
     val initialModel = mock(classOf[GeneralizedLinearModel])
     val normalizationContext = mock(classOf[NormalizationContext])
     val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
@@ -69,10 +69,10 @@ class IndividualOptimizationProblemTest {
 
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
-    val problem = new IndividualOptimizationProblem(
+    val problem = new SingleNodeOptimizationProblem(
       optimizer,
       objectiveFunction,
-      LogisticRegressionModel.createModel,
+      LogisticRegressionModel.create,
       isComputingVariances = false)
 
     doReturn(normalizationContextBroadcast).when(optimizer).getNormalizationContext
@@ -92,6 +92,6 @@ class IndividualOptimizationProblemTest {
   }
 }
 
-object IndividualOptimizationProblemTest {
+object SingleNodeOptimizationProblemTest {
   val DIMENSIONS: Int = 5
 }

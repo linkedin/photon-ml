@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
-
 class FixedPredictedProbabilityVersusObservedFrequencyBinner(val numBins: Int)
   extends AbstractPredictedProbabilityVersusObservedFrequencyBinner {
 

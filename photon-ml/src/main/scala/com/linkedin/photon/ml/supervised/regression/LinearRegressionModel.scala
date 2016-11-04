@@ -62,6 +62,6 @@ object LinearRegressionModel {
    * @param coefficients The feature coefficient means and variances for the model
    * @return A linear regression model
    */
-  def createModel(coefficients: Coefficients): LinearRegressionModel =
+  def create(coefficients: Coefficients): LinearRegressionModel =
     new LinearRegressionModel(coefficients)
 }

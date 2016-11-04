@@ -18,29 +18,29 @@ package com.linkedin.photon.ml.util
 import scala.collection.immutable.Map
 
 /**
-  * This trait defines the methods supported by an index map
-  */
+ * The trait defines the methods supposed should be supported by an index map
+ */
 trait IndexMap extends Map[String, Int] with Serializable {
 
   /**
-    * Lazily compute and cache the feature dimension
-    */
+   * Lazily compute and cache the feature dimension
+   */
   lazy val featureDimension: Int = values.max + 1
 
   /**
-    * Given an index, return the corresponding feature name
-    *
-    * @param idx the feature index
-    * @return the feature name, null if not found
-    */
+   * Given an index, return the corresponding feature name
+   *
+   * @param idx The feature index
+   * @return The feature name if found, NONE otherwise
+   */
   def getFeatureName(idx: Int): Option[String]
 
   /**
-    * Given a feature string, return the index
-    *
-    * @param name the feature name
-    * @return the feature index, IndexMap.NULL_KEY if not found
-    */
+   * Given a feature string, return the index
+   *
+   * @param name The feature name
+   * @return The feature index if found, IndexMap.NULL_KEY otherwise
+   */
   def getIndex(name: String): Int
 }
 

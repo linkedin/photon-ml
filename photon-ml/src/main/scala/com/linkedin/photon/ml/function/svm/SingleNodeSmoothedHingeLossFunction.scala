@@ -18,7 +18,7 @@ import breeze.linalg.Vector
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.{DiffFunction, IndividualObjectiveFunction, L2RegularizationDiff}
+import com.linkedin.photon.ml.function.{DiffFunction, SingleNodeObjectiveFunction, L2RegularizationDiff}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, RegularizationType}
 import com.linkedin.photon.ml.util.Utils
@@ -31,7 +31,7 @@ import com.linkedin.photon.ml.util.Utils
  * A:   Using cumGradient allows the functions to avoid memory allocation by modifying and returning cumGradient instead
  *      of creating a new gradient vector.
  */
-protected[ml] class IndividualSmoothedHingeLossFunction extends IndividualObjectiveFunction with DiffFunction {
+protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObjectiveFunction with DiffFunction {
   /**
    * Compute the value of the function over the given data for the given model coefficients.
    *
@@ -78,7 +78,7 @@ protected[ml] class IndividualSmoothedHingeLossFunction extends IndividualObject
     input.aggregate((0.0, initialCumGradient))(
       seqop = {
         case ((loss, cumGradient), datum) =>
-          val v = SmoothedHingeLossLinearSVMFunction.calculateAt(datum, coefficients, cumGradient)
+          val v = SmoothedHingeLossFunction.calculateAt(datum, coefficients, cumGradient)
           (loss + v, cumGradient)
       },
       combop = {
@@ -88,25 +88,24 @@ protected[ml] class IndividualSmoothedHingeLossFunction extends IndividualObject
   }
 }
 
-object IndividualSmoothedHingeLossFunction {
+object SingleNodeSmoothedHingeLossFunction {
   /**
-   * Factory method to create new IndividualSmoothedHingeLossFunction.
+   * Factory method to create a new objective function with SingleNodeSmoothedHingeLossFunction as the base loss
+   * function.
    *
    * @param configuration The optimization problem configuration
-   * @return A new IndividualSmoothedHingeLossFunction
+   * @return A new SingleNodeSmoothedHingeLossFunction
    */
-  def createLossFunction(configuration: GLMOptimizationConfiguration): IndividualSmoothedHingeLossFunction = {
-
+  def create(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
     val regularizationContext = configuration.regularizationContext
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
-        val objectiveFunction = new IndividualSmoothedHingeLossFunction with L2RegularizationDiff
-        objectiveFunction.l2RegularizationWeight =
-          regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
-        objectiveFunction
+        new SingleNodeSmoothedHingeLossFunction with L2RegularizationDiff {
+          l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+        }
 
-      case _ => new IndividualSmoothedHingeLossFunction
+      case _ => new SingleNodeSmoothedHingeLossFunction
     }
   }
 }

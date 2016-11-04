@@ -19,10 +19,10 @@ import breeze.linalg.Vector
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * The base objective function used by IndividualOptimizationProblems. This function works with data locally as part of
+ * The base objective function used by SingleNodeOptimizationProblems. This function works with data locally as part of
  * a single task (on a single executor).
  */
-abstract class IndividualObjectiveFunction extends ObjectiveFunction with Serializable {
+abstract class SingleNodeObjectiveFunction extends ObjectiveFunction with Serializable {
   type Data = Iterable[LabeledPoint]
   type Coefficients = Vector[Double]
 
@@ -36,8 +36,8 @@ abstract class IndividualObjectiveFunction extends ObjectiveFunction with Serial
   override protected[ml] def domainDimension(input: Iterable[LabeledPoint]): Int = input.head.features.size
 
   /**
-   * IndividualOptimizationProblems compute objective value over all of the data at once as part of a single task (on
-   * a single executor). Thus, the IndividualObjectiveFunction handles Vectors directly.
+   * SingleNodeOptimizationProblems compute objective value over all of the data at once as part of a single task (on
+   * a single executor). Thus, the SingleNodeObjectiveFunction handles Vectors directly.
    *
    * @param coefficients A coefficients Vector to convert
    * @return The given coefficients Vector
@@ -45,7 +45,7 @@ abstract class IndividualObjectiveFunction extends ObjectiveFunction with Serial
   override protected[ml] def convertFromVector(coefficients: Vector[Double]): Coefficients = coefficients
 
   /**
-   * IndividualOptimizationProblems handle Vectors directly, so the IndividualObjectiveFunction input is already a
+   * SingleNodeOptimizationProblems handle Vectors directly, so the SingleNodeObjectiveFunction input is already a
    * Vector.
    *
    * @param coefficients A Coefficients object to convert

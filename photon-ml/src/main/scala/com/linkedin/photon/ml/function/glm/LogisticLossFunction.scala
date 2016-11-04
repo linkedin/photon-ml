@@ -46,7 +46,7 @@ object LogisticLossFunction extends PointwiseLossFunction {
   /**
    * The sigmoid function 1 / (1 + exp(-z))
    *
-   * @param z z
+   * @param z The margin, i.e. z in l(z, y)
    * @return The value
    */
   private def sigmoid(z: Double): Double = 1.0 / (1.0 + math.exp(-z))

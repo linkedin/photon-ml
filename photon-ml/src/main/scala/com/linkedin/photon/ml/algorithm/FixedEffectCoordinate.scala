@@ -27,14 +27,14 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * The optimization problem coordinate for a fixed effect model
  *
- * @tparam Function The type of objective function used to solve the fixed effect optimization problem
- * @param fixedEffectDataSet The training dataset
+ * @tparam Objective The type of objective function used to solve the fixed effect optimization problem
+ * @param dataSet The training dataset
  * @param optimizationProblem The fixed effect optimization problem
  */
-protected[ml] class FixedEffectCoordinate[Function <: DistributedObjectiveFunction](
-    fixedEffectDataSet: FixedEffectDataSet,
-    private val optimizationProblem: DistributedOptimizationProblem[Function])
-  extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[Function]](fixedEffectDataSet) {
+protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
+    dataSet: FixedEffectDataSet,
+    optimizationProblem: DistributedOptimizationProblem[Objective])
+  extends Coordinate[FixedEffectDataSet, FixedEffectCoordinate[Objective]](dataSet) {
 
   /**
    * Score the effect-specific data set in the coordinate with the input model
@@ -45,7 +45,7 @@ protected[ml] class FixedEffectCoordinate[Function <: DistributedObjectiveFuncti
   override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(fixedEffectDataSet, fixedEffectModel)
+        FixedEffectCoordinate.score(dataSet, fixedEffectModel)
 
       case _ =>
         throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
@@ -60,12 +60,12 @@ protected[ml] class FixedEffectCoordinate[Function <: DistributedObjectiveFuncti
    * @return The basic model
    */
   override protected[algorithm] def initializeModel(seed: Long): FixedEffectModel = {
-    val numFeatures = fixedEffectDataSet.numFeatures
+    val numFeatures = dataSet.numFeatures
     val generalizedLinearModel = optimizationProblem.initializeZeroModel(numFeatures)
-    val generalizedLinearModelBroadcast = fixedEffectDataSet
+    val generalizedLinearModelBroadcast = dataSet
       .sparkContext
       .broadcast(generalizedLinearModel.asInstanceOf[GeneralizedLinearModel])
-    val featureShardId = fixedEffectDataSet.featureShardId
+    val featureShardId = dataSet.featureShardId
 
     new FixedEffectModel(generalizedLinearModelBroadcast, featureShardId)
   }
@@ -77,8 +77,8 @@ protected[ml] class FixedEffectCoordinate[Function <: DistributedObjectiveFuncti
    * @return A new coordinate with the updated dataset
    */
   override protected[algorithm] def updateCoordinateWithDataSet(
-    dataSet: FixedEffectDataSet): FixedEffectCoordinate[Function] =
-    new FixedEffectCoordinate[Function](dataSet, optimizationProblem)
+    dataSet: FixedEffectDataSet): FixedEffectCoordinate[Objective] =
+    new FixedEffectCoordinate[Objective](dataSet, optimizationProblem)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -91,10 +91,10 @@ protected[ml] class FixedEffectCoordinate[Function <: DistributedObjectiveFuncti
     model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) = model match {
       case fixedEffectModel: FixedEffectModel =>
         val updatedFixedEffectModel = FixedEffectCoordinate.updateModel(
-          fixedEffectDataSet.labeledPoints,
+          dataSet.labeledPoints,
           optimizationProblem,
           fixedEffectModel,
-          fixedEffectDataSet.sparkContext)
+          dataSet.sparkContext)
         val optimizationTracker = optimizationProblem.getStatesTracker.map(new FixedEffectOptimizationTracker(_))
 
         (updatedFixedEffectModel, optimizationTracker)

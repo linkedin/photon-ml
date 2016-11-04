@@ -21,7 +21,7 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.RDDLike
 import com.linkedin.photon.ml.data.RandomEffectDataSet
-import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, IndividualObjectiveFunction}
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
@@ -32,18 +32,18 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * Representation for a factored random effect optimization problem.
  *
- * @tparam RandomFunc The type of the random effect objective function
- * @tparam LatentFunc The type of the latent effect objective function
+ * @tparam RandomEffectObjective The objective function to optimize for the individual random effects
+ * @tparam LatentEffectObjective The objective function to optimize for the single latent effects model
  * @param randomEffectOptimizationProblem The random effect optimization problem
  * @param latentFactorOptimizationProblem The latent factor optimization problem
  * @param numIterations The number of internal iterations to perform for refining the latent factor approximation
  * @param latentSpaceDimension The dimensionality of the latent space
  */
 protected[ml] class FactoredRandomEffectOptimizationProblem[
-    RandomFunc <: IndividualObjectiveFunction,
-    LatentFunc <: DistributedObjectiveFunction](
-    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[RandomFunc],
-    val latentFactorOptimizationProblem: DistributedOptimizationProblem[LatentFunc],
+    RandomEffectObjective <: SingleNodeObjectiveFunction,
+    LatentEffectObjective <: DistributedObjectiveFunction](
+    val randomEffectOptimizationProblem: RandomEffectOptimizationProblem[RandomEffectObjective],
+    val latentFactorOptimizationProblem: DistributedOptimizationProblem[LatentEffectObjective],
     val numIterations: Int,
     val latentSpaceDimension: Int)
   extends RDDLike {
@@ -119,23 +119,24 @@ object FactoredRandomEffectOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def buildFactoredRandomEffectOptimizationProblem[
-    RandomFunc <: IndividualObjectiveFunction,
-    LatentFunc <: DistributedObjectiveFunction](
-    randomEffectDataSet: RandomEffectDataSet,
-    randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
-    latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
-    mfOptimizationConfiguration: MFOptimizationConfiguration,
-    randomObjectiveFunction: RandomFunc,
-    latentObjectiveFunction: LatentFunc,
-    latentSamplerOption: Option[DownSampler],
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    normalizationContext: Broadcast[NormalizationContext],
-    isTrackingState: Boolean = false,
-    isComputingVariance: Boolean = false): FactoredRandomEffectOptimizationProblem[RandomFunc, LatentFunc] = {
+  protected[ml] def create[
+      RandomEffectObjective <: SingleNodeObjectiveFunction,
+      LatentEffectObjective <: DistributedObjectiveFunction](
+      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
+      latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
+      mfOptimizationConfiguration: MFOptimizationConfiguration,
+      randomObjectiveFunction: RandomEffectObjective,
+      latentObjectiveFunction: LatentEffectObjective,
+      latentSamplerOption: Option[DownSampler],
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean = false,
+      isComputingVariance: Boolean = false)
+    : FactoredRandomEffectOptimizationProblem[RandomEffectObjective, LatentEffectObjective] = {
 
     val MFOptimizationConfiguration(numInnerIterations, latentSpaceDimension) = mfOptimizationConfiguration
-    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.createRandomEffectOptimizationProblem(
+    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.create(
       randomEffectDataSet,
       randomEffectOptimizationConfiguration,
       randomObjectiveFunction,
@@ -143,7 +144,7 @@ object FactoredRandomEffectOptimizationProblem {
       normalizationContext,
       isTrackingState,
       isComputingVariance)
-    val latentFactorOptimizationProblem = DistributedOptimizationProblem.createOptimizationProblem(
+    val latentFactorOptimizationProblem = DistributedOptimizationProblem.create(
       latentFactorOptimizationConfiguration,
       latentObjectiveFunction,
       latentSamplerOption,

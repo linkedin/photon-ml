@@ -21,7 +21,7 @@ package com.linkedin.photon.ml.function.glm
  *
  * for generalized linear model loss functions, where:
  *
- *  - theta is the coefficient
+ *  - theta is the coefficient vector
  *  - x is the feature vector
  *  - z is the margin
  *  - y is the label

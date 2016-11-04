@@ -78,6 +78,6 @@ object SmoothedHingeLossLinearSVMModel {
    * @param coefficients The feature coefficient means and variances for the model
    * @return A smoothed hinge loss SVM model
    */
-  def createModel(coefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
+  def create(coefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
     new SmoothedHingeLossLinearSVMModel(coefficients)
 }

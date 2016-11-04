@@ -52,7 +52,6 @@ class CoordinateDescentTest {
     val evaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
     val gameModel = mock(classOf[GAMEModel])
-    val tracker = mock(classOf[OptimizationTracker])
     val score = mock(classOf[KeyValueScore])
     val models = coordinates.map { _ =>
       mock(classOf[DatumScoringModel])
@@ -71,8 +70,8 @@ class CoordinateDescentTest {
 
       // Coordinate mock setup
       doReturn(score).when(coordinate).score(model)
-      doReturn((model, tracker)).when(coordinate).updateModel(model)
-      doReturn((model, tracker)).when(coordinate).updateModel(model, score)
+      doReturn((model, None)).when(coordinate).updateModel(model)
+      doReturn((model, None)).when(coordinate).updateModel(model, score)
     }
 
     // Run coordinate descent

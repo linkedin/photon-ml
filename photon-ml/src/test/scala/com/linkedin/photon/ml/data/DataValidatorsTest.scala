@@ -14,11 +14,11 @@
  */
 package com.linkedin.photon.ml.data
 
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
-import com.linkedin.photon.ml.test.CommonTestUtils
 import org.testng.Assert
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.test.CommonTestUtils
 
 class DataValidatorsTest {
   @Test

@@ -28,17 +28,18 @@ import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTra
  * An optimization problem solved by a single task on one executor. Used for solving the per-entity optimization
  * problems of a random effect model.
  *
+ * @tparam Objective The objective function to optimize, using a single node
  * @param optimizer The underlying optimizer which iteratively solves the convex problem
  * @param objectiveFunction The objective function to optimize
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
  * @param isComputingVariances Should coefficient variances be computed in addition to the means?
  */
-protected[ml] class IndividualOptimizationProblem[Function <: IndividualObjectiveFunction] protected[optimization] (
-    optimizer: Optimizer[Function],
-    objectiveFunction: Function,
+protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjectiveFunction] protected[optimization] (
+    optimizer: Optimizer[Objective],
+    objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
     isComputingVariances: Boolean)
-  extends GeneralizedLinearOptimizationProblem[Function](
+  extends GeneralizedLinearOptimizationProblem[Objective](
     optimizer,
     objectiveFunction,
     glmConstructor,
@@ -101,9 +102,9 @@ protected[ml] class IndividualOptimizationProblem[Function <: IndividualObjectiv
   }
 }
 
-object IndividualOptimizationProblem {
+object SingleNodeOptimizationProblem {
   /**
-   * Factory method to create new IndividualOptimizationProblems.
+   * Factory method to create new SingleNodeOptimizationProblems.
    *
    * @param configuration The optimization problem configuration
    * @param objectiveFunction The objective function to optimize
@@ -111,15 +112,15 @@ object IndividualOptimizationProblem {
    * @param normalizationContext The normalization context
    * @param isTrackingState Should the optimization problem record the internal optimizer states?
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
-   * @return A new IndividualOptimizationProblem
+   * @return A new SingleNodeOptimizationProblem
    */
-  def createOptimizationProblem[Function <: IndividualObjectiveFunction](
+  def create[Function <: SingleNodeObjectiveFunction](
     configuration: GLMOptimizationConfiguration,
     objectiveFunction: Function,
     glmConstructor: Coefficients => GeneralizedLinearModel,
     normalizationContext: Broadcast[NormalizationContext],
     isTrackingState: Boolean,
-    isComputingVariance: Boolean): IndividualOptimizationProblem[Function] = {
+    isComputingVariance: Boolean): SingleNodeOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -127,10 +128,10 @@ object IndividualOptimizationProblem {
     // Will result in a runtime error if created Optimizer cannot be cast to an Optimizer that can handle the given
     // objective function.
     val optimizer = OptimizerFactory
-      .createOptimizer(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
+      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
       .asInstanceOf[Optimizer[Function]]
 
-    new IndividualOptimizationProblem(
+    new SingleNodeOptimizationProblem(
       optimizer,
       objectiveFunction,
       glmConstructor,

@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.function.glm.LogisticLossFunction
 
 /**
  * Test some edge cases of the functions in [[LogisticLossFunction]]. For more tests by numerical methods please see
- * [[com.linkedin.photon.ml.function.IndividualObjectiveFunctionTest]].
+ * [[com.linkedin.photon.ml.function.SingleNodeObjectiveFunctionTest]].
  */
 class LogisticLossFunctionTest {
 

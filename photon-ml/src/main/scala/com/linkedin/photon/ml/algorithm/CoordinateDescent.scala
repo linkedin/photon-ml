@@ -113,8 +113,8 @@ class CoordinateDescent(
     for (iteration <- 0 until numIterations) {
       val iterationTimer = Timer.start()
       logger.debug(s"Iteration $iteration of coordinate descent starts...\n")
-      coordinates.foreach { case (coordinateId, coordinate) =>
 
+      coordinates.foreach { case (coordinateId, coordinate) =>
         val coordinateTimer = Timer.start()
         logger.debug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
 
@@ -136,7 +136,8 @@ class CoordinateDescent(
           case rddLike: RDDLike =>
             rddLike
               .setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+              .materialize()
 
           case _ =>
         }

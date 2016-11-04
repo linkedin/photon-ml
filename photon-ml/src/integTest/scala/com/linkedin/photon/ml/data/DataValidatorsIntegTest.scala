@@ -14,16 +14,16 @@
  */
 package com.linkedin.photon.ml.data
 
+import org.apache.spark.rdd.RDD
+import org.testng.Assert
+import org.testng.annotations.{DataProvider, Test}
+
 import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
-import org.apache.spark.rdd.RDD
-import org.testng.Assert
-import org.testng.annotations.{DataProvider, Test}
-
 
 class DataValidatorsIntegTest extends SparkTestUtils {
   @DataProvider
@@ -36,7 +36,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
     val lpPositiveLabel = new LabeledPoint(5.0, validVector)
     val lpNegativeLabel = new LabeledPoint(-5.0, validVector)
     val lpBinaryLabel = new LabeledPoint(BinaryClassifier.negativeClassLabel, validVector)
-    
+
     // labeled point with invalid label
     val lpInfLabel = new LabeledPoint(Double.PositiveInfinity, validVector)
 

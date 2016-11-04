@@ -24,8 +24,8 @@ import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.{IndividualGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
-import com.linkedin.photon.ml.function.svm.IndividualSmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.glm.{SingleNodeGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
+import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, L2RegularizationContext, NoRegularizationContext}
 import com.linkedin.photon.ml.supervised.TaskType
@@ -34,9 +34,9 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Unit tests to verify that the loss functions compute gradients & Hessians accurately.
  */
-class IndividualObjectiveFunctionTest extends SparkTestUtils {
+class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
 
-  import IndividualObjectiveFunctionTest._
+  import SingleNodeObjectiveFunctionTest._
 
   val twiceDiffTasks = Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
   val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
@@ -64,49 +64,49 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
   @DataProvider(parallel = true)
   def getDifferentiableFunctions: Array[Array[Object]] = diffTasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           LogisticLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           LogisticLossFunction)
 
         binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
-          Seq[(IndividualObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
+          Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           SquaredLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           SquaredLossFunction)
 
         linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
-          Seq[(IndividualObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
+          Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           PoissonLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           PoissonLossFunction)
 
         poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
-          Seq[(IndividualObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
+          Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val lossFunc = IndividualSmoothedHingeLossFunction.createLossFunction(
+        val lossFunc = SingleNodeSmoothedHingeLossFunction.create(
           NO_REG_CONFIGURATION_MOCK)
-        val lossFuncWithL2 = IndividualSmoothedHingeLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeSmoothedHingeLossFunction.create(
           L2_REG_CONFIGURATION_MOCK)
 
         binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
-          Seq[(IndividualObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
+          Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case other =>
@@ -122,10 +122,10 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
   @DataProvider(parallel = true)
   def getTwiceDifferentiableFunctions: Array[Array[Object]] = twiceDiffTasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           LogisticLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           LogisticLossFunction)
 
@@ -134,10 +134,10 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           SquaredLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           SquaredLossFunction)
 
@@ -146,10 +146,10 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = IndividualGLMLossFunction.createLossFunction(
+        val lossFunc = SingleNodeGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           PoissonLossFunction)
-        val lossFuncWithL2 = IndividualGLMLossFunction.createLossFunction(
+        val lossFuncWithL2 = SingleNodeGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           PoissonLossFunction)
 
@@ -435,13 +435,12 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
    *       DiffFunction#value and DiffFunction#gradient instead. This is to ensure that we get some coverage of these
    *       functions which aren't used anywhere else. In the near term, we should decide if we want to keep those
    *       methods as part of the design or remove them, as they aren't used by any of the solvers.
-   *
    * @param function The objective function being tested
    * @param dataGenerationFunction A builder function for the training dataset
    */
   @Test(dataProvider = "getDifferentiableFunctions", groups = Array[String]("ObjectiveFunctionTests", "testCore"))
   def checkGradientConsistentWithObjectiveLocal(
-    function: IndividualObjectiveFunction with DiffFunction,
+    function: SingleNodeObjectiveFunction with DiffFunction,
     dataGenerationFunction: () => List[LabeledPoint]): Unit = {
 
     val data = dataGenerationFunction()
@@ -488,7 +487,7 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
     dependsOnMethods = Array("checkGradientConsistentWithObjectiveLocal"),
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
   def checkHessianConsistentWithObjectiveLocal(
-    function: IndividualGLMLossFunction with TwiceDiffFunction,
+    function: SingleNodeGLMLossFunction with TwiceDiffFunction,
     dataGenerationFunction: () => List[LabeledPoint]): Unit = {
 
     val data = dataGenerationFunction()
@@ -534,7 +533,7 @@ class IndividualObjectiveFunctionTest extends SparkTestUtils {
   }
 }
 
-object IndividualObjectiveFunctionTest {
+object SingleNodeObjectiveFunctionTest {
   val LOCAL_CONSISTENCY_CHECK_SAMPLES = 100
   val NUM_PARTITIONS = 4
   val PROBLEM_DIMENSION = 5
@@ -551,7 +550,7 @@ object IndividualObjectiveFunctionTest {
   val WEIGHT_RANDOM_SEED = 100
   val WEIGHT_RANDOM_MAX = 10
   val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
-  val LOGGER: Logger = LogManager.getLogger(classOf[IndividualObjectiveFunctionTest])
+  val LOGGER: Logger = LogManager.getLogger(classOf[SingleNodeObjectiveFunctionTest])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
   doReturn(L2RegularizationContext).when(L2_REG_CONFIGURATION_MOCK).regularizationContext

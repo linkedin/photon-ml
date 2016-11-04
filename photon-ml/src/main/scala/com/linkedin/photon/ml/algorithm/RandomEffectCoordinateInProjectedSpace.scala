@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.data.{KeyValueScore, RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
-import com.linkedin.photon.ml.function.IndividualObjectiveFunction
+import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -23,14 +23,14 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * The optimization problem coordinate for a random effect model in projected space
  *
- * @param randomEffectDataSetInProjectedSpace The training dataset
- * @param randomEffectOptimizationProblem The fixed effect optimization problem
- * @tparam Function The type of objective function used to solve individual random effect optimization problems
+ * @tparam Objective The type of objective function used to solve individual random effect optimization problems
+ * @param dataSetInProjectedSpace The training dataset
+ * @param optimizationProblem The fixed effect optimization problem
  */
-protected[ml] class RandomEffectCoordinateInProjectedSpace[Function <: IndividualObjectiveFunction](
-    randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
-    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function])
-  extends RandomEffectCoordinate[Function](randomEffectDataSetInProjectedSpace, randomEffectOptimizationProblem) {
+protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNodeObjectiveFunction](
+    dataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
+    optimizationProblem: RandomEffectOptimizationProblem[Objective])
+  extends RandomEffectCoordinate[Objective](dataSetInProjectedSpace, optimizationProblem) {
 
   /**
    * Score the effect-specific data set in the coordinate with the input model
@@ -56,8 +56,8 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Function <: Individua
    */
   override protected[algorithm] def initializeModel(seed: Long): RandomEffectModelInProjectedSpace = {
     RandomEffectCoordinateInProjectedSpace.initializeModel(
-      randomEffectDataSetInProjectedSpace,
-      randomEffectOptimizationProblem)
+      dataSetInProjectedSpace,
+      optimizationProblem)
   }
 
   /**
@@ -67,15 +67,15 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Function <: Individua
    * @return A new coordinate with the updated dataset
    */
   override protected[algorithm] def updateCoordinateWithDataSet(
-    updatedRandomEffectDataSet: RandomEffectDataSet): RandomEffectCoordinate[Function] = {
+    updatedRandomEffectDataSet: RandomEffectDataSet): RandomEffectCoordinate[Objective] = {
 
     val updatedRandomEffectDataSetInProjectedSpace = new RandomEffectDataSetInProjectedSpace(
       updatedRandomEffectDataSet,
-      randomEffectDataSetInProjectedSpace.randomEffectProjector)
+      dataSetInProjectedSpace.randomEffectProjector)
 
     new RandomEffectCoordinateInProjectedSpace(
       updatedRandomEffectDataSetInProjectedSpace,
-      randomEffectOptimizationProblem)
+      optimizationProblem)
   }
 
   /**
@@ -120,14 +120,14 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Function <: Individua
 
 object RandomEffectCoordinateInProjectedSpace {
   /**
-   * Initialize a basic model
+   * Initialize a basic model (one that has a zero model for each random effect)
    *
    * @tparam Function The type of objective function used to solve individual random effect optimization problems
    * @param randomEffectDataSetInProjectedSpace The dataset
    * @param randomEffectOptimizationProblem The optimization problem to use for creating the underlying models
    * @return A random effect model for scoring GAME data
    */
-  private def initializeModel[Function <: IndividualObjectiveFunction](
+  private def initializeModel[Function <: SingleNodeObjectiveFunction](
       randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function]): RandomEffectModelInProjectedSpace = {
 

@@ -21,7 +21,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet}
-import com.linkedin.photon.ml.function.IndividualObjectiveFunction
+import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.optimization.game.{OptimizationTracker, RandomEffectOptimizationProblem, RandomEffectOptimizationTracker}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -29,14 +29,14 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * The optimization problem coordinate for a random effect model
  *
- * @tparam Function The type of objective function used to solve individual random effect optimization problems
- * @param randomEffectDataSet The training dataset
- * @param randomEffectOptimizationProblem The random effect optimization problem
+ * @tparam Objective The type of objective function used to solve individual random effect optimization problems
+ * @param dataSet The training dataset
+ * @param optimizationProblem The random effect optimization problem
  */
-protected[ml] abstract class RandomEffectCoordinate[Function <: IndividualObjectiveFunction](
-    randomEffectDataSet: RandomEffectDataSet,
-    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function])
-  extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[Function]](randomEffectDataSet) {
+protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
+    dataSet: RandomEffectDataSet,
+    optimizationProblem: RandomEffectOptimizationProblem[Objective])
+  extends Coordinate[RandomEffectDataSet, RandomEffectCoordinate[Objective]](dataSet) {
 
   /**
    * Score the effect-specific data set in the coordinate with the input model
@@ -46,7 +46,7 @@ protected[ml] abstract class RandomEffectCoordinate[Function <: IndividualObject
    */
   override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = {
     model match {
-      case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(randomEffectDataSet, randomEffectModel)
+      case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(dataSet, randomEffectModel)
 
       case _ => throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
           s"in ${this.getClass} is not supported!")
@@ -63,7 +63,7 @@ protected[ml] abstract class RandomEffectCoordinate[Function <: IndividualObject
   override protected[algorithm] def updateModel(
     model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) = model match {
         case randomEffectModel: RandomEffectModel =>
-          RandomEffectCoordinate.updateModel(randomEffectDataSet, randomEffectOptimizationProblem, randomEffectModel)
+          RandomEffectCoordinate.updateModel(dataSet, optimizationProblem, randomEffectModel)
 
         case _ =>
           throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} " +
@@ -78,7 +78,7 @@ protected[ml] abstract class RandomEffectCoordinate[Function <: IndividualObject
    */
   override protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
     case randomEffectModel: RandomEffectModel =>
-      randomEffectOptimizationProblem.getRegularizationTermValue(randomEffectModel.modelsRDD)
+      optimizationProblem.getRegularizationTermValue(randomEffectModel.modelsRDD)
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
@@ -96,7 +96,7 @@ object RandomEffectCoordinate {
    * @param randomEffectModel The current model, used as a starting point
    * @return A tuple of optimized model and optimization tracker
    */
-  protected[algorithm] def updateModel[Function <: IndividualObjectiveFunction](
+  protected[algorithm] def updateModel[Function <: SingleNodeObjectiveFunction](
       randomEffectDataSet: RandomEffectDataSet,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
       randomEffectModel: RandomEffectModel): (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
@@ -114,17 +114,15 @@ object RandomEffectCoordinate {
     val updatedRandomEffectModel = randomEffectModel
       .updateRandomEffectModel(updatedModels)
       .setName(s"Updated random effect model")
-      .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-      .materialize()
     val optimizationTracker = if (randomEffectOptimizationProblem.isTrackingState) {
-      val stateTrackers = randomEffectOptimizationProblem.optimizationProblems.map(_._2.getStatesTracker.get)
-      val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
-        .setName(s"Random effect optimization tracker")
-        .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-        .materialize()
+        val stateTrackers = randomEffectOptimizationProblem.optimizationProblems.map(_._2.getStatesTracker.get)
+        val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
+          .setName(s"Random effect optimization tracker")
+          .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+          .materialize()
 
-      Some(randomEffectTracker)
-    } else None
+        Some(randomEffectTracker)
+      } else None
 
     (updatedRandomEffectModel, optimizationTracker)
   }

@@ -24,7 +24,6 @@ import com.linkedin.photon.ml.optimization.game.OptimizationTracker
  * @param dataSet the training dataset
  */
 protected[ml] abstract class Coordinate[D <: DataSet[D], C <: Coordinate[D, C]](dataSet: D) {
-
   /**
    * Score the effect-specific data set in the coordinate with the input model
    *

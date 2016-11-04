@@ -66,12 +66,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
   def getDifferentiableFunctions: Array[Array[Object]] = diffTasks.flatMap {
     case TaskType.LOGISTIC_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           LogisticLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           LogisticLossFunction,
           sc,
@@ -84,12 +84,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     case TaskType.LINEAR_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           SquaredLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           SquaredLossFunction,
           sc,
@@ -102,12 +102,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     case TaskType.POISSON_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           PoissonLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           PoissonLossFunction,
           sc,
@@ -120,11 +120,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           sc,
           treeAggDepth)
@@ -148,12 +148,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
   def getTwiceDifferentiableFunctions: Array[Array[Object]] = twiceDiffTasks.flatMap {
     case TaskType.LOGISTIC_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           LogisticLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           LogisticLossFunction,
           sc,
@@ -166,12 +166,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     case TaskType.LINEAR_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           SquaredLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           SquaredLossFunction,
           sc,
@@ -184,12 +184,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     case TaskType.POISSON_REGRESSION =>
       treeAggregateDepths.flatMap { treeAggDepth =>
-        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncBuilder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           NO_REG_CONFIGURATION_MOCK,
           PoissonLossFunction,
           sc,
           treeAggDepth)
-        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.createLossFunction(
+        def lossFuncWithL2Builder = (sc: SparkContext) => DistributedGLMLossFunction.create(
           L2_REG_CONFIGURATION_MOCK,
           PoissonLossFunction,
           sc,
@@ -484,7 +484,6 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *       DiffFunction#value and DiffFunction#gradient instead. This is to ensure that we get some coverage of these
    *       functions which aren't used anywhere else. In the near term, we should decide if we want to keep those
    *       methods as part of the design or remove them, as they aren't used by any of the solvers.
-   *
    * @param objectiveBuilder A builder function for the objective function object
    * @param dataGenerationFunction A builder function for the training dataset
    */
