@@ -32,7 +32,7 @@ protected[ml] class LogisticLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights
-      .map { case (_, (score, label, weight)) => weight * LogisticLossFunction.loss(score, label)._1 }
+      .map { case (_, (score, label, weight)) => weight * LogisticLossFunction.lossAndDzLoss(score, label)._1 }
       .reduce(_ + _)
   }
 

@@ -65,7 +65,7 @@ object LogisticLossFunction extends PointwiseLossFunction {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 1st derivative
    */
-  override def loss(margin: Double, label: Double): (Double, Double) = {
+  override def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
     if (label > MathConst.POSITIVE_RESPONSE_THRESHOLD) {
       // The following is equivalent to log(1 + exp(-margin)) but more numerically stable.
       (Utils.log1pExp(-margin), -sigmoid(-margin))
@@ -81,7 +81,7 @@ object LogisticLossFunction extends PointwiseLossFunction {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 2st derivative with respect to z
    */
-  override def d2lossdz2(margin: Double, label: Double): Double = {
+  override def DzzLoss(margin: Double, label: Double): Double = {
     val s = sigmoid(margin)
     s * (1 - s)
   }

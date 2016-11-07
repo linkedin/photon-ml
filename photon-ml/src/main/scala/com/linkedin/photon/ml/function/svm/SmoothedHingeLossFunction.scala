@@ -23,6 +23,9 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
  * optimizer-friendly approximation for linear SVMs. This Object is to the individual/distributed smoothed hinge loss
  * functions is as the PointwiseLossFunction is to the individual/distributed GLM loss functions.
+ *
+ * @note Function names follow the differentiation notation found here:
+ *       [[http://www.wikiwand.com/en/Notation_for_differentiation#/Euler.27s_notation]]
  */
 object SmoothedHingeLossFunction {
   /**
@@ -34,7 +37,7 @@ object SmoothedHingeLossFunction {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 1st derivative
    */
-  def lossAndDerivative(margin: Double, label: Double): (Double, Double) = {
+  def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
     val modifiedLabel = if (label < MathConst.POSITIVE_RESPONSE_THRESHOLD) -1D else 1D
     val z = modifiedLabel * margin
 
@@ -73,7 +76,7 @@ object SmoothedHingeLossFunction {
     cumGradient: Vector[Double]): Double = {
 
     val margin = datum.computeMargin(coefficients)
-    val (loss, deriv) = lossAndDerivative(margin, datum.label)
+    val (loss, deriv) = lossAndDzLoss(margin, datum.label)
 
     // Eq. 5, page 2 (derivative multiplied by label in lossAndDerivative method)
     breeze.linalg.axpy(datum.weight * deriv, datum.features, cumGradient)

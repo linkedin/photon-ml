@@ -55,9 +55,9 @@ protected[ml] class HessianDiagonalAggregator(func: PointwiseLossFunction, val d
     require(features.size == dim, s"Size mismatch. Coefficient size: $dim, features size: ${features.size}")
 
     val margin = datum.computeMargin(coefficients)
-    val d2ldz2 = func.d2lossdz2(margin, label)
+    val dzzLoss = func.DzzLoss(margin, label)
 
-    axpy(weight * d2ldz2, features :* features, vectorSum)
+    axpy(weight * dzzLoss, features :* features, vectorSum)
     this
   }
 

@@ -38,13 +38,13 @@ class LogisticLossFunctionTest {
     val negativeLabel = 0D
 
     // Test positive label
-    val (value1, _) = LogisticLossFunction.loss(margin, positiveLabel)
+    val (value1, _) = LogisticLossFunction.lossAndDzLoss(margin, positiveLabel)
     // Compute the expected value by explicit computation
     val expected1 = math.log(1 + math.exp(-margin))
     assertEquals(value1, expected1, delta)
 
     // Test negative label
-    val (value2, _) = LogisticLossFunction.loss(margin, negativeLabel)
+    val (value2, _) = LogisticLossFunction.lossAndDzLoss(margin, negativeLabel)
     val expected2 = math.log(1 + math.exp(margin))
     assertEquals(value2, expected2, delta)
   }
@@ -60,14 +60,14 @@ class LogisticLossFunctionTest {
     val negativeLabel = 0D
 
     // Test positive label
-    val (_, gradient1) = LogisticLossFunction.loss(margin, positiveLabel)
+    val (_, gradient1) = LogisticLossFunction.lossAndDzLoss(margin, positiveLabel)
     // Calculate gradient explicitly
     val expected1 = -1.0 / (1.0 + math.exp(margin))
     assertEquals(gradient1, expected1, delta)
 
     // Test negative label
     val expected2 = 1.0 / (1.0 + math.exp(-margin))
-    val (_, gradient2) = LogisticLossFunction.loss(margin, negativeLabel)
+    val (_, gradient2) = LogisticLossFunction.lossAndDzLoss(margin, negativeLabel)
     assertEquals(gradient2, expected2, delta)
   }
 
@@ -83,7 +83,7 @@ class LogisticLossFunctionTest {
     val margin1 = offset + features1.dot(coefficients1)
     val sigma1 = 1.0 / (1.0 + math.exp(-margin1))
     val expected1 = sigma1 * (1 - sigma1)
-    val D_1 = LogisticLossFunction.d2lossdz2(margin1, label)
+    val D_1 = LogisticLossFunction.DzzLoss(margin1, label)
     assertEquals(D_1, expected1, delta)
 
     // Test non-zero vectors
@@ -92,7 +92,7 @@ class LogisticLossFunctionTest {
     val margin2 = offset + features2.dot(coefficients2)
     val sigma2 = 1.0 / (1.0 + math.exp(-margin2))
     val expected2 = sigma2 * (1 - sigma2)
-    val D_2 = LogisticLossFunction.d2lossdz2(margin2, label)
+    val D_2 = LogisticLossFunction.DzzLoss(margin2, label)
     assertEquals(D_2, expected2, delta)
   }
 }

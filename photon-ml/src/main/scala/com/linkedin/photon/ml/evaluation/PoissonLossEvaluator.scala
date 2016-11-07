@@ -32,7 +32,7 @@ protected[ml] class PoissonLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
-        weight * PoissonLossFunction.loss(score, label)._1
+        weight * PoissonLossFunction.lossAndDzLoss(score, label)._1
       }
       .reduce(_ + _)
   }

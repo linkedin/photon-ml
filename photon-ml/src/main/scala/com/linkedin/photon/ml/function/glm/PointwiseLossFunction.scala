@@ -29,6 +29,9 @@ package com.linkedin.photon.ml.function.glm
  * It is the negative of the log-likelihood for one data point, except for an irrelevant constant term.
  *
  * For example, for linear regression, l(z, y) = 1/2 (z - y)^2^.
+ *
+ * @note Function names follow the differentiation notation found here:
+ *       [[http://www.wikiwand.com/en/Notation_for_differentiation#/Euler.27s_notation]]
  */
 trait PointwiseLossFunction extends Serializable {
   /**
@@ -38,7 +41,7 @@ trait PointwiseLossFunction extends Serializable {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 1st derivative
    */
-  def loss(margin: Double, label: Double): (Double, Double)
+  def lossAndDzLoss(margin: Double, label: Double): (Double, Double)
 
   /**
    * Calculate the 2nd derivative with respect to z.
@@ -47,5 +50,5 @@ trait PointwiseLossFunction extends Serializable {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 2st derivative with respect to z
    */
-  def d2lossdz2(margin: Double, label: Double): Double
+  def DzzLoss(margin: Double, label: Double): Double
 }

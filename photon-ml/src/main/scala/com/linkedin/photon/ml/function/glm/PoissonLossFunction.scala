@@ -37,7 +37,7 @@ object PoissonLossFunction extends PointwiseLossFunction {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 1st derivative
    */
-  override def loss(margin: Double, label: Double): (Double, Double) = {
+  override def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
     val prediction = math.exp(margin)
     (prediction - margin * label, prediction - label)
   }
@@ -49,5 +49,5 @@ object PoissonLossFunction extends PointwiseLossFunction {
    * @param label The label, i.e. y in l(z, y)
    * @return The value and the 2st derivative with respect to z
    */
-  override def d2lossdz2(margin: Double, label: Double): Double = math.exp(margin)
+  override def DzzLoss(margin: Double, label: Double): Double = math.exp(margin)
 }
