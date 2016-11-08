@@ -33,22 +33,22 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
 
   override def sparkContext: SparkContext = scores.sparkContext
 
-  override def setName(name: String): this.type = {
+  override def setName(name: String): KeyValueScore = {
     scores.setName(name)
     this
   }
 
-  override def persistRDD(storageLevel: StorageLevel): this.type = {
+  override def persistRDD(storageLevel: StorageLevel): KeyValueScore = {
     if (!scores.getStorageLevel.isValid) scores.persist(storageLevel)
     this
   }
 
-  override def unpersistRDD(): this.type = {
+  override def unpersistRDD(): KeyValueScore = {
     if (scores.getStorageLevel.isValid) scores.unpersist()
     this
   }
 
-  override def materialize(): this.type = {
+  override def materialize(): KeyValueScore = {
     scores.count()
     this
   }

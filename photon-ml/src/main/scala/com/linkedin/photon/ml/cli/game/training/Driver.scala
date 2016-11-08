@@ -20,9 +20,9 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
+import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike, SparkContextConfiguration}
 
 /**
- * The driver class, which provides the main entrance to GAME model training
+ * The driver class, which provides the main entry point to GAME model training
  */
 final class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
   extends GAMEDriver(params, sparkContext, logger) {
@@ -190,13 +190,15 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
    * @param gameDataSet The input dataset
    * @return The training evaluator
    */
-  protected[training] def prepareTrainingLossFunctionEvaluator(gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
-    val labelAndOffsetAndWeights = gameDataSet
-      .mapValues(gameData =>
-        (gameData.response, gameData.offset, gameData.weight))
+  protected[training] def prepareTrainingLossEvaluator(gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
+
+    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
+      (gameData.response, gameData.offset, gameData.weight))
       .setName("Training label and offset and weights")
       .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
     labelAndOffsetAndWeights.count()
+
     taskType match {
       case LOGISTIC_REGRESSION =>
         new LogisticLossEvaluator(labelAndOffsetAndWeights)
@@ -212,7 +214,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Creates the validation evaluator
+   * Creates the validation evaluator(s)
    *
    * @param validatingDirs The input path for validating data set
    * @param featureShardIdToFeatureMapLoader A map of shard id to feature indices
@@ -553,36 +555,72 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
   }
 
   /**
-   * Write the learned GAME model to HDFS
+   * Select best model according to validation evaluator
    *
-   * @param featureShardIdToFeatureMapLoader A map of feature shard id to feature map loader
-   * @param validatingDataAndEvaluatorOption Optional validation dataset and evaluator
-   * @param gameModelsMap GAME models
+   * @param gameModels the models to evaluate (single evaluator, on the validation data set)
+   * @param validationDataAndEvaluatorsOption only the first evaluator is used!
+   * @return the best model
+   */
+  protected[training] def selectBestModel(
+    gameModels : Map[String, GAMEModel],
+    validationDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])])
+  : Option[(String, GAMEModel, Double)] = {
+
+    validationDataAndEvaluatorsOption match {
+
+      case Some((data, evaluators)) =>
+
+        val evaluator = evaluators.head
+        logger.debug(s"Selecting best model according to evaluator ${evaluator.getEvaluatorName}")
+
+        val (bestConfig, bestModel: GAMEModel, bestScore) = gameModels
+          .map { case (modelConfig, model) => (modelConfig, model, evaluator.evaluate(model.score(data).scores)) }
+          .reduce { (configModelScore1, configModelScore2) =>
+            if (evaluator.betterThan(configModelScore1._3, configModelScore2._3))
+              { configModelScore1 } else { configModelScore2 }
+          }
+
+        logger.info(s"The selected model has the following config:\n$bestConfig\nModel summary:" +
+          s"\n${bestModel.toSummaryString}\n\nEvaluation result is : $bestScore")
+
+        Some((bestConfig, bestModel, bestScore))
+
+      case None =>
+        logger.debug("No best model selection because no validation data was provided")
+        None
+    }
+  }
+
+  /**
+   * Write the GAME models to HDFS
+   *
+   * @param featureShardIdToFeatureMapLoader the shard ids
+   * @param gameModelsMap all the models that were producing during training
+   * @param bestModel the best model
    */
   protected[training] def saveModelToHDFS(
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      validatingDataAndEvaluatorOption: Option[(RDD[(Long, GameDatum)], Evaluator)],
-      gameModelsMap: Map[String, GAMEModel]): Unit = {
+    featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+    gameModelsMap: Map[String, GAMEModel],
+    bestModel: Option[(String, GAMEModel, Double)]) {
 
     // Write the best model to HDFS
-    validatingDataAndEvaluatorOption match {
-      case Some((validatingData, evaluator)) =>
-        val (bestModelConfig, evaluationResult) = gameModelsMap.mapValues(_.score(validatingData).scores)
-          .mapValues(evaluator.evaluate)
-          .reduce((result1, result2) => if (evaluator.betterThan(result1._2, result2._2)) result1 else result2)
+    bestModel match {
 
-        val bestGameModel = gameModelsMap.get(bestModelConfig).get
-        logger.info(s"The selected model has the following config:\n$bestModelConfig\nModel summary:" +
-          s"\n${bestGameModel.toSummaryString}\n\nEvaluation result is : $evaluationResult")
+      case Some((modelConfig, model, score)) =>
 
         val modelOutputDir = new Path(outputDir, "best").toString
         Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
-        IOUtils.writeStringsToHDFS(Iterator(bestModelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-        ModelProcessingUtils.saveGameModelsToHDFS(bestGameModel, featureShardIdToFeatureMapLoader, modelOutputDir,
+        IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration,
+          forceOverwrite = false)
+
+        ModelProcessingUtils.saveGameModelsToHDFS(model, featureShardIdToFeatureMapLoader, modelOutputDir,
           numberOfOutputFilesForRandomEffectModel, sparkContext)
-      case _ =>
-        logger.info("No validation data provided: cannot determine best model, thus no 'best model' output.")
+
+        logger.info("Saved model to HDFS")
+
+      case None =>
+        logger.info("No model to save to HDFS")
     }
 
     // Write all models to HDFS
@@ -625,7 +663,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     logger.info(s"Time elapsed after training data set preparation: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    val trainingLossFunctionEvaluator = prepareTrainingLossFunctionEvaluator(gameDataSet)
+    val trainingLossFunctionEvaluator = prepareTrainingLossEvaluator(gameDataSet)
     timer.stop()
     logger.info(s"Time elapsed after training evaluator preparation: ${timer.durationSeconds} (s)\n")
 
@@ -639,7 +677,6 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
         timer.stop()
         logger.info("Time elapsed after validating data and evaluator preparation: " +
                     s"${timer.durationSeconds} (s)\n")
-
         Some(validatingDataAndEvaluators)
       case None =>
         None
@@ -663,11 +700,14 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
       }
     }
 
+    timer.start()
+    val bestModel = selectBestModel(gameModelsMap, validatingDataAndEvaluatorsOption)
+    timer.stop()
+    logger.info(s"Time elapsed after selecting best model: ${timer.durationSeconds} (s)\n")
+
     if (modelOutputMode != ModelOutputMode.NONE) {
       timer.start()
-      val validatingDataAndEvaluatorOption =
-        validatingDataAndEvaluatorsOption.map { case (validationData, evaluators) => (validationData, evaluators.head) }
-      saveModelToHDFS(featureShardIdToFeatureMapMap, validatingDataAndEvaluatorOption, gameModelsMap)
+      saveModelToHDFS(featureShardIdToFeatureMapMap, gameModelsMap, bestModel)
       timer.stop()
       logger.info(s"Time elapsed after saving game models to HDFS: ${timer.durationSeconds} (s)\n")
     }
@@ -675,6 +715,7 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 }
 
 object Driver {
+
   val FIXED_EFFECT_FEATURE_THRESHOLD = 200000
   val DEFAULT_TREE_AGGREGATE_DEPTH = 1
   val DEEP_TREE_AGGREGATE_DEPTH = 2

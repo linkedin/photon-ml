@@ -34,7 +34,7 @@ protected[ml] trait RDDLike {
    * @param name The parent name for all RDDs in this class
    * @return This object with all its RDDs' name assigned
    */
-  def setName(name: String): this.type
+  def setName(name: String): RDDLike
 
   /**
    * Set the storage level for all RDDs in this class, and to persist their values across operations after the first
@@ -43,17 +43,17 @@ protected[ml] trait RDDLike {
    * @param storageLevel The storage level
    * @return This object with all its RDDs' storage level set
    */
-  def persistRDD(storageLevel: StorageLevel): this.type
+  def persistRDD(storageLevel: StorageLevel): RDDLike
 
   /**
    * Mark the all RDDs as non-persistent, and remove all blocks for them from memory and disk
    * @return This object with all its RDDs unpersisted
    */
-  def unpersistRDD(): this.type
+  def unpersistRDD(): RDDLike
 
   /**
    * Materialize all the RDDs
    * @return This object with all its RDDs materialized
    */
-  def materialize(): this.type
+  def materialize(): RDDLike
 }
