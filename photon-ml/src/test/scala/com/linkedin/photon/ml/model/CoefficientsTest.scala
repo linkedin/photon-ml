@@ -14,88 +14,49 @@
  */
 package com.linkedin.photon.ml.model
 
-import breeze.linalg.{SparseVector, DenseVector, Vector}
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
 
-
+/**
+ * Unit tests for Coefficients.
+ */
 class CoefficientsTest {
 
-  private def getVector(indices: Array[Int], values: Array[Double], length: Int, isDenseVector: Boolean)
-  : Vector[Double] = {
+  private def dense(values: Double*) =
+    new DenseVector[Double](Array[Double](values: _*))
 
-    if (isDenseVector) {
-      val data = new Array[Double](length)
-      indices.zip(values).foreach { case (index, value) => data(index) = value }
-      new DenseVector[Double](data)
-    } else {
-      val (sortedIndices, sortedValues) = indices.zip(values).sortBy(_._1).unzip
-      new SparseVector[Double](sortedIndices.toArray, sortedValues.toArray, length)
-    }
+  private def sparse(length: Int)(indices: Int*)(nnz: Double*) =
+    new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length)
+
+  @DataProvider(name = "invalidVectorProvider")
+  def makeInvalidVectors(): Array[Array[Vector[Double]]] =
+    Array(
+      Array(dense(0,0,3,0), sparse(4)(0,2)(0,3)),
+      Array(sparse(4)(0,2)(0,3), dense(0,0,3,0)),
+      Array(dense(1,2,3), dense(1,2)),
+      Array(sparse(2)(1,3)(0,2), sparse(3)(4,5)(0,2))
+    )
+
+  @Test(dataProvider = "invalidVectorProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testPreconditions(v1: Vector[Double], v2: Vector[Double]): Unit =
+    new Coefficients(v1, Some(v2))
+
+  @Test
+  def testEquals(): Unit = {
+
+    assertFalse(Coefficients(1,0,3,0) == Coefficients(1,0,2,0))
+    assertTrue(Coefficients(1,0,3,0) == Coefficients(1,0,3,0))
+    assertFalse(Coefficients(4)(0,2)(1,3) == Coefficients(5)(0,2)(1,3))
+    assertTrue(Coefficients(4)(0,2)(1,3) == Coefficients(4)(0,2)(1,3))
+    assertFalse(Coefficients(1,0,3,0) == Coefficients(4)(0,2)(1,3))
   }
 
   @Test
-  def testComputeScore(): Unit = {
-
-    val length = 4
-
-    // Coefficients
-    val meansIndices = Array(0, 2)
-    val meansValues = Array(1.0, 3.0)
-    val meansAsDenseVector = getVector(meansIndices, meansValues, length, isDenseVector = true)
-    val denseCoefficients = Coefficients(meansAsDenseVector)
-    val meansAsSparseVector = getVector(meansIndices, meansValues, length, isDenseVector = false)
-    val sparseCoefficients = Coefficients(meansAsSparseVector)
-
-    // Features
-    val featuresIndices = Array(0, 3)
-    val featuresValues = Array(-1.0, 1.0)
-    val featuresAsDenseVector = getVector(featuresIndices, featuresValues, length, isDenseVector = true)
-    val featuresAsSparseVector = getVector(featuresIndices, featuresValues, length, isDenseVector = false)
-
-    val groundTruthScore = -1.0
-    assertEquals(denseCoefficients.computeScore(featuresAsDenseVector), groundTruthScore,
-      MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
-    assertEquals(denseCoefficients.computeScore(featuresAsSparseVector), groundTruthScore,
-      MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
-    assertEquals(sparseCoefficients.computeScore(featuresAsDenseVector), groundTruthScore,
-      MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
-    assertEquals(sparseCoefficients.computeScore(featuresAsSparseVector), groundTruthScore,
-      MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
-  }
-
-  def testEquals(): Unit = {
-    val length = 2
-    val meansIndices = Array(0, 1)
-    val meansValues = Array(1.0, -1.0)
-
-    // Coefficients with dense and sparse vectors should be different
-    val meansAsDenseVector = getVector(meansIndices, meansValues, length, isDenseVector = true)
-    val denseCoefficients = Coefficients(meansAsDenseVector)
-    val meansAsSparseVector = getVector(meansIndices, meansValues, length, isDenseVector = false)
-    val sparseCoefficients = Coefficients(meansAsSparseVector)
-    assertTrue(!denseCoefficients.equals(sparseCoefficients))
-
-    // Coefficients with different data should be different
-    val meansIndices2 = Array(0, 1)
-    val meansValues2 = Array(1.0, 1.0)
-    val meansAsDenseVector2 = getVector(meansIndices2, meansValues2, length, isDenseVector = true)
-    val denseCoefficients2 = Coefficients(meansAsDenseVector2)
-    val meansAsSparseVector2 = getVector(meansIndices2, meansValues2, length, isDenseVector = false)
-    val sparseCoefficients2 = Coefficients(meansAsSparseVector2)
-    assertTrue(!denseCoefficients.equals(denseCoefficients2))
-    assertTrue(!sparseCoefficients.equals(sparseCoefficients2))
-
-    // Coefficients with same data and same type should be the same
-    val meansIndices3 = meansIndices.clone()
-    val meansValues3 = meansValues.clone()
-    val meansAsDenseVector3 = getVector(meansIndices3, meansValues3, length, isDenseVector = true)
-    val denseCoefficients3 = Coefficients(meansAsDenseVector3)
-    val meansAsSparseVector3 = getVector(meansIndices3, meansValues3, length, isDenseVector = false)
-    val sparseCoefficients3 = Coefficients(meansAsSparseVector3)
-    assertTrue(denseCoefficients.equals(denseCoefficients3))
-    assertTrue(sparseCoefficients.equals(sparseCoefficients3))
-  }
+  def testComputeScore(): Unit =
+    for { v1 <- List(dense(1,0,3,0), sparse(4)(0,2)(1,3))
+          v2 <- List(dense(-1,0,0,1), sparse(4)(0,3)(-1,1)) }
+      assertEquals(Coefficients(v1).computeScore(v2), v1.dot(v2), MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
 }

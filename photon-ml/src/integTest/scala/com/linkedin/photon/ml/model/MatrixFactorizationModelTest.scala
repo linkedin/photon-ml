@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import java.util.Random
+import scala.util.Random
 
 import breeze.linalg.Vector
 import org.apache.spark.SparkContext

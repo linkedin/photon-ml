@@ -177,7 +177,7 @@ class CoordinateDescent(
 
         optimizationTrackerOption.foreach {
           optimizationTracker => logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
-            optimizationTrackerOption match {
+            optimizationTracker match {
               case rddLike: RDDLike => rddLike.unpersistRDD()
               case _ =>
             }

@@ -18,21 +18,21 @@ import java.lang.{Double => JDouble}
 import java.util.{List => JList}
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
+
 import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetContainer}
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{IndexMap, Utils, VectorUtils}
+import com.linkedin.photon.ml.util._
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.mapred.{AvroInputFormat, AvroWrapper}
 import org.apache.hadoop.io.NullWritable
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import scala.collection.{Map, Set, mutable}
+import scala.collection.{Set, mutable}
 
 // TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
 // classes/functions are decoupled from the rest of the code
@@ -50,8 +50,10 @@ object AvroUtils {
    * @param minPartitions Minimum number of partitions of the output RDD
    * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
    */
-  protected[ml] def readAvroFiles(sc: SparkContext, inputPaths: Seq[String], minPartitions: Int)
-  : RDD[GenericRecord] = {
+  protected[ml] def readAvroFiles(
+      sc: SparkContext,
+      inputPaths: Seq[String],
+      minPartitions: Int): RDD[GenericRecord] = {
 
     assert(inputPaths.nonEmpty, "The number of input paths is zero.")
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
@@ -125,9 +127,9 @@ object AvroUtils {
    * @return A set of nameAndTerms parsed from the input Avro records
    */
   protected[avro] def readNameAndTermSetFromGenericRecords(
-    genericRecords: RDD[GenericRecord],
-    featureSectionKey: String,
-    numPartitions: Int): Set[NameAndTerm] = {
+      genericRecords: RDD[GenericRecord],
+      featureSectionKey: String,
+      numPartitions: Int): Set[NameAndTerm] = {
 
     genericRecords.flatMap(_.get(featureSectionKey) match {
       case recordList: JList[_] => recordList.asScala.map {
@@ -146,12 +148,15 @@ object AvroUtils {
    * @return The generated [[NameAndTermFeatureSetContainer]]
    */
   protected[avro] def readNameAndTermFeatureSetContainerFromGenericRecords(
-    genericRecords: RDD[GenericRecord],
-    featureSectionKeys: Set[String],
-    numPartitions: Int): NameAndTermFeatureSetContainer = {
+      genericRecords: RDD[GenericRecord],
+      featureSectionKeys: Set[String],
+      numPartitions: Int): NameAndTermFeatureSetContainer = {
 
     val nameAndTermFeatureSets = featureSectionKeys.map { featureSectionKey =>
-      (featureSectionKey, AvroUtils.readNameAndTermSetFromGenericRecords(genericRecords, featureSectionKey, numPartitions))
+      (featureSectionKey, AvroUtils.readNameAndTermSetFromGenericRecords(
+        genericRecords,
+        featureSectionKey,
+        numPartitions))
     }.toMap
     new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
   }
@@ -160,7 +165,7 @@ object AvroUtils {
    * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]]
    *
    * @param modelId The model's id
-   * @param intToNameAndTermMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @param featureMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
    * @return The Avro record that contains the information of the input coefficients
    */
   protected[avro] def convertGLMModelToBayesianLinearModelAvro(
@@ -191,7 +196,7 @@ object AvroUtils {
    * Convert the Avro record of type [[BayesianLinearModelAvro]] to the model type [[GeneralizedLinearModel]]
    *
    * @param bayesianLinearModelAvro The input Avro record
-   * @param nameAndTermToIntMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
+   * @param featureMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    * @return The generalized linear model converted from the Avro record
    */
   protected[avro] def convertBayesianLinearModelAvroToGLM(
@@ -220,7 +225,7 @@ object AvroUtils {
     val coefficients = Coefficients(
       VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length))
 
-    // Load an instantiate the model
+    // Load and instantiate the model
     try {
       Class.forName(modelClass)
         .getConstructor(classOf[Coefficients])
@@ -241,8 +246,9 @@ object AvroUtils {
    * @param latentFactor The latent factor of the matrix factorization model
    * @return The Avro record that contains the information of the input latent factor
    */
-  protected[avro] def convertLatentFactorToLatentFactorAvro(effectId: String, latentFactor: Vector[Double])
-    : LatentFactorAvro = {
+  protected[avro] def convertLatentFactorToLatentFactorAvro(
+      effectId: String,
+      latentFactor: Vector[Double]): LatentFactorAvro = {
 
     val latentFactorAsList = latentFactor.toArray.map(JDouble.valueOf).toList
     val avroFile = LatentFactorAvro.newBuilder().setEffectId(effectId).setLatentFactor(latentFactorAsList)
@@ -255,11 +261,62 @@ object AvroUtils {
    * @param latentFactorAvro The given Avro record
    * @return The (effectId, latentFactor) pair converted from the input Avro record
    */
-  protected[avro] def convertLatentFactorAvroToLatentFactor(latentFactorAvro: LatentFactorAvro)
-    : (String, Vector[Double]) = {
+  protected[avro] def convertLatentFactorAvroToLatentFactor(
+      latentFactorAvro: LatentFactorAvro): (String, Vector[Double]) = {
 
     val effectId = latentFactorAvro.getEffectId.toString
     val latentFactor = new DenseVector[Double](latentFactorAvro.getLatentFactor.toArray().map(_.asInstanceOf[Double]))
     (effectId, latentFactor)
+  }
+
+  /**
+   * Creates a default map of features, i.e. a Map[(String, Int)] from feature names to an ordinal counter,
+   * by scanning through a single model (typically, the fixed effects model).
+   * This is useful e.g. in model format conversions when we don't have the data to go over to build a
+   * feature index map.
+   *
+   * NOTE: there might be faster ways to implement this: all the feature names are gathered first, then
+   * duplicates are removed, when duplicates could be removed while aggregating the names, probably consuming
+   * a lot less memory.
+   *
+   * @param modelAvro The model (only one) to scan for feature names
+   * @return A DefaultIndexMap, which associates a unique integer id to each feature name
+   */
+  protected[avro] def makeFeatureIndexForModel(
+      modelAvro: BayesianLinearModelAvro): IndexMap = {
+
+    DefaultIndexMap(
+      modelAvro
+        .getMeans
+        .map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)
+      ))
+  }
+
+  /**
+   * Creates a default map of features, i.e. a Map[(String, Int)] from feature names to an ordinal counter,
+   * by scanning through multiple models (typically, several random effects models).
+   * This is useful e.g. in model format conversions when we don't have the data to go over to build a
+   * feature index map.
+   *
+   * NOTE: there might be faster ways to implement this: all the feature names are gathered first, then
+   * duplicates are removed, when duplicates could be removed while aggregating the names, probably consuming
+   * a lot less memory.
+   *
+   * @param sc The Spark context
+   * @param modelAvros The models to scan for feature names
+   * @return A DefaultIndexMapLoader, which associates a unique integer id to each feature name
+   */
+  protected[avro] def makeFeatureIndexForModel(
+      sc: SparkContext,
+      modelAvros: RDD[BayesianLinearModelAvro]): IndexMapLoader = {
+
+    DefaultIndexMapLoader(
+      sc,
+      modelAvros
+        .flatMap(modelAvro =>
+          modelAvro
+            .getMeans
+            .map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)))
+        .collect)
   }
 }

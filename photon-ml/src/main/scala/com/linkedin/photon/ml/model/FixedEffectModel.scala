@@ -69,7 +69,7 @@ protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLi
     that match {
       case other: FixedEffectModel =>
         val sameMetaData = this.featureShardId == other.featureShardId
-        val sameCoefficients = this.model.equals(other.model)
+        lazy val sameCoefficients = this.model.equals(other.model)
         sameMetaData && sameCoefficients
       case _ => false
     }
@@ -80,8 +80,11 @@ protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLi
 }
 
 object FixedEffectModel {
+
   /**
-   * Compute the score for the dataset
+   * Compute the scores for the dataset
+   *
+   * TODO(fastier): do we really need a static? (also in RandomEffectModel)
    *
    * @param dataPoints The dataset to score
    * @param modelBroadcast The model to use for scoring

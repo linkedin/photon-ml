@@ -58,9 +58,8 @@ protected[ml] object Utils {
     * @param term Feature term
     * @return Feature key
     */
-  def getFeatureKey(name: String, term: String, delimiter: String = GLMSuite.DELIMITER): String = {
+  def getFeatureKey(name: CharSequence, term: CharSequence, delimiter: String = GLMSuite.DELIMITER): String =
     name + delimiter + term
-  }
 
   /**
     * Get the feature name from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods
