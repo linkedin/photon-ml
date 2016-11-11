@@ -143,12 +143,12 @@ protected[ml] class ValueAndGradientAggregator(func: PointwiseLossFunction, val 
       features.size == effectiveCoefficients.size,
       s"Size mismatch. Coefficient size: ${effectiveCoefficients.size}, features size: ${features.size}")
     val margin = datum.computeMargin(effectiveCoefficients) + marginShift
-    val (l, dldz) = func.loss(margin, label)
+    val (loss, dzLoss) = func.lossAndDzLoss(margin, label)
 
     totalCnt += 1
-    valueSum += weight * l
-    vectorShiftPrefactorSum += weight * dldz
-    axpy(weight * dldz, features, vectorSum)
+    valueSum += weight * loss
+    vectorShiftPrefactorSum += weight * dzLoss
+    axpy(weight * dzLoss, features, vectorSum)
 
     this
   }

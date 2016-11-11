@@ -32,7 +32,7 @@ protected[ml] class SquaredLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
-        weight * SquaredLossFunction.loss(score, label)._1
+        weight * SquaredLossFunction.lossAndDzLoss(score, label)._1
       }
       .reduce(_ + _)
   }

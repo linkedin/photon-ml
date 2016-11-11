@@ -110,9 +110,9 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
     val LabeledPoint(label, features, _, weight) = datum
     require(features.size == dim, s"Size mismatch. Coefficient size: $dim, features size: ${features.size}")
     val margin = datum.computeMargin(effectiveCoefficients) + marginShift
-    val d2ldz2 = func.d2lossdz2(margin, label)
+    val dzzLoss = func.DzzLoss(margin, label)
     // l'' * (\sum_k x_{ki} * effectiveMultiplyVector_k - featureVectorProductShift)
-    val effectiveWeight = weight * d2ldz2 * (features.dot(effectiveMultiplyVector) - featureVectorProductShift)
+    val effectiveWeight = weight * dzzLoss * (features.dot(effectiveMultiplyVector) - featureVectorProductShift)
 
     totalCnt += 1
     vectorShiftPrefactorSum += effectiveWeight

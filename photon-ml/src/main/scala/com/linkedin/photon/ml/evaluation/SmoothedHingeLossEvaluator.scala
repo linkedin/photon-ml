@@ -32,7 +32,7 @@ protected[ml] class SmoothedHingeLossEvaluator(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
-        weight * SmoothedHingeLossFunction.lossAndDerivative(score, label)._1
+        weight * SmoothedHingeLossFunction.lossAndDzLoss(score, label)._1
       }
       .reduce(_ + _)
   }
