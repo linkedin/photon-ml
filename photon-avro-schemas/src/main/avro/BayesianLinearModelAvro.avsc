@@ -11,7 +11,10 @@
         {
             "default": null,
             "name": "modelClass",
-            "type": "string",
+            "type": [
+                "null",
+                "string"
+            ],
             "doc": "The fully-qualified class name of enclosing GLM model class. E.g.: com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel"
         },
         {
