@@ -15,10 +15,15 @@
 package com.linkedin.photon.ml.util
 
 /**
-  * Use the default system HashMap to construct an index map, highly inefficient in terms of memory usage; but easier to
-  * handle. Recommended for small feature space cases (<= 200k).
-  */
-class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMap {
+ * Use the default system HashMap to construct an index map, highly inefficient in terms
+ * of memory usage; but easier to handle.
+ * Recommended for small feature space cases (<= 200k).
+ * For use cases where number of features > 200k, please try [[PalDBIndexMap]] instead.
+ * @param featureNameToIdMap The map from raw feature string (name) to feature index (id)
+ */
+class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int])
+  extends IndexMap {
+
   @transient
   private var _idToNameMap: Map[Int, String] = _
   private val _size: Int = featureNameToIdMap.size

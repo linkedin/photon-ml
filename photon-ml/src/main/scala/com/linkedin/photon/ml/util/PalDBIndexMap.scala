@@ -22,14 +22,14 @@ import java.io.{File => JFile}
 import collection.JavaConverters._
 
 /**
-  * An off heap index map implementation using PalDB.
+  * An off heap index map implementation using [[PalDB]].
   *
   * The internal implementation assumed the following things:
   * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
   * [[com.linkedin.photon.ml.FeatureIndexingJob]]. The partition strategy is via the hashcode of the feature names,
   * following the rules defined in [[org.apache.spark.HashPartitioner]].
   *
-  * 2. Each time when a user is querying the index of a certain feature, the indexmap will first compute the hashcode,
+  * 2. Each time when a user is querying the index of a certain feature, the index map will first compute the hashcode,
   * and then compute the expected partition of the storageReader.
   *
   * 3. Because the way we are building each index partition (they are built in parallel, without sharing information
@@ -44,17 +44,17 @@ class PalDBIndexMap extends IndexMap {
   import PalDBIndexMap._
 
   @transient
-  private[PalDBIndexMap] var _storeReaders: Array[StoreReader] = null
+  private[PalDBIndexMap] var _storeReaders: Array[StoreReader] = _
   // Each store's internal indices start from 0, this offsets the external returned idx should be
   //  ([internal_idx] + offset) so that it is always globally unique
-  private[PalDBIndexMap] var _offsets: Array[Int] = null
+  private[PalDBIndexMap] var _offsets: Array[Int] = _
 
   private[PalDBIndexMap] var _partitionsNum: Int = 0
   // Internal use only, total number of elements, including both id -> name and name -> id mappings
   private[PalDBIndexMap] var _size: Int = 0
 
   @transient
-  private var _partitioner: HashPartitioner = null
+  private var _partitioner: HashPartitioner = _
 
   /**
     * Load a storage at a particular path
@@ -141,7 +141,8 @@ class PalDBIndexMap extends IndexMap {
 
   //noinspection ScalaStyle
   override def +[B1 >: Int](kv: (String, B1)): Map[String, B1] = {
-    throw new RuntimeException("This map is a read-only immutable map, add operation is unsupported.")
+    throw new RuntimeException("This map is a read-only immutable map, " +
+      "add operation is unsupported.")
   }
 
   override def contains(key: String): Boolean = getIndex(key) >= 0
@@ -157,7 +158,7 @@ class PalDBIndexMap extends IndexMap {
 
   //noinspection ScalaStyle
   override def -(key: String): Map[String, Int] = {
-    throw new RuntimeException("This map is a read-only immutable map, remove operation is unsupported.")
+    throw new RuntimeException("This map is a read-only immutable map,remove operation is unsupported.")
   }
 }
 
@@ -173,12 +174,15 @@ object PalDBIndexMap {
     * @param partitionId the partition Id
     * @return the formatted filename
     */
-  def partitionFilename(partitionId: Int, namespace: String = IndexMap.GLOBAL_NS): String =
-    s"paldb-partition-${namespace}-${partitionId}.dat"
+  def partitionFilename(
+    partitionId: Int,
+    namespace: String = IndexMap.GLOBAL_NS): String = s"paldb-partition-$namespace-$partitionId.dat"
 
-  class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap) extends Iterator[(String, Int)] {
-    private var _iter: Iterator[JMap.Entry[Any, Any]] = null
-    private var _currentItem: (String, Int) = null
+  class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap)
+    extends Iterator[(String, Int)] {
+
+    private var _iter: Iterator[JMap.Entry[Any, Any]] = _
+    private var _currentItem: (String, Int) = _
 
     override def hasNext: Boolean = {
       fetch()
@@ -198,19 +202,22 @@ object PalDBIndexMap {
 
     private def fetch(): Unit = {
       if (_iter == null) {
-        val merged = indexMap._storeReaders.foldLeft(List[JMap.Entry[Any, Any]]().toIterator){ (l, r) =>
-          l ++ r.iterable().iterator().asScala
-        }
+        val merged = indexMap
+          ._storeReaders
+          .foldLeft(List[JMap.Entry[Any, Any]]().toIterator){ (l, r) =>
+            l ++ r.iterable().iterator().asScala
+          }
         _iter = merged
       }
 
       while (_iter.hasNext && _currentItem == null) {
         val entry = _iter.next()
-        if (entry.getKey().isInstanceOf[String]) {
-          val key = entry.getKey().asInstanceOf[String]
-          val i = indexMap.getPartitionId(key)
-          val value = entry.getValue().asInstanceOf[Int] + indexMap._offsets(i)
-          _currentItem = (key, value)
+        (entry.getKey, entry.getValue) match {
+          case (key: String, entryValue: Int) =>
+            val i = indexMap.getPartitionId(key)
+            val value = entryValue + indexMap._offsets(i)
+            _currentItem = (key, value)
+          case _ =>
         }
       }
     }
