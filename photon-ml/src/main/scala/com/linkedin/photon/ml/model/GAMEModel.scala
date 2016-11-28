@@ -22,27 +22,28 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.Map
 
 /**
- * Representation of the generalized additive mixed effect (GAME) model
+ * Generalized additive mixed effect (GAME) model
  *
- * @param gameModels A (modelName -> model) map representation of the models that consist of the GAME model
+ * @param gameModels A (modelName -> model) map containing the models that make up the complete GAME model
  */
 class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
 
   /**
-   * Get the model by name
+   * Get a (sub-) model by name
    *
    * @param name The model name
-   * @return An option value containing the value associated with model name `name` in the GAME model, or `None`
-   *         if none exists.
+   * @return An option value containing the value associated with model `name` in the GAME model,
+   *         or `None` if none exists.
    */
   def getModel(name: String): Option[DatumScoringModel] = gameModels.get(name)
 
+
   /**
-   * Creates a updated GAME model obtained by updating it's model with name `name`
+   * Creates an updated GAME model by updating (sub-) model `name`
    *
    * @param name The name of the model to be updated
-   * @param model The model used to update the previous model
-   * @return The GAME model with updated model
+   * @param model The new model
+   * @return The GAME model with the updated model
    */
   def updateModel(name: String, model: DatumScoringModel): GAMEModel = {
     getModel(name).foreach { oldModel =>

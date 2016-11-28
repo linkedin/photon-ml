@@ -190,6 +190,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
       // Train the original data with a loss function binding normalization
       val (model1, objective1) = optimizerNorm.optimize(objectiveFunction)(heartDataRDD)
+      // TODO(fastier): grep for all those println (and make sure they are not logging) and clean up
       println("Optimization 1: Train the original data with a loss function binding standardization")
       println(optimizerNorm.getStateTracker.get.toString)
       println("Model 1: " + model1)

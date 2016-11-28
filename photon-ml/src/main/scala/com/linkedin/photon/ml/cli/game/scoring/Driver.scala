@@ -126,11 +126,11 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
       gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
 
-    // TODO: make the number of files written to HDFS to be configurable
+    // TODO: make the number of files written to HDFS configurable
 
-    // Load the model from HDFS
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToIndexMapLoader, gameModelInputDir, sparkContext)
+    // Load the model from HDFS, ignoring the feature index loader
+    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 

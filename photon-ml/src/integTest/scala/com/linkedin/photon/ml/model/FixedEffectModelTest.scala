@@ -14,6 +14,9 @@
  */
 package com.linkedin.photon.ml.model
 
+import scala.util.Random
+
+import breeze.linalg.DenseVector
 import org.testng.Assert._
 import org.testng.annotations.Test
 
@@ -28,6 +31,7 @@ class FixedEffectModelTest extends SparkTestUtils {
 
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForFixedEffectModel") {
+
     // Coefficients parameter
     val coefficientDimension = 1
     val glm: GeneralizedLinearModel =
@@ -56,5 +60,48 @@ class FixedEffectModelTest extends SparkTestUtils {
 
     val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(differentGLM), featureShardId)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
+  }
+
+  @Test
+  def testEquals2(): Unit = sparkTest("testEqualsForFixedEffectModel") {
+
+    // Coefficients parameter
+    val numCoefficients = 10
+    val randMeans = DenseVector.apply[Double](Seq.fill(numCoefficients)(Random.nextDouble).toArray)
+    val coefficients = new Coefficients(randMeans, None) // no variance, which is not loaded right now
+    val glm: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients)
+
+    // Meta data
+    val featureShardId = "featureShardId"
+
+    // Should equal to itself
+    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), featureShardId)
+    assertEquals(fixedEffectModel, fixedEffectModel)
+
+    // Should equal to the fixed effect model with same featureShardId and model
+    val fixedEffectModelCopy = new FixedEffectModel(sc.broadcast(glm), featureShardId)
+    assertEquals(fixedEffectModel, fixedEffectModelCopy)
+
+    // Should not equal to the fixed effect model with different featureShardId
+    val differentFeatureShardId = "differentFeatureShardId"
+    val fixedEffectModelWithDiffFeatureShardId = new FixedEffectModel(sc.broadcast(glm), differentFeatureShardId)
+    assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffFeatureShardId)
+
+    // Should not equal to the fixed effect model with different model
+    val otherCoeffs = Seq.fill(numCoefficients)(Random.nextDouble)
+    val randMeans2 = DenseVector.apply[Double](otherCoeffs.toArray)
+    val coefficients2 = new Coefficients(randMeans2, None) // no variance, which is not loaded right now
+    val differentGLM: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients2)
+
+    val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(differentGLM), featureShardId)
+    assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
+
+    // Should not equal to the fixed effect model with different model
+    val randMeans3 = DenseVector.apply[Double](otherCoeffs.take(5).toArray)
+    val coefficients3 = new Coefficients(randMeans3, None) // no variance, which is not loaded right now
+    val differentGLM3: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients3)
+
+    val fixedEffectModelWithDiffCoefficientsRDD3 = new FixedEffectModel(sc.broadcast(differentGLM3), featureShardId)
+    assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD3)
   }
 }

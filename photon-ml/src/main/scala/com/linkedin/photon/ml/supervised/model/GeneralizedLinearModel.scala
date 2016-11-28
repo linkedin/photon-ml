@@ -114,7 +114,7 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
    */
   def canEqual(other: Any): Boolean = other.isInstanceOf[GeneralizedLinearModel]
 
-  override def hashCode = coefficients.hashCode()
+  override def hashCode: Int = coefficients.hashCode()
 }
 
 object GeneralizedLinearModel {

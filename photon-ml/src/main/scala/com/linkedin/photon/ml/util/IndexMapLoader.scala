@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.util
 
 
-import com.linkedin.photon.ml.Params
 import org.apache.spark.SparkContext
 
 

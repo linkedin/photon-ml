@@ -126,6 +126,8 @@ object FixedEffectCoordinate {
   /**
    * Update the model (i.e. run the coordinate optimizer)
    *
+   * TODO(fastier): does this need to be a static?
+   *
    * @param input The training dataset
    * @param optimizationProblem The optimization problem
    * @param fixedEffectModel The current model, used as a starting point

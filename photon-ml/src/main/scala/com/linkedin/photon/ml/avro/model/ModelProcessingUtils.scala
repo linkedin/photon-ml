@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFac
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{IndexMap, IndexMapLoader, IOUtils, Utils}
+import com.linkedin.photon.ml.util._
 
 /**
  * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
@@ -88,17 +88,27 @@ object ModelProcessingUtils {
     }
   }
 
+  /**
+   * Note: this method can be called with or without a feature index. If a feature index is not given, one is created
+   * by scanning the loaded models. In the case where a feature index is calculated here, the indexes take their values
+   * in [0..numNonZeroFeatures] (even if the feature index used before saving the model was sparse).
+   *
+   * @param featureShardIdToIndexMapLoader An optional feature index loader
+   * @param modelsDir The directory on HDFS where the models are stored
+   * @param sc The Spark context
+   * @return The Game model and feature index
+   */
   protected[ml] def loadGameModelFromHDFS(
-      featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
-      inputDir: String,
-      sparkContext: SparkContext): GAMEModel = {
+      featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]],
+      modelsDir: String,
+      sc: SparkContext): (GAMEModel, Map[String, IndexMapLoader]) = {
 
-    val configuration = sparkContext.hadoopConfiguration
-    val inputDirAsPath = new Path(inputDir)
+    val configuration = sc.hadoopConfiguration
+    val inputDirAsPath = new Path(modelsDir)
     val fs = inputDirAsPath.getFileSystem(configuration)
 
     // Load the fixed effect models
-    val fixedEffectModelInputDir = new Path(inputDir, FIXED_EFFECT)
+    val fixedEffectModelInputDir = new Path(modelsDir, FIXED_EFFECT)
     val fixedEffectModels = if (fs.exists(fixedEffectModelInputDir)) {
       fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
         val innerPath = fileStatus.getPath
@@ -107,22 +117,26 @@ object ModelProcessingUtils {
         // Load the model ID info
         val idInfoPath = new Path(innerPath, ID_INFO)
         val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+        require(featureShardId != null && !featureShardId.isEmpty)
 
         // Load the coefficients
-        val featureNameAndTermToIndexMap = featureShardIdToIndexMapLoader(featureShardId).indexMapForDriver()
+        val indexMapLoaders = featureShardIdToIndexMapLoader.flatMap(_.get(featureShardId))
+        val featureNameAndTermToIndexMap = indexMapLoaders.map(_.indexMapForDriver())
         val modelPath = new Path(innerPath, COEFFICIENTS)
-        val glm = loadGLMFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sparkContext)
+        val (glm, featureIndexLoader) = loadGLMFromHDFS(modelPath.toString, featureNameAndTermToIndexMap, sc)
 
-        (name, new FixedEffectModel(sparkContext.broadcast(glm), featureShardId))
+        (name, featureIndexLoader, new FixedEffectModel(sc.broadcast(glm), featureShardId))
       }
     } else {
-      Array[(String, FixedEffectModel)]()
+      Array[(String, IndexMapLoader, FixedEffectModel)]()
     }
 
     // Load the random effect models
-    val randomEffectModelInputDir = new Path(inputDir, RANDOM_EFFECT)
+    val randomEffectModelInputDir = new Path(modelsDir, RANDOM_EFFECT)
     val randomEffectModels = if (fs.exists(randomEffectModelInputDir)) {
+
       fs.listStatus(randomEffectModelInputDir).map { innerFileStatus =>
+
         val innerPath = innerFileStatus.getPath
         val name = innerPath.getName
 
@@ -131,26 +145,33 @@ object ModelProcessingUtils {
         val Array(randomEffectType, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
         // Load the models
-        val featureMapLoader = featureShardIdToIndexMapLoader(featureShardId)
+        val featureMapLoader = featureShardIdToIndexMapLoader.flatMap(_.get(featureShardId))
         val modelsRDDInputPath = new Path(innerPath, COEFFICIENTS)
-        val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureMapLoader, sparkContext)
+        val (modelsRDD, featureIndexLoader) =
+          loadModelsRDDFromHDFS(modelsRDDInputPath.toString, featureMapLoader, sc)
 
-        (name, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId))
+        (name, featureIndexLoader, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId))
       }
     } else {
-      Array[(String, RandomEffectModel)]()
+      Array[(String, IndexMapLoader, RandomEffectModel)]()
     }
 
     val gameModels = fixedEffectModels ++ randomEffectModels
     val gameModelNames = gameModels.map(_._1)
     val gameModelsLength = gameModels.length
 
-    require(gameModelsLength > 0, s"No models could be loaded from given path: $inputDir")
+    require(gameModelsLength > 0, s"No models could be loaded from given path: $modelsDir")
     require(
       gameModelsLength == gameModelNames.toSet.size,
       s"Duplicated model names found:\n${gameModelNames.mkString("\t")}")
 
-    new GAMEModel(gameModels.toMap)
+    // Need to massage the data structure a bit so that we can return the feature index loader(s) and
+    // the Game model separately
+    val (models, featureIndexLoaders) = gameModels
+      .map { case ((name, featureIndexLoader, model)) => ((name, model), (name, featureIndexLoader)) }
+      .unzip
+
+    (new GAMEModel(models.toMap), featureIndexLoaders.toMap)
   }
 
   private def saveRandomEffectModelToHDFS(
@@ -197,15 +218,19 @@ object ModelProcessingUtils {
   // TODO: Currently only the means of the coefficients are loaded, the variances are discarded
   private def loadGLMFromHDFS(
       inputDir: String,
-      featureMap: IndexMap,
-      sparkContext: SparkContext): GeneralizedLinearModel = {
+      featureMap: Option[IndexMap],
+      sc: SparkContext): (GeneralizedLinearModel, IndexMapLoader) = {
 
     val coefficientsPath = new Path(inputDir, DEFAULT_AVRO_FILE_NAME).toString
     val linearModelAvroSchema = BayesianLinearModelAvro.getClassSchema.toString
-    val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sparkContext, coefficientsPath,
+    val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sc, coefficientsPath,
       linearModelAvroSchema).head
 
-    AvroUtils.convertBayesianLinearModelAvroToGLM(linearModelAvro, featureMap)
+    val featureIndex = featureMap.getOrElse(AvroUtils.makeFeatureIndexForModel(linearModelAvro))
+
+    // We wrap the feature index in a loader to be more consistent with loadModelsRDDFromHDFS
+    (AvroUtils.convertBayesianLinearModelAvroToGLM(linearModelAvro, featureIndex),
+      DefaultIndexMapLoader(sc, featureIndex))
   }
 
   private def saveModelsRDDToHDFS(
@@ -226,23 +251,25 @@ object ModelProcessingUtils {
   // TODO: Currently only the means of the coefficients are loaded, the variances are discarded
   private def loadModelsRDDFromHDFS(
       coefficientsRDDInputDir: String,
-      featureMapLoader: IndexMapLoader,
-      sparkContext: SparkContext): RDD[(String, GeneralizedLinearModel)] = {
+      featureMapLoader: Option[IndexMapLoader],
+      sc: SparkContext): (RDD[(String, GeneralizedLinearModel)], IndexMapLoader) = {
 
     val modelAvros = AvroIOUtils.readFromAvro[BayesianLinearModelAvro](
-      sparkContext,
+      sc,
       coefficientsRDDInputDir,
-      minNumPartitions = sparkContext.defaultParallelism)
+      minNumPartitions = sc.defaultParallelism)
 
-    modelAvros.mapPartitions { iter =>
-      val featureMap = featureMapLoader.indexMapForRDD()
+    val loader = featureMapLoader.getOrElse(AvroUtils.makeFeatureIndexForModel(sc, modelAvros))
+
+    (modelAvros.mapPartitions { iter =>
+      val featureMap = loader.indexMapForRDD()
       iter.map { modelAvro =>
         val modelId = modelAvro.getModelId.toString
         val glm = AvroUtils.convertBayesianLinearModelAvroToGLM(modelAvro, featureMap)
 
         (modelId, glm)
       }
-    }
+    }, loader)
   }
 
   /**

@@ -94,8 +94,9 @@ protected[ml] class RandomEffectModel(
   override def equals(that: Any): Boolean = {
     that match {
       case other: RandomEffectModel =>
-        val sameMetaData = this.randomEffectType == other.randomEffectType && this.featureShardId == other.featureShardId
-        val sameCoefficientsRDD = this
+        val sameMetaData =
+          this.randomEffectType == other.randomEffectType && this.featureShardId == other.featureShardId
+        lazy val sameCoefficientsRDD = this
           .modelsRDD
           .fullOuterJoin(other.modelsRDD)
           .mapPartitions { iterator =>
@@ -140,6 +141,7 @@ object RandomEffectModel {
       }
       .cogroup(modelsRDD)
       .flatMap { case (randomEffectId, (uniqueIdAndFeaturesIterable, modelsIterable)) =>
+        // TODO(fastier): we should move that precondition upfront and check it only once, for speed
         assert(modelsIterable.size <= 1,
           s"More than one model (${modelsIterable.size}) found for individual Id $randomEffectId of " +
             s"random effect type $randomEffectType")

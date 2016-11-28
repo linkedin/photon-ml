@@ -513,22 +513,22 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val model = modelId match {
       case Some(id) =>
         val m = modelAvro.find { m => m.getModelId.toString == id }
-        assertTrue(m.isDefined, s"Model id ${id} not found.")
+        assertTrue(m.isDefined, s"Model id $id not found.")
         m.get
 
       case _ => modelAvro.head
     }
 
-    val means = model.getMeans()
-    assertEquals(means.filter(x => x.getValue != 0).size, expectedNumCoefficients)
+    val means = model.getMeans
+    assertEquals(means.count(x => x.getValue != 0), expectedNumCoefficients)
   }
 
   def modelContainsIntercept(path: Path): Boolean = {
     val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
-    modelAvro.head.getMeans().map(nameTermValueAvro =>
-      NameAndTerm(nameTermValueAvro.getName().toString, nameTermValueAvro.getTerm().toString)
+    modelAvro.head.getMeans.map(nameTermValueAvro =>
+      NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString)
     ).toSet.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
   }
 
@@ -540,14 +540,14 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     * @return evaluation results for each specified evaluator
     */
   def evaluateModel(driver: Driver, modelPath: Path): Seq[Double] = {
-    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-    val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
 
-    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-      featureShardIdToFeatureMapMap, modelPath.toString, sc)
+    val indexMapLoaders = driver.prepareFeatureMaps()
+    val gameDataSet = driver.prepareGameDataSet(indexMapLoaders)
 
-    val (_, evaluators) = driver.prepareValidatingEvaluators(
-      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
+    // Ignore feature index loader (second argument)
+    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(indexMapLoaders), modelPath.toString, sc)
+    // Ignore data set (first argument)
+    val (_, evaluators) = driver.prepareValidatingEvaluators(driver.params.validateDirsOpt.get, indexMapLoaders)
 
     val scores = gameModel.score(gameDataSet).scores
     evaluators.map(_.evaluate(scores))
