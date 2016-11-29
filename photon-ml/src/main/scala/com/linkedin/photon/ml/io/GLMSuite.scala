@@ -364,6 +364,8 @@ class GLMSuite(
 protected[ml] object GLMSuite {
   /**
    * Delimiter used to concatenate feature name and term into feature key
+   *
+   * WARNING: this is not visible in println!
    */
   val DELIMITER = "\u0001"
 

@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.avro.model
 
 import scala.collection.Map
 
-import breeze.linalg.Vector
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -89,9 +89,13 @@ object ModelProcessingUtils {
   }
 
   /**
-   * Note: this method can be called with or without a feature index. If a feature index is not given, one is created
-   * by scanning the loaded models. In the case where a feature index is calculated here, the indexes take their values
-   * in [0..numNonZeroFeatures] (even if the feature index used before saving the model was sparse).
+   * Load a Game model from HDFS.
+   *
+   * This method can be called with or without a feature index. If a feature index is not provided, one is created
+   * by scanning the loaded models. In that case, the indexes ranges are [0..numNonZeroFeatures], even if the feature
+   * index used before saving the model was sparse. In other words, when no feature index is provided for the load,
+   * the feature index before the save might not be the same as after the load (it will be more "compact" after the
+   * load, using only contiguous indexes).
    *
    * @param featureShardIdToIndexMapLoader An optional feature index loader
    * @param modelsDir The directory on HDFS where the models are stored
@@ -107,7 +111,7 @@ object ModelProcessingUtils {
     val inputDirAsPath = new Path(modelsDir)
     val fs = inputDirAsPath.getFileSystem(configuration)
 
-    // Load the fixed effect models
+    // Load the fixed effect model(s)
     val fixedEffectModelInputDir = new Path(modelsDir, FIXED_EFFECT)
     val fixedEffectModels = if (fs.exists(fixedEffectModelInputDir)) {
       fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
@@ -172,6 +176,67 @@ object ModelProcessingUtils {
       .unzip
 
     (new GAMEModel(models.toMap), featureIndexLoaders.toMap)
+  }
+
+  /**
+   * Given a GLM and a feature index (loader), return an Array[(String, Double)] of pairs (name, value) for all
+   * the features used in that model.
+   *
+   * Since we use both dense and sparse vectors, we need a switch to retrieve an iterator on the non-zeros only.
+   *
+   * @param glm The GLM from which to extract feature (name, value) pairs.
+   * @param featureIndex The feature index to decode this GLM
+   * @return An array of pairs (name, value) for all the active (non-zero) features in the glm
+   */
+  protected[ml] def extractGLMFeatures(glm: GeneralizedLinearModel, featureIndex: IndexMap): Array[(String, Double)] = {
+
+    val coefficients: Iterator[(Int, Double)] = glm.coefficients.means match { // (index, value)
+      case (vector: DenseVector[Double]) => vector.iterator
+      case (vector: SparseVector[Double]) => vector.activeIterator // activeIterator to iterate over the non-zeros
+    }
+    coefficients // flatMap filters out None values that can result from the case statement
+      .flatMap { case (index, value) => featureIndex.getFeatureName(index).map((_, value)) }
+      .toArray // (name, value)
+  }
+
+  /**
+   * For a given Game model and feature indexes, returns names and values for all the non-zero features in the
+   * model.
+   *
+   * Since Game models can be very large, the processing is distributed. In the case of random effects in
+   * particular, "mapPartitions" will serialize and send the content of the "iter => ..." lambda to the executors
+   * in the Spark cluster. If we didn't do that, "indexMapForRDD" would be called for each single datum, which
+   * would be too slow. In the case of fixed effect models (usually there is only one), we assume that the fixed
+   * effect model has a feature index that can fit within a single executor.
+   *
+   * @param gameModel The Game model to extract all features from
+   * @param featureIndexLoaders The feature index loaders ; each feature space has a separate, named feature index
+   * @return All the (feature name, feature value) pairs of that Game model
+   *         The first Map's keys are like "fixed", "random". Then the RDD String keys are like
+   *         "random effect id 123". Finally, each user has an element in the RDD element that contains
+   *         an array of pairs (feature name, feature value).
+   */
+  protected[ml] def extractGameModelFeatures(
+      sc: SparkContext,
+      gameModel: GAMEModel,
+      featureIndexLoaders: Map[String, IndexMapLoader]): Map[String, RDD[(String, Array[(String, Double)])]] = {
+
+    gameModel.toMap.map {
+
+      case (fixedEffect: String, model: FixedEffectModel) =>
+        val featureIndex = featureIndexLoaders(model.featureShardId).indexMapForRDD()
+        (fixedEffect, sc.parallelize(Array((fixedEffect, extractGLMFeatures(model.model, featureIndex)))))
+
+      case (randomEffect: String, model: RandomEffectModel) =>
+        val featureShardId = model.featureShardId // each random effect has its own feature space (= shard id)
+        (randomEffect, model.modelsRDD.mapPartitions { iter => // Spark partition holds many random effects
+          val featureIndexes = featureIndexLoaders(featureShardId).indexMapForRDD()
+          iter.map { case (subModelId, subModel) => // e.g. subModelId = "random effect id 123"
+            (subModelId, extractGLMFeatures(subModel, featureIndexes)) }
+        })
+
+      case (modelType, _) => throw new RuntimeException(s"Unknown model type: $modelType")
+    }
   }
 
   private def saveRandomEffectModelToHDFS(
