@@ -47,6 +47,12 @@ protected[ml] class RandomEffectModel(
     this
   }
 
+  /**
+   * NOTE: not used to reference models in the logic of our code, just used in logging for now!
+   *
+   * @param name The parent name for all RDDs in this class
+   * @return This object with all its RDDs' name assigned
+   */
   override def setName(name: String): this.type = {
     modelsRDD.setName(name)
     this

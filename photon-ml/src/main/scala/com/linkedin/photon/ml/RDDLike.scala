@@ -31,6 +31,8 @@ protected[ml] trait RDDLike {
 
   /**
    * Assign the name for all RDDs in this class
+   * NOTE: actually not used to reference models in the logic of photon-ml, just used in the logs currently
+   *
    * @param name The parent name for all RDDs in this class
    * @return This object with all its RDDs' name assigned
    */
