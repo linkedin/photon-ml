@@ -194,14 +194,34 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     // This Game model has 1 fixed effect, and 2 different random effect models
     val gameModel = new GAMEModel(Map("fixed" -> fixedEffectModel, "RE1" -> RE1Model, "RE2" -> RE2Model))
 
+    // Structure of files for this model on HDFS is:
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
+
+    val modelDir = getTmpDir
+    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, 2, sc)
+
+    // Check if the models loaded correctly and they are the same as the models saved previously
+    // The first value returned is the feature index, which we don't need here
+    val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(None, modelDir, sc)
+
     // Let's extract all features from the Game model...
-    val features = ModelProcessingUtils.extractGameModelFeatures(sc, gameModel, featureIndexLoaders)
+    val features = ModelProcessingUtils.extractGameModelFeatures(sc, loadedGameModel, newFeatureIndexLoaders)
 
     // ... and verify the models
     features.foreach {
       case ("fixed", modelRDD) =>
+        val calculated: Array[(String, Double)] = modelRDD.collect()(0)._2
         val ans = List(1, 2, 5).map(i => featureNames("fixedFeatures")(i)) zip List(11,21,51)
-        assert(modelRDD.collect()(0)._2 sameElements ans)
+        assert(calculated sameElements ans)
 
       case ("RE1", modelRDD) =>
         val features = featureNames("RE1Features")

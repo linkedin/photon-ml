@@ -19,7 +19,7 @@ import com.linkedin.photon.ml.util.Summarizable
 import org.apache.spark.rdd.RDD
 
 /**
- * Interface for the implementation of a GAME model
+ * Models that need to be available for scoring need to mix in this trait.
  */
 protected[ml] trait DatumScoringModel extends Summarizable {
   /**

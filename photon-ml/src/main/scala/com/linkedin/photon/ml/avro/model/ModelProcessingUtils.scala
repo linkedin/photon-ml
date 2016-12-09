@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.util.Utils.isAlmostZero
 
 /**
  * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
@@ -160,7 +161,7 @@ object ModelProcessingUtils {
       Array[(String, IndexMapLoader, RandomEffectModel)]()
     }
 
-    val gameModels = fixedEffectModels ++ randomEffectModels
+    val gameModels: Array[(String, IndexMapLoader, DatumScoringModel)] = fixedEffectModels ++ randomEffectModels
     val gameModelNames = gameModels.map(_._1)
     val gameModelsLength = gameModels.length
 
@@ -172,8 +173,18 @@ object ModelProcessingUtils {
     // Need to massage the data structure a bit so that we can return the feature index loader(s) and
     // the Game model separately
     val (models, featureIndexLoaders) = gameModels
-      .map { case ((name, featureIndexLoader, model)) => ((name, model), (name, featureIndexLoader)) }
-      .unzip
+      .map {
+
+        case ((name, featureIndexLoader, model: FixedEffectModel)) =>
+          ((name, model), (model.featureShardId, featureIndexLoader))
+
+        case ((name, featureIndexLoader, model: RandomEffectModel)) =>
+          ((name, model), (model.featureShardId, featureIndexLoader))
+
+        case ((name, _, _)) =>
+          throw new RuntimeException(s"Unknown model type for: $name")
+
+      }.unzip
 
     (new GAMEModel(models.toMap), featureIndexLoaders.toMap)
   }
@@ -194,9 +205,11 @@ object ModelProcessingUtils {
       case (vector: DenseVector[Double]) => vector.iterator
       case (vector: SparseVector[Double]) => vector.activeIterator // activeIterator to iterate over the non-zeros
     }
-    coefficients // flatMap filters out None values that can result from the case statement
+
+    coefficients // flatMap filters out None values that can result from the case statement just above
       .flatMap { case (index, value) => featureIndex.getFeatureName(index).map((_, value)) }
-      .toArray // (name, value)
+      .filter { case (_, value) => ! isAlmostZero(value) } // we want only non-zeros
+      .toArray // returns: Array[(feature name: String, feature value: Double)]
   }
 
   /**
@@ -220,6 +233,18 @@ object ModelProcessingUtils {
       sc: SparkContext,
       gameModel: GAMEModel,
       featureIndexLoaders: Map[String, IndexMapLoader]): Map[String, RDD[(String, Array[(String, Double)])]] = {
+
+    // Structure of files for this model on HDFS is:
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
+    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
 
     gameModel.toMap.map {
 
