@@ -19,6 +19,7 @@ import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.util.Summarizable
+import com.linkedin.photon.ml.util.Utils.isAlmostEqual
 
 /**
  * Coefficients are a wrapper to store means and variances of model coefficients together.
@@ -93,19 +94,13 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
    */
   override def equals(that: Any): Boolean = {
 
-    // Watch out! Zip stops without an error when the shortest argument stops!
-    def withinTolerance(a1: Vector[Double], a2: Vector[Double]) =
-      (a1.toArray zip a2.toArray).forall {
-        case ((m1, m2)) => math.abs(m2 - m1) < MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
-      }
-
     that match {
       case other: Coefficients =>
         val (m1, v1, m2, v2) = (this.means, this.variancesOption, other.means, other.variancesOption)
         val sameType = m1.getClass == m2.getClass &&
           ((v1.isEmpty && v2.isEmpty) || (v1.isDefined && v2.isDefined && v1.get.getClass == v2.get.getClass))
-        lazy val sameMeans = m1.length == m2.length && withinTolerance(m1, m2)
-        lazy val sameVariance = v1.isEmpty || (v1.get.length == v2.get.length && withinTolerance(v1.get, v2.get))
+        lazy val sameMeans = m1.length == m2.length && isAlmostEqual(m1, m2)
+        lazy val sameVariance = v1.isEmpty || (v1.get.length == v2.get.length && isAlmostEqual(v1.get, v2.get))
         sameType && sameMeans && sameVariance
       case _ => false
     }
@@ -153,6 +148,7 @@ protected[ml] object Coefficients {
     require(0 < length)
     require(indices.length == nnz.length)
     require(indices.sorted == indices)
+    // TODO: check for duplicates?
 
     Coefficients(new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length))
   }
