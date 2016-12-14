@@ -14,11 +14,17 @@
  */
 package com.linkedin.photon.ml.util
 
-import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
+import java.io.File
+
+import scala.io.Source
+
 import org.joda.time.DateTime
 import org.joda.time.DateTimeUtils
 import org.testng.Assert._
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
+import org.apache.hadoop.fs.{FileSystem, Path}
+
+import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 /**
  * This class tests IOUtils
@@ -113,5 +119,42 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     Utils.deleteHDFSDir(dir4, configuration)
     IOUtils.processOutputDir(dir4, deleteOutputDirIfExists = false, configuration)
     assertFalse(IOUtils.isDirExisting(dir4, configuration))
+  }
+
+
+  @Test
+  def testToHDFSFileOnce(): Unit = sparkTest("testToHDFSFileOnce") {
+
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+
+    val res = IOUtils.toHDFSFile(sc, "/tmp/test4")
+    { writer => (1 to 3).foreach { i => writer.println(s"$i ") } }
+
+    assert(res.isSuccess)
+    assert(Source.fromFile("/tmp/test4").getLines.mkString == "1 2 3 ")
+    assert(!fs.exists(new Path("/tmp/test4.prev")))
+    assert(!fs.exists(new Path("/tmp/test4-tmp")))
+
+    new File("/tmp/test4").delete
+    new File("/tmp/test4.prev").delete
+  }
+
+  @Test
+  def testToHDFSFileRepeated(): Unit = sparkTest("testToHDFSFileRepeated") {
+
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+
+    for (n <- 1 to 3) {
+      val res = IOUtils.toHDFSFile(sc, "/tmp/test5")
+      { writer => (1 to 3).foreach { i => writer.println(s"${n + i} ") } }
+      assert(res.isSuccess)
+    }
+
+    assert(Source.fromFile("/tmp/test5").getLines.mkString == "4 5 6 ")
+    assert(Source.fromFile("/tmp/test5.prev").getLines.mkString == "3 4 5 ")
+    assert(!fs.exists(new Path("/tmp/test5-tmp")))
+
+    new File("/tmp/test5").delete
+    new File("/tmp/test5.prev").delete
   }
 }

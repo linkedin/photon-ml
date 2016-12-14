@@ -14,15 +14,16 @@
  */
 package com.linkedin.photon.ml.util
 
-import java.io._
 import java.lang.{Double => JDouble}
 import java.util.{Map => JMap}
+import java.io._
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.collection.JavaConversions._
+import scala.util.Try
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileContext, Options, Path}
 import org.apache.spark.SparkContext
 import org.joda.time.Days
 
@@ -209,7 +210,6 @@ protected[ml] object IOUtils {
       modelDir: String,
       indexMapLoader: IndexMapLoader): Unit = {
 
-    println("Models SIZE: " + models.size)
     models.foreach{ case (lambda, m) => println(lambda + ": " + m.toString)}
 
     sc.parallelize(models.toSeq, models.size)
@@ -251,6 +251,15 @@ protected[ml] object IOUtils {
       .saveAsTextFile(modelDir)
   }
 
+  private case class BasicSummaryItems(
+    max: Double,
+    min: Double,
+    mean: Double,
+    normL1: Double,
+    normL2: Double,
+    numNonzeros: Double,
+    variance: Double)
+
   /**
     * Write basic feature statistics in Avro format
     *
@@ -287,7 +296,7 @@ protected[ml] object IOUtils {
       .transpose
       .map {
         case List(max, min, mean, normL1, normL2, numNonZeros, variance) =>
-          new BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
+          BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
       }
 
     val outputAvro = featureTuples
@@ -319,12 +328,55 @@ protected[ml] object IOUtils {
       forceOverwrite = true)
   }
 
-  private case class BasicSummaryItems(
-      max: Double,
-      min: Double,
-      mean: Double,
-      normL1: Double,
-      normL2: Double,
-      numNonzeros: Double,
-      variance: Double)
+  /**
+   * Write to a stream while handling exceptions, and closing the stream correctly whether writing to it
+   * succeeded or not.
+   *
+   * NOTE: remember that a Try instance can be understood as a collection, that can have zero
+   * or one element. This code uses a "monadic flow" started by the Try. Try can be a Success or a Failure.
+   * Success.map(lambda) applies lambda to the value wrapped in the Success instance, and returns the result,
+   * which can itself be either Success or Failure, wrapping an instance of the type returned by the lambda.
+   * Failure.map(lambda) ignores lambda, and returns itself, but changing the contained type to the type
+   * returned by the lambda (see scala.util.Try). Failure thus contains an exception, if one is thrown.
+   * On the last line, flatMap is used to avoid returning Try[Try[Unit]].
+   *
+   * @param outputStreamGenerator A lambda that generates an output stream
+   * @param op A lambda that writes to the stream
+   * @return Success or Failure. In case of Failure, the Failure contains the exception triggered
+   */
+  def toStream(outputStreamGenerator: => OutputStream)(op: PrintWriter => Unit): Try[Unit] = {
+
+    val os = Try(outputStreamGenerator)
+    val writer = os.map(stream => new PrintWriter(stream))
+
+    val write = writer.map(op(_))
+    val flush = writer.map(_.flush)
+    val close = os.map(_.close)
+
+    write.flatMap(_ => flush).flatMap(_ => close)
+  }
+
+  /**
+   * Backup and update a file on HDFS.
+   *
+   * A temporary file is written to, using the writeOp lambda. Then the old file is atomically backed up
+   * to a file with the same name and suffix ".prev". Finally, the newly written file is atomically
+   * renamed. If any operation in the process fails, the remaining operations are not executed, and an
+   * exception is propagated instead.
+   *
+   * @param sc The Spark context
+   * @param fileName The name of the file to backup and update
+   * @param writeOp A lambda that writes to the file
+   * @return Success or Failure. In case of Failure, the Failure contains the exceptions triggered
+   */
+  def toHDFSFile(sc: SparkContext, fileName: String)(writeOp: PrintWriter => Unit): Try[Unit] = {
+
+    val cf = sc.hadoopConfiguration
+    val (fs, fc) = (org.apache.hadoop.fs.FileSystem.get(cf), FileContext.getFileContext(cf))
+    val (file, tmpFile, bkpFile) = (new Path(fileName), new Path(fileName + "-tmp"), new Path(fileName + ".prev"))
+
+    toStream(fs.create(tmpFile))(writeOp)
+      .map(_ => if (fs.exists(file)) fc.rename(file, bkpFile, Options.Rename.OVERWRITE))
+      .map(_ => fc.rename(tmpFile, file, Options.Rename.OVERWRITE))
+  }
 }
