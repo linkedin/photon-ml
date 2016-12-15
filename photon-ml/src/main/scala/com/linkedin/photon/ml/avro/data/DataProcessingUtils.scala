@@ -196,6 +196,14 @@ object DataProcessingUtils {
         case _ => throw new IllegalArgumentException(s"$fieldName is not a list (or is null).")
       }
     ).foldLeft(Array[(Int, Double)]())(_ ++ _)
+
+    // Check for duplicate features
+    val duplicateFeatures = featuresAsIndexValueArray
+      .groupBy(_._1)
+      .filter(_._2.length > 1)
+      .map { case (i, v) => (featureMap.getFeatureName(i), v.map(_._2).toList) }
+    require(duplicateFeatures.isEmpty, s"Duplicate features found: ${duplicateFeatures.toString}")
+
     val isAddingInterceptToFeatureMap = featureMap.contains(GLMSuite.INTERCEPT_NAME_TERM)
     if (isAddingInterceptToFeatureMap) {
       VectorUtils.convertIndexAndValuePairArrayToSparseVector(featuresAsIndexValueArray ++

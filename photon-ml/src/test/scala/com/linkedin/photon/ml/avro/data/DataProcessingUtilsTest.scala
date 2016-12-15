@@ -15,10 +15,13 @@
 package com.linkedin.photon.ml.avro.data
 
 import com.linkedin.photon.ml.avro.AvroFieldNames
+import com.linkedin.photon.ml.util._
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericData
 import org.testng.annotations.Test
 import org.testng.Assert._
+
+import scala.collection.JavaConverters._
 
 /**
   * This class tests the DataProcessingUtils.
@@ -187,6 +190,45 @@ class DataProcessingUtilsTest {
       .endRecord())
 
     DataProcessingUtils.getIdTypeToValueMapFromGenericRecord(emptyRecord, Set[String](USER_ID_NAME))
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testDuplicateFeatures(): Unit = {
+    val nameAndTerm = SchemaBuilder
+      .record("testDuplicateFeaturesNameAndTerm")
+      .namespace("com.linkedin.photon.ml.avro.data")
+      .fields()
+      .name(AvroFieldNames.NAME).`type`().stringType().noDefault()
+      .name(AvroFieldNames.TERM).`type`().stringType().noDefault()
+      .name(AvroFieldNames.VALUE).`type`().doubleType().noDefault()
+      .endRecord()
+
+    val record = new GenericData.Record(SchemaBuilder
+      .record("testDuplicateFeatures")
+      .namespace("com.linkedin.photon.ml.avro.data")
+      .fields()
+      .name(AvroFieldNames.UID).`type`().stringType().noDefault()
+      .name("features").`type`().array().items(nameAndTerm).noDefault()
+      .endRecord())
+    val uid = "foo"
+    record.put(AvroFieldNames.UID, uid)
+
+    val f1 = new GenericData.Record(nameAndTerm)
+    f1.put(AvroFieldNames.NAME, "f")
+    f1.put(AvroFieldNames.TERM, "1")
+    f1.put(AvroFieldNames.VALUE, 1.0)
+
+    record.put("features", List(f1, f1).asJava)
+
+    val im = new DefaultIndexMap(Map(Utils.getFeatureKey("f", "1") -> 0))
+
+    val gameDatumWithoutResponse = DataProcessingUtils.getGameDatumFromGenericRecord(
+      record = record,
+      featureShardIdToFeatureSectionKeysMap = Map("features" -> Set("features")),
+      featureShardIdToIndexMap = Map("features" -> im),
+      shardIdToFeatureDimensionMap = Map("features" -> 1),
+      idTypeSet = Set(),
+      isResponseRequired = false)
   }
 }
 
