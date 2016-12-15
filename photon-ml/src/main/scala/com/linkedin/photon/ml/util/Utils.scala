@@ -14,8 +14,7 @@
  */
 package com.linkedin.photon.ml.util
 
-import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber,
-                  Object => JObject, String => JString}
+import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 

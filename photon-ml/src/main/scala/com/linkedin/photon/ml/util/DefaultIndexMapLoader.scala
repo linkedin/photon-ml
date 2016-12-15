@@ -30,8 +30,11 @@ class DefaultIndexMapLoader(@transient val featureNameToIdMap: Map[String, Int])
   /**
    * Prepare a loader, should be called early before anything
    */
-  override def prepare(sc: SparkContext, params: IndexMapParams = null, namespace: String = IndexMap.GLOBAL_NS)
-      : Unit = {
+  override def prepare(
+      sc: SparkContext,
+      params: IndexMapParams = null,
+      namespace: String = IndexMap.GLOBAL_NS): Unit = {
+
     _indexMap = new DefaultIndexMap(featureNameToIdMap)
     _mapBroadCaster = sc.broadcast(featureNameToIdMap)
   }

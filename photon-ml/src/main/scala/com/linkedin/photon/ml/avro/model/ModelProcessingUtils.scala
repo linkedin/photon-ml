@@ -174,7 +174,6 @@ object ModelProcessingUtils {
     // the Game model separately
     val (models, featureIndexLoaders) = gameModels
       .map {
-
         case ((name, featureIndexLoader, model: FixedEffectModel)) =>
           ((name, model), (model.featureShardId, featureIndexLoader))
 
@@ -183,8 +182,8 @@ object ModelProcessingUtils {
 
         case ((name, _, _)) =>
           throw new RuntimeException(s"Unknown model type for: $name")
-
-      }.unzip
+      }
+      .unzip
 
     (new GAMEModel(models.toMap), featureIndexLoaders.toMap)
   }
