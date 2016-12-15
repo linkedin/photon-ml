@@ -22,10 +22,11 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.cli.game.GAMEDriver
-import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
+import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.data.{DataProcessingUtils, ScoreProcessingUtils}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters, GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.util._
 
@@ -71,18 +72,14 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
       case (None, None) => inputDirs.toSeq
     }
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
+    val records = AvroUtils.readAvroFiles(sparkContext, recordsPath, parallelism)
+    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
+    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val gameDataPartitioner = new LongHashPartitioner(parallelism)
-
-    val dataReader = new AvroDataReader(sparkContext)
-    val data = dataReader.readMerged(
-      recordsPath,
-      featureShardIdToFeatureMapLoader.toMap,
-      featureShardIdToFeatureSectionKeysMap)
-
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      data,
-      featureShardIdToFeatureSectionKeysMap.keys.toSet,
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
+      recordsWithUniqueId,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapLoader,
       idTypeSet,
       isResponseRequired = false)
       .partitionBy(gameDataPartitioner)

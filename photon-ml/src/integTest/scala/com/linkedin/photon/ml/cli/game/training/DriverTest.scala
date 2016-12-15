@@ -53,8 +53,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     println(allFixedEffectModelPath)
     assertTrue(Files.exists(allFixedEffectModelPath))
     assertTrue(Files.exists(bestFixedEffectModelPath))
-    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
-    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983)
+    assertTrue(modelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983))
+    assertTrue(modelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983))
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "all/0")).head < errorThreshold)
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
     assertTrue(modelContainsIntercept(allFixedEffectModelPath))
@@ -86,8 +86,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     assertTrue(Files.exists(allFixedEffectModelPath))
     assertTrue(Files.exists(bestFixedEffectModelPath))
-    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 11597)
-    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 11597)
+    assertTrue(modelSane(allFixedEffectModelPath, expectedNumCoefficients = 11597))
+    assertTrue(modelSane(bestFixedEffectModelPath, expectedNumCoefficients = 11597))
     assertFalse(modelContainsIntercept(allFixedEffectModelPath))
     assertFalse(modelContainsIntercept(bestFixedEffectModelPath))
   }
@@ -129,15 +129,15 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelSane(userModelPath, expectedNumCoefficients = 21))
     assertTrue(modelContainsIntercept(userModelPath))
 
     assertTrue(Files.exists(songModelPath))
-    assertModelSane(songModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
     assertTrue(modelContainsIntercept(songModelPath))
 
     assertTrue(Files.exists(artistModelPath))
-    assertModelSane(artistModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
     assertTrue(modelContainsIntercept(artistModelPath))
 
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
@@ -153,15 +153,15 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 20)
+    assertTrue(modelSane(userModelPath, expectedNumCoefficients = 20))
     assertFalse(modelContainsIntercept(userModelPath))
 
     assertTrue(Files.exists(songModelPath))
-    assertModelSane(songModelPath, expectedNumCoefficients = 20)
+    assertTrue(modelSane(songModelPath, expectedNumCoefficients = 20))
     assertFalse(modelContainsIntercept(songModelPath))
 
     assertTrue(Files.exists(artistModelPath))
-    assertModelSane(artistModelPath, expectedNumCoefficients = 20)
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 20))
     assertFalse(modelContainsIntercept(artistModelPath))
   }
 
@@ -177,15 +177,15 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
       assertTrue(Files.exists(userModelPath))
-      assertModelSane(userModelPath, expectedNumCoefficients = 20)
+      assertTrue(modelSane(userModelPath, expectedNumCoefficients = 20))
       assertFalse(modelContainsIntercept(userModelPath))
 
       assertTrue(Files.exists(songModelPath))
-      assertModelSane(songModelPath, expectedNumCoefficients = 21)
+      assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
       assertTrue(modelContainsIntercept(songModelPath))
 
       assertTrue(Files.exists(artistModelPath))
-      assertModelSane(artistModelPath, expectedNumCoefficients = 21)
+      assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
       assertTrue(modelContainsIntercept(artistModelPath))
   }
 
@@ -204,19 +204,19 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(fixedEffectModelPath))
-    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 15019)
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 15017))
     assertTrue(modelContainsIntercept(fixedEffectModelPath))
 
     assertTrue(Files.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 29, modelId = Some("1436929"))
+    assertTrue(modelSane(userModelPath, expectedNumCoefficients = 29))
     assertTrue(modelContainsIntercept(userModelPath))
 
     assertTrue(Files.exists(songModelPath))
-    assertModelSane(songModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelSane(songModelPath, expectedNumCoefficients = 21))
     assertTrue(modelContainsIntercept(songModelPath))
 
     assertTrue(Files.exists(artistModelPath))
-    assertModelSane(artistModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 21))
     assertTrue(modelContainsIntercept(artistModelPath))
 
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
@@ -332,7 +332,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
     assertTrue(Files.exists(fixedEffectModelPath))
-    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 14983)
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 14983))
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
   }
 
@@ -460,19 +460,19 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(fixedEffectModelPath))
-    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 15032)
+    assertTrue(modelSane(fixedEffectModelPath, expectedNumCoefficients = 15032))
     assertTrue(modelContainsIntercept(fixedEffectModelPath))
 
     assertTrue(Files.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 39, modelId = Some("1436929"))
+    assertTrue(modelSane(userModelPath, expectedNumCoefficients = 39))
     assertTrue(modelContainsIntercept(userModelPath))
 
     assertTrue(Files.exists(songModelPath))
-    assertModelSane(songModelPath, expectedNumCoefficients = 31)
+    assertTrue(modelSane(songModelPath, expectedNumCoefficients = 31))
     assertTrue(modelContainsIntercept(songModelPath))
 
     assertTrue(Files.exists(artistModelPath))
-    assertModelSane(artistModelPath, expectedNumCoefficients = 31)
+    assertTrue(modelSane(artistModelPath, expectedNumCoefficients = 31))
     assertTrue(modelContainsIntercept(artistModelPath))
 
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
@@ -506,21 +506,12 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     * @param expectedNumCoefficients expected number of non-zero coefficients
     * @return true if the model is sane
     */
-  def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
+  def modelSane(path: Path, expectedNumCoefficients: Int): Boolean = {
     val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
-    val model = modelId match {
-      case Some(id) =>
-        val m = modelAvro.find { m => m.getModelId.toString == id }
-        assertTrue(m.isDefined, s"Model id $id not found.")
-        m.get
-
-      case _ => modelAvro.head
-    }
-
-    val means = model.getMeans
-    assertEquals(means.count(x => x.getValue != 0), expectedNumCoefficients)
+    val means = modelAvro.head.getMeans()
+    means.filter(x => x.getValue != 0).size == expectedNumCoefficients
   }
 
   def modelContainsIntercept(path: Path): Boolean = {
