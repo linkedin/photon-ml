@@ -21,6 +21,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.algorithm._
+import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.data.DataProcessingUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.constants.StorageLevel
@@ -104,23 +106,19 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     val numPartitions = math.max(numFixedEffectPartitions, numRandomEffectPartitions)
     require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
 
-    val gameDataPartitioner = new LongHashPartitioner(numPartitions)
+    val records = AvroUtils.readAvroFiles(sparkContext, trainingRecordsPath, numPartitions)
+    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
+    val gameDataPartitioner = new LongHashPartitioner(records.partitions.length)
 
-    val dataReader = new AvroDataReader(sparkContext)
-    val data = dataReader.readMerged(
-      trainingRecordsPath,
-      featureShardIdToFeatureMapLoader.toMap,
-      featureShardIdToFeatureSectionKeysMap)
-
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      data,
-      featureShardIdToFeatureSectionKeysMap.keys.toSet,
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
+      recordsWithUniqueId,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapLoader,
       idTypeSet,
       isResponseRequired = true)
       .partitionBy(gameDataPartitioner)
       .setName("GAME training data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-
     gameDataSet.count()
     gameDataSet
   }
@@ -247,22 +245,17 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
     }
     logger.debug(s"Validating records paths:\n${validatingRecordsPath.mkString("\n")}")
 
-    val dataReader = new AvroDataReader(sparkContext)
-    val data = dataReader.readMerged(
-      validatingRecordsPath,
-      featureShardIdToFeatureMapLoader.toMap,
-      featureShardIdToFeatureSectionKeysMap)
+    val records = AvroUtils.readAvroFiles(sparkContext, validatingRecordsPath, minPartitionsForValidation)
+    val recordsWithUniqueId = records.zipWithUniqueId().map(_.swap)
+    val partitioner = new LongHashPartitioner(records.partitions.length)
 
-    val numPartitions = Math.max(data.rdd.partitions.length, minPartitionsForValidation)
-    val partitioner = new LongHashPartitioner(numPartitions)
-
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      data,
-      featureShardIdToFeatureSectionKeysMap.keys.toSet,
+    val gameDataSet = DataProcessingUtils.getGameDataSetFromGenericRecords(
+      recordsWithUniqueId,
+      featureShardIdToFeatureSectionKeysMap,
+      featureShardIdToFeatureMapLoader,
       idTypeSet,
       isResponseRequired = true)
-      .partitionBy(partitioner)
-      .setName("Validating Game data set")
+      .partitionBy(partitioner).setName("Validating Game data set")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     // Log some simple summary info on the Game data set

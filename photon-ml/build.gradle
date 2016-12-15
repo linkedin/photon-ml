@@ -32,11 +32,11 @@ dependencies {
   }
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.6.1")
-  compile("org.apache.spark:spark-mllib$scalaSuffix:1.6.1")
+  compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-mllib$scalaSuffix:1.4.0")
   compile("com.databricks:spark-avro$scalaSuffix:2.0.1")
-  compile("org.apache.spark:spark-sql$scalaSuffix:1.6.1")
-  compile("org.apache.spark:spark-catalyst$scalaSuffix:1.6.1")
+  compile("org.apache.spark:spark-sql$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-catalyst$scalaSuffix:1.4.0")
 
   //this one is scala's option parsing library
   compile("com.github.scopt:scopt$scalaSuffix:3.2.0")
