@@ -14,15 +14,16 @@
  */
 package com.linkedin.photon.ml
 
+import org.apache.commons.math3.special.Gamma
+import org.apache.spark.Logging
+import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, RegressionMetrics}
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.metric.MetricMetadata
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, Regression}
-import org.apache.commons.math3.special.Gamma
-import org.apache.spark.Logging
-import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, RegressionMetrics}
-import org.apache.spark.rdd.RDD
 
 /**
   * A collection of evaluation metrics and functions
@@ -38,6 +39,9 @@ object Evaluation extends Logging {
   val AIKAKE_INFORMATION_CRITERION = "Aikake information criterion"
   val EPSILON = 1e-9
 
+  type MetricsMap = Map[String, Double]
+  def MetricsMap() = Map[String, Double]()
+
   /**
     * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
     * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
@@ -47,7 +51,7 @@ object Evaluation extends Logging {
     * @param dataSet The data set used to evaluate the GLM model
     * @return Map of (metricName &rarr; value)
     */
-  def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): Map[String, Double] = {
+  def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): MetricsMap = {
     val broadcastModel = dataSet.sparkContext.broadcast(model)
     val scoreAndLabel = dataSet
       .map(labeledPoint =>
@@ -56,7 +60,7 @@ object Evaluation extends Logging {
       .cache()
     broadcastModel.unpersist()
 
-    var metrics = Map[String, Double]()
+    var metrics = MetricsMap()
 
     // Compute regression facet metrics
     model match {

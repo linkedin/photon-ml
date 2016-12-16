@@ -16,7 +16,15 @@ package com.linkedin.photon.ml
 
 import java.io.File
 
+import scala.collection.mutable
+import scala.io.Source
+
 import breeze.linalg.{DenseVector, Vector, norm}
+import org.apache.commons.io.FileUtils
+import org.apache.hadoop.fs.Path
+import org.testng.Assert._
+import org.testng.annotations.{DataProvider, Test}
+
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
@@ -32,19 +40,11 @@ import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.{PalDBIndexMapTest, Utils}
-import org.apache.commons.io.FileUtils
-import org.apache.hadoop.fs.Path
-import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
-
-import scala.collection.mutable
-import scala.io.Source
 
 /**
   * This class tests Driver with a set of important configuration parameters
   */
 class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
-
   import DriverIntegTest._
 
   @Test
@@ -89,7 +89,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(FEATURE_DIMENSION)
     args += "13"
     args += CommonTestUtils.fromOptionNameToArg(INPUT_FILE_FORMAT)
-    args += InputFormatType.LIBSVM.toString()
+    args += InputFormatType.LIBSVM.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -125,7 +125,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(FEATURE_DIMENSION)
     args += "13"
     args += CommonTestUtils.fromOptionNameToArg(INPUT_FILE_FORMAT)
-    args += InputFormatType.LIBSVM.toString()
+    args += InputFormatType.LIBSVM.toString
 
     MockDriver.runLocally(
       args = args.toArray,
@@ -190,6 +190,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       expectedDiagnosticMode = DiagnosticMode.NONE)
   }
 
+  @Test
   def testRunTrainingSetWithEmptyFeatures(): Unit = sparkTest("testRunTrainingSetWithEmptyFeatures") {
     val outputDir = getTmpDir + "/testRunEmptyTrainingSet"
     val args = mutable.ArrayBuffer[String]()
@@ -207,7 +208,8 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args = args.toArray,
       sparkContext = sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
-      expectedNumFeatures = 0,
+      // Number of features is not 0; 1 feature should exist for the intercept
+      expectedNumFeatures = 1,
       expectedNumTrainingData = 250,
       expectedIsSummarized = false,
       expectedDiagnosticMode = DiagnosticMode.NONE)
@@ -852,25 +854,28 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(dataProvider = "testDiagnosticGenerationProvider")
-  def testDiagnosticGeneration(outputDir: String, args: Array[String], numFeatures: Int, numTrainingSamples: Int)
-    : Unit = sparkTest("testDiagnosticGeneration") {
+  def testDiagnosticGeneration(
+      outputDir: String,
+      args: Array[String],
+      numFeatures: Int,
+      numTrainingSamples: Int): Unit = sparkTest("testDiagnosticGeneration") {
 
-      FileUtils.deleteDirectory(new File(outputDir))
+    FileUtils.deleteDirectory(new File(outputDir))
 
-      MockDriver.runLocally(
-        args = args.toArray,
-        sparkContext = sc,
-        expectedStages = Array(
-          DriverStage.INIT,
-          DriverStage.PREPROCESSED,
-          DriverStage.TRAINED,
-          DriverStage.VALIDATED,
-          DriverStage.DIAGNOSED),
-        expectedNumFeatures = numFeatures,
-        expectedNumTrainingData = numTrainingSamples,
-        expectedIsSummarized = true,
-        expectedDiagnosticMode = DiagnosticMode.ALL)
-    }
+    MockDriver.runLocally(
+      args = args.toArray,
+      sparkContext = sc,
+      expectedStages = Array(
+        DriverStage.INIT,
+        DriverStage.PREPROCESSED,
+        DriverStage.TRAINED,
+        DriverStage.VALIDATED,
+        DriverStage.DIAGNOSED),
+      expectedNumFeatures = numFeatures,
+      expectedNumTrainingData = numTrainingSamples,
+      expectedIsSummarized = true,
+      expectedDiagnosticMode = DiagnosticMode.ALL)
+  }
 
   @Test
   def testTrainOnlyDiagnostic(): Unit = sparkTest("testTrainOnlyDiagnostic") {
@@ -942,11 +947,11 @@ object DriverIntegTest {
       isValidating: Boolean = false,
       fileSuffix: String = ".avro"): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
-    args += s"${TEST_DIR}/input/heart${fileSuffix}"
+    args += s"$TEST_DIR/input/heart$fileSuffix"
 
     if (isValidating) {
       args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
-      args += s"${TEST_DIR}/input/heart_validation${fileSuffix}"
+      args += s"$TEST_DIR/input/heart_validation$fileSuffix"
     }
 
     args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)

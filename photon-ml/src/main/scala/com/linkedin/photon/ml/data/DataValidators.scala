@@ -90,7 +90,7 @@ object DataValidators extends Logging {
         perSampleValidators.map( validator => {
           val valid = validator._2(item)
           if (!valid) {
-            logError(s"Validation ${validator._1} failed on item: ${item}")
+            logError(s"Validation ${validator._1} failed on item: $item")
           }
           valid
         }).forall(x => x)
@@ -98,10 +98,13 @@ object DataValidators extends Logging {
     }).fold(true)(_ && _)
   }
 
-  def sanityCheckData(inputData: RDD[LabeledPoint], taskType: TaskType,
-                      dataValidationType: DataValidationType): Boolean = {
+  def sanityCheckData(
+      inputData: RDD[LabeledPoint],
+      taskType: TaskType,
+      dataValidationType: DataValidationType): Boolean = {
+
     if (! dataValidationType.equals(DataValidationType.VALIDATE_DISABLED)) {
-      /* Check the data properties */
+      // Check the data properties
       val validators: Seq[RDD[LabeledPoint] => Boolean] = taskType match {
         case TaskType.LINEAR_REGRESSION => List(DataValidators.linearRegressionValidator)
         case TaskType.LOGISTIC_REGRESSION => List(DataValidators.logisticRegressionValidator)

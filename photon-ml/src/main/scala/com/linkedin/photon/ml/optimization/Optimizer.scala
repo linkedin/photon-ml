@@ -46,7 +46,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   extends Serializable
   with Logging {
 
-  protected val statesTracker: Option[OptimizationStatesTracker] = if (isTrackingState) {
+  protected var statesTracker: Option[OptimizationStatesTracker] = if (isTrackingState) {
     Some(new OptimizationStatesTracker())
   } else {
     None
@@ -138,12 +138,8 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Clear the [[OptimizationStatesTracker]]
    */
-  protected def clearOptimizationStatesTracker(): Unit = {
-    statesTracker match {
-      case Some(x) => x.clear()
-      case None =>
-    }
-  }
+  protected def clearOptimizationStatesTracker(): Unit =
+    statesTracker = statesTracker.map(tracker => new OptimizationStatesTracker())
 
   /**
    * Clear the optimizer (e.g. the history of LBFGS; the trust region size of TRON; etc.)

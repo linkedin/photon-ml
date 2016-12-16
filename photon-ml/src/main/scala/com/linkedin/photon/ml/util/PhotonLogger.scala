@@ -14,19 +14,17 @@
  */
 package com.linkedin.photon.ml.util
 
+import java.io.{BufferedWriter, PrintWriter, _}
+import java.text.SimpleDateFormat
+import java.util.{Date, UUID}
+
+import scala.Predef.{println => sprintln}
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.slf4j.helpers.{MarkerIgnoringBase, MessageFormatter}
 import org.slf4j.spi.LocationAwareLogger
-
-import java.io.{BufferedWriter, PrintWriter}
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.io._
-import java.util.UUID
-
-import scala.Predef.{println => sprintln}
 
 /**
  * Implements the SLF4J Logger interface, and writes all log messages to disk. This is currently necessary because of
@@ -58,7 +56,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
   /**
    * A local tmp file path for the logger
    */
-  val tmpLocalPath: Path = new Path(FileUtils.getTempDirectoryPath(), UUID.randomUUID().toString())
+  val tmpLocalPath: Path = new Path(FileUtils.getTempDirectoryPath, UUID.randomUUID().toString)
 
   /**
    * Initialize the writer
@@ -83,7 +81,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
     } catch {
       case e: Exception => throw e
     } finally {
-      new File(tmpLocalPath.toString()).delete()
+      new File(tmpLocalPath.toString).delete()
     }
   }
 
@@ -128,35 +126,35 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
    *
    * @return true if the debug level is enabled
    */
-  override def isDebugEnabled(): Boolean = isLevelEnabled(LogLevelDebug)
+  override def isDebugEnabled: Boolean = isLevelEnabled(LogLevelDebug)
 
   /**
    * Determines whether error messages are enabled
    *
    * @return true if the error level is enabled
    */
-  override def isErrorEnabled(): Boolean = isLevelEnabled(LogLevelError)
+  override def isErrorEnabled: Boolean = isLevelEnabled(LogLevelError)
 
   /**
    * Determines whether info messages are enabled
    *
    * @return true if the info level is enabled
    */
-  override def isInfoEnabled(): Boolean = isLevelEnabled(LogLevelInfo)
+  override def isInfoEnabled: Boolean = isLevelEnabled(LogLevelInfo)
 
   /**
    * Determines whether trace messages are enabled
    *
    * @return true if the trace level is enabled
    */
-  override def isTraceEnabled(): Boolean = isLevelEnabled(LogLevelTrace)
+  override def isTraceEnabled: Boolean = isLevelEnabled(LogLevelTrace)
 
   /**
    * Determines whether warn messages are enabled
    *
    * @return true if the warn level is enabled
    */
-  override def isWarnEnabled(): Boolean = isLevelEnabled(LogLevelWarn)
+  override def isWarnEnabled: Boolean = isLevelEnabled(LogLevelWarn)
 
   /**
    * Writes a debug level log message
@@ -477,7 +475,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
    * @return the new writer
    */
   private def createWriter: PrintWriter = {
-    new PrintWriter(new BufferedWriter(new FileWriter(new File(tmpLocalPath.toString()))))
+    new PrintWriter(new BufferedWriter(new FileWriter(new File(tmpLocalPath.toString))))
   }
 }
 

@@ -144,7 +144,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
         createModel(normalizationContext, coefficients, variances)
       }
       logInfo(s"Number of iterations: ${modelsPerIteration.length}")
-      modelTrackerBuilder += new ModelTracker(tracker.toString, modelsPerIteration)
+      modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
     }
 
     createModel(normalizationContext, optimizedCoefficients, optimizedVariances)

@@ -618,15 +618,20 @@ final class Driver(val params: Params, val sparkContext: SparkContext, val logge
 
     // Write all models to HDFS
     if (modelOutputMode == ModelOutputMode.ALL) {
-      var modelIdx = 0
-      gameModelsMap.foreach { case (modelConfig, gameModel) =>
-        val modelOutputDir = new Path(outputDir, s"all/$modelIdx").toString
-        Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
+      gameModelsMap.foldLeft(0) { case (modelIndex, (modelConfig, gameModel)) =>
+        val modelOutputDir = new Path(outputDir, s"all/$modelIndex").toString
         val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
+
+        Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
         IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
-        ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureShardIdToFeatureMapLoader, modelOutputDir,
-          numberOfOutputFilesForRandomEffectModel, sparkContext)
-        modelIdx += 1
+        ModelProcessingUtils.saveGameModelsToHDFS(
+          gameModel,
+          featureShardIdToFeatureMapLoader,
+          modelOutputDir,
+          numberOfOutputFilesForRandomEffectModel,
+          sparkContext)
+
+        modelIndex + 1
       }
     }
   }

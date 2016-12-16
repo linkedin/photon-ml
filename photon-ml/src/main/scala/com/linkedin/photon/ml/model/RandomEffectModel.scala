@@ -14,13 +14,14 @@
  */
 package com.linkedin.photon.ml.model
 
-import com.linkedin.photon.ml.RDDLike
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
+
+import com.linkedin.photon.ml.RDDLike
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Representation of a random effect model

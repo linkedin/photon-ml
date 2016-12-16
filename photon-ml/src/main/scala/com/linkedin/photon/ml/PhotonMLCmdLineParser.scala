@@ -14,15 +14,16 @@
  */
 package com.linkedin.photon.ml
 
+import scala.util.parsing.json.JSON
+
+import scopt.OptionParser
+
 import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.TaskType
-import scopt.OptionParser
-
-import scala.util.parsing.json.JSON
 
 /**
  * A collection of functions used to parse Photon-ML's parameters [[Params]]
@@ -245,6 +246,11 @@ object PhotonMLCmdLineParser {
         .text(s"Delete the output directories (including the model and summarization output directories) if exist." +
             s"Default: ${defaultParams.deleteOutputDirsIfExist}")
         .foreach(x => params.deleteOutputDirsIfExist = x)
+
+      opt[String](EVENT_LISTENERS)
+        .text("Comma separated list of classpaths to EventListeners for Photon training. An instance of each " +
+          "type of event listener will be registered with the Driver.")
+        .foreach(x => params.eventListeners = x.split(",").toList.distinct)
 
       opt[String](INPUT_FILE_FORMAT)
         .text("Indicating the input data format for PhotonML")

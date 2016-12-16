@@ -95,7 +95,7 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
         createModel(normalizationContext, coefficients, variances)
       }
       logInfo(s"Number of iterations: ${modelsPerIteration.length}")
-      modelTrackerBuilder += new ModelTracker(tracker.toString, modelsPerIteration)
+      modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
     }
 
     createModel(normalizationContext, optimizedCoefficients, optimizedVariances)

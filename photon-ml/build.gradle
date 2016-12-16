@@ -21,9 +21,9 @@ dependencies {
   // See the "Scala" section, at the bottom here: http://www.joda.org/joda-time/upgradeto270.html
   compile('org.joda:joda-convert:1.2')
 
-  compile('org.apache.avro:avro:1.7.5')
-  compile('org.apache.avro:avro-compiler:1.7.5')
-  compile('org.apache.avro:avro-mapred:1.7.5')
+  compile('org.apache.avro:avro:1.7.7')
+  compile('org.apache.avro:avro-compiler:1.7.7')
+  compile('org.apache.avro:avro-mapred:1.7.7')
 
   compile('com.xeiam.xchart:xchart:2.5.1') {
     // Cannot find this jar from Maven central or jcenter, and supposedly xcharts should be usable
@@ -32,11 +32,11 @@ dependencies {
   }
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.4.0")
-  compile("org.apache.spark:spark-mllib$scalaSuffix:1.4.0")
+  compile("org.apache.spark:spark-core$scalaSuffix:1.6.2")
+  compile("org.apache.spark:spark-mllib$scalaSuffix:1.6.2")
+  compile("org.apache.spark:spark-sql$scalaSuffix:1.6.2")
+  compile("org.apache.spark:spark-catalyst$scalaSuffix:1.6.2")
   compile("com.databricks:spark-avro$scalaSuffix:2.0.1")
-  compile("org.apache.spark:spark-sql$scalaSuffix:1.4.0")
-  compile("org.apache.spark:spark-catalyst$scalaSuffix:1.4.0")
 
   //this one is scala's option parsing library
   compile("com.github.scopt:scopt$scalaSuffix:3.2.0")
