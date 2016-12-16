@@ -19,11 +19,10 @@ package com.linkedin.photon.ml.util
  * of memory usage; but easier to handle.
  * Recommended for small feature space cases (<= 200k).
  * For use cases where number of features > 200k, please try [[PalDBIndexMap]] instead.
+ *
  * @param featureNameToIdMap The map from raw feature string (name) to feature index (id)
  */
-class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int])
-  extends IndexMap {
-
+class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMap {
   @transient
   private var _idToNameMap: Map[Int, String] = _
   private val _size: Int = featureNameToIdMap.size

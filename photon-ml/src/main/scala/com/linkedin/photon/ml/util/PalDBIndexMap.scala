@@ -140,10 +140,8 @@ class PalDBIndexMap extends IndexMap {
   }
 
   //noinspection ScalaStyle
-  override def +[B1 >: Int](kv: (String, B1)): Map[String, B1] = {
-    throw new RuntimeException("This map is a read-only immutable map, " +
-      "add operation is unsupported.")
-  }
+  override def +[B1 >: Int](kv: (String, B1)): Map[String, B1] =
+    throw new RuntimeException("This map is a read-only immutable map, add operation is unsupported.")
 
   override def contains(key: String): Boolean = getIndex(key) >= 0
 
@@ -174,13 +172,10 @@ object PalDBIndexMap {
     * @param partitionId the partition Id
     * @return the formatted filename
     */
-  def partitionFilename(
-    partitionId: Int,
-    namespace: String = IndexMap.GLOBAL_NS): String = s"paldb-partition-$namespace-$partitionId.dat"
+  def partitionFilename(partitionId: Int, namespace: String = IndexMap.GLOBAL_NS): String =
+    s"paldb-partition-$namespace-$partitionId.dat"
 
-  class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap)
-    extends Iterator[(String, Int)] {
-
+  class PalDBIndexMapIterator(private val indexMap: PalDBIndexMap) extends Iterator[(String, Int)] {
     private var _iter: Iterator[JMap.Entry[Any, Any]] = _
     private var _currentItem: (String, Int) = _
 

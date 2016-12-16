@@ -283,15 +283,9 @@ object AvroUtils {
    * @param modelAvro The model (only one) to scan for feature names
    * @return A DefaultIndexMap, which associates a unique integer id to each feature name
    */
-  protected[avro] def makeFeatureIndexForModel(
-      modelAvro: BayesianLinearModelAvro): IndexMap = {
-
+  protected[avro] def makeFeatureIndexForModel(modelAvro: BayesianLinearModelAvro): IndexMap =
     DefaultIndexMap(
-      modelAvro
-        .getMeans
-        .map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)
-      ))
-  }
+      modelAvro.getMeans.map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)))
 
   /**
    * Creates a default map of features, i.e. a Map[(String, Int)] from feature names to an ordinal counter,
