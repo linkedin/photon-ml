@@ -14,9 +14,7 @@
  */
 package com.linkedin.photon.ml.util
 
-
 import org.apache.spark.SparkContext
-
 
 /**
  * This trait provides a uniform interface for loading feature index maps.

@@ -48,6 +48,7 @@ object OptionNames {
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
 
   val DELETE_OUTPUT_DIRS_IF_EXIST = "delete-output-dirs-if-exist"
+  val EVENT_LISTENERS = "event-listeners"
 
   val FEATURE_DIMENSION = "feature-dimension"
   val INPUT_FILE_FORMAT = "input-file-format"

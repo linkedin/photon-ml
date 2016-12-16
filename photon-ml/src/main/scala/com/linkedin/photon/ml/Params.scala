@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml
 
+import scala.collection.mutable.ArrayBuffer
 
 import com.linkedin.photon.ml.DataValidationType._
 import com.linkedin.photon.ml.OptionNames._
@@ -24,13 +25,10 @@ import com.linkedin.photon.ml.io.InputFormatType
 import com.linkedin.photon.ml.io.InputFormatType.InputFormatType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
-import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.optimization.RegularizationType._
+import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util.PalDBIndexMapParams
-
-import scala.collection.mutable.ArrayBuffer
-
 
 /**
  *  A bean class for PhotonML parameters to replace the original case class for input parameters.
@@ -40,6 +38,7 @@ class Params extends PalDBIndexMapParams {
    * Training data directory
    */
   var trainDir: String = _
+
   /**
    * Validating data directory. Note that
    *    1. Validation is optional
@@ -48,48 +47,63 @@ class Params extends PalDBIndexMapParams {
    *       selection job
    */
   var validateDirOpt: Option[String] = None
+
   /**
    * Photon-ML's output directory
    */
   var outputDir: String = _
+
   /**
    * Learning task type, e.g., LINEAR_REGRESSION, POISSON_REGRESSION or LOGISTIC_REGRESSION
    */
   var taskType: TaskType = _
+
   /**
    * Maximum number of iterations to run
    */
   var maxNumIter: Int = 80
+
   /**
    * An array of regularization weights that will be used to train the model
    */
   var regularizationWeights: List[Double] = List(10)
+
   /**
    * The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost of more iterations
    */
   var tolerance: Double = 1e-6
+
   /**
    * The type of optimizer that will be used to train the model
    */
   var optimizerType: OptimizerType = LBFGS
+
   /**
    * The type of regularization that will be used to train the model
    */
   var regularizationType: RegularizationType = L2
+
+  /**
+   * The alpha weight used in elastic net regularization to balance L1 and L2 regularization terms.
+   */
   var elasticNetAlpha: Option[Double] = None
+
   /**
    * Whether to learn the intercept
    */
   var addIntercept: Boolean = true
+
   /**
    * Whether to enable the optimization tracker, which stores the per-iteration log information of the running optimizer
    */
   var enableOptimizationStateTracker: Boolean = true
+
   /**
    * If validating data is provided, and optimization tracker is enabled,
    * whether to compute the evaluation metrics on validating data per iteration
    */
   var validatePerIteration: Boolean = false
+
   /**
    * The minimum number of Hadoop splits to generate. This would be potentially helpful when the
    * number of default Hadoop splits is small. Note that when the default number of Hadoop splits
@@ -98,32 +112,39 @@ class Params extends PalDBIndexMapParams {
    * In short, minNumPartitions will *only* be able to increase the number of partitions.
    */
   var minNumPartitions: Int = 1
+
   /**
    * Whether to use kryo to serialize the intermediate result, which is generally a good idea. More information
    * on serialization method used in Spark can be found through the following link:
    * [[https://spark.apache.org/docs/latest/tuning.html#data-serialization]].
    */
   var kryo: Boolean = true
+
   /**
    * Input Avro file's format, which contains the information of each field's name
    */
   var fieldsNameType: FieldNamesType = RESPONSE_PREDICTION
+
   /**
    * If summarization output dir is provided, basic statistics of features will be written to the given directory.
    */
   var summarizationOutputDirOpt: Option[String] = None
+
   /**
    * Feature normalization method
    */
   var normalizationType: NormalizationType = NormalizationType.NONE
+
   /**
    * Job name of this spark application
    */
   var jobName: String = s"Photon-ML-Training"
+
   /**
    * Type of validation to be performed
    */
   var dataValidationType: DataValidationType = DataValidationType.VALIDATE_FULL
+
   /**
    * A JSON string containing an array of maps specifying the box constraints on certain
    * coefficients, if any. Only keys from
@@ -134,16 +155,19 @@ class Params extends PalDBIndexMapParams {
    * wants to apply the same bound to all coefficients
    */
   var constraintString: Option[String] = None
+
   /**
    * Control the running mode for diagnostics. Examples include training diagnostics like bootstrapping, and validating
    * diagnostics like Hosmer-Lemeshow diagnostic.
    */
   var diagnosticMode: DiagnosticMode = DiagnosticMode.NONE
+
   /**
    * A file containing selected features. The file is expected to contain avro records that have
    * the "name" and "term" fields
    */
   var selectedFeaturesFile: Option[String] = None
+
   /**
    * The depth used in tree aggregate
    */
@@ -153,6 +177,11 @@ class Params extends PalDBIndexMapParams {
    * Whether to delete the output directories (including the model and summarization output directories) if exist
    */
   var deleteOutputDirsIfExist: Boolean = false
+
+  /**
+   * A list of EventListener classpaths to register for receiving runtime events.
+   */
+  var eventListeners: List[String] = List()
 
   /**
     * Input file format for training, e.g. AVRO, LIBSVM or others (if implemented).

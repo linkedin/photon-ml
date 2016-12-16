@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.supervised.model
 
 import scala.language.existentials
 
+import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
+
 // existentials is imported to suppress the warning message:
 // photon_trunk/photon-ml/src/main/scala/com/linkedin/photon/ml/supervised/model/ModelTracker.scala:11: inferred
 //   existential type Option[(com.linkedin.photon.ml.optimization.OptimizationStatesTracker, Array[_$1])] forSome
@@ -28,8 +30,8 @@ import scala.language.existentials
 // why the feature should be explicitly enabled.
 
 /**
-  * A model tracker to include optimization state and per iteration models.
-  */
+ * A model tracker to include optimization state and per iteration models.
+ */
 case class ModelTracker(
-  optimizationStateTrackerString: String,
+  optimizationStateTracker: OptimizationStatesTracker,
   models: Array[_ <: GeneralizedLinearModel])

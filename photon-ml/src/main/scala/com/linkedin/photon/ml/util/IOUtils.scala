@@ -15,23 +15,22 @@
 package com.linkedin.photon.ml.util
 
 import java.io._
+import java.lang.{Double => JDouble}
+import java.util.{Map => JMap}
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.joda.time.Days
 
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-
-import scala.collection.mutable
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
-import org.joda.time.Days
-
-import java.lang.{Double => JDouble}
-import java.util.{Map => JMap}
-
-import scala.collection.JavaConversions._
 
 /**
  * Some basic IO util functions to be merged with the other util functions
@@ -66,7 +65,7 @@ protected[ml] object IOUtils {
     if (deleteOutputDirIfExists) {
       Utils.deleteHDFSDir(outputDir, configuration)
     } else {
-      if (IOUtils.isDirExisting(outputDir, configuration)) {
+      if (isDirExisting(outputDir, configuration)) {
         throw new IllegalArgumentException(s"Directory $outputDir already exists!")
       }
     }

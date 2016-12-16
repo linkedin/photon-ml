@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 /**
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
  * optimizer-friendly approximation for linear SVMs. This Object is to the individual/distributed smoothed hinge loss
- * functions is as the PointwiseLossFunction is to the individual/distributed GLM loss functions.
+ * functions as the PointwiseLossFunction is to the individual/distributed GLM loss functions.
  *
  * @note Function names follow the differentiation notation found here:
  *       [[http://www.wikiwand.com/en/Notation_for_differentiation#/Euler.27s_notation]]

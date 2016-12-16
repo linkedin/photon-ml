@@ -38,6 +38,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{DiagnosticReport, DiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
+import com.linkedin.photon.ml.event._
 import com.linkedin.photon.ml.io.{GLMSuite, InputDataFormat, InputFormatFactory}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
@@ -68,18 +69,21 @@ import com.linkedin.photon.ml.util.{IOUtils, PhotonLogger, Utils}
  * @param logger: A temporary container to hold the driver's logs.
  */
 protected[ml] class Driver(
-  protected val params: Params,
-  protected val sc: SparkContext,
-  protected val logger: Logger,
-  protected val seed: Long = System.nanoTime) {
+    protected val params: Params,
+    protected val sc: SparkContext,
+    protected val logger: Logger,
+    protected val seed: Long = System.nanoTime)
+  extends EventEmitter {
 
   import com.linkedin.photon.ml.Driver._
 
-  private[this] var inputDataFormat: InputDataFormat = null
+  //
+  // Class members
+  //
 
-  protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
   private[this] val trainDataStorageLevel: StorageLevel = DEFAULT_STORAGE_LEVEL
-  protected var stage: DriverStage = DriverStage.INIT
+
+  private[this] var inputDataFormat: InputDataFormat = null
   private[this] var trainingData: RDD[LabeledPoint] = null
   private[this] var validatingData: RDD[LabeledPoint] = null
 
@@ -93,8 +97,30 @@ protected[ml] class Driver(
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
-  private[this] var diagnostic: DiagnosticReport = null
+  private[this] var diagnostic: DiagnosticReport = _
   private[this] var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
+
+  protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
+  protected var stage: DriverStage = DriverStage.INIT
+
+  //
+  // Class Initialization
+  //
+
+  params.eventListeners.foreach { eventListenerClass =>
+    try {
+      registerListener(Class.forName(eventListenerClass).getConstructor().newInstance().asInstanceOf[EventListener])
+
+    } catch {
+      case e: Exception =>
+        throw new IllegalArgumentException(s"Error registering class $eventListenerClass as event listener", e)
+    }
+  }
+  sendEvent(PhotonSetupEvent(logger, sc, params))
+
+  //
+  // Class Methods
+  //
 
   def numFeatures(): Int = {
     assertEqualOrAfterDriverStage(DriverStage.PREPROCESSED)
@@ -117,6 +143,7 @@ protected[ml] class Driver(
     logger.info(s"Input parameters: \n$params\n")
 
     val startTime = System.currentTimeMillis()
+    sendEvent(TrainingStartEvent(startTime))
 
     // Process the output directory upfront and potentially fail the job early
     val configuration = sc.hadoopConfiguration
@@ -131,10 +158,18 @@ protected[ml] class Driver(
     train()
     updateStage(DriverStage.TRAINED)
 
-    if (params.validateDirOpt.isDefined) {
-      assertDriverStage(DriverStage.TRAINED)
-      validate()
-      updateStage(DriverStage.VALIDATED)
+    params.validateDirOpt match {
+      case Some(x) =>
+        assertDriverStage(DriverStage.TRAINED)
+        validate()
+        updateStage(DriverStage.VALIDATED)
+
+      case _ =>
+        lambdaModelTrackerTuplesOption.foreach { lambdaModelTrackerTuples =>
+          lambdaModelTrackerTuples.foreach { case (regWeight, tracker) =>
+            sendEvent(PhotonOptimizationLogEvent(regWeight, tracker))
+          }
+        }
     }
 
     if (params.diagnosticMode != DiagnosticMode.NONE) {
@@ -158,10 +193,12 @@ protected[ml] class Driver(
     logger.info(f"total time elapsed: $elapsed%.3f(s)")
 
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
-    val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT).toString
+    val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT)
     IOUtils.writeModelsInText(sc, lambdaModelTuples, finalModelsDir.toString, inputDataFormat.indexMapLoader())
 
     logger.info(s"Final models are written to: $finalModelsDir")
+
+    sendEvent(TrainingFinishEvent(System.currentTimeMillis()))
   }
 
   protected def prepareTrainingData(): Unit = {
@@ -211,7 +248,8 @@ protected[ml] class Driver(
     val summary = BasicStatistics.getBasicStatistics(trainingData)
 
     outputDir.foreach { dir =>
-      IOUtils.writeBasicStatistics(sc,
+      IOUtils.writeBasicStatistics(
+        sc,
         summary,
         dir,
         inputDataFormat.indexMapLoader().indexMapForDriver())
@@ -227,8 +265,7 @@ protected[ml] class Driver(
   @throws(classOf[IOException])
   @throws(classOf[IllegalArgumentException])
   protected def preprocess(): Unit = {
-
-    /* Preprocess the data for the following model training and validating procedure using the chosen suite */
+    // Preprocess the data for the following model training and validating procedure using the chosen suite
     val startTimeForPreprocessing = System.currentTimeMillis()
 
     inputDataFormat = InputFormatFactory.createInputFormat(sc, params)
@@ -239,7 +276,7 @@ protected[ml] class Driver(
       prepareValidatingData(validateDir)
     }
 
-    /* Summarize */
+    // Summarize
     if (params.summarizationOutputDirOpt.isDefined || params.normalizationType != NormalizationType.NONE) {
       val summary = summarizeFeatures(params.summarizationOutputDirOpt)
       summaryOption = Some(summary)
@@ -250,8 +287,8 @@ protected[ml] class Driver(
     }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001
-    logger.info(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
 
+    logger.info(f"preprocessing data finished, time elapsed: $preprocessingTime%.3f(s)")
   }
 
   protected def train(): Unit = {
@@ -284,50 +321,53 @@ protected[ml] class Driver(
       logger.info(s"optimization state tracker information:")
 
       modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
-        logger.info(s"model with regularization weight $regularizationWeight: " +
-                    s"${modelTracker.optimizationStateTrackerString}")
+        logger.info(s"model with regularization weight $regularizationWeight: ${modelTracker.optimizationStateTracker}")
       }
     }
   }
 
   protected def computeAndLogModelMetrics(): Unit = {
-    if (params.validatePerIteration) {
-      // Calculate metrics for all (models, iterations)
-      lambdaModelTrackerTuplesOption.foreach { weightModelTrackerTuples =>
-        weightModelTrackerTuples.foreach { case (lambda, modelTracker) =>
-          val msg = modelTracker
-            .models
-            .map(Evaluation.evaluate(_, validatingData))
-            .zipWithIndex
-            .map { x =>
-              val (m, idx) = x
-
-              m.keys
+    (params.validatePerIteration, lambdaModelTrackerTuplesOption) match {
+      case (true, Some(lambdaModelTrackerTuples)) =>
+        // Calculate metrics for all (models, iterations)
+        lambdaModelTrackerTuples.foreach { case (lambda, modelTracker) =>
+          val perIterationMetrics = modelTracker.models.map(Evaluation.evaluate(_, validatingData))
+          val msg = perIterationMetrics.zipWithIndex
+            .map { case (metrics, index) =>
+              metrics.keys
                 .toSeq
                 .sorted
-                .map(y => f"Iteration: [$idx%6d] Metric: [$y] value: ${m.get(y).get}")
+                .map(m => f"Iteration: [$index%6d] Metric: [$m] value: ${metrics.get(m).get}")
                 .mkString("\n")
             }
             .mkString("\n")
 
           logger.info(s"Model with lambda = $lambda:\n$msg")
+
+          val finalMetrics = perIterationMetrics.last
+          sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, Some(perIterationMetrics), Some(finalMetrics)))
         }
-      }
-    } else {
-      // Calculate metrics for all models
-      lambdaModelTuples.foreach { case (lambda: Double, model: GeneralizedLinearModel) =>
-        val metrics = Evaluation.evaluate(model, validatingData)
-        val msg = metrics
-          .keys
-          .toSeq
-          .sorted
-          .map(y => f"    Metric: [$y] value: ${metrics.get(y).get}")
-          .mkString("\n")
 
-        logger.info(s"Model with lambda = $lambda:\n$msg")
+      case _ =>
+        // Calculate metrics for all models
+        val perLambdaValidationMetrics = lambdaModelTuples.map { case (lambda: Double, model: GeneralizedLinearModel) =>
+          val metrics = Evaluation.evaluate(model, validatingData)
+          val msg = metrics.keys
+            .toSeq
+            .sorted
+            .map(m => f"    Metric: [$m] value: ${metrics.get(m).get}")
+            .mkString("\n")
+          perModelMetrics += (lambda -> metrics)
 
-        perModelMetrics += (lambda -> metrics)
-      }
+          logger.info(s"Model with lambda = $lambda:\n$msg")
+
+          metrics
+        }
+        lambdaModelTrackerTuplesOption.foreach { list =>
+          list.zip(perLambdaValidationMetrics).foreach { case ((lambda, modelTracker), finalMetrics) =>
+            sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, perIterationMetrics = None, Some(finalMetrics)))
+          }
+        }
     }
   }
 
@@ -548,21 +588,21 @@ object Driver {
   val INDENT = 2
 
   def main(args: Array[String]): Unit = {
-    /* Parse the parameters from command line, should always be the 1st line in main*/
+    // Parse the parameters from command line, should always be the 1st line in main
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
-
-    /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
+    // Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application
     val sc = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
-
     // A temporary solution to save log into HDFS.
     val logPath = new Path(params.outputDir, "log-message.txt")
     val logger = new PhotonLogger(logPath, sc)
-    //TODO: This Photon log level should be made configurable
+
+    // TODO: This Photon log level should be made configurable
     logger.setLogLevel(PhotonLogger.LogLevelDebug)
 
     try {
       val job = new Driver(params, sc, logger)
       job.run()
+      job.clearListeners()
 
     } catch {
       case e: Exception =>

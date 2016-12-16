@@ -17,22 +17,23 @@ package com.linkedin.photon.ml.avro
 import java.lang.{Double => JDouble}
 import java.util.{List => JList}
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
+import scala.collection.{Set, mutable}
 
-import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetContainer}
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
-import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util._
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.mapred.{AvroInputFormat, AvroWrapper}
 import org.apache.hadoop.io.NullWritable
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
-import scala.collection.{Set, mutable}
+
+import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetContainer}
+import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util._
 
 // TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
 // classes/functions are decoupled from the rest of the code

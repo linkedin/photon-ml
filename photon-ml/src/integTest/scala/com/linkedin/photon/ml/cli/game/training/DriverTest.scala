@@ -16,16 +16,16 @@ package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path}
 
-import collection.JavaConversions._
+import scala.collection.JavaConversions._
 
 import org.apache.spark.{SparkConf, SparkException}
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
-import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
 import com.linkedin.photon.ml.evaluation._

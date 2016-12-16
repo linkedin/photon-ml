@@ -16,27 +16,33 @@
 // TODO: checkstyle plugin
 
 buildscript {
-  repositories {
-    jcenter()
-    maven {
-      // For avro compiler plugin gradle-avro-plugin
-      url 'https://plugins.gradle.org/m2/'
+  if (!project.hasProperty('overrideBuildEnvironment')) {
+    repositories {
+      jcenter()
+      maven {
+        // For avro compiler plugin gradle-avro-plugin
+        url 'https://plugins.gradle.org/m2/'
+      }
     }
   }
 
   dependencies {
-    classpath "com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0"
-    classpath "org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2"
+    classpath 'com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0'
+    classpath 'org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2'
     classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
   }
+}
+
+// For LinkedIn internal builds, apply the LinkedIn-specific build file
+if (project.hasProperty('overrideBuildEnvironment')) {
+  apply from: project.overrideBuildEnvironment
+} else {
+  apply from: "defaultEnvironment.gradle"
 }
 
 allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
-  repositories {
-    jcenter()
-  }
 }
 
 apply from: 'build-scripts/rat.gradle'
@@ -87,19 +93,6 @@ subprojects {
   // Put the build dir into the rootProject
   buildDir = "../build/$name"
 
-  configurations.all {
-    // Brought in by azkaban2, but not needed
-    exclude group: 'commons-dbutils'
-    exclude group: 'commons-fileupload'
-    exclude group: 'commons-pool'
-    exclude group: 'com.h2database'
-    exclude group: 'mysql'
-    exclude group: 'com.google.collections', module: 'google-collections'
-    exclude group: 'kafka', module: 'kafka'
-  }
-}
-
-subprojects {
   plugins.withType(JavaPlugin) {
     tasks.withType(Test) {
       useTestNG()
@@ -176,17 +169,4 @@ subprojects {
 // Task to generate the Gradle wrapper scripts
 task wrapper(type: Wrapper) {
   gradleVersion = '2.8'
-}
-
-// For LinkedIn internal builds, apply the LinkedIn-specific build file
-if (project.hasProperty('overrideBuildEnvironment')) {
-  apply from: project.overrideBuildEnvironment
-} else {
-  // Specify Jar versions here instead of within gradle.properties
-  // This will provide overriding ability for internal builds
-  subprojects {
-    tasks.withType(Jar) {
-      version '1.0.0'
-    }
-  }
 }

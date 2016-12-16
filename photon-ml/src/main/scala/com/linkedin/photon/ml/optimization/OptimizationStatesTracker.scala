@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import scala.collection.mutable
+import scala.collection.immutable.Queue
 
 import breeze.linalg.norm
 import breeze.optimize.FirstOrderMinimizer.{ConvergenceReason, FunctionValuesConverged, GradientConverged}
@@ -25,15 +25,14 @@ import org.apache.spark.Logging
  *
  * @param maxNumStates The maximum number of states to track. This is used to prevent the OptimizationHistoryTracker
  *                     from using too much memory to track the history of the states.
- *
  * @note  DO NOT USE this class outside of Photon-ML. It is intended as an internal utility, and is likely to be
  *        changed or removed in future releases.
  */
 protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable with Logging {
-  private val _times = new mutable.ArrayBuffer[Long]
-  private val _states = new mutable.ArrayBuffer[OptimizerState]
+  private val _startTime = System.currentTimeMillis()
 
-  private var _startTime = System.currentTimeMillis()
+  private var _times = Queue[Long]()
+  private var _states = Queue[OptimizerState]()
   private var numStates = 0
   var convergenceReason: Option[ConvergenceReason] = None
 
@@ -43,17 +42,7 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
    * @return True if either the function values or gradient converged, false otherwise
    */
   def converged: Boolean =
-    convergenceReason.forall(_ == FunctionValuesConverged) || convergenceReason.forall(_ == GradientConverged)
-
-  /**
-   * Clear the cache of states and reset the start time.
-   */
-  def clear(): Unit = {
-    _startTime = System.currentTimeMillis()
-    _times.clear()
-    _states.clear()
-    numStates = 0
-  }
+    convergenceReason.exists(_ == FunctionValuesConverged) || convergenceReason.exists(_ == GradientConverged)
 
   /**
    * Add the most recent state to the list of tracked states. If the limit of cached states is reached, remove the
@@ -62,12 +51,12 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
    * @param state The most recent state
    */
   def track(state: OptimizerState): Unit = {
-    _times += System.currentTimeMillis() - _startTime
-    _states += state
+    _times = _times.enqueue(System.currentTimeMillis() - _startTime)
+    _states = _states.enqueue(state)
     numStates += 1
     if (numStates == maxNumStates) {
-      _times.remove(0)
-      _states.remove(0)
+      _times = _times.dequeue._2
+      _states = _states.dequeue._2
       numStates -= 1
     }
   }
