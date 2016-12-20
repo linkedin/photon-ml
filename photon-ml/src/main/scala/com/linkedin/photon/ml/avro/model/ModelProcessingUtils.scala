@@ -224,14 +224,15 @@ object ModelProcessingUtils {
    * @param gameModel The Game model to extract all features from
    * @param featureIndexLoaders The feature index loaders ; each feature space has a separate, named feature index
    * @return All the (feature name, feature value) pairs of that Game model
-   *         The first Map's keys are like "fixed", "random". Then the RDD String keys are like
+   *         The first Map's keys are "(fixed|random, sectionName)". Then the RDD String keys are like
    *         "random effect id 123". Finally, each user has an element in the RDD element that contains
    *         an array of pairs (feature name, feature value).
    */
   protected[ml] def extractGameModelFeatures(
       sc: SparkContext,
       gameModel: GAMEModel,
-      featureIndexLoaders: Map[String, IndexMapLoader]): Map[String, RDD[(String, Array[(String, Double)])]] = {
+      featureIndexLoaders: Map[String, IndexMapLoader])
+      : Map[(String, String), RDD[(String, Array[(String, Double)])]] = {
 
     // Structure of files for this model on HDFS is:
     //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
@@ -249,11 +250,12 @@ object ModelProcessingUtils {
 
       case (fixedEffect: String, model: FixedEffectModel) =>
         val featureIndex = featureIndexLoaders(model.featureShardId).indexMapForRDD()
-        (fixedEffect, sc.parallelize(Array((fixedEffect, extractGLMFeatures(model.model, featureIndex)))))
+        ((FIXED_EFFECT, fixedEffect),
+          sc.parallelize(Array((fixedEffect, extractGLMFeatures(model.model, featureIndex)))))
 
       case (randomEffect: String, model: RandomEffectModel) =>
         val featureShardId = model.featureShardId // each random effect has its own feature space (= shard id)
-        (randomEffect, model.modelsRDD.mapPartitions { iter => // Spark partition holds many random effects
+        ((RANDOM_EFFECT, randomEffect), model.modelsRDD.mapPartitions { iter => // Partition has many random effects
           val featureIndexes = featureIndexLoaders(featureShardId).indexMapForRDD()
           iter.map { case (subModelId, subModel) => // e.g. subModelId = "random effect id 123"
             (subModelId, extractGLMFeatures(subModel, featureIndexes)) }

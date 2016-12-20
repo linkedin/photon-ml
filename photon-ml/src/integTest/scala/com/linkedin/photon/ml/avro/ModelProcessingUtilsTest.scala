@@ -218,12 +218,12 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // ... and verify the models
     features.foreach {
-      case ("fixed", modelRDD) =>
+      case ((FIXED_EFFECT, "fixed"), modelRDD) =>
         val calculated: Array[(String, Double)] = modelRDD.collect()(0)._2
         val ans = List(1, 2, 5).map(i => featureNames("fixedFeatures")(i)) zip List(11,21,51)
         assert(calculated sameElements ans)
 
-      case ("RE1", modelRDD) =>
+      case ((RANDOM_EFFECT, "RE1"), modelRDD) =>
         val features = featureNames("RE1Features")
         modelRDD.collect.foreach {
 
@@ -234,7 +234,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
             assert(coefficients sameElements (List(1, 2).map(i => features(i)) zip List(112, 512)))
         }
 
-      case ("RE2", modelRDD) =>
+      case ((RANDOM_EFFECT, "RE2"), modelRDD) =>
         val features = featureNames("RE2Features")
         modelRDD.collect.foreach {
 
