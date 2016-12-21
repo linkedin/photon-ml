@@ -18,12 +18,12 @@ package com.linkedin.photon.ml.avro
  * Common field names in the Avro data set used in GAME
  */
 object AvroFieldNames {
-  protected[avro] val NAME: String = "name"
-  protected[avro] val TERM: String = "term"
-  protected[avro] val VALUE: String = "value"
-  protected[avro] val RESPONSE: String = "response"
-  protected[avro] val OFFSET: String = "offset"
-  protected[avro] val WEIGHT: String = "weight"
-  protected[avro] val UID: String = "uid"
-  protected[avro] val META_DATA_MAP: String = "metadataMap"
+   val NAME: String = "name"
+   val TERM: String = "term"
+   val VALUE: String = "value"
+   val RESPONSE: String = "response"
+   val OFFSET: String = "offset"
+   val WEIGHT: String = "weight"
+   val UID: String = "uid"
+   val META_DATA_MAP: String = "metadataMap"
 }
