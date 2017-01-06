@@ -14,15 +14,15 @@
  */
 package com.linkedin.photon.ml
 
-import com.linkedin.photon.ml.OptionNames._
+import org.testng.Assert._
+import org.testng.annotations.{DataProvider, Test}
+
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
-import com.linkedin.photon.ml.supervised.TaskType
+import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.test.CommonTestUtils
-import org.testng.Assert._
-import org.testng.annotations.{DataProvider, Test}
 
 /**
  * This class tests PhotonMLCmdLineParser, verifying that all params castings and verifications are good
@@ -307,7 +307,7 @@ object PhotonMLCmdLineParserTest {
     var i = 0
     REQUIRED_OPTIONS.foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i+1) = option match {
+      args(i + 1) = option match {
         case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString.toLowerCase
         case _ => "value"
       }
@@ -321,7 +321,7 @@ object PhotonMLCmdLineParserTest {
     var i = 0
     OPTIONAL_OPTIONS.foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i+1) = option match {
+      args(i + 1) = option match {
         case VALIDATE_DIR_OPTION => "validate_dir"
         case REGULARIZATION_WEIGHTS_OPTION => List(0.5, 0.7).mkString(",")
         case REGULARIZATION_TYPE_OPTION => RegularizationType.L2.toString
@@ -344,7 +344,7 @@ object PhotonMLCmdLineParserTest {
 
     BOOLEAN_OPTIONAL_OPTIONS.foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i+1) = booleanOptionValue.toString
+      args(i + 1) = booleanOptionValue.toString
       i += 2
     }
 
@@ -360,7 +360,7 @@ object PhotonMLCmdLineParserTest {
     var i = 0
     REQUIRED_OPTIONS.filter(_ != missingArgName).foreach { option =>
       args(i) = CommonTestUtils.fromOptionNameToArg(option)
-      args(i+1) = option match {
+      args(i + 1) = option match {
         case TASK_TYPE_OPTION => TaskType.LINEAR_REGRESSION.toString.toLowerCase
         case _ => "value"
       }

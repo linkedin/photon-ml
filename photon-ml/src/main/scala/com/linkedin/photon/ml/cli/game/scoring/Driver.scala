@@ -126,8 +126,8 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
     // TODO: make the number of files written to HDFS configurable
 
     // Load the model from HDFS, ignoring the feature index loader
-    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
-      Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
+    val (gameModel, _) =
+      ModelProcessingUtils.loadGameModelFromHDFS(Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
 
     logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
 

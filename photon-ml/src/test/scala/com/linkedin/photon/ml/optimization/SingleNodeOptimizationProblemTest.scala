@@ -47,7 +47,7 @@ class SingleNodeOptimizationProblemTest {
     val problem = new SingleNodeOptimizationProblem(
       optimizer,
       objectiveFunction,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       isComputingVariances = false)
     val trainingData = mock(classOf[Iterable[LabeledPoint]])
     val coefficients = mock(classOf[Vector[Double]])
@@ -72,7 +72,7 @@ class SingleNodeOptimizationProblemTest {
     val problem = new SingleNodeOptimizationProblem(
       optimizer,
       objectiveFunction,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       isComputingVariances = false)
 
     doReturn(normalizationContextBroadcast).when(optimizer).getNormalizationContext

@@ -24,8 +24,8 @@ import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, Logistic
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, LBFGS, OptimizerType, TRON}
 import com.linkedin.photon.ml.stat.BasicStatistics
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.SparkTestUtils
 
@@ -95,7 +95,8 @@ class NormalizationContextIntegTest extends SparkTestUtils {
 
   @DataProvider(name = "generateStandardizationTestData")
   def generateStandardizationTestData(): Array[Array[Any]] = {
-    (for (x <- OptimizerType.values; y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM))
+    (for (x <- OptimizerType.values;
+          y <- TaskType.values.filter { t => t != TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM && t != TaskType.NONE })
       yield Array[Any](x, y)).toArray
   }
 

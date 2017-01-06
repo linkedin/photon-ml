@@ -34,6 +34,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
  * A set of utility functions for GAME unit and integration tests
  */
 trait GameTestUtils {
+
   self: SparkTestUtils =>
 
   /**
@@ -111,7 +112,7 @@ trait GameTestUtils {
         sc,
         1),
       None,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       sc.broadcast(NoNormalization()),
       isTrackingState = false,
       isComputingVariance = false)
@@ -124,9 +125,9 @@ trait GameTestUtils {
    * @param dimensions The model dimension
    * @return The newly generated fixed effect model
    */
-  def generateFixedEffectModel(featureShardId: String, dimensions: Int) = new FixedEffectModel(
-    sc.broadcast(LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(dimensions))),
-    featureShardId)
+  def generateFixedEffectModel(featureShardId: String, dimensions: Int): FixedEffectModel =
+    new FixedEffectModel(sc.broadcast(LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))),
+      featureShardId)
 
   /**
    * Generates a fixed effect coordinate and model
@@ -199,7 +200,7 @@ trait GameTestUtils {
   def generateLinearModelsForRandomEffects(
       randomEffectIds: Seq[String],
       dimensions: Int): Seq[(String, GeneralizedLinearModel)] =
-    randomEffectIds.map((_, LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(dimensions))))
+    randomEffectIds.map((_, LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))))
 
   /**
    * Generates a random effect optimization problem
@@ -218,7 +219,7 @@ trait GameTestUtils {
       SingleNodeGLMLossFunction.create(
         configuration,
         LogisticLossFunction),
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       sc.broadcast(NoNormalization()),
       isTrackingState = false,
       isComputingVariance = false)
@@ -241,9 +242,10 @@ trait GameTestUtils {
       numEntities: Int,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed) = {
+      seed: Int = DefaultSeed):
+        (RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction], RandomEffectModelInProjectedSpace) = {
 
-    val randomEffectIds = (1 to numEntities).map("re" + _).toSeq
+    val randomEffectIds = (1 to numEntities).map("re" + _)
 
     val randomEffectDataset = generateRandomEffectDataSet(
       randomEffectIds,

@@ -27,13 +27,15 @@ import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
-import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.util.PalDBIndexMapParams
 
 /**
  *  A bean class for PhotonML parameters to replace the original case class for input parameters.
  */
 class Params extends PalDBIndexMapParams {
+
+  import TaskType._
+
   /**
    * Training data directory
    */

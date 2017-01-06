@@ -25,7 +25,6 @@ import org.apache.hadoop.fs.Path
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite, InputFormatType}
@@ -34,17 +33,18 @@ import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.RegularizationType.RegularizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
+import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.{PalDBIndexMapTest, Utils}
+import TaskType.TaskType
 
 /**
   * This class tests Driver with a set of important configuration parameters
   */
 class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+
   import DriverIntegTest._
 
   @Test
@@ -261,7 +261,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     appendCommonJobArgs(args, outputDir)
     args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
     args += "TRON"
-    appendOffHeapConfig(args, addIntercept = true)
+    appendOffHeapConfig(args)
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
@@ -334,7 +334,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
       args += CommonTestUtils.fromOptionNameToArg(VALIDATE_PER_ITERATION)
       args += true.toString
-      appendOffHeapConfig(args, addIntercept = true)
+      appendOffHeapConfig(args)
       args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
       args += LIGHT_MAX_NUM_ITERATIONS.toString
 
@@ -779,7 +779,9 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @DataProvider
   def testDiagnosticGenerationProvider(): Array[Array[Any]] = {
+
     val base = getClass.getClassLoader.getResource("DriverIntegTest/input").getPath
+
     val models = Map(
       TaskType.LINEAR_REGRESSION -> ("linear_regression_train.avro", "linear_regression_val.avro", 7, 1000),
       TaskType.LOGISTIC_REGRESSION -> ("logistic_regression_train.avro", "logistic_regression_val.avro", 124, 32561),
@@ -799,58 +801,65 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       RegularizationType.L1 -> (OptimizerType.LBFGS, candidateLambdas),
       RegularizationType.ELASTIC_NET -> (OptimizerType.LBFGS, candidateLambdas))
 
+    // Tuple example (this is the first tuple generated in the cartesian product):
+    // (LINEAR_REGRESSION,linear_regression_train.avro,linear_regression_val.avro,NONE,TRON,List(0.0),7,1000)
     (for (m <- models; r <- regularizations) yield {
       (m._1, m._2._1, m._2._2, r._1, r._2._1, r._2._2, m._2._3, m._2._4)
-    }).filter(tuple8 => (tuple8._1 != TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) || (tuple8._5 != OptimizerType.TRON))
+    })
+      .filter(tuple8 => (tuple8._1 != TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) || (tuple8._5 != OptimizerType.TRON))
       .map { case (taskType, trainData, testData, regType, optimType, lambdas, numDim, numSamp) =>
-      val diagnosticMode = DiagnosticMode.ALL
-      val outputDir = s"${taskType}_${regType}_$diagnosticMode"
 
-      val args = mutable.ArrayBuffer[String]()
-      args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
-      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
-        args += 1e-1.toString
-      } else {
-        args += 1e-6.toString
-      }
+        val diagnosticMode = DiagnosticMode.ALL
+        val outputDir = s"${taskType}_${regType}_$diagnosticMode"
 
-      args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
-      if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
-        args += LIGHT_MAX_NUM_ITERATIONS.toString
-      } else {
-        args += LIGHT_MAX_NUM_ITERATIONS.toString
-      }
+        val args = mutable.ArrayBuffer[String]()
+        args += CommonTestUtils.fromOptionNameToArg(TOLERANCE_OPTION)
+        if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+          args += 1e-1.toString
+        } else {
+          args += 1e-6.toString
+        }
 
-      args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
-      args += regType.toString
-      args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
-      args += optimType.toString
-      args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
-      args += s"$base/$trainData"
-      args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)
-      args += outputDir + "/models"
-      args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
-      args += taskType.toString
-      args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
-      if (TaskType.POISSON_REGRESSION == taskType) {
-        args += FieldNamesType.RESPONSE_PREDICTION.toString
-      } else {
-        args += FieldNamesType.TRAINING_EXAMPLE.toString
-      }
-      args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
-      args += s"$base/$testData"
-      args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
-      args += lambdas.mkString(",")
-      args += CommonTestUtils.fromOptionNameToArg(ELASTIC_NET_ALPHA_OPTION)
-      args += "0.5"
-      args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
-      args += outputDir + "/summary"
-      args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
-      args += NormalizationType.STANDARDIZATION.toString
-      args += CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE)
-      args += diagnosticMode.toString
-      Array(outputDir, args.toArray, numDim, numSamp)
-    }.toArray
+        args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
+        if (taskType == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM) {
+          args += LIGHT_MAX_NUM_ITERATIONS.toString
+        } else {
+          args += LIGHT_MAX_NUM_ITERATIONS.toString
+        }
+
+
+        args += CommonTestUtils.fromOptionNameToArg(OPTIMIZER_TYPE_OPTION)
+        args += optimType.toString
+        args += CommonTestUtils.fromOptionNameToArg(TRAIN_DIR_OPTION)
+        args += s"$base/$trainData"
+        args += CommonTestUtils.fromOptionNameToArg(OUTPUT_DIR_OPTION)
+        args += outputDir + "/models"
+        args += CommonTestUtils.fromOptionNameToArg(TASK_TYPE_OPTION)
+        args += taskType.toString
+        args += CommonTestUtils.fromOptionNameToArg(FORMAT_TYPE_OPTION)
+        if (TaskType.POISSON_REGRESSION == taskType) {
+          args += FieldNamesType.RESPONSE_PREDICTION.toString
+        } else {
+          args += FieldNamesType.TRAINING_EXAMPLE.toString
+        }
+        args += CommonTestUtils.fromOptionNameToArg(VALIDATE_DIR_OPTION)
+        args += s"$base/$testData"
+        args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_TYPE_OPTION)
+        args += regType.toString
+        args += CommonTestUtils.fromOptionNameToArg(REGULARIZATION_WEIGHTS_OPTION)
+        args += lambdas.mkString(",")
+        if (regType == RegularizationType.ELASTIC_NET) {
+          args += CommonTestUtils.fromOptionNameToArg(ELASTIC_NET_ALPHA_OPTION)
+          args += "0.5"
+        }
+        args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
+        args += outputDir + "/summary"
+        args += CommonTestUtils.fromOptionNameToArg(NORMALIZATION_TYPE)
+        args += NormalizationType.STANDARDIZATION.toString
+        args += CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE)
+        args += diagnosticMode.toString
+        Array(outputDir, args.toArray, numDim, numSamp)
+      }.toArray
   }
 
   @Test(dataProvider = "testDiagnosticGenerationProvider")
@@ -863,7 +872,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     FileUtils.deleteDirectory(new File(outputDir))
 
     MockDriver.runLocally(
-      args = args.toArray,
+      args = args,
       sparkContext = sc,
       expectedStages = Array(
         DriverStage.INIT,
@@ -930,6 +939,7 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 }
 
 object DriverIntegTest {
+
   val defaultParams = new Params()
   val EXPECTED_NUM_FEATURES = 14
   val EXPECTED_NUM_TRAINING_DATA = 250
@@ -939,7 +949,7 @@ object DriverIntegTest {
   val HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS = 50
   // Configured for any optimizer in tests that we care about something other than the optimizer's performance
   val LIGHT_MAX_NUM_ITERATIONS = 1
-  val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
+  private val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
 
   def appendCommonJobArgs(
       args: mutable.ArrayBuffer[String],

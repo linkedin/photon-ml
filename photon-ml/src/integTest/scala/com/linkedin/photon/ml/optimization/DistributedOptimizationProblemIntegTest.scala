@@ -206,21 +206,21 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       optimizerL1,
       objectiveFunction,
       samplerOption = None,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       L1RegularizationContext,
       isComputingVariances = false)
     val l2Problem = new DistributedOptimizationProblem(
       optimizer,
       objectiveFunctionL2,
       samplerOption = None,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       L2RegularizationContext,
       isComputingVariances = false)
     val elasticProblem = new DistributedOptimizationProblem(
       optimizerL1,
       objectiveFunctionL2,
       samplerOption = None,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       ElasticNetRegularizationContext(alpha),
       isComputingVariances = false)
 
@@ -364,7 +364,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       optimizer,
       objectiveFunction,
       samplerOption = None,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       NoRegularizationContext,
       isComputingVariances = false)
 
@@ -391,7 +391,7 @@ object DistributedOptimizationProblemIntegTest {
   val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
   val TOLERANCE = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
   val NORMALIZATION = NoNormalization()
-  val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
+  val NORMALIZATION_MOCK: Broadcast[NormalizationContext] = mock(classOf[Broadcast[NormalizationContext]])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 

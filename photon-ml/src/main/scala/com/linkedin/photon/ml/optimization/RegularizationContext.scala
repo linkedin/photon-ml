@@ -32,8 +32,25 @@ import com.linkedin.photon.ml.util.Summarizable
  *   <li>[[RegularizationType.NONE]] has a fixed alpha of 0.0</li>
  * </ul>
  */
-class RegularizationContext(val regularizationType: RegularizationType, elasticNetParam: Option[Double] = None)
+class RegularizationContext(val regularizationType: RegularizationType, val elasticNetParam: Option[Double] = None)
   extends Summarizable with Serializable {
+
+  checkInvariants()
+
+  /**
+   * Invariants that hold for every instance of RegularizationContext
+   */
+  def checkInvariants(): Unit = {
+    require((regularizationType == RegularizationType.ELASTIC_NET) || elasticNetParam.isEmpty,
+      "Elastic net parameter can be specified only for elastic net regularization")
+
+    require(regularizationType != RegularizationType.ELASTIC_NET
+      || (elasticNetParam.isDefined && elasticNetParam.exists(p => 0.0d < p && p <= 1.0d))
+      || elasticNetParam.isEmpty,
+      s"""Elastic net regularization is specified, but elastic net param ($elasticNetParam.get)
+         | should be in interval (0,1].
+       """.stripMargin)
+  }
 
   val alpha: Double = (regularizationType, elasticNetParam) match {
     case (RegularizationType.ELASTIC_NET, Some(x)) if x > 0.0d && x <= 1.0d => x
@@ -47,6 +64,12 @@ class RegularizationContext(val regularizationType: RegularizationType, elasticN
 
   override def toSummaryString: String =
     s"regularizationType = $regularizationType" + elasticNetParam.foreach(", elasticNetParam = " + _.toString)
+
+  def toJson: String =
+    s"""{
+       |   "regularizationType": "$regularizationType",
+       |   "elasticNetParam": ${elasticNetParam.getOrElse("null")}
+       |}""".stripMargin
 
   /**
    * Return the weight for the L1 regularization
@@ -81,10 +104,25 @@ object L1RegularizationContext extends RegularizationContext(RegularizationType.
 object L2RegularizationContext extends RegularizationContext(RegularizationType.L2)
 
 /**
-  * A factory object for constructing Elastic Net regularization contexts
-  */
+ * A factory object for constructing Elastic Net regularization contexts
+ */
 object ElasticNetRegularizationContext {
-  def apply(alpha: Double): RegularizationContext = {
+
+  def apply(alpha: Double): RegularizationContext =
     new RegularizationContext(RegularizationType.ELASTIC_NET, Some(alpha))
-  }
 }
+
+object RegularizationContext {
+
+  /**
+   * A factory method from a Map (usually from JSON format, parsed by GLMOptimizationConfiguration).
+   *
+   * @param m A Map that contains (key, values) for a RegularizationContext instance's fields
+   * @return An instance of RegularizationContext
+   */
+  def apply(m: Map[String, Any]): RegularizationContext =
+    new RegularizationContext(
+      RegularizationType.withName(m("regularizationType").asInstanceOf[String]),
+      Option(m("elasticNetParam")).map(_.asInstanceOf[Double]))
+}
+

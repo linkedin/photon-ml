@@ -17,8 +17,10 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scala.util.Random
 
 import org.apache.hadoop.fs.Path
+
 import org.apache.spark.SparkException
 import org.apache.spark.mllib.evaluation.RegressionMetrics
+
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
@@ -29,16 +31,21 @@ import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.PhotonLogger
 
+/**
+ * Integration tests for scoring Driver.
+ */
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithUnsupportedEvaluatorType(): Unit = sparkTest("failedTestRunWithUnsupportedEvaluatorType") {
+
     val args = DriverTest.yahooMusicArgs(getTmpDir, evaluatorTypes = Seq("UnknownEvaluator"))
     runDriver(CommonTestUtils.argArray(args))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithNaNInGAMEData(): Unit = sparkTest("failedTestRunWithNaNInGAMEData") {
+
     val gameDatum = new GameDatum(
       response = Double.NaN,
       offsetOpt = Some(0.0),
@@ -52,12 +59,14 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithOutputDirExists(): Unit = sparkTest("failedTestRunWithOutputDirExists") {
+
     val args = DriverTest.yahooMusicArgs(getTmpDir, deleteOutputDirIfExists = false)
     runDriver(CommonTestUtils.argArray(args))
   }
 
   @Test
   def testGAMEModelId(): Unit = sparkTest("testGAMEModelId") {
+
     val modelId = "someModelIdForTest"
     val outputDir = getTmpDir
     val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = true, modelId = modelId)
@@ -75,6 +84,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(dataProvider = "numOutputFilesProvider")
   def testNumOutputFiles(numOutputFiles: Int): Unit = sparkTest("testNumOutputFiles") {
+
     val outputDir = getTmpDir
     val args = DriverTest.yahooMusicArgs(outputDir, numOutputFiles = numOutputFiles)
     runDriver(CommonTestUtils.argArray(args))
@@ -87,6 +97,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def endToEndRunWithFullGLMix(): Unit = sparkTest("endToEndRunWithFullGLMix") {
+
     val outputDir = getTmpDir
     val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = false, deleteOutputDirIfExists = true)
     runDriver(CommonTestUtils.argArray(args))
@@ -94,7 +105,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
     val scoreDir = Driver.getScoresDir(outputDir)
     val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
-        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
+        .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
 
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
@@ -104,6 +115,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def endToEndRunWithFixedEffectOnlyGLMix(): Unit = sparkTest("endToEndRunWithFixedEffectOnlyGLMix") {
+
     val outputDir = getTmpDir
     val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = true, deleteOutputDirIfExists = true)
     runDriver(CommonTestUtils.argArray(args))
@@ -111,7 +123,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
     val scoreDir = Driver.getScoresDir(outputDir)
     val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
-        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
+        .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
 
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
@@ -121,6 +133,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def evaluateFixedEffectOnlyGLMixWithPrecisionAtK(): Unit = sparkTest("evaluateFixedEffectOnlyGLMixWithPrecisionAtK") {
+
     val args = DriverTest.yahooMusicArgs(
       getTmpDir,
       fixedEffectOnly = true,
@@ -201,7 +214,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
     val scoreDir = Driver.getScoresDir(outputDir)
     val predictionAndObservations = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoreDir, sc)
-        .map { case (modelId, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
+        .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
 
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
@@ -215,6 +228,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
    * @param args the command-line arguments
    */
   private def runDriver(args: Array[String]): Driver = {
+
     val params = Params.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     logger.setLogLevel(PhotonLogger.LogLevelDebug)
@@ -229,8 +243,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 object DriverTest {
 
   /**
-    * Arguments set for the Yahoo music data and model for the Game scoring driver
-    */
+   * Arguments set for the Yahoo music data and model for the Game scoring driver
+   */
   def yahooMusicArgs(
       outputDir: String,
       fixedEffectOnly: Boolean = false,

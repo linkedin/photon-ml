@@ -50,22 +50,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       regularization)
     val linearProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LinearRegressionModel.create,
+      LinearRegressionModel.apply,
       regularization)
     val poissonProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      PoissonRegressionModel.create,
+      PoissonRegressionModel.apply,
       regularization)
     val hingeProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      SmoothedHingeLossLinearSVMModel.create,
+      SmoothedHingeLossLinearSVMModel.apply,
       regularization)
 
     val logisticModel = logisticProblem.publicInitializeZeroModel(DIMENSION)
@@ -98,22 +98,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       regularization)
     val linearProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      LinearRegressionModel.create,
+      LinearRegressionModel.apply,
       regularization)
     val poissonProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      PoissonRegressionModel.create,
+      PoissonRegressionModel.apply,
       regularization)
     val hingeProblem = new MockOptimizationProblem(
       optimizer,
       objective,
-      SmoothedHingeLossLinearSVMModel.create,
+      SmoothedHingeLossLinearSVMModel.apply,
       regularization)
     val coefficients = generateDenseVector(DIMENSION)
 
@@ -159,22 +159,22 @@ class GeneralizedLinearOptimizationProblemTest {
     val problemNone = new MockOptimizationProblem(
       optimizerNoReg,
       objectiveNoReg,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       NoRegularizationContext)
     val problemL1 = new MockOptimizationProblem(
       optimizerL1Reg,
       objectiveNoReg,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       L1RegularizationContext)
     val problemL2 = new MockOptimizationProblem(
       optimizerNoReg,
       objectiveL2Reg,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       L2RegularizationContext)
     val problemElasticNet = new MockOptimizationProblem(
       optimizerL1Reg,
       objectiveL2Reg,
-      LogisticRegressionModel.create,
+      LogisticRegressionModel.apply,
       ElasticNetRegularizationContext(alpha))
 
     doReturn(l1RegWeight).when(optimizerL1Reg).l1RegularizationWeight
@@ -205,7 +205,7 @@ object GeneralizedLinearOptimizationProblemTest {
       glmConstructor,
       false) {
 
-    val mockGLM = mock(classOf[GeneralizedLinearModel])
+    private val mockGLM = mock(classOf[GeneralizedLinearModel])
 
     // Public versions of protected methods for testing
     def publicInitializeZeroModel(dimension: Int): GeneralizedLinearModel = initializeZeroModel(dimension)

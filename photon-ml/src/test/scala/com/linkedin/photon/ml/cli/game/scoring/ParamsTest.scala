@@ -32,7 +32,7 @@ class ParamsTest {
 
   @Test(dataProvider = "requiredOptions", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testMissingRequiredArg(optionName: String): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(optionName))
+    Params.parseFromCommandLine(mapToArray(requiredArgsMissingOne(optionName)))
   }
 }
 

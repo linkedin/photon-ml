@@ -70,7 +70,12 @@ object CommonTestUtils {
     * @param seed the random seed value (defaults to current system time)
     * @return a dense vector with values sampled from the Gaussian
     */
-  def generateDenseVector(dim: Int, mean: Double = 0, sd: Double = 1, seed: Long = System.currentTimeMillis) = {
+  def generateDenseVector(
+      dim: Int,
+      mean: Double = 0,
+      sd: Double = 1,
+      seed: Long = System.currentTimeMillis): DenseVector[Double] = {
+
     val random = new Random(seed)
     DenseVector(Seq.fill(dim)({ (random.nextGaussian + mean) * sd }).toArray)
   }
@@ -90,7 +95,7 @@ object CommonTestUtils {
     val r = new Random(System.currentTimeMillis())
     val result = new ListBuffer[Vector[Double]]
 
-    for (i <- 0 until numValidVectors) {
+    for (_ <- 0 until numValidVectors) {
       val v = new Array[Double](numDimensions)
       for (j <- 0 until numDimensions) {
         v(j) = r.nextDouble()
@@ -98,20 +103,20 @@ object CommonTestUtils {
       result +=  new DenseVector[Double](v)
     }
 
-    for (i <- 0 until numInvalidVectors) {
+    for (_ <- 0 until numInvalidVectors) {
       val v = new Array[Double](numDimensions)
       /* In the worst case, if all our coin tosses below fail, we might end up with a valid vector.
          Hence setting the first element invalid to guarantee an invalid vector */
       v(0) = Double.NaN
       for (j <- 1 until numDimensions) {
-        v(j) = r.nextBoolean() match {
-          case true =>
-            r.nextInt(3) match {
-              case 0 => Double.NaN
-              case 1 => Double.PositiveInfinity
-              case 2 => Double.NegativeInfinity
-            }
-          case false => r.nextDouble()
+        v(j) = if (r.nextBoolean()) {
+          r.nextInt(3) match {
+            case 0 => Double.NaN
+            case 1 => Double.PositiveInfinity
+            case 2 => Double.NegativeInfinity
+          }
+        } else {
+          r.nextDouble()
         }
       }
       result += new DenseVector[Double](v)
@@ -132,9 +137,9 @@ object CommonTestUtils {
   }
 
   /**
-   * Implicitly convert a [[Map]] of option name and value into a [[Seq]] of arguments
+   * Convert a [[Map]] of option name and value into a [[Seq]] of arguments
    */
-  implicit def mapToArray(args: Map[String, String]): Array[String] = {
+  def mapToArray(args: Map[String, String]): Array[String] = {
     args.toArray.flatMap { case (name, value) => Seq(name, value) }
   }
 }

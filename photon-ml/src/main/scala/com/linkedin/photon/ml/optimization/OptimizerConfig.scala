@@ -27,7 +27,37 @@ case class OptimizerConfig(
     constraintMap: Option[Map[Int, (Double, Double)]])
   extends Summarizable {
 
-  // TODO: Add constraintMap to summary
+  checkInvariants()
+
+  def checkInvariants(): Unit = {
+    require(0 <= maximumIterations, s"Less than 1 specified for maximumIterations (specified: $maximumIterations")
+    require(0.0d <= tolerance, s"Specified negative tolerance for optimizer: $tolerance")
+  }
+
+  // TODO: Add constraintMap to summary and JSON
   override def toSummaryString: String =
     s"optimizerType = $optimizerType, maximumIterations = $maximumIterations, tolerance = $tolerance"
+
+  def toJson: String =
+    s"""{
+       |   "optimizerType": "$optimizerType",
+       |   "maximumIterations": $maximumIterations,
+       |   "tolerance": $tolerance
+       |}""".stripMargin
+}
+
+object OptimizerConfig {
+
+  /**
+   * A factory method from a Map, usually in the context of parsing JSON in GLMOptimizationConfiguration.
+   *
+   * @param m A Map that contains (key, values) for an OptimizerConfig instance's fields
+   * @return An instance of OptimizerConfig
+   */
+  def apply(m: Map[String, Any]): OptimizerConfig =
+    new OptimizerConfig(
+      OptimizerType.withName(m("optimizerType").asInstanceOf[String]),
+      m("maximumIterations").asInstanceOf[Double].toInt, // scala JSON does not parse Int
+      m("tolerance").asInstanceOf[Double],
+      None)
 }

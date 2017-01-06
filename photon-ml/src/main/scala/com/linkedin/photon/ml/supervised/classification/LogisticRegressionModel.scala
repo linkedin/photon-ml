@@ -73,12 +73,12 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
 }
 
 object LogisticRegressionModel {
+
   /**
    * Create a new logistic regression model with the provided coefficients (means) and variances
    *
    * @param coefficients The feature coefficient means and variances for the model
    * @return A logistic regression model
    */
-  def create(coefficients: Coefficients): LogisticRegressionModel =
-    new LogisticRegressionModel(coefficients)
+  def apply(coefficients: Coefficients): GeneralizedLinearModel = new LogisticRegressionModel(coefficients)
 }

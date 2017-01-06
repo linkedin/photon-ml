@@ -30,7 +30,10 @@ import com.linkedin.photon.ml.util.Summarizable
 abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Serializable with Summarizable {
 
   /**
-   * Compute the mean of the model
+   * Compute the mean of the model.
+   *
+   * NOTE: "mean" = after link function in the case of logistic regression, as opposed to "score",
+   * which is "before the link function".
    *
    * @param features The input data point's features
    * @param offset The input data point's offset
@@ -39,7 +42,9 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
   protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
 
   /**
-   * Compute the score for the given features
+   * Compute the score for the given features.
+   *
+   * NOTE: "score" = before link function in the case of logistic regression, see above.
    *
    * @param features The input data point's feature
    * @return The score for the passed features

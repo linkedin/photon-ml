@@ -23,7 +23,6 @@ import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
-import com.linkedin.photon.ml.supervised.TaskType
 
 /**
  * A collection of functions used to parse Photon-ML's parameters [[Params]]
@@ -51,7 +50,7 @@ object PhotonMLCmdLineParser {
    */
   def checkConstraintStringValidity(inputString: String): Boolean = {
     JSON.parseFull(inputString) match {
-      case Some(parsed: List[Map[String, Any]]) => true
+      case Some(_: List[Map[String, Any]]) => true // although there is a warning here, changing this line fails tests
       case _ => false
     }
   }

@@ -21,10 +21,9 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.{Evaluation, ModelTraining}
+import com.linkedin.photon.ml.{Evaluation, ModelTraining, TaskType}
 
 /**
  * Integration tests for FittingDiagnostic
