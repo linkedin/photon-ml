@@ -199,7 +199,7 @@ Alternatively, you can follow these steps to try Photon ML on your machine.
 This step is platform-dependent. On OS X, you can install Spark with [Homebrew](http://brew.sh/) using the following command:
 
 ```
-brew install spark
+brew install apache-spark
 ```
 
 For more information, see the [Spark docs](http://spark.apache.org/docs/latest/index.html).
