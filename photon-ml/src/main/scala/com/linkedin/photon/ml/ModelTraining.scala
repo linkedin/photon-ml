@@ -24,7 +24,6 @@ import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -54,7 +53,7 @@ object ModelTraining extends Logging {
    */
   def trainGeneralizedLinearModel(
       trainingData: RDD[LabeledPoint],
-      taskType: TaskType,
+      taskType: TaskType.TaskType,
       optimizerType: OptimizerType,
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
@@ -102,7 +101,7 @@ object ModelTraining extends Logging {
    */
   def trainGeneralizedLinearModel(
       trainingData: RDD[LabeledPoint],
-      taskType: TaskType,
+      taskType: TaskType.TaskType,
       optimizerType: OptimizerType,
       regularizationContext: RegularizationContext,
       regularizationWeights: List[Double],
@@ -121,8 +120,8 @@ object ModelTraining extends Logging {
 
     // Construct the generalized linear optimization problem
     val (glmConstructor, objectiveFunction) = taskType match {
-      case LOGISTIC_REGRESSION =>
-        val constructor = LogisticRegressionModel.create _
+      case TaskType.LOGISTIC_REGRESSION =>
+        val constructor = LogisticRegressionModel.apply _
         val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           LogisticLossFunction,
@@ -130,8 +129,8 @@ object ModelTraining extends Logging {
           treeAggregateDepth)
         (constructor, objective)
 
-      case LINEAR_REGRESSION =>
-        val constructor = LinearRegressionModel.create _
+      case TaskType.LINEAR_REGRESSION =>
+        val constructor = LinearRegressionModel.apply _
         val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           SquaredLossFunction,
@@ -139,8 +138,8 @@ object ModelTraining extends Logging {
           treeAggregateDepth)
         (constructor, objective)
 
-      case POISSON_REGRESSION =>
-        val constructor = PoissonRegressionModel.create _
+      case TaskType.POISSON_REGRESSION =>
+        val constructor = PoissonRegressionModel.apply _
         val objective = DistributedGLMLossFunction.create(
           optimizationConfig,
           PoissonLossFunction,
@@ -148,8 +147,8 @@ object ModelTraining extends Logging {
           treeAggregateDepth)
         (constructor, objective)
 
-      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val constructor = SmoothedHingeLossLinearSVMModel.create _
+      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        val constructor = SmoothedHingeLossLinearSVMModel.apply _
         val objective = DistributedSmoothedHingeLossFunction.create(
           optimizationConfig,
           trainingData.sparkContext,

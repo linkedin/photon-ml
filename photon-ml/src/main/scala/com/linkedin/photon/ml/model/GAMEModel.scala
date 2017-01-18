@@ -14,19 +14,48 @@
  */
 package com.linkedin.photon.ml.model
 
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
-import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
+import scala.collection.Map
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import scala.collection.Map
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.{BroadcastLike, RDDLike, TaskType}
 
 /**
- * Generalized additive mixed effect (GAME) model
+ * Generalized additive mixed effect (GAME) model.
  *
  * @param gameModels A (modelName -> model) map containing the models that make up the complete GAME model
+ * @param taskType the type of model. Even though there are many sub-problems, there is only one loss function type
+ *                 for a given GameModel.
  */
-class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
+class GAMEModel(gameModels: Map[String, DatumScoringModel], val taskType: TaskType = TaskType.NONE)
+    extends DatumScoringModel {
+
+  checkInvariants()
+
+  /**
+   * This method checks GameModel's invariants.
+   *
+   * Invariant #1: all sub-models are of type taskType
+   */
+  def checkInvariants(): Unit = {
+
+    val taskType = this.taskType // so Spark can close and serialize the lambda in the foreach below
+
+    gameModels.foreach {
+      case (sectionName, datumScoringModel: FixedEffectModel) =>
+        require(TaskType.matches(datumScoringModel.model, taskType),
+          s"Expecting ${taskType.toString} for $sectionName but got ${TaskType.name(datumScoringModel.model)}")
+
+      case (_, datumScoringModel: RandomEffectModel) =>
+        datumScoringModel.modelsRDD.foreach {
+          case (modelName, model) => require(TaskType.matches(model, taskType),
+            s"Expecting ${taskType.toString} for $modelName but got ${TaskType.name(model)}")
+        }
+    }
+  }
 
   /**
    * Get a (sub-) model by name
@@ -46,13 +75,14 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
    * @return The GAME model with the updated model
    */
   def updateModel(name: String, model: DatumScoringModel): GAMEModel = {
+
     getModel(name).foreach { oldModel =>
       if (!oldModel.getClass.equals(model.getClass)) {
         throw new UnsupportedOperationException(s"Update model of class ${oldModel.getClass} " +
           s"to ${model.getClass} is not supported!")
       }
     }
-    new GAMEModel(gameModels.updated(name, model))
+    new GAMEModel(gameModels.updated(name, model), taskType)
   }
 
   /**
@@ -69,6 +99,7 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
    * @return Myself with all RDD like models persisted
    */
   def persist(storageLevel: StorageLevel): this.type = {
+
     gameModels.values.foreach {
       case rddLike: RDDLike => rddLike.persistRDD(storageLevel)
       case _ =>
@@ -82,6 +113,7 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
    * @return Myself with all RDD like models unpersisted
    */
   def unpersist: this.type = {
+
     gameModels.values.foreach {
       case rddLike: RDDLike => rddLike.unpersistRDD()
       case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
@@ -90,6 +122,15 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
     this
   }
 
+  /**
+   * Compute score, PRIOR to going through any link function, i.e. just compute a dot product of feature values
+   * and model coefficients.
+   *
+   * @param dataPoints The dataset, which is a RDD consists of the (unique id, GameDatum) pairs. Note that the Long in
+   *                   the RDD above is a unique identifier for which GenericRecord the GameData object was created,
+   *                   referred to in the GAME code as the "unique id".
+   * @return The score
+   */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
   }
@@ -99,10 +140,13 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
   }
 
   override def equals(that: Any): Boolean = {
+
     that match {
-      case other: GAMEModel => gameModels.forall { case (name, model) =>
-        other.getModel(name).isDefined && other.getModel(name).get.equals(model)
-      }
+      case other: GAMEModel =>
+        (taskType == other.taskType) && gameModels.forall {
+          case (name, model) =>
+            other.getModel(name).isDefined && other.getModel(name).get.equals(model)
+        }
       case _ => false
     }
   }
@@ -111,4 +155,17 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
   override def hashCode(): Int = {
     super.hashCode()
   }
+}
+
+object GAMEModel {
+
+  /**
+   * Factory method to make code more readable.
+   *
+   * @param taskType The model type for this GameModel
+   * @param sections The sections that make up this GameModel
+   * @return A new instance of GAMEModel
+   */
+  def apply(taskType: TaskType, sections: (String, DatumScoringModel)*): GAMEModel =
+    new GAMEModel(Map(sections:_*), taskType)
 }

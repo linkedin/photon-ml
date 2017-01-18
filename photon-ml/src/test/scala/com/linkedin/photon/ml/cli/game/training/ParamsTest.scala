@@ -17,11 +17,11 @@ package com.linkedin.photon.ml.cli.game.training
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
@@ -38,7 +38,7 @@ class ParamsTest {
 
   @Test(dataProvider = "requiredOptions", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testMissingRequiredArg(optionName: String): Unit = {
-    Params.parseFromCommandLine(requiredArgsMissingOne(optionName))
+    Params.parseFromCommandLine(mapToArray(requiredArgsMissingOne(optionName)))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -50,7 +50,7 @@ class ParamsTest {
 
   @Test
   def testPresentingAllRequiredArgs(): Unit = {
-    val params = Params.parseFromCommandLine(requiredArgs())
+    val params = Params.parseFromCommandLine(mapToArray(requiredArgs()))
 
     // Verify required parameters values
     assertEquals(params.trainDirs.deep, Array(TRAIN_INPUT_DIRS).deep)
@@ -83,42 +83,42 @@ class ParamsTest {
 
   @Test
   def testTrainDateRange(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(TRAIN_DATE_RANGE, "20160501-20160531"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(TRAIN_DATE_RANGE, "20160501-20160531")))
     assertTrue(params.trainDateRangeOpt.isDefined)
     assertEquals(params.trainDateRangeOpt.get, "20160501-20160531")
   }
 
   @Test
   def testTrainDateRangeDaysAgo(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(TRAIN_DATE_RANGE_DAYS_AGO, "90-6"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(TRAIN_DATE_RANGE_DAYS_AGO, "90-6")))
     assertTrue(params.trainDateRangeDaysAgoOpt.isDefined)
     assertEquals(params.trainDateRangeDaysAgoOpt.get, "90-6")
   }
 
   @Test
   def testValidateInputDirs(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(VALIDATE_INPUT_DIRS, "dir1,dir2"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(VALIDATE_INPUT_DIRS, "dir1,dir2")))
     assertTrue(params.validateDirsOpt.isDefined)
     assertEquals(params.validateDirsOpt.get.deep, Array("dir1", "dir2").deep)
   }
 
   @Test
   def testValidateDateRange(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(VALIDATE_DATE_RANGE, "20160601-20160608"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(VALIDATE_DATE_RANGE, "20160601-20160608")))
     assertTrue(params.validateDateRangeOpt.isDefined)
     assertEquals(params.validateDateRangeOpt.get, "20160601-20160608")
   }
 
   @Test
   def testValidateDateRangeDaysAgo(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(VALIDATE_DATE_RANGE_DAYS_AGO, "5-1"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(VALIDATE_DATE_RANGE_DAYS_AGO, "5-1")))
     assertTrue(params.validateDateRangeDaysAgoOpt.isDefined)
     assertEquals(params.validateDateRangeDaysAgoOpt.get, "5-1")
   }
 
   @Test
   def testMinPartitionsForValidation(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(MIN_PARTITIONS_FOR_VALIDATION, "5"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(MIN_PARTITIONS_FOR_VALIDATION, "5")))
     assertEquals(params.minPartitionsForValidation, 5)
   }
 
@@ -126,7 +126,9 @@ class ParamsTest {
   def testFeatureShardIdToFeatureSectionKeysMap(): Unit = {
     val argValueInStr = "shardId1:sectionKey1,sectionKey2|shardId2:sectionKey3"
     val expectedValue = Map("shardId1" -> Set("sectionKey1", "sectionKey2"), "shardId2" -> Set("sectionKey3"))
-    val params = Params.parseFromCommandLine(setOneMoreArg(FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP, argValueInStr))
+    val params =
+      Params.parseFromCommandLine(mapToArray(setOneMoreArg(FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP,
+        argValueInStr)))
     assertEquals(params.featureShardIdToFeatureSectionKeysMap, expectedValue)
   }
 
@@ -134,19 +136,20 @@ class ParamsTest {
   def testFeatureShardIdToInterceptMap(): Unit = {
     val argValueInStr = "shardId1:TrUe|shardId2:fAlSe"
     val expectedValue = Map("shardId1" -> true, "shardId2" -> false)
-    val params = Params.parseFromCommandLine(setOneMoreArg(FEATURE_SHARD_ID_TO_INTERCEPT_MAP, argValueInStr))
+    val params =
+      Params.parseFromCommandLine(mapToArray(setOneMoreArg(FEATURE_SHARD_ID_TO_INTERCEPT_MAP, argValueInStr)))
     assertEquals(params.featureShardIdToInterceptMap, expectedValue)
   }
 
   @Test
   def testNumIterations(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(NUM_ITERATIONS, "5"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(NUM_ITERATIONS, "5")))
     assertEquals(params.numIterations, 5)
   }
 
   @Test
   def testUpdatingSequence(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(UPDATING_SEQUENCE, "5,1,4,2,3"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(UPDATING_SEQUENCE, "5,1,4,2,3")))
 
     assertEquals(params.updatingSequence, Seq("5", "1", "4", "2", "3"))
   }
@@ -158,7 +161,8 @@ class ParamsTest {
     val config1InStr = s"1${S}2e-2${S}4${S}0.3${S}LBFGS${S}l1"
     val config2InStr = s"5${S}6E-6${S}7${S}0.2${S}TRON${S}L2"
     val argValueInStr = s"fixed1:$config1InStr|fixed2:$config2InStr;fixed1:$config2InStr|fixed2:$config1InStr"
-    val params = Params.parseFromCommandLine(setOneMoreArg(FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS, argValueInStr))
+    val params =
+      Params.parseFromCommandLine(mapToArray(setOneMoreArg(FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS, argValueInStr)))
     val config1 = GLMOptimizationConfiguration.parseAndBuildFromString(config1InStr)
     val config2 = GLMOptimizationConfiguration.parseAndBuildFromString(config2InStr)
     val expectedValue = Array(
@@ -174,7 +178,7 @@ class ParamsTest {
     val config1InStr = s"shardId${S}1"
     val config2InStr = s"shardId${S}1"
     val argValueInStr = s"fixed1:$config1InStr|fixed2:$config2InStr"
-    val params = Params.parseFromCommandLine(setOneMoreArg(FIXED_EFFECT_DATA_CONFIGURATIONS, argValueInStr))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(FIXED_EFFECT_DATA_CONFIGURATIONS, argValueInStr)))
     val config1 = FixedEffectDataConfiguration.parseAndBuildFromString(config1InStr)
     val config2 = FixedEffectDataConfiguration.parseAndBuildFromString(config2InStr)
     val expectedValue = Map("fixed1" -> config1, "fixed2" -> config2)
@@ -188,7 +192,8 @@ class ParamsTest {
     val config1InStr = s"1${S}2e-2${S}4${S}0.3${S}LBFGS${S}l1"
     val config2InStr = s"5${S}6E-6${S}7${S}0.2${S}TRON${S}L2"
     val argValueInStr = s"random1:$config1InStr|random2:$config2InStr;random1:$config2InStr|random2:$config1InStr"
-    val params = Params.parseFromCommandLine(setOneMoreArg(RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS, argValueInStr))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS,
+      argValueInStr)))
     val config1 = GLMOptimizationConfiguration.parseAndBuildFromString(config1InStr)
     val config2 = GLMOptimizationConfiguration.parseAndBuildFromString(config2InStr)
     val expectedValue = Array(
@@ -214,7 +219,8 @@ class ParamsTest {
         s"factor1:$randomEffectOptConfig2InStr:$latentFactorOptConfig2InStr:$mfOptimizationOptConfig2InStr|" +
         s"factor2:$randomEffectOptConfig1InStr:$latentFactorOptConfig1InStr:$mfOptimizationOptConfig1InStr"
     val params =
-      Params.parseFromCommandLine(setOneMoreArg(FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS, argValueInStr))
+      Params.parseFromCommandLine(mapToArray(setOneMoreArg(FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS,
+        argValueInStr)))
     val randomEffectOptConfig1 = GLMOptimizationConfiguration.parseAndBuildFromString(randomEffectOptConfig1InStr)
     val latentFactorOptConfig1 = GLMOptimizationConfiguration.parseAndBuildFromString(latentFactorOptConfig1InStr)
     val mfOptimizationOptConfig1 = MFOptimizationConfiguration.parseAndBuildFromString(mfOptimizationOptConfig1InStr)
@@ -239,7 +245,8 @@ class ParamsTest {
     val config3InStr = s"randomEffectType${F}featureShardId${F}1${F}10${F}5${F}20d${F}identity"
 
     val argValueInStr = s"random1:$config1InStr|random2:$config2InStr|random3:$config3InStr"
-    val params = Params.parseFromCommandLine(setOneMoreArg(RANDOM_EFFECT_DATA_CONFIGURATIONS, argValueInStr))
+    val params =
+      Params.parseFromCommandLine(mapToArray(setOneMoreArg(RANDOM_EFFECT_DATA_CONFIGURATIONS, argValueInStr)))
     val config1 = RandomEffectDataConfiguration.parseAndBuildFromString(config1InStr)
     val config2 = RandomEffectDataConfiguration.parseAndBuildFromString(config2InStr)
     val config3 = RandomEffectDataConfiguration.parseAndBuildFromString(config3InStr)
@@ -249,58 +256,58 @@ class ParamsTest {
 
   @Test
   def testComputeVariance(): Unit = {
-    val paramsAll = Params.parseFromCommandLine(setOneMoreArg(COMPUTE_VARIANCE, "trUE"))
+    val paramsAll = Params.parseFromCommandLine(mapToArray(setOneMoreArg(COMPUTE_VARIANCE, "trUE")))
     assertEquals(paramsAll.computeVariance, true)
-    val paramsNone = Params.parseFromCommandLine(setOneMoreArg(COMPUTE_VARIANCE, "fAlSe"))
+    val paramsNone = Params.parseFromCommandLine(mapToArray(setOneMoreArg(COMPUTE_VARIANCE, "fAlSe")))
     assertEquals(paramsNone.computeVariance, false)
   }
 
   @Test
   def testSaveModelsToHDFS(): Unit = {
-    val paramsAll = Params.parseFromCommandLine(setOneMoreArg(SAVE_MODELS_TO_HDFS, "true"))
+    val paramsAll = Params.parseFromCommandLine(mapToArray(setOneMoreArg(SAVE_MODELS_TO_HDFS, "true")))
     assertEquals(paramsAll.modelOutputMode, ModelOutputMode.ALL)
-    val paramsNone = Params.parseFromCommandLine(setOneMoreArg(SAVE_MODELS_TO_HDFS, "FALSE"))
+    val paramsNone = Params.parseFromCommandLine(mapToArray(setOneMoreArg(SAVE_MODELS_TO_HDFS, "FALSE")))
     assertEquals(paramsNone.modelOutputMode, ModelOutputMode.NONE)
   }
 
   @Test
   def testOutputModelModel(): Unit = {
-    val paramsAll = Params.parseFromCommandLine(setOneMoreArg(MODEL_OUTPUT_MODE, "aLl"))
+    val paramsAll = Params.parseFromCommandLine(mapToArray(setOneMoreArg(MODEL_OUTPUT_MODE, "aLl")))
     assertEquals(paramsAll.modelOutputMode, ModelOutputMode.ALL)
-    val paramsNone = Params.parseFromCommandLine(setOneMoreArg(MODEL_OUTPUT_MODE, "NoNe"))
+    val paramsNone = Params.parseFromCommandLine(mapToArray(setOneMoreArg(MODEL_OUTPUT_MODE, "NoNe")))
     assertEquals(paramsNone.modelOutputMode, ModelOutputMode.NONE)
-    val paramsBest = Params.parseFromCommandLine(setOneMoreArg(MODEL_OUTPUT_MODE, "bESt"))
+    val paramsBest = Params.parseFromCommandLine(mapToArray(setOneMoreArg(MODEL_OUTPUT_MODE, "bESt")))
     assertEquals(paramsBest.modelOutputMode, ModelOutputMode.BEST)
   }
 
   @Test
   def testNumOutputFilesForRandomEffectModel(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL, "12"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL, "12")))
     assertEquals(params.numberOfOutputFilesForRandomEffectModel, 12)
   }
 
   @Test
   def testDeleteOutputDirIfExists(): Unit = {
-    val paramsDeleteTrue = Params.parseFromCommandLine(setOneMoreArg(DELETE_OUTPUT_DIR_IF_EXISTS, "trUe"))
+    val paramsDeleteTrue = Params.parseFromCommandLine(mapToArray(setOneMoreArg(DELETE_OUTPUT_DIR_IF_EXISTS, "trUe")))
     assertEquals(paramsDeleteTrue.deleteOutputDirIfExists, true)
-    val paramsDeleteFalse = Params.parseFromCommandLine(setOneMoreArg(DELETE_OUTPUT_DIR_IF_EXISTS, "faLSE"))
+    val paramsDeleteFalse = Params.parseFromCommandLine(mapToArray(setOneMoreArg(DELETE_OUTPUT_DIR_IF_EXISTS, "faLSE")))
     assertEquals(paramsDeleteFalse.deleteOutputDirIfExists, false)
   }
 
   @Test
   def testApplicationName(): Unit = {
-    val params = Params.parseFromCommandLine(setOneMoreArg(APPLICATION_NAME, "GAME_TEST"))
+    val params = Params.parseFromCommandLine(mapToArray(setOneMoreArg(APPLICATION_NAME, "GAME_TEST")))
     assertEquals(params.applicationName, "GAME_TEST")
   }
 
   @Test
   def testOutputDir(): Unit = {
     // When output directory contains ':'
-    val paramsWithColonAsPartOfOutputDir = Params.parseFromCommandLine(setOneMoreArg(OUTPUT_DIR, "hdfs://foo/bar/tar"))
+    val paramsWithColonAsPartOfOutputDir = Params.parseFromCommandLine(mapToArray(setOneMoreArg(OUTPUT_DIR, "hdfs://foo/bar/tar")))
     assertEquals(paramsWithColonAsPartOfOutputDir.outputDir, "hdfs://foo/bar/tar")
 
     // When output directory contains ',', the current logic will replace ',' with '_'
-    val paramsWithCommaAsPartOfOutputDir = Params.parseFromCommandLine(setOneMoreArg(OUTPUT_DIR, "linkedin,airbnb"))
+    val paramsWithCommaAsPartOfOutputDir = Params.parseFromCommandLine(mapToArray(setOneMoreArg(OUTPUT_DIR, "linkedin,airbnb")))
     assertEquals(paramsWithCommaAsPartOfOutputDir.outputDir, "linkedin_airbnb")
   }
 }

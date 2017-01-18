@@ -14,9 +14,10 @@
  */
 package com.linkedin.photon.ml.cli.game
 
+import org.apache.hadoop.conf.Configuration
+
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
-
 import org.apache.spark.SparkContext
 
 /**
@@ -27,9 +28,7 @@ abstract class GAMEDriver(
     sparkContext: SparkContext,
     logger: PhotonLogger) {
 
-  import params._
-
-  protected val hadoopConfiguration = sparkContext.hadoopConfiguration
+  protected val hadoopConfiguration: Configuration = sparkContext.hadoopConfiguration
 
   protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
@@ -47,14 +46,15 @@ abstract class GAMEDriver(
    * @deprecated This function will be removed in the next major version.
    */
   protected[game] def prepareFeatureMapsDefault(): Map[String, IndexMapLoader] = {
-    val allFeatureSectionKeys = featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
+    val allFeatureSectionKeys = params.featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
-      featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
+      params.featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
 
     val featureShardIdToFeatureMapLoader =
-      featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
+      params.featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
         val featureMap = nameAndTermFeatureSetContainer
-          .getFeatureNameAndTermToIndexMap(featureSectionKeys, featureShardIdToInterceptMap.getOrElse(shardId, true))
+          .getFeatureNameAndTermToIndexMap(featureSectionKeys,
+            params.featureShardIdToInterceptMap.getOrElse(shardId, true))
           .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
           .toMap
 
@@ -63,7 +63,7 @@ abstract class GAMEDriver(
         (shardId, indexMapLoader)
       }
     featureShardIdToFeatureMapLoader.foreach { case (shardId, featureMapLoader) =>
-      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMapLoader.indexMapForDriver.size}")
+      logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMapLoader.indexMapForDriver().size}")
     }
     featureShardIdToFeatureMapLoader
   }
@@ -74,7 +74,7 @@ abstract class GAMEDriver(
    * @return A map of shard id to feature map
    */
   protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] = {
-    featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSections) => {
+    params.featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSections) => {
       val indexMapLoader = new PalDBIndexMapLoader
       indexMapLoader.prepare(sparkContext, params, shardId)
       (shardId, indexMapLoader)

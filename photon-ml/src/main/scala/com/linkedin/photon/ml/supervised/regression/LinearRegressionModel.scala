@@ -30,13 +30,6 @@ class LinearRegressionModel(override val coefficients: Coefficients)
   with Regression
   with Serializable {
 
-  /**
-   * Compute the mean of the linear regression model
-   *
-   * @param features The input data point's feature
-   * @param offset The input data point's offset
-   * @return
-   */
   override protected[ml] def computeMean(features: Vector[Double], offset: Double)
     : Double = coefficients.computeScore(features) + offset
 
@@ -62,6 +55,5 @@ object LinearRegressionModel {
    * @param coefficients The feature coefficient means and variances for the model
    * @return A linear regression model
    */
-  def create(coefficients: Coefficients): LinearRegressionModel =
-    new LinearRegressionModel(coefficients)
+   def apply(coefficients: Coefficients): GeneralizedLinearModel = new LinearRegressionModel(coefficients)
 }

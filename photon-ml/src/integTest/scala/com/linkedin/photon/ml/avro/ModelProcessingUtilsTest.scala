@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.avro
 
+import scala.collection.immutable.IndexedSeq
 import scala.util.Random
 
 import org.apache.hadoop.fs.Path
@@ -22,10 +23,13 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.Constants._
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
+import com.linkedin.photon.ml.cli.game.training.Params
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model._
+import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
 
@@ -33,36 +37,109 @@ import com.linkedin.photon.ml.util._
  * Unit tests for model processing utilities.
  */
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+
+  /**
+   * Ancillary function to setup some params, as required by the unit tests.
+   *
+   * @param updates A sequence of pairs (Params field name, field value) to customize the Params returned
+   * @return An instance of Params
+   */
+  def setupParams(updates: (String, Any)*): Params = {
+
+    import GLMOptimizationConfiguration.{SPLITTER => S}
+
+    val params = new Params
+
+    // Some default optimization configurations
+    val feConfig1 = GLMOptimizationConfiguration(s"10${S}1e-2${S}1.0${S}0.3${S}TRON${S}L2")
+    val reConfig1 = GLMOptimizationConfiguration(s"20${S}1e-2${S}1.0${S}0.3${S}LBFGS${S}L1")
+    val reConfig2 = GLMOptimizationConfiguration(s"30${S}1e-2${S}1.0${S}0.2${S}TRON${S}L2")
+
+    params.fixedEffectOptimizationConfigurations = Array(Map("fixed" -> feConfig1))
+    params.randomEffectOptimizationConfigurations = Array(Map("random1" -> reConfig1, "random2" -> reConfig2))
+
+    // Now update the created Params with the updates specified in the call
+    updates.foreach {
+      case (name: String, value: Any) =>
+        params.getClass.getMethods.find(_.getName == name + "_$eq").get.invoke(params, value.asInstanceOf[AnyRef])
+    }
+
+    params
+  }
+
+  /**
+   * Generate a decent Game model for subsequent tests.
+   * This Game model is a logistic regression. It has 1 fixed effect, and 2 different random effect models,
+   * the random effect models have 2 and 3 "items" respectively.
+   *
+   * Notes:
+   * =====
+   * - for the features, we have two feature spaces, one for the fix model, and one for the random model
+   *   Each model has its own, separate feature space, but feature values can be shared between spaces.
+   *   Features shared between spaces have a unique name, but possibly different indices.
+   * - we cheat a little bit by giving the feature spaces the same name as the models,
+   *   because it makes testing easier, esp. in the case where the model is loaded without specified
+   *   index IndexMapLoaders: in that case, the feature space names are the model names.
+   *
+   * On HDFS the files for this model are:
+   *
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
+   *
+   * @return (GameModel, featureIndexLoaders, featureNames)
+   */
+  def makeGameModel(): (GAMEModel, Map[String, DefaultIndexMapLoader], Map[String, IndexedSeq[String]]) = {
+
+    val numFeatures = Map("fixed" -> 10, "RE1" -> 10, "RE2" -> 10)
+
+    val featureNames =
+      numFeatures
+        .mapValues { nf => (0 until nf).map(i => Utils.getFeatureKey("n" + i, "t")) }
+
+    val featureIndexLoaders =
+      featureNames
+        .map { case (modelType, modelFeatures) => (modelType, DefaultIndexMapLoader(sc, modelFeatures)) }
+        .map(identity) // .map(identity) needed because of: https://issues.scala-lang.org/browse/SI-7005
+
+    // Fixed effect model
+    val glm = new LogisticRegressionModel(Coefficients(numFeatures("fixed"))(1,2,5)(11,21,51))
+    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), "fixed")
+
+    val glmRE11 = LogisticRegressionModel(Coefficients(numFeatures("RE1"))(1, 5, 7)(111, 511, 911))
+    val glmRE12 = LogisticRegressionModel(Coefficients(numFeatures("RE1"))(1, 2)(112, 512))
+    val glmRE1RDD = sc.parallelize(List(("RE1Item1", glmRE11), ("RE1Item2", glmRE12)))
+    val RE1Model = new RandomEffectModel(glmRE1RDD, "randomEffectModel1", "RE1")
+
+    val glmRE21 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(3, 4, 6)(321, 421, 621))
+    val glmRE22 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(4, 5)(322, 422))
+    val glmRE23 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(2, 7, 8)(323, 423, 523))
+    val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
+    val RE2Model = new RandomEffectModel(glmRE2RDD, "randomEffectModel2", "RE2")
+
+    (GAMEModel(TaskType.LOGISTIC_REGRESSION, ("fixed", fixedEffectModel), ("RE1", RE1Model), ("RE2", RE2Model)),
+      featureIndexLoaders,
+      featureNames)
+  }
+
   /**
    * Test that we can load a simple Game model with fixed and random effects, given a feature index.
    */
   @Test
-  def testLoadAndSaveGameModels(): Unit = sparkTest("loadAndSaveRandomEffectModelToHDFS") {
+  def testLoadAndSaveGameModels(): Unit = sparkTest("testLoadAndSaveGameModels") {
 
-    // Features: we have two feature spaces, one for the fix model, and one for the random model
-    // Each model has its own, separate feature space, but feature values can be shared between spaces.
-    // Features shared between spaces have a unique name, but possibly different indices.
-    val numFeaturesPerModel = Map("fixed" -> 10, "random" -> 15)
-    val featureIndexLoaders = numFeaturesPerModel.mapValues { numFeatures =>
-      DefaultIndexMapLoader(sc, (0 until numFeatures).map(i => Utils.getFeatureKey("n" + i, "t")))
-    }
-
-    // Fixed effect model
-    val fixedEffectCoefficients = Coefficients(numFeaturesPerModel("fixed"))(1,2,5)(1,2,5)
-    val glm: GeneralizedLinearModel = new LogisticRegressionModel(fixedEffectCoefficients)
-    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), "fixed")
-
-    // Random effect model
-    val randomEffectCoefficients = Coefficients(numFeaturesPerModel("random"))(1,5,9)(1,5,9)
-    val glmRE: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectCoefficients)
-    val glmReRDD = sc.parallelize((0 until 2).map(i => (i.toString, glmRE)))
-    val randomEffectModel = new RandomEffectModel(glmReRDD, "randomEffectType", "random")
-
-    // GAME model
-    val gameModel = new GAMEModel(Map("fixed" -> fixedEffectModel, "random" -> randomEffectModel))
+    val (gameModel, featureIndexLoaders, _) = makeGameModel()
 
     // Default number of output files
     val numberOfOutputFilesForRandomEffectModel = 2
+    val params = setupParams(("numberOfOutputFilesForRandomEffectModel", numberOfOutputFilesForRandomEffectModel))
     val outputDir = getTmpDir
     val outputDirAsPath = new Path(outputDir)
 
@@ -70,14 +147,14 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
       gameModel,
       featureIndexLoaders,
       outputDir,
-      numberOfOutputFilesForRandomEffectModel,
+      params,
       sc)
 
     val fs = outputDirAsPath.getFileSystem(sc.hadoopConfiguration)
     assertTrue(fs.exists(outputDirAsPath))
 
     // Check if the numberOfOutputFilesForRandomEffectModel parameter is working or not
-    val randomEffectModelCoefficientsDir = new Path(outputDirAsPath, s"$RANDOM_EFFECT/random/$COEFFICIENTS")
+    val randomEffectModelCoefficientsDir = new Path(outputDirAsPath, s"$RANDOM_EFFECT/RE1/$COEFFICIENTS")
     val numRandomEffectModelFiles = fs.listStatus(randomEffectModelCoefficientsDir)
       .count(_.getPath.toString.contains("part"))
     assertEquals(numRandomEffectModelFiles, numberOfOutputFilesForRandomEffectModel,
@@ -85,9 +162,9 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
         s"found: $numRandomEffectModelFiles")
 
     // Check if the models loaded correctly and they are the same as the models saved previously
-    // The first value returned is the feature index, which we don't need here
+    // The second value returned is the feature index, which we don't need here
     val (loadedGameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(featureIndexLoaders), outputDir, sc)
-    assertEquals(gameModel, loadedGameModel)
+    assertTrue(gameModel == loadedGameModel)
   }
 
   /**
@@ -95,35 +172,13 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    * generated as part of loading the model, and it will not directly match the feature index before the save.
    */
   @Test
-  def testLoadGameModelsWithoutFeatureIndex(): Unit = sparkTest("loadAndSaveRandomEffectModelToHDFS2") {
+  def testLoadGameModelsWithoutFeatureIndex(): Unit = sparkTest("testLoadGameModelsWithoutFeatureIndex") {
 
-    // Features: we have two feature spaces, one for the fix model, and one for the random model
-    // Each model has its own, separate feature space, but feature values can be shared between spaces.
-    // Features shared between spaces have a unique name, but possibly different indices.
-    val numFeaturesPerModel = Map("fixed" -> 10, "random" -> 15)
-    val featureIndexLoaders = numFeaturesPerModel.mapValues { numFeatures =>
-      DefaultIndexMapLoader(sc, (0 until numFeatures).map(i => Utils.getFeatureKey("n" + i, "t")))
-    }.map(identity) // .map(identity) needed because of: https://issues.scala-lang.org/browse/SI-7005
+    val (params, modelDir) = (setupParams(), getTmpDir)
+    val (gameModel, featureIndexLoaders, _) = makeGameModel()
 
-    // Fixed effect model
-    val fixedEffectCoefficients = Coefficients(numFeaturesPerModel("fixed"))(1,2,5)(11,21,51)
-    val glm: GeneralizedLinearModel = new LogisticRegressionModel(fixedEffectCoefficients)
-    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), "fixed")
+    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, params, sc)
 
-    // Random effect model
-    val randomEffectCoefficients = Coefficients(numFeaturesPerModel("random"))(1,5,7)(101,501,901)
-    val glmRE: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectCoefficients)
-    val glmReRDD = sc.parallelize((0 until 2).map(i => (i.toString, glmRE)))
-    val randomEffectModel = new RandomEffectModel(glmReRDD, "randomEffectType", "random")
-
-    // GAME model
-    val modelDir = getTmpDir
-    val gameModel = new GAMEModel(Map("fixed" -> fixedEffectModel, "random" -> randomEffectModel))
-
-    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, 2, sc)
-
-    // Check if the models loaded correctly and they are the same as the models saved previously
-    // The first value returned is the feature index, which we don't need here
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(None, modelDir, sc)
 
     // Since the feature index after the load is not the same as before the save, we need to calculate an
@@ -153,61 +208,12 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    * Test that we can extract all features from a Game model correctly.
    */
   @Test
-  def testExtractGameModelFeatures(): Unit = sparkTest("extractGameModelFeatures") {
+  def testExtractGameModelFeatures(): Unit = sparkTest("testExtractGameModelFeatures") {
 
-    // Features: we have two feature spaces, one for the fix model, and one for the random model
-    // Each model has its own, separate feature space, but feature values can be shared between spaces.
-    // Features shared between spaces have a unique name, but possibly different indices.
-    val numFeaturesPerModel = Map("fixedFeatures" -> 10, "RE1Features" -> 10, "RE2Features" -> 10)
-    val featureNames = numFeaturesPerModel.mapValues { numFeatures =>
-      (0 until numFeatures).map(i => Utils.getFeatureKey("n" + i, "t")) }
-    val featureIndexLoaders = featureNames.map { case (modelType, modelFeatures) =>
-      (modelType, DefaultIndexMapLoader(sc, modelFeatures))
-    }.map(identity) // .map(identity) needed because of: https://issues.scala-lang.org/browse/SI-7005
+    val (params, modelDir) = (setupParams(), getTmpDir)
+    val (gameModel, featureIndexLoaders, featureNames) = makeGameModel()
 
-    // Fixed effect model
-    val glm = new LogisticRegressionModel(Coefficients(numFeaturesPerModel("fixedFeatures"))(1,2,5)(11,21,51))
-    val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), "fixedFeatures")
-
-    // Random effect 1 has 2 items
-    val numFeaturesRE1 = numFeaturesPerModel("RE1Features")
-    val RE1Item1 = Coefficients(numFeaturesRE1)(1,5,7)(111,511,911)
-    val glmRE11: GeneralizedLinearModel = new LogisticRegressionModel(RE1Item1)
-    val RE1Item2 = Coefficients(numFeaturesRE1)(1,2)(112,512)
-    val glmRE12: GeneralizedLinearModel = new LogisticRegressionModel(RE1Item2)
-
-    val glmRE1RDD = sc.parallelize(List(("RE1Item1", glmRE11), ("RE1Item2", glmRE12)))
-    val RE1Model = new RandomEffectModel(glmRE1RDD, "randomEffectModel1", "RE1Features")
-
-    // Random effect 2 has 3 items (of a different kind)
-    val numFeaturesRE2 = numFeaturesPerModel("RE2Features")
-    val RE2Item1 = Coefficients(numFeaturesRE2)(3,4,6)(321,421,621)
-    val glmRE21: GeneralizedLinearModel = new LogisticRegressionModel(RE2Item1)
-    val RE2Item2 = Coefficients(numFeaturesRE2)(4,5)(322,422)
-    val glmRE22: GeneralizedLinearModel = new LogisticRegressionModel(RE2Item2)
-    val RE2Item3 = Coefficients(numFeaturesRE2)(2,7,8)(323,423,523)
-    val glmRE23: GeneralizedLinearModel = new LogisticRegressionModel(RE2Item3)
-
-    val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
-    val RE2Model = new RandomEffectModel(glmRE2RDD, "randomEffectModel2", "RE2Features")
-
-    // This Game model has 1 fixed effect, and 2 different random effect models
-    val gameModel = new GAMEModel(Map("fixed" -> fixedEffectModel, "RE1" -> RE1Model, "RE2" -> RE2Model))
-
-    // Structure of files for this model on HDFS is:
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
-
-    val modelDir = getTmpDir
-    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, 2, sc)
+    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, params, sc)
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The first value returned is the feature index, which we don't need here
@@ -220,11 +226,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     features.foreach {
       case ((FIXED_EFFECT, "fixed"), modelRDD) =>
         val calculated: Array[(String, Double)] = modelRDD.collect()(0)._2
-        val ans = List(1, 2, 5).map(i => featureNames("fixedFeatures")(i)) zip List(11,21,51)
+        val ans = List(1, 2, 5).map(i => featureNames("fixed")(i)) zip List(11,21,51)
         assert(calculated sameElements ans)
 
       case ((RANDOM_EFFECT, "RE1"), modelRDD) =>
-        val features = featureNames("RE1Features")
+        val features = featureNames("RE1")
         modelRDD.collect.foreach {
 
           case ("RE1Item1", coefficients) =>
@@ -235,7 +241,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
         }
 
       case ((RANDOM_EFFECT, "RE2"), modelRDD) =>
-        val features = featureNames("RE2Features")
+        val features = featureNames("RE2")
         modelRDD.collect.foreach {
 
           case ("RE2Item1", coefficients) =>
@@ -264,7 +270,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
   @Test(dataProvider = "matrixFactorizationConfigProvider")
   def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
-    sparkTest("loadAndSaveRandomEffectModelToHDFS") {
+    sparkTest("testLoadAndSaveMatrixFactorizationModels") {
+
       import MatrixFactorizationModelTest._
 
       // Meta data
@@ -287,4 +294,18 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
         ModelProcessingUtils.loadMatrixFactorizationModelFromHDFS(tmpDir, rowEffectType, colEffectType, sc)
       assertEquals(loadedRandomMFModel, randomMFModel)
     }
+
+  /**
+   * Test that we can save and load model metadata.
+   *
+   * TODO: this is incomplete - need to check that more parameters are loaded back correctly
+   */
+  @Test
+  def testSaveAndLoadGameModelMetadata(): Unit = sparkTest("testSaveAndLoadGameModelMetadata") {
+
+    val params = setupParams()
+    ModelProcessingUtils.saveGameModelMetadataToHDFS(sc, params, "/tmp")
+    val params2 = ModelProcessingUtils.loadGameModelMetadataFromHDFS(sc, "/tmp")
+    assertEquals(params.taskType, params2.taskType)
+  }
 }

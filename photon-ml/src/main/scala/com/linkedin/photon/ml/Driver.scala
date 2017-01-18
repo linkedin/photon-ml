@@ -43,7 +43,6 @@ import com.linkedin.photon.ml.io.{GLMSuite, InputDataFormat, InputFormatFactory}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
-import com.linkedin.photon.ml.supervised.TaskType._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -377,16 +376,16 @@ protected[ml] class Driver(
 
     /* Select the best model using the validating data set and stores the best model as text file */
     val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
-      case LINEAR_REGRESSION =>
+      case TaskType.LINEAR_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
         ModelSelection.selectBestLinearRegressionModel(models, validatingData)
-      case POISSON_REGRESSION =>
+      case TaskType.POISSON_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
         ModelSelection.selectBestPoissonRegressionModel(models, validatingData)
-      case LOGISTIC_REGRESSION =>
+      case TaskType.LOGISTIC_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
         ModelSelection.selectBestLinearClassifier(models, validatingData)
-      case SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
         ModelSelection.selectBestLinearClassifier(models, validatingData)
     }

@@ -22,6 +22,8 @@ import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger, Timer}
 import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.TaskType.TaskType
+
 /**
  * Coordinate descent implementation
  *
@@ -41,13 +43,15 @@ class CoordinateDescent(
     logger: PhotonLogger) {
 
   /**
-   * Run coordinate descent
+   * Run coordinate descent.
+   *
+   *e TODO(fastier): do we really need a separate run and optimize?
    *
    * @param numIterations Number of iterations
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
-  def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): GAMEModel = {
+  def run(numIterations: Int, taskType: TaskType, seed: Long = MathConst.RANDOM_SEED): GAMEModel = {
 
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
 
@@ -64,12 +68,12 @@ class CoordinateDescent(
       (coordinateId, initializedModel)
     }.toMap
 
-    val initialGAMEModel = new GAMEModel(initializedModelContainer)
-    run(numIterations, initialGAMEModel)
+    val initialGAMEModel = new GAMEModel(initializedModelContainer, taskType)
+    optimize(numIterations, initialGAMEModel)
   }
 
   /**
-   * Run coordinate descent. This function optimizes the model w.r.t. the objective
+   * This function optimizes the model w.r.t. the objective
    * function. Optionally, it also evaluates the model on the validation data set using one or
    * more validation functions. In that case, the output is the model which yielded the
    * best evaluation on the validation data set w.r.t. the primary evaluation function.
@@ -79,7 +83,7 @@ class CoordinateDescent(
    * @param gameModel The initial GAME model
    * @return The best GAME model (see above for exact meaning of "best")
    */
-  def run(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
+  def optimize(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
 
     coordinates.foreach { case (coordinateId, _) =>
       require(gameModel.getModel(coordinateId).isDefined,
@@ -113,9 +117,7 @@ class CoordinateDescent(
 
     // Initialize the regularization term value
     var regularizationTermValueContainer = coordinates.map { case (coordinateId, coordinate) =>
-        val updatedModel = updatedGAMEModel.getModel(coordinateId).get
-
-        (coordinateId, coordinate.computeRegularizationTermValue(updatedModel))
+        (coordinateId, coordinate.computeRegularizationTermValue(updatedGAMEModel.getModel(coordinateId).get))
       }.toMap
 
     // This will track the "best" model according to the first evaluation function chosen by the user.

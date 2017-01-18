@@ -15,13 +15,14 @@
 package com.linkedin.photon.ml.data
 
 import breeze.linalg.{DenseVector, SparseVector}
-import com.linkedin.photon.ml.DataValidationType
-import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType._
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
+
+import com.linkedin.photon.ml.DataValidationType
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
@@ -122,7 +123,7 @@ object DataValidators extends Logging {
           }
         case DataValidationType.VALIDATE_SAMPLE =>
           logWarning("Doing a partial validation on ~10% of the training data")
-          val subset = inputData.sample(false, 0.10)
+          val subset = inputData.sample(withReplacement = false, fraction = 0.10)
           val valid = validators.map(x => x(subset)).forall(x => x)
           if (valid) {
             true

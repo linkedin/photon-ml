@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.avro.model
 
 import scala.collection.Map
+import scala.io.Source
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.hadoop.conf.Configuration
@@ -23,48 +24,71 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
+import com.linkedin.photon.ml.cli.game.training.Params
 import com.linkedin.photon.ml.model._
+import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.util.Utils.isAlmostZero
 
 /**
- * Some basic functions to read/write GAME models from/to HDFS. The current implementation assumes the models are stored
- * using Avro format.
+ * Some basic functions to read/write GAME models from/to HDFS.
+ *
+ * The current implementation assumes the models are stored using an Avro format.
+ * The main challenge in saving/loading Game models is that the number of random effect submodels can be
+ * arbitrarily large. That's why e.g. "numberOfOutputFilesForRandomEffectModel" is needed.
+ *
+ * TODO: this object needs additional documentation
+ * TODO: we might want to extract the various Path we setup to a method called by both save and load,
+ * (to avoid bugs where save would use different Paths from load)
+ *
+ * TODO: Change the scope of all functions to [[com.linkedin.photon.ml.avro]] after Avro related
+ * classes/functions are decoupled from the rest of code
  */
 object ModelProcessingUtils {
 
   import com.linkedin.photon.ml.avro.Constants._
 
-  // TODO: This object needs additional documentation
-
-  // TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
-  // classes/functions are decoupled from the rest of code
+  /**
+   * Save a Game model to HDFS.
+   *
+   * NOTE: Game models can grow very large, because they can accommodate an unlimited number of random effect
+   * submodels. Therefore extra care is required when saving the random effects submodels.
+   *
+   * @param gameModel The Game model to save
+   * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
+   * @param outputDir The directory in HDFS where to save the model
+   * @param params The parameters that were setup to run this model
+   * @param sparkContext The Spark context
+   */
   protected[ml] def saveGameModelsToHDFS(
       gameModel: GAMEModel,
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       outputDir: String,
-      numberOfOutputFilesForRandomEffectModel: Int,
+      params: Params,
       sparkContext: SparkContext): Unit = {
 
-    val configuration = sparkContext.hadoopConfiguration
+    val hadoopConfiguration = sparkContext.hadoopConfiguration
+
+    saveGameModelMetadataToHDFS(sparkContext, params, outputDir)
 
     gameModel.toMap.foreach { case (name, model) =>
       model match {
         case fixedEffectModel: FixedEffectModel =>
           val featureShardId = fixedEffectModel.featureShardId
           val fixedEffectModelOutputDir = new Path(outputDir, s"$FIXED_EFFECT/$name").toString
-          Utils.createHDFSDir(fixedEffectModelOutputDir, configuration)
+          Utils.createHDFSDir(fixedEffectModelOutputDir, hadoopConfiguration)
 
           //Write the model ID info
           val modelIdInfoPath = new Path(fixedEffectModelOutputDir, ID_INFO)
           val id = Array(featureShardId)
-          IOUtils.writeStringsToHDFS(id.iterator, modelIdInfoPath, configuration, forceOverwrite = false)
+          IOUtils.writeStringsToHDFS(id.iterator, modelIdInfoPath, hadoopConfiguration, forceOverwrite = false)
 
           //Write the coefficients
           val coefficientsOutputDir = new Path(fixedEffectModelOutputDir, COEFFICIENTS).toString
-          Utils.createHDFSDir(coefficientsOutputDir, configuration)
+          Utils.createHDFSDir(coefficientsOutputDir, hadoopConfiguration)
           val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
           val model = fixedEffectModel.model
           saveModelToHDFS(model, indexMap, coefficientsOutputDir, sparkContext)
@@ -72,19 +96,20 @@ object ModelProcessingUtils {
         case randomEffectModel: RandomEffectModel =>
           val randomEffectType = randomEffectModel.randomEffectType
           val featureShardId = randomEffectModel.featureShardId
-
           val randomEffectModelOutputDir = new Path(outputDir, s"$RANDOM_EFFECT/$name")
+
           //Write the model ID info
           val modelIdInfoPath = new Path(randomEffectModelOutputDir, ID_INFO)
           val ids = Array(randomEffectType, featureShardId)
-          IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, configuration, forceOverwrite = false)
+          IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, hadoopConfiguration, forceOverwrite = false)
+
           val indexMapLoader = featureShardIdToFeatureMapLoader(featureShardId)
           saveRandomEffectModelToHDFS(
             randomEffectModel,
             indexMapLoader,
             randomEffectModelOutputDir,
-            numberOfOutputFilesForRandomEffectModel,
-            configuration)
+            params.numberOfOutputFilesForRandomEffectModel,
+            hadoopConfiguration)
       }
     }
   }
@@ -111,6 +136,7 @@ object ModelProcessingUtils {
     val configuration = sc.hadoopConfiguration
     val inputDirAsPath = new Path(modelsDir)
     val fs = inputDirAsPath.getFileSystem(configuration)
+    val modelType = loadGameModelMetadataFromHDFS(sc, modelsDir).taskType
 
     // Load the fixed effect model(s)
     val fixedEffectModelInputDir = new Path(modelsDir, FIXED_EFFECT)
@@ -185,7 +211,7 @@ object ModelProcessingUtils {
       }
       .unzip
 
-    (new GAMEModel(models.toMap), featureIndexLoaders.toMap)
+    (new GAMEModel(models.toMap, modelType), featureIndexLoaders.toMap)
   }
 
   /**
@@ -221,6 +247,19 @@ object ModelProcessingUtils {
    * would be too slow. In the case of fixed effect models (usually there is only one), we assume that the fixed
    * effect model has a feature index that can fit within a single executor.
    *
+   * On HDFS the dirs/files data structures looks like, e.g.:
+   *
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
+   *
    * @param gameModel The Game model to extract all features from
    * @param featureIndexLoaders The feature index loaders ; each feature space has a separate, named feature index
    * @return All the (feature name, feature value) pairs of that Game model
@@ -233,18 +272,6 @@ object ModelProcessingUtils {
       gameModel: GAMEModel,
       featureIndexLoaders: Map[String, IndexMapLoader])
       : Map[(String, String), RDD[(String, Array[(String, Double)])]] = {
-
-    // Structure of files for this model on HDFS is:
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
-    //    hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
 
     gameModel.toMap.map {
 
@@ -302,8 +329,7 @@ object ModelProcessingUtils {
       sparkContext,
       Seq(bayesianLinearModelAvro),
       modelOutputPath,
-      BayesianLinearModelAvro.getClassSchema.toString,
-      forceOverwrite = false)
+      BayesianLinearModelAvro.getClassSchema.toString)
   }
 
   // TODO: Currently only the means of the coefficients are loaded, the variances are discarded
@@ -313,7 +339,9 @@ object ModelProcessingUtils {
       sc: SparkContext): (GeneralizedLinearModel, IndexMapLoader) = {
 
     val coefficientsPath = new Path(inputDir, DEFAULT_AVRO_FILE_NAME).toString
+    // next line is log reg
     val linearModelAvroSchema = BayesianLinearModelAvro.getClassSchema.toString
+    // next line is lin reg - we lost the log reg information
     val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sc, coefficientsPath,
       linearModelAvroSchema).head
 
@@ -430,5 +458,81 @@ object ModelProcessingUtils {
       s"Specified input directory $colLatentFactorsPath for column latent factors is not found!")
     val colLatentFactors = loadLatentFactorsFromHDFS(colLatentFactorsPath.toString, sparkContext)
     new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
+  }
+
+  /**
+   * Save model metadata to a JSON file.
+   *
+   * @param outputDir The HDFS directory that will contain the metadata file
+   * @param params The model parameters, from which metadata is extracted
+   * @param sparkContext The Spark context
+   */
+  def saveGameModelMetadataToHDFS(
+      sparkContext: SparkContext,
+      params: Params,
+      outputDir: String,
+      metadataFilename: String = "model-metadata.json"): Unit = {
+
+    // 2 ancillaries that decompose the problem into more manageable tasks
+    def writeConfigToJson(configs: Map[String, GLMOptimizationConfiguration]) =
+      configs
+        .map { case (cfgName, cfg) => s"""{ "name": "$cfgName", "configuration": ${cfg.toJson} }""" }
+        .mkString(",")
+
+    def writeConfigsArrayToJson(which: String, configsArray: Array[Predef.Map[String, GLMOptimizationConfiguration]]) =
+      s"""
+         |{ "configurations": "$which",
+         |  "values": [
+         |    ${configsArray.map(cfgs => writeConfigToJson(cfgs)).mkString(",")}
+         |  ]
+         |}
+       """.stripMargin
+
+    val feConfigurations = writeConfigsArrayToJson("fixed-effect", params.fixedEffectOptimizationConfigurations)
+    val reConfigurations = writeConfigsArrayToJson("random-effect", params.randomEffectOptimizationConfigurations)
+
+    IOUtils.toHDFSFile(sparkContext, outputDir + "/" + metadataFilename) {
+      writer => writer.println(
+        s"""
+           |{ "modelType": "${params.taskType}",
+           |  "modelName": "${params.applicationName}",
+           |  "fixedEffectOptimizationConfigurations": $feConfigurations,
+           |  "randomEffectOptimizationConfigurations": $reConfigurations
+           |}
+         """.stripMargin)
+    }
+  }
+
+  /**
+   * Load model metadata from JSON file.
+   *
+   * NOTE: for now, we just output model type.
+   * TODO: load (and save) more metadata, and return an updated Params
+   *
+   * NOTE: if using the builtin Scala JSON parser, watch out, it's not thread safe!
+   *
+   * @param inputDir The HDFS directory where the metadata file is located
+   * @param sparkContext The Spark context
+   * @return A new copy of params with updates from the metadata file
+   */
+  def loadGameModelMetadataFromHDFS(
+      sparkContext: SparkContext,
+      inputDir: String,
+      metadataFileName: String = "model-metadata.json"): Params = {
+
+    val inputPath = new Path(inputDir, metadataFileName)
+    val fs = inputPath.getFileSystem(sparkContext.hadoopConfiguration)
+    val stream = fs.open(inputPath)
+    val fileContents = Source.fromInputStream(stream).getLines.mkString
+
+    val params = new Params
+    val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
+
+    params.taskType = modelTypeRegularExpression findFirstMatchIn fileContents match {
+      case Some(modelType) => TaskType.withName(modelType.group(1))
+      case _ => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
+    }
+
+    params
   }
 }

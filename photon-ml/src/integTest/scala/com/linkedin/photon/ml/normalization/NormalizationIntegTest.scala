@@ -16,18 +16,16 @@ package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, SparseVector}
 
-import com.linkedin.photon.ml.ModelTraining
+import com.linkedin.photon.ml.{ModelTraining, TaskType}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
 import com.linkedin.photon.ml.stat.BasicStatistics
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
 import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.Test
-
 import scala.util.Random
 
 /**

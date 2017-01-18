@@ -23,12 +23,12 @@ import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, L2RegularizationContext, NoRegularizationContext}
-import com.linkedin.photon.ml.supervised.TaskType
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**

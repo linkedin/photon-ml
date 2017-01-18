@@ -19,11 +19,11 @@ import java.nio.file.{FileSystems, Files, Path}
 import scala.collection.JavaConversions._
 
 import org.apache.spark.{SparkConf, SparkException}
+
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
@@ -32,12 +32,13 @@ import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
+import com.linkedin.photon.ml.{SparkContextConfiguration, TaskType}
 
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
+
   import CommonTestUtils._
   import DriverTest._
 
@@ -507,19 +508,20 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     * @return true if the model is sane
     */
   def modelSane(path: Path, expectedNumCoefficients: Int): Boolean = {
+
     val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
-    val means = modelAvro.head.getMeans()
-    means.filter(x => x.getValue != 0).size == expectedNumCoefficients
+    modelAvro.head.getMeans.count(x => x.getValue != 0) == expectedNumCoefficients
   }
 
   def modelContainsIntercept(path: Path): Boolean = {
+
     val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
-    modelAvro.head.getMeans.map(nameTermValueAvro =>
-      NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString)
+    modelAvro.head.getMeans.map(
+      nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString)
     ).toSet.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
   }
 
@@ -561,16 +563,17 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 }
 
 object DriverTest {
-  val fs = FileSystems.getDefault
-  val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
-  val trainPath = inputPath + "/train"
-  val testPath = inputPath + "/test"
-  val featurePath = inputPath + "/feature-lists"
-  val numIterations = 1
-  val numExecutors = 1
-  val numPartitionsForFixedEffectDataSet = numExecutors * 2
-  val numPartitionsForRandomEffectDataSet = numExecutors * 2
-  val tol = 1e-5
+
+  private val fs = FileSystems.getDefault
+  private val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
+  private val trainPath = inputPath + "/train"
+  private val testPath = inputPath + "/test"
+  private val featurePath = inputPath + "/feature-lists"
+  private val numIterations = 1
+  private val numExecutors = 1
+  private val numPartitionsForFixedEffectDataSet = numExecutors * 2
+  private val numPartitionsForRandomEffectDataSet = numExecutors * 2
+  private val tol = 1e-5
 
   /**
    * Default arguments to the Game driver

@@ -35,7 +35,7 @@ class FixedEffectModelTest extends SparkTestUtils {
     // Coefficients parameter
     val coefficientDimension = 1
     val glm: GeneralizedLinearModel =
-      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(coefficientDimension))
+      LogisticRegressionModel(Coefficients.initializeZeroCoefficients(coefficientDimension))
 
     // Meta data
     val featureShardId = "featureShardId"
@@ -56,7 +56,7 @@ class FixedEffectModelTest extends SparkTestUtils {
     // Should not equal to the fixed effect model with different model
     val differentCoefficientDimension = coefficientDimension + 1
     val differentGLM: GeneralizedLinearModel =
-      LogisticRegressionModel.create(Coefficients.initializeZeroCoefficients(differentCoefficientDimension))
+      LogisticRegressionModel(Coefficients.initializeZeroCoefficients(differentCoefficientDimension))
 
     val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(differentGLM), featureShardId)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
@@ -69,7 +69,7 @@ class FixedEffectModelTest extends SparkTestUtils {
     val numCoefficients = 10
     val randMeans = DenseVector.apply[Double](Seq.fill(numCoefficients)(Random.nextDouble).toArray)
     val coefficients = new Coefficients(randMeans, None) // no variance, which is not loaded right now
-    val glm: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients)
+    val glm: GeneralizedLinearModel = LogisticRegressionModel(coefficients)
 
     // Meta data
     val featureShardId = "featureShardId"
@@ -91,7 +91,7 @@ class FixedEffectModelTest extends SparkTestUtils {
     val otherCoeffs = Seq.fill(numCoefficients)(Random.nextDouble)
     val randMeans2 = DenseVector.apply[Double](otherCoeffs.toArray)
     val coefficients2 = new Coefficients(randMeans2, None) // no variance, which is not loaded right now
-    val differentGLM: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients2)
+    val differentGLM: GeneralizedLinearModel = LogisticRegressionModel(coefficients2)
 
     val fixedEffectModelWithDiffCoefficientsRDD = new FixedEffectModel(sc.broadcast(differentGLM), featureShardId)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
@@ -99,7 +99,7 @@ class FixedEffectModelTest extends SparkTestUtils {
     // Should not equal to the fixed effect model with different model
     val randMeans3 = DenseVector.apply[Double](otherCoeffs.take(5).toArray)
     val coefficients3 = new Coefficients(randMeans3, None) // no variance, which is not loaded right now
-    val differentGLM3: GeneralizedLinearModel = LogisticRegressionModel.create(coefficients3)
+    val differentGLM3: GeneralizedLinearModel = LogisticRegressionModel(coefficients3)
 
     val fixedEffectModelWithDiffCoefficientsRDD3 = new FixedEffectModel(sc.broadcast(differentGLM3), featureShardId)
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD3)

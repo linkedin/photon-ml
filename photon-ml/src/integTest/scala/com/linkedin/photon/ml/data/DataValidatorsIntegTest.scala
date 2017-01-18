@@ -18,12 +18,11 @@ import org.apache.spark.rdd.RDD
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
+import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
 class DataValidatorsIntegTest extends SparkTestUtils {
   @DataProvider

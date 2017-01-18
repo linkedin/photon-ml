@@ -128,7 +128,8 @@ object RandomEffectCoordinate {
   }
 
   /**
-   * Score a dataset using a given model
+   * Score a dataset using a given model - i.e. just compute dot product of model coefficients with feature values
+   * (in particular, does not go through non-linear link function in logistic regression!)
    *
    * @param randomEffectDataSet The active dataset to score
    * @param randomEffectModel The model to score the dataset with

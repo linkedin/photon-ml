@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
+import scala.util.parsing.json.JSON
+
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
@@ -66,5 +68,17 @@ class GLMOptimizationConfigurationTest {
     assertEquals(regularizationContext.regularizationType, RegularizationType.L2)
     assertEquals(config.regularizationWeight, 1.0)
     assertEquals(config.downSamplingRate, 0.3)
+  }
+
+  @Test(dataProvider = "validStringConfigs")
+  def testJson(configStr: String): Unit = {
+
+    val config1 = GLMOptimizationConfiguration.parseAndBuildFromString(configStr)
+    val jsonString1 = config1.toJson
+
+    val config2: Option[GLMOptimizationConfiguration] = GLMOptimizationConfiguration.fromJson(jsonString1)
+    val jsonString2 = config2.get.toJson
+
+    assertEquals(jsonString1, jsonString2)
   }
 }

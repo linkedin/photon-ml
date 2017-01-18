@@ -16,20 +16,22 @@ package com.linkedin.photon.ml.cli.game.training
 
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
-import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
+import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.io.ModelOutputMode._
-import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
-import com.linkedin.photon.ml.supervised.TaskType
-import com.linkedin.photon.ml.supervised.TaskType._
+import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.OptionNames._
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.util.PalDBIndexMapParams
 
 /**
  * A bean class for GAME training parameters to replace the original case class for input parameters.
+ *
+ * TODO: this class needs a checkInvariant, located here, rather than having tests spread out all over
  *
  * @note Note that examples of how to configure GAME parameters can be found in the integration tests for the GAME
  *       driver.
@@ -126,8 +128,8 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
    * Optimization configurations for each factored random effect optimization problem, multiple parameters are
    * accepted and separated by semi-colon.
    */
-  var factoredRandomEffectOptimizationConfigurations: Array[Map[
-    String,
+  var factoredRandomEffectOptimizationConfigurations:
+    Array[Map[String,
     (GLMOptimizationConfiguration, GLMOptimizationConfiguration, MFOptimizationConfiguration)]] = Array(Map())
 
   /**
@@ -138,7 +140,7 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
   /**
    * GAME task type. Examples include logistic_regression and linear_regression.
    */
-  var taskType: TaskType = LOGISTIC_REGRESSION
+  var taskType: TaskType = TaskType.LOGISTIC_REGRESSION
 
   /**
    * Model output mode (output all models, best model, or no models)
@@ -160,38 +162,37 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
    */
   var applicationName: String = "Game-Full-Model-Training"
 
-  override def toString: String = {
+  override def toString: String =
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
-        s"trainDateRangeOpt: $trainDateRangeOpt\n" +
-        s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt\n" +
-        s"validateDirsOpt: ${validateDirsOpt.map(_.mkString(", "))}\n" +
-        s"validateDateRangeOpt: $validateDateRangeOpt\n" +
-        s"validateDateRangeDaysAgoOpt: $validateDateRangeDaysAgoOpt\n" +
-        s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
-        s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
-        s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
-            .mkString("\n")}\n" +
-        s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
-        s"outputDir: $outputDir\n" +
-        s"numIterations: $numIterations\n" +
-        s"updatingSequence: $updatingSequence\n" +
-        s"fixedEffectOptimizationConfigurations:\n${fixedEffectOptimizationConfigurations.map(_.mkString("\n"))
-            .mkString("\n")}\n" +
-        s"fixedEffectDataConfigurations: \n${fixedEffectDataConfigurations.mkString("\n")}\n" +
-        s"randomEffectOptimizationConfigurations:\n${randomEffectOptimizationConfigurations.map(_.mkString("\n"))
-            .mkString("\n")}\n" +
-        s"factorRandomEffectOptimizationConfigurations:\n${factoredRandomEffectOptimizationConfigurations
-            .map(_.mkString("\n")).mkString("\n")}\n" +
-        s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}\n" +
-        s"taskType: $taskType\n" +
-        s"computeVariance: $computeVariance\n" +
-        s"modelOutputOption: $modelOutputMode\n" +
-        s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
-        s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
-        s"applicationName: $applicationName\n" +
-        s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
-        s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
-  }
+      s"trainDateRangeOpt: $trainDateRangeOpt\n" +
+      s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt\n" +
+      s"validateDirsOpt: ${validateDirsOpt.map(_.mkString(", "))}\n" +
+      s"validateDateRangeOpt: $validateDateRangeOpt\n" +
+      s"validateDateRangeDaysAgoOpt: $validateDateRangeDaysAgoOpt\n" +
+      s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
+      s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
+      s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
+        .mkString("\n")}\n" +
+      s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
+      s"outputDir: $outputDir\n" +
+      s"numIterations: $numIterations\n" +
+      s"updatingSequence: $updatingSequence\n" +
+      s"fixedEffectOptimizationConfigurations:\n${fixedEffectOptimizationConfigurations.map(_.mkString("\n"))
+        .mkString("\n")}\n" +
+      s"fixedEffectDataConfigurations: \n${fixedEffectDataConfigurations.mkString("\n")}\n" +
+      s"randomEffectOptimizationConfigurations:\n${randomEffectOptimizationConfigurations.map(_.mkString("\n"))
+        .mkString("\n")}\n" +
+      s"factorRandomEffectOptimizationConfigurations:\n${factoredRandomEffectOptimizationConfigurations
+        .map(_.mkString("\n")).mkString("\n")}\n" +
+      s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}\n" +
+      s"taskType: $taskType\n" +
+      s"computeVariance: $computeVariance\n" +
+      s"modelOutputOption: $modelOutputMode\n" +
+      s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
+      s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
+      s"applicationName: $applicationName\n" +
+      s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
+      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
 }
 
 object Params {
