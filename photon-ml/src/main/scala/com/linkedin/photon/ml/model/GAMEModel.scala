@@ -33,7 +33,8 @@ import com.linkedin.photon.ml.{BroadcastLike, RDDLike, TaskType}
 class GAMEModel(gameModels: Map[String, DatumScoringModel], val taskType: TaskType = TaskType.NONE)
     extends DatumScoringModel {
 
-  checkInvariants()
+  // These invariants commented out for now, since they cause a slow-down. Redo taking Spark into account.
+  //checkInvariants()
 
   /**
    * This method checks GameModel's invariants.
