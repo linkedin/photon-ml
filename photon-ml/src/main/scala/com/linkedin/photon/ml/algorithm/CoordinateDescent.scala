@@ -211,17 +211,16 @@ class CoordinateDescent(
         validatingDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
 
           val validationTimer = Timer.start()
+          val validatingScores = updatedModel
+            .score(validatingData)
+            .setName(s"Updated validating scores with coordinateId $coordinateId")
+            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .materialize()
           val validatingScoresContainer = validatingScoresContainerOption.get
-          validatingScoresContainer.updated(coordinateId,
-            updatedModel
-              .score(validatingData)
-              .setName(s"Updated validating scores with coordinateId $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-              .materialize()
-          )
           validatingScoresContainer(coordinateId).unpersistRDD()
-          validatingScoresContainerOption = Some(validatingScoresContainer)
-          val fullScore = validatingScoresContainer.values.reduce(_ + _)
+          val updatedValidatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
+          validatingScoresContainerOption = Some(updatedValidatingScoresContainer)
+          val fullScore = updatedValidatingScoresContainer.values.reduce(_ + _)
 
           val (firstEvaluator, currentEvaluation) = evaluators.map { evaluator =>
             val evaluationTimer = Timer.start()
