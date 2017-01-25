@@ -1,6 +1,6 @@
 {
     "name": "BayesianLinearModelAvro",
-    "namespace": "com.linkedin.photon.avro.generated",
+    "namespace": "com.linkedin.photon.ml.avro.generated",
     "type": "record",
     "doc": "a generic schema to describe a Bayesian linear model with means and variances",
     "fields": [

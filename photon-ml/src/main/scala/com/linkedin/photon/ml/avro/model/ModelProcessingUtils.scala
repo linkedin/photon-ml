@@ -23,7 +23,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.cli.game.training.Params
