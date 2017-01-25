@@ -91,6 +91,18 @@ class AvroDataReaderTest extends SparkTestUtils {
     }
   }
 
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testReadInvalidPaths(): Unit = sparkTest("testReadInvalidPaths") {
+    val dr = new AvroDataReader(sc)
+    dr.read(Seq.empty[String], numPartitions)
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testReadInvalidPartitions(): Unit = sparkTest("testReadInvalidPartitions") {
+    val dr = new AvroDataReader(sc)
+    dr.read(inputPath, -1)
+  }
+
   /**
    * Verifies that the DataFrame has expected shape and statistics.
    *
