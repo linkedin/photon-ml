@@ -89,7 +89,7 @@ class AvroDataReader(
       numPartitions: Int): (DataFrame, Map[String, IndexMapLoader]) = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
-    require(numPartitions > 0, "Partition count must be greater than zero.")
+    require(numPartitions >= 0, "Partition count cannot be negative.")
 
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
     val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap)
@@ -126,7 +126,7 @@ class AvroDataReader(
       numPartitions: Int): DataFrame = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
-    require(numPartitions > 0, "Partition count must be greater than zero.")
+    require(numPartitions >= 0, "Partition count cannot be negative.")
 
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
 
