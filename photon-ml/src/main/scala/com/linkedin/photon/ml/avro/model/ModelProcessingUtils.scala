@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.avro.model
 
 import scala.collection.Map
 import scala.io.Source
+import scala.util.Try
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.hadoop.conf.Configuration
@@ -510,10 +511,12 @@ object ModelProcessingUtils {
    * TODO: load (and save) more metadata, and return an updated Params
    *
    * NOTE: if using the builtin Scala JSON parser, watch out, it's not thread safe!
+   * NOTE: if there is no metadata file (old models trained before the metadata were introduced),
+   *       we assume that the type of GAMEModel is a linear model (each subModel contains its own type)
    *
    * @param inputDir The HDFS directory where the metadata file is located
    * @param sparkContext The Spark context
-   * @return A new copy of params with updates from the metadata file
+   * @return Either a new Param object, or Failure if a metadata file was not found, or it did not contain "modelType"
    */
   def loadGameModelMetadataFromHDFS(
       sparkContext: SparkContext,
@@ -521,17 +524,21 @@ object ModelProcessingUtils {
       metadataFileName: String = "model-metadata.json"): Params = {
 
     val inputPath = new Path(inputDir, metadataFileName)
-    val fs = inputPath.getFileSystem(sparkContext.hadoopConfiguration)
-    val stream = fs.open(inputPath)
-    val fileContents = Source.fromInputStream(stream).getLines.mkString
-
     val params = new Params
     val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
 
-    params.taskType = modelTypeRegularExpression findFirstMatchIn fileContents match {
-      case Some(modelType) => TaskType.withName(modelType.group(1))
-      case _ => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
-    }
+    val fs = Try(inputPath.getFileSystem(sparkContext.hadoopConfiguration))
+    val stream = fs.map(f => f.open(inputPath))
+    val fileContents = stream.map(s => Source.fromInputStream(s).getLines.mkString)
+
+    // TODO: log if we are in a legacy case and don't have metadata
+
+    params.taskType = fileContents.map {
+      fc => modelTypeRegularExpression.findFirstMatchIn(fc) match {
+        case Some(modelType) => TaskType.withName(modelType.group(1))
+        case _ => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
+      }
+    }.getOrElse(TaskType.LINEAR_REGRESSION)
 
     params
   }
