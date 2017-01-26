@@ -164,6 +164,7 @@ class AvroDataReader(
     // Infer sql schema from avro schema
     val srcFeatureCols = featureColumnMap.values.flatten.toSet
     val schemaFields = inferSchemaFields(records)
+      .getOrElse(throw new IllegalArgumentException("No records found at given input paths."))
       .filterNot(f => srcFeatureCols.contains(f.name))
 
     val rows = records.mapPartitions { iter =>
@@ -336,15 +337,15 @@ object AvroDataReader {
    * Infers spark sql field schema by sampling a single record from the RDD of avro GenericRecord.
    *
    * @param records the avro records
-   * @return the spark sql field schema
+   * @return the spark sql field schema, or None if no records were found
    */
-  def inferSchemaFields(records: RDD[GenericRecord]): Seq[StructField] = records
+  def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] = records
     .map(r => r.getSchema
       .getFields
       .asScala
       .flatMap { f => avroTypeToSql(f.name, f.schema) })
     .take(1)
-    .head
+    .headOption
 
   /**
    * Converts the named avro field schema to an equivalent spark sql schema type.

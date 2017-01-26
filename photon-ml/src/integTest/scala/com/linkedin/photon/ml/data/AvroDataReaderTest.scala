@@ -103,6 +103,13 @@ class AvroDataReaderTest extends SparkTestUtils {
     dr.read(inputPath, -1)
   }
 
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidInputPath(): Unit = sparkTest("testInvalidInputPath") {
+    val emptyInputPath = getClass.getClassLoader.getResource("GameIntegTest/empty-input").getPath
+    val dr = new AvroDataReader(sc)
+    dr.read(emptyInputPath, numPartitions)
+  }
+
   /**
    * Verifies that the DataFrame has expected shape and statistics.
    *
