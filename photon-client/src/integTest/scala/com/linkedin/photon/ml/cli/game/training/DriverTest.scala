@@ -25,8 +25,8 @@ import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameConverters
