@@ -73,6 +73,7 @@ shadowJar {
   mergeServiceFiles()
 
   // Relocate the packages in the shadow jar that we want shaded
+  relocate 'com.linkedin.photon.avro', 'photonml.shaded.com.linkedin.photon.avro'
   relocate 'com.thoughtworks.paranamer', 'photonml.shaded.com.thoughtworks.paranamer'
   relocate 'com.xeiam.xchart', 'photonml.shaded.com.xeiam.xchart'
   relocate 'de.erichseifert', 'photonml.shaded.de.erichseifert'

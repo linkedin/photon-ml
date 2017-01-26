@@ -28,7 +28,7 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
