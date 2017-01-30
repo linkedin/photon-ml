@@ -260,7 +260,7 @@ object AvroDataReader {
    * @param fieldNames the fields from which to read features
    * @return array of (feature key, value) tuples
    */
-  def readFeaturesFromRecord(
+  protected[data] def readFeaturesFromRecord(
       record: GenericRecord,
       fieldNames: Set[String]): Array[(String, Double)] = {
 
@@ -292,7 +292,7 @@ object AvroDataReader {
    * @param featureMap the feature map, which maps feature keys to vector indices
    * @return the feature vector
    */
-  def readFeatureVectorFromRecord(
+  protected[data] def readFeatureVectorFromRecord(
       record: GenericRecord,
       fieldNames: Set[String],
       featureMap: IndexMap): Vector = {
@@ -339,7 +339,7 @@ object AvroDataReader {
    * @param records the avro records
    * @return the spark sql field schema, or None if no records were found
    */
-  def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] = records
+  protected[data] def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] = records
     .map(r => r.getSchema
       .getFields
       .asScala
@@ -354,7 +354,7 @@ object AvroDataReader {
    * @param avroSchema the avro schema for the field
    * @return spark sql schema for the field
    */
-  def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] = avroSchema.getType match {
+  protected[data] def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] = avroSchema.getType match {
     case INT => Some(StructField(name, IntegerType, nullable = false))
     case STRING => Some(StructField(name, StringType, nullable = false))
     case BOOLEAN => Some(StructField(name, BooleanType, nullable = false))
@@ -403,18 +403,34 @@ object AvroDataReader {
    * @param schemaFields the spark sql schema to apply when reading the record
    * @return column values
    */
-  def readColumnValuesFromRecord(record: GenericRecord, schemaFields: Seq[StructField]) = schemaFields
+  protected[data] def readColumnValuesFromRecord(record: GenericRecord, schemaFields: Seq[StructField]) = schemaFields
     .flatMap { field: StructField => field.dataType match {
-      case IntegerType => Some(Utils.getIntAvro(record, field.name))
+      case IntegerType => checkNull(record, field).orElse(Some(Utils.getIntAvro(record, field.name)))
       case StringType => Some(Utils.getStringAvro(record, field.name, field.nullable))
-      case BooleanType => Some(Utils.getBooleanAvro(record, field.name))
-      case DoubleType => Some(Utils.getDoubleAvro(record, field.name))
-      case FloatType => Some(Utils.getFloatAvro(record, field.name))
-      case LongType => Some(Utils.getLongAvro(record, field.name))
-      case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable).asScala)
+      case BooleanType => checkNull(record, field).orElse(Some(Utils.getBooleanAvro(record, field.name)))
+      case DoubleType => checkNull(record, field).orElse(Some(Utils.getDoubleAvro(record, field.name)))
+      case FloatType => checkNull(record, field).orElse(Some(Utils.getFloatAvro(record, field.name)))
+      case LongType => checkNull(record, field).orElse(Some(Utils.getLongAvro(record, field.name)))
+      case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable))
       case _ =>
         // Unsupported field type. Drop this for now.
         None
+    }
+  }
+
+  /**
+    * Checks whether null values are allowed for the record, and if so, passes along the null value. Otherwise, returns
+    * None.
+    *
+    * @param record the avro GenericRecord
+    * @param field the schema field
+    * @return Some(null) if the field is null and nullable. None otherwise.
+    */
+  protected[data] def checkNull(record: GenericRecord, field: StructField): Option[_] = {
+    if (record.get(field.name) == null && field.nullable) {
+      Some(null)
+    } else {
+      None
     }
   }
 }

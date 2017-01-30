@@ -259,9 +259,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
       .build()
 
     val readMap = Utils.getMapAvro(record, "longValMap")
-    assertEquals(readMap.size(), 2)
-    assertEquals(readMap.get("aaa"), 1L)
-    assertEquals(readMap.get("bbb"), -2L)
+    assertEquals(readMap.size, 2)
+    assertEquals(readMap("aaa"), 1L)
+    assertEquals(readMap("bbb"), -2L)
 
     val map2 = new java.util.HashMap[String, String]()
     map2.put("aaa", "111")
@@ -272,9 +272,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
       .build()
 
     val readMap2 = Utils.getMapAvro(record2, "stringValMap")
-    assertEquals(readMap2.size(), 2)
-    assertEquals(readMap2.get("aaa"), "111")
-    assertEquals(readMap2.get("bbb"), "222")
+    assertEquals(readMap2.size, 2)
+    assertEquals(readMap2("aaa"), "111")
+    assertEquals(readMap2("bbb"), "222")
 
     val emptyRecord = new TestRecordBuilder().build()
 
