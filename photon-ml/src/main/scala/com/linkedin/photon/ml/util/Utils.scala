@@ -16,8 +16,9 @@ package com.linkedin.photon.ml.util
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import scala.collection.JavaConverters._
 
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import com.linkedin.photon.ml.io
 import com.linkedin.photon.ml.io.GLMSuite
 import org.apache.avro.generic.GenericRecord
@@ -126,11 +127,20 @@ protected[ml] object Utils {
    * @return A java map of String -> Object
    */
   def getMapAvro(
-    record: GenericRecord,
-    key: String,
-    isNullOK: Boolean = false): java.util.Map[String, JObject] = {
+      record: GenericRecord,
+      key: String,
+      isNullOK: Boolean = false): Map[String, JObject] = {
+
     record.get(key) match {
-      case map: java.util.Map[String, JObject] => map
+      case map: java.util.Map[Any, JObject] => map.asScala.map {
+        case (key, value) => (key.toString, value match {
+          // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
+          // equivalence failures downstream.
+          case s@(_: Utf8 | _: JString) => s.toString
+          case _ => value
+        })
+      }.toMap
+
       case obj: JObject => throw new IllegalArgumentException(s"$obj is not map type.")
       case _ => if (isNullOK) null else throw new IllegalArgumentException(s"field $key is null")
     }

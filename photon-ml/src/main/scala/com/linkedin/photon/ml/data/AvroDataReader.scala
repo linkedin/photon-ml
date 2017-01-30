@@ -411,7 +411,7 @@ object AvroDataReader {
       case DoubleType => checkNull(record, field).orElse(Some(Utils.getDoubleAvro(record, field.name)))
       case FloatType => checkNull(record, field).orElse(Some(Utils.getFloatAvro(record, field.name)))
       case LongType => checkNull(record, field).orElse(Some(Utils.getLongAvro(record, field.name)))
-      case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable).asScala)
+      case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable))
       case _ =>
         // Unsupported field type. Drop this for now.
         None
