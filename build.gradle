@@ -136,7 +136,6 @@ subprojects {
 
   tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-verbose", "-optimize", "-unchecked", "-Yinline-warnings", "-g:vars"]
-    scalaCompileOptions.useAnt = false
 
     configure(scalaCompileOptions.forkOptions) {
       memoryMaximumSize = '1g'
@@ -168,5 +167,5 @@ subprojects {
 
 // Task to generate the Gradle wrapper scripts
 task wrapper(type: Wrapper) {
-  gradleVersion = '2.8'
+  gradleVersion = '3.3'
 }
