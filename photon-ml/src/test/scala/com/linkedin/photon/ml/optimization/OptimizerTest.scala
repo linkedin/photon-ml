@@ -18,7 +18,6 @@ import java.util.Random
 
 import breeze.linalg.{DenseVector, SparseVector, norm}
 import breeze.optimize.FirstOrderMinimizer.{FunctionValuesConverged, GradientConverged}
-import org.apache.spark.Logging
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -28,6 +27,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * Verify that core optimizers do reasonable things on small test problems.
@@ -149,7 +149,7 @@ object OptimizerTest extends Logging {
    */
   private def easyOptimizationStatesChecks(optimizerStatesTracker: OptimizationStatesTracker): Unit = {
 
-    logInfo(s"Optimizer state: $optimizerStatesTracker")
+    logger.info(s"Optimizer state: $optimizerStatesTracker")
 
     // The optimizer should be converged
     assertTrue(optimizerStatesTracker.converged)

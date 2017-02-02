@@ -52,12 +52,11 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{Vector, norm}
-import org.apache.spark.Logging
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{Logging, Utils}
 
 /**
  * This class used to solve an optimization problem using trust region Newton method (TRON).
@@ -216,7 +215,7 @@ class TRON(
       }
       val gradientNorm = norm(updatedFunctionGradient, 2)
       val residualNorm = norm(residual, 2)
-      logDebug(f"iter $prevIter%3d act $actualReduction%5.3e pre $predictedReduction%5.3e delta $delta%5.3e " +
+      logger.debug(f"iter $prevIter%3d act $actualReduction%5.3e pre $predictedReduction%5.3e delta $delta%5.3e " +
         f"f $updatedFunctionValue%5.3e |residual| $residualNorm%5.3e |g| $gradientNorm%5.3e CG $cgIter%3d")
 
       if (actualReduction > eta0 * predictedReduction) {
@@ -235,16 +234,16 @@ class TRON(
       } else {
         // otherwise, the updated coefficients will not be accepted, and the old state will be returned along with
         // warning messages
-        logWarning(s"actual objective function value reduction is smaller than predicted " +
+        logger.warn(s"actual objective function value reduction is smaller than predicted " +
           s"(actualReduction = $actualReduction < eta0 = $eta0 * predictedReduction = $predictedReduction)")
         if (updatedFunctionValue < -1.0e+32) {
-          logWarning("updated function value < -1.0e+32")
+          logger.warn("updated function value < -1.0e+32")
         }
         if (actualReduction <= 0) {
-          logWarning("actual reduction of function value <= 0")
+          logger.warn("actual reduction of function value <= 0")
         }
         if (math.abs(actualReduction) <= 1.0e-12 && math.abs(predictedReduction) <= 1.0e-12) {
-          logWarning("both actual reduction and predicted reduction of function value are too small")
+          logger.warn("both actual reduction and predicted reduction of function value are too small")
         }
         numImprovementFailure += 1
       }
@@ -307,7 +306,7 @@ object TRON extends Logging {
 
         step += direction * alpha
         if (norm(step, 2) > truncationBoundary) {
-          logDebug(s"cg reaches truncation boundary after $iteration iterations")
+          logger.debug(s"cg reaches truncation boundary after $iteration iterations")
           /* Solve equation (13) of Algorithm 2 */
           alpha = -alpha
           step += direction * alpha

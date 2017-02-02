@@ -15,14 +15,14 @@
 package com.linkedin.photon.ml.data
 
 import breeze.linalg.{DenseVector, SparseVector}
-import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
@@ -91,7 +91,7 @@ object DataValidators extends Logging {
         perSampleValidators.map( validator => {
           val valid = validator._2(item)
           if (!valid) {
-            logError(s"Validation ${validator._1} failed on item: $item")
+            logger.error(s"Validation ${validator._1} failed on item: $item")
           }
           valid
         }).forall(x => x)
@@ -118,22 +118,22 @@ object DataValidators extends Logging {
           if (valid) {
             true
           } else {
-            logError("Data validation failed.")
+            logger.error("Data validation failed.")
             false
           }
         case DataValidationType.VALIDATE_SAMPLE =>
-          logWarning("Doing a partial validation on ~10% of the training data")
+          logger.warn("Doing a partial validation on ~10% of the training data")
           val subset = inputData.sample(withReplacement = false, fraction = 0.10)
           val valid = validators.map(x => x(subset)).forall(x => x)
           if (valid) {
             true
           } else {
-            logError("Data validation failed.")
+            logger.error("Data validation failed.")
             false
           }
       }
     } else {
-      logWarning("Data validation disabled.")
+      logger.warn("Data validation disabled.")
       true
     }
   }

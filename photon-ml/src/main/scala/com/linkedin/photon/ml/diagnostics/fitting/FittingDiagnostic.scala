@@ -14,16 +14,16 @@
  */
 package com.linkedin.photon.ml.diagnostics.fitting
 
+import org.apache.commons.math3.distribution.UniformIntegerDistribution
+import org.apache.commons.math3.random.MersenneTwister
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.commons.math3.distribution.UniformIntegerDistribution
-import org.apache.commons.math3.random.MersenneTwister
-import org.apache.spark.Logging
-import org.apache.spark.rdd.RDD
-
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * Try to diagnose under/over-fit and label bias problems in a data set. The idea here is that by computing metrics
@@ -77,14 +77,14 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
         val startTime = System.currentTimeMillis
         val samples = dataSet.count()
         val dataPortion = 100.0 * samples / numSamples
-        logInfo(s"Data portion: $dataPortion ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
+        logger.info(s"Data portion: $dataPortion ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
         val models = modelFactory(dataSet, prev._2).toMap
 
         val metricsTest = models.mapValues(x => Evaluation.evaluate(x, holdOut))
         val metricsTrain = models.mapValues(x => Evaluation.evaluate(x, dataSet))
         dataSet.unpersist(blocking = false)
         val elapsedTime = (System.currentTimeMillis - startTime) / 1000.0
-        logInfo(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
+        logger.info(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
 
         (dataPortion, models, metricsTest, metricsTrain)
       })

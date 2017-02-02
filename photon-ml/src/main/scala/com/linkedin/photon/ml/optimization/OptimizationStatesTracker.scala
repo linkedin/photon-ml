@@ -18,7 +18,8 @@ import scala.collection.immutable.Queue
 
 import breeze.linalg.norm
 import breeze.optimize.FirstOrderMinimizer.{ConvergenceReason, FunctionValuesConverged, GradientConverged}
-import org.apache.spark.Logging
+
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * Class to track the history of an optimizer's states and wall-clock time elapsed per iteration
