@@ -14,13 +14,14 @@
  */
 package com.linkedin.photon.ml
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.metric.MetricMetadata
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import org.apache.spark.Logging
-import org.apache.spark.rdd.RDD
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * A collection of functions for model selection purpose
@@ -76,7 +77,7 @@ object ModelSelection extends Logging {
     }).toArray.sortBy(_._1)(metricMetadata.worstToBestOrdering)
     val (bestMetricValue, bestLambda, bestModel) = sortedByMetric.last
     val (worstMetricValue, worstLambda, _) = sortedByMetric.head
-      logInfo(s"Selecting model with lambda = $bestLambda ($metric = $bestMetricValue) v. worst @ " +
+      logger.info(s"Selecting model with lambda = $bestLambda ($metric = $bestMetricValue) v. worst @ " +
               s"lambda = $worstLambda ($metric = $worstMetricValue)")
     (bestLambda, bestModel)
   }

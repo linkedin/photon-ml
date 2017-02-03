@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml
 
 import org.apache.commons.math3.special.Gamma
-import org.apache.spark.Logging
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, RegressionMetrics}
 import org.apache.spark.rdd.RDD
 
@@ -24,6 +23,7 @@ import com.linkedin.photon.ml.metric.MetricMetadata
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, Regression}
+import com.linkedin.photon.ml.util.Logging
 
 /**
   * A collection of evaluation metrics and functions
@@ -118,7 +118,7 @@ object Evaluation extends Logging {
       case _ =>
     }
 
-    logInfo(s"Generated metrics with keys ${metrics.keys.mkString(", ")}")
+    logger.info(s"Generated metrics with keys ${metrics.keys.mkString(", ")}")
 
     scoreAndLabel.unpersist(blocking = false)
     metrics

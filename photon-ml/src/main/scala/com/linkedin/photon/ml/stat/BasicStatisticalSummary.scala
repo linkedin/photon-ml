@@ -14,11 +14,10 @@
  */
 package com.linkedin.photon.ml.stat
 
-import com.linkedin.photon.ml.util.VectorUtils
-
 import breeze.linalg.Vector
-import org.apache.spark.Logging
 import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
+
+import com.linkedin.photon.ml.util.{Logging, VectorUtils}
 
 /**
  * A wrapper of
@@ -60,7 +59,7 @@ object BasicStatisticalSummary extends Logging {
 
     val adjustedCount = tVariance.activeIterator.foldLeft(0)((count, idxValuePair) => {
       if (idxValuePair._2.isNaN || idxValuePair._2.isInfinite || idxValuePair._2 < 0) {
-        logWarning(s"Detected invalid variance at index ${idxValuePair._1} (${idxValuePair._2})")
+        logger.warn(s"Detected invalid variance at index ${idxValuePair._1} (${idxValuePair._2})")
         count + 1
       } else {
         count
@@ -68,8 +67,8 @@ object BasicStatisticalSummary extends Logging {
     })
 
     if (adjustedCount > 0) {
-      logWarning(s"Found $adjustedCount features where variance was either non-positive, not-a-number, or infinite. " +
-                 "The variances for these features have been re-set to 1.0.")
+      logger.warn(s"Found $adjustedCount features where variance was either non-positive, not-a-number, or " +
+        "infinite. The variances for these features have been re-set to 1.0.")
     }
 
     this(

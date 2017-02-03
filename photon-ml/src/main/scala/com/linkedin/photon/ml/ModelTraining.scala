@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml
 
-import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
@@ -27,6 +26,7 @@ import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * Collection of functions for model training
@@ -171,11 +171,11 @@ object ModelTraining extends Logging {
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
 
     if (trainingData.getStorageLevel == StorageLevel.NONE) {
-      logWarning("The input data is not directly cached, which may hurt performance if its parent RDDs are also uncached.")
+      logger.warn("The input data is not directly cached, which may hurt performance if its parent RDDs are also uncached.")
     }
 
     val numWarmStartModels = warmStartModels.size
-    logInfo(s"Starting model fits with $numWarmStartModels warm start models for lambdas " +
+    logger.info(s"Starting model fits with $numWarmStartModels warm start models for lambdas " +
       s"${warmStartModels.keys.mkString(", ")}")
 
     val initWeightsAndModels = List[(Double, GeneralizedLinearModel)]()
@@ -186,12 +186,12 @@ object ModelTraining extends Logging {
           optimizationProblem.updateRegularizationWeight(currentWeight)
 
           if (numWarmStartModels == 0) {
-            logInfo(s"No warm start model found; beginning training with a 0-coefficients model")
+            logger.info(s"No warm start model found; beginning training with a 0-coefficients model")
 
               List((currentWeight, optimizationProblem.run(trainingData)))
           } else {
             val maxLambda = warmStartModels.keys.max
-            logInfo(s"Starting training using warm-start model with lambda = $maxLambda")
+            logger.info(s"Starting training using warm-start model with lambda = $maxLambda")
 
             List((currentWeight, optimizationProblem.run(trainingData, warmStartModels.get(maxLambda).get)))
           }
@@ -201,7 +201,7 @@ object ModelTraining extends Logging {
           val previousModel = latestWeightsAndModels.head._2
           optimizationProblem.updateRegularizationWeight(currentWeight)
 
-          logInfo(s"Training model with regularization weight $currentWeight finished")
+          logger.info(s"Training model with regularization weight $currentWeight finished")
 
           (currentWeight, optimizationProblem.run(trainingData, previousModel)) +: latestWeightsAndModels
       }

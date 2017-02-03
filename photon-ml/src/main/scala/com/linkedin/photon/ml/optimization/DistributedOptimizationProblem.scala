@@ -137,13 +137,13 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
 
     modelTrackerBuilder.foreach { modelTrackerBuilder =>
       val tracker = optimizer.getStateTracker.get
-      logInfo(s"History tracker information:\n $tracker")
+      logger.info(s"History tracker information:\n $tracker")
       val modelsPerIteration = tracker.getTrackedStates.map { x =>
         val coefficients = x.coefficients
         val variances = computeVariances(input, coefficients)
         createModel(normalizationContext, coefficients, variances)
       }
-      logInfo(s"Number of iterations: ${modelsPerIteration.length}")
+      logger.info(s"Number of iterations: ${modelsPerIteration.length}")
       modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
     }
 

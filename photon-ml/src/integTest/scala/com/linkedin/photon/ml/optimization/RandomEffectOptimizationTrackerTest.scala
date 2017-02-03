@@ -17,12 +17,12 @@ package com.linkedin.photon.ml.optimization
 import scala.collection.Map
 
 import breeze.linalg.Vector
-import breeze.optimize.FirstOrderMinimizer.FunctionValuesConverged
 import org.testng.annotations.Test
 import org.testng.Assert.assertEquals
 
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationTracker
 import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.util.FunctionValuesConverged
 
 /**
  * Some simple tests for random effect optimization tracker

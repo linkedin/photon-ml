@@ -16,12 +16,12 @@ package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{Vector, norm}
 import breeze.numerics.abs
-import breeze.optimize.FirstOrderMinimizer._
-import org.apache.spark.Logging
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.{
+  ConvergenceReason, FunctionValuesConverged, GradientConverged, MaxIterations, ObjectiveNotImproving, Logging}
 
 /**
  * Common base class for the Photon ML optimization problem solvers.

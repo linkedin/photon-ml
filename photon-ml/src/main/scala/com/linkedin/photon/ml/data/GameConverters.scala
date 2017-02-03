@@ -63,7 +63,7 @@ object GameConverters {
     // Add unique id
     val recordsWithUniqueId = data.withColumn(UNIQUE_ID_COLUMN_NAME, monotonicallyIncreasingId)
 
-    recordsWithUniqueId.map { row: Row =>
+    recordsWithUniqueId.rdd.map { row: Row =>
       val id = row.getAs[Long](UNIQUE_ID_COLUMN_NAME)
       (id, getGameDatumFromRow(
         row,
