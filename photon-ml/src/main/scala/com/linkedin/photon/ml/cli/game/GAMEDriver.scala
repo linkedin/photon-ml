@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.cli.game
 
 import org.apache.hadoop.conf.Configuration
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
@@ -26,18 +27,12 @@ import org.apache.spark.SparkContext
 abstract class GAMEDriver(
     params: FeatureParams with PalDBIndexMapParams,
     sparkContext: SparkContext,
-    logger: PhotonLogger) {
+    logger: Logger) {
 
   protected val hadoopConfiguration: Configuration = sparkContext.hadoopConfiguration
 
   protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
     s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
-
-  /**
-   * All random effect types that are necessary for GAME driver (E.g. types used for model training/scoring such as
-   * userId or itemId, or types used for sharded model evaluation such as queryId or documentId, etc.)
-   */
-  protected[game] val idTypeSet: Set[String]
 
   /**
    * Builds feature key to index map loaders according to configuration
@@ -94,5 +89,36 @@ abstract class GAMEDriver(
       // Otherwise, fall back to the default loader
       case _ => prepareFeatureMapsDefault()
     }
+  }
+
+  /**
+   * Resolves paths for specified date ranges to physical file paths
+   *
+   * @param baseDir the base dirs to which date-specific relative paths will be appended
+   * @param dateRangeOpt optional date range
+   * @param daysAgo optional days-ago specification for date range
+   * @return all resolved paths
+   */
+  protected[game] def pathsForDateRange(
+      baseDirs: Seq[String],
+      dateRangeOpt: Option[String],
+      daysAgoOpt: Option[String]): Seq[String] = (dateRangeOpt, daysAgoOpt) match {
+    // Specified as date range
+    case (Some(dateRangeSpec), None) =>
+      val dateRange = DateRange.fromDates(dateRangeSpec)
+      IOUtils.getInputPathsWithinDateRange(baseDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+    // Specified as a range of start days ago - end days ago
+    case (None, Some(daysAgoSpec)) =>
+      val dateRange = DateRange.fromDaysAgo(daysAgoSpec)
+      IOUtils.getInputPathsWithinDateRange(baseDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
+
+    // Both types specified: illegal
+    case (Some(_), Some(_)) =>
+      throw new IllegalArgumentException(
+        "Both date range and days ago given. You must specify date ranges using only one format.")
+
+    // No range specified, just use the train dir
+    case (None, None) => baseDirs
   }
 }

@@ -27,7 +27,7 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
-import com.linkedin.photon.ml.cli.game.training.Params
+import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -68,7 +68,7 @@ object ModelProcessingUtils {
       gameModel: GAMEModel,
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       outputDir: String,
-      params: Params,
+      params: GameParams,
       sparkContext: SparkContext): Unit = {
 
     val hadoopConfiguration = sparkContext.hadoopConfiguration
@@ -470,7 +470,7 @@ object ModelProcessingUtils {
    */
   def saveGameModelMetadataToHDFS(
       sparkContext: SparkContext,
-      params: Params,
+      params: GameParams,
       outputDir: String,
       metadataFilename: String = "model-metadata.json"): Unit = {
 
@@ -508,7 +508,7 @@ object ModelProcessingUtils {
    * Load model metadata from JSON file.
    *
    * NOTE: for now, we just output model type.
-   * TODO: load (and save) more metadata, and return an updated Params
+   * TODO: load (and save) more metadata, and return an updated GameParams
    *
    * NOTE: if using the builtin Scala JSON parser, watch out, it's not thread safe!
    * NOTE: if there is no metadata file (old models trained before the metadata were introduced),
@@ -521,10 +521,10 @@ object ModelProcessingUtils {
   def loadGameModelMetadataFromHDFS(
       sparkContext: SparkContext,
       inputDir: String,
-      metadataFileName: String = "model-metadata.json"): Params = {
+      metadataFileName: String = "model-metadata.json"): GameParams = {
 
     val inputPath = new Path(inputDir, metadataFileName)
-    val params = new Params
+    val params = new GameParams
     val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
 
     val fs = Try(inputPath.getFileSystem(sparkContext.hadoopConfiguration))

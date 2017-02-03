@@ -14,15 +14,17 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
-import com.linkedin.photon.ml.data.{DataSet, GameDatum}
-import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.model.GAMEModel
-import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger, Timer}
-import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
+import org.slf4j.Logger
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.data.{DataSet, GameDatum}
+import com.linkedin.photon.ml.evaluation.Evaluator
+import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
+import com.linkedin.photon.ml.model.GAMEModel
+import com.linkedin.photon.ml.util.{ObjectiveFunctionValue, PhotonLogger, Timer}
+import com.linkedin.photon.ml.{BroadcastLike, RDDLike}
 
 /**
  * Coordinate descent implementation
@@ -40,7 +42,7 @@ class CoordinateDescent(
     coordinates: Seq[(String, Coordinate[_ <: DataSet[_], _ <: Coordinate[_, _]])],
     trainingLossFunctionEvaluator: Evaluator,
     validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
-    logger: PhotonLogger) {
+    logger: Logger) {
 
   /**
    * Run coordinate descent.
@@ -51,7 +53,10 @@ class CoordinateDescent(
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
-  def run(numIterations: Int, taskType: TaskType, seed: Long = MathConst.RANDOM_SEED): GAMEModel = {
+  def run(
+      numIterations: Int,
+      taskType: TaskType,
+      seed: Long = MathConst.RANDOM_SEED): (GAMEModel, Option[EvaluationResults]) = {
 
     val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
 
@@ -83,7 +88,7 @@ class CoordinateDescent(
    * @param gameModel The initial GAME model
    * @return The best GAME model (see above for exact meaning of "best")
    */
-  def optimize(numIterations: Int, gameModel: GAMEModel): GAMEModel = {
+  def optimize(numIterations: Int, gameModel: GAMEModel): (GAMEModel, Option[EvaluationResults]) = {
 
     coordinates.foreach { case (coordinateId, _) =>
       require(gameModel.getModel(coordinateId).isDefined,
@@ -127,7 +132,7 @@ class CoordinateDescent(
     // If we allowed the "best" model to be selected inside the loop over coordinates, the "best"
     // model could be one that doesn't contain some random effects.
     var bestModel: Option[GAMEModel] = None
-    var bestEval: Option[Double] = None
+    var bestEval: Option[EvaluationResults] = None
 
     for (iteration <- 0 until numIterations) {
 
@@ -207,9 +212,7 @@ class CoordinateDescent(
             s"iteration $iteration is:\n$objectiveFunctionValue")
 
         // Update the validating score and evaluate the updated model on the validating data
-        val currentEvaluation =
-        validatingDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
-
+        val currentEvaluation = validatingDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
           val validationTimer = Timer.start()
           val validatingScores = updatedModel
             .score(validatingData)
@@ -222,7 +225,7 @@ class CoordinateDescent(
           validatingScoresContainerOption = Some(updatedValidatingScoresContainer)
           val fullScore = updatedValidatingScoresContainer.values.reduce(_ + _)
 
-          val (firstEvaluator, currentEvaluation) = evaluators.map { evaluator =>
+          val currentEvaluation = evaluators.map { evaluator =>
             val evaluationTimer = Timer.start()
             val evaluation = evaluator.evaluate(fullScore.scores)
             logger.debug(s"Finished score evaluation, time elapsed: ${evaluationTimer.stop().durationSeconds} (s).")
@@ -230,25 +233,28 @@ class CoordinateDescent(
               s"coordinateId $coordinateId at iteration $iteration is $evaluation")
 
             (evaluator, evaluation)
-          }.head // we use only the first evaluator to select the "best" model
+          }
 
           logger.debug(s"Finished validating model, time elapsed: ${validationTimer.stop().durationSeconds} (s).")
 
-          (firstEvaluator, currentEvaluation)
+          currentEvaluation
         } // validatingDataAndEvaluatorsOption.map
 
         logger.info(s"Updating coordinate $coordinateId finished, time elapsed: " +
             s"${coordinateTimer.stop().durationSeconds} (s)\n")
 
-        currentEvaluation // the first evaluator of the last coordinate evaluates the full model
+        currentEvaluation
       }.last // end each coordinate
 
       currentEvaluation match {
-        case Some((firstEvaluator: Evaluator, currentEval: Double)) =>
-          if (bestEval.isEmpty || firstEvaluator.betterThan(currentEval, bestEval.get)) {
-            bestEval = Some(currentEval)
+        case Some(evaluators: EvaluationResults) if evaluators.nonEmpty =>
+          // The first evaluator is used for model selection
+          val (evaluator, eval) = evaluators.head
+
+          if (bestEval.map(e => evaluator.betterThan(eval, e.head._2)).getOrElse(true)) {
+            bestEval = Some(evaluators)
             bestModel = Some(updatedGAMEModel)
-            logger.debug(s"Found better GAME model, with evaluation: $currentEval")
+            logger.debug(s"Found better GAME model, with evaluation: $eval")
           }
 
         case _ =>
@@ -260,6 +266,6 @@ class CoordinateDescent(
 
     } // end iterations
 
-    bestModel.getOrElse(updatedGAMEModel)
+    (bestModel.getOrElse(updatedGAMEModel), bestEval)
   } // end run
 }

@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.apache.spark.HashPartitioner
+import org.apache.spark.{HashPartitioner, SparkConf, SparkException}
 
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._
@@ -266,5 +266,26 @@ trait GameTestUtils {
       featureShardId)
 
     (coordinate, model)
+  }
+
+  /**
+   * Overridden spark test provider that allows for specifying whether to use kryo serialization
+   *
+   * @param name the test job name
+   * @param body the execution closure
+   */
+  def sparkTest(name: String, useKryo: Boolean)(body: => Unit) {
+    SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
+      sc = SparkContextConfiguration.asYarnClient(
+        new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo)
+
+      try {
+        body
+      } finally {
+        sc.stop()
+        System.clearProperty("spark.driver.port")
+        System.clearProperty("spark.hostPort")
+      }
+    }
   }
 }

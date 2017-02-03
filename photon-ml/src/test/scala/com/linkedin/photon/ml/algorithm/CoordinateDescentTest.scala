@@ -156,7 +156,7 @@ class CoordinateDescentTest {
     val validationDataAndEvaluators
       = if (validationEvaluators.isEmpty) None else Option(validationData, validationEvaluators)
     val coordinateDescent = new CoordinateDescent(coordinates, lossEvaluator, validationDataAndEvaluators, logger)
-    val returnedModel = coordinateDescent.optimize(iterationCount, gameModels.head)
+    val (returnedModel, _) = coordinateDescent.optimize(iterationCount, gameModels.head)
 
     assert(returnedModel.hashCode == gameModels(2).hashCode())
 

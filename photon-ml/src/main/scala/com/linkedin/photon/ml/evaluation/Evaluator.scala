@@ -79,6 +79,8 @@ protected[ml] trait Evaluator {
 
 object Evaluator {
 
+  type EvaluationResults = Seq[(Evaluator, Double)]
+
   /**
    * Factory for different types of [[Evaluator]]
    * @param evaluatorType The type of the evaluator

@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.cli.game.training
+package com.linkedin.photon.ml.estimators
 
 import scopt.OptionParser
 
@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.util.PalDBIndexMapParams
  *       driver.
  * @todo Making the way GAME being configured more user friendly
  */
-class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
+class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
 
   /**
    * Input directories of training data. Multiple input directories are also accepted if they are
@@ -195,10 +195,10 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
 }
 
-object Params {
-  protected[training] def parseFromCommandLine(args: Array[String]): Params = {
-    val defaultParams = new Params()
-    val params = new Params()
+object GameParams {
+  protected[ml] def parseFromCommandLine(args: Array[String]): GameParams = {
+    val defaultParams = new GameParams()
+    val params = new GameParams()
     val parser = new OptionParser[Unit]("Photon-Game") {
       opt[String]("train-input-dirs")
         .required()
