@@ -18,26 +18,33 @@ import java.nio.file.{FileSystems, Files, Path}
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.{SparkConf, SparkException}
+import org.apache.spark.SparkException
 
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
+import com.linkedin.photon.ml.GameTestUtils
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
+import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, RandomEffectDataSet}
+import com.linkedin.photon.ml.data
+import com.linkedin.photon.ml.data.{AvroDataReader, FixedEffectDataSet, GameConverters, RandomEffectDataSet}
+import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
-import com.linkedin.photon.ml.{SparkContextConfiguration, TaskType}
+import com.linkedin.photon.ml.util.{LongHashPartitioner, PhotonLogger, Utils}
 
-class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
+
+/**
+ * Test cases for the GAME training driver
+ */
+class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWithTmpDir {
 
   import CommonTestUtils._
   import DriverTest._
@@ -123,7 +130,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept", useKryo = true) {
     val outputDir = s"$getTmpDir/randomEffects"
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 2.2
+    val errorThreshold = 2.34
     val driver = runDriver(argArray(randomEffectSeriousRunArgs() ++ Map("output-dir" -> outputDir)))
     val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
     val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
@@ -224,100 +231,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testPrepareFixedEffectTrainingDataSet(): Unit = sparkTest("prepareFixedEffectTrainingDataSet", useKryo = true) {
-    val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
-
-    val args = argArray(fixedEffectToyRunArgs() ++ Map("output-dir" -> outputDir))
-
-    val driver = new Driver(Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
-
-    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-    val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
-    val trainingDataSet = driver.prepareTrainingDataSet(gameDataSet)
-
-    assertEquals(trainingDataSet.size, 1)
-
-    trainingDataSet("global") match {
-      case ds: FixedEffectDataSet =>
-        assertEquals(ds.labeledPoints.count(), 34810)
-        assertEquals(ds.numFeatures, 30045)
-
-      case _ => fail("Wrong dataset type.")
-    }
-  }
-
-  @Test
-  def testPrepareFixedAndRandomEffectTrainingDataSet(): Unit =
-    sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
-      val outputDir = s"$getTmpDir/prepareFixedEffectTrainingDataSet"
-
-      val args = argArray(fixedAndRandomEffectToyRunArgs() ++ Map("output-dir" -> outputDir))
-
-      val driver = new Driver(
-        Params.parseFromCommandLine(args), sc, new PhotonLogger(s"$outputDir/log", sc))
-
-      val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-      val gameDataSet = driver.prepareGameDataSet(featureShardIdToFeatureMapMap)
-      val trainingDataSet = driver.prepareTrainingDataSet(gameDataSet)
-
-      assertEquals(trainingDataSet.size, 4)
-
-      // fixed effect data
-      trainingDataSet("global") match {
-        case ds: FixedEffectDataSet =>
-          assertEquals(ds.labeledPoints.count(), 34810)
-          assertEquals(ds.numFeatures, 30085)
-
-        case _ => fail("Wrong dataset type.")
-      }
-
-      // per-user data
-      trainingDataSet("per-user") match {
-        case ds: RandomEffectDataSet =>
-          assertEquals(ds.activeData.count(), 33110)
-
-          val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
-          assertEquals(featureStats.count, 33110)
-          assertEquals(featureStats.mean, 24.12999, tol)
-          assertEquals(featureStats.stdev, 0.611194, tol)
-          assertEquals(featureStats.max, 40.0, tol)
-          assertEquals(featureStats.min, 24.0, tol)
-
-        case _ => fail("Wrong dataset type.")
-      }
-
-      // per-song data
-      trainingDataSet("per-song") match {
-        case ds: RandomEffectDataSet =>
-          assertEquals(ds.activeData.count(), 23167)
-
-          val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
-          assertEquals(featureStats.count, 23167)
-          assertEquals(featureStats.mean, 21.0, tol)
-          assertEquals(featureStats.stdev, 0.0, tol)
-          assertEquals(featureStats.max, 21.0, tol)
-          assertEquals(featureStats.min, 21.0, tol)
-
-        case _ => fail("Wrong dataset type.")
-      }
-
-      // per-artist data
-      trainingDataSet("per-artist") match {
-        case ds: RandomEffectDataSet =>
-          assertEquals(ds.activeData.count(), 4471)
-
-          val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
-          assertEquals(featureStats.count, 4471)
-          assertEquals(featureStats.mean, 3.0, tol)
-          assertEquals(featureStats.stdev, 0.0, tol)
-          assertEquals(featureStats.max, 3.0, tol)
-          assertEquals(featureStats.min, 3.0, tol)
-
-        case _ => fail("Wrong dataset type.")
-      }
-    }
-
-  @Test
   def testMultipleOptimizerConfigs(): Unit = sparkTest("multipleOptimizerConfigs", useKryo = true) {
     val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
 
@@ -338,52 +251,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @DataProvider
-  def multipleEvaluatorTypeProvider(): Array[Array[Any]] = {
-    Array(
-      Array(Seq(RMSE, SquaredLoss)),
-      Array(Seq(LogisticLoss, AUC, ShardedPrecisionAtK(1, "userId"), ShardedPrecisionAtK(10, "songId"))),
-      Array(Seq(AUC, ShardedAUC("userId"), ShardedAUC("songId"))),
-      Array(Seq(PoissonLoss))
-    )
-  }
-
-  @Test(dataProvider = "multipleEvaluatorTypeProvider")
-  def testMultipleEvaluatorsWithFixedEffectModel(evaluatorTypes: Seq[EvaluatorType])
-  : Unit = sparkTest("testMultipleEvaluatorsWithFixedEffectModel", useKryo = true) {
-
-    val outputDir = s"$getTmpDir/testMultipleEvaluatorsWithFixedEffectModel"
-
-    val driver = runDriver(argArray(fixedEffectToyRunArgs() ++ Map(
-      "output-dir" -> outputDir,
-      EvaluatorType.cmdArgument -> evaluatorTypes.map(_.name).mkString(","))))
-
-    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-    val (_, evaluators) = driver.prepareValidatingEvaluators(
-      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
-    evaluators
-        .zip(evaluatorTypes)
-        .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
-  }
-
-  @Test(dataProvider = "multipleEvaluatorTypeProvider")
-  def testMultipleEvaluatorsWithFullModel(evaluatorTypes: Seq[EvaluatorType])
-  : Unit = sparkTest("testMultipleEvaluatorsWithFullModel", useKryo = true) {
-
-    val outputDir = s"$getTmpDir/testMultipleEvaluatorsWithFullModel"
-
-    val driver = runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(
-      "output-dir" -> outputDir,
-      EvaluatorType.cmdArgument -> evaluatorTypes.map(_.name).mkString(","))))
-
-    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-    val (_, evaluators) = driver.prepareValidatingEvaluators(
-      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
-    evaluators
-      .zip(evaluatorTypes)
-      .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
-  }
-
-  @DataProvider
   def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] = {
     Array(
       Array(Seq(AUC, ShardedAUC("foo"))),
@@ -400,33 +267,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(
       "output-dir" -> outputDir,
       EvaluatorType.cmdArgument -> evaluatorTypes.map(_.name).mkString(","))))
-  }
-
-  @DataProvider
-  def taskAndDefaultEvaluatorTypeProvider(): Array[Array[Any]] = {
-    Array(
-      Array(TaskType.LINEAR_REGRESSION, RMSE),
-      Array(TaskType.LOGISTIC_REGRESSION, AUC),
-      Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, AUC),
-      Array(TaskType.POISSON_REGRESSION, PoissonLoss)
-    )
-  }
-
-  @Test(dataProvider = "taskAndDefaultEvaluatorTypeProvider")
-  def testDefaultEvaluator(
-      taskType: TaskType,
-      defaultEvaluatorType: EvaluatorType): Unit = sparkTest("testDefaultEvaluator", useKryo = true) {
-
-    val outputDir = s"$getTmpDir/testDefaultEvaluator"
-    val driver = runDriver(argArray(fixedEffectToyRunArgs(OptimizerType.LBFGS) ++ Map(
-      "output-dir" -> outputDir,
-      "task-type" -> taskType.toString
-    )))
-
-    val featureShardIdToFeatureMapMap = driver.prepareFeatureMaps()
-    val (_, evaluators) = driver.prepareValidatingEvaluators(
-      driver.params.validateDirsOpt.get, featureShardIdToFeatureMapMap)
-    assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
   }
 
   @Test
@@ -480,27 +320,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   /**
-    * Overridden spark test provider that allows for specifying whether to use kryo serialization
-    *
-    * @param name the test job name
-    * @param body the execution closure
-    */
-  def sparkTest(name: String, useKryo: Boolean)(body: => Unit) {
-    SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
-      sc = SparkContextConfiguration.asYarnClient(
-        new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo)
-
-      try {
-        body
-      } finally {
-        sc.stop()
-        System.clearProperty("spark.driver.port")
-        System.clearProperty("spark.hostPort")
-      }
-    }
-  }
-
-  /**
     * Perform a very basic sanity check on the model
     *
     * @param path path to the model coefficients file
@@ -541,17 +360,29 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     * @return evaluation results for each specified evaluator
     */
   def evaluateModel(driver: Driver, modelPath: Path): Seq[Double] = {
-
+    val idTypeSet = Set("userId", "artistId", "songId")
     val indexMapLoaders = driver.prepareFeatureMaps()
-    val gameDataSet = driver.prepareGameDataSet(indexMapLoaders)
+    val featureSectionMap = driver.params.featureShardIdToFeatureSectionKeysMap
+    val dr = new AvroDataReader(sc)
+    val testData = dr.readMerged(testPath, indexMapLoaders, featureSectionMap, 2)
 
-    // Ignore feature index loader (second argument)
+    val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
+    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
+      testData,
+      featureSectionMap.keys.toSet,
+      idTypeSet,
+      isResponseRequired = true)
+      .partitionBy(partitioner)
+
+    val validatingLabelsAndOffsetsAndWeights = gameDataSet
+      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
+    validatingLabelsAndOffsetsAndWeights.count()
+
+    val evaluator = new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
     val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(indexMapLoaders), modelPath.toString, sc)
-    // Ignore data set (first argument)
-    val (_, evaluators) = driver.prepareValidatingEvaluators(driver.params.validateDirsOpt.get, indexMapLoaders)
 
     val scores = gameModel.score(gameDataSet).scores
-    evaluators.map(_.evaluate(scores))
+    Seq(evaluator.evaluate(scores))
   }
 
   /**
@@ -560,7 +391,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     * @param args the command-line arguments
     */
   def runDriver(args: Array[String]): Driver = {
-    val params = Params.parseFromCommandLine(args)
+    val params = GameParams.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(params, sc, logger)
 

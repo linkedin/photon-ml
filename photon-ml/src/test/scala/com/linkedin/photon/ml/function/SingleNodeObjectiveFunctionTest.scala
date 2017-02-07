@@ -462,6 +462,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
         before(idx) -= DERIVATIVE_DELTA
         val after = initParam.copy
         after(idx) += DERIVATIVE_DELTA
+
         val objBefore = function.value(data, before, NORMALIZATION_MOCK)
         val objAfter = function.value(data, after, NORMALIZATION_MOCK)
 
@@ -517,6 +518,9 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
           before(idx) -= DERIVATIVE_DELTA
           val after = initParam.copy
           after(idx) += DERIVATIVE_DELTA
+
+          // TODO: This calculation causes memory usage to blow up (5g+) for larger settings of
+          // LOCAL_CONSISTENCY_CHECK_SAMPLES (100+). Investigate.
           val gradBefore = function.gradient(data, before, NORMALIZATION_MOCK)
           val gradAfter = function.gradient(data, after, NORMALIZATION_MOCK)
 
@@ -534,7 +538,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
 }
 
 object SingleNodeObjectiveFunctionTest {
-  val LOCAL_CONSISTENCY_CHECK_SAMPLES = 100
+  val LOCAL_CONSISTENCY_CHECK_SAMPLES = 25
   val NUM_PARTITIONS = 4
   val PROBLEM_DIMENSION = 5
   val NORMALIZATION = NoNormalization()

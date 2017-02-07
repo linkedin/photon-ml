@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scala.collection.Map
 
 import org.apache.hadoop.fs.Path
+import org.slf4j.Logger
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
@@ -32,7 +33,7 @@ import com.linkedin.photon.ml.util._
 /**
  * Driver for GAME full model scoring
  */
-class Driver(val params: Params, val sparkContext: SparkContext, val logger: PhotonLogger)
+class Driver(val params: Params, val sparkContext: SparkContext, val logger: Logger)
   extends GAMEDriver(params, sparkContext, logger) {
 
   import params._
@@ -50,26 +51,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Pho
   protected def prepareGameDataSet(
     featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): RDD[(Long, GameDatum)] = {
 
-    val recordsPath = (dateRangeOpt, dateRangeDaysAgoOpt) match {
-      // Specified as date range
-      case (Some(trainDateRange), None) =>
-        val dateRange = DateRange.fromDates(trainDateRange)
-        IOUtils.getInputPathsWithinDateRange(inputDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
-
-      // Specified as a range of start days ago - end days ago
-      case (None, Some(trainDateRangeDaysAgo)) =>
-        val dateRange = DateRange.fromDaysAgo(trainDateRangeDaysAgo)
-        IOUtils.getInputPathsWithinDateRange(inputDirs, dateRange, hadoopConfiguration, errorOnMissing = false)
-
-      // Both types specified: illegal
-      case (Some(_), Some(_)) =>
-        throw new IllegalArgumentException(
-          "Both trainDateRangeOpt and trainDateRangeDaysAgoOpt given. You must specify date ranges using only one " +
-              "format.")
-
-      // No range specified, just use the train dir
-      case (None, None) => inputDirs.toSeq
-    }
+    val recordsPath = pathsForDateRange(inputDirs, dateRangeOpt, dateRangeDaysAgoOpt)
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
 
     val gameDataPartitioner = new LongHashPartitioner(parallelism)
