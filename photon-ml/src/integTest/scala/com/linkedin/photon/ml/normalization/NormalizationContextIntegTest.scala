@@ -14,11 +14,10 @@
  */
 package com.linkedin.photon.ml.normalization
 
-import breeze.linalg.{DenseVector, SparseVector}
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
-
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -30,9 +29,9 @@ import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Test building NormalizationContext from summary. A sophisticated test with the heart data set is also performed to
- * verify that the standardization is correct numerically.
- */
+  * Test building NormalizationContext from summary. A sophisticated test with the heart data set is also performed to
+  * verify that the standardization is correct numerically.
+  */
 class NormalizationContextIntegTest extends SparkTestUtils {
   /*
    * features:
@@ -113,9 +112,26 @@ class NormalizationContextIntegTest extends SparkTestUtils {
   def testOptimizationWithStandardization(optimizerType: OptimizerType, taskType: TaskType): Unit =
     sparkTest("testObjectivesAfterNormalization") {
 
+      def transformVector(normalizationContext: NormalizationContext, input: Vector[Double]): Vector[Double] = {
+        (normalizationContext.factors, normalizationContext.shifts) match {
+          case (Some(fs), Some(ss)) =>
+            require(fs.size == input.size, "Vector size and the scaling factor size are different.")
+            (input - ss) :* fs
+          case (Some(fs), None) =>
+            require(fs.size == input.size, "Vector size and the scaling factor size are different.")
+            input :* fs
+          case (None, Some(ss)) =>
+            require(ss.size == input.size, "Vector size and the scaling factor size are different.")
+            input - ss
+          case (None, None) =>
+            input
+        }
+      }
+
       // Read heart data
       val heartDataRDD: RDD[LabeledPoint] = {
-        val inputFile = getClass.getClassLoader.getResource("DriverIntegTest/input/heart.txt").toString
+        val tt = getClass.getClassLoader.getResource("DriverIntegTest/input/heart.txt")
+        val inputFile = tt.toString
         val rawInput = sc.textFile(inputFile, 1)
         val trainRDD: RDD[LabeledPoint] = rawInput.map(x => {
           val y = x.split(" ")
@@ -140,7 +156,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
       val transformedRDD: RDD[LabeledPoint] = {
         val transformedRDD = heartDataRDD.map {
           case LabeledPoint(label, features, weight, offset) =>
-            val transformedFeatures = normalizationContext.transformVector(features)
+            val transformedFeatures = transformVector(normalizationContext, features)
             new LabeledPoint(label, transformedFeatures, weight, offset)
         }.persist()
         // Verify that the transformed rdd will have the correct transformation condition

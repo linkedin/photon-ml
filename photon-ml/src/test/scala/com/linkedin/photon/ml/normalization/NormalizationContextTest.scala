@@ -20,11 +20,11 @@ import org.testng.annotations.{DataProvider, Test}
 
 import scala.util.Random
 
-
 /**
- * Test [[NormalizationContext]]
+ * Unit tests for NormalizationContext.
  */
 class NormalizationContextTest {
+
   val dim = 5
   val seed = 1L
   val random = new Random(seed)
@@ -35,19 +35,41 @@ class NormalizationContextTest {
   val epsilon = 1.0E-9
 
   /**
+    * For testing purpose only. This is not designed to be efficient. This method transform a vector to
+    * from the original space to the normalized space.
+    *
+    * @param input Input vector
+    * @return Transformed vector
+    */
+  def transformVector(normalizationContext: NormalizationContext, input: Vector[Double]): Vector[Double] = {
+    (normalizationContext.factors, normalizationContext.shifts) match {
+      case (Some(fs), Some(ss)) =>
+        require(fs.size == input.size, "Vector size and the scaling factor size are different.")
+        (input - ss) :* fs
+      case (Some(fs), None) =>
+        require(fs.size == input.size, "Vector size and the scaling factor size are different.")
+        input :* fs
+      case (None, Some(ss)) =>
+        require(ss.size == input.size, "Vector size and the scaling factor size are different.")
+        input - ss
+      case (None, None) =>
+        input
+    }
+  }
+
+  /**
    * Verify model coefficients and feature transformation is compatible. The margin in the original scale and the
    * transformed scale should be the same.
-   * @param factors
-   * @param shifts
-   * @param addIntercept
    */
   @Test(dataProvider = "dataProvider")
-  def testTransformationWithIntercept(factors: Option[Vector[Double]], shifts: Option[Vector[Double]],
-                                      addIntercept: Boolean): Unit = {
+  def testTransformationWithIntercept(
+      factors: Option[Vector[Double]],
+      shifts: Option[Vector[Double]],
+      addIntercept: Boolean): Unit = {
 
     val vector = getRandomVector(addIntercept)
     val normalizationContext = NormalizationContext(factors, shifts, Some(dim - 1))
-    val transformedVector = normalizationContext.transformVector(vector)
+    val transformedVector = transformVector(normalizationContext, vector)
     val originalCoefs = normalizationContext.transformModelCoefficients(testCoef)
     val expectedMargin = originalCoefs.dot(vector)
     val actual = testCoef.dot(transformedVector)
@@ -68,17 +90,19 @@ class NormalizationContextTest {
 
   private def getRandomVector(addIntercept: Boolean ): Vector[Double] = {
     if (addIntercept) {
-      val ar = for (i <- 0 until dim - 1) yield random.nextGaussian() * sigma
+      val ar = for (_ <- 0 until dim - 1) yield random.nextGaussian() * sigma
       new DenseVector(ar.toArray :+ 1.0)
     } else {
-      val ar = for (i <- 0 until dim) yield random.nextGaussian() * sigma
+      val ar = for (_ <- 0 until dim) yield random.nextGaussian() * sigma
       new DenseVector(ar.toArray)
     }
   }
 
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidNormalizationContext(factors: Option[Vector[Double]], shifts: Option[Vector[Double]],
-                                      addIntercept: Boolean): Unit = {
+  def testInvalidNormalizationContext(
+      factors: Option[Vector[Double]],
+      shifts: Option[Vector[Double]],
+      addIntercept: Boolean): Unit = {
     new NormalizationContext(factors, shifts, None)
   }
 
