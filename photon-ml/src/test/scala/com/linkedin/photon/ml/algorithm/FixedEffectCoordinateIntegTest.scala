@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * Tests for the FixedEffectCoordinate implementation
  */
-class FixedEffectCoordinateTest {
+class FixedEffectCoordinateIntegTest {
   @Test
   def testUpdateModel(): Unit = {
     // Create mocks

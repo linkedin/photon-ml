@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util._
 
-class AvroDataReaderTest extends SparkTestUtils {
+class AvroDataReaderIntegTest extends SparkTestUtils {
   val tol = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
   val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input/train").getPath
   val inputPath2 = getClass.getClassLoader.getResource("GameIntegTest/input/test").getPath
