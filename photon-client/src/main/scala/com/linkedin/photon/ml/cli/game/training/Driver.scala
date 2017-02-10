@@ -93,9 +93,15 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
   /**
    * Reads the training dataset, handling specifics of input date ranges in the params.
    *
+<<<<<<< HEAD:photon-client/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    * @param trainDirs Path to the training data file(s)
    * @param featureIndexMapLoaders The feature index map loaders
    * @return The loaded data frame
+=======
+   * @param trainDirs path to the data file(s)
+   * @param featureIndexMapLoaders the feature index map loaders
+   * @return the loaded data frame
+>>>>>>> Changes for scaling GAME scoring: add a new data structure ScoredGameDatum, implement replicated partitioned hash join:photon-ml/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    */
   protected[training] def readTrainingData(
       trainDirs: Seq[String],
@@ -134,9 +140,15 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
   /**
    * Reads the validation dataset, handling specifics of input date ranges in the params.
    *
+<<<<<<< HEAD:photon-client/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    * @param validationDirs To the data file(s)
    * @param featureIndexMapLoaders The feature index map loaders
    * @return The loaded data frame
+=======
+   * @param validationDirs path to the data file(s)
+   * @param featureIndexMapLoaders the feature index map loaders
+   * @return the loaded data frame
+>>>>>>> Changes for scaling GAME scoring: add a new data structure ScoredGameDatum, implement replicated partitioned hash join:photon-ml/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    */
   protected[training] def readValidationData(
       validationDirs: Seq[String],
@@ -202,9 +214,15 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
    *
    * TODO: Deprecate model-spec then remove it in favor of model-metadata, but there are clients!
    *
+<<<<<<< HEAD:photon-client/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    * @param featureShardIdToFeatureMapLoader The shard ids
    * @param models All the models that were producing during training
    * @param bestModel The best model
+=======
+   * @param featureShardIdToFeatureMapLoader the shard ids
+   * @param models all the models that were produced during training
+   * @param bestModel the best model
+>>>>>>> Changes for scaling GAME scoring: add a new data structure ScoredGameDatum, implement replicated partitioned hash join:photon-ml/src/main/scala/com/linkedin/photon/ml/cli/game/training/Driver.scala
    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],

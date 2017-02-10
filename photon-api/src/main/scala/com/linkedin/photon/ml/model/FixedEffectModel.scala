@@ -117,9 +117,8 @@ object FixedEffectModel {
       modelBroadcast: Broadcast[GeneralizedLinearModel],
       featureShardId: String): KeyValueScore = {
 
-    val scores = dataPoints.mapValues(gameData =>
-      modelBroadcast.value.computeScore(gameData.featureShardContainer(featureShardId)))
-
+    val scores = dataPoints.mapValues(gameDatum =>
+      gameDatum.toScoredGameDatum(modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId))))
     new KeyValueScore(scores)
   }
 }

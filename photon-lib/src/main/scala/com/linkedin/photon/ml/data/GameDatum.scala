@@ -51,6 +51,10 @@ protected[ml] class GameDatum(
   def generateLabeledPointWithFeatureShardId(featureShardId: String): LabeledPoint = {
     LabeledPoint(label = response, features = featureShardContainer(featureShardId), offset = offset, weight = weight)
   }
+
+  def toScoredGameDatum(score: Double = ScoredGameDatum.ZERO_SCORE): ScoredGameDatum = {
+    ScoredGameDatum(response, offset, weight, score, idTypeToValueMap)
+  }
 }
 
 object GameDatum {

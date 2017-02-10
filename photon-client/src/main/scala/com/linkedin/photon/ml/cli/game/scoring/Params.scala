@@ -70,6 +70,12 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
   var gameModelId: String = ""
 
   /**
+    * Flag to decide whether the data and model statistics should be logged. This adds an additional linear scan of the
+    * dataset which can be time-consuming for very large datasets
+    */
+  var logDatasetAndModelStats: Boolean = false
+
+  /**
    * Output directory for logs in text file and the scores in ScoringResultAvro format.
    */
   var outputDir: String = ""
@@ -104,6 +110,8 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"randomEffectTypeSet: $randomEffectTypeSet\n" +
       s"numPartitionsForRandomEffectModel: $minPartitionsForRandomEffectModel\n" +
       s"gameModelInputDir: $gameModelInputDir\n" +
+      s"gameModelId: $gameModelId\n" +
+      s"logDatasetAndModelStats: $logDatasetAndModelStats\n" +
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
@@ -192,6 +200,10 @@ object Params {
         .required()
         .text(s"Input directory of the GAME model to be used to for scoring purpose.")
         .foreach(x => params.gameModelInputDir = x)
+
+      opt[Boolean]("log-game-dataset-and-model-stats")
+        .text(s"Whether to log stats about the dataset and models. Default: ${defaultParams.logDatasetAndModelStats}")
+        .foreach(x => params.logDatasetAndModelStats = x)
 
       opt[String]("output-dir")
         .required()

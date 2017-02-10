@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.data.ScoredGameDatum
+
 /**
  * Interface for evaluation implementations at the [[RDD]] level.
  */
@@ -42,13 +44,14 @@ protected[ml] trait Evaluator {
    * @param scores The scores to evaluate
    * @return Evaluation metric value
    */
-  protected[ml] def evaluate(scores: RDD[(Long, Double)]): Double = {
+  protected[ml] def evaluate(scores: RDD[(Long, ScoredGameDatum)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
     val scoreAndLabelAndWeights = scores
       .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoreOption, (label, offset, weight)) =>
-        (scoreOption.getOrElse(defaultScore) + offset, label, weight)
+      .mapValues { case (scoredDatumOption, (label, offset, weight)) =>
+        val score = scoredDatumOption.map(_.score).getOrElse(defaultScore)
+        (score + offset, label, weight)
       }
     evaluateWithScoresAndLabelsAndWeights(scoreAndLabelAndWeights)
   }

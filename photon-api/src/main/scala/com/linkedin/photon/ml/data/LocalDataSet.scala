@@ -19,6 +19,9 @@ import java.util.Random
 import scala.collection.{Map, Set, mutable}
 import scala.reflect.ClassTag
 
+import scala.collection.{Map, Set, mutable}
+import scala.reflect.ClassTag
+
 import breeze.linalg.{SparseVector, Vector}
 
 import com.linkedin.photon.ml.constants.MathConst
@@ -78,11 +81,11 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(Long, Double)]): LocalDataSet = {
+  def addScoresToOffsets(residualScores: Array[(Long, ScoredGameDatum)]): LocalDataSet = {
     val updatedDataPoints = dataPoints.zip(residualScores).map {
-      case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScore)) =>
-        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match")
-        (dataId, LabeledPoint(label, features, residualScore + offset, weight))
+      case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
+        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+        (dataId, LabeledPoint(label, features, residualScoreDatum.score + offset, weight))
     }
     LocalDataSet(updatedDataPoints)
   }

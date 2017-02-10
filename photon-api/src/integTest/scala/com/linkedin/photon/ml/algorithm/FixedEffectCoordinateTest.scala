@@ -18,7 +18,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.GameTestUtils
+import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
  * Tests for the FixedEffectCoordinate implementation.
@@ -37,7 +37,7 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 
     // Score before model update
     val score = coordinate.score(model)
-    assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
+    assertTrue(score.scores.map(_._2).collect.forall(scoredDatum => MathUtils.isAlmostZero(scoredDatum.score)))
 
     // Update model
     val (newModel, _) = coordinate.updateModel(model)
@@ -45,7 +45,7 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 
     // Score after model update
     val newScore = coordinate.score(newModel)
-    assertFalse(newScore.scores.map(_._2).collect.forall(_ == 0.0))
+    assertFalse(newScore.scores.map(_._2).collect.forall(_.score == 0.0))
   }
 
   @Test
@@ -56,9 +56,8 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
       DIMENSIONALITY)
 
     val score = coordinate.score(model)
-
     assertEquals(score.scores.count, NUM_TRAINING_SAMPLES)
-    assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
+    assertTrue(score.scores.map(_._2).collect.forall(_.score == 0.0))
   }
 }
 

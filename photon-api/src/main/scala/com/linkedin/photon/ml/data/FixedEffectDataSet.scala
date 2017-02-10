@@ -43,8 +43,8 @@ protected[ml] class FixedEffectDataSet(
   override def addScoresToOffsets(scores: KeyValueScore): FixedEffectDataSet = {
     val updatedLabeledPoints = labeledPoints
       .leftOuterJoin(scores.scores)
-      .mapValues { case (LabeledPoint(label, features, offset, weight), scoreOption) =>
-        LabeledPoint(label, features, offset + scoreOption.getOrElse(0.0), weight)
+      .mapValues { case (LabeledPoint(label, features, offset, weight), scoredDatumOption) =>
+        LabeledPoint(label, features, offset + scoredDatumOption.map(_.score).getOrElse(0.0), weight)
       }
     new FixedEffectDataSet(updatedLabeledPoints, featureShardId)
   }

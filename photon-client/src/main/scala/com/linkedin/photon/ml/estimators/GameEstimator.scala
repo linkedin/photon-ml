@@ -230,7 +230,7 @@ class GameEstimator(val params: GameParams, val sparkContext: SparkContext, val 
   /**
    * Creates the validation evaluator(s).
    *
-   * @param data The input data
+   * @param data The validation data
    * @return The validating game data sets and the companion evaluator
    */
   protected[estimators] def prepareValidatingEvaluators(data: DataFrame): (RDD[(Long, GameDatum)], Seq[Evaluator]) = {
@@ -269,7 +269,7 @@ class GameEstimator(val params: GameParams, val sparkContext: SparkContext, val 
         params.evaluatorTypes.map(EvaluatorFactory.buildEvaluator(_, gameDataSet))
       }
 
-    val randomScores = gameDataSet.mapValues(_ => math.random)
+    val randomScores = gameDataSet.mapValues(datum => datum.toScoredGameDatum(math.random))
     evaluators.foreach { evaluator =>
       val metric = evaluator.evaluate(randomScores)
       logger.info(s"Random guessing based baseline evaluation metric for ${evaluator.getEvaluatorName}: $metric")
