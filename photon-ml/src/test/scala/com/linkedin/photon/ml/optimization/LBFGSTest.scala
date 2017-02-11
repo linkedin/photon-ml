@@ -14,9 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import java.util.Random
-
-import breeze.linalg.DenseVector
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert
@@ -39,12 +36,6 @@ import com.linkedin.photon.ml.test.CommonTestUtils
  */
 class LBFGSTest {
   import CommonTestUtils._
-
-  val random = new Random(LBFGSTest.RANDOM_SEED)
-
-  private def getRandomInput(dim: Int): DenseVector[Double] = {
-    DenseVector(Seq.fill(dim)(random.nextGaussian).toArray)
-  }
 
   @DataProvider(name = "dataProvider")
   def dataProvider(): Array[Array[Any]] = {
@@ -79,7 +70,7 @@ class LBFGSTest {
 }
 
 object LBFGSTest {
-  val EPSILON = 1.0E-6
-  val RANDOM_SEED = 1
-  val EXPECTED_LOSS = 0
+
+  private val EPSILON = 1.0E-6
+  private val EXPECTED_LOSS = 0
 }

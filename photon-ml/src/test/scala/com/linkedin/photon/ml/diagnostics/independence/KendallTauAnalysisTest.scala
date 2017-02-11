@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.independence
 
-import org.apache.commons.math3.random.{ISAACRandom, MersenneTwister}
+import org.apache.commons.math3.random.ISAACRandom
 import org.testng.annotations.{DataProvider, Test}
 
 
@@ -105,8 +105,9 @@ class KendallTauAnalysisTest {
 }
 
 object KendallTauAnalysisTest {
-  val NUM_SAMPLES = 100L
-  val P_VALUE_TOLERANCE = 0.10
-  val TAU_ALPHA_TOLERANCE = 1e-3
-  val TAU_BETA_TOLERANCE = 1e-3
+
+  private val NUM_SAMPLES = 100L
+  private val P_VALUE_TOLERANCE = 0.10
+  private val TAU_ALPHA_TOLERANCE = 1e-3
+  private val TAU_BETA_TOLERANCE = 1e-3
 }

@@ -47,7 +47,7 @@ class OptimizationUtilsTest {
 
   @Test(dataProvider = "generateCoefficientsAndConstraintMap")
   def testProjectCoefficientsToHypercube(coefficients: Vector[Double], constraints: Option[Map[Int, (Double, Double)]],
-                                            expectedVectorOutput: Vector[Double]) = {
+                                            expectedVectorOutput: Vector[Double]): Unit = {
     Assert.assertEquals(OptimizationUtils.projectCoefficientsToHypercube(coefficients, constraints), expectedVectorOutput)
   }
 }

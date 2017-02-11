@@ -30,7 +30,7 @@ class MaximumDifferenceValidator[-R <: GeneralizedLinearModel with Regression wi
 
   require(maximumDifference > 0.0)
 
-  def validateModelPredictions(model: R, data: RDD[LabeledPoint]) = {
+  def validateModelPredictions(model: R, data: RDD[LabeledPoint]): Unit = {
     val broadcastModel = data.sparkContext.broadcast(model)
     val countTooBig = data
       .filter { labeledPoint =>

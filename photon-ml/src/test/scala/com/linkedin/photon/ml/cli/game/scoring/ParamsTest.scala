@@ -37,11 +37,12 @@ class ParamsTest {
 }
 
 object ParamsTest {
+
   // Required parameters
-  val INPUT_DATA_DIRS = "input-data-dirs"
-  val GAME_MODEL_INPUT_DIR = "game-model-input-dir"
-  val OUTPUT_DIR = "output-dir"
-  val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
+  private val INPUT_DATA_DIRS = "input-data-dirs"
+  private val GAME_MODEL_INPUT_DIR = "game-model-input-dir"
+  private val OUTPUT_DIR = "output-dir"
+  private val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
 
   val REQUIRED_OPTIONS = Array(INPUT_DATA_DIRS, GAME_MODEL_INPUT_DIR, OUTPUT_DIR, FEATURE_NAME_AND_TERM_SET_PATH)
 

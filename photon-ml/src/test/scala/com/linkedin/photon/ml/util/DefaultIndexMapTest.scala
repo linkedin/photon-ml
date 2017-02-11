@@ -22,7 +22,7 @@ import org.testng.Assert._
  */
 class DefaultIndexMapTest {
 
-  val indexMap = new DefaultIndexMap(Map("a" -> 0, "b" -> 1))
+  private val indexMap = new DefaultIndexMap(Map("a" -> 0, "b" -> 1))
 
   @Test
   def testForwardLookup(): Unit = {
@@ -38,15 +38,15 @@ class DefaultIndexMapTest {
 
   @Test
   def testSize(): Unit = {
-    assertEquals(indexMap.size, 2)
-    assertEquals(new DefaultIndexMap(Map("a" -> 0)).size, 1)
-    assertEquals(new DefaultIndexMap(Map("a" -> 0, "b" -> 1, "c" -> 2)).size, 3)
-    assertEquals(new DefaultIndexMap("abcdefghijklmnopqrstuvwxyz".split("").zipWithIndex.toMap).size, 26)
+    assertEquals(indexMap.size(), 2)
+    assertEquals(new DefaultIndexMap(Map("a" -> 0)).size(), 1)
+    assertEquals(new DefaultIndexMap(Map("a" -> 0, "b" -> 1, "c" -> 2)).size(), 3)
+    assertEquals(new DefaultIndexMap("abcdefghijklmnopqrstuvwxyz".split("").zipWithIndex.toMap).size(), 26)
   }
 
   @Test
   def testEmpty(): Unit = {
-    assertEquals(indexMap.isEmpty, false)
-    assertEquals(new DefaultIndexMap(Map.empty[String, Int]).isEmpty, true)
+    assertEquals(indexMap.isEmpty(), false)
+    assertEquals(new DefaultIndexMap(Map.empty[String, Int]).isEmpty(), true)
   }
 }

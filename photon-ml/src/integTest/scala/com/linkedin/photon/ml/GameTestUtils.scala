@@ -16,7 +16,7 @@ package com.linkedin.photon.ml
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.apache.spark.{HashPartitioner, SparkConf, SparkException}
+import org.apache.spark.{HashPartitioner, SparkConf}
 
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._

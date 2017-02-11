@@ -187,12 +187,12 @@ class FeatureIndexingJobTest {
 
         // Add all partitions to cache
         (0 until numPartitions).foreach(i =>
-          featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, sections) =>
+          featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, _) =>
             sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i, shardId)).toString)
           })
 
         // Check each feature shard map
-        featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, sections) => {
+        featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, _) =>
           val addShardIntercept = featureShardIdToInterceptMap.getOrElse(shardId, true)
           var expectedFeatureDimension = featureShardIdToExpectedDimension(shardId)
           if (addShardIntercept) {
@@ -201,7 +201,7 @@ class FeatureIndexingJobTest {
 
           checkPalDBReadable(
             outputDir, numPartitions, shardId, addShardIntercept, expectedFeatureDimension)
-        }}
+        }
 
       } finally {
         sc.stop()

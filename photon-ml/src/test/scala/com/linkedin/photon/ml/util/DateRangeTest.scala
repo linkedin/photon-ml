@@ -25,7 +25,7 @@ import org.testng.Assert._
  */
 class DateRangeTest {
 
-  val today = "2016-04-01"
+  private val today = "2016-04-01"
 
   @BeforeClass
   def setup() {

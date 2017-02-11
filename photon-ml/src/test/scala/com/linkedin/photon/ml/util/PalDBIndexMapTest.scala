@@ -35,7 +35,7 @@ class PalDBIndexMapTest {
   @Test
   def testNoInterceptMap(): Unit = {
     val map = new PalDBIndexMap().load(
-      OFFHEAP_HEART_STORE_NO_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, true)
+      OFFHEAP_HEART_STORE_NO_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, isLocal = true)
 
     assertEquals(map.size(), 13)
 
@@ -58,7 +58,7 @@ class PalDBIndexMapTest {
   @Test
   def testWithInterceptMap(): Unit = {
     val map = new PalDBIndexMap().load(
-      OFFHEAP_HEART_STORE_WITH_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, true)
+      OFFHEAP_HEART_STORE_WITH_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, isLocal = true)
 
     assertEquals(map.getIndex(GLMSuite.INTERCEPT_NAME_TERM), 7)
     assertFeatureIndexMapping(map, getFeatureName("1"), 0)
@@ -78,10 +78,11 @@ class PalDBIndexMapTest {
 }
 
 object PalDBIndexMapTest {
-  val TEST_DIR = ClassLoader.getSystemResource("PalDBIndexMapTest").getPath
-  val OFFHEAP_HEART_STORE_NO_INTERCEPT = PalDBIndexMapTest.TEST_DIR + "/paldb_offheapmap_for_heart"
-  val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
-  val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
+
+  private val TEST_DIR = ClassLoader.getSystemResource("PalDBIndexMapTest").getPath
+  private val OFFHEAP_HEART_STORE_NO_INTERCEPT = PalDBIndexMapTest.TEST_DIR + "/paldb_offheapmap_for_heart"
+  private val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
+  private val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   private def getFeatureName(name: String, term: String = null): String = {
     val termStr = if (term == null) "" else term

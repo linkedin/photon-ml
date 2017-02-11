@@ -31,10 +31,11 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in.
  */
-class DefaultDownSamplerIntegTest extends SparkTestUtils {
-  val numTimesToRun = 100
-  val numInstancesToGenerate = 100
-  val numFeatures = 1
+class DefaultDownSamplerTest extends SparkTestUtils {
+
+  private val numTimesToRun = 100
+  private val numInstancesToGenerate = 100
+  private val numFeatures = 1
 
   /**
    * Generates a random labeled point with given number of features having a random label, default offset (0.0)
@@ -77,7 +78,7 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
     val dataset = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
 
     var numInstancesInSampled: Long = 0
-    for (x <- 0 until numTimesToRun) {
+    for (_ <- 0 until numTimesToRun) {
       numInstancesInSampled += new DefaultDownSampler(downSamplingRate)
         .downSample(dataset)
         .count()

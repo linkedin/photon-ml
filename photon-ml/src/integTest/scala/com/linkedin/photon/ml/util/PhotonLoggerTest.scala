@@ -22,7 +22,7 @@ import scala.io.Source
 
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
-class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   class TestException extends Exception
 
@@ -34,7 +34,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   private val WARN_MESSAGE = "test message 5"
 
   @Test
-  def testSingleLogMessage() = sparkTest("singleLogMessage") {
+  def testSingleLogMessage(): Unit = sparkTest("singleLogMessage") {
     val logFile = s"$getTmpDir/singleLogMessage"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -54,7 +54,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testMultipleLogMessages() = sparkTest("multipleLogMessages") {
+  def testMultipleLogMessages(): Unit = sparkTest("multipleLogMessages") {
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -94,7 +94,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(dataProvider = "logLevelTestDataProvider")
-  def testLogLevels(level: Int, expectedMessages: Int) = sparkTest("logLevels") {
+  def testLogLevels(level: Int, expectedMessages: Int): Unit = sparkTest("logLevels") {
     val logFile = s"$getTmpDir/logLevels"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -119,7 +119,7 @@ class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testLogMessageWithStackTrace() = sparkTest("logMessageWithStackTrace") {
+  def testLogMessageWithStackTrace(): Unit = sparkTest("logMessageWithStackTrace") {
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 

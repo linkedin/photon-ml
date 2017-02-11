@@ -29,7 +29,7 @@ import org.testng.annotations.Test
 /**
  * This class tests basic IO utilities.
  */
-class AvroIOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test
   def testAvroReadWrite(): Unit = sparkTest("testAvroReadWrite") {
     val schemaString = FeatureAvro.getClassSchema.toString

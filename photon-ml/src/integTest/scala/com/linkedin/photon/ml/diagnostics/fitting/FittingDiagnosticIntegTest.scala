@@ -75,16 +75,14 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
 
       expectedKeys.foreach { y =>
         assertTrue(report.metrics.contains(y))
-        assertEquals(report.metrics.get(y).get._1.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-        assertEquals(report.metrics.get(y).get._2.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
-        assertEquals(report.metrics.get(y).get._3.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics(y)._1.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics(y)._2.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
+        assertEquals(report.metrics(y)._3.length, FittingDiagnostic.NUM_TRAINING_PARTITIONS - 1)
 
         // Make sure that training set fraction is monotonically increasing
         assertTrue(
           report
-            .metrics
-            .get(y)
-            .get
+            .metrics(y)
             ._1
             .foldLeft((0.0, true)) { (prev, current) =>
               (current, prev._2 && current > prev._1)
@@ -96,12 +94,12 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
 }
 
 object FittingDiagnosticIntegTest {
-  val SEED = 0xdeadbeef
-  // 500 data points is good enough for integTest
-  val SIZE = 500
-  val DIMENSION = 10
-  val NUM_ITERATIONS = 100
-  val TOLERANCE = 1e-2
-  val LAMBDAS = List(1e-3, 1e-1, 1e1, 1e3, 1e5)
-  val NUM_PARTITIONS = 4
+
+  private val SEED = 0xdeadbeef
+  private val SIZE = 500 // 500 data points is good enough for integTest
+  private val DIMENSION = 10
+  private val NUM_ITERATIONS = 100
+  private val TOLERANCE = 1e-2
+  private val LAMBDAS = List(1e-3, 1e-1, 1e1, 1e3, 1e5)
+  private val NUM_PARTITIONS = 4
 }

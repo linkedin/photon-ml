@@ -27,7 +27,8 @@ import org.testng.annotations.Test
 /**
  * Test basic statistics result.
  */
-class BasicStatisticsIntegTest extends SparkTestUtils {
+class BasicStatisticsTest extends SparkTestUtils {
+
   private val DELTA: Double = 1.0e-8
   private val NUM_POINTS: Int = 10
   private val NUM_FEATURES: Int = 6

@@ -20,14 +20,14 @@ import org.testng.annotations.Test
 /**
  * Test the basic [[Event]] production/consumption cycle fully.
  */
-class EventListenerIntegTest {
-  import EventListenerIntegTest._
+class EventListenerTest {
+  import EventListenerTest._
 
   @Test
   def testFullEventLoop(): Unit = {
-    val tester = new EventEmitter {
+    new EventEmitter {
       val testListener = new TestEventListener
-      val testEvent = new TestEvent(TEST_VALUE)
+      val testEvent = TestEvent(TEST_VALUE)
 
       assertEquals(testListener.getValue, TestEventListener.DEFAULT_VALUE)
       assertNotEquals(TEST_VALUE, TestEventListener.DEFAULT_VALUE)
@@ -42,6 +42,6 @@ class EventListenerIntegTest {
   }
 }
 
-object EventListenerIntegTest {
-  val TEST_VALUE = 36
+object EventListenerTest {
+  private val TEST_VALUE = 36
 }

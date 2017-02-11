@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.event
 
 /**
- * Test [[Event]] for [[EventListenerIntegTest]].
+ * Test [[Event]] for [[EventListenerTest]].
  *
  * @param value A generic test value.
  */

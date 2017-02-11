@@ -149,9 +149,9 @@ class LabeledPointTest extends SparkTestUtils {
 }
 
 object LabeledPointTest {
-  val PROBLEM_DIMENSION: Int = 10
-  val TOLERANCE: Double = 1.0E-9
-  val DATA_RANDOM_SEED: Int = 0
-  val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
-  val PARAMETER_RANDOM_SEED: Int = 500
+
+  private val PROBLEM_DIMENSION: Int = 10
+  private val TOLERANCE: Double = 1.0E-9
+  private val DATA_RANDOM_SEED: Int = 0
+  private val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
 }

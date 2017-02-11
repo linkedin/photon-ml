@@ -22,7 +22,7 @@ object TestUtilFunctions {
     scores.zip(labels).map { case (score, label) => (score, label, weight) }
   }
 
-  protected[evaluation] def zipWithIndex[T](arr: Iterable[T], startIndex: Int = 0) = {
+  protected[evaluation] def zipWithIndex[T](arr: Iterable[T], startIndex: Int = 0): Array[(Long, T)] = {
     arr.zipWithIndex.map { case (t, idx) => ((idx + startIndex).toLong, t) }.toArray
   }
 }

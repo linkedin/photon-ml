@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   import FixedEffectCoordinateTest._
 
-  val featureShardId = "shard1"
+  private val featureShardId = "shard1"
 
   @Test
   def testUpdateModel(): Unit = sparkTest("testUpdateModel") {
@@ -63,7 +63,7 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 }
 
 object FixedEffectCoordinateTest {
-  val NUM_TRAINING_SAMPLES = 1000
-  val DIMENSIONALITY = 10
-  val NUM_PARTITIONS = 4
+
+  private val NUM_TRAINING_SAMPLES = 1000
+  private val DIMENSIONALITY = 10
 }

@@ -25,6 +25,7 @@ import scala.collection.mutable.ListBuffer
 
 // TODO: Additional documentation required
 trait SparkTestUtils {
+
   var sc: SparkContext = _
 
   /**

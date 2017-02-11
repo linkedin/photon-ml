@@ -26,5 +26,6 @@ class MockPredictedProbabilityVersusObservedFrequencyBinner(val bins: Array[Pred
 }
 
 object MockPredictedProbabilityVersusObservedFrequencyBinner {
+
   val BINNING_MESSAGE = "Mock"
 }

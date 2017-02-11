@@ -64,26 +64,24 @@ class AbstractPredictedProbabilityVersusObservedFrequencyBinnerTest {
   def checkFindBin(expectedNumBins: Int): Unit = {
     val bins = AbstractPredictedProbabilityVersusObservedFrequencyBinner.generateInitialBins(expectedNumBins)
 
-    bins.zipWithIndex.map(binWithIndex => {
-      binWithIndex match {
-        case (bin: PredictedProbabilityVersusObservedFrequencyHistogramBin, expectedIndex: Int) =>
-          val lowerBound = bin.lowerBound
-          val lowerBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(lowerBound, bins)
-          assertEquals(lowerBoundBin, expectedIndex, s"Searching for the lower bound of the bin [$lowerBound] produces that particular bin [$expectedIndex / ${bins.length}]")
-          assertTrue(bins(lowerBoundBin).lowerBound <= lowerBound && bins(lowerBoundBin).upperBound > lowerBound, "Lower bound contained in bin")
+    bins.zipWithIndex.foreach {
+      case (bin: PredictedProbabilityVersusObservedFrequencyHistogramBin, expectedIndex: Int) =>
+        val lowerBound = bin.lowerBound
+        val lowerBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(lowerBound, bins)
+        assertEquals(lowerBoundBin, expectedIndex, s"Searching for the lower bound of the bin [$lowerBound] produces that particular bin [$expectedIndex / ${bins.length}]")
+        assertTrue(bins(lowerBoundBin).lowerBound <= lowerBound && bins(lowerBoundBin).upperBound > lowerBound, "Lower bound contained in bin")
 
-          val midBound = (bin.lowerBound + bin.upperBound) / 2.0
-          val midBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(midBound, bins)
-          assertEquals(midBoundBin, expectedIndex, "Searching for the mid bound of the bin produces that particular bin")
-          assertTrue(bins(midBoundBin).lowerBound <= midBound && bins(midBoundBin).upperBound > midBound, "Mid bound contained in bin")
+        val midBound = (bin.lowerBound + bin.upperBound) / 2.0
+        val midBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(midBound, bins)
+        assertEquals(midBoundBin, expectedIndex, "Searching for the mid bound of the bin produces that particular bin")
+        assertTrue(bins(midBoundBin).lowerBound <= midBound && bins(midBoundBin).upperBound > midBound, "Mid bound contained in bin")
 
-          val upperBound = bin.upperBound
-          val expectedUpperBoundBin = math.min(bins.length - 1, expectedIndex + 1)
-          val upperBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(upperBound, bins)
-          assertEquals(upperBoundBin, expectedUpperBoundBin, "Searching for the upper bound of the bin produces the expected bin")
-          assertTrue(bins(upperBoundBin).lowerBound <= upperBound && bins(midBoundBin).upperBound >= upperBound, "Upper bound contained in bin")
-      }
-    })
+        val upperBound = bin.upperBound
+        val expectedUpperBoundBin = math.min(bins.length - 1, expectedIndex + 1)
+        val upperBoundBin = AbstractPredictedProbabilityVersusObservedFrequencyBinner.findBin(upperBound, bins)
+        assertEquals(upperBoundBin, expectedUpperBoundBin, "Searching for the upper bound of the bin produces the expected bin")
+        assertTrue(bins(upperBoundBin).lowerBound <= upperBound && bins(midBoundBin).upperBound >= upperBound, "Upper bound contained in bin")
+    }
 
   }
 }

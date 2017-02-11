@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.event
 
 /**
- * Test [[EventListener]] for [[EventListenerIntegTest]].
+ * Test [[EventListener]] for [[EventListenerTest]].
  */
 class TestEventListener extends EventListener {
   import TestEventListener._
@@ -33,5 +33,5 @@ class TestEventListener extends EventListener {
 }
 
 object TestEventListener {
-  val DEFAULT_VALUE = 0
+  private val DEFAULT_VALUE = 0
 }

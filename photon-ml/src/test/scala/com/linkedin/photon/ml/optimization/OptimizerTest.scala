@@ -94,7 +94,7 @@ class OptimizerTest extends SparkTestUtils with Logging {
     val objective = new TestObjective
 
     // Test unweighted sample
-    for (iter <- 0 to RANDOM_SAMPLES) {
+    for (_ <- 0 to RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(objective, initParam)(Seq(pt))
 
@@ -104,7 +104,7 @@ class OptimizerTest extends SparkTestUtils with Logging {
     }
 
     // Test weighted sample
-    for (iter <- 0 to RANDOM_SAMPLES) {
+    for (_ <- 0 to RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(objective, initParam)(Seq(pt2))
 
@@ -114,17 +114,18 @@ class OptimizerTest extends SparkTestUtils with Logging {
 }
 
 object OptimizerTest extends Logging {
-  val PROBLEM_DIMENSION: Int = 5
-  val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
-  val CONVERGENCE_TOLERANCE: Double = 1e-12
-  val OBJECTIVE_TOLERANCE: Double = 1e-6
-  val GRADIENT_TOLERANCE: Double = 1e-6
-  val PARAMETER_TOLERANCE: Double = 1e-4
-  val RANDOM_SEED: Long = 314159265359L
-  val RANDOM_SAMPLES: Int = 100
-  val ENABLE_TRACKING: Boolean = true
-  val NORMALIZATION = NoNormalization()
-  val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
+
+  private val PROBLEM_DIMENSION: Int = 5
+  private val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
+  private val CONVERGENCE_TOLERANCE: Double = 1e-12
+  private val OBJECTIVE_TOLERANCE: Double = 1e-6
+  private val GRADIENT_TOLERANCE: Double = 1e-6
+  private val PARAMETER_TOLERANCE: Double = 1e-4
+  private val RANDOM_SEED: Long = 314159265359L
+  private val RANDOM_SAMPLES: Int = 100
+  private val ENABLE_TRACKING: Boolean = true
+  private val NORMALIZATION = NoNormalization()
+  private val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 

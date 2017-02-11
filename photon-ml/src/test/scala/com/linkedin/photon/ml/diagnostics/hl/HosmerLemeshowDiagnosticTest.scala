@@ -89,9 +89,10 @@ class HosmerLemeshowDiagnosticTest {
 }
 
 object HosmerLemeshowDiagnosticTest {
-  val SAMPLES_PER_BIN: Long = 10000
-  val NUMBER_OF_SAMPLES: List[Int] = List(3, 100, 101)
-  val CHI_SQUARED_SCORE_TOLERANCE: Double = 1e-6
+
+  private val SAMPLES_PER_BIN: Long = 10000
+  private val NUMBER_OF_SAMPLES: List[Int] = List(3, 100, 101)
+  private val CHI_SQUARED_SCORE_TOLERANCE: Double = 1e-6
 
   def generatePerfect(numBins: Int): Array[PredictedProbabilityVersusObservedFrequencyHistogramBin] = {
     val bins = AbstractPredictedProbabilityVersusObservedFrequencyBinner.generateInitialBins(numBins)

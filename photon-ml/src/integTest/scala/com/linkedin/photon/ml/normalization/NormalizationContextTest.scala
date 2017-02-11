@@ -32,7 +32,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
   * Test building NormalizationContext from summary. A sophisticated test with the heart data set is also performed to
   * verify that the standardization is correct numerically.
   */
-class NormalizationContextIntegTest extends SparkTestUtils {
+class NormalizationContextTest extends SparkTestUtils {
   /*
    * features:
    *  1  1  1  1  1  0

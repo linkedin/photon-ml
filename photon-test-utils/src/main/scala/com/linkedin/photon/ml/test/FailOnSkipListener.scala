@@ -27,7 +27,7 @@ class FailOnSkipListener extends TestListenerAdapter {
   /**
    * Invoked each time a test is skipped.
    *
-   * @param result ITestResult containing information about the run test
+   * @param tr ITestResult containing information about the run test
    */
   override def onTestSkipped(tr: ITestResult) {
     // If the skip was a result of an exception, change the skip to a failure

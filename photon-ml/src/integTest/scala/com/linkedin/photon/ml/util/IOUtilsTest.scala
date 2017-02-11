@@ -29,13 +29,13 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 /**
  * This class tests IOUtils
  */
-class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class IOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  val baseDir = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
-  val path1 = s"$baseDir/daily/2016/01/01"
-  val path2 = s"$baseDir/daily/2016/02/01"
-  val path3 = s"$baseDir/daily/2016/03/01"
-  val today = "2016-04-01"
+  private val baseDir = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
+  private val path1 = s"$baseDir/daily/2016/01/01"
+  private val path2 = s"$baseDir/daily/2016/02/01"
+  private val path3 = s"$baseDir/daily/2016/03/01"
+  private val today = "2016-04-01"
 
   @BeforeClass
   def setup() {

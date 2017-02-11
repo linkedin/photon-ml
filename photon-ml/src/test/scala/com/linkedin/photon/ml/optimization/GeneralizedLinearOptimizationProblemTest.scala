@@ -192,7 +192,8 @@ class GeneralizedLinearOptimizationProblemTest {
 }
 
 object GeneralizedLinearOptimizationProblemTest {
-  val DIMENSION = 10
+
+  private val DIMENSION = 10
 
   private class MockOptimizationProblem(
       optimizer: Optimizer[SingleNodeSmoothedHingeLossFunction],

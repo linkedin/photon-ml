@@ -27,12 +27,13 @@ trait TestTemplateWithTmpDir {
    * @return the temporary directory as a string.
    */
   def getTmpDir: String = {
-    TestTemplateWithTmpDir._tmpDirThreadLocal.get()
+    TestTemplateWithTmpDir.tmpDirThreadLocal.get()
   }
 }
 
 private object TestTemplateWithTmpDir {
-  private def _tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
+
+  private def tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
     protected override def initialValue(): String = {
       val parentDir = Paths.get(FileUtils.getTempDirectoryPath)
       val prefix = Thread.currentThread().getId + "-" + System.nanoTime()

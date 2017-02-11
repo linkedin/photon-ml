@@ -41,12 +41,12 @@ class MockDriver(
   /**
     * Have the input features been summarized
     */
-  var isSummarized = false
+  private var isSummarized = false
 
   /**
     * Diagnostic status for current run
     */
-  val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
+  private val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
 
   /**
     * Get the sequence of completed stages up to and including the current stage
@@ -83,8 +83,9 @@ class MockDriver(
 }
 
 object MockDriver {
+
   // Use a static random seed for deterministic test results
-  val seed = 3L
+  private val seed = 3L
 
   /**
    * Setup a mock Photon-ML Driver and run it, then verify that the actual results match the expected results

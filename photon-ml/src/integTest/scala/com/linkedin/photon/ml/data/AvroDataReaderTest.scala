@@ -26,18 +26,20 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util._
 
-class AvroDataReaderIntegTest extends SparkTestUtils {
-  val tol = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
-  val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input/train").getPath
-  val inputPath2 = getClass.getClassLoader.getResource("GameIntegTest/input/test").getPath
-  val duplicateFeaturesPath = getClass.getClassLoader.getResource("GameIntegTest/input/duplicateFeatures").getPath
-  val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath
-  val featureSectionMap = Map(
+class AvroDataReaderTest extends SparkTestUtils {
+
+  private val tol = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+  private val inputDir = "GameIntegTest/input"
+  private val inputPath = getClass.getClassLoader.getResource(inputDir + "/train").getPath
+  private val inputPath2 = getClass.getClassLoader.getResource(inputDir + "/test").getPath
+  private val duplicateFeaturesPath = getClass.getClassLoader.getResource(inputDir + "/duplicateFeatures").getPath
+  private val indexMapPath = getClass.getClassLoader.getResource(inputDir + "/feature-indexes").getPath
+  private val featureSectionMap = Map(
     "shard1" -> Set("userFeatures", "songFeatures"),
     "shard2" -> Set("userFeatures"),
     "shard3" -> Set("songFeatures")
   )
-  val numPartitions = 4
+  private val numPartitions = 4
 
   @Test
   def testRead(): Unit = sparkTest("testRead") {
@@ -53,11 +55,11 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
       offHeapIndexMapDir = Some(indexMapPath)
     }
 
-    val indexMapLoaders = featureSectionMap.map { case (shardId, _) => {
+    val indexMapLoaders = featureSectionMap.map { case (shardId, _) =>
       val indexMapLoader = new PalDBIndexMapLoader
       indexMapLoader.prepare(sc, indexMapParams, shardId)
       (shardId, indexMapLoader)
-    }}
+    }
 
     val dr = new AvroDataReader(sc)
     val df = dr.readMerged(inputPath, indexMapLoaders, featureSectionMap, numPartitions)
@@ -87,7 +89,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
 
     } catch {
       case se: SparkException => assertTrue(se.getMessage.contains("Duplicate features found"))
-      case e: Exception => throw(e)
+      case e: Exception => throw e
     }
   }
 

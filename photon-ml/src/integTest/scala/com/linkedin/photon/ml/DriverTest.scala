@@ -37,15 +37,15 @@ import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{PalDBIndexMapTest, Utils}
+import com.linkedin.photon.ml.util.Utils
 import TaskType.TaskType
 
 /**
   * This class tests Driver with a set of important configuration parameters
   */
-class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  import DriverIntegTest._
+  import DriverTest._
 
   @Test
   def testRunWithMinimalArguments(): Unit = sparkTest("testRunWithMinimalArguments") {
@@ -938,18 +938,21 @@ class DriverIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 }
 
-object DriverIntegTest {
+object DriverTest {
 
-  val defaultParams = new Params()
-  val EXPECTED_NUM_FEATURES = 14
-  val EXPECTED_NUM_TRAINING_DATA = 250
+  private val defaultParams = new Params()
+  private val EXPECTED_NUM_FEATURES = 14
+  private val EXPECTED_NUM_TRAINING_DATA = 250
   // Configured for TRON optimizer in tests that we care about the optimizer's performance
-  val HEAVY_MAX_NUM_ITERATIONS_FOR_TRON = 20
+  private val HEAVY_MAX_NUM_ITERATIONS_FOR_TRON = 20
   // Configured for L-BFGS optimizer in tests that we care about the optimizer's performance
-  val HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS = 50
+  private val HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS = 50
   // Configured for any optimizer in tests that we care about something other than the optimizer's performance
-  val LIGHT_MAX_NUM_ITERATIONS = 1
+  private val LIGHT_MAX_NUM_ITERATIONS = 1
   private val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
+  private val OFFHEAP_HEART_STORE_NO_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart"
+  private val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
+  private val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   def appendCommonJobArgs(
       args: mutable.ArrayBuffer[String],
@@ -979,12 +982,12 @@ object DriverIntegTest {
   def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_DIR)
     if (addIntercept) {
-      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_WITH_INTERCEPT
+      args += OFFHEAP_HEART_STORE_WITH_INTERCEPT
     } else {
-      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_NO_INTERCEPT
+      args += OFFHEAP_HEART_STORE_NO_INTERCEPT
     }
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_NUM_PARTITIONS)
-    args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_PARTITION_NUM
+    args += OFFHEAP_HEART_STORE_PARTITION_NUM
   }
 
   // TODO: Formalize these model loaders in another RB.

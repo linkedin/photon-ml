@@ -25,14 +25,14 @@ import scala.util.Random
  */
 class NormalizationContextTest {
 
-  val dim = 5
-  val seed = 1L
-  val random = new Random(seed)
-  val sigma = 5.0
-  val testCoef = DenseVector(1.0, -1.0, 0.0, 0.5, -0.5)
-  val testFactor = DenseVector(0.5, 2.0, -0.1, -0.4, 1.0)
-  val testShift = DenseVector(-0.5, 0.1, 4.0, -2.0, 0.0)
-  val epsilon = 1.0E-9
+  private val dim = 5
+  private val seed = 1L
+  private val random = new Random(seed)
+  private val sigma = 5.0
+  private val testCoef = DenseVector(1.0, -1.0, 0.0, 0.5, -0.5)
+  private val testFactor = DenseVector(0.5, 2.0, -0.1, -0.4, 1.0)
+  private val testShift = DenseVector(-0.5, 0.1, 4.0, -2.0, 0.0)
+  private val epsilon = 1.0E-9
 
   /**
     * For testing purpose only. This is not designed to be efficient. This method transform a vector to

@@ -23,7 +23,6 @@ import org.testng.annotations._
 class PlotUtilsTest {
   import org.testng.Assert._
 
-
   @Test
   def checkMetricsWithRanges(): Unit = {
     val toCheck = Evaluation.metricMetadata.filter(_._2.rangeOption.isDefined).toSeq
@@ -41,7 +40,7 @@ class PlotUtilsTest {
 
   @Test
   def checkMetricsWithoutRanges(): Unit = {
-    val toCheck = Evaluation.metricMetadata.filter(!_._2.rangeOption.isDefined).toSeq
+    val toCheck = Evaluation.metricMetadata.filter(_._2.rangeOption.isEmpty).toSeq
     val values = Seq(-1e3, 1e3)
 
     toCheck.foreach( x => {

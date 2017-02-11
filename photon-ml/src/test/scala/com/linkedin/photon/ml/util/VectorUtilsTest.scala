@@ -25,11 +25,12 @@ import scala.util.Random
  * @todo Test [[VectorUtils.kroneckerProduct()]]
  */
 class VectorUtilsTest {
-  val seed = 7
-  val random = new Random(seed)
+
+  private val seed = 7
+  private val random = new Random(seed)
 
   @Test
-  def testConvertIndexAndValuePairArrayToSparseVector() = {
+  def testConvertIndexAndValuePairArrayToSparseVector(): Unit = {
     val length = 6
 
     // With empty data
@@ -49,7 +50,7 @@ class VectorUtilsTest {
   }
 
   @Test
-  def testConvertIndexAndValuePairArrayToDenseVector() = {
+  def testConvertIndexAndValuePairArrayToDenseVector(): Unit = {
     val length = 6
 
     // With empty data
@@ -69,7 +70,7 @@ class VectorUtilsTest {
   }
 
   @Test
-  def testConvertIndexAndValuePairArrayToVector() = {
+  def testConvertIndexAndValuePairArrayToVector(): Unit = {
     val length = 6
 
     // For sparse vector
@@ -90,7 +91,7 @@ class VectorUtilsTest {
   }
 
   @DataProvider
-  def featureValsProvider() = {
+  def featureValsProvider(): Array[Array[Array[Double]]] = {
     val n = 10
     val dim = 100
     val mean = 0.0
@@ -102,7 +103,7 @@ class VectorUtilsTest {
   }
 
   @Test(dataProvider = "featureValsProvider")
-  def testSparseBreezeToMllib(featureVals: Array[Double]) = {
+  def testSparseBreezeToMllib(featureVals: Array[Double]): Unit = {
     val dim = featureVals.length
     val indexes = (0 until dim).toArray
     val vector = new SparseVector(indexes, featureVals, dim)
@@ -117,7 +118,7 @@ class VectorUtilsTest {
   }
 
   @Test(dataProvider = "featureValsProvider")
-  def testDenseBreezeToMllib(featureVals: Array[Double]) = {
+  def testDenseBreezeToMllib(featureVals: Array[Double]): Unit = {
     val vector = new DenseVector(featureVals)
     val converted = VectorUtils.breezeToMllib(vector)
 
@@ -130,7 +131,7 @@ class VectorUtilsTest {
   }
 
   @Test(dataProvider = "featureValsProvider")
-  def testSparseMllibToBreeze(featureVals: Array[Double]) = {
+  def testSparseMllibToBreeze(featureVals: Array[Double]): Unit = {
     val dim = featureVals.length
     val indexes = (0 until dim).toArray
     val vector = new SSV(dim, indexes, featureVals)
@@ -145,7 +146,7 @@ class VectorUtilsTest {
   }
 
   @Test(dataProvider = "featureValsProvider")
-  def testDenseMllibToBreeze(featureVals: Array[Double]) = {
+  def testDenseMllibToBreeze(featureVals: Array[Double]): Unit = {
     val vector = new SDV(featureVals)
     val converted = VectorUtils.mllibToBreeze(vector)
 

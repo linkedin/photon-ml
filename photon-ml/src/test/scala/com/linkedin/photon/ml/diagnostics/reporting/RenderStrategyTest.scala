@@ -15,8 +15,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting
 
 import java.awt.image.BufferedImage
-import java.io.{PrintWriter, FileWriter}
-import java.util.UUID
 import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
 import com.linkedin.photon.ml.diagnostics.reporting.text.StringRenderStrategy
 import com.xeiam.xchart.{StyleManager, ChartBuilder}
@@ -67,12 +65,12 @@ class RenderStrategyTest {
     //        - Single chapter
     //        - Multiple chapters
     val simpleText = new SimpleTextPhysicalReport(s"This is an example of simple text.\nParagraphs are marked with new-lines.")
-    val chart = (new ChartBuilder()).chartType(StyleManager.ChartType.Bar)
+    val chart = new ChartBuilder().chartType(StyleManager.ChartType.Bar)
       .title("This is a very boring plot")
       .theme(StyleManager.ChartTheme.XChart)
       .xAxisTitle("Category")
       .yAxisTitle("Amount")
-      .build();
+      .build
     chart.addSeries("Stuff", Array(1.0, 2.0, 3.0), Array(0.1, -0.2, 0.3))
     val plotWithCaption = new PlotPhysicalReport(chart, caption = Some("This is a plot with a caption"))
     val plotWithoutCaption = new PlotPhysicalReport(chart)
@@ -252,7 +250,7 @@ class RenderStrategyTest {
   }
 
   @Test(dataProvider = "generateHappyCaseScenarios")
-  def checkRender[P <: PhysicalReport](desc: String, report: P, renderStrategy: RenderStrategy[P, Any], validator: Any => Unit) = {
+  def checkRender[P <: PhysicalReport](desc: String, report: P, renderStrategy: RenderStrategy[P, Any], validator: Any => Unit): Unit = {
     assertTrue(report != null, "Report is not null")
     assertTrue(renderStrategy != null, "Render strategy is not null")
     assertTrue(validator != null, "Validator is not null")

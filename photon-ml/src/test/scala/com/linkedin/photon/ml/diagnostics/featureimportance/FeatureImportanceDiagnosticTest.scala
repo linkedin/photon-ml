@@ -29,7 +29,6 @@ class FeatureImportanceDiagnosticTest {
 
   import org.testng.Assert._
 
-
   private def generateModel(size: Int): (Map[String, Int], GeneralizedLinearModel, BasicStatisticalSummary) = {
     val count = 1000L
     val features = DenseVector((1 to size).map(_.toDouble).toArray)

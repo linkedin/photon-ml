@@ -26,15 +26,18 @@ import org.testng.annotations.Test
 /**
  * Integration tests for bootstrapping. Most of the heavy lifting has already been done in the unit tests
  */
-class BootstrapTrainingIntegTest extends SparkTestUtils {
+class BootstrapTrainingTest extends SparkTestUtils {
 
   import org.testng.Assert._
 
-  val lambdas: List[Double] = List(0.01, 0.1, 1.0)
-  val numWorkers: Int = Math.max(1, Runtime.getRuntime.availableProcessors / 2)
-  val samplePct = 0.01
-  val seed = 0L
-  val numSamples = 100
+  private val lambdas: List[Double] = List(0.01, 0.1, 1.0)
+  private val samplePct = 0.01
+  private val seed = 0L
+  private val numSamples = 100
+  private val NUM_SAMPLES = 31
+  private val HALF_NUM_SAMPLES = 15
+  private val NUM_DIMENSIONS = 10
+  private val TEST_TOLERANCE = 1e-6
 
   def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double])
     : (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
@@ -42,7 +45,7 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
       lambdas.map(l => {
         (l, new LinearRegressionModel(
-          Coefficients(DenseVector.ones[Double](BootstrapTrainingTest.NUM_DIMENSIONS) * coefficient)))
+          Coefficients(DenseVector.ones[Double](NUM_DIMENSIONS) * coefficient)))
       })
         .toList
     }
@@ -63,12 +66,12 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
         seed.toInt,
         numSamples,
-        BootstrapTrainingTest.NUM_DIMENSIONS)
+        NUM_DIMENSIONS)
         .toSeq)
       .map(x => new LabeledPoint(x._1, x._2))
 
     val result: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
-      BootstrapTrainingTest.NUM_SAMPLES,
+      NUM_SAMPLES,
       samplePct,
       Map[Double, LinearRegressionModel](),
       regressionModelFitFunction(0, lambdas),
@@ -86,7 +89,7 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
                 case m: TraversableOnce[(LinearRegressionModel, Map[String, Double])] =>
                   assertEquals(
                     m.size,
-                    BootstrapTrainingTest.NUM_SAMPLES,
+                    NUM_SAMPLES,
                     "Number of bootstrapped models matches expected")
                 case _ => fail(f"Found aggregate for lambda=[$x%.04f] and name [$identityKey] with unexpected type")
               }
@@ -110,9 +113,9 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
   @Test
   def checkBootstrapHappyPathRealAggregates(): Unit = sparkTest("checkBootstrapHappyPathRealAggregates") {
     // Return a different model each time fitFunction is called
-    var count: Int = -BootstrapTrainingTest.HALF_NUM_SAMPLES
+    var count: Int = -HALF_NUM_SAMPLES
     val fitFunction = (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      val value = count / BootstrapTrainingTest.HALF_NUM_SAMPLES.toDouble
+      val value = count / HALF_NUM_SAMPLES.toDouble
       count += 1
       val fn = regressionModelFitFunction(value, lambdas)
       fn(x, y)
@@ -129,7 +132,7 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
       x match {
         case (coeff: Array[CoefficientSummary], intercept: Option[CoefficientSummary]) =>
           coeff.foreach(c => {
-            BootstrapTrainingTest.checkCoefficientSummary(c)
+            checkCoefficientSummary(c)
           })
           intercept match {
             case Some(_) => fail("Intercept should not have been computed")
@@ -157,17 +160,38 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
         seed.toInt,
         numSamples,
-        BootstrapTrainingTest.NUM_DIMENSIONS)
+        NUM_DIMENSIONS)
           .toSeq)
         .map(x => new LabeledPoint(x._1, x._2))
         .coalesce(4)
 
     val aggregates: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
-      BootstrapTrainingTest.NUM_SAMPLES,
+      NUM_SAMPLES,
       samplePct,
       Map[Double, LinearRegressionModel](),
       fitFunction,
       aggregations,
       data)
+  }
+
+  def checkCoefficientSummary(x: CoefficientSummary): Unit = {
+    assertFalse(x.getMin.isNaN || x.getMin.isInfinite, "Min must be finite")
+    assertFalse(x.estimateFirstQuartile().isNaN || x.estimateFirstQuartile().isInfinite, "Q1 must be finite")
+    assertFalse(x.estimateMedian().isNaN || x.estimateMedian().isInfinite, "Median must be finite")
+    assertFalse(x.estimateThirdQuartile().isNaN || x.estimateThirdQuartile().isInfinite, "Q3 must be finite")
+    assertFalse(x.getMax.isNaN || x.getMax.isInfinite, "Max must be finite")
+    assertFalse(x.getMean.isNaN || x.getMean.isInfinite, "Mean must be finite")
+    assertFalse(x.getStdDev.isNaN || x.getStdDev.isInfinite, "Standard deviation must be finite")
+
+    assertEquals(x.getCount, NUM_SAMPLES, s"Got expected number of coefficients")
+    assertEquals(x.getMax, 1.0, TEST_TOLERANCE, s"Max value matches expected")
+    assertEquals(x.getMin, -1.0, TEST_TOLERANCE, s"Min value matches expected")
+    assertEquals(x.getMean, 0.0, TEST_TOLERANCE, s"Mean matches expected")
+    assertTrue(x.getStdDev > 0, "Standard deviation is positive")
+    assertTrue(x.getMin <= x.getMean && x.getMean <= x.getMax, "Mean between min and max")
+    assertTrue(x.getMin <= x.estimateFirstQuartile, "Min < Q1 estimate")
+    assertTrue(x.estimateFirstQuartile <= x.estimateMedian, "Q1 <= median estimate")
+    assertTrue(x.estimateMedian <= x.estimateThirdQuartile, "Median <= Q3 estimate")
+    assertTrue(x.estimateThirdQuartile <= x.getMax, "Q3 <= max")
   }
 }

@@ -24,7 +24,8 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
-class DataValidatorsIntegTest extends SparkTestUtils {
+class DataValidatorsTest extends SparkTestUtils {
+
   @DataProvider
   def getArgumentsForDataSanityCheck: Array[Array[Any]] = {
     val vectors = CommonTestUtils.generateDenseFeatureVectors(1, 1, 20)

@@ -213,14 +213,14 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * @param featureSectionMap the map pairing destination feature bags to source feature sections
    * @return initialized feature map loaders
    */
-  def getFeatureMapLoaders(featureSectionMap: Map[String, Set[String]]) = {
-    val featureSectionKeys = featureSectionMap.values.flatten.toSet
+  def getFeatureMapLoaders(featureSectionMap: Map[String, Set[String]]): Map[String, DefaultIndexMapLoader] = {
+    val featureSectionKeySet = featureSectionMap.values.flatten.toSet
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
-      featurePath, featureSectionKeys, sc.hadoopConfiguration)
+      featurePath, featureSectionKeySet, sc.hadoopConfiguration)
 
     featureSectionMap.map { case (shardId, featureSectionKeys) =>
       val featureMap = nameAndTermFeatureSetContainer
-        .getFeatureNameAndTermToIndexMap(featureSectionKeys, true)
+        .getFeatureNameAndTermToIndexMap(featureSectionKeys, isAddingIntercept = true)
         .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
         .toMap
 
@@ -256,22 +256,23 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 }
 
 object GameEstimatorTest {
-  val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
-  val trainPath = inputPath + "/train"
-  val testPath = inputPath + "/test"
-  val featurePath = inputPath + "/feature-lists"
-  val tol = 1e-5
-  val idTypeSet = Set("userId", "artistId", "songId")
+
+  private val inputPath: String = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
+  private val trainPath: String = inputPath + "/train"
+  private val testPath: String = inputPath + "/test"
+  private val featurePath: String = inputPath + "/feature-lists"
+  private val tol = 1e-5
+  private val idTypeSet = Set("userId", "artistId", "songId")
 
   /**
    * Section map for fixed effect only models
    */
-  val fixedEffectOnlyFeatureSectionMap = Map("shard1" -> Set("features"))
+  private val fixedEffectOnlyFeatureSectionMap = Map("shard1" -> Set("features"))
 
   /**
    * Section map for fixed and random effect models
    */
-  val fixedAndRandomEffectFeatureSectionMap = Map(
+  private val fixedAndRandomEffectFeatureSectionMap = Map(
       "shard1" -> Set("features", "userFeatures", "songFeatures"),
       "shard2" -> Set("features", "userFeatures"),
       "shard3" -> Set("songFeatures"))

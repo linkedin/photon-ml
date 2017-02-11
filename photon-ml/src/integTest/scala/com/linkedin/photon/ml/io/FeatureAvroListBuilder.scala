@@ -22,16 +22,16 @@ import com.linkedin.photon.avro.generated.FeatureAvro
  * This is a builder that helps build a list of Avro feature items for testing.
  */
 class FeatureAvroListBuilder {
-    private val features = new JArrayList[FeatureAvro]()
+  private val features = new JArrayList[FeatureAvro]()
 
-    def append(name: String, term: String, value: Double): FeatureAvroListBuilder = {
-      features.add(FeatureAvro.newBuilder()
-        .setName(name)
-        .setTerm(term)
-        .setValue(value)
-        .build())
-      this
-    }
+  def append(name: String, term: String, value: Double): FeatureAvroListBuilder = {
+    features.add(FeatureAvro.newBuilder()
+      .setName(name)
+      .setTerm(term)
+      .setValue(value)
+      .build())
+    this
+  }
 
-    def build(): JList[FeatureAvro] = features
+  def build(): JList[FeatureAvro] = features
 }

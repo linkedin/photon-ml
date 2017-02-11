@@ -30,12 +30,13 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in.
  */
-class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
-  val numTimesToRun = 100
-  val numPositivesToGenerate = 10
-  val numNegativesToGenerate = 100
-  val numFeatures = 5
-  val tolerance = math.min(100.0 / numTimesToRun / numNegativesToGenerate, 1)
+class BinaryClassificationDownSamplerTest extends SparkTestUtils {
+
+  private val numTimesToRun = 100
+  private val numPositivesToGenerate = 10
+  private val numNegativesToGenerate = 100
+  private val numFeatures = 5
+  private val tolerance = math.min(100.0 / numTimesToRun / numNegativesToGenerate, 1)
 
   /**
    * Generates a random labeled point with label 1.0 if isPositive is true and 0.0 otherwise. The offset and weight
@@ -66,7 +67,7 @@ class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
 
     val pos = (0 until numPositives).map(i => (i.toLong, generateRandomLabeledPoint(isPositive = true, numFeatures)))
     val neg = (0 until numNegatives).map(i => (i.toLong, generateRandomLabeledPoint(isPositive = false, numFeatures)))
-    val points: Seq[(Long, LabeledPoint)] = (pos ++ neg).toSeq
+    val points: Seq[(Long, LabeledPoint)] = pos ++ neg
     sc.parallelize(points)
   }
 
@@ -85,7 +86,7 @@ class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
     val dataset = generateDummyDataset(sc, numPositivesToGenerate, numNegativesToGenerate, numFeatures)
 
     var numNegativesInSampled: Long = 0
-    for (x <- 0 until numTimesToRun) {
+    for (_ <- 0 until numTimesToRun) {
       val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataset)
       val pos = sampled.filter({
         case (_, point) => point.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD

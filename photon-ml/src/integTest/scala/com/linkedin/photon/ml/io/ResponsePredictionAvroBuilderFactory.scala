@@ -17,10 +17,10 @@ package com.linkedin.photon.ml.io
 import java.util
 import java.io.File
 
-import com.linkedin.photon.avro.generated.FeatureAvro
+import org.apache.avro.generic.{GenericRecordBuilder, GenericRecord}
 import org.apache.avro.Schema
-import org.apache.avro.generic.{GenericRecordBuilder, GenericData, GenericRecord}
 
+import com.linkedin.photon.avro.generated.FeatureAvro
 import com.linkedin.photon.ml.avro.ResponsePredictionFieldNames
 
 
@@ -36,10 +36,12 @@ class ResponsePredictionAvroBuilderFactory extends TrainingAvroBuilderFactory {
 }
 
 object ResponsePredictionAvroBuilderFactory {
-  val SCHEMA = new Schema.Parser().parse(new File("src/integTest/resources/GLMSuiteIntegTest/ResponsePrediction.avsc"))
+
+  val SCHEMA: Schema =
+    new Schema.Parser().parse(new File("src/integTest/resources/GLMSuiteIntegTest/ResponsePrediction.avsc"))
 
   private class ResponsePredictionAvroBuilder extends TrainingAvroBuilder {
-    val builder = new GenericRecordBuilder(SCHEMA);
+    val builder = new GenericRecordBuilder(SCHEMA)
 
     override def setLabel(label: Double): TrainingAvroBuilder = {
       builder.set(ResponsePredictionFieldNames.response, label)

@@ -34,7 +34,7 @@ import scala.util.Random
   *
   * This test checks the validity of feature normalization in the context of training.
   */
-class NormalizationIntegTest extends SparkTestUtils {
+class NormalizationTest extends SparkTestUtils {
 
   private val _seed = 1
   private val _size = 100

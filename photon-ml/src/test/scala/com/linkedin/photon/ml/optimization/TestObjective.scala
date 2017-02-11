@@ -82,6 +82,7 @@ class TestObjective extends SingleNodeObjectiveFunction with TwiceDiffFunction {
 }
 
 object TestObjective {
+
   val CENTROID = 4.0
 
   /**

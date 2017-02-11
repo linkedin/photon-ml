@@ -299,6 +299,26 @@ Detailed usages are described via command:
 ```
 **Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
 
+## Modules and directories
+### Source code
+- photon-all contains only a build.gradle, to build a shaded jar containing all of photon-ml.
+- photon-avro-schemas contains all the Avro schemas used by photon-ml (e.g. when reading in training data).
+- photon-ml contains the code for photon-ml itself
+- photon-test-utils contains utility classes and functions used in tests and integration tests.
+
+### Other
+- build-scripts contains scripts used during the build of photon-ml.
+- buildSrc contains Gradle plugins source code. Those plugins are used to build photon-ml.
+- dev-scripts contains various scripts useful to developers of photon-ml.
+- examples contains a script that demonstrates how to run photon ml from command line.
+- gradle contains the gradle wrapper jar.
+
+## IntelliJ IDEA setup
+When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for 
+development (IntelliJ IDEA's debugger can be used with all the tests).
+- Run ./gradlew first on the command line (some classes need to be generated once).
+- Open project in IDEA with "Import Project" and import as a Gradle project. 
+
 ## How to Contribute
 We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
 

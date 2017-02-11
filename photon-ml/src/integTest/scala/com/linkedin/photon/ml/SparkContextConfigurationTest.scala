@@ -23,18 +23,18 @@ import org.testng.annotations.Test
 /**
  * This class tests the SparkContextConfiguration object
  */
-class SparkContextConfigurationIntegTest extends SparkTestUtils {
+class SparkContextConfigurationTest extends SparkTestUtils {
 
   import SparkContextConfiguration._
 
   // Synchronize across different potential SparkContext creators
   @Test
-  def testAsYarnClient() = sparkTestSelfServeContext("testAsYarnClient") {
+  def testAsYarnClient(): Unit = sparkTestSelfServeContext("testAsYarnClient") {
     val sc1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", useKryo = true)
     assertEquals(sc1.getConf.get(CONF_SPARK_APP_NAME), "foo")
     assertEquals(sc1.getConf.get(CONF_SPARK_SERIALIZER), classOf[KryoSerializer].getName)
     assertEquals(sc1.getConf.get(CONF_SPARK_KRYO_CLASSES_TO_REGISTER),
-      KRYO_CLASSES_TO_REGISTER.map { case c => c.getName }.mkString(",")
+      KRYO_CLASSES_TO_REGISTER.map(c => c.getName).mkString(",")
     )
     sc1.stop()
 

@@ -23,7 +23,9 @@ import org.testng.annotations.{DataProvider, Test}
  * Test [[RegularizationContext]].
  */
 class RegularizationContextTest {
-  val epsilon = 1.0E-8
+
+  private val epsilon = 1.0E-8
+
   @Test(dataProvider = "dataProvider")
   def testRegularizationContext(regularizationContext: RegularizationContext,
                                 regularizationType: RegularizationType,

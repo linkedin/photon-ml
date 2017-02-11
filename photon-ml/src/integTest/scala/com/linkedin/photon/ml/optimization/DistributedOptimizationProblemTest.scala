@@ -35,9 +35,9 @@ import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
-class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
+class DistributedOptimizationProblemTest extends SparkTestUtils {
   import CommonTestUtils._
-  import DistributedOptimizationProblemIntegTest._
+  import DistributedOptimizationProblemTest._
 
   def glmConstructorMock(coefficients: Coefficients): GeneralizedLinearModel = mock(classOf[GeneralizedLinearModel])
 
@@ -383,15 +383,16 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   }
 }
 
-object DistributedOptimizationProblemIntegTest {
-  val DATA_RANDOM_SEED: Int = 7
-  val WEIGHT_RANDOM_SEED = 100
-  val WEIGHT_RANDOM_MAX = 10
-  val DIMENSIONS: Int = 5
-  val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
-  val TOLERANCE = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
-  val NORMALIZATION = NoNormalization()
-  val NORMALIZATION_MOCK: Broadcast[NormalizationContext] = mock(classOf[Broadcast[NormalizationContext]])
+object DistributedOptimizationProblemTest {
+
+  private val DATA_RANDOM_SEED: Int = 7
+  private val WEIGHT_RANDOM_SEED = 100
+  private val WEIGHT_RANDOM_MAX = 10
+  private val DIMENSIONS: Int = 5
+  private val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
+  private val TOLERANCE = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+  private val NORMALIZATION = NoNormalization()
+  private val NORMALIZATION_MOCK: Broadcast[NormalizationContext] = mock(classOf[Broadcast[NormalizationContext]])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 

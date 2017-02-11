@@ -41,8 +41,8 @@ import org.testng.Assert._
  * This class tests components of GLMSuite that requires integration with real RDD or other runtime environments.
  * Also see [[GLMSuiteTest]].
  */
-class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
-  import GLMSuiteIntegTest._
+class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
+  import GLMSuiteTest._
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testLoadFeatureMapWithIllegalFeatureList(): Unit = sparkTest("testLoadFeatureMapWithIllegalFeatureList") {
@@ -108,13 +108,13 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def dataProviderForTestReadLabelPointsFromAvro(): Array[Array[Any]] = {
     Array(
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
-        TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema, None),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
-        TrainingExampleAvro.getClassSchema(), None),
+        TrainingExampleAvro.getClassSchema, None),
       Array(FieldNamesType.TRAINING_EXAMPLE, true, new TrainingExampleAvroBuilderFactory(),
-        TrainingExampleAvro.getClassSchema(), Some(SELECTED_FEATURES_PATH)),
+        TrainingExampleAvro.getClassSchema, Some(SELECTED_FEATURES_PATH)),
       Array(FieldNamesType.TRAINING_EXAMPLE, false, new TrainingExampleAvroBuilderFactory(),
-        TrainingExampleAvro.getClassSchema(), Some(SELECTED_FEATURES_PATH)),
+        TrainingExampleAvro.getClassSchema, Some(SELECTED_FEATURES_PATH)),
       Array(FieldNamesType.RESPONSE_PREDICTION, true, new ResponsePredictionAvroBuilderFactory(),
           ResponsePredictionAvroBuilderFactory.SCHEMA, None),
       Array(FieldNamesType.RESPONSE_PREDICTION, false, new ResponsePredictionAvroBuilderFactory(),
@@ -434,9 +434,9 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     var count = 0
     while (reader.hasNext) {
       val record = reader.next()
-      val feature = record.getFeatureName() + GLMSuite.DELIMITER + record.getFeatureTerm()
+      val feature = record.getFeatureName + GLMSuite.DELIMITER + record.getFeatureTerm
       val featureId = suite.featureKeyToIdMap(feature)
-      val metrics = record.getMetrics().map {case (key, value) => (String.valueOf(key), value)}
+      val metrics = record.getMetrics.map {case (key, value) => (String.valueOf(key), value)}
       var foundMatchedOne = true
       featureId match {
         case 0 =>
@@ -494,17 +494,18 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 }
 
-private object GLMSuiteIntegTest {
-  val EPSILON = 1e-6
+private object GLMSuiteTest {
 
-  val SELECTED_FEATURES_PATH = "src/integTest/resources/GLMSuiteIntegTest/selectedFeatures.avro"
+  private val EPSILON = 1e-6
+
+  private val SELECTED_FEATURES_PATH = "src/integTest/resources/GLMSuiteIntegTest/selectedFeatures.avro"
 
   // A schema that contains illegal features list field
-  val BAD_RESPONSE_PREDICTION_SCHEMA = new Schema.Parser().parse(
+  private val BAD_RESPONSE_PREDICTION_SCHEMA = new Schema.Parser().parse(
       new File("src/integTest/resources/GLMSuiteIntegTest/ResponsePredictionError.avsc"))
 
   // A schema that contains illegal feature item field in the list
-  val BAD_RESPONSE_PREDICTION_SCHEMA2 = new Schema.Parser().parse(
+  private val BAD_RESPONSE_PREDICTION_SCHEMA2 = new Schema.Parser().parse(
     new File("src/integTest/resources/GLMSuiteIntegTest/ResponsePredictionError2.avsc"))
 
   /**
