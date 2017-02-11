@@ -303,7 +303,7 @@ Detailed usages are described via command:
 ### Source code
 - photon-all contains only a build.gradle, to build a shaded jar containing all of photon-ml.
 - photon-avro-schemas contains all the Avro schemas used by photon-ml (e.g. when reading in training data).
-- photon-ml contains the code for photon-ml itself
+- photon-ml contains the code for photon-ml itself.
 - photon-test-utils contains utility classes and functions used in tests and integration tests.
 
 ### Other

@@ -34,10 +34,9 @@ class BootstrapTrainingTest extends SparkTestUtils {
   private val samplePct = 0.01
   private val seed = 0L
   private val numSamples = 100
-  private val NUM_SAMPLES = 31
-  private val HALF_NUM_SAMPLES = 15
-  private val NUM_DIMENSIONS = 10
-  private val TEST_TOLERANCE = 1e-6
+  private val halfNumSamples = numSamples / 2
+  private val numDimensions = 10
+  private val testTolerance = 1e-6
 
   def regressionModelFitFunction(coefficient: Double, lambdas: Seq[Double])
     : (RDD[LabeledPoint], Map[Double, LinearRegressionModel]) => List[(Double, LinearRegressionModel)] = {
@@ -45,7 +44,7 @@ class BootstrapTrainingTest extends SparkTestUtils {
     (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
       lambdas.map(l => {
         (l, new LinearRegressionModel(
-          Coefficients(DenseVector.ones[Double](NUM_DIMENSIONS) * coefficient)))
+          Coefficients(DenseVector.ones[Double](numDimensions) * coefficient)))
       })
         .toList
     }
@@ -66,12 +65,12 @@ class BootstrapTrainingTest extends SparkTestUtils {
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
         seed.toInt,
         numSamples,
-        NUM_DIMENSIONS)
+        numDimensions)
         .toSeq)
       .map(x => new LabeledPoint(x._1, x._2))
 
     val result: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
-      NUM_SAMPLES,
+      numSamples,
       samplePct,
       Map[Double, LinearRegressionModel](),
       regressionModelFitFunction(0, lambdas),
@@ -89,7 +88,7 @@ class BootstrapTrainingTest extends SparkTestUtils {
                 case m: TraversableOnce[(LinearRegressionModel, Map[String, Double])] =>
                   assertEquals(
                     m.size,
-                    NUM_SAMPLES,
+                    numSamples,
                     "Number of bootstrapped models matches expected")
                 case _ => fail(f"Found aggregate for lambda=[$x%.04f] and name [$identityKey] with unexpected type")
               }
@@ -113,9 +112,9 @@ class BootstrapTrainingTest extends SparkTestUtils {
   @Test
   def checkBootstrapHappyPathRealAggregates(): Unit = sparkTest("checkBootstrapHappyPathRealAggregates") {
     // Return a different model each time fitFunction is called
-    var count: Int = -HALF_NUM_SAMPLES
+    var count: Int = -halfNumSamples
     val fitFunction = (x: RDD[LabeledPoint], y: Map[Double, LinearRegressionModel]) => {
-      val value = count / HALF_NUM_SAMPLES.toDouble
+      val value = count / halfNumSamples.toDouble
       count += 1
       val fn = regressionModelFitFunction(value, lambdas)
       fn(x, y)
@@ -160,13 +159,13 @@ class BootstrapTrainingTest extends SparkTestUtils {
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
         seed.toInt,
         numSamples,
-        NUM_DIMENSIONS)
+        numDimensions)
           .toSeq)
         .map(x => new LabeledPoint(x._1, x._2))
         .coalesce(4)
 
     val aggregates: Map[Double, Map[String, Any]] = BootstrapTraining.bootstrap[LinearRegressionModel](
-      NUM_SAMPLES,
+      numSamples,
       samplePct,
       Map[Double, LinearRegressionModel](),
       fitFunction,
@@ -182,11 +181,10 @@ class BootstrapTrainingTest extends SparkTestUtils {
     assertFalse(x.getMax.isNaN || x.getMax.isInfinite, "Max must be finite")
     assertFalse(x.getMean.isNaN || x.getMean.isInfinite, "Mean must be finite")
     assertFalse(x.getStdDev.isNaN || x.getStdDev.isInfinite, "Standard deviation must be finite")
-
-    assertEquals(x.getCount, NUM_SAMPLES, s"Got expected number of coefficients")
-    assertEquals(x.getMax, 1.0, TEST_TOLERANCE, s"Max value matches expected")
-    assertEquals(x.getMin, -1.0, TEST_TOLERANCE, s"Min value matches expected")
-    assertEquals(x.getMean, 0.0, TEST_TOLERANCE, s"Mean matches expected")
+    assertEquals(x.getCount, numSamples, s"Got expected number of coefficients")
+    assertEquals(x.getMax, 1.0, testTolerance, s"Max value matches expected")
+    assertEquals(x.getMin, -1.0, testTolerance, s"Min value matches expected")
+    assertEquals(x.getMean, 0.0, testTolerance, s"Mean matches expected")
     assertTrue(x.getStdDev > 0, "Standard deviation is positive")
     assertTrue(x.getMin <= x.getMean && x.getMean <= x.getMax, "Mean between min and max")
     assertTrue(x.getMin <= x.estimateFirstQuartile, "Min < Q1 estimate")
