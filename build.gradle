@@ -84,6 +84,7 @@ rat {
     'photon-ml/LINEAR_REGRESSION*/**',
     'photon-ml/LOGISTIC_REGRESSION*/**',
     'photon-ml/POISSON_REGRESSION*/**',
+    'photon-ml/SMOOTHED_HINGE_LOSS*/**',
     'tests.sh',
     'photon-all/README.md',
     'photon-avro-schemas/README.md',
