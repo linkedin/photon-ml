@@ -14,13 +14,13 @@
  */
 package com.linkedin.photon.ml.avro
 
+import breeze.linalg.Vector
+
 import scala.collection.immutable.IndexedSeq
 import scala.util.Random
-
 import org.apache.hadoop.fs.Path
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
-
 import com.linkedin.photon.ml.avro.Constants._
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.estimators.GameParams
@@ -32,6 +32,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
+import org.apache.spark.SparkContext
 
 /**
  * Unit tests for model processing utilities.
@@ -272,7 +273,26 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
     sparkTest("testLoadAndSaveMatrixFactorizationModels") {
 
-      import MatrixFactorizationModelTest._
+      // Generate a latent factor with random numbers
+      def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] =
+        Vector.fill(numLatentFactors)(random.nextDouble())
+
+      // Generate a matrix factorization model with the given specs
+      def generateMatrixFactorizationModel(
+          numRows: Int,
+          numCols: Int,
+          rowEffectType: String,
+          colEffectType: String,
+          rowFactorGenerator: => Vector[Double],
+          colFactorGenerator: => Vector[Double],
+          sparkContext: SparkContext): MatrixFactorizationModel = {
+
+        val rowLatentFactors =
+          sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
+        val colLatentFactors =
+          sparkContext.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
+        new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
+      }
 
       // Meta data
       val rowEffectType = "rowEffectType"

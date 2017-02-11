@@ -79,10 +79,11 @@ class PalDBIndexMapTest {
 
 object PalDBIndexMapTest {
 
+  // These also used in integTest / DriverTest
   private val TEST_DIR = ClassLoader.getSystemResource("PalDBIndexMapTest").getPath
-  private val OFFHEAP_HEART_STORE_NO_INTERCEPT = PalDBIndexMapTest.TEST_DIR + "/paldb_offheapmap_for_heart"
-  private val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
-  private val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
+  val OFFHEAP_HEART_STORE_NO_INTERCEPT: String = PalDBIndexMapTest.TEST_DIR + "/paldb_offheapmap_for_heart"
+  val OFFHEAP_HEART_STORE_WITH_INTERCEPT: String = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
+  val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   private def getFeatureName(name: String, term: String = null): String = {
     val termStr = if (term == null) "" else term

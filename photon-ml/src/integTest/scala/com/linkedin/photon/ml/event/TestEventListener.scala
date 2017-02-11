@@ -33,5 +33,5 @@ class TestEventListener extends EventListener {
 }
 
 object TestEventListener {
-  private val DEFAULT_VALUE = 0
+  val DEFAULT_VALUE = 0
 }

@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.OptionNames._
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{PalDBIndexMapTest, Utils} // TODO: dependency on unit tests?
 import TaskType.TaskType
 
 /**
@@ -950,9 +950,6 @@ object DriverTest {
   // Configured for any optimizer in tests that we care about something other than the optimizer's performance
   private val LIGHT_MAX_NUM_ITERATIONS = 1
   private val TEST_DIR = ClassLoader.getSystemResource("DriverIntegTest").getPath
-  private val OFFHEAP_HEART_STORE_NO_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart"
-  private val OFFHEAP_HEART_STORE_WITH_INTERCEPT = TEST_DIR + "/paldb_offheapmap_for_heart_with_intercept"
-  private val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   def appendCommonJobArgs(
       args: mutable.ArrayBuffer[String],
@@ -982,12 +979,12 @@ object DriverTest {
   def appendOffHeapConfig(args: mutable.ArrayBuffer[String], addIntercept: Boolean = true): Unit = {
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_DIR)
     if (addIntercept) {
-      args += OFFHEAP_HEART_STORE_WITH_INTERCEPT
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_WITH_INTERCEPT
     } else {
-      args += OFFHEAP_HEART_STORE_NO_INTERCEPT
+      args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_NO_INTERCEPT
     }
     args += CommonTestUtils.fromOptionNameToArg(OFFHEAP_INDEXMAP_NUM_PARTITIONS)
-    args += OFFHEAP_HEART_STORE_PARTITION_NUM
+    args += PalDBIndexMapTest.OFFHEAP_HEART_STORE_PARTITION_NUM
   }
 
   // TODO: Formalize these model loaders in another RB.

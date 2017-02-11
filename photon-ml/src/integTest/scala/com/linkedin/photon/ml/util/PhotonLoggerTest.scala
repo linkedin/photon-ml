@@ -120,6 +120,7 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testLogMessageWithStackTrace(): Unit = sparkTest("logMessageWithStackTrace") {
+
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -141,8 +142,8 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(Files.exists(fs.getPath(logFile)))
 
     val lines = Source.fromFile(logFile).getLines().toArray
-    assertEquals(lines.length, 19)
+    assertEquals(lines.length, 19) // NOTE: in IDEA, this is 34, depending on how you run the test (via gradle or not)
     assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
-    assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerIntegTest$TestException")
+    assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerTest$TestException")
   }
 }

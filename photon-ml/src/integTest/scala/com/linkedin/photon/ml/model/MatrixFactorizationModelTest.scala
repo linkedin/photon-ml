@@ -136,13 +136,13 @@ object MatrixFactorizationModelTest {
 
   // Generate a matrix factorization model with the given specs
   private def generateMatrixFactorizationModel(
-    numRows: Int,
-    numCols: Int,
-    rowEffectType: String,
-    colEffectType: String,
-    rowFactorGenerator: => Vector[Double],
-    colFactorGenerator: => Vector[Double],
-    sparkContext: SparkContext): MatrixFactorizationModel = {
+      numRows: Int,
+      numCols: Int,
+      rowEffectType: String,
+      colEffectType: String,
+      rowFactorGenerator: => Vector[Double],
+      colFactorGenerator: => Vector[Double],
+      sparkContext: SparkContext): MatrixFactorizationModel = {
 
     val rowLatentFactors =
       sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
