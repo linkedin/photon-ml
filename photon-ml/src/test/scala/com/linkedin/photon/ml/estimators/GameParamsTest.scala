@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.game.MFOptimizationConfiguration
 import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
- * Simple test for GAME training's [[Params]]
+ * Simple test for GAME training's [[GameParams]]
  */
 class GameParamsTest {
 
@@ -314,38 +314,39 @@ class GameParamsTest {
 
 
 object GameParamsTest {
-  val defaultParams = new GameParams
+
+  private val defaultParams = new GameParams
 
   // Required parameters
-  val TRAIN_INPUT_DIRS = "train-input-dirs"
-  val TASK_TYPE = "task-type"
-  val OUTPUT_DIR = "output-dir"
-  val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
-  val UPDATING_SEQUENCE = "updating-sequence"
+  private val TRAIN_INPUT_DIRS = "train-input-dirs"
+  private val TASK_TYPE = "task-type"
+  private val OUTPUT_DIR = "output-dir"
+  private val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
+  private val UPDATING_SEQUENCE = "updating-sequence"
 
   // Optional parameters
-  val TRAIN_DATE_RANGE = "train-date-range"
-  val TRAIN_DATE_RANGE_DAYS_AGO = "train-date-range-days-ago"
-  val VALIDATE_INPUT_DIRS = "validate-input-dirs"
-  val VALIDATE_DATE_RANGE = "validate-date-range"
-  val VALIDATE_DATE_RANGE_DAYS_AGO = "validate-date-range-days-ago"
-  val MIN_PARTITIONS_FOR_VALIDATION = "min-partitions-for-validation"
-  val FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP = "feature-shard-id-to-feature-section-keys-map"
-  val FEATURE_SHARD_ID_TO_INTERCEPT_MAP = "feature-shard-id-to-intercept-map"
-  val NUM_ITERATIONS = "num-iterations"
-  val COMPUTE_VARIANCE = "compute-variance"
-  val FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS = "fixed-effect-optimization-configurations"
-  val FIXED_EFFECT_DATA_CONFIGURATIONS = "fixed-effect-data-configurations"
-  val RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "random-effect-optimization-configurations"
-  val FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "factored-random-effect-optimization-configurations"
-  val RANDOM_EFFECT_DATA_CONFIGURATIONS = "random-effect-data-configurations"
-  val SAVE_MODELS_TO_HDFS = "save-models-to-hdfs"
-  val MODEL_OUTPUT_MODE = "model-output-mode"
-  val NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL = "num-output-files-for-random-effect-model"
-  val DELETE_OUTPUT_DIR_IF_EXISTS = "delete-output-dir-if-exists"
-  val APPLICATION_NAME = "application-name"
+  private val TRAIN_DATE_RANGE = "train-date-range"
+  private val TRAIN_DATE_RANGE_DAYS_AGO = "train-date-range-days-ago"
+  private val VALIDATE_INPUT_DIRS = "validate-input-dirs"
+  private val VALIDATE_DATE_RANGE = "validate-date-range"
+  private val VALIDATE_DATE_RANGE_DAYS_AGO = "validate-date-range-days-ago"
+  private val MIN_PARTITIONS_FOR_VALIDATION = "min-partitions-for-validation"
+  private val FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP = "feature-shard-id-to-feature-section-keys-map"
+  private val FEATURE_SHARD_ID_TO_INTERCEPT_MAP = "feature-shard-id-to-intercept-map"
+  private val NUM_ITERATIONS = "num-iterations"
+  private val COMPUTE_VARIANCE = "compute-variance"
+  private val FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS = "fixed-effect-optimization-configurations"
+  private val FIXED_EFFECT_DATA_CONFIGURATIONS = "fixed-effect-data-configurations"
+  private val RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "random-effect-optimization-configurations"
+  private val FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "factored-random-effect-optimization-configurations"
+  private val RANDOM_EFFECT_DATA_CONFIGURATIONS = "random-effect-data-configurations"
+  private val SAVE_MODELS_TO_HDFS = "save-models-to-hdfs"
+  private val MODEL_OUTPUT_MODE = "model-output-mode"
+  private val NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL = "num-output-files-for-random-effect-model"
+  private val DELETE_OUTPUT_DIR_IF_EXISTS = "delete-output-dir-if-exists"
+  private val APPLICATION_NAME = "application-name"
 
-  val REQUIRED_OPTIONS =
+  private val REQUIRED_OPTIONS =
     Array(TRAIN_INPUT_DIRS, OUTPUT_DIR, TASK_TYPE, FEATURE_NAME_AND_TERM_SET_PATH, UPDATING_SEQUENCE)
 
   // Get all required arguments

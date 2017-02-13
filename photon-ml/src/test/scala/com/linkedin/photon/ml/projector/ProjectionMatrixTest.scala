@@ -18,25 +18,25 @@ import breeze.linalg.{CSCMatrix, DenseMatrix, DenseVector}
 import org.testng.Assert
 import org.testng.annotations.Test
 
-
 class ProjectionMatrixTest {
+
    // matrix is [[1.0, 0.0, 3.0], [0.0, 2.0, 4.0]]
-   val projectionMatrix = new ProjectionMatrix(new DenseMatrix[Double](2, 3, Array(1.0, 0.0, 0.0, 2.0, 3.0, 4.0)))
+   private val projectionMatrix = new ProjectionMatrix(new DenseMatrix[Double](2, 3, Array(1.0, 0.0, 0.0, 2.0, 3.0, 4.0)))
 
    @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
-   def testConstructorWithUnsupportedMatrixType() = {
+   def testConstructorWithUnsupportedMatrixType(): Unit = {
      val _ = new ProjectionMatrix(CSCMatrix.zeros[Double](2, 3))
    }
 
    @Test
-   def testProjectFeatures() = {
+   def testProjectFeatures(): Unit = {
      // projection should be [10.0, 16.0]
      val v = new DenseVector[Double](Array(1.0, 2.0, 3.0))
      Assert.assertEquals(projectionMatrix.projectFeatures(v).iterator.toSet, Set[(Int, Double)]((0, 10.0), (1, 16.0)))
    }
 
    @Test
-   def testProjectCoefficients() = {
+   def testProjectCoefficients(): Unit = {
      // projection should be [-2, 8, 10]
      val coefficients = new DenseVector[Double](Array(-2.0, 4.0))
      Assert.assertEquals(projectionMatrix.projectCoefficients(coefficients).iterator.toSet,

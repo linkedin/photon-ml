@@ -24,7 +24,7 @@ import org.testng.Assert._
 class GameConvertersTest extends SparkTestUtils {
   import GameConvertersTest._
 
-  val uid = "foo"
+  private val uid = "foo"
 
   @Test
   def testGetGameDatumFromRowWithUID(): Unit = sparkTest("testGetGameDatumFromRowWithUID") {
@@ -91,7 +91,7 @@ class GameConvertersTest extends SparkTestUtils {
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, false))))
+      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr)))
@@ -122,7 +122,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(GameConverters.FieldNames.UID, StringType),
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, false))))
+      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, userId1Str, jobId1Val, Map(USER_ID_NAME -> userId2Str, JOB_ID_NAME -> jobId2Str)))
@@ -146,7 +146,7 @@ class GameConvertersTest extends SparkTestUtils {
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, false))))
+      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
@@ -162,7 +162,7 @@ class GameConvertersTest extends SparkTestUtils {
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, false))))
+      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
@@ -176,6 +176,7 @@ class GameConvertersTest extends SparkTestUtils {
 }
 
 object GameConvertersTest {
-  val JOB_ID_NAME = "jobId"
-  val USER_ID_NAME = "userId"
+
+  private val JOB_ID_NAME = "jobId"
+  private val USER_ID_NAME = "userId"
 }

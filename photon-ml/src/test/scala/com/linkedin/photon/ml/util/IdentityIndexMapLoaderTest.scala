@@ -39,12 +39,12 @@ class IdentityIndexMapLoaderTest {
     assertEquals(driverMap.size, 10)
 
     for (i <- 0 until 9) {
-      assertEquals(driverMap.get(String.valueOf(i)).get, i)
+      assertEquals(driverMap(String.valueOf(i)), i)
       assertEquals(driverMap.getIndex(String.valueOf(i)), i)
       assertEquals(driverMap.getFeatureName(i).get, String.valueOf(i))
     }
 
-    assertEquals(driverMap.get(GLMSuite.INTERCEPT_NAME_TERM).get, 9)
+    assertEquals(driverMap(GLMSuite.INTERCEPT_NAME_TERM), 9)
     assertEquals(driverMap.getIndex(GLMSuite.INTERCEPT_NAME_TERM), 9)
     assertEquals(driverMap.getFeatureName(9).get, GLMSuite.INTERCEPT_NAME_TERM)
 
@@ -69,7 +69,7 @@ class IdentityIndexMapLoaderTest {
     assertEquals(idxSet.size, 10)
     for (i <- 0 until 10) {
       if (i != 9) {
-        assertTrue(nameSet.contains(i.toString()))
+        assertTrue(nameSet.contains(i.toString))
       } else {
         assertTrue(nameSet.contains(GLMSuite.INTERCEPT_NAME_TERM))
       }
@@ -92,7 +92,7 @@ class IdentityIndexMapLoaderTest {
     assertEquals(driverMap.size, 10)
 
     for (i <- 0 until 10) {
-      assertEquals(driverMap.get(String.valueOf(i)).get, i)
+      assertEquals(driverMap(String.valueOf(i)), i)
       assertEquals(driverMap.getIndex(String.valueOf(i)), i)
       assertEquals(driverMap.getFeatureName(i).get, String.valueOf(i))
     }
@@ -116,7 +116,7 @@ class IdentityIndexMapLoaderTest {
     assertEquals(nameSet.size, 10)
     assertEquals(idxSet.size, 10)
     for (i <- 0 until 10) {
-      assertTrue(nameSet.contains(i.toString()))
+      assertTrue(nameSet.contains(i.toString))
       assertTrue(idxSet.contains(i))
     }
   }

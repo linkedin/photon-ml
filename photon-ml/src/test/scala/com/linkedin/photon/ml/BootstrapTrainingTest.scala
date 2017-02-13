@@ -29,7 +29,7 @@ class BootstrapTrainingTest {
   import BootstrapTrainingTest._
 
   @Test
-  def checkAggregateCoefficients() = {
+  def checkAggregateCoefficients(): Unit = {
     val toAggregate = new Array[(LinearRegressionModel, Map[String, Double])](NUM_SAMPLES)
 
     for (i <- -HALF_NUM_SAMPLES to HALF_NUM_SAMPLES) {
@@ -43,7 +43,7 @@ class BootstrapTrainingTest {
   }
 
   @Test
-  def checkAggregateMetrics() = {
+  def checkAggregateMetrics(): Unit = {
     val toAggregate = new Array[(LinearRegressionModel, Map[String, Double])](NUM_SAMPLES)
     val keys = Seq("METRIC 1", "METRIC 2", "METRIC 3")
 
@@ -69,16 +69,17 @@ class BootstrapTrainingTest {
   }
 
   @Test(dataProvider = "invalidArgumentCases", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def checkInvalidArgumentCases(desc: String, numSamp: Int, frac: Double) = {
+  def checkInvalidArgumentCases(desc: String, numSamp: Int, frac: Double): Map[Double, Map[String, Any]] = {
     BootstrapTraining.bootstrap(numSamp, frac, null, null, null, null)
   }
 }
 
 object BootstrapTrainingTest {
-  val TEST_TOLERANCE = 1e-6
-  val HALF_NUM_SAMPLES: Int = 15
-  val NUM_SAMPLES: Int = 2 * HALF_NUM_SAMPLES + 1
-  val NUM_DIMENSIONS: Int = 10
+
+  private val TEST_TOLERANCE = 1e-6
+  private val HALF_NUM_SAMPLES: Int = 15
+  private val NUM_SAMPLES: Int = 2 * HALF_NUM_SAMPLES + 1
+  private val NUM_DIMENSIONS: Int = 10
 
   def checkCoefficientSummary(x: CoefficientSummary): Unit = {
     assertFalse(x.getMin.isNaN || x.getMin.isInfinite, "Min must be finite")

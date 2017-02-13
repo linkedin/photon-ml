@@ -25,7 +25,8 @@ import scala.util.Random
  * Test the functions in [[DataPoint]]
  */
 class DataPointTest {
-  val delta = 1.0E-9
+
+  private val delta = 1.0E-9
 
   /**
     * Test the class and object
@@ -110,7 +111,8 @@ class DataPointTest {
 }
 
 object DataPointTest {
-  val PARAMETER_RANDOM_SEED = 999
-  val PROBLEM_DIMENSION = 10
-  val TOLERANCE = 1.0E-9
+
+  private val PARAMETER_RANDOM_SEED = 999
+  private val PROBLEM_DIMENSION = 10
+  private val TOLERANCE = 1.0E-9
 }

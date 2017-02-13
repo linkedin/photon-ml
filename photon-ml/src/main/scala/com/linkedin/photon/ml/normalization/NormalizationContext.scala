@@ -19,25 +19,22 @@ import breeze.linalg.{DenseVector, Vector}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
- * The normalization approach for the optimization problem, especially for generalized linear model. This gives concrete
- * approach for normalization, given the [[NormalizationType]] and the input data.
- *
- * The transformation consists of two part, the factors and the shifts. The transformation of a feature is
- *
- * x -> (x - shift) .* factor
- *
- * where .* is a point wise multiplication.
- *
- * Note that if the shift is enabled, there must be an intercept provided. One typical transformation is the feature
- * standardization, i.e. shifts are feature means the factors are the reciprocal of the feature standard deviations.
- * After feature standardization, the features become zero-mean unit-variance distributed. Normalization is very
- * important in the context of regularization.
- *
- * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the
- * intercept should be 0, and the factor for the intercept should be 1.
- *
- * Also note that this normalization context class covers all affine transformations without rotation.
- */
+  * The normalization approach for the optimization problem, especially for generalized linear model.
+  *
+  * The transformation consists of two parts, a translational shift and a scaling factor.
+  * The normalization of a feature vector x is:
+  *
+  * x[i] -> (x[i] - shift) .* factor
+  *
+  * The normalized vector has mean 0 and unit variance.
+  * If the shift is enabled, there must be an intercept provided.
+  * Normalization allows regularization to be applied evenly to all the features (same scale).
+  *
+  * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the
+  * intercept should be 0, and the factor for the intercept should be 1.
+  *
+  * Also note that this normalization context class covers all affine transformations without rotation.
+  */
 private[ml] case class NormalizationContext(
     factors: Option[_ <: Vector[Double]],
     shifts: Option[_ <: Vector[Double]],
@@ -83,27 +80,6 @@ private[ml] case class NormalizationContext(
     outputCoef
   }
 
-  /**
-   * For testing purpose only. This is not designed to be efficient. This method transform a vector to
-   * from the original space to the normalized space.
-   * @param input Input vector
-   * @return Transformed vector
-   */
-  def transformVector(input: Vector[Double]): Vector[Double] = {
-    (factors, shifts) match {
-      case (Some(fs), Some(ss)) =>
-        require(fs.size == input.size, "Vector size and the scaling factor size are different.")
-        (input - ss) :* fs
-      case (Some(fs), None) =>
-        require(fs.size == input.size, "Vector size and the scaling factor size are different.")
-        input :* fs
-      case (None, Some(ss)) =>
-        require(ss.size == input.size, "Vector size and the scaling factor size are different.")
-        input - ss
-      case (None, None) =>
-        input
-    }
-  }
 }
 
 private[ml] object NormalizationContext {

@@ -27,29 +27,31 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
   var startIndex = 0
 
   // normal cases
-  val labelsInNormalCase = zipWithIndex(Array[Double](1, 0, 0, 0, 1, 1, 1), startIndex)
-  val scoresInNormalCase = zipWithIndex(Array[Double](-1, -0.1, 0, 1, 2, 6, 8), startIndex)
-  val idsInNormalCase = zipWithIndex(Array.fill[String](scoresInNormalCase.length)("normal"), startIndex)
-  val expectedAUCInNormalCase = 0.75
+  private val labelsInNormalCase = zipWithIndex(Array[Double](1, 0, 0, 0, 1, 1, 1), startIndex)
+  private val scoresInNormalCase = zipWithIndex(Array[Double](-1, -0.1, 0, 1, 2, 6, 8), startIndex)
+  private val idsInNormalCase = zipWithIndex(Array.fill[String](scoresInNormalCase.length)("normal"), startIndex)
+  private val expectedAUCInNormalCase = 0.75
   startIndex += labelsInNormalCase.length
 
   // if we have two identical scores with conflicting ground-truth labels
-  val labelsInCornerCase = zipWithIndex(Array[Double](0, 1, 0, 0, 1, 1, 1), startIndex)
-  val scoresInCornerCase = zipWithIndex(Array[Double](-0.1, -1, 0, -1, 2, 6, 8), startIndex)
-  val idsInCornerCase = zipWithIndex(Array.fill[String](scoresInCornerCase.length)("corner"), startIndex)
-  val expectedAUCInCornerCase = 0.79166667
+  private val labelsInCornerCase = zipWithIndex(Array[Double](0, 1, 0, 0, 1, 1, 1), startIndex)
+  private val scoresInCornerCase = zipWithIndex(Array[Double](-0.1, -1, 0, -1, 2, 6, 8), startIndex)
+  private val idsInCornerCase = zipWithIndex(Array.fill[String](scoresInCornerCase.length)("corner"), startIndex)
+  private val expectedAUCInCornerCase = 0.79166667
   startIndex += labelsInCornerCase.length
 
   // where all examples have positive label
-  val positiveLabelsOnly = zipWithIndex(Array[Double](1, 1), startIndex)
-  val scoresWithPositiveLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
-  val idsWithPositiveLabelsOnly = zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-pos"), startIndex)
+  private val positiveLabelsOnly = zipWithIndex(Array[Double](1, 1), startIndex)
+  private val scoresWithPositiveLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
+  private val idsWithPositiveLabelsOnly =
+    zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-pos"), startIndex)
   startIndex += labelsInCornerCase.length
 
   // where all examples have negative label
-  val negativeLabelsOnly = zipWithIndex(Array[Double](0, 0), startIndex)
-  val scoresWithNegativeLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
-  val idsWithNegativeLabelsOnly = zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-neg"), startIndex)
+  private val negativeLabelsOnly = zipWithIndex(Array[Double](0, 0), startIndex)
+  private val scoresWithNegativeLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
+  private val idsWithNegativeLabelsOnly =
+    zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-neg"), startIndex)
 
 
   private def getEvaluator(labels: Seq[(Long, Double)], ids: Seq[(Long, String)]): Evaluator = {

@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.event
 
 /**
- * Test [[EventListener]] for [[EventListenerIntegTest]].
+ * Test [[EventListener]] for [[EventListenerTest]].
  */
 class TestEventListener extends EventListener {
   import TestEventListener._

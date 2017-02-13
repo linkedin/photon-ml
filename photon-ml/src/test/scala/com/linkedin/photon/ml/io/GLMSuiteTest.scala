@@ -68,7 +68,7 @@ class GLMSuiteTest {
   }
 
   @Test(dataProvider = "generateInvalidConstraintStrings", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testCreateConstraintFeatureMapForInvalidInputs(featureKeyToIdMap: Map[String, Int], constraintString: String) = {
+  def testCreateConstraintFeatureMapForInvalidInputs(featureKeyToIdMap: Map[String, Int], constraintString: String): Option[Map[Int, (Double, Double)]] = {
     val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString), None)
     suite.featureKeyToIdMap = new DefaultIndexMap(featureKeyToIdMap)
     suite.createConstraintFeatureMap()
@@ -109,7 +109,7 @@ class GLMSuiteTest {
 
   @Test(dataProvider = "generateValidConstraintStrings")
   def testCreateConstraintFeatureMapForValidInputs(featureKeyToIdMap: Map[String, Int], constraintString: String,
-                                                   expectedMap: Option[Map[Int, (Double, Double)]]) = {
+                                                   expectedMap: Option[Map[Int, (Double, Double)]]): Unit = {
     val suite: GLMSuite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, true, Some(constraintString), None)
     suite.featureKeyToIdMap = new DefaultIndexMap(featureKeyToIdMap)
     val actualMap = suite.createConstraintFeatureMap()

@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import scala.util.parsing.json.JSON
-
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 

@@ -28,7 +28,7 @@ class FittingToPhysicalReportTransformerTest {
   @Test
   def checkHappyPath(): Unit = {
     val xData = (1 until NUM_SAMPLES).map( x => x.toDouble / NUM_SAMPLES ).toArray
-    val report = new FittingReport(
+    val report = FittingReport(
       Map(FIRST_METRIC -> (xData, xData, xData),
           SECOND_METRIC -> (xData, xData, xData)),
       "Message"
@@ -38,16 +38,17 @@ class FittingToPhysicalReportTransformerTest {
 
     assertTrue(transformed.isInstanceOf[SectionPhysicalReport])
     assertEquals(transformed.items.length, EXPECTED_SECTIONS)
-    transformed.items.map( x => {
+    transformed.items.foreach(x => {
       assertTrue(x.isInstanceOf[SectionPhysicalReport])
     })
   }
 }
 
 object FittingToPhysicalReportTransformerTest {
-  val FIRST_METRIC = Evaluation.MEAN_ABSOLUTE_ERROR
-  val SECOND_METRIC = Evaluation.MEAN_SQUARE_ERROR
-  val NUM_SAMPLES = 10
-  val EXPECTED_SECTIONS = 2
+
+  private val FIRST_METRIC = Evaluation.MEAN_ABSOLUTE_ERROR
+  private val SECOND_METRIC = Evaluation.MEAN_SQUARE_ERROR
+  private val NUM_SAMPLES = 10
+  private val EXPECTED_SECTIONS = 2
 
 }

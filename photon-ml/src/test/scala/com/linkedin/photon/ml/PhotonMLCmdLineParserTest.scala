@@ -265,11 +265,11 @@ class PhotonMLCmdLineParserTest {
 
 object PhotonMLCmdLineParserTest {
 
-  val defaultParams = new Params
-  val REQUIRED_OPTIONS = Array(TRAIN_DIR_OPTION, OUTPUT_DIR_OPTION, TASK_TYPE_OPTION)
+  private val defaultParams = new Params
+  private val REQUIRED_OPTIONS = Array(TRAIN_DIR_OPTION, OUTPUT_DIR_OPTION, TASK_TYPE_OPTION)
 
   // Optional options other than boolean options
-  val OPTIONAL_OPTIONS = Array(VALIDATE_DIR_OPTION,
+  private val OPTIONAL_OPTIONS = Array(VALIDATE_DIR_OPTION,
     REGULARIZATION_WEIGHTS_OPTION,
     REGULARIZATION_TYPE_OPTION,
     ELASTIC_NET_ALPHA_OPTION,
@@ -287,14 +287,14 @@ object PhotonMLCmdLineParserTest {
   )
 
   // Boolean options are unary instead of binary options
-  val BOOLEAN_OPTIONAL_OPTIONS = Array(
+  private val BOOLEAN_OPTIONAL_OPTIONS = Array(
     INTERCEPT_OPTION,
     KRYO_OPTION,
     VALIDATE_PER_ITERATION,
     OPTIMIZATION_STATE_TRACKER_OPTION
   )
 
-  val constraintString =
+  private val constraintString =
     """[
              {"name": "ageInHour", "term": "", "lowerBound": -1, "upperBound": 0},
              {"name": "ageInHour:lv", "term": "4", "lowerBound": -1},

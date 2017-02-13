@@ -19,14 +19,15 @@ import org.testng.Assert
 import org.testng.annotations.Test
 
 class IndexMapProjectorTest {
-  val projector = IndexMapProjector.buildIndexMapProjector(
+
+  private val projector = IndexMapProjector.buildIndexMapProjector(
     List[Vector[Double]](
       new SparseVector[Double](Array(0, 4, 6, 7, 9), Array(1.0, 4.0, 6.0, 7.0, 9.0), 10),
       new SparseVector[Double](Array(0, 1), Array(1.0, 1.0), 10),
-      new SparseVector[Double](Array(4, 5, 7), Array(4.0, 5.0, 7.0), 10)).toIterable)
+      new SparseVector[Double](Array(4, 5, 7), Array(4.0, 5.0, 7.0), 10)))
 
   @Test
-  def testBuilder() = {
+  def testBuilder(): Unit = {
     Assert.assertEquals(projector.originalToProjectedSpaceMap.size, 7)
     Assert.assertEquals(projector.originalToProjectedSpaceMap.keySet, Set[Int](0, 1, 4, 5, 6, 7, 9))
     Assert.assertEquals(projector.originalSpaceDimension, 10)
@@ -34,7 +35,7 @@ class IndexMapProjectorTest {
   }
 
   @Test
-  def testProjectFeatures() = {
+  def testProjectFeatures(): Unit = {
     val fv = new SparseVector[Double](Array(0, 2, 4, 5, 8), Array(1.0, 2.0, 4.0, 5.0, 8.0), 10)
     val expectedActiveTuples = Set[(Int, Double)]((projector.originalToProjectedSpaceMap(0), 1.0),
       (projector.originalToProjectedSpaceMap(4), 4.0),
@@ -51,7 +52,7 @@ class IndexMapProjectorTest {
   }
 
   @Test
-  def testProjectCoefficients() = {
+  def testProjectCoefficients(): Unit = {
     val coefficients = new DenseVector[Double](Array(0.0, 0.1, 0.2, 0.3, 0.0, 0.5, 0.6))
     val expectedActiveTuples = Set[(Int, Double)]((projector.projectedToOriginalSpaceMap(1), 0.1),
       (projector.projectedToOriginalSpaceMap(2), 0.2),

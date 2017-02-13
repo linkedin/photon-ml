@@ -26,8 +26,8 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   import RandomEffectCoordinateTest._
 
-  val randomEffectType = "random-effect-1"
-  val featureShardId = "shard1"
+  private val randomEffectType = "random-effect-1"
+  private val featureShardId = "shard1"
 
   @DataProvider
   def numEntitiesDataProvider(): Array[Array[Integer]] = {
@@ -73,7 +73,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 }
 
 object RandomEffectCoordinateTest {
-  val NUM_TRAINING_SAMPLES = 1000
-  val DIMENSIONALITY = 10
-  val NUM_PARTITIONS = 4
+
+  private val NUM_TRAINING_SAMPLES = 1000
+  private val DIMENSIONALITY = 10
 }

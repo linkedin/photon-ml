@@ -26,7 +26,7 @@ import scala.reflect.ClassTag
 class CompositeModelValidator[-GLM <: GeneralizedLinearModel : ClassTag](validators: ModelValidator[GLM]*)
     extends ModelValidator[GLM] {
 
-  def validateModelPredictions(model: GLM, data: RDD[LabeledPoint]) = {
+  def validateModelPredictions(model: GLM, data: RDD[LabeledPoint]): Unit = {
     validators.foreach(v => { v.validateModelPredictions(model, data) })
   }
 }

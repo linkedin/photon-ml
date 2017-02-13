@@ -14,9 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import java.util.Random
-
-import breeze.linalg.DenseVector
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert
@@ -43,12 +40,6 @@ import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
 class OWLQNTest {
   import CommonTestUtils._
 
-  val random = new Random(OWLQNTest.RANDOM_SEED)
-
-  private def getRandomInput(dim: Int): DenseVector[Double] = {
-    DenseVector(Seq.fill(dim)(random.nextGaussian).toArray)
-  }
-
   @DataProvider(name = "dataProvider")
   def dataProvider(): Array[Array[Any]] = {
     Array(
@@ -68,7 +59,7 @@ class OWLQNTest {
   def testOWLQN(
       l1Weight: Double,
       constraintMap: Option[Map[Int, (Double, Double)]],
-    expectedCoef: Array[Double],
+      expectedCoef: Array[Double],
       expectedValue: Double): Unit = {
 
     val normalizationContext = NoNormalization()
@@ -91,6 +82,6 @@ class OWLQNTest {
 }
 
 object OWLQNTest {
-  val EPSILON = 1.0E-6
-  val RANDOM_SEED = 1
+
+  private val EPSILON = 1.0E-6
 }

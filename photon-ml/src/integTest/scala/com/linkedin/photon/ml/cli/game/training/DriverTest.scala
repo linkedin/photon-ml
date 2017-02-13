@@ -16,22 +16,17 @@ package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path}
 
-import scala.collection.JavaConversions._
-
 import org.apache.spark.SparkException
 
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.GameTestUtils
-import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.{GameTestUtils, TaskType}
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.data
-import com.linkedin.photon.ml.data.{AvroDataReader, FixedEffectDataSet, GameConverters, RandomEffectDataSet}
+import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.io.ModelOutputMode
@@ -39,6 +34,9 @@ import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util.{LongHashPartitioner, PhotonLogger, Utils}
+
+
+import scala.collection.JavaConversions._
 
 
 /**
@@ -412,7 +410,6 @@ object DriverTest {
   private val numExecutors = 1
   private val numPartitionsForFixedEffectDataSet = numExecutors * 2
   private val numPartitionsForRandomEffectDataSet = numExecutors * 2
-  private val tol = 1e-5
 
   /**
    * Default arguments to the Game driver

@@ -52,5 +52,5 @@ class EvaluatorTest extends SparkTestUtils {
 }
 
 object EvaluatorTest {
-  val idType = "idType"
+  private val idType = "idType"
 }

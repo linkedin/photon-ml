@@ -102,5 +102,6 @@ class GAMEDatumTest {
 }
 
 object GAMEDatumTest {
-  val DEFAULT_SHARD_ID = "shardId"
+
+  private val DEFAULT_SHARD_ID = "shardId"
 }

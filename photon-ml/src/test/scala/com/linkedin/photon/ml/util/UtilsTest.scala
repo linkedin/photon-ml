@@ -22,7 +22,6 @@ import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.test.TestTemplateWithTmpDir
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.apache.avro.util.Utf8
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.mapred.JobConf
 import org.testng.Assert._
@@ -375,25 +374,25 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetDoubleAvroNaNString(): Unit = {
-    val record = new TestRecordBuilder().setStringValue(Double.NaN.toString()).build()
+    val record = new TestRecordBuilder().setStringValue(Double.NaN.toString).build()
     Utils.getDoubleAvro(record, "stringField")
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetDoubleAvroInfinityString(): Unit = {
-    val record = new TestRecordBuilder().setStringValue(Double.PositiveInfinity.toString()).build()
+    val record = new TestRecordBuilder().setStringValue(Double.PositiveInfinity.toString).build()
     Utils.getDoubleAvro(record, "stringField")
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetFloatAvroNaNString(): Unit = {
-    val record = new TestRecordBuilder().setStringValue(Float.NaN.toString()).build()
+    val record = new TestRecordBuilder().setStringValue(Float.NaN.toString).build()
     Utils.getFloatAvro(record, "stringField")
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetFloatAvroInfinityString(): Unit = {
-    val record = new TestRecordBuilder().setStringValue(Float.PositiveInfinity.toString()).build()
+    val record = new TestRecordBuilder().setStringValue(Float.PositiveInfinity.toString).build()
     Utils.getFloatAvro(record, "stringField")
   }
 
@@ -409,6 +408,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 }
 
 object UtilsTest {
+
   private val VECTOR_DIMENSION: Int = 10
   private val RANDOM_SEED: Long = 1234567890L
   private val EPSILON: Double = 1e-7
@@ -474,7 +474,6 @@ object UtilsTest {
     }
 
     def setStringValue(stringValue: String, utf8StringValue: String = null): TestRecordBuilder = {
-      val utf8Val = if (utf8StringValue == null) new Utf8(stringValue) else new Utf8(utf8StringValue)
       _record.put("stringField", new JString(stringValue))
       _record.put("utf8StringField", utf8StringValue)
 

@@ -23,8 +23,8 @@ import org.testng.Assert._
  */
 class TimerTest {
 
-  val now = System.nanoTime
-  val duration = 17
+  private val now = System.nanoTime
+  private val duration = 17
 
   @Test
   def testDuration() {

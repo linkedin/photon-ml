@@ -127,22 +127,22 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
 object MatrixFactorizationModelTest {
 
   // Generate a latent factor of zeros
-  protected[ml] def generateZerosLatentFactor(numLatentFactors: Int): Vector[Double] =
+  private def generateZerosLatentFactor(numLatentFactors: Int): Vector[Double] =
     Vector.zeros[Double](numLatentFactors)
 
   // Generate a latent factor with random numbers
-  protected[ml] def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] =
+  private def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] =
     Vector.fill(numLatentFactors)(random.nextDouble())
 
   // Generate a matrix factorization model with the given specs
-  protected[ml] def generateMatrixFactorizationModel(
-    numRows: Int,
-    numCols: Int,
-    rowEffectType: String,
-    colEffectType: String,
-    rowFactorGenerator: => Vector[Double],
-    colFactorGenerator: => Vector[Double],
-    sparkContext: SparkContext): MatrixFactorizationModel = {
+  private def generateMatrixFactorizationModel(
+      numRows: Int,
+      numCols: Int,
+      rowEffectType: String,
+      colEffectType: String,
+      rowFactorGenerator: => Vector[Double],
+      colFactorGenerator: => Vector[Double],
+      sparkContext: SparkContext): MatrixFactorizationModel = {
 
     val rowLatentFactors =
       sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))

@@ -32,7 +32,7 @@ class AvroDataReaderTest {
   import AvroDataReaderTest._
 
   @DataProvider
-  def fieldSchemaProvider() = {
+  def fieldSchemaProvider(): Array[Array[Object]] = {
     Array(
       Array(avroSchema.getFields.get(0).schema, IntegerType),
       Array(avroSchema.getFields.get(1).schema, StringType),
@@ -40,7 +40,7 @@ class AvroDataReaderTest {
       Array(avroSchema.getFields.get(3).schema, DoubleType),
       Array(avroSchema.getFields.get(4).schema, FloatType),
       Array(avroSchema.getFields.get(5).schema, LongType),
-      Array(avroSchema.getFields.get(6).schema, MapType(StringType, StringType, false)),
+      Array(avroSchema.getFields.get(6).schema, MapType(StringType, StringType, valueContainsNull = false)),
       Array(avroSchema.getFields.get(7).schema, IntegerType),
       Array(avroSchema.getFields.get(8).schema, LongType),
       Array(avroSchema.getFields.get(9).schema, DoubleType),
@@ -111,40 +111,41 @@ class AvroDataReaderTest {
 }
 
 object AvroDataReaderTest {
-  val IntField = "intField"
-  val IntValue = 7
-  val StringField = "stringField"
-  val StringValue = "ipass"
-  val BooleanField = "booleanField"
-  val BooleanValue = true
-  val DoubleField = "doubleField"
-  val DoubleValue = 13.0D
-  val FloatField = "floatField"
-  val FloatValue = 23.5
-  val LongField = "longField"
-  val LongValue = 31L
-  val MapField = "mapField"
-  val MapValue = Map("a" -> 5)
-  val UnionField = "unionField"
-  val UnionIntValue = 55
-  val UnionFieldIntLong = "unionFieldIntLong"
-  val UnionIntLongValue = 17
-  val UnionFieldFloatDouble = "unionFieldFloatDouble"
-  val UnionFloatDoubleValue = 43.5
-  val NullableIntField = "nullableIntField"
-  val NullableBooleanField = "nullableBooleanField"
-  val NullableDoubleField = "nullableDoubleField"
-  val NullableFloatField = "nullableFloatField"
-  val NullableLongField = "nullableLongField"
-  val FeaturesField = "features"
-  val FeatureName1 = "f1"
-  val FeatureVal1 = 1.0
-  val FeatureKey1 = Utils.getFeatureKey(FeatureName1, "")
-  val FeatureName2 = "f2"
-  val FeatureVal2 = 0.0
-  val FeatureKey2 = Utils.getFeatureKey(FeatureName2, "")
 
-  val nameAndTermSchema = SchemaBuilder
+  private val IntField = "intField"
+  private val IntValue = 7
+  private val StringField = "stringField"
+  private val StringValue = "ipass"
+  private val BooleanField = "booleanField"
+  private val BooleanValue = true
+  private val DoubleField = "doubleField"
+  private val DoubleValue = 13.0D
+  private val FloatField = "floatField"
+  private val FloatValue = 23.5
+  private val LongField = "longField"
+  private val LongValue = 31L
+  private val MapField = "mapField"
+  private val MapValue = Map("a" -> 5)
+  private val UnionField = "unionField"
+  private val UnionIntValue = 55
+  private val UnionFieldIntLong = "unionFieldIntLong"
+  private val UnionIntLongValue = 17
+  private val UnionFieldFloatDouble = "unionFieldFloatDouble"
+  private val UnionFloatDoubleValue = 43.5
+  private val NullableIntField = "nullableIntField"
+  private val NullableBooleanField = "nullableBooleanField"
+  private val NullableDoubleField = "nullableDoubleField"
+  private val NullableFloatField = "nullableFloatField"
+  private val NullableLongField = "nullableLongField"
+  private val FeaturesField = "features"
+  private val FeatureName1 = "f1"
+  private val FeatureVal1 = 1.0
+  private val FeatureKey1: String = Utils.getFeatureKey(FeatureName1, "")
+  private val FeatureName2 = "f2"
+  private val FeatureVal2 = 0.0
+  private val FeatureKey2: String = Utils.getFeatureKey(FeatureName2, "")
+
+  private val nameAndTermSchema: Schema = SchemaBuilder
     .record("testNameAndTermSchema")
     .namespace("com.linkedin.photon.ml.avro.data")
     .fields()
@@ -153,7 +154,7 @@ object AvroDataReaderTest {
     .name(AvroFieldNames.VALUE).`type`().doubleType().noDefault()
     .endRecord()
 
-  val avroSchema = SchemaBuilder
+  private val avroSchema: Schema = SchemaBuilder
     .record("testAvroSchema")
     .namespace("com.linkedin.photon.ml.avro.data")
     .fields()
@@ -175,7 +176,7 @@ object AvroDataReaderTest {
     .name(FeaturesField).`type`().array().items(nameAndTermSchema).noDefault()
     .endRecord()
 
-  val record = new GenericData.Record(avroSchema)
+  private val record = new GenericData.Record(avroSchema)
   record.put(IntField, IntValue)
   record.put(StringField, StringValue)
   record.put(BooleanField, BooleanValue)
@@ -192,12 +193,12 @@ object AvroDataReaderTest {
   record.put(NullableFloatField, null)
   record.put(NullableLongField, null)
 
-  val feature1 = new GenericData.Record(nameAndTermSchema)
+  private val feature1 = new GenericData.Record(nameAndTermSchema)
   feature1.put(AvroFieldNames.NAME, FeatureName1)
   feature1.put(AvroFieldNames.TERM, "")
   feature1.put(AvroFieldNames.VALUE, FeatureVal1)
 
-  val feature2 = new GenericData.Record(nameAndTermSchema)
+  private val feature2 = new GenericData.Record(nameAndTermSchema)
   feature2.put(AvroFieldNames.NAME, FeatureName2)
   feature2.put(AvroFieldNames.TERM, "")
   feature2.put(AvroFieldNames.VALUE, FeatureVal2)

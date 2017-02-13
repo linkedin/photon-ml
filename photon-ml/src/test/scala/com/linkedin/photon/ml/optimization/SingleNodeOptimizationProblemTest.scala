@@ -33,8 +33,10 @@ import com.linkedin.photon.ml.test.CommonTestUtils
  * disabled. For additional variance computation tests, see the DistributedOptimizationProblemIntegTest.
  */
 class SingleNodeOptimizationProblemTest {
+
   import CommonTestUtils._
-  import SingleNodeOptimizationProblemTest._
+
+  private val DIMENSIONS: Int = 5
 
   @Test
   def testComputeVariancesDisabled(): Unit = {
@@ -90,8 +92,4 @@ class SingleNodeOptimizationProblemTest {
     assertEquals(coefficients, model.coefficients)
     assertEquals(problem.getModelTracker.get.length, 1)
   }
-}
-
-object SingleNodeOptimizationProblemTest {
-  val DIMENSIONS: Int = 5
 }

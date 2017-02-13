@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.function
 import java.util.Random
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
@@ -38,19 +37,20 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
 
   import SingleNodeObjectiveFunctionTest._
 
-  val twiceDiffTasks = Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
-  val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
-  val binaryClassificationDataSetGenerationFuncs = Array(
+  private val twiceDiffTasks =
+    Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
+  private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
+  private val binaryClassificationDataSetGenerationFuncs = Array(
     generateBenignDataSetBinaryClassification _,
     generateWeightedBenignDataSetBinaryClassification _,
     generateOutlierDataSetBinaryClassification _,
     generateWeightedOutlierDataSetBinaryClassification _)
-  val linearRegressionDataSetGenerationFuncs = Array(
+  private val linearRegressionDataSetGenerationFuncs = Array(
     generateBenignDataSetLinearRegression _,
     generateWeightedBenignDataSetLinearRegression _,
     generateOutlierDataSetLinearRegression _,
     generateWeightedOutlierDataSetLinearRegression _)
-  val poissonRegressionDataSetGenerationFuncs = Array(
+  private val poissonRegressionDataSetGenerationFuncs = Array(
     generateBenignDataSetPoissonRegression _,
     generateWeightedBenignDataSetPoissonRegression _,
     generateOutlierDataSetPoissonRegression _,
@@ -538,23 +538,22 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
 }
 
 object SingleNodeObjectiveFunctionTest {
-  val LOCAL_CONSISTENCY_CHECK_SAMPLES = 25
-  val NUM_PARTITIONS = 4
-  val PROBLEM_DIMENSION = 5
-  val NORMALIZATION = NoNormalization()
-  val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
-  val L2_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
-  val NO_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
-  val REGULARIZATION_WEIGHT = 100.0
-  val DERIVATIVE_DELTA = 1e-6
-  val GRADIENT_TOLERANCE = 1e-3
-  val HESSIAN_TOLERANCE = 1e-3
-  val DATA_RANDOM_SEED = 0
-  val PARAMETER_RANDOM_SEED = 500
-  val WEIGHT_RANDOM_SEED = 100
-  val WEIGHT_RANDOM_MAX = 10
-  val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
-  val LOGGER: Logger = LogManager.getLogger(classOf[SingleNodeObjectiveFunctionTest])
+
+  private val LOCAL_CONSISTENCY_CHECK_SAMPLES = 25
+  private val PROBLEM_DIMENSION = 5
+  private val NORMALIZATION = NoNormalization()
+  private val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
+  private val L2_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
+  private val NO_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
+  private val REGULARIZATION_WEIGHT = 100.0
+  private val DERIVATIVE_DELTA = 1e-6
+  private val GRADIENT_TOLERANCE = 1e-3
+  private val HESSIAN_TOLERANCE = 1e-3
+  private val DATA_RANDOM_SEED = 0
+  private val PARAMETER_RANDOM_SEED = 500
+  private val WEIGHT_RANDOM_SEED = 100
+  private val WEIGHT_RANDOM_MAX = 10
+  private val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
   doReturn(L2RegularizationContext).when(L2_REG_CONFIGURATION_MOCK).regularizationContext
