@@ -14,25 +14,22 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-import scala.collection.Map
-
 import org.apache.hadoop.fs.Path
-import org.slf4j.Logger
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
+import org.slf4j.Logger
 
+import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
-import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.SparkContextConfiguration
 
-import com.linkedin.photon.ml.estimators.GameParams
+import scala.collection.Map
 
 /**
  * The driver class, which provides the main entry point to GAME model training
@@ -44,6 +41,7 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
    * Run the driver
    */
   def run(): Unit = {
+
     val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
@@ -71,6 +69,8 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
       data
     }
 
+    logger.info(s"Time elapsed after computing features summary: ${timer.durationSeconds} (s)\n")
+
     // Fit models
     val estimator = new GameEstimator(params, sparkContext, logger)
     val models = estimator.fit(trainingData, validationData)
@@ -95,7 +95,7 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
   /**
    * Reads the training dataset, handling specifics of input date ranges in the params
    *
-   * @param path to the data file(s)
+   * @param trainDirs to the data file(s)
    * @param featureIndexMapLoaders the feature index map loaders
    * @return the loaded data frame
    */
@@ -136,7 +136,7 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
   /**
    * Reads the validation dataset, handling specifics of input date ranges in the params
    *
-   * @param path to the data file(s)
+   * @param validationDirs to the data file(s)
    * @param featureIndexMapLoaders the feature index map loaders
    * @return the loaded data frame
    */
@@ -164,10 +164,7 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
   /**
    * Select best model according to validation evaluator
    *
-   * TODO: possibly remove the String from the output, in favor of a method that parse the model metadata?
-   *
-   * @param gameModels the models to evaluate (single evaluator, on the validation data set)
-   * @param validationDataAndEvaluatorsOption only the first evaluator is used!
+   * @param models the models to evaluate (single evaluator, on the validation data set)
    * @return the best model
    */
   protected[training] def selectBestModel(
@@ -208,7 +205,7 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
    * TODO: deprecate model-spec then remove it in favor of model-metadata, but there are clients!
    *
    * @param featureShardIdToFeatureMapLoader the shard ids
-   * @param gameModelsMap all the models that were producing during training
+   * @param models all the models that were producing during training
    * @param bestModel the best model
    */
   protected[training] def saveModelToHDFS(
