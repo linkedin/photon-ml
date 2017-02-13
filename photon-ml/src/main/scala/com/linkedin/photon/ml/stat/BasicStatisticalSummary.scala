@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * [[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.MultivariateStatisticalSummary
  *  MultivariateStatisticalSummary]]
  * of mllib to use breeze vectors instead of mllib vectors.
- * The summary provides mean, variance, max, min, normL1 and normL2 for each features, as well as the expected magnitude
+ * The summary provides mean, variance, max, min, normL1 and normL2 for each feature, as well as the expected magnitude
  * of features (meanAbs) to assist in computing feature importance.
  */
 case class BasicStatisticalSummary(
@@ -40,15 +40,16 @@ case class BasicStatisticalSummary(
 
 object BasicStatisticalSummary extends Logging {
   /**
-   * Convert a
-   *[[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.
+   * Converts a
+   * [[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.
    * MultivariateStatisticalSummary]]
-   * of mllib to a case instance with breeze vectors.
+   * of mllib to an instance of case class BasicStatisticalSummary using breeze vectors.
    *
    * @param mllibSummary Summary from mllib
    * @return The summary with breeze vectors
    */
   def apply(mllibSummary: MultivariateStatisticalSummary, meanAbs: Vector[Double]): BasicStatisticalSummary = {
+
     val tMean = VectorUtils.mllibToBreeze(mllibSummary.mean)
     val tVariance = VectorUtils.mllibToBreeze(mllibSummary.variance)
     val tNumNonZeros = VectorUtils.mllibToBreeze(mllibSummary.numNonzeros)

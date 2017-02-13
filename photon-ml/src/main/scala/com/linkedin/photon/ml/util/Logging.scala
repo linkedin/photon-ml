@@ -24,14 +24,16 @@ import org.slf4j.{Logger, LoggerFactory}
  *
  * https://github.com/apache/spark/blob/master/core/src/main/scala/org/apache/spark/internal/Logging.scala
  */
+//noinspection ConvertNullInitializerToUnderscore
 protected[ml] trait Logging {
-  // Transient so that it can be used distributed code without incurring unecessary serialization / io
+  // Transient so that it can be used distributed code without incurring unnecessary serialization / io
+  // We use null here because when spark deserializes an object, the transient fields are null.
   @transient private var log: Logger = null
 
   /**
    * Builds a unique log name for this class
    */
-  protected def logName = {
+  protected def logName: String = {
     // Ignore trailing $'s in the class names for Scala objects
     this.getClass.getName.stripSuffix("$")
   }

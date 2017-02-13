@@ -30,6 +30,7 @@ private[ml] object BasicStatistics {
   /**
    * Generate basic statistics (e.g., max, min, mean, variance) of [[data.LabeledPoint]] RDD using the mllib
    * interface.
+   *
    * @param inputData Input data as [[data.LabeledPoint]] RDD
    */
   def getBasicStatistics(inputData: RDD[LabeledPoint]): BasicStatisticalSummary = {
@@ -38,5 +39,4 @@ private[ml] object BasicStatistics {
     val meanAbs:Vector[Double] = VectorUtils.mllibToBreeze(mllibSummary.normL1) / scale
     BasicStatisticalSummary(mllibSummary, meanAbs)
   }
-
 }
