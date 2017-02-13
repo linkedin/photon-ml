@@ -30,7 +30,7 @@ private[ml] object BasicStatistics {
   /**
    * Generate basic statistics (e.g., max, min, mean, variance) of [[data.LabeledPoint]] RDD using the mllib
    * interface.
-    *
+   *
    * @param inputData Input data as [[data.LabeledPoint]] RDD
    */
   def getBasicStatistics(inputData: RDD[LabeledPoint]): BasicStatisticalSummary = {

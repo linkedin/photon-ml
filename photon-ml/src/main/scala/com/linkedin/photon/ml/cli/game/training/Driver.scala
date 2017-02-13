@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
+import scala.collection.Map
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
@@ -28,8 +30,6 @@ import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.util._
-
-import scala.collection.Map
 
 /**
  * The driver class, which provides the main entry point to GAME model training
@@ -68,8 +68,6 @@ final class Driver(val params: GameParams, val sparkContext: SparkContext, val l
 
       data
     }
-
-    logger.info(s"Time elapsed after computing features summary: ${timer.durationSeconds} (s)\n")
 
     // Fit models
     val estimator = new GameEstimator(params, sparkContext, logger)
