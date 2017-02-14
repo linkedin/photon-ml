@@ -63,9 +63,6 @@ dependencies {
 clean {
   doLast {
     // Remove files created by integTest in photon-ml/
-    file('.')
-        .listFiles()
-        .findAll { it.name.endsWith('_ALL') }
-        .each { delete it }
+    file('.').listFiles().findAll { it.name.endsWith('_ALL') }.each { delete it }
   }
 }
