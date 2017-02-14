@@ -59,3 +59,10 @@ dependencies {
   testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
   testRuntime("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
 }
+
+clean {
+  doLast {
+    // Remove files created by integTest in photon-ml/
+    file('.').listFiles().findAll { it.name.endsWith('_ALL') }.each { delete it }
+  }
+}

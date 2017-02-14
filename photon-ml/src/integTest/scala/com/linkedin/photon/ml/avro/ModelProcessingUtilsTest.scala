@@ -14,25 +14,28 @@
  */
 package com.linkedin.photon.ml.avro
 
-import breeze.linalg.Vector
-
 import scala.collection.immutable.IndexedSeq
 import scala.util.Random
+
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
+
+import breeze.linalg.Vector
+
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.Constants._
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
-import org.apache.spark.SparkContext
 
 /**
  * Unit tests for model processing utilities.

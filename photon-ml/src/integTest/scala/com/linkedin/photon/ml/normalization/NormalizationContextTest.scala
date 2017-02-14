@@ -14,17 +14,20 @@
  */
 package com.linkedin.photon.ml.normalization
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.rdd.RDD
+
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
+
+import breeze.linalg.{DenseVector, SparseVector, Vector}
+
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.{GLMOptimizationConfiguration, LBFGS, OptimizerType, TRON}
 import com.linkedin.photon.ml.stat.BasicStatistics
-import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.SparkTestUtils
 
