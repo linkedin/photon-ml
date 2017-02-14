@@ -144,7 +144,7 @@ class CoordinateDescent(
         val coordinateTimer = Timer.start()
         logger.debug(s"Start to update coordinate with ID $coordinateId (${coordinate.getClass})")
 
-        // Update the model
+        // Update the model => call the optimizer
         val modelUpdatingTimer = Timer.start()
         val oldModel = updatedGAMEModel.getModel(coordinateId).get
         val (updatedModel, optimizationTrackerOption) = if (updatedScoresContainer.keys.size > 1) {

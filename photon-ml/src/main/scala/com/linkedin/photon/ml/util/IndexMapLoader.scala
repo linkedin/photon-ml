@@ -22,8 +22,6 @@ import org.apache.spark.SparkContext
  * To access an IndexMap within RDD operations, directly referring to an object inside Driver is inefficient.
  * The driver will try to serialize the entire object onto RDDs. This trait provides a uniform way of loading
  * feature index maps, regardless of their concrete implementation.
- *
- * TODO(fastier): simplify this loader hierarchy
  */
 trait IndexMapLoader extends Serializable {
 

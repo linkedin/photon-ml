@@ -251,7 +251,7 @@ object AvroDataReader {
    */
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_KEY = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
+  val INTERCEPT_KEY: String = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
 
   /**
    * Reads feature keys and values from the avro generic record.
@@ -354,47 +354,49 @@ object AvroDataReader {
    * @param avroSchema the avro schema for the field
    * @return spark sql schema for the field
    */
-  protected[data] def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] = avroSchema.getType match {
-    case INT => Some(StructField(name, IntegerType, nullable = false))
-    case STRING => Some(StructField(name, StringType, nullable = false))
-    case BOOLEAN => Some(StructField(name, BooleanType, nullable = false))
-    case DOUBLE => Some(StructField(name, DoubleType, nullable = false))
-    case FLOAT => Some(StructField(name, FloatType, nullable = false))
-    case LONG => Some(StructField(name, LongType, nullable = false))
-    case MAP =>
-      avroTypeToSql(name, avroSchema.getValueType).map { valueSchema =>
-        StructField(
-          name,
-          MapType(StringType, valueSchema.dataType, valueContainsNull = valueSchema.nullable),
-          nullable = false)
-      }
+  protected[data] def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] =
 
-    case UNION =>
-      if (avroSchema.getTypes.asScala.exists(_.getType == NULL)) {
-        // In case of a union with null, take the first non-null type for the value type
-        val remainingUnionTypes = avroSchema.getTypes.asScala.filterNot(_.getType == NULL)
-        if (remainingUnionTypes.size == 1) {
-          avroTypeToSql(name, remainingUnionTypes.head).map(_.copy(nullable = true))
-        } else {
-          avroTypeToSql(name, Schema.createUnion(remainingUnionTypes.asJava)).map(_.copy(nullable = true))
+    avroSchema.getType match {
+      case INT => Some(StructField(name, IntegerType, nullable = false))
+      case STRING => Some(StructField(name, StringType, nullable = false))
+      case BOOLEAN => Some(StructField(name, BooleanType, nullable = false))
+      case DOUBLE => Some(StructField(name, DoubleType, nullable = false))
+      case FLOAT => Some(StructField(name, FloatType, nullable = false))
+      case LONG => Some(StructField(name, LongType, nullable = false))
+      case MAP =>
+        avroTypeToSql(name, avroSchema.getValueType).map { valueSchema =>
+          StructField(
+            name,
+            MapType(StringType, valueSchema.dataType, valueContainsNull = valueSchema.nullable),
+            nullable = false)
         }
 
-      } else avroSchema.getTypes.asScala.map(_.getType) match {
-        case Seq(t1) =>
-          avroTypeToSql(name, avroSchema.getTypes.get(0))
-        case Seq(t1, t2) if Set(t1, t2) == Set(INT, LONG) =>
-          Some(StructField(name, LongType, nullable = false))
-        case Seq(t1, t2) if Set(t1, t2) == Set(FLOAT, DOUBLE) =>
-          Some(StructField(name, DoubleType, nullable = false))
-        case _ =>
-          // Unsupported union type. Drop this for now.
-          None
-      }
+      case UNION =>
+        if (avroSchema.getTypes.asScala.exists(_.getType == NULL)) {
+          // In case of a union with null, take the first non-null type for the value type
+          val remainingUnionTypes = avroSchema.getTypes.asScala.filterNot(_.getType == NULL)
+          if (remainingUnionTypes.size == 1) {
+            avroTypeToSql(name, remainingUnionTypes.head).map(_.copy(nullable = true))
+          } else {
+            avroTypeToSql(name, Schema.createUnion(remainingUnionTypes.asJava)).map(_.copy(nullable = true))
+          }
 
-    case _ =>
-      // Unsupported avro field type. Drop this for now.
-      None
-  }
+        } else avroSchema.getTypes.asScala.map(_.getType) match {
+          case Seq(t1) =>
+            avroTypeToSql(name, avroSchema.getTypes.get(0))
+          case Seq(t1, t2) if Set(t1, t2) == Set(INT, LONG) =>
+            Some(StructField(name, LongType, nullable = false))
+          case Seq(t1, t2) if Set(t1, t2) == Set(FLOAT, DOUBLE) =>
+            Some(StructField(name, DoubleType, nullable = false))
+          case _ =>
+            // Unsupported union type. Drop this for now.
+            None
+        }
+
+      case _ =>
+        // Unsupported avro field type. Drop this for now.
+        None
+    }
 
   /**
    * Read the fields from the avro record into column values according to the supplied spark sql schema.
@@ -403,34 +405,37 @@ object AvroDataReader {
    * @param schemaFields the spark sql schema to apply when reading the record
    * @return column values
    */
-  protected[data] def readColumnValuesFromRecord(record: GenericRecord, schemaFields: Seq[StructField]) = schemaFields
-    .flatMap { field: StructField => field.dataType match {
-      case IntegerType => checkNull(record, field).orElse(Some(Utils.getIntAvro(record, field.name)))
-      case StringType => Some(Utils.getStringAvro(record, field.name, field.nullable))
-      case BooleanType => checkNull(record, field).orElse(Some(Utils.getBooleanAvro(record, field.name)))
-      case DoubleType => checkNull(record, field).orElse(Some(Utils.getDoubleAvro(record, field.name)))
-      case FloatType => checkNull(record, field).orElse(Some(Utils.getFloatAvro(record, field.name)))
-      case LongType => checkNull(record, field).orElse(Some(Utils.getLongAvro(record, field.name)))
-      case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable))
-      case _ =>
-        // Unsupported field type. Drop this for now.
-        None
-    }
-  }
+  protected[data] def readColumnValuesFromRecord(record: GenericRecord, schemaFields: Seq[StructField]): Seq[Any] =
+
+    schemaFields
+      .flatMap { field: StructField =>
+        field.dataType match {
+          case IntegerType => checkNull(record, field).orElse(Some(Utils.getIntAvro(record, field.name)))
+          case StringType => Some(Utils.getStringAvro(record, field.name, field.nullable))
+          case BooleanType => checkNull(record, field).orElse(Some(Utils.getBooleanAvro(record, field.name)))
+          case DoubleType => checkNull(record, field).orElse(Some(Utils.getDoubleAvro(record, field.name)))
+          case FloatType => checkNull(record, field).orElse(Some(Utils.getFloatAvro(record, field.name)))
+          case LongType => checkNull(record, field).orElse(Some(Utils.getLongAvro(record, field.name)))
+          case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable))
+          case _ =>
+            // Unsupported field type. Drop this for now.
+            None
+        }
+      }
 
   /**
-    * Checks whether null values are allowed for the record, and if so, passes along the null value. Otherwise, returns
-    * None.
-    *
-    * @param record the avro GenericRecord
-    * @param field the schema field
-    * @return Some(null) if the field is null and nullable. None otherwise.
-    */
-  protected[data] def checkNull(record: GenericRecord, field: StructField): Option[_] = {
+   * Checks whether null values are allowed for the record, and if so, passes along the null value. Otherwise, returns
+   * None.
+   *
+   * @param record the avro GenericRecord
+   * @param field  the schema field
+   * @return Some(null) if the field is null and nullable. None otherwise.
+   */
+  protected[data] def checkNull(record: GenericRecord, field: StructField): Option[_] =
+
     if (record.get(field.name) == null && field.nullable) {
       Some(null)
     } else {
       None
     }
-  }
 }

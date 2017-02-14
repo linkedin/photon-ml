@@ -22,24 +22,24 @@ import java.io.{File => JFile}
 import collection.JavaConverters._
 
 /**
-  * An off heap index map implementation using [[PalDB]].
-  *
-  * The internal implementation assumed the following things:
-  * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
-  * [[com.linkedin.photon.ml.FeatureIndexingJob]]. The partition strategy is via the hashcode of the feature names,
-  * following the rules defined in [[org.apache.spark.HashPartitioner]].
-  *
-  * 2. Each time when a user is querying the index of a certain feature, the index map will first compute the hashcode,
-  * and then compute the expected partition of the storageReader.
-  *
-  * 3. Because the way we are building each index partition (they are built in parallel, without sharing information
-  * with each other). Each partition's internal index always starts from 0. Thus, we are keeping an offset array to
-  * properly record how much offset we should provide for each index coming from a particular partition. In this way,
-  * we could safely ensure that each index is unique.
-  *
-  * 4. Each time when a user is querying for the feature name of a given index, we'll do a binary search for the proper
-  * storage according to offset ranges and then return null or the proper feature name.
-  */
+ * An off heap index map implementation using [[PalDB]].
+ *
+ * The internal implementation assumes the following:
+ *
+ * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
+ *    [[com.linkedin.photon.ml.FeatureIndexingJob]]. The partition strategy is via the hashcode of the feature names,
+ *    following the rules defined in [[org.apache.spark.HashPartitioner]].
+ *
+ * 2. Each time a user queries the index of a certain feature, the index map will first compute the feature hashcode,
+ *    and then compute the expected partition for this hashcode.
+ *
+ * 3. Because the index partitions are built in parallel, without sharing information between them, each partition's
+ *    internal index always starts from 0. We keep an array of offsets to properly compute the indexes (keep them
+ *    unique across partitions).
+ *
+ * 4. Each time a user queries for the feature name of a given index, we do a binary search for the proper
+ *    storage according to offset ranges and then return null or the proper feature name.
+ */
 class PalDBIndexMap extends IndexMap {
   import PalDBIndexMap._
 
@@ -57,14 +57,14 @@ class PalDBIndexMap extends IndexMap {
   private var _partitioner: HashPartitioner = _
 
   /**
-    * Load a storage at a particular path
-    *
-    * @param storePath The directory where the storage is put
-    * @param partitionsNum The number of partitions, the storage contains
-    * @param isLocal default: false, if set false will use SparkFiles to access cached files; otherwise,
-    *                it will directly read from local files
-    * @return
-    */
+   * Load a storage at a particular path
+   *
+   * @param storePath The directory where the storage is put
+   * @param partitionsNum The number of partitions, the storage contains
+   * @param isLocal default: false, if set false will use SparkFiles to access cached files; otherwise,
+   *                it will directly read from local files
+   * @return A PalDBIndexMap instance
+   */
   def load(
       storePath: String,
       partitionsNum: Int,
@@ -161,17 +161,18 @@ class PalDBIndexMap extends IndexMap {
 }
 
 object PalDBIndexMap {
-  /* PalDB is not thread safe for parallel reads even for different storages, necessary to lock it.
+  /**
+   * PalDB is not thread safe for parallel reads even for different storages, necessary to lock it.
    */
   private val PALDB_READER_LOCK = "READER_LOCK"
 
   /**
-    * Returns the formatted filename for a partition file of PalDB IndexMap storing (name -> index) mapping
-    * This method should be used consistently as a protocol to handle naming conventions
-    *
-    * @param partitionId the partition Id
-    * @return the formatted filename
-    */
+   * Returns the formatted filename for a partition file of PalDB IndexMap storing (name -> index) mapping
+   * This method should be used consistently as a protocol to handle naming conventions
+   *
+   * @param partitionId the partition Id
+   * @return the formatted filename
+   */
   def partitionFilename(partitionId: Int, namespace: String = IndexMap.GLOBAL_NS): String =
     s"paldb-partition-$namespace-$partitionId.dat"
 

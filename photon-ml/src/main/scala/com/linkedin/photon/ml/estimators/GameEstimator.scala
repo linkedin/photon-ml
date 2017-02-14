@@ -16,17 +16,17 @@ package com.linkedin.photon.ml.estimators
 
 import scala.collection.Map
 
-import org.slf4j.Logger
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
+import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, SingleNodeSmoothedHingeLossFunction}
 import com.linkedin.photon.ml.model.GAMEModel
@@ -37,9 +37,8 @@ import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DefaultDownSampler}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.{BroadcastLike, RDDLike, SparkContextConfiguration}
+import com.linkedin.photon.ml.{BroadcastLike, RDDLike, TaskType}
 
 /**
  * Estimator implementation for GAME models
@@ -61,7 +60,7 @@ class GameEstimator(val params: GameParams, val sparkContext: SparkContext, val 
    * Fits GAME models to the training dataset
    *
    * @param data the training set
-   * @param validationData optional validation set for per-iteration validation
+   * @param validatingData optional validation set for per-iteration validation
    * @return a set of GAME models, one for each combination of fixed and random effect combination specified in the
    *   params
    */
@@ -230,8 +229,7 @@ class GameEstimator(val params: GameParams, val sparkContext: SparkContext, val 
   /**
    * Creates the validation evaluator(s)
    *
-   * @param validatingDirs The input path for validating data set
-   * @param featureShardIdToFeatureMapLoader A map of shard id to feature indices
+   * @param data The input data
    * @return The validating game data sets and the companion evaluator
    */
   protected[estimators] def prepareValidatingEvaluators(

@@ -94,9 +94,9 @@ abstract class GAMEDriver(
   /**
    * Resolves paths for specified date ranges to physical file paths
    *
-   * @param baseDir the base dirs to which date-specific relative paths will be appended
+   * @param baseDirs the base dirs to which date-specific relative paths will be appended
    * @param dateRangeOpt optional date range
-   * @param daysAgo optional days-ago specification for date range
+   * @param daysAgoOpt optional days-ago specification for date range
    * @return all resolved paths
    */
   protected[game] def pathsForDateRange(
