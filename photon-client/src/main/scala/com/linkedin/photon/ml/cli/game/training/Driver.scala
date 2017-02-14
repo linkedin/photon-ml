@@ -22,12 +22,15 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.slf4j.Logger
 
+import com.linkedin.photon.ml.HyperparameterTuningMode
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
-import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.estimators.GameEstimator.GameResult
+import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
+import com.linkedin.photon.ml.hyperparameter.search.{GaussianProcessSearch, RandomSearch}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.{NormalizationType, NormalizationContext}
@@ -37,6 +40,7 @@ import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
+
 
 /**
  * The Driver class, which drives the training of GAME model.
@@ -79,8 +83,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
         .map(_.mapValues(context => sc.broadcast(context)))
     }
 
-    val models = Timed("Fit models") {
-      val estimator = new GameEstimator(sc, logger)
+    val estimator = new GameEstimator(sc, logger)
         .setDatumInputColumnNames(params.inputColumnsNames)
         .setFeatureShardColumnNames(params.featureShardIdToFeatureSectionKeysMap.keys.toSet)
         .setTaskType(params.taskType)
@@ -92,6 +95,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
         .setEvaluatorTypes(params.evaluatorTypes)
         .setNormalizationContexts(normalizationContexts)
 
+    val models = Timed("Fit models") {
       val modelConfigs = for (
         fixedEffectOptimizationConfiguration <- params.fixedEffectOptimizationConfigurations;
         randomEffectOptimizationConfiguration <- params.randomEffectOptimizationConfigurations;
@@ -106,8 +110,18 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
       estimator.fit(trainingData, validationData, modelConfigs)
     }
 
+    val tunedModels = Timed("hyperparameter tuning") {
+      // We tune within the first configuration specified for each effect
+      val optimizationConfiguration = GameModelOptimizationConfiguration(
+        params.fixedEffectOptimizationConfigurations.head,
+        params.randomEffectOptimizationConfigurations.head,
+        params.factoredRandomEffectOptimizationConfigurations.head)
+
+      runHyperparameterTuning(estimator, trainingData, validationData, optimizationConfiguration, models)
+    }
+
     val bestModel = Timed("Select best model") {
-      selectBestModel(models)
+      selectBestModel(models ++ tunedModels)
     }
 
     Timed("Save model") {
@@ -304,14 +318,54 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
     }
 
   /**
+   * Run hyperparameter tuning to produce models with automatically-tuned hyperparameters
+   *
+   * @param estimator The estimator to use for training and validation
+   * @param trainingData The training data
+   * @param validationData The validation data
+   * @param normalizationContexts Normalization contexts for each featureShardId, or None if normalization is not needed
+   * @param models The previously trained and evaluated models
+   */
+  protected[training] def runHyperparameterTuning(
+      estimator: GameEstimator,
+      trainingData: DataFrame,
+      validationData: Option[DataFrame],
+      optimizationConfiguration: GameModelOptimizationConfiguration,
+      models: Seq[GameResult]): Seq[GameResult] =
+
+    validationData match {
+      case Some(testData) if params.hyperparameterTuningMode != HyperparameterTuningMode.NONE &&
+          params.hyperparameterTuningIterations > 0 =>
+
+        // TODO match on this to make it clearer
+        val evaluator = models.head._2.get.head._1
+        val evaluationFunction = new GameEstimatorEvaluationFunction(
+          estimator, optimizationConfiguration, trainingData, testData)
+
+        val numParams = evaluationFunction.numParams(models.head._3)
+        val ranges = List.fill(numParams)(params.regularizationWeightRange)
+
+        val searcher = params.hyperparameterTuningMode match {
+          case HyperparameterTuningMode.BAYESIAN =>
+            new GaussianProcessSearch[GameResult](ranges, evaluationFunction, evaluator)
+
+          case HyperparameterTuningMode.RANDOM =>
+            new RandomSearch[GameResult](ranges, evaluationFunction)
+        }
+
+        searcher.find(params.hyperparameterTuningIterations, models)
+
+      case _ => Seq()
+    }
+
+  /**
    * Select best model according to validation evaluator.
    *
    * @param models The models to evaluate (single evaluator, on the validation data set)
    * @return The best model
    */
-  private def selectBestModel(
-      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)])
-    : Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)] =
+  protected[training] def selectBestModel(
+      models: Seq[GameResult]): Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)] =
 
     models
       .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
@@ -345,7 +399,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    */
   private def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
+      models: Seq[GameResult],
       bestModel: Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
 
     if (params.modelOutputMode != ModelOutputMode.NONE) {

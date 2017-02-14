@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.cli.game.training
 
 import scopt.OptionParser
 
+import com.linkedin.photon.ml.HyperparameterTuningMode
+import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
@@ -189,42 +191,63 @@ class GameTrainingParams extends FeatureParams with PalDBIndexMapParams with Eva
    */
   var useWarmStart: Boolean = false
 
-  override def toString: String =
-    s"trainDirs: ${trainDirs.mkString(", ")}\n" +
-      s"trainDateRangeOpt: $trainDateRangeOpt\n" +
-      s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt\n" +
-      s"validationDirsOpt: ${validationDirsOpt.map(_.mkString(", "))}\n" +
-      s"validationDateRangeOpt: $validationDateRangeOpt\n" +
-      s"validationDateRangeDaysAgoOpt: $validationDateRangeDaysAgoOpt\n" +
-      s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
-      s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
-      s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
-        .mkString("\n")}\n" +
-      s"featureShardIdToInterceptMap:\n${featureShardIdToInterceptMap.mkString("\n")}" +
-      s"outputDir: $outputDir\n" +
-      s"numIterations: $numIterations\n" +
-      s"updatingSequence: $updatingSequence\n" +
-      s"fixedEffectOptimizationConfigurations:\n${fixedEffectOptimizationConfigurations.map(_.mkString("\n"))
-        .mkString("\n")}\n" +
-      s"fixedEffectDataConfigurations: \n${fixedEffectDataConfigurations.mkString("\n")}\n" +
-      s"randomEffectOptimizationConfigurations:\n${randomEffectOptimizationConfigurations.map(_.mkString("\n"))
-        .mkString("\n")}\n" +
-      s"factorRandomEffectOptimizationConfigurations:\n${factoredRandomEffectOptimizationConfigurations
-        .map(_.mkString("\n")).mkString("\n")}\n" +
-      s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}\n" +
-      s"taskType: $taskType\n" +
-      s"computeVariance: $computeVariance\n" +
-      s"modelOutputOption: $modelOutputMode\n" +
-      s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel\n" +
-      s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
-      s"applicationName: $applicationName\n" +
-      s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
-      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions\n" +
-      s"normalizationType: $normalizationType\n" +
-      s"summarizationOutputDirOpt: $summarizationOutputDirOpt\n" +
-      s"checkData: $checkData\n" +
-      s"inputColumnsNames: $inputColumnsNames" +
-      s"useWarmStart: $useWarmStart"
+  /**
+   * Number of iterations to run hyperparameter tuning
+   */
+  var hyperparameterTuningIterations: Int = 0
+
+  /**
+   * Hyperparameter tuning mode
+   */
+  var hyperparameterTuningMode: HyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
+
+  /**
+   * Range of valid values for regularization weights
+   */
+  var regularizationWeightRange: (Double, Double) = (1e-4, 1e4)
+
+  override def toString: String = List(
+    s"trainDirs: ${trainDirs.mkString(", ")}",
+    s"trainDateRangeOpt: $trainDateRangeOpt",
+    s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt",
+    s"validationDirsOpt: ${validationDirsOpt.map(_.mkString(", "))}",
+    s"validationDateRangeOpt: $validationDateRangeOpt",
+    s"validationDateRangeDaysAgoOpt: $validationDateRangeDaysAgoOpt",
+    s"minNumPartitionsForValidation: $minPartitionsForValidation",
+    s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath",
+    s"featureShardIdToFeatureSectionKeysMap:",
+    s"${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", ")).mkString("\n")}",
+    s"featureShardIdToInterceptMap:",
+      s"${featureShardIdToInterceptMap.mkString("\n")}",
+    s"outputDir: $outputDir",
+    s"numIterations: $numIterations",
+    s"updatingSequence: $updatingSequence",
+    s"fixedEffectOptimizationConfigurations:",
+      s"${fixedEffectOptimizationConfigurations.map(_.mkString("\n")).mkString("\n")}",
+    s"fixedEffectDataConfigurations:",
+      s"${fixedEffectDataConfigurations.mkString("\n")}",
+    s"randomEffectOptimizationConfigurations:",
+      s"${randomEffectOptimizationConfigurations.map(_.mkString("\n")).mkString("\n")}",
+    s"factorRandomEffectOptimizationConfigurations:",
+      s"${factoredRandomEffectOptimizationConfigurations.map(_.mkString("\n")).mkString("\n")}",
+    s"randomEffectDataConfigurations:\n${randomEffectDataConfigurations.mkString("\n")}",
+    s"taskType: $taskType",
+    s"computeVariance: $computeVariance",
+    s"modelOutputOption: $modelOutputMode",
+    s"numberOfOutputFilesForRandomEffectModel: $numberOfOutputFilesForRandomEffectModel",
+    s"deleteOutputDirIfExists: $deleteOutputDirIfExists",
+    s"applicationName: $applicationName",
+    s"offHeapIndexMapDir: $offHeapIndexMapDir",
+    s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions",
+    s"normalizationType: $normalizationType",
+    s"summarizationOutputDirOpt: $summarizationOutputDirOpt",
+    s"checkData: $checkData",
+    s"inputColumnsNames: $inputColumnsNames",
+    s"useWarmStart: $useWarmStart",
+    s"hyperparameterTuningIterations: $hyperparameterTuningIterations",
+    s"hyperparameterTuningMode: $hyperparameterTuningMode",
+    s"regularizationWeightRange: $regularizationWeightRange"
+  ).mkString("\n")
 }
 
 object GameTrainingParams {
@@ -267,6 +290,9 @@ object GameTrainingParams {
   val CHECK_DATA = "check-data"
   val INPUT_COLUMNS_NAMES = "input-column-names"
   val USE_WARM_START = "use-warm-start"
+  val HYPERPARAMETER_TUNING_ITERATIONS = "hyperparameter-tuning-iterations"
+  val HYPERPARAMETER_TUNING_MODE = "hyperparameter-tuning-mode"
+  val REGULARIZATION_WEIGHT_RANGE = "regularization-weight-range"
 
   val defaultParams = new GameTrainingParams()
 
@@ -525,6 +551,27 @@ object GameTrainingParams {
       opt[Boolean](USE_WARM_START)
         .text(s"Whether to use warm start in hyper-parameter tuning. Default: ${defaultParams.useWarmStart}")
         .foreach(x => params.useWarmStart)
+
+      opt[Int](HYPERPARAMETER_TUNING_ITERATIONS)
+        .text("The maximum number of iterations (i.e. model training / evaluation cycles) for hyperparameter tuning")
+        .foreach(x => params.hyperparameterTuningIterations = x)
+
+      opt[String](HYPERPARAMETER_TUNING_MODE)
+        .text("Hyperparameter tuning mode. Options: " +
+          s"[${HyperparameterTuningMode.values.mkString("|")}]. Default: ${defaultParams.hyperparameterTuningMode}")
+        .foreach(x => params.hyperparameterTuningMode = HyperparameterTuningMode.withName(x.toUpperCase))
+
+      opt[String](REGULARIZATION_WEIGHT_RANGE)
+        .text("Range of valid values for regularization weights, separated by comma (e.g. 1e-4,1e4).")
+        .foreach { x =>
+          x.split(",") match {
+            case Array(lower, upper) => params.regularizationWeightRange = (lower.toDouble, upper.toDouble)
+            case other =>
+              throw new IllegalArgumentException(
+                s"Couldn't interpret $other as a range. Please specify the range with lower and upper bounds " +
+                  s"separated by comma (e.g.: 1e-4,1e4).")
+          }
+        }
 
       help("help").text("prints usage text.")
 
