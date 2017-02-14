@@ -12,6 +12,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+project.ext.avroMapReduceModifier = ''
+
 subprojects {
   // Specify Jar versions here instead of within gradle.properties
   // This will provide overriding ability for internal builds

@@ -15,6 +15,9 @@
 apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
+// This property is set in defaultEnvironment.gradle
+def modifier = avroMapReduceModifier
+
 dependencies {
   compile('joda-time:joda-time:2.7')
 
@@ -23,8 +26,7 @@ dependencies {
 
   compile('org.apache.avro:avro:1.7.7')
   compile('org.apache.avro:avro-compiler:1.7.7')
-
-  compile('org.apache.avro:avro-mapred:1.7.7') {
+  compile("org.apache.avro:avro-mapred:1.7.7$modifier" as String) {
     // We don't need to import netty, and including it can cause version conflicts in downstream projects
     exclude group: 'io.netty'
   }
