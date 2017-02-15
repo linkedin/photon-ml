@@ -21,7 +21,6 @@ import org.apache.spark.sql.DataFrame
 /**
  * The DataReader interface. This interface should be implemented by readers for specific data formats.
  *
- * @param sc the Spark context
  * @param defaultFeatureColumn the default column to use for features
  */
 abstract class DataReader(protected val defaultFeatureColumn: String = "features") {
@@ -182,7 +181,7 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    * different sources, and it can be more scalable to combine them into problem-specific feature vectors that can be
    * independently distributed.
    *
-   * @param path the path to the file or folder
+   * @param paths the path to the file or folder
    * @param indexMapLoaders a map of index map loaders, containing one loader for each merged feature column
    * @param featureColumnMap a map that specifies how the feature columns should be merged. The keys specify the name
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:

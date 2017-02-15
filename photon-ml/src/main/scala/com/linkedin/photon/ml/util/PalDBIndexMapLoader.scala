@@ -15,22 +15,31 @@
 package com.linkedin.photon.ml.util
 
 
-import com.linkedin.photon.ml.Params
 import java.net.URI
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 
 
 /**
-  * A PalDBIndexMap loader
-  *
-  */
+ * A loader for IndexMaps stored in PalDB.
+ */
 class PalDBIndexMapLoader extends IndexMapLoader {
-  private var _storeDir: String = null
-  private var _numPartitions: Int = 0
-  private var _namespace: String = null
 
+  private var _storeDir: String = _
+  private var _numPartitions: Int = 0
+  private var _namespace: String = _
+
+  /**
+   * Loads IndexMap data from PalDB files into Spark so that each executor node will have access to the correct
+   * partition it needs (i.e. corresponding to the partition of the features it handles).
+   *
+   * @param sc the SparkContext
+   * @param params the parameters object
+   * @param namespace the namespace to use
+   */
   override def prepare(sc: SparkContext, params: IndexMapParams, namespace: String = IndexMap.GLOBAL_NS): Unit = {
+
     val palDBParams = params match {
       case p: PalDBIndexMapParams => p
       case other =>
@@ -38,7 +47,8 @@ class PalDBIndexMapLoader extends IndexMapLoader {
           s"PalDBIndexMapParams. ${other.getClass.getName}")
     }
 
-    if (!palDBParams.offHeapIndexMapDir.isEmpty && palDBParams.offHeapIndexMapNumPartitions != 0) {
+    if (palDBParams.offHeapIndexMapDir.isDefined && palDBParams.offHeapIndexMapNumPartitions != 0) {
+
       _storeDir = palDBParams.offHeapIndexMapDir.get
       _numPartitions = palDBParams.offHeapIndexMapNumPartitions
       _namespace = namespace
@@ -64,10 +74,11 @@ class PalDBIndexMapLoader extends IndexMapLoader {
     * @return the path string
     */
   protected[util] def getPath(sc: SparkContext, path: Path): String = {
-    var uri = path.toUri
+
+    val uri = path.toUri
 
     Option(uri.getScheme) match {
-      case Some(scheme) => uri.toString
+      case Some(_) => uri.toString
       case _ =>
         // If the path specifies no scheme, use the current default
         val default = new Path(sc.hadoopConfiguration.get("fs.default.name")).toUri
