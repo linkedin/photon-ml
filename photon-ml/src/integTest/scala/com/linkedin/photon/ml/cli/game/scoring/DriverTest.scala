@@ -185,7 +185,30 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val random = new Random(MathConst.RANDOM_SEED).self
     val scores = new KeyValueScore(sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextDouble()))))
     val labels = sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextInt(2))))
-    val gameDataSet = labels.mapValues(label =>
+
+    // Ensure that each queryId and documentId has both positive and negative labels, so that AUC will not return NaN
+    val staticGameData = Seq((0, 1), (1, 0)).flatMap { case (queryId, documentId) =>
+      Seq(0, 1).map { label =>
+        new GameDatum(
+          response = label,
+          offsetOpt = Some(0.0),
+          weightOpt = Some(1.0),
+          featureShardContainer = Map(),
+          idTypeToValueMap = Map(
+            "queryId" -> queryId.toString,
+            "documentId" -> documentId.toString)
+        )
+      }
+    }
+
+    // Add ids and parallelize
+    val staticGameDataSet = sc.parallelize(
+      (numSamples until numSamples + staticGameData.length)
+        .map(_.toLong)
+        .zip(staticGameData))
+
+    // Union static data with generated data
+    val gameDataSet = sc.union(staticGameDataSet, labels.mapValues(label =>
       new GameDatum(
         response = label,
         offsetOpt = Some(0.0),
@@ -193,7 +216,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
         featureShardContainer = Map(),
         idTypeToValueMap = Map("queryId" -> random.nextInt(2).toString, "documentId" -> random.nextInt(2).toString)
       )
-    )
+    ))
+
     evaluatorTypes.foreach { evaluatorType =>
       val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       val evaluator = Evaluator.buildEvaluator(evaluatorType, gameDataSet)
