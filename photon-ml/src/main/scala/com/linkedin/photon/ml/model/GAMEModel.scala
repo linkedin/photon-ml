@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import scala.collection.Map
+import scala.collection.{Map, SortedMap}
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -92,6 +92,13 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel], val taskType: TaskTy
    * @return The (modelName -> model) map representation of the models
    */
   protected[ml] def toMap: Map[String, DatumScoringModel] = gameModels
+
+  /**
+    * Convert the GAME model into a (modelName -> model) map representation that has a reliable order on keys
+    *
+    * @return The (modelName -> model) map representation of the models
+    */
+  protected[ml] def toSortedMap: SortedMap[String, DatumScoringModel] = SortedMap(gameModels.toSeq: _*)
 
   /**
    * Persist each model with the specified storage level if it's a RDD
