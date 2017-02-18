@@ -190,7 +190,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     def features(glm: GeneralizedLinearModel, featureIndexLoader: IndexMapLoader): Array[(String, Double)] =
       ModelProcessingUtils.extractGLMFeatures(glm, featureIndexLoader.indexMapForRDD())
 
-    (gameModel.toMap zip loadedGameModel.toMap) foreach {
+    // calling zip directly on maps doesn't zip on keys but just zips the underlying (key, value) iterables
+    (gameModel.toSortedMap zip loadedGameModel.toSortedMap) foreach {
 
       case ((n1: String, m1: FixedEffectModel), (n2: String, m2: FixedEffectModel)) =>
 
