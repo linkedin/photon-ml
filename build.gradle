@@ -73,7 +73,7 @@ rat {
     'gradle/wrapper/**',
     'gradlew',
     'gradlew.bat',
-    'README.md',
+    '**/README.md',
     'LICENSE',
     'NOTICE',
     'gradle.properties',
