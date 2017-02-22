@@ -249,7 +249,7 @@ spark-submit \
   --output-directory "out" \
   --task "LOGISTIC_REGRESSION" \
   --num-iterations 50 \
-  --regularization-weights "0.1,1,10,100" \
+  --regularization-weights "0.001,0.01,0.1" \
   --job-name "demo_photon_ml_logistic_regression"
 ```
 
@@ -286,7 +286,7 @@ spark-submit \
   --output-directory "path/to/output/dir" \
   --task "LOGISTIC_REGRESSION" \
   --num-iterations 50 \
-  --regularization-weights "0.1,1,10" \
+  --regularization-weights "0.001,0.01,0.1" \
   --job-name "demo_photon_ml_logistic_regression"
 ```
 
