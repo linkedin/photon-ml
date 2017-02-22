@@ -24,7 +24,8 @@ import org.apache.commons.io.FileUtils
 trait TestTemplateWithTmpDir {
   /**
    * Return the temporary directory as a string.
-   * @return the temporary directory as a string.
+   *
+   * @return The temporary directory as a string
    */
   def getTmpDir: String = {
     TestTemplateWithTmpDir.tmpDirThreadLocal.get()
@@ -33,6 +34,10 @@ trait TestTemplateWithTmpDir {
 
 private object TestTemplateWithTmpDir {
 
+  /**
+   *
+   * @return
+   */
   private def tmpDirThreadLocal: ThreadLocal[String] = new ThreadLocal[String] {
     protected override def initialValue(): String = {
       val parentDir = Paths.get(FileUtils.getTempDirectoryPath)

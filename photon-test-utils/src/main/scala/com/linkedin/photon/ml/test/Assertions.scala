@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.test
 
 import org.testng.Assert.assertEquals
 
-
 /**
  * This object provides utility for complex assertions.
  */
@@ -24,6 +23,7 @@ object Assertions {
 
   /**
    * This method compares lists of doubles with a tolerance.
+   *
    * @param actual The actual iterable
    * @param expected The expected iterable
    * @param delta The tolerance

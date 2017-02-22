@@ -14,16 +14,19 @@
  */
 package com.linkedin.photon.ml.test
 
+import scala.collection.immutable.TreeMap
+import scala.collection.mutable.ListBuffer
+
 import breeze.linalg.{SparseVector, Vector}
 import org.apache.commons.math3.distribution.PascalDistribution
 import org.apache.commons.math3.random.{RandomGenerator, Well19937a}
 import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.immutable.TreeMap
-import scala.collection.mutable.ListBuffer
-
 // TODO: Additional documentation required
+/**
+ *
+ */
 trait SparkTestUtils {
 
   var sc: SparkContext = _
@@ -32,8 +35,8 @@ trait SparkTestUtils {
    * Provides a synchronized block for methods to safely create their own Spark contexts without stomping on others.
    * Users are expected to handle Spark context creation and cleanup correctly.
    *
-   * @param name the test job name
-   * @param body the execution closure
+   * @param name The test job name
+   * @param body The execution closure
    */
   def sparkTestSelfServeContext(name: String)(body: => Unit): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
@@ -50,8 +53,8 @@ trait SparkTestUtils {
    * Provides a synchronized block with an auto-created safe Spark context. This wrapper will handle both creation and
    * cleanup of the context.
    *
-   * @param name the test job name
-   * @param body the execution closure
+   * @param name The test job name
+   * @param body The execution closure
    */
   def sparkTest(name: String)(body: => Unit): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
@@ -70,6 +73,13 @@ trait SparkTestUtils {
     }
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       seed: Int,
       size: Int,
@@ -85,6 +95,13 @@ trait SparkTestUtils {
       (0 until size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
       seed: Int,
       size: Int,
@@ -95,6 +112,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
       seed: Int,
       size: Int,
@@ -105,6 +129,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
       seed: Int,
       size: Int,
@@ -120,6 +151,13 @@ trait SparkTestUtils {
       (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(
       seed: Int,
       size: Int,
@@ -130,6 +168,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
       seed: Int,
       size: Int,
@@ -140,6 +185,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawBalancedSampleFromInvalidDenseFeaturesForBinaryClassifierLocal(
       seed: Int,
       size: Int,
@@ -155,6 +207,13 @@ trait SparkTestUtils {
       (0 until size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromInvalidDenseFeaturesForPoissonRegressionLocal(
       seed: Int,
       size: Int,
@@ -165,6 +224,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromInvalidDenseFeaturesForLinearRegressionLocal(
       seed: Int,
       size: Int,
@@ -175,6 +241,13 @@ trait SparkTestUtils {
       seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 
+  /**
+   *
+   * @param seed
+   * @param size
+   * @param dimensionality
+   * @return
+   */
   def drawSampleFromInvalidLabels(
       seed:Int,
       size:Int,
@@ -193,6 +266,18 @@ object SparkTestUtils {
   val INLIER_STANDARD_DEVIATION: Double = 1e-3
   val OUTLIER_STANDARD_DEVIATION: Double = 1
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param positiveLabel
+   * @param negativeLabel
+   * @param probabilityPositive
+   * @param index
+   * @param items
+   * @return
+   */
   def numericallyBenignGeneratorFunctionForBinaryClassifier(
       seed: Int,
       desiredSparsity: Double,
@@ -231,6 +316,18 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param positiveLabel
+   * @param negativeLabel
+   * @param probabilityPositive
+   * @param index
+   * @param items
+   * @return
+   */
   def outlierGeneratorFunctionForBinaryClassifier(
       seed: Int,
       desiredSparsity: Double,
@@ -269,6 +366,18 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param positiveLabel
+   * @param negativeLabel
+   * @param probabilityPositive
+   * @param index
+   * @param items
+   * @return
+   */
   def invalidFeatureGeneratorFunctionForBinaryClassifier(
       seed: Int,
       desiredSparsity: Double,
@@ -307,6 +416,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def numericallyBenignGeneratorFunctionForPoissonRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -334,6 +452,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def outlierGeneratorFunctionForPoissonRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -361,6 +488,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def invalidFeatureGeneratorFunctionForPoissonRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -388,6 +524,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def numericallyBenignGeneratorFunctionForLinearRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -412,6 +557,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def outlierGeneratorFunctionForLinearRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -436,6 +590,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def invalidFeatureGeneratorFunctionForLinearRegression(
       seed: Int,
       desiredSparsity: Double,
@@ -460,6 +623,15 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
+  /**
+   *
+   * @param seed
+   * @param desiredSparsity
+   * @param desiredDimensionality
+   * @param index
+   * @param items
+   * @return
+   */
   def invalidLabelGeneratorFunction(
       seed: Int,
       desiredSparsity: Double,
@@ -491,8 +663,17 @@ object SparkTestUtils {
     result.toList.iterator
   }
 
-  // In this case, numerically benign means that all values are pretty uniformly distributed between
-  // -1 and 1
+  /**
+   *
+   * @note In this case, numerically benign means that all values are pretty uniformly distributed between -1 and 1.
+   *
+   * @param label
+   * @param xAttribute
+   * @param desiredDimensionality
+   * @param prng
+   * @param negBinomial
+   * @return
+   */
   def generateNumericallyBenignSparseVector(
       label: Double,
       xAttribute: Double,
@@ -532,6 +713,15 @@ object SparkTestUtils {
     (label, new SparseVector[Double](indices, values, indices.length, desiredDimensionality))
   }
 
+  /**
+   *
+   * @param label
+   * @param xAttribute
+   * @param desiredDimensionality
+   * @param prng
+   * @param negBinomial
+   * @return
+   */
   def generateSparseVectorWithOutliers(
       label: Double,
       xAttribute: Double,
@@ -582,6 +772,15 @@ object SparkTestUtils {
     (label, new SparseVector[Double](indices, values, indices.length, desiredDimensionality))
   }
 
+  /**
+   *
+   * @param label
+   * @param xAttribute
+   * @param desiredDimensionality
+   * @param prng
+   * @param negBinomial
+   * @return
+   */
   def generateSparseVectorWithInvalidValues(
       label: Double,
       xAttribute: Double,

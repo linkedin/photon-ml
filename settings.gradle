@@ -25,6 +25,11 @@ scalaCrossBuild {
 
   projectsToCrossBuild(
     'photon-all',
+    'photon-api',
+    'photon-client',
+    'photon-core',
+    'photon-diagnostics',
+    'photon-lib',
     'photon-ml',
     'photon-test-utils'
   )
