@@ -30,7 +30,6 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, TrainingExampleAvro}
-import com.linkedin.photon.ml.FieldNamesType.FieldNamesType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
@@ -138,7 +137,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test(dataProvider = "dataProviderForTestReadLabelPointsFromAvro")
   def testReadLabelPointsFromAvro(
-      fieldNameType: FieldNamesType,
+      fieldNameType: FieldNamesType.FieldNamesType,
       addIntercept: Boolean,
       builderFactory: TrainingAvroBuilderFactory, avroSchema: Schema,
       selectedFeaturesFile: Option[String]): Unit = sparkTest("testReadLabelPointsFromAvro") {

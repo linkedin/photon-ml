@@ -16,8 +16,9 @@ package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path}
 
-import org.apache.spark.SparkException
+import scala.collection.JavaConversions._
 
+import org.apache.spark.SparkException
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 

@@ -79,9 +79,9 @@ class RandomEffectModelTest extends SparkTestUtils {
 
     // Random effect with 2 items of the same type.
     val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
-    val glm1 = new LogisticRegressionModel(randomEffectItem1)
+    val glm1: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem1)
     val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
-    val glm2 = new LogisticRegressionModel(randomEffectItem2)
+    val glm2: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem2)
     val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
 
     // This should not throw exception.
@@ -95,9 +95,9 @@ class RandomEffectModelTest extends SparkTestUtils {
 
     // Random effect with 2 items of differing types.
     val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
-    val glm1 = new LogisticRegressionModel(randomEffectItem1)
+    val glm1: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem1)
     val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
-    val glm2 = new PoissonRegressionModel(randomEffectItem2)
+    val glm2: GeneralizedLinearModel = new PoissonRegressionModel(randomEffectItem2)
     val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
 
     // This should throw exception.
