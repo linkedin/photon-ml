@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -80,7 +80,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
   /**
    * Summarize this model in text format.
    *
-   * @return A model summary in String representation
+   * @return A model summary in text format.
    */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Random effect model with projector with " +
@@ -107,10 +107,10 @@ protected[ml] class RandomEffectModelInProjectedSpace(
     }
 
   /**
-   * Update the random effect model in projected space with new underlying models (per individual).
+   * Update the random effect model in projected space with new sub-models (one per random effect ID).
    *
-   * @param updatedModelsRDDInProjectedSpace The new underlying models with coefficients in projected space, one per
-   *                                         individual
+   * @param updatedModelsRDDInProjectedSpace The new sub-models with coefficients in projected space, one per random
+   *                                         effect ID
    * @return The updated random effect model in projected space
    */
   def updateRandomEffectModelInProjectedSpace(updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)])

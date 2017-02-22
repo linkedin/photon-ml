@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -41,7 +41,7 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
   override def modelType: TaskType = LOGISTIC_REGRESSION
 
   /**
-   * Compute the mean of the logistic regression model.
+   * Compute the mean response of the logistic regression model.
    *
    * @param features The input data point's feature
    * @param offset The input data point's offset
@@ -74,7 +74,7 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
 
   /**
    *
-   * @param features Vector representing feature of a single data point's features
+   * @param features Vector a single data point's features
    * @param offset Offset of the data point
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
    *                  prediction score greater than or equal to this threshold is identified as positive, and negative
@@ -134,7 +134,7 @@ object LogisticRegressionModel {
   /**
    * Create a new logistic regression model with the provided coefficients (means) and variances.
    *
-   * @param coefficients The feature coefficient means and variances for the model
+   * @param coefficients The coefficient means and variances for the model
    * @return A logistic regression model
    */
   def apply(coefficients: Coefficients): GeneralizedLinearModel = new LogisticRegressionModel(coefficients)

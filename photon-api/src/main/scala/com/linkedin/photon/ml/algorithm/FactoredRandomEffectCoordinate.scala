@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -58,7 +58,7 @@ protected[ml] class FactoredRandomEffectCoordinate[
 
     case _ =>
       throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-        s"in ${this.getClass} is not supported!")
+        s"in ${this.getClass} is not supported")
   }
 
   /**
@@ -157,8 +157,8 @@ protected[ml] class FactoredRandomEffectCoordinate[
         (updatedFactoredRandomEffectModel, factoredRandomEffectOptimizationTracker)
 
       case _ =>
-        throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} " +
-            s"in ${this.getClass} is not supported!")
+        throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} in ${this.getClass} is " +
+          s"not supported")
   }
 
   /**
@@ -175,7 +175,7 @@ protected[ml] class FactoredRandomEffectCoordinate[
 
     case _ =>
       throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
-        s"type ${model.getClass} in ${this.getClass} is not supported!")
+        s"type ${model.getClass} in ${this.getClass} is not supported")
   }
 }
 

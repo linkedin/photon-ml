@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -38,14 +38,14 @@ class LinearRegressionModel(override val coefficients: Coefficients)
   override def modelType: TaskType = LINEAR_REGRESSION
 
   /**
-   * Compute the mean of the linear regression model.
+   * Compute the mean response of the linear regression model.
    *
    * @param features The input data point's features
    * @param offset The input data point's offset
    * @return The mean for the passed features
    */
-  override protected[ml] def computeMean(features: Vector[Double], offset: Double)
-    : Double = coefficients.computeScore(features) + offset
+  override protected[ml] def computeMean(features: Vector[Double], offset: Double): Double =
+    coefficients.computeScore(features) + offset
 
   /**
    *

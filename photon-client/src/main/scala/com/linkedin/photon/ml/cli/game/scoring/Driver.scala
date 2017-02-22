@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -230,7 +230,7 @@ object Driver {
     require(numSamplesWithNaNResponse == 0,
       s"Number of data points with NaN found as response: $numSamplesWithNaNResponse. Make sure the responses are " +
         s"well defined in your data point in order to evaluate the computed scores with the specified " +
-        s"evaluator $evaluatorType!")
+        s"evaluator $evaluatorType")
 
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
     evaluator.evaluate(scores.scores)

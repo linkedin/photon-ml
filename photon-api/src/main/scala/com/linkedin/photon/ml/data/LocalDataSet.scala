@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.projector.Projector
 /**
  * Local dataset implementation.
  *
- * @todo Use Array or Map to represent the local data structure?
+ * TODO: Use Array or Map to represent the local data structure?
  *       Array: overhead in sorting the entries by key
  *       Map: overhead in accessing value by key
  *
@@ -81,7 +81,7 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
   def addScoresToOffsets(residualScores: Array[(Long, Double)]): LocalDataSet = {
     val updatedDataPoints = dataPoints.zip(residualScores).map {
       case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScore)) =>
-        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match")
         (dataId, LabeledPoint(label, features, residualScore + offset, weight))
     }
     LocalDataSet(updatedDataPoints)

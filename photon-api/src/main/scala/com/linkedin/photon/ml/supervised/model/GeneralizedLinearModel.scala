@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -40,7 +40,7 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
   def modelType: TaskType
 
   /**
-   * Compute the mean of the model.
+   * Compute the mean response of the model.
    *
    * @note "mean" = linkFunction(score) (after link function in the case of logistic regression: see below)
    *

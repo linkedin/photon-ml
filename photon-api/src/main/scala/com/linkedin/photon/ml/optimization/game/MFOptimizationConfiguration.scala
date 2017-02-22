@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -15,10 +15,10 @@
 package com.linkedin.photon.ml.optimization.game
 
 /**
- * Configuration object for matrix factorization optimization
+ * Configuration object for matrix factorization optimization.
  *
- * @param maxNumberIterations maximum number of iterations
- * @param numFactors number of factors
+ * @param maxNumberIterations Maximum number of iterations
+ * @param numFactors Number of factors
  */
 protected[ml] case class MFOptimizationConfiguration(maxNumberIterations: Int, numFactors: Int) {
   override def toString: String = {
@@ -33,10 +33,11 @@ object MFOptimizationConfiguration {
   protected[ml] val EXPECTED_NUM_CONFIGS = 2
 
   /**
-   * Parse and build the configuration object from a string representation
+   * Parse and build the configuration object from a string representation.
    *
-   * @param string the string representation
-   * @todo Add assert and meaningful parsing error message here
+   * TODO: Add assert and meaningful parsing error message here
+   *
+   * @param string The string representation
    */
   protected[ml] def parseAndBuildFromString(string: String): MFOptimizationConfiguration = {
     val configParams = string.split(SPLITTER).map(_.trim)

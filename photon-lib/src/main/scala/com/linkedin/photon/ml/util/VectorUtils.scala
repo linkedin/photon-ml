@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -131,7 +131,7 @@ object VectorUtils {
       threshold: Double): Vector[Double] = {
 
     assert(vector1.isInstanceOf[SparseVector[Double]] || vector2.isInstanceOf[SparseVector[Double]],
-      "Kronecker product between two dense vectors is currently not supported!")
+      "Kronecker product between two dense vectors is currently not supported")
 
     val length = vector1.length * vector2.length
     val activeSize = vector1.activeSize * vector2.activeSize

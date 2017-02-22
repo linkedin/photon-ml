@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -29,7 +29,7 @@ protected[ml] class FactoredRandomEffectOptimizationTracker(
   extends OptimizationTracker with RDDLike {
 
   override def sparkContext: SparkContext = {
-    assert(optimizationStatesTrackers.nonEmpty, "optimizationStatesTrackers is empty!")
+    assert(optimizationStatesTrackers.nonEmpty, "optimizationStatesTrackers is empty")
     optimizationStatesTrackers.head._1.sparkContext
   }
 

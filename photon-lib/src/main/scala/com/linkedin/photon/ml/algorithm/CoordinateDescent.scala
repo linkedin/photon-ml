@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -94,7 +94,7 @@ class CoordinateDescent(
 
     coordinates.foreach { case (coordinateId, _) =>
       require(gameModel.getModel(coordinateId).isDefined,
-        s"Model with coordinateId $coordinateId is expected but not found from the initial GAME model!")
+        s"Model with coordinateId $coordinateId is expected but not found from the initial GAME model")
     }
 
     var updatedGAMEModel = gameModel

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -322,6 +322,6 @@ protected[ml] object Utils {
     case ShardedAUC.shardedAUCPattern(_) =>
       val ShardedAUC.shardedAUCPattern(idName) = name.trim
       ShardedAUC(idName)
-    case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name!")
+    case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name")
   }
 }

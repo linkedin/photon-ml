@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -267,11 +267,11 @@ class GAMEModelTest extends SparkTestUtils {
     // Random effect 2 has 3 items (of a different kind)
     val numFeaturesRE2 = numFeaturesPerModel("RE2Features")
     val RE2Item1 = Coefficients(numFeaturesRE2)(3,4,6)(321,421,621)
-    val glmRE21: GeneralizedLinearModel = new LogisticRegressionModel(RE2Item1)
+    val glmRE21: GeneralizedLinearModel = new PoissonRegressionModel(RE2Item1)
     val RE2Item2 = Coefficients(numFeaturesRE2)(4,5)(322,422)
     val glmRE22: GeneralizedLinearModel = new PoissonRegressionModel(RE2Item2)
     val RE2Item3 = Coefficients(numFeaturesRE2)(2,7,8)(323,423,523)
-    val glmRE23: GeneralizedLinearModel = new LogisticRegressionModel(RE2Item3)
+    val glmRE23: GeneralizedLinearModel = new PoissonRegressionModel(RE2Item3)
 
     val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
     val RE2Model = new RandomEffectModel(glmRE2RDD, "REModel2", "RE2Features")

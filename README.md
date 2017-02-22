@@ -73,11 +73,11 @@ In addition to the Generalized Linear Models described above, Photon-ML also sup
 GAME is a specific expansion of traditional Generalized Linear Models that further provides entity level (e.g., per-user/per-item) or segment level (e.g., per-country/per-category) coefficients, also known as random effects in the statistics literature, in addition to global coefficients. It manages to scale model training up to hundreds of billions of coefficients while still solvable within Spark's framework.
 
 Currently Photon-ML supports GAME models composed of the following three types of components:
-  * Fixed effect model:
+  * Fixed effect model (FE):
     * Each fixed effect model is effectively a conventional generalized linear model. Its parameters are "global" in the sense that they apply uniformly to all entities.
-  * Random effect model:
+  * Random effect model (RE):
     * Each random effect model consists of "local" parameters – entity-specific coefficients that can be seen as random deviations from the global mean. For example, a per-user random effect models each user's behavior through user-specific coefficients.
-  * Matrix factorization model:
+  * Matrix factorization model (MF):
     * Conventional matrix factorization model that captures interactions between two types of random effects (e.g., user and item) in the latent space.
 
 For example, a GAME model for movie recommendation can be formulated as fixed effect model + per-user random effect model + per-movie random effect model + user-movie matrix factorization model. More details on GAME models can be found [here](https://docs.google.com/presentation/d/1vHanpK3KLIVgdDIHYRehUeyb04Hc2AasbBHs4InVPSU).
@@ -314,10 +314,10 @@ Detailed usages are described via command:
 - gradle contains the gradle wrapper jar.
 
 ## IntelliJ IDEA setup
-When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for 
+When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for
 development (IntelliJ IDEA's debugger can be used with all the tests).
 - Run ./gradlew first on the command line (some classes need to be generated once).
-- Open project in IDEA with "Import Project" and import as a Gradle project. 
+- Open project in IDEA with "Import Project" and import as a Gradle project.
 
 ## How to Contribute
 We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.

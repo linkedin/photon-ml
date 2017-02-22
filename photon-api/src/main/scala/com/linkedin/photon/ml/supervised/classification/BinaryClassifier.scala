@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -37,7 +37,7 @@ trait BinaryClassifier extends Serializable {
   /**
    * Predict values for a single data point with offset using the model trained.
    *
-   * @param features Vector representing feature of a single data point's features
+   * @param features Vector a single data point's features
    * @param offset Offset of the data point
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
    *                  prediction score greater than or equal to this threshold is identified as positive, and negative

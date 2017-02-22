@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -40,7 +40,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   override def modelType: TaskType = SMOOTHED_HINGE_LOSS_LINEAR_SVM
 
   /**
-   * Compute the mean of the soft hinge loss linear SVM model.
+   * Compute the mean response of the smoothed hinge loss linear SVM model.
    *
    * @param features The input data point's feature
    * @param offset The input data point's offset
@@ -73,7 +73,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
 
   /**
    *
-   * @param features Vector representing feature of a single data point's features
+   * @param features Vector a single data point's features
    * @param offset Offset of the data point
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
    *                  prediction score greater than or equal to this threshold is identified as positive, and negative

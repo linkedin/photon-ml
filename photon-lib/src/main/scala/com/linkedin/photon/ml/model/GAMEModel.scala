@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -52,7 +52,7 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
     getModel(name).foreach { oldModel =>
       if (!oldModel.getClass.equals(model.getClass)) {
         throw new UnsupportedOperationException(s"Update model of class ${oldModel.getClass} " +
-          s"to ${model.getClass} is not supported!")
+          s"to ${model.getClass} is not supported")
       }
     }
 
@@ -108,10 +108,9 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
    * Compute score, PRIOR to going through any link function, i.e. just compute a dot product of feature values
    * and model coefficients.
    *
-   * @param dataPoints The dataset, which is a RDD consists of the (unique id, GameDatum) pairs. Note that the Long in
-   *                   the RDD above is a unique identifier for which GenericRecord the GameData object was created,
-   *                   referred to in the GAME code as the "unique id".
-   * @return The score
+   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
+   *                   GameDatum object, referred to in the GAME code as the "unique id".
+   * @return The score.
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
@@ -169,7 +168,7 @@ object GAMEModel {
    * @param gameModels A (modelName -> model) map containing the models that make up the complete GAME model.
    * @return The GAME model type.
    */
-  protected def determineModelType(gameModels: Map[String, DatumScoringModel]): TaskType = {
+  private def determineModelType(gameModels: Map[String, DatumScoringModel]): TaskType = {
     val modelTypes = gameModels.values.map(_.modelType).toSet
 
     require(modelTypes.size == 1, s"GAME model has multiple model types:\n${modelTypes.mkString(", ")}")

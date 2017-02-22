@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -28,7 +28,10 @@ class PalDBIndexMapTest {
   @Test
   def testNoInterceptMap(): Unit = {
     val map = new PalDBIndexMap().load(
-      OFFHEAP_HEART_STORE_NO_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, isLocal = true)
+      OFFHEAP_HEART_STORE_NO_INTERCEPT,
+      OFFHEAP_HEART_STORE_PARTITION_NUM.toInt,
+      IndexMap.GLOBAL_NS,
+      isLocal = true)
 
     assertEquals(map.size(), 13)
 
@@ -51,7 +54,10 @@ class PalDBIndexMapTest {
   @Test
   def testWithInterceptMap(): Unit = {
     val map = new PalDBIndexMap().load(
-      OFFHEAP_HEART_STORE_WITH_INTERCEPT, OFFHEAP_HEART_STORE_PARTITION_NUM.toInt, IndexMap.GLOBAL_NS, isLocal = true)
+      OFFHEAP_HEART_STORE_WITH_INTERCEPT,
+      OFFHEAP_HEART_STORE_PARTITION_NUM.toInt,
+      IndexMap.GLOBAL_NS,
+      isLocal = true)
 
     assertEquals(map.getIndex(INTERCEPT_NAME_TERM), 7)
     assertFeatureIndexMapping(map, getFeatureKey("1"), 0)

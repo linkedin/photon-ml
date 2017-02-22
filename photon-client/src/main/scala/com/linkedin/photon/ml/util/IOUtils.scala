@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -68,7 +68,7 @@ protected[ml] object IOUtils {
       Utils.deleteHDFSDir(outputDir, configuration)
     } else {
       if (isDirExisting(outputDir, configuration)) {
-        throw new IllegalArgumentException(s"Directory $outputDir already exists!")
+        throw new IllegalArgumentException(s"Directory $outputDir already exists")
       }
     }
   }
@@ -115,7 +115,7 @@ protected[ml] object IOUtils {
     }
 
     if (errorOnMissing) {
-      paths.foreach(path => require(path.getFileSystem(configuration).exists(path), s"Path $path does not exist!"))
+      paths.foreach(path => require(path.getFileSystem(configuration).exists(path), s"Path $path does not exist"))
     }
 
     val existingPaths = paths.filter(path => path.getFileSystem(configuration).exists(path))

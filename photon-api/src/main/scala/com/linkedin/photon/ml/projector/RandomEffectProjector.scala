@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -71,7 +71,7 @@ object RandomEffectProjector {
 
       case IndexMapProjection => IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
       case _ => throw new UnsupportedOperationException(s"Projector type $projectorType for random effect data set " +
-          s"is not supported!")
+          s"is not supported")
     }
   }
 }

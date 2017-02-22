@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -19,6 +19,7 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
@@ -69,5 +70,37 @@ class RandomEffectModelTest extends SparkTestUtils {
     val randomEffectModelWithDiffCoefficientsRDD =
       new RandomEffectModel(modelsRDD1, randomEffectType, featureShardId)
     assertNotEquals(randomEffectModel, randomEffectModelWithDiffCoefficientsRDD)
+  }
+
+  @Test
+  def testModelsConsistencyGood(): Unit = sparkTest("testModelsConsistencyGood") {
+
+    val numFeatures = 10
+
+    // Random effect with 2 items of the same type.
+    val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
+    val glm1 = new LogisticRegressionModel(randomEffectItem1)
+    val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
+    val glm2 = new LogisticRegressionModel(randomEffectItem2)
+    val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
+
+    // This should not throw exception.
+    new RandomEffectModel(randomEffectRDD, "RandomEffectModel", "RandomEffectFeatures")
+  }
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testModelsConsistencyBad(): Unit = sparkTest("testModelsConsistencyBad") {
+
+    val numFeatures = 10
+
+    // Random effect with 2 items of differing types.
+    val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
+    val glm1 = new LogisticRegressionModel(randomEffectItem1)
+    val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
+    val glm2 = new PoissonRegressionModel(randomEffectItem2)
+    val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
+
+    // This should throw exception.
+    new RandomEffectModel(randomEffectRDD, "RandomEffectModel", "RandomEffectFeatures")
   }
 }

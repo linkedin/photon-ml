@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -88,8 +88,9 @@ protected[ml] class RandomEffectModel(
   /**
    * Compute the score for the dataset.
    *
-   * @param dataPoints The dataset to score
-   * @return The score
+   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
+   *                   GameDatum object, referred to in the GAME code as the "unique id".
+   * @return The score.
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
     RandomEffectModel.score(dataPoints, modelsRDD, randomEffectType, featureShardId)
@@ -162,11 +163,15 @@ object RandomEffectModel {
    * Determine the random effect model type: even though the model has many sub-problems, there is only one loss
    * function type for a given random effect model.
    *
+   * TODO: We should consider refactoring this method to instead take a TaskType and verify that all sub-models match
+   *       that type - it will be faster for large numbers of random effect models. Note that it may still be a
+   *       bottleneck if we check each time a new RandomEffectModel is created.
+   *
    * @param randomEffectType The random effect type
    * @param modelsRDD The random effect models
    * @return The GAME model type
    */
-  protected def determineModelType(
+  private def determineModelType(
       randomEffectType: String,
       modelsRDD: RDD[(String, GeneralizedLinearModel)]): TaskType = {
 

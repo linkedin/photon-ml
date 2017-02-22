@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -28,7 +28,12 @@ import com.linkedin.photon.ml.spark.{RDDLike, BroadcastLike}
 /**
  * Data set implementation for random effect datasets:
  *
- *   passiveData + activeData = full sharded data set
+ *   activeData + passiveData = full sharded data set
+ *
+ * For the cases where a random effect ID may have a lot of data (enough that it starts causing trouble running on a
+ * single node), active and passive data provide tuning options. Active data is the subset of data that is used for
+ * both training and scoring (when determining residuals), while passive data is used only for scoring. In the vast
+ * majority of cases, all data will be active data.
  *
  * @param activeData Grouped data sets mostly to train the sharded model and score the whole data set.
  * @param uniqueIdToRandomEffectIds Unique id to random effect id map

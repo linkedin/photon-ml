@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampler.DownSampler
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 
 /**
  * An optimization problem solved by multiple tasks on one or more executors. Used for solving the global optimization

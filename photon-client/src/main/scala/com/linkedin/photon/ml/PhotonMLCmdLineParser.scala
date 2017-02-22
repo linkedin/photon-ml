@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -65,7 +65,7 @@ object PhotonMLCmdLineParser {
   def parseFromCommandLine(args: Array[String]): Params = {
 
     require(!(args.contains(s"--$TRAINING_DIAGNOSTICS") && args.contains(s"--$DIAGNOSTIC_MODE")),
-      s"Specifying both $TRAINING_DIAGNOSTICS and $DIAGNOSTIC_MODE at the same time is not supported!" )
+      s"Specifying both $TRAINING_DIAGNOSTICS and $DIAGNOSTIC_MODE at the same time is not supported" )
 
     val defaultParams = new Params()
     val params = new Params()
