@@ -20,13 +20,6 @@ dependencies {
   compile(project(":photon-lib$scalaSuffix"))
   compile(project(":photon-test-utils$scalaSuffix"))
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.6.2") {
-    exclude group: 'org.apache.avro', module: 'avro-mapred'
-  }
-  compile("org.apache.spark:spark-mllib$scalaSuffix:1.6.2") {
-    exclude group: 'org.apache.avro', module: 'avro-mapred'
-  }
-
   compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
 
   compile('com.linkedin.paldb:paldb:1.1.0')

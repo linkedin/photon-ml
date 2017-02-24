@@ -37,7 +37,11 @@ protected[ml] class RandomEffectModel(
     val featureShardId: String)
   extends DatumScoringModel with RDDLike {
 
-  val modelType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
+  // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
+  // determineModelType. However, for non-anonymous instances of GAMEModel (i.e. those not created from an existing
+  // GAMEModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
+  override lazy val modelType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
+  modelType
 
   /**
    *
@@ -67,7 +71,6 @@ protected[ml] class RandomEffectModel(
   /**
    *
    * @note Not used to reference models in the logic of our code, just used in logging for now!
-   *
    * @param name The parent name for the model RDD in this class
    * @return This object with its RDDs' name assigned
    */
@@ -117,11 +120,13 @@ protected[ml] class RandomEffectModel(
    * @param updatedModelsRdd The new underlying models, one per individual
    * @return The updated random effect model
    */
-  def updateRandomEffectModel(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel =
+  def updateRandomEffectModel(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel = {
     // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
+    val currType = this.modelType
     new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId) {
-      override val modelType: TaskType = this.modelType
+      override lazy val modelType: TaskType = currType
     }
+  }
 
   /**
    *
@@ -171,7 +176,7 @@ object RandomEffectModel {
    * @param modelsRDD The random effect models
    * @return The GAME model type
    */
-  private def determineModelType(
+  protected def determineModelType(
       randomEffectType: String,
       modelsRDD: RDD[(String, GeneralizedLinearModel)]): TaskType = {
 
@@ -207,7 +212,7 @@ object RandomEffectModel {
       }
       .cogroup(modelsRDD)
       .flatMap { case (randomEffectId, (uniqueIdAndFeaturesIterable, modelsIterable)) =>
-        // TODO (fastier): We should move that precondition upfront and check it only once, for speed.
+        // TODO: We should move that precondition upfront and check it only once, for speed.
         assert(modelsIterable.size <= 1,
           s"More than one model (${modelsIterable.size}) found for individual Id $randomEffectId of " +
             s"random effect type $randomEffectType")

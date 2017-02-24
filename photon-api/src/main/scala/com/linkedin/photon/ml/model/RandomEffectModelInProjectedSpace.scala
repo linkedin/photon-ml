@@ -100,11 +100,13 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    *
    * @return A [[RandomEffectModel]]
    */
-  def toRandomEffectModel: RandomEffectModel =
+  def toRandomEffectModel: RandomEffectModel = {
+    val currType = this.modelType
     new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectType, featureShardId) {
       // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-      override val modelType: TaskType = this.modelType
+      override lazy val modelType: TaskType = currType
     }
+  }
 
   /**
    * Update the random effect model in projected space with new sub-models (one per random effect ID).
@@ -113,14 +115,16 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    *                                         effect ID
    * @return The updated random effect model in projected space
    */
-  def updateRandomEffectModelInProjectedSpace(updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)])
-    : RandomEffectModelInProjectedSpace =
+  def updateRandomEffectModelInProjectedSpace(
+      updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
+    val currType = this.modelType
     new RandomEffectModelInProjectedSpace(
       updatedModelsRDDInProjectedSpace,
       randomEffectProjector,
       randomEffectType,
       featureShardId) {
       // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-      override val modelType: TaskType = this.modelType
+      override lazy val modelType: TaskType = currType
     }
+  }
 }

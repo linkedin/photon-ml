@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.model
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.projector.ProjectionMatrixBroadcast
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -70,11 +71,14 @@ protected[ml] class FactoredRandomEffectModel(
   def updateFactoredRandomEffectModel(
       updatedModelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
       updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
-
+    val currType = this.modelType
     new FactoredRandomEffectModel(
       updatedModelsInProjectedSpaceRDD,
       updatedProjectionMatrixBroadcast,
       randomEffectType,
-      featureShardId)
+      featureShardId) {
+      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
+      override lazy val modelType: TaskType = currType
+    }
   }
 }

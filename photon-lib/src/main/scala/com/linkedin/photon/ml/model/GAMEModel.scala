@@ -22,6 +22,7 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.util.ClassUtils
 
 /**
  * Generalized additive mixed effect (GAME) model.
@@ -30,7 +31,11 @@ import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
  */
 class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
 
-  val modelType = GAMEModel.determineModelType(gameModels)
+  // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
+  // determineModelType. However, for non-anonymous instances of GAMEModel (i.e. those not created from an existing
+  // GAMEModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
+  override lazy val modelType = GAMEModel.determineModelType(gameModels)
+  modelType
 
   /**
    * Get a (sub-)model by name.
@@ -49,15 +54,20 @@ class GAMEModel(gameModels: Map[String, DatumScoringModel]) extends DatumScoring
    * @return The GAME model with the updated model
    */
   def updateModel(name: String, model: DatumScoringModel): GAMEModel = {
+
     getModel(name).foreach { oldModel =>
-      if (!oldModel.getClass.equals(model.getClass)) {
-        throw new UnsupportedOperationException(s"Update model of class ${oldModel.getClass} " +
-          s"to ${model.getClass} is not supported")
+      val oldModelClass = ClassUtils.getTrueClass(oldModel)
+      val newModelClass = ClassUtils.getTrueClass(model)
+
+      if (!oldModelClass.equals(newModelClass)) {
+        throw new UnsupportedOperationException(s"Update model of $oldModelClass to model of $newModelClass is not " +
+          s"supported")
       }
     }
 
     // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-    new GAMEModel(gameModels.updated(name, model)) { override val modelType: TaskType = this.modelType }
+    val currType = this.modelType
+    new GAMEModel(gameModels.updated(name, model)) { override lazy val modelType: TaskType = currType }
   }
 
   /**

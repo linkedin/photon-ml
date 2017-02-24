@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -27,10 +28,13 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param modelBroadcast The coefficients
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectModel(val modelBroadcast: Broadcast[GeneralizedLinearModel], val featureShardId: String)
-  extends DatumScoringModel with BroadcastLike {
+protected[ml] class FixedEffectModel(
+    val modelBroadcast: Broadcast[GeneralizedLinearModel],
+    val featureShardId: String)
+  extends DatumScoringModel
+  with BroadcastLike {
 
-  val modelType = modelBroadcast.value.modelType
+  override lazy val modelType = modelBroadcast.value.modelType
 
   /**
    *

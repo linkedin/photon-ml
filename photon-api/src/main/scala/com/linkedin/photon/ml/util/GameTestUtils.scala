@@ -129,7 +129,8 @@ trait GameTestUtils {
    * @return The newly generated fixed effect model
    */
   def generateFixedEffectModel(featureShardId: String, dimensions: Int): FixedEffectModel =
-    new FixedEffectModel(sc.broadcast(LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))),
+    new FixedEffectModel(
+      sc.broadcast(LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))),
       featureShardId)
 
   /**
