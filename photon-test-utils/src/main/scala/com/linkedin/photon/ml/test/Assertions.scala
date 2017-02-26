@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.test
 
 import org.testng.Assert.assertEquals
 
-
 /**
  * This object provides utility for complex assertions.
  */
@@ -24,6 +23,7 @@ object Assertions {
 
   /**
    * This method compares lists of doubles with a tolerance.
+   *
    * @param actual The actual iterable
    * @param expected The expected iterable
    * @param delta The tolerance

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -21,25 +21,25 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 /**
- * A collection of handy utils useful in tests
+ * A collection of methods useful for tests.
  */
 object CommonTestUtils {
 
   /**
-   * Append prefix to a CMD line option name, forming an argument string
+   * Append prefix to a CMD line option name, forming an argument string.
    *
-   * @param optionName the option name
-   * @return the argument string
+   * @param optionName The option name
+   * @return The argument string
    */
   def fromOptionNameToArg(optionName: String): String = "--" + optionName
 
   /**
    * This a utility for comparing two constraint maps in unit tests. Returns true if both the options are None or are
-   * non-empty and the contained maps have the same set of (key, value) pairs
+   * non-empty and the contained maps have the same set of (key, value) pairs.
    *
-   * @param m1 option containing the first map
-   * @param m2 option containing the second map
-   * @return true iff both options are none or contain maps that have the exact same set of (key, value) tuples
+   * @param m1 Option containing the first map
+   * @param m2 Option containing the second map
+   * @return True iff both options are none or contain maps that have the exact same set of (key, value) tuples
    */
   def compareConstraintMaps(m1: Option[Map[Int, (Double, Double)]], m2: Option[Map[Int, (Double, Double)]]): Boolean = {
     (m1, m2) match {
@@ -64,11 +64,11 @@ object CommonTestUtils {
   /**
     * Samples a dense vector from a Gaussian with the given properties.
     *
-    * @param dim the dimension of the vector
-    * @param mean the mean of the distribution
-    * @param sd the standard deviation of the distribution
-    * @param seed the random seed value (defaults to current system time)
-    * @return a dense vector with values sampled from the Gaussian
+    * @param dim The dimension of the vector
+    * @param mean The mean of the distribution
+    * @param sd The standard deviation of the distribution
+    * @param seed The random seed value (defaults to current system time)
+    * @return A dense vector with values sampled from the Gaussian
     */
   def generateDenseVector(
       dim: Int,
@@ -81,11 +81,11 @@ object CommonTestUtils {
   }
 
   /**
-   * Generates given number of valid and invalid dense feature vectors of given dimension
+   * Generates given number of valid and invalid dense feature vectors of given dimension.
    *
-   * @param numValidVectors number of valid vectors to generate
-   * @param numInvalidVectors number of invalid vectors to generate
-   * @param numDimensions the dimension of the generated feature vectors
+   * @param numValidVectors Number of valid vectors to generate
+   * @param numInvalidVectors Number of invalid vectors to generate
+   * @param numDimensions The dimension of the generated feature vectors
    * @return A sequence of generated dense feature vectors
    */
   def generateDenseFeatureVectors(
@@ -128,8 +128,8 @@ object CommonTestUtils {
   /**
    * Convert the option -> value map into an argument array.
    *
-   * @param map map of option to option setting
-   * @return array representation of arguments
+   * @param map Map of option to option setting
+   * @return Array representation of arguments
    */
   def argArray(map: Map[String, String]): Array[String] = map.foldLeft(Array[String]()) {
     case (array, (option, value)) =>
@@ -137,9 +137,34 @@ object CommonTestUtils {
   }
 
   /**
-   * Convert a [[Map]] of option name and value into a [[Seq]] of arguments
+   * Convert a [[Map]] of option name and value into a [[Seq]] of arguments.
    */
   def mapToArray(args: Map[String, String]): Array[String] = {
     args.toArray.flatMap { case (name, value) => Seq(name, value) }
   }
+
+  /**
+   * Create tuples of score, label, and weight by pairing two arrays of scores and labels, then adding a default weight.
+   *
+   * @param scores An array of scores
+   * @param labels An array of labels
+   * @param weight A default weight
+   * @return An array of (score, label, weight) tuples
+   */
+  def getScoreLabelAndWeights(
+      scores: Array[Double],
+      labels: Array[Double],
+      weight: Double = 1.0): Array[(Double, Double, Double)] =
+    scores.zip(labels).map { case (score, label) => (score, label, weight) }
+
+  /**
+   * Pair each element in an array with an index based on starting index and its position in the array.
+   *
+   * @param arr Input array of elements
+   * @param startIndex Index from which to begin
+   * @tparam T Type of array input element
+   * @return The original elements of the array paired an index, in ascending order
+   */
+  def zipWithIndex[T](arr: Iterable[T], startIndex: Int = 0): Array[(Long, T)] =
+    arr.zipWithIndex.map { case (t, idx) => ((idx + startIndex).toLong, t) }.toArray
 }
