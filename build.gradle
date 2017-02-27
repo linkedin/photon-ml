@@ -171,5 +171,5 @@ subprojects {
 
 // Task to generate the Gradle wrapper scripts
 task wrapper(type: Wrapper) {
-  gradleVersion = '3.3'
+  gradleVersion = '3.4'
 }
