@@ -7,7 +7,7 @@
 #   http://stackoverflow.com/questions/26082444/how-to-work-around-travis-cis-4mb-output-limit
 #
 
-NUM_LINES=500
+NUM_LINES=1000
 
 # Helper functions
 dump_output() {
@@ -56,7 +56,7 @@ if [[ "$1" == "integration" ]]; then
   PING_LOOP_PID=$!
 
   # Run integration tests, redirect output to tmp file
-  ./gradlew check -x test &> ${BUILD_OUTPUT}
+  ./gradlew check -x test --debug &> ${BUILD_OUTPUT}
 
   # Kill ping process, output final
   clean_up
