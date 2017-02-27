@@ -273,6 +273,7 @@ protected[ml] object IOUtils {
       sc: SparkContext,
       summary: BasicStatisticalSummary, outputDir: String,
       keyToIdMap: IndexMap): Unit = {
+
     def featureStringToTuple(str: String): (String, String) = {
       val splits = str.split(GLMSuite.DELIMITER)
       if (splits.length == 2) {
@@ -284,8 +285,8 @@ protected[ml] object IOUtils {
 
     val featureTuples = keyToIdMap
       .toArray
-      .sortBy[Int] { case (key, id) => id }
-      .map { case (key, id) => featureStringToTuple(key) }
+      .sortBy[Int] { case (_, id) => id }
+      .map { case (key, _) => featureStringToTuple(key) }
 
     val summaryList = List(
       summary.max.toArray,
@@ -320,6 +321,7 @@ protected[ml] object IOUtils {
             .setMetrics(jMap)
             .build()
       }
+
     val outputFile = new Path(outputDir, GLMSuite.DEFAULT_AVRO_FILE_NAME).toString
 
     AvroIOUtils.saveAsSingleAvro(

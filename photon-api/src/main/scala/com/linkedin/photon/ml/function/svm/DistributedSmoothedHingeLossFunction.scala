@@ -129,4 +129,10 @@ object DistributedSmoothedHingeLossFunction {
       case _ => new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth)
     }
   }
+
+  def apply(
+      sparkContext: SparkContext,
+      configuration: GLMOptimizationConfiguration,
+      treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction =
+    create(configuration, sparkContext, treeAggregateDepth)
 }

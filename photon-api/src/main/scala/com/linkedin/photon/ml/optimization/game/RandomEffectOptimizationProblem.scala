@@ -127,4 +127,22 @@ object RandomEffectOptimizationProblem {
 
     new RandomEffectOptimizationProblem(optimizationProblems, isTrackingState)
   }
+
+  def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
+      randomEffectDataSet: RandomEffectDataSet,
+      configuration: GLMOptimizationConfiguration,
+      objectiveFunction: RandomEffectObjective,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean = false,
+      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] =
+
+    create(
+      randomEffectDataSet,
+      configuration,
+      objectiveFunction,
+      glmConstructor,
+      normalizationContext,
+      isTrackingState,
+      isComputingVariance)
 }

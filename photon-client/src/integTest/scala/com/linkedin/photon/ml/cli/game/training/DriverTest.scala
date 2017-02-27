@@ -15,15 +15,17 @@
 package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path}
-
 import scala.collection.JavaConversions._
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkException
+import org.apache.spark.mllib.linalg.{SparseVector, Vector}
+import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
-import com.linkedin.photon.ml.evaluation.{RMSEEvaluator, EvaluatorType, ShardedPrecisionAtK, ShardedAUC}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
@@ -31,6 +33,8 @@ import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters}
 import com.linkedin.photon.ml.estimators.GameParams
+import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -38,19 +42,24 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplat
 import com.linkedin.photon.ml.util.{GameTestUtils, LongHashPartitioner, PhotonLogger, Utils}
 
 /**
- * Test cases for the GAME training driver.
+ * Test cases for the Game training driver
  */
 class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWithTmpDir {
 
   import CommonTestUtils._
   import DriverTest._
 
+  Logger.getLogger("org").setLevel(Level.OFF) // turn off noisy Spark log
+
   @Test
   def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
+
     val outputDir = s"$getTmpDir/fixedEffects"
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
     val errorThreshold = 1.7
+
     val driver = runDriver(argArray(fixedEffectSeriousRunArgs() ++ Map("output-dir" -> outputDir)))
+
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
@@ -67,24 +76,31 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def failedTestRunWithOutputDirExists(): Unit = sparkTest("failedTestRunWithOutputDirExists") {
+
     val outputDir = getTmpDir + "/failedTestRunWithOutputDirExists"
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+
     runDriver(argArray(fixedEffectToyRunArgs() ++ Map("output-dir" -> outputDir)))
   }
 
   @Test
   def successfulTestRunWithOutputDirExists(): Unit = sparkTest("successfulTestRunWithOutputDirExists") {
+
     val outputDir = getTmpDir + "/successfulTestRunWithOutputDirExists"
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+
     runDriver(argArray(fixedEffectToyRunArgs() ++
         Map("output-dir" -> outputDir, "delete-output-dir-if-exists" -> "true")))
   }
 
   @Test
   def testFixedEffectsWithoutIntercept(): Unit = sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
+
     val outputDir = s"$getTmpDir/fixedEffects"
+
     runDriver(argArray(fixedEffectToyRunArgs() ++ Map("feature-shard-id-to-intercept-map" -> "shard1:false")
         ++ Map("output-dir" -> outputDir)))
+
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
@@ -98,10 +114,13 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testSaveBestOnly(): Unit = sparkTest("saveBestOnly", useKryo = true) {
+
     val outputDir = s"$getTmpDir/fixedEffects"
+
     runDriver(argArray(fixedEffectToyRunArgs() ++ Map(
       "output-dir" -> outputDir,
       "model-output-mode" -> ModelOutputMode.BEST.toString)))
+
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
@@ -111,10 +130,13 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testSaveNone(): Unit = sparkTest("saveNone", useKryo = true) {
+
     val outputDir = s"$getTmpDir/fixedEffects"
+
     runDriver(argArray(fixedEffectToyRunArgs() ++ Map(
       "output-dir" -> outputDir,
       "model-output-mode" -> ModelOutputMode.NONE.toString)))
+
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
@@ -124,10 +146,13 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept", useKryo = true) {
+
     val outputDir = s"$getTmpDir/randomEffects"
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
     val errorThreshold = 2.34
+
     val driver = runDriver(argArray(randomEffectSeriousRunArgs() ++ Map("output-dir" -> outputDir)))
+
     val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
     val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
@@ -149,9 +174,12 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testRandomEffectsWithoutAnyIntercept(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
+
     val outputDir = s"$getTmpDir/randomEffects"
+
     runDriver(argArray(randomEffectToyRunArgs() ++
         Map("feature-shard-id-to-intercept-map" -> "shard2:false|shard3:false") ++ Map("output-dir" -> outputDir)))
+
     val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
     val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
@@ -174,8 +202,10 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     = sparkTest("testRandomEffectsWithPartialIntercept", useKryo = true) {
 
       val outputDir = s"$getTmpDir/randomEffects"
+
       runDriver(argArray(randomEffectToyRunArgs() ++
           Map("feature-shard-id-to-intercept-map" -> "shard2:false|shard3:true") ++ Map("output-dir" -> outputDir)))
+
       val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
       val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
       val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
@@ -195,6 +225,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
+
     val outputDir = s"$getTmpDir/fixedAndRandomEffects"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -228,6 +259,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testMultipleOptimizerConfigs(): Unit = sparkTest("multipleOptimizerConfigs", useKryo = true) {
+
     val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -247,16 +279,16 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   @DataProvider
-  def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] = {
+  def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] =
     Array(
       Array(Seq(AUC, ShardedAUC("foo"))),
       Array(Seq(ShardedAUC("foo"), ShardedPrecisionAtK(10, "bar"))),
       Array(Seq(ShardedPrecisionAtK(1, "foo")))
     )
-  }
 
   @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "shardedEvaluatorOfUnknownIdTypeProvider")
   def evaluateFullModelWithShardedEvaluatorOfUnknownIdType(evaluatorTypes: Seq[EvaluatorType]): Unit =
+
     sparkTest("evaluateFullModelWithShardedEvaluatorOfUnknownIdType") {
       val outputDir = s"$getTmpDir/evaluateFullModelWithPrecisionAtKOfUnknownId"
       runDriver(argArray(fixedAndRandomEffectToyRunArgs() ++ Map(
@@ -266,6 +298,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testNoValidatingDir(): Unit = sparkTest("noValidatingDir", useKryo = true) {
+
     val outputDir = s"$getTmpDir/testNoValidatingDir"
 
     // Verify that the system still works if we don't specify a validating dir
@@ -278,6 +311,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   @Test
   def testOffHeapIndexMap(): Unit = sparkTest("offHeapIndexMap", useKryo = true) {
+
     val outputDir = s"$getTmpDir/offHeapIndexMap"
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
@@ -314,6 +348,43 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
   }
 
+  @Test
+  def testComputeSummaryStatistics() : Unit = sparkTest("computeSummaryStatistics", useKryo = true) {
+
+    val outputDir = s"$getTmpDir/offHeapIndexMap"
+    val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath
+    val args = argArray(
+      fixedAndRandomEffectSeriousRunArgs() ++ Map(
+        "output-dir" -> outputDir,
+        "offheap-indexmap-dir" -> indexMapPath,
+        "offheap-indexmap-num-partitions" -> "1"))
+
+    val trainingRecordsPath = getClass.getClassLoader.getResource("GameIntegTest/input/train").getPath
+    val params = GameParams.parseFromCommandLine(args)
+    val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
+    val driver = new Driver(sc, params, logger)
+    val numPartitions = 1
+    val indexMapLoaders = driver.prepareFeatureMaps()
+    val dataReader = new AvroDataReader(sc)
+
+    val data: DataFrame = dataReader.readMerged(
+      trainingRecordsPath,
+      indexMapLoaders,
+      params.featureShardIdToFeatureSectionKeysMap,
+      numPartitions)
+
+    val Z3 = params.featureShardIdToFeatureSectionKeysMap
+      .foreach {
+        case (shardId, _) =>
+          val col: RDD[Vector] = data.select(shardId).map { _.getAs[Vector](0) }
+          val stats: MultivariateStatisticalSummary = Statistics.colStats(col)
+          println(s"shardId: $shardId\nmean: ${stats.mean}\nvariance: ${stats.variance}")
+          val sv = col.take(1)(0).asInstanceOf[SparseVector]
+          println(s"indices: ${sv.indices.toList}")
+        case _ => println("not a shardId something")
+      }
+  }
+
   /**
     * Perform a very basic sanity check on the model.
     *
@@ -322,15 +393,16 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     * @return True if the model is sane
     */
   def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
-    val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
-      sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
+
+    val modelAvro =
+      AvroIOUtils
+        .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
     val model = modelId match {
       case Some(id) =>
         val m = modelAvro.find { m => m.getModelId.toString == id }
         assertTrue(m.isDefined, s"Model id $id not found.")
         m.get
-
       case _ => modelAvro.head
     }
 
@@ -338,19 +410,20 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   /**
+   * Check whether the model contains an intercept term or not.
    *
-   * @param path
-   * @return
+   * @param path The path to read the model from
+   * @return Whether the model contains an intercept or not
    */
-  def modelContainsIntercept(path: Path): Boolean = {
+  def modelContainsIntercept(path: Path): Boolean =
 
-    val modelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](
-      sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
-
-    modelAvro.head.getMeans.map(
-      nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString)
-    ).toSet.contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
-  }
+    AvroIOUtils
+      .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
+      .head
+      .getMeans
+      .map(nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString))
+      .toSet
+      .contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
 
   /**
     * Evaluate the model by the specified evaluators with the validation data set.
@@ -360,29 +433,32 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     * @return Evaluation results for each specified evaluator
     */
   def evaluateModel(driver: Driver, modelPath: Path): Seq[Double] = {
+
     val idTypeSet = Set("userId", "artistId", "songId")
     val indexMapLoaders = driver.prepareFeatureMaps()
     val featureSectionMap = driver.params.featureShardIdToFeatureSectionKeysMap
-    val dr = new AvroDataReader(sc)
-    val testData = dr.readMerged(testPath, indexMapLoaders, featureSectionMap, 2)
-
+    val testData = new AvroDataReader(sc).readMerged(testPath, indexMapLoaders, featureSectionMap, 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      testData,
-      featureSectionMap.keys.toSet,
-      idTypeSet,
-      isResponseRequired = true)
-      .partitionBy(partitioner)
 
-    val validatingLabelsAndOffsetsAndWeights = gameDataSet
-      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
+    val gameDataSet =
+      GameConverters
+        .getGameDataSetFromDataFrame(
+          testData,
+          featureSectionMap.keys.toSet,
+          idTypeSet,
+          isResponseRequired = true)
+        .partitionBy(partitioner)
+
+    val validatingLabelsAndOffsetsAndWeights =
+      gameDataSet
+        .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
+
     validatingLabelsAndOffsetsAndWeights.count()
 
-    val evaluator = new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
     val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(indexMapLoaders), modelPath.toString, sc)
-
     val scores = gameModel.score(gameDataSet).scores
-    Seq(evaluator.evaluate(scores))
+
+    Seq(new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores))
   }
 
   /**
@@ -391,9 +467,10 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     * @param args The command-line arguments
     */
   def runDriver(args: Array[String]): Driver = {
+
     val params = GameParams.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
-    val driver = new Driver(params, sc, logger)
+    val driver = new Driver(sc, params, logger)
 
     driver.run()
     logger.close()
@@ -416,60 +493,54 @@ object DriverTest {
   /**
    * Default arguments to the Game driver.
    *
-   * @return
+   * @return Arguments to run a model
    */
-  def defaultArgs: Map[String, String] = Map(
-    "task-type" -> TaskType.LINEAR_REGRESSION.toString,
-    "train-input-dirs" -> trainPath,
-    "validate-input-dirs" -> testPath,
-    "feature-name-and-term-set-path" -> featurePath,
-    "num-iterations" -> numIterations.toString,
-    "num-output-files-for-random-effect-model" -> "-1")
+  def defaultArgs: Map[String, String] =
+
+    Map(
+      "task-type" -> TaskType.LINEAR_REGRESSION.toString,
+      "train-input-dirs" -> trainPath,
+      "validate-input-dirs" -> testPath,
+      "feature-name-and-term-set-path" -> featurePath,
+      "num-iterations" -> numIterations.toString,
+      "num-output-files-for-random-effect-model" -> "-1")
 
   /**
    * Fixed effect arguments with serious optimization. It's useful when we care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
-  def fixedEffectSeriousRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = defaultArgs ++ Map(
-    "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
-    "updating-sequence" -> "global",
+  def fixedEffectSeriousRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] =
 
-    // fixed-effect optimization config
-    "fixed-effect-optimization-configurations" ->
-      s"global:10,1e-5,10,1,$optType,l2",
-
-    // fixed-effect data config
-    "fixed-effect-data-configurations" ->
-      s"global:shard1,$numPartitionsForFixedEffectDataSet")
+    defaultArgs ++ Map(
+      "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
+      "updating-sequence" -> "global",
+      "fixed-effect-optimization-configurations" -> s"global:10,1e-5,10,1,$optType,l2",
+      "fixed-effect-data-configurations" -> s"global:shard1,$numPartitionsForFixedEffectDataSet")
 
   /**
    * Fixed effect arguments with "toy" optimization. It's useful when we don't care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
-  def fixedEffectToyRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = defaultArgs ++ Map(
+  def fixedEffectToyRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] =
 
-    "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
-    "updating-sequence" -> "global",
-
-    // fixed-effect optimization config
-    "fixed-effect-optimization-configurations" ->
-        s"global:1,1e-5,10,1,$optType,l2",
-
-    // fixed-effect data config
-    "fixed-effect-data-configurations" ->
-        s"global:shard1,$numPartitionsForFixedEffectDataSet")
+    defaultArgs ++ Map(
+      "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
+      "updating-sequence" -> "global",
+      "fixed-effect-optimization-configurations" -> s"global:1,1e-5,10,1,$optType,l2",
+      "fixed-effect-data-configurations" -> s"global:shard1,$numPartitionsForFixedEffectDataSet")
 
   /**
    * Random effect arguments with "serious" optimization. It's useful when we care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
   def randomEffectSeriousRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = {
+
     val userRandomEffectRegularizationWeight = 1
     val songRandomEffectRegularizationWeight = 1
 
@@ -477,14 +548,10 @@ object DriverTest {
       "feature-shard-id-to-feature-section-keys-map" ->
           "shard2:userFeatures|shard3:songFeatures",
       "updating-sequence" -> "per-user,per-song,per-artist",
-
-      // random-effect optimization config
       "random-effect-optimization-configurations" ->
           (s"per-user:10,1e-5,$userRandomEffectRegularizationWeight,1,$optType,l2|" +
               s"per-song:10,1e-5,$songRandomEffectRegularizationWeight,1,$optType,l2|" +
               s"per-artist:10,1e-5,$userRandomEffectRegularizationWeight,1,$optType,l2"),
-
-      // random-effect data config
       "random-effect-data-configurations" ->
           (s"per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
               s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
@@ -494,10 +561,11 @@ object DriverTest {
   /**
    * Random effect arguments with "toy" optimization. It's useful when we don't care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
   def randomEffectToyRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = {
+
     val userRandomEffectRegularizationWeight = 1
     val songRandomEffectRegularizationWeight = 1
 
@@ -505,14 +573,10 @@ object DriverTest {
       "feature-shard-id-to-feature-section-keys-map" ->
           "shard2:userFeatures|shard3:songFeatures",
       "updating-sequence" -> "per-user,per-song,per-artist",
-
-      // random-effect optimization config
       "random-effect-optimization-configurations" ->
           (s"per-user:1,1e-5,$userRandomEffectRegularizationWeight,1,$optType,l2|" +
               s"per-song:1,1e-5,$songRandomEffectRegularizationWeight,1,$optType,l2|" +
               s"per-artist:1,1e-5,$userRandomEffectRegularizationWeight,1,$optType,l2"),
-
-      // random-effect data config
       "random-effect-data-configurations" ->
           (s"per-user:userId,shard2,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
               s"per-song:songId,shard3,$numPartitionsForRandomEffectDataSet,-1,0,-1,index_map|" +
@@ -522,8 +586,8 @@ object DriverTest {
   /**
    * Fixed and random effect arguments. It's useful when we care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
   def fixedAndRandomEffectSeriousRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = {
     fixedEffectSeriousRunArgs(optType) ++ randomEffectSeriousRunArgs(optType) ++ Map(
@@ -536,8 +600,8 @@ object DriverTest {
   /**
     * Fixed and random effect arguments. It's useful when we don't care about the model performance.
    *
-   * @param optType
-   * @return
+   * @param optType The optimizer type to use
+   * @return Arguments to run a model
    */
   def fixedAndRandomEffectToyRunArgs(optType: OptimizerType = OptimizerType.TRON): Map[String, String] = {
     fixedEffectToyRunArgs(optType) ++ randomEffectToyRunArgs(optType) ++ Map(

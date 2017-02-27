@@ -159,4 +159,34 @@ object FactoredRandomEffectOptimizationProblem {
       numInnerIterations,
       latentSpaceDimension)
   }
+
+  def apply[
+      RandomEffectObjective <: SingleNodeObjectiveFunction,
+      LatentEffectObjective <: DistributedObjectiveFunction](
+      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
+      latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
+      mfOptimizationConfiguration: MFOptimizationConfiguration,
+      randomObjectiveFunction: RandomEffectObjective,
+      latentObjectiveFunction: LatentEffectObjective,
+      latentSamplerOption: Option[DownSampler],
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean = false,
+      isComputingVariance: Boolean = false)
+    : FactoredRandomEffectOptimizationProblem[RandomEffectObjective, LatentEffectObjective] =
+
+    create[RandomEffectObjective, LatentEffectObjective](
+      randomEffectDataSet,
+      randomEffectOptimizationConfiguration,
+      latentFactorOptimizationConfiguration,
+      mfOptimizationConfiguration,
+      randomObjectiveFunction,
+      latentObjectiveFunction,
+      latentSamplerOption,
+      glmConstructor,
+      normalizationContext,
+      isTrackingState,
+      isComputingVariance)
+
 }

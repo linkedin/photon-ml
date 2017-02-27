@@ -166,4 +166,11 @@ object DistributedGLMLossFunction {
       case _ => new DistributedGLMLossFunction(singleLossFunction, sparkContext, treeAggregateDepth)
     }
   }
+
+  def apply(
+      sparkContext: SparkContext,
+      configuration: GLMOptimizationConfiguration,
+      treeAggregateDepth: Int)(singleLossFunction: PointwiseLossFunction): DistributedGLMLossFunction =
+
+    create(configuration, singleLossFunction, sparkContext, treeAggregateDepth)
 }

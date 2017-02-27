@@ -24,10 +24,7 @@ import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
 /**
  * Contains common functions for GAME training and scoring drivers.
  */
-abstract class GAMEDriver(
-    params: FeatureParams with PalDBIndexMapParams,
-    sparkContext: SparkContext,
-    logger: Logger) {
+abstract class GAMEDriver(sparkContext: SparkContext, params: FeatureParams with PalDBIndexMapParams, logger: Logger) {
 
   protected val hadoopConfiguration: Configuration = sparkContext.hadoopConfiguration
 
@@ -86,6 +83,7 @@ abstract class GAMEDriver(
    * @return A map of shard id to feature map
    */
   protected[game] def prepareFeatureMaps(): Map[String, IndexMapLoader] = {
+
     params.offHeapIndexMapDir match {
       // If an off-heap map path is specified, use the paldb loader
       case Some(_) => prepareFeatureMapsPalDB()

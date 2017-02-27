@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.util
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
-
 import scala.collection.JavaConverters._
 
 import org.apache.avro.generic.GenericRecord
@@ -23,7 +22,7 @@ import org.apache.avro.util.Utf8
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
-import com.linkedin.photon.ml.evaluation.{ShardedAUC, ShardedPrecisionAtK, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.io.GLMSuite
 
@@ -322,4 +321,6 @@ protected[ml] object Utils {
       ShardedAUC(idName)
     case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name")
   }
+
+  def Filter[V, W](p: => Boolean)(f: => W): Option[W] = if (p) Some(f) else None
 }

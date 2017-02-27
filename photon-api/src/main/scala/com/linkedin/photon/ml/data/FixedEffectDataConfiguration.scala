@@ -21,6 +21,9 @@ package com.linkedin.photon.ml.data
  * @param minNumPartitions Minimum number of partitions of the fixed effect data
  */
 protected[ml] case class FixedEffectDataConfiguration private (featureShardId: String, minNumPartitions: Int) {
+
+  require(0 <= minNumPartitions)
+
   override def toString: String = s"featureShardId: $featureShardId, numPartitions: $minNumPartitions"
 }
 

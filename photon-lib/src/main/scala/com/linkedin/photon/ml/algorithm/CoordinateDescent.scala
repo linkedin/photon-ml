@@ -52,7 +52,7 @@ class CoordinateDescent(
    * Run coordinate descent.
    *
    * @param numIterations Number of iterations
-   * @param taskType
+   * @param taskType The task type
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
@@ -286,4 +286,11 @@ object CoordinateDescent {
     s"lossFunctionValue: $lossFunctionValue, regularizationTermValue: $regularizationTermValue, " +
       s"objectiveFunctionValue: $objectiveFunctionValue"
   }
+
+  def apply(
+      coordinates: Seq[(String, Coordinate[_])],
+      trainingLossFunctionEvaluator: Evaluator,
+      validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+      logger: Logger) =
+    new CoordinateDescent(coordinates, trainingLossFunctionEvaluator, validatingDataAndEvaluatorsOption, logger)
 }

@@ -98,6 +98,7 @@ object SingleNodeSmoothedHingeLossFunction {
    * @return A new SingleNodeSmoothedHingeLossFunction
    */
   def create(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
+
     val regularizationContext = configuration.regularizationContext
 
     regularizationContext.regularizationType match {
@@ -109,4 +110,7 @@ object SingleNodeSmoothedHingeLossFunction {
       case _ => new SingleNodeSmoothedHingeLossFunction
     }
   }
+
+  def apply(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction =
+    create(configuration)
 }

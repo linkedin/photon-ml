@@ -25,9 +25,10 @@ import com.linkedin.photon.ml.{ModelTraining, TaskType}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
-import com.linkedin.photon.ml.stat.BasicStatistics
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
+
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
  * All feature normalizations are affine transformation so the resulting models without regularization should be
@@ -109,7 +110,7 @@ class NormalizationTest extends SparkTestUtils {
     normalizationType: NormalizationType): Unit = {
 
     // This is necessary to make Spark not complain serialization error of this class.
-    val summary = BasicStatistics.getBasicStatistics(trainRDD)
+    val summary = BasicStatisticalSummary(trainRDD)
     val normalizationContext = NormalizationContext(normalizationType, summary, Some(_dimension))
     val threshold = _threshold
     val (models, _) = ModelTraining.trainGeneralizedLinearModel(

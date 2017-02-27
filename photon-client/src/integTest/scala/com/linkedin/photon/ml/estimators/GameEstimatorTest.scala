@@ -153,7 +153,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val estimator = getEstimator(params)
 
-    val (_, evaluators) = estimator.prepareValidatingEvaluators(data)
+    val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     evaluators
       .zip(evaluatorTypes)
       .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
@@ -171,7 +171,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val estimator = getEstimator(params)
 
-    val (_, evaluators) = estimator.prepareValidatingEvaluators(data)
+    val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     evaluators
       .zip(evaluatorTypes)
       .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
@@ -200,7 +200,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val estimator = getEstimator(params)
 
-    val (_, evaluators) = estimator.prepareValidatingEvaluators(data)
+    val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
   }
 
@@ -246,7 +246,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    */
   def getEstimator(params: GameParams): GameEstimator = {
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
-    new GameEstimator(params, sc, logger)
+    new GameEstimator(sc, params, logger)
   }
 }
 

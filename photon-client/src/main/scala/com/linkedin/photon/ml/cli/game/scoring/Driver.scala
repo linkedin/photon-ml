@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.util._
  * Driver for GAME full model scoring.
  */
 class Driver(val params: Params, val sparkContext: SparkContext, val logger: Logger)
-  extends GAMEDriver(params, sparkContext, logger) {
+  extends GAMEDriver(sparkContext, params, logger) {
 
   import params._
 

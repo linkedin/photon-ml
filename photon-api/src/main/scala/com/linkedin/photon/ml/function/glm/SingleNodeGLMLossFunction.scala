@@ -148,4 +148,7 @@ object SingleNodeGLMLossFunction {
       case _ => new SingleNodeGLMLossFunction(singleLossFunction)
     }
   }
+
+  def apply(configuration: GLMOptimizationConfiguration)(singleLossFunction: PointwiseLossFunction)
+      : SingleNodeGLMLossFunction = create(configuration, singleLossFunction)
 }

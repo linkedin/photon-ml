@@ -211,7 +211,7 @@ class Params extends PalDBIndexMapParams {
     }
     if (normalizationType == NormalizationType.STANDARDIZATION && !addIntercept) {
       messages += s"Intercept must be used to enable feature standardization. Normalization type: " +
-                  s"$normalizationType, add intercept: $addIntercept."
+        s"$normalizationType, add intercept: $addIntercept."
     }
     if (validateDirOpt.isEmpty && (diagnosticMode == DiagnosticMode.VALIDATE || diagnosticMode == DiagnosticMode.ALL)) {
       messages += s"Diagnostic mode cannot be $diagnosticMode when the validate directory is not specified. " +

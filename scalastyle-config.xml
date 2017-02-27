@@ -141,7 +141,6 @@ This file is divided into 3 sections:
       // scalastyle:on println]]></customMessage>
   </check>
 
-
   <check customId="mutablesynchronizedbuffer" level="error" class="org.scalastyle.file.RegexChecker" enabled="true">
     <parameters><parameter name="regex">mutable\.SynchronizedBuffer</parameter></parameters>
     <customMessage><![CDATA[
@@ -215,7 +214,6 @@ This file is divided into 3 sections:
   </check>
 
   <check level="error" class="org.scalastyle.scalariform.DeprecatedJavaChecker" enabled="true"></check>
-
   <check level="error" class="org.scalastyle.scalariform.NoWhitespaceBeforeLeftBracketChecker" enabled="false"></check>
   <check level="error" class="org.scalastyle.scalariform.NoWhitespaceAfterLeftBracketChecker" enabled="false"></check>
 

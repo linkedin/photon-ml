@@ -19,12 +19,14 @@ import scopt.OptionParser
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.io.ModelOutputMode._
+import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapParams}
+import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
 
 /**
  * A bean class for GAME training parameters to replace the original case class for input parameters.
@@ -104,36 +106,36 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   /**
    * Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
    */
-  var updatingSequence: Seq[String] = Seq()
+  var updatingSequence: Seq[CoordinateId] = Seq()
 
   /**
    * Optimization configurations for the fixed effect optimization problem.
    */
-  var fixedEffectOptimizationConfigurations: Array[Map[String, GLMOptimizationConfiguration]] = Array(Map())
+  var fixedEffectOptimizationConfigurations: Array[Map[CoordinateId, GLMOptimizationConfiguration]] = Array(Map())
 
   /**
    * Configurations for each fixed effect data set.
    */
-  var fixedEffectDataConfigurations: Map[String, FixedEffectDataConfiguration] = Map()
+  var fixedEffectDataConfigurations: Map[CoordinateId, FixedEffectDataConfiguration] = Map()
 
   /**
    * Optimization configurations for each random effect optimization problem, multiple parameters are separated
    * by semi-colon.
    */
-  var randomEffectOptimizationConfigurations: Array[Map[String, GLMOptimizationConfiguration]] = Array(Map())
+  var randomEffectOptimizationConfigurations: Array[Map[CoordinateId, GLMOptimizationConfiguration]] = Array(Map())
 
   /**
    * Optimization configurations for each factored random effect optimization problem, multiple parameters are
    * accepted and separated by semi-colon.
    */
   var factoredRandomEffectOptimizationConfigurations:
-    Array[Map[String,
+    Array[Map[CoordinateId,
     (GLMOptimizationConfiguration, GLMOptimizationConfiguration, MFOptimizationConfiguration)]] = Array(Map())
 
   /**
    * Configurations for all the random effect data sets.
    */
-  var randomEffectDataConfigurations: Map[String, RandomEffectDataConfiguration] = Map()
+  var randomEffectDataConfigurations: Map[CoordinateId, RandomEffectDataConfiguration] = Map()
 
   /**
    * GAME task type. Examples include logistic_regression and linear_regression.
@@ -154,6 +156,16 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
    * Whether to delete the output directory if exists
    */
   var deleteOutputDirIfExists: Boolean = false
+
+  /**
+   * If summarization output dir is provided, basic statistics of features will be written to the given directory.
+   */
+  var summarizationOutputDirOpt: Option[String] = None
+
+  /**
+   * Feature normalization method
+   */
+  var normalizationType: NormalizationType = NormalizationType.NONE
 
   /**
    * Name of this Spark application
@@ -190,20 +202,26 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
-      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
+      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions\n" +
+      s"normalizationType: $normalizationType\n" +
+      s"summarizationOutputDirOpt: $summarizationOutputDirOpt"
 }
 
 object GameParams {
 
   /**
+   * Parse parameters for Game from the arguments on the command line.
    *
-   * @param args
-   * @return
+   * @param args An array containing each command line argument
+   * @return An instance of GameParams or an exception if the parameters cannot be parsed correctly
    */
   protected[ml] def parseFromCommandLine(args: Array[String]): GameParams = {
+
     val defaultParams = new GameParams()
     val params = new GameParams()
+
     val parser = new OptionParser[Unit]("Photon-Game") {
+
       opt[String]("train-input-dirs")
         .required()
         .text("Input directories of training data. Multiple input directories are also accepted if they are " +
@@ -381,6 +399,7 @@ object GameParams {
       opt[Boolean]("compute-variance")
         .text(s"Whether to compute the coefficient variance, default: ${defaultParams.computeVariance}")
         .foreach(x => params.computeVariance = x)
+
       opt[Boolean]("save-models-to-hdfs")
         .text(s"DEPRECATED -- USE model-output-mode")
         .foreach(x => params.modelOutputMode = if (x) ALL else NONE)
@@ -418,14 +437,25 @@ object GameParams {
         .text("Type of the evaluator used to evaluate the computed scores.")
         .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName _))
 
+      opt[String](NORMALIZATION_TYPE)
+        .text("The normalization type to use in training. Options: " +
+          s"[${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
+        .foreach(x => params.normalizationType = NormalizationType.valueOf(x.toUpperCase))
+
+      opt[String](SUMMARIZATION_OUTPUT_DIR)
+        .text("An optional directory to output statistics about the training data")
+        .foreach(x => params.summarizationOutputDirOpt = Some(x))
+
       help("help").text("prints usage text.")
 
       override def showUsageOnError = true
     }
+
     if (!parser.parse(args)) {
       throw new IllegalArgumentException(s"Parsing the command line arguments failed.\n" +
         s"Input arguments are: ${args.mkString(", ")}).")
     }
+
     params
   }
 }

@@ -191,4 +191,22 @@ object DistributedOptimizationProblem {
       regularizationContext,
       isComputingVariance)
   }
+
+  def apply[Function <: DistributedObjectiveFunction](
+      configuration: GLMOptimizationConfiguration,
+      objectiveFunction: Function,
+      samplerOption: Option[DownSampler],
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean,
+      isComputingVariance: Boolean): DistributedOptimizationProblem[Function] =
+
+    create[Function](
+      configuration,
+      objectiveFunction,
+      samplerOption,
+      glmConstructor,
+      normalizationContext,
+      isTrackingState,
+      isComputingVariance)
 }

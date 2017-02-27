@@ -48,6 +48,8 @@ protected[ml] case class RandomEffectDataConfiguration private (
     numFeaturesToSamplesRatioUpperBound: Double,
     projectorType: ProjectorType) {
 
+  require(0 <= numPartitions)
+
   /**
    *
    * @return
@@ -78,7 +80,8 @@ object RandomEffectDataConfiguration {
   protected[ml] val FIRST_LEVEL_SPLITTER = ","
   protected[ml] val SECOND_LEVEL_SPLITTER = "="
   protected[ml] val EXPECTED_NUM_CONFIGS = 7
-  protected[ml] val EXPECTED_FORMAT = s"randomEffectType${FIRST_LEVEL_SPLITTER}featureShardId$FIRST_LEVEL_SPLITTER" +
+  protected[ml] val EXPECTED_FORMAT: String =
+    s"randomEffectType${FIRST_LEVEL_SPLITTER}featureShardId$FIRST_LEVEL_SPLITTER" +
     s"numActiveDataPointsToKeepUpperBound$FIRST_LEVEL_SPLITTER" +
     s"numPassiveDataPointsToKeepLowerBound$FIRST_LEVEL_SPLITTER" +
     s"numFeaturesToSamplesRatioUpperBound$FIRST_LEVEL_SPLITTER" +
