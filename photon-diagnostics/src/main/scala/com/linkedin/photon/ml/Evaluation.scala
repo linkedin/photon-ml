@@ -29,6 +29,7 @@ import com.linkedin.photon.ml.util.Logging
   * A collection of evaluation metrics and functions
   */
 object Evaluation extends Logging {
+
   val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
   val MEAN_SQUARE_ERROR = "Mean square error"
   val ROOT_MEAN_SQUARE_ERROR = "Root mean square error"
@@ -36,11 +37,11 @@ object Evaluation extends Logging {
   val AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS = "Area under ROC"
   val PEAK_F1_SCORE = "Peak F1 score"
   val DATA_LOG_LIKELIHOOD = "Per-datum log likelihood"
-  val AIKAKE_INFORMATION_CRITERION = "Aikake information criterion"
+  val AKAIKE_INFORMATION_CRITERION = "Akaike information criterion"
   val EPSILON = 1e-9
 
   type MetricsMap = Map[String, Double]
-  def MetricsMap() = Map[String, Double]()
+  private def MetricsMap() = Map[String, Double]()
 
   /**
     * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
@@ -64,11 +65,12 @@ object Evaluation extends Logging {
 
     // Compute regression facet metrics
     model match {
-      case r: Regression =>
+      case _: Regression =>
         val regressionMetrics = new RegressionMetrics(scoreAndLabel)
-        metrics ++= Map[String, Double](MEAN_ABSOLUTE_ERROR -> regressionMetrics.meanAbsoluteError,
-                                        MEAN_SQUARE_ERROR -> regressionMetrics.meanSquaredError,
-                                        ROOT_MEAN_SQUARE_ERROR -> regressionMetrics.rootMeanSquaredError)
+        metrics ++= List(
+          (MEAN_ABSOLUTE_ERROR, regressionMetrics.meanAbsoluteError),
+          (MEAN_SQUARE_ERROR, regressionMetrics.meanSquaredError),
+          (ROOT_MEAN_SQUARE_ERROR, regressionMetrics.rootMeanSquaredError))
 
       case _ =>
       // Do nothing
@@ -76,11 +78,12 @@ object Evaluation extends Logging {
 
     // Compute binary classifier metrics
     model match {
-      case b: BinaryClassifier =>
+      case _: BinaryClassifier =>
         val binaryMetrics = new BinaryClassificationMetrics(scoreAndLabel)
-        metrics ++= Map[String, Double](AREA_UNDER_PRECISION_RECALL -> binaryMetrics.areaUnderPR,
-                                        AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> binaryMetrics.areaUnderROC,
-                                        PEAK_F1_SCORE -> binaryMetrics.fMeasureByThreshold().map(x => x._2).max)
+        metrics ++= List(
+          (AREA_UNDER_PRECISION_RECALL, binaryMetrics.areaUnderPR),
+          (AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, binaryMetrics.areaUnderROC),
+          (PEAK_F1_SCORE, binaryMetrics.fMeasureByThreshold().map(x => x._2).max))
       case _ =>
       // Do nothing
     }
@@ -88,16 +91,16 @@ object Evaluation extends Logging {
     // Log loss
     model match {
       case p: PoissonRegressionModel =>
-        metrics ++= Map[String, Double](DATA_LOG_LIKELIHOOD -> poissonRegressionLogLikelihood(dataSet, p))
+        metrics += ((DATA_LOG_LIKELIHOOD, poissonRegressionLogLikelihood(dataSet, p)))
 
       case _: LogisticRegressionModel =>
-        metrics ++= Map[String, Double](DATA_LOG_LIKELIHOOD -> logisticRegressionLogLikelihood(scoreAndLabel))
+        metrics += ((DATA_LOG_LIKELIHOOD, logisticRegressionLogLikelihood(scoreAndLabel)))
 
       case _ =>
       // do nothing
     }
 
-    val aikakeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
+    val akaikeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
       val n = scoreAndLabel.count()
       val logLikelihood = n * x
       val effectiveParameters = model.coefficients.means.activeValuesIterator.foldLeft(0)((count, coeff) => {
@@ -113,8 +116,8 @@ object Evaluation extends Logging {
       baseAic + 2.0 * effectiveParameters * (effectiveParameters + 1) / (n - effectiveParameters - 1.0)
     })
 
-    aikakeInformationCriterion match {
-      case Some(x) => metrics ++= Map[String, Double](AIKAKE_INFORMATION_CRITERION -> x)
+    akaikeInformationCriterion match {
+      case Some(x) => metrics += ((AKAIKE_INFORMATION_CRITERION, x))
       case _ =>
     }
 
@@ -179,16 +182,17 @@ object Evaluation extends Logging {
     override def compare(x: Double, y: Double): Int = x.compareTo(y)
   }
 
-  val metricMetadata = Map(
-    MEAN_ABSOLUTE_ERROR -> MetricMetadata(MEAN_ABSOLUTE_ERROR, "Regression metric", sortDecreasing, None),
-    MEAN_SQUARE_ERROR -> MetricMetadata(MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None),
-    ROOT_MEAN_SQUARE_ERROR -> MetricMetadata(ROOT_MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None),
-    AREA_UNDER_PRECISION_RECALL -> MetricMetadata(
-      AREA_UNDER_PRECISION_RECALL, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
-    AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS -> MetricMetadata(
-      AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))),
-    DATA_LOG_LIKELIHOOD -> MetricMetadata(DATA_LOG_LIKELIHOOD, "Model selection metric", sortIncreasing, None),
-    AIKAKE_INFORMATION_CRITERION -> MetricMetadata(
-      AIKAKE_INFORMATION_CRITERION, "Model selection metric", sortDecreasing, None),
-    PEAK_F1_SCORE -> MetricMetadata(PEAK_F1_SCORE, "Binary classification metric", sortIncreasing, Some((0.0, 1.0))))
+  val metricMetadata: Map[String, MetricMetadata] = List(
+    (MEAN_ABSOLUTE_ERROR, MetricMetadata(MEAN_ABSOLUTE_ERROR, "Regression metric", sortDecreasing, None)),
+    (MEAN_SQUARE_ERROR, MetricMetadata(MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None)),
+    (ROOT_MEAN_SQUARE_ERROR, MetricMetadata(ROOT_MEAN_SQUARE_ERROR, "Regression metric", sortDecreasing, None)),
+    (AREA_UNDER_PRECISION_RECALL, MetricMetadata(
+      AREA_UNDER_PRECISION_RECALL, "Binary classification metric", sortIncreasing, Some((0.0, 1.0)))),
+    (AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, MetricMetadata(
+      AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, "Binary classification metric", sortIncreasing, Some((0.0, 1.0)))),
+    (DATA_LOG_LIKELIHOOD, MetricMetadata(DATA_LOG_LIKELIHOOD, "Model selection metric", sortIncreasing, None)),
+    (AKAIKE_INFORMATION_CRITERION, MetricMetadata(
+      AKAIKE_INFORMATION_CRITERION, "Model selection metric", sortDecreasing, None)),
+    (PEAK_F1_SCORE, MetricMetadata(PEAK_F1_SCORE, "Binary classification metric", sortIncreasing, Some((0.0, 1.0)))))
+    .toMap
 }

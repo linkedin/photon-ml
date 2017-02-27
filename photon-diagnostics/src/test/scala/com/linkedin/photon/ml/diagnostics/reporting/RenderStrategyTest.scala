@@ -117,8 +117,6 @@ class RenderStrategyTest {
       new SimpleTextPhysicalReport("These are more items")
     ))
 
-    val emptyNumberedList = new NumberedListPhysicalReport(Seq.empty)
-
     val nestedNumberedInsideBulletedList = new BulletedListPhysicalReport(Seq(simpleNumberedTextList, simpleNumberedMixedList))
 
     val nestedBulletedInsideNumberedList = new NumberedListPhysicalReport(Seq(simpleBulletedTextList, simpleBulletedMixedList))
@@ -155,30 +153,31 @@ class RenderStrategyTest {
     val emptyDoc = new DocumentPhysicalReport(Seq.empty, title = "I am an empty document")
     val docWithStuff = new DocumentPhysicalReport(Seq(singleSectionChapter, emptyChapter, multipleSectionChapter), title = "I am a document with lots of stuff")
 
-    Map(
-      "Simple text" -> simpleText,
-      "Plot with caption" -> plotWithCaption,
-      "Plot without caption" -> plotWithoutCaption,
-      "Image with caption" -> imageWithCaption,
-      "Image without caption" -> imageWithoutCaption,
-      "Simple bulleted list with text" -> simpleBulletedTextList,
-      "Simple bulleted list with mixed contents" -> simpleBulletedMixedList,
-      "Bulleted list containing numbered list" -> nestedNumberedInsideBulletedList,
-      "Bulleted list containing bulleted list" -> nestedBulletedInsideBulletedList,
-      "Simple numbered list with text" -> simpleNumberedTextList,
-      "Simple numbered list with mixed contents" -> simpleNumberedMixedList,
-      "Numbered list containing numbered list" -> nestedNumberedInsideNumberedList,
-      "Numbered list containing numbered list" -> nestedNumberedInsideNumberedList,
-      "Section with text" -> sectionWithText,
-      "Section with plot" -> sectionWithPlot,
-      "Section with image" -> sectionWithImg,
-      "Empty section" -> emptySection,
-      "Section with complex content" -> sectionWithStuff,
-      "Empty chapter" -> emptyChapter,
-      "Single section chapter" -> singleSectionChapter,
-      "Multiple section chapter" -> multipleSectionChapter,
-      "Empty document" -> emptyDoc,
-      "Multiple chapter document" -> docWithStuff)
+    List(
+      ("Simple text", simpleText),
+      ("Plot with caption", plotWithCaption),
+      ("Plot without caption", plotWithoutCaption),
+      ("Image with caption", imageWithCaption),
+      ("Image without caption", imageWithoutCaption),
+      ("Simple bulleted list with text", simpleBulletedTextList),
+      ("Simple bulleted list with mixed contents", simpleBulletedMixedList),
+      ("Bulleted list containing numbered list", nestedNumberedInsideBulletedList),
+      ("Bulleted list containing bulleted list", nestedBulletedInsideBulletedList),
+      ("Simple numbered list with text", simpleNumberedTextList),
+      ("Simple numbered list with mixed contents", simpleNumberedMixedList),
+      ("Numbered list containing numbered list", nestedNumberedInsideNumberedList),
+      ("Numbered list containing numbered list", nestedNumberedInsideNumberedList),
+      ("Section with text", sectionWithText),
+      ("Section with plot", sectionWithPlot),
+      ("Section with image", sectionWithImg),
+      ("Empty section", emptySection),
+      ("Section with complex content", sectionWithStuff),
+      ("Empty chapter", emptyChapter),
+      ("Single section chapter", singleSectionChapter),
+      ("Multiple section chapter", multipleSectionChapter),
+      ("Empty document", emptyDoc),
+      ("Multiple chapter document", docWithStuff))
+      .toMap
   }
 
   /**
@@ -214,7 +213,7 @@ class RenderStrategyTest {
           binding),
         (x: Any) => {
           x match {
-            case n: Node =>
+            case _: Node =>
             // Same as above -- leaving this here in case it's useful to review the output
             // vacuously demonstrated that this isn't empty (hopefully...)
             //              val out = new PrintWriter(new FileWriter(UUID.randomUUID().toString + ".html"))

@@ -53,7 +53,7 @@ class BootstrapTrainingDiagnostic(
           case _ => 1.0
         }
         val importance = value * c
-        (indexToNameTerm.get(idx).get, (idx, importance, coeff(idx)))
+        (indexToNameTerm(idx), (idx, importance, coeff(idx)))
       }).toMap)
     })
   }
@@ -77,8 +77,7 @@ class BootstrapTrainingDiagnostic(
         .filter(x => x._2._3.estimateFirstQuartile < 0 && x._2._3.estimateThirdQuartile > 0)
         .sortBy(x => x._2._2).toMap
 
-      val importantFeatures = importances
-        .get(lambda).get
+      val importantFeatures = importances(lambda)
         .toSeq
         .sortBy(_._2._2)
         .takeRight(NUM_IMPORTANT_FEATURES)
@@ -114,7 +113,9 @@ class BootstrapTrainingDiagnostic(
         // Should never see another case. If we do, we changed things
         // BootstrapTraining.aggregateMetricsConfidenceIntervals and so the match failure exception that we see should
         // be a clue that this here also needs to be updated.
-        case Some(metricSummary: Map[String, CoefficientSummary]) => metricSummary
+        // 'asInstanceOf' to work around type erasure if: Some(x: Map[String, CoefficientSummary])
+        case Some(metricSummary: Any) => metricSummary.asInstanceOf[Map[String, CoefficientSummary]]
+        case _ => throw new RuntimeException("Unexpected value for metrics summary")
       }
     })
 
@@ -123,6 +124,7 @@ class BootstrapTrainingDiagnostic(
       aggregate.get(COEFFICIENTS_AGGREGATION) match {
         // Similar to above, but this time the change was in BootstrapTraining.aggregateCoefficientConfidenceIntervals
         case Some(coefficientSummary: Array[CoefficientSummary]) => coefficientSummary
+        case _ => throw new RuntimeException("Unexpected value for coefficients summary")
       }
     })
 

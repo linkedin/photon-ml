@@ -18,6 +18,7 @@ package com.linkedin.photon.ml
  * A collection of option names used in Photon-ML.
  */
 object PhotonOptionNames {
+
   val HELP_OPTION = "help"
   val TRAIN_DIR_OPTION = "training-data-directory"
   val VALIDATE_DIR_OPTION = "validating-data-directory"
@@ -43,13 +44,10 @@ object PhotonOptionNames {
   val TREE_AGGREGATE_DEPTH = "tree-aggregate-depth"
   val DIAGNOSTIC_MODE = "diagnostic-mode"
   val SELECTED_FEATURES_FILE = "selected-features-file"
-
   val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
-
   val DELETE_OUTPUT_DIRS_IF_EXIST = "delete-output-dirs-if-exist"
   val EVENT_LISTENERS = "event-listeners"
-
   val FEATURE_DIMENSION = "feature-dimension"
   val INPUT_FILE_FORMAT = "input-file-format"
 

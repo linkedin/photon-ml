@@ -39,11 +39,11 @@ class GLMSuiteTest {
   @DataProvider
   def generateInvalidConstraintStrings(): Array[Array[Object]] = {
     val featureKeyToIdMap = Map[String, Int](
-      Utils.getFeatureKey("foo", "")->0,
-      Utils.getFeatureKey("foo", "bar")->1,
-      Utils.getFeatureKey("foo", "baz")->2,
-      Utils.getFeatureKey("foo", "qux")->3,
-      Utils.getFeatureKey("foo", "quux")->4)
+      (Utils.getFeatureKey("foo", ""), 0),
+      (Utils.getFeatureKey("foo", "bar"), 1),
+      (Utils.getFeatureKey("foo", "baz"), 2),
+      (Utils.getFeatureKey("foo", "qux"), 3),
+      (Utils.getFeatureKey("foo", "quux"), 4))
     Array(
       Array(featureKeyToIdMap, """[{"name": "foo", "lowerBound": 0, "upperBound": 1}]"""),
       Array(featureKeyToIdMap, """[{"term": "bar", "lowerBound": 0, "upperBound": 1}]"""),
@@ -78,33 +78,33 @@ class GLMSuiteTest {
   @DataProvider
   def generateValidConstraintStrings(): Array[Array[Object]] = {
     val featureKeyToIdMap = Map[String, Int](
-      Utils.getFeatureKey("foo", "")->0,
-      Utils.getFeatureKey("foo", "bar")->1,
-      Utils.getFeatureKey("foo", "baz")->2,
-      Utils.getFeatureKey("qux", "bar")->3,
-      GLMSuite.INTERCEPT_NAME_TERM->4,
-      Utils.getFeatureKey("qux", "baz")->5,
-      Utils.getFeatureKey("qux", "")->6,
-      Utils.getFeatureKey("quxl", "")->7)
+      (Utils.getFeatureKey("foo", ""), 0),
+      (Utils.getFeatureKey("foo", "bar"), 1),
+      (Utils.getFeatureKey("foo", "baz"), 2),
+      (Utils.getFeatureKey("qux", "bar"), 3),
+      (GLMSuite.INTERCEPT_NAME_TERM, 4),
+      (Utils.getFeatureKey("qux", "baz"), 5),
+      (Utils.getFeatureKey("qux", ""), 6),
+      (Utils.getFeatureKey("quxl", ""), 7))
     Array(
       Array(featureKeyToIdMap, """[{"name": "foo", "term": "baz", "lowerBound": 0, "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](2->(0.0, 1.0)))),
+        Some(Map[Int, (Double, Double)]((2, (0.0, 1.0))))),
       Array(featureKeyToIdMap, """[{"name": "nonexistent", "term": "", "lowerBound": 0, "upperBound": 1}]""",
         None),
       Array(featureKeyToIdMap, """[{"name": "foo", "term": "bar", "lowerBound": 0}]""",
-        Some(Map[Int, (Double, Double)](1->(0.0, Double.PositiveInfinity)))),
+        Some(Map[Int, (Double, Double)]((1, (0.0, Double.PositiveInfinity))))),
       Array(featureKeyToIdMap, """[{"name": "foo", "term": "bar", "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](1->(Double.NegativeInfinity, 1.0)))),
+        Some(Map[Int, (Double, Double)]((1, (Double.NegativeInfinity, 1.0))))),
       Array(featureKeyToIdMap, """[{"name": "*", "term": "*", "lowerBound": 0, "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](0->(0.0, 1.0), 1->(0.0, 1.0), 2->(0.0, 1.0), 3->(0.0, 1.0), 5->(0.0, 1.0), 6->(0.0, 1.0), 7->(0.0, 1.0)))),
+        Some(Map[Int, (Double, Double)]((0, (0.0, 1.0)), (1, (0.0, 1.0)), (2, (0.0, 1.0)), (3, (0.0, 1.0)), (5, (0.0, 1.0)), (6, (0.0, 1.0)), (7, (0.0, 1.0))))),
       Array(featureKeyToIdMap, """[{"name": "qux", "term": "*", "lowerBound": 0, "upperBound": 1}]""",
-        Some(Map[Int, (Double, Double)](3->(0.0, 1.0), 5->(0.0, 1.0), 6->(0.0, 1.0)))),
+        Some(Map[Int, (Double, Double)]((3, (0.0, 1.0)), (5, (0.0, 1.0)), (6, (0.0, 1.0))))),
       Array(featureKeyToIdMap,
         """[
              {"name": "foo", "term": "bar", "lowerBound": 0, "upperBound": 1},
              {"name": "qux", "term": "baz", "lowerBound": 0, "upperBound": 1}
            ]""",
-        Some(Map[Int, (Double, Double)](1->(0.0, 1.0), 5->(0.0, 1.0))))
+        Some(Map[Int, (Double, Double)]((1, (0.0, 1.0)), (5, (0.0, 1.0)))))
     )
   }
 

@@ -1,5 +1,4 @@
 *~
-*.iml
 *.ipr
 *.iws
 .classpath
@@ -9,7 +8,6 @@
 .project
 .settings
 */bin
-*/build
 */out
 bin
 build
@@ -19,3 +17,5 @@ photon-ml/LOGISTIC*
 photon-ml/LINEAR*
 photon-ml/POISSON*
 photon-ml/SMOOTHED*
+derby.log
+metastore_db/

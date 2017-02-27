@@ -19,6 +19,7 @@ import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
 class OptimizationUtilsTest {
+
   @DataProvider
   def generateCoefficientsAndConstraintMap(): Array[Array[Object]] = {
     val dVec = DenseVector(0.0, 1.0, -1.0, 0.0, 5.0)
@@ -29,17 +30,17 @@ class OptimizationUtilsTest {
       Array(sVec, None, sVec),
       Array(dVec, Some(Map[Int, (Double, Double)]()), dVec),
       Array(sVec, Some(Map[Int, (Double, Double)]()), sVec),
-      Array(dVec, Some(Map[Int, (Double, Double)](1->(-0.5, 0.5), 4->(6.7, Double.PositiveInfinity))),
+      Array(dVec, Some(Map[Int, (Double, Double)]((1, (-0.5, 0.5)), (4, (6.7, Double.PositiveInfinity)))),
         DenseVector(0.0, 0.5, -1.0, 0.0, 6.7)),
-      Array(sVec, Some(Map[Int, (Double, Double)](1->(-0.5, 0.5), 4->(6.7, Double.PositiveInfinity))),
+      Array(sVec, Some(Map[Int, (Double, Double)]((1, (-0.5, 0.5)), (4, (6.7, Double.PositiveInfinity)))),
         SparseVector(0.0, 0.5, -1.0, 0.0, 6.7)),
       Array(dVec,
-        Some(Map[Int, (Double, Double)](0->(-1.0, 0.0), 1->(-0.5, 0.5), 2->(0.0, 1.0), 3->(Double.NegativeInfinity, 0.0),
-          4->(6.7, Double.PositiveInfinity))),
+        Some(Map[Int, (Double, Double)]((0, (-1.0, 0.0)), (1, (-0.5, 0.5)), (2, (0.0, 1.0)), (3, (Double.NegativeInfinity, 0.0)),
+          (4, (6.7, Double.PositiveInfinity)))),
         DenseVector(0.0, 0.5, 0.0, 0.0, 6.7)),
       Array(sVec,
-        Some(Map[Int, (Double, Double)](0->(-1.0, 0.0), 1->(-0.5, 0.5), 2->(0.0, 1.0), 3->(Double.NegativeInfinity, 0.0),
-          4->(6.7, Double.PositiveInfinity))),
+        Some(Map[Int, (Double, Double)]((0, (-1.0, 0.0)), (1, (-0.5, 0.5)), (2, (0.0, 1.0)), (3, (Double.NegativeInfinity, 0.0)),
+          (4, (6.7, Double.PositiveInfinity)))),
         SparseVector(0.0, 0.5, 0.0, 0.0, 6.7))
     )
   }
@@ -49,6 +50,7 @@ class OptimizationUtilsTest {
       coefficients: Vector[Double],
       constraints: Option[Map[Int, (Double, Double)]],
       expectedVectorOutput: Vector[Double]): Unit =
+
     Assert.assertEquals(
       OptimizationUtils.projectCoefficientsToHypercube(coefficients, constraints),
       expectedVectorOutput)

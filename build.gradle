@@ -70,6 +70,8 @@ rat {
     '**/build/**',
     '.reviewboardrc',
     '.travis.yml',
+    'derby.log', // from running spark-shell in photon-ml dir
+    'metastore_db/**', // from running spark-shell in photon-m dir
     'dev-scripts/license_template.txt',
     'gradle/wrapper/**',
     'gradlew',
@@ -167,6 +169,10 @@ subprojects {
       testSourceDirs += file('src/test/scala')
     }
   }
+
+  // This task allows to get the dependencies from all the sub-project from the main photon-ml directory
+  // (otherwise, you have to change to each sub-project directory to get its dependencies)
+  task allDeps(type: DependencyReportTask) {}
 }
 
 // Task to generate the Gradle wrapper scripts

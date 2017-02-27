@@ -48,7 +48,8 @@ protected[ml] object Utils {
   }
 
   /**
-   * Get the feature key as a concatenation of name and term delimited by [[io.GLMSuite.DELIMITER]].
+   * Get the feature key as a concatenation of name and term delimited by
+   * [[com.linkedin.photon.ml.io.GLMSuite.DELIMITER]].
    *
    * @param name Feature name
    * @param term Feature term
@@ -66,9 +67,7 @@ protected[ml] object Utils {
    */
   def getFeatureNameFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
-    key.split(delimiter)
-      .lift(0)
-      .getOrElse("")
+    key.split(delimiter).headOption.getOrElse("")
   }
 
   /**
@@ -80,9 +79,7 @@ protected[ml] object Utils {
    */
   def getFeatureTermFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
-    key.split(delimiter)
-      .lift(1)
-      .getOrElse("")
+    key.split(delimiter).lift(1).getOrElse("")
   }
 
   /**
@@ -131,9 +128,10 @@ protected[ml] object Utils {
       key: String,
       isNullOK: Boolean = false): Map[String, JObject] = {
 
+    type T = java.util.Map[Any, JObject] // to avoid type erasure warning
     record.get(key) match {
-      case map: java.util.Map[Any, JObject] => map.asScala.map {
-        case (key, value) => (key.toString, value match {
+      case map: T => map.asScala.map {
+        case (k, value) => (k.toString, value match {
           // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
           // equivalence failures downstream.
           case s@(_: Utf8 | _: JString) => s.toString
@@ -149,8 +147,8 @@ protected[ml] object Utils {
   /**
    * Parse String to Double.
    *
-   * @param string
-   * @return
+   * @param string The string to parse
+   * @return The double parsed from the string, or an exception if string is empty or double is NaN or Infinity
    */
   private def atod(string: String): Double = {
     if (string.length() < 1) {
@@ -184,8 +182,8 @@ protected[ml] object Utils {
   /**
    * Parse String to Float.
    *
-   * @param string
-   * @return
+   * @param string The string to parse
+   * @return A float parse from the string, or an exception if the string is empty or the flat is NaN or Infinity
    */
   private def atof(string: String): Float = {
     if (string.length() < 1) {
@@ -294,7 +292,7 @@ protected[ml] object Utils {
   @throws(classOf[IllegalArgumentException])
   def getKeyFromMapOrElse[T](map: Map[String, Any], key: String, elseBranch: Either[String, T]): T = {
     map.get(key) match {
-      case Some(x: T) => x
+      case Some(x: T) => x  // type erasure warning here
       case _ =>
         elseBranch match {
           case Left(errorMsg) => throw new IllegalArgumentException(errorMsg)
