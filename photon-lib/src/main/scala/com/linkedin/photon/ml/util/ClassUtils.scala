@@ -18,6 +18,7 @@ package com.linkedin.photon.ml.util
  * Object containing utilities for dealing with class types.
  */
 object ClassUtils {
+
   private val ANON_CLASS_MARKER = "$anon$"
 
   /**
@@ -36,6 +37,7 @@ object ClassUtils {
    * @return The object's class type
    */
   def getTrueClass[T](obj: T): Class[_] = {
+
     val clazz = obj.getClass
 
     if (isAnonClass(clazz)) {

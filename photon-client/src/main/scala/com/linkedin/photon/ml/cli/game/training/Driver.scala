@@ -23,7 +23,7 @@ import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.Types.{FeatureShardId, IndexMapLoaders}
+import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.data._
@@ -34,8 +34,8 @@ import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.Implicits._
-import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.util.Utils._
+import com.linkedin.photon.ml.util._
 
 /**
  * The Driver class, which drives the training of Game model.
@@ -47,6 +47,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
   // These two types make the code easier to read, and are somewhat specific to the Game Driver
   type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
   type FeatureShardStatisticsOpt = Option[FeatureShardStatistics]
+  type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
 
   /**
    * Prepare the training data, fit models and select best model.
@@ -67,7 +68,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
       readValidationData(featureIndexMapLoaders)
     }
     val featureShardStats = Timed("calculate statistics for each feature shard") {
-      calculateFeatureShardStats(trainingData, featureIndexMapLoaders)
+      calculateAndSaveFeatureShardStats(trainingData, featureIndexMapLoaders)
     }
     val normalizationContexts = Timed("prepare normalization contexts") {
       prepareNormalizationContexts(trainingData, featureIndexMapLoaders, featureShardStats)
@@ -122,11 +123,9 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
     val numPartitions = math.max(numFixedEffectPartitions, numRandomEffectPartitions)
     require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
 
-    // Read the data
-    val dataReader = new AvroDataReader(sc)
-    dataReader.readMerged(
+    new AvroDataReader(sc).readMerged(
       trainingRecordsPath,
-      featureIndexMapLoaders.toMap,
+      featureIndexMapLoaders,
       params.featureShardIdToFeatureSectionKeysMap,
       numPartitions)
   }
@@ -139,21 +138,21 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    */
   protected[training] def readValidationData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] =
 
-    params.validateDirsOpt.map {
+    params.validationDirsOpt.map {
       validationDirs =>
 
         val validationRecordsPath =
           pathsForDateRange(
             validationDirs,
-            params.validateDateRangeOpt,
-            params.validateDateRangeDaysAgoOpt)
+            params.validationDateRangeOpt,
+            params.validationDateRangeDaysAgoOpt)
 
         logger.debug(s"Validation records paths:\n${validationRecordsPath.mkString("\n")}")
 
         new AvroDataReader(sc)
           .readMerged(
             validationRecordsPath,
-            featureIndexMapLoaders.toMap,
+            featureIndexMapLoaders,
             params.featureShardIdToFeatureSectionKeysMap,
             params.minPartitionsForValidation)
     }
@@ -180,7 +179,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @param featureIndexMapLoaders The index map loaders
    * @return Basic for each feature shard
    */
-  protected[training] def calculateFeatureShardStats(
+  protected[training] def calculateAndSaveFeatureShardStats(
       trainingData: DataFrame,
       featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatisticsOpt =
 

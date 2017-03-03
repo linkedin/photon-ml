@@ -138,8 +138,9 @@ private[ml] object NormalizationContext {
 private[ml] object NoNormalization {
 
   /**
+   * Constructor ex nihilo, comme appelé du néant.
    *
-   * @return
+   * @return An instance of NoNormalizationContext
    */
   def apply(): NormalizationContext = NormalizationContext(factors = None, shifts = None, interceptId = None)
 }

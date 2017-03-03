@@ -17,5 +17,13 @@ photon-ml/LOGISTIC*
 photon-ml/LINEAR*
 photon-ml/POISSON*
 photon-ml/SMOOTHED*
+<<<<<<< HEAD
 derby.log
 metastore_db/
+=======
+derby.log # when running spark-shell here
+metastore_db # also when running spark-shell here
+derby.log
+metastore_db/
+
+>>>>>>> Normalization in Game - part 2:

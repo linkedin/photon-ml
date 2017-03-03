@@ -19,9 +19,6 @@ import scala.collection.JavaConversions._
 
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkException
-import org.apache.spark.mllib.linalg.{SparseVector, Vector}
-import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -36,10 +33,11 @@ import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.io.ModelOutputMode
+import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{GameTestUtils, LongHashPartitioner, PhotonLogger, Utils}
+import com.linkedin.photon.ml.util._
 
 /**
  * Test cases for the Game training driver
@@ -48,6 +46,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   import CommonTestUtils._
   import DriverTest._
+  import GameParams._
 
   Logger.getLogger("org").setLevel(Level.OFF) // turn off noisy Spark log
 
@@ -63,7 +62,6 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
 
-    println(allFixedEffectModelPath)
     assertTrue(Files.exists(allFixedEffectModelPath))
     assertTrue(Files.exists(bestFixedEffectModelPath))
     assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
@@ -98,8 +96,50 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
     val outputDir = s"$getTmpDir/fixedEffects"
 
-    runDriver(argArray(fixedEffectToyRunArgs() ++ Map("feature-shard-id-to-intercept-map" -> "shard1:false")
-        ++ Map("output-dir" -> outputDir)))
+    runDriver(argArray(fixedEffectToyRunArgs()
+      ++ Map("feature-shard-id-to-intercept-map" -> "shard1:false", "output-dir" -> outputDir)))
+
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+
+    assertTrue(Files.exists(allFixedEffectModelPath))
+    assertTrue(Files.exists(bestFixedEffectModelPath))
+    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 11597)
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 11597)
+    assertFalse(modelContainsIntercept(allFixedEffectModelPath))
+    assertFalse(modelContainsIntercept(bestFixedEffectModelPath))
+  }
+
+  /**
+   * This test should fail.
+   * TODO: this is only a setup failure, it should be detected in GameParams, rather than in NormalizationContext.
+   */
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testFixedEffectsWithoutInterceptWithNormalization(): Unit =
+  sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
+
+    val outputDir = s"$getTmpDir/fixedEffects"
+
+    runDriver(argArray(fixedEffectToyRunArgs()
+      ++ Map("feature-shard-id-to-intercept-map" -> "shard1:false",
+      "output-dir" -> outputDir,
+      NORMALIZATION_TYPE -> NormalizationType.STANDARDIZATION.toString)))
+  }
+
+  /**
+   * Here we set the normalization type to NONE, so we don't normalize, so results should be identical to
+   * not specifying a normalization argument at all.
+   */
+  @Test
+  def testFixedEffectsWithoutInterceptWithoutNormalization(): Unit =
+    sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
+
+    val outputDir = s"$getTmpDir/fixedEffects"
+
+    runDriver(argArray(fixedEffectToyRunArgs()
+      ++ Map("feature-shard-id-to-intercept-map" -> "shard1:false",
+      "output-dir" -> outputDir,
+      NORMALIZATION_TYPE -> NormalizationType.NONE.toString)))
 
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
@@ -258,6 +298,42 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   @Test
+  def testFixedAndRandomEffectsWithNormalization(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
+
+    val outputDir = s"$getTmpDir/fixedAndRandomEffects"
+
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 2.2
+
+    val driver = runDriver(argArray(fixedAndRandomEffectSeriousRunArgs()
+      ++ Map("output-dir" -> outputDir,
+             NORMALIZATION_TYPE -> NormalizationType.STANDARDIZATION.toString)))
+
+    val fixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+
+    assertTrue(Files.exists(fixedEffectModelPath))
+    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 15019)
+    assertTrue(modelContainsIntercept(fixedEffectModelPath))
+
+    assertTrue(Files.exists(userModelPath))
+    assertModelSane(userModelPath, expectedNumCoefficients = 29, modelId = Some("1436929"))
+    assertTrue(modelContainsIntercept(userModelPath))
+
+    assertTrue(Files.exists(songModelPath))
+    assertModelSane(songModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelContainsIntercept(songModelPath))
+
+    assertTrue(Files.exists(artistModelPath))
+    assertModelSane(artistModelPath, expectedNumCoefficients = 21)
+    assertTrue(modelContainsIntercept(artistModelPath))
+
+    assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
+  }
+
+  @Test
   def testMultipleOptimizerConfigs(): Unit = sparkTest("multipleOptimizerConfigs", useKryo = true) {
 
     val outputDir = s"$getTmpDir/multipleOptimizerConfigs"
@@ -348,41 +424,39 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     assertTrue(evaluateModel(driver, fs.getPath(outputDir, "best")).head < errorThreshold)
   }
 
+  /**
+   * Check that we can calculate feature shard statistics correctly.
+   */
   @Test
-  def testComputeSummaryStatistics() : Unit = sparkTest("computeSummaryStatistics", useKryo = true) {
+  def testCalculateFeatureShardStats() : Unit = sparkTest("calculateFeatureShardStats", useKryo = true) {
 
-    val outputDir = s"$getTmpDir/offHeapIndexMap"
+    val outputDir = s"$getTmpDir/output"
     val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath
     val args = argArray(
       fixedAndRandomEffectSeriousRunArgs() ++ Map(
         "output-dir" -> outputDir,
         "offheap-indexmap-dir" -> indexMapPath,
-        "offheap-indexmap-num-partitions" -> "1"))
+        "offheap-indexmap-num-partitions" -> "1",
+        "summarization-output-dir" -> outputDir))
 
     val trainingRecordsPath = getClass.getClassLoader.getResource("GameIntegTest/input/train").getPath
     val params = GameParams.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
-    val numPartitions = 1
-    val indexMapLoaders = driver.prepareFeatureMaps()
-    val dataReader = new AvroDataReader(sc)
+    val featureIndexMapLoaders = driver.prepareFeatureMaps()
+    val data: DataFrame =
+      new AvroDataReader(sc)
+        .readMerged(
+          trainingRecordsPath,
+          featureIndexMapLoaders,
+          params.featureShardIdToFeatureSectionKeysMap,
+          numPartitions = 1)
 
-    val data: DataFrame = dataReader.readMerged(
-      trainingRecordsPath,
-      indexMapLoaders,
-      params.featureShardIdToFeatureSectionKeysMap,
-      numPartitions)
-
-    val Z3 = params.featureShardIdToFeatureSectionKeysMap
-      .foreach {
-        case (shardId, _) =>
-          val col: RDD[Vector] = data.select(shardId).map { _.getAs[Vector](0) }
-          val stats: MultivariateStatisticalSummary = Statistics.colStats(col)
-          println(s"shardId: $shardId\nmean: ${stats.mean}\nvariance: ${stats.variance}")
-          val sv = col.take(1)(0).asInstanceOf[SparseVector]
-          println(s"indices: ${sv.indices.toList}")
-        case _ => println("not a shardId something")
-      }
+    val S = driver.calculateAndSaveFeatureShardStats(data, featureIndexMapLoaders)
+    assertTrue(S.isDefined)
+    val stats = S.get.toMap
+    assertEquals(stats.size, featureIndexMapLoaders.size)
+    featureIndexMapLoaders.keys.foreach { featureShardId => assertTrue(stats(featureShardId).mean.length > 0) }
   }
 
   /**
@@ -472,7 +546,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
 
-    driver.run()
+    Timed(logger, "Running Driver") { driver.run() }
     logger.close()
     driver
   }

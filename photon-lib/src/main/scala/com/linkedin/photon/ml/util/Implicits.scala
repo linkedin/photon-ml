@@ -26,14 +26,16 @@ protected[ml] object Implicits {
    * This is convenient to write e.g. (so the intent is cleaner syntax):
    *
    *   calculateStatistics(trainingData, indexMapLoaders)
-   *     .map {
+   *     .tap {
    *       (featureShardId, shardSummary) =>
    *         val outputDir = summarizationOutputDir + "/" + featureShardId
    *         val indexMap = indexMapLoaders(featureShardId).indexMapForDriver()
    *         IOUtils.writeBasicStatistics(sc, shardSummary, outputDir, indexMap)
    *       }
    *
-   * Without having to create a val, then doing map on the val, then repeating the val name at the end.
+   * Without having to create a val, then calling map on the val, then repeating the val name at the end
+   * to do something with it. In essence, we append a block of side-effect'ing code to a chain of operations
+   * on a Map.
    *
    * @param m A Map to tap
    * @tparam K The type of the keys in Map m
@@ -47,7 +49,8 @@ protected[ml] object Implicits {
   }
 
   /**
-   * Tap for Set, List, Iterable ...
+   * Tap for Set, List, Iterable ... Same idea as tap for Map, same usage pattern: append some side effect in
+   * a chain of operations on a Set, List ...
    *
    * @param c A Collection to iterate on
    * @param ev An implicit to make sure the collection is TraversableOnce
@@ -59,7 +62,7 @@ protected[ml] object Implicits {
   }
 
   /**
-   * Tap for Array, which is not quite Iterable.
+   * Tap for Array, which is not quite Iterable. See documentation for TapMap.
    *
    * @param a The Array to tap
    * @tparam T The type of whatever is in the Array
@@ -69,12 +72,35 @@ protected[ml] object Implicits {
   }
 
   /**
-   * Tap for Options.
+   * Tap for Options. See documentation for TapMap.
    *
    * @param o An Option to tap
    * @tparam T The type of the thing contained in the Option
    */
   implicit class TapOption[T](o: Option[T]) {
     def tap(f: T => Unit): Option[T] = { o.foreach(f); o }
+  }
+
+  /**
+   * Extract a value from a Map 'through' an Option. This allows to write simpler code, e.g.:
+   *
+   *   normalizationContexts.extractOrElse(shardId)(defaultNormalizationContext)
+   *
+   * given:
+   *
+   *   normalizationContexts: Option[Map[String, NormalizationContext]]
+   *
+   * When an Option contains a Map[K, V], extract V at K key from Map if Option isDefined, else apply f that
+   * returns a default V.
+   *
+   * NOTE: throws an exception if the Option isDefined but key is not found. The behavior of the Map is not changed,
+   * the default provided is used only in case the Option itself isEmpty.
+   *
+   * @param o An Option that contains a Map[K, V]
+   * @tparam K The type of the keys in the Map
+   * @tparam V The type of the values in the Map
+   */
+  implicit class ExtractOrElse[K, V](o: Option[Map[K, V]]) {
+    def extractOrElse(key: K)(f: => V): V = { if (o.isDefined) o.get(key) else f }
   }
 }

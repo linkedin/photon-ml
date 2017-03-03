@@ -47,14 +47,13 @@ object Timed {
    * This version allows to specify only the message to output with the timing.
    *
    * @param msg    A message to output before the elapsed time
-   * @param units  The units to use when reporting the elapsed time. The default is milliseconds.
    * @param f      The function/block of code... to time
    * @param logger An (implicit) logger to which the timing will be output
    * @tparam T The type returned by f
    * @return The value returned by f, of type T
    */
-  def apply[T](msg: String, units: TimeUnit = TimeUnit.MILLISECONDS)(f: => T)(implicit logger: Logger): T =
-    measureDuration(msg, units, f, logger)
+  def apply[T](msg: String)(f: => T)(implicit logger: Logger): T =
+    measureDuration(msg, TimeUnit.MILLISECONDS, f, logger)
 
   /**
    * A private method used by both "apply" to actually measure the duration and print out the result.

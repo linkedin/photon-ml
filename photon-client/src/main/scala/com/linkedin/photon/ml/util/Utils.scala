@@ -322,5 +322,13 @@ protected[ml] object Utils {
     case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name")
   }
 
-  def Filter[V, W](p: => Boolean)(f: => W): Option[W] = if (p) Some(f) else None
+  /**
+   * This avoids if statements in the code.
+   *
+   * @param p A predicate: if it is true, call f (and wrap result in Option)
+   * @param f A function we want to call, only if p
+   * @tparam T The return type of f
+   * @return Some[T] if p or None
+   */
+  def Filter[T](p: => Boolean)(f: => T): Option[T] = if (p) Some(f) else None
 }

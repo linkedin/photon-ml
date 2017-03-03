@@ -14,8 +14,11 @@
  */
 package com.linkedin.photon.ml.estimators
 
-import org.apache.spark.sql.DataFrame
+import java.io.PrintWriter
 
+import breeze.linalg.{DenseMatrix, DenseVector, pinv}
+import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.testng.Assert.{assertEquals, fail}
 import org.testng.annotations.{DataProvider, Test}
 
@@ -23,19 +26,108 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.io.GLMSuite
+import com.linkedin.photon.ml.model.{FixedEffectModel, GAMEModel}
+import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
 
 /**
+ * Integration tests for GameEstimator.
  *
+ * The test data set here is a subset of the Yahoo! music data set available on the internet.
  */
 class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
+
   import GameEstimatorTest._
+
+  /**
+   * A very simple test that fits a toy data set using only the GameEstimator (not the full Driver).
+   * This is useful to understand the minimum setting in which a GameEstimator will function properly.
+   *
+   * NOTE 1:
+   *   Intercepts are optional in GameEstimator, but GameDriver will setup an intercept by default if
+   *   none is specified in GameParams.featureShardIdToInterceptMap.
+   *   This happens in GameDriver.prepareFeatureMapsDefault, and there only.
+   *   Here, we have to setup an intercept manually, otherwise GameEstimator learns only a dependence on the
+   *   features.
+   */
+  @Test
+  def simpleFixedEffectTest(): Unit = sparkTest("simpleFixedEffectTest") {
+
+    // This example has only a single fixed effect
+    val (coordinateId, featureShardId) = ("global", "features")
+    // We will use 10 points in dimension 2 (the third feature index for the intercept)
+    val (nSamples, nDimensions) = (10, 3) // including intercept in nDimensions
+
+    // Setup feature names a feature index from feature name to feature index
+    val featureNames = (0 until nDimensions-1).map(i => s"feature-$i").toSet
+    val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions-1))
+
+    // Generate a Spark DataFrame containing labeled points (label, x, y)
+    val labeledPoints: Seq[LabeledPoint] = generateLabeledPoints(nSamples, nDimensions).toSeq
+    val trainingData: DataFrame = new SQLContext(sc)
+      .createDataFrame(labeledPoints
+        .map { datum: LabeledPoint => (datum.label, VectorUtils.breezeToMllib(datum.features)) })
+      .toDF(GameConverters.FieldNames.RESPONSE, featureShardId)
+
+    // We set args for the GameEstimator - only: so this is the minimum set of params required by GameEstimator
+    // Default number of passes over the coordinates (numIterations) is 1, which is all we need if
+    // we have a single fixed effect model
+    val args = Map[String, String](
+      "task-type" -> TaskType.LINEAR_REGRESSION.toString,
+      "feature-shard-id-to-feature-section-keys-map" -> s"$featureShardId:${featureNames.mkString(",")}",
+      "fixed-effect-data-configurations" -> s"$coordinateId:$featureShardId,1",
+      "fixed-effect-optimization-configurations" -> s"$coordinateId:1,1e-5,10,1,LBFGS,l2",
+      "updating-sequence" -> coordinateId,
+      "normalization-type" -> NormalizationType.NONE.toString, // not required
+      "train-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
+      "validate-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
+      "output-dir" -> "", // required by GameParams parser, but not used in GameEstimator
+      "feature-name-and-term-set-path" -> "")  // required by GameParams parser, but not used in GameEstimator
+    val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
+
+    // Compute normalization contexts based on statistics of the training data for this (unique) feature shard
+    val normalizationContexts: Option[Map[String, NormalizationContext]] =
+      Some(Map((featureShardId, BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[MLVector](0)))))
+        .mapValues { featureShardStats =>
+          val intercept: Option[Int] = featureIndexMap.get(GLMSuite.INTERCEPT_NAME_TERM)
+          NormalizationContext(params.normalizationType, featureShardStats, intercept)
+        })
+
+    // Create GameEstimator and fit model
+    val (estimator, logger) = createEstimator(params, "simpleTest")
+
+    // Returns (model, evaluation, optimizer config)
+    val models: Seq[(GAMEModel, Option[EvaluationResults], String)] =
+      estimator.fit(trainingData, validationData = None, normalizationContexts)
+
+    val model: FixedEffectModel = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel]
+
+    logger.info(s"Calculated ${models.size} models")
+    logger.info(s"Coefficients are:\n${model.model.coefficients}")
+    logger.info("Data points are:")
+    labeledPoints.foreach(pt => println(s"${pt.toRawString}"))
+
+    val pw = new PrintWriter("test.txt")
+    labeledPoints.foreach { pt => pw.write(pt.toRawString + "\n") }
+    pw.close()
+
+    val Z = DenseVector(labeledPoints.map(x => x.label).toArray)
+    val X = new DenseMatrix(nSamples, nDimensions-1, labeledPoints.flatMap(x => x.features.toDenseVector.toArray).toArray)
+    val D = DenseMatrix.horzcat(DenseVector.ones[Double](nSamples).toDenseMatrix.t, X)
+    val XX = pinv(D)
+    val W = XX * Z
+    println(W)
+  }
 
   @Test
   def testPrepareFixedEffectTrainingDataSet(): Unit = sparkTest("prepareFixedEffectTrainingDataSet") {
+
     val featureSectionMap = fixedEffectOnlyFeatureSectionMap
     val data = getData(trainPath, featureSectionMap)
 
@@ -48,7 +140,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       .partitionBy(partitioner)
 
     val params = fixedEffectOnlyParams
-    val estimator = getEstimator(params)
+    val (estimator, _) = createEstimator(params, "prepareFixedEffectTrainingDataSet")
     val trainingDataSet = estimator.prepareTrainingDataSet(gameDataSet)
 
     assertEquals(trainingDataSet.size, 1)
@@ -65,14 +157,20 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   @Test
   def testPrepareFixedAndRandomEffectTrainingDataSet(): Unit =
     sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
+
       val featureSectionMap = fixedAndRandomEffectFeatureSectionMap
       val data = getData(trainPath, featureSectionMap)
-      val trainingDataSet = getEstimator(fixedAndRandomEffectParams).prepareTrainingDataSet(
-        GameConverters.getGameDataSetFromDataFrame(
-          data,
-          featureSectionMap.keys.toSet,
-          idTypeSet,
-          isResponseRequired = true).partitionBy(new LongHashPartitioner(data.rdd.partitions.length)))
+      val partitioner = new LongHashPartitioner(data.rdd.partitions.length)
+      val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
+        data,
+        featureSectionMap.keys.toSet,
+        idTypeSet,
+        isResponseRequired = true)
+        .partitionBy(partitioner)
+
+      val params = fixedAndRandomEffectParams
+      val (estimator, _) = createEstimator(params, "prepareFixedAndRandomEffectTrainingDataSet")
+      val trainingDataSet = estimator.prepareTrainingDataSet(gameDataSet)
 
       assertEquals(trainingDataSet.size, 4)
 
@@ -132,18 +230,18 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     }
 
   @DataProvider
-  def multipleEvaluatorTypeProvider(): Array[Array[Any]] = {
+  def multipleEvaluatorTypeProvider(): Array[Array[Any]] =
+
     Array(
       Array(Seq(RMSE, SquaredLoss)),
       Array(Seq(LogisticLoss, AUC, ShardedPrecisionAtK(1, "userId"), ShardedPrecisionAtK(10, "songId"))),
       Array(Seq(AUC, ShardedAUC("userId"), ShardedAUC("songId"))),
       Array(Seq(PoissonLoss))
     )
-  }
 
   @Test(dataProvider = "multipleEvaluatorTypeProvider")
   def testMultipleEvaluatorsWithFixedEffectModel(
-      evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("testMultipleEvaluatorsWithFixedEffect", useKryo = true) {
+      evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("multipleEvaluatorsWithFixedEffect", useKryo = true) {
 
     val featureSectionMap = fixedEffectOnlyFeatureSectionMap
     val data = getData(testPath, featureSectionMap)
@@ -151,7 +249,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     val params = fixedEffectOnlyParams
     params.evaluatorTypes = evaluatorTypes
 
-    val estimator = getEstimator(params)
+    val (estimator, _) = createEstimator(params, "multipleEvaluatorTypeProvider")
 
     val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     evaluators
@@ -161,7 +259,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
   @Test(dataProvider = "multipleEvaluatorTypeProvider")
   def testMultipleEvaluatorsWithFullModel(
-      evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("testMultipleEvaluatorsWithFullModel", useKryo = true) {
+      evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("multipleEvaluatorsWithFullModel", useKryo = true) {
 
     val featureSectionMap = fixedAndRandomEffectFeatureSectionMap
     val data = getData(testPath, featureSectionMap)
@@ -169,7 +267,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     val params = fixedAndRandomEffectParams
     params.evaluatorTypes = evaluatorTypes
 
-    val estimator = getEstimator(params)
+    val (estimator, _) = createEstimator(params, "multipleEvaluatorsWithFullModel")
 
     val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     evaluators
@@ -178,19 +276,19 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   }
 
   @DataProvider
-  def taskAndDefaultEvaluatorTypeProvider(): Array[Array[Any]] = {
+  def taskAndDefaultEvaluatorTypeProvider(): Array[Array[Any]] =
+
     Array(
       Array(TaskType.LINEAR_REGRESSION, RMSE),
       Array(TaskType.LOGISTIC_REGRESSION, AUC),
       Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, AUC),
       Array(TaskType.POISSON_REGRESSION, PoissonLoss)
     )
-  }
 
   @Test(dataProvider = "taskAndDefaultEvaluatorTypeProvider")
   def testDefaultEvaluator(
       taskType: TaskType,
-      defaultEvaluatorType: EvaluatorType): Unit = sparkTest("testDefaultEvaluator", useKryo = true) {
+      defaultEvaluatorType: EvaluatorType): Unit = sparkTest("taskAndDefaultEvaluatorTypeProvider", useKryo = true) {
 
     val featureSectionMap = fixedEffectOnlyFeatureSectionMap
     val data = getData(testPath, featureSectionMap)
@@ -198,7 +296,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     val params = fixedEffectOnlyParams
     params.taskType = taskType
 
-    val estimator = getEstimator(params)
+    val (estimator, _) = createEstimator(params, "taskAndDefaultEvaluatorTypeProvider")
 
     val (_, evaluators) = estimator.prepareValidationEvaluators(data)
     assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
@@ -211,6 +309,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * @return Initialized feature map loaders
    */
   def getFeatureMapLoaders(featureSectionMap: Map[String, Set[String]]): Map[String, DefaultIndexMapLoader] = {
+
     val featureSectionKeySet = featureSectionMap.values.flatten.toSet
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
       featurePath, featureSectionKeySet, sc.hadoopConfiguration)
@@ -233,6 +332,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * @return Loaded data frame
    */
   def getData(inputPath: String, featureSectionMap: Map[String, Set[String]]): DataFrame = {
+
     val featureMapLoaders = getFeatureMapLoaders(featureSectionMap)
     val dr = new AvroDataReader(sc)
     dr.readMerged(inputPath, featureMapLoaders, featureSectionMap, 2)
@@ -242,20 +342,26 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * Creates a test estimator from the params.
    *
    * @param params Game params object specifying estimator parameters
-   * @return The created estimator
+   * @param testName Optional name of the test: if provided the logs with go to that dir in tmp dir
+   *                 (tmp dir is per thread)
+   * @return The created estimator and the logger (so we can use it in tests if needed)
    */
-  def getEstimator(params: GameParams): GameEstimator = {
-    val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
-    new GameEstimator(sc, params, logger)
+  def createEstimator(params: GameParams, testName: String = "GenericTest"): (GameEstimator, PhotonLogger) = {
+
+    val logFile = s"$getTmpDir/$testName"
+    val logger = new PhotonLogger(logFile, sc)
+    val estimator = new GameEstimator(sc, params, logger)
+    (estimator, logger)
   }
 }
 
 object GameEstimatorTest {
 
-  private val inputPath: String = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
-  private val trainPath: String = inputPath + "/train"
-  private val testPath: String = inputPath + "/test"
-  private val featurePath: String = inputPath + "/feature-lists"
+  // The test data set here is a subset of the Yahoo! music data set available on the internet.
+  private val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
+  private val trainPath = inputPath + "/train"
+  private val testPath = inputPath + "/test"
+  private val featurePath = inputPath + "/feature-lists"
   private val tol = 1e-5
   private val idTypeSet = Set("userId", "artistId", "songId")
 
@@ -275,23 +381,25 @@ object GameEstimatorTest {
   /**
    * Default estimator params for tests on fixed-effect-only models.
    *
-   * @return
+   * @return params to train fixed effect model
    */
-  def fixedEffectOnlyParams: GameParams = {
+  private def fixedEffectOnlyParams: GameParams = {
+
     val params = new GameParams
     params.fixedEffectDataConfigurations = Map(
       "global" -> FixedEffectDataConfiguration.parseAndBuildFromString("shard1,2"))
-
     params
   }
 
   /**
    * Default estimator params for tests on fixed and random effect models.
    *
-   * @return
+   * @return param to train fixed and random effect models
    */
-  def fixedAndRandomEffectParams: GameParams = {
+  private def fixedAndRandomEffectParams: GameParams = {
+
     val params = new GameParams
+
     params.fixedEffectDataConfigurations = Map(
       "global" -> FixedEffectDataConfiguration.parseAndBuildFromString("shard1,2"))
 

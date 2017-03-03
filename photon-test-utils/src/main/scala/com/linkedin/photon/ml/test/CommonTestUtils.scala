@@ -139,9 +139,8 @@ object CommonTestUtils {
   /**
    * Convert a [[Map]] of option name and value into a [[Seq]] of arguments.
    */
-  def mapToArray(args: Map[String, String]): Array[String] = {
+  def mapToArray(args: Map[String, String]): Array[String] =
     args.toArray.flatMap { case (name, value) => Seq(name, value) }
-  }
 
   /**
    * Create tuples of score, label, and weight by pairing two arrays of scores and labels, then adding a default weight.

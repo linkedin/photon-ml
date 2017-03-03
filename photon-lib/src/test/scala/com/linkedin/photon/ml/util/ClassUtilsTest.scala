@@ -29,6 +29,7 @@ class ClassUtilsTest {
 
   @Test
   def testIsAnonClass(): Unit = {
+
     val nonAnon = new Base
     val anon = new Base {}
 
@@ -38,6 +39,7 @@ class ClassUtilsTest {
 
   @Test
   def testGetTrueClass(): Unit = {
+
     val nonAnon = new Base
     val anon = new Base {}
 

@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.estimators
 
-import scala.collection.Map
-
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -29,9 +27,9 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.function.{DiffFunction, DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, SingleNodeSmoothedHingeLossFunction}
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
@@ -42,6 +40,8 @@ import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.util.Implicits._
+
 
 /**
  * Estimator implementation for Game models.
@@ -54,6 +54,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
   import GameEstimator._
 
+  // 2 types that makes the code more readable
+  // TODO: Those look like they should be in file Types?
   type LossFunction = (PointwiseLossFunction) => SingleNodeGLMLossFunction
   type DistributedLossFunction = (PointwiseLossFunction) => DistributedGLMLossFunction
 
@@ -104,7 +106,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     val validationDataAndEvaluators =
       Timed("prepare validation evaluators") { validationData.map { data => prepareValidationEvaluators(data) } }
 
-    val GameModelsMap = Timed("train") {
+    val gameModelsMap = Timed("train") {
       train(trainingDataSet, trainingLossFunctionEvaluator, validationDataAndEvaluators, normalizationContexts)
     }
 
@@ -120,11 +122,13 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
       }
     }
 
-    GameModelsMap
+    gameModelsMap
   }
 
   /**
-   * Builds the training fixed effect and random effect specific datasets from the input Game dataset.
+   * Builds 1 or 2 data sets (depending on parameters) to train the model. These data sets are for:
+   * - the fixed effect part of the model,
+   * - the random effect parts of the model,
    *
    * @param gameDataSet The input dataset
    * @return The training dataset
@@ -141,7 +145,6 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         (id, fixedEffectDataSet)
     }
 
-    // Prepare the per-random effect partitioner
     val randomEffectPartitionerMap = params.randomEffectDataConfigurations.map {
       case (id, randomEffectDataConfiguration) =>
         val numPartitions = randomEffectDataConfiguration.numPartitions
@@ -152,7 +155,6 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
           gameDataSet))
     }
 
-    // Prepare the random effect data sets
     val randomEffectDataSets = params.randomEffectDataConfigurations.map {
       case (id, randomEffectDataConfiguration) =>
         val randomEffectPartitioner = randomEffectPartitionerMap(id)
@@ -279,8 +281,12 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
       validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
-      normalizationContexts: Option[Map[String, NormalizationContext]])
+      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]])
     : Seq[(GAMEModel, Option[EvaluationResults], String)] = {
+
+    val contextBroadcasts: Option[Map[FeatureShardId, Broadcast[NormalizationContext]]] = normalizationContexts.map {
+      contextsMap => contextsMap.mapValues { context => sc.broadcast(context) }
+    }
 
     val gameModels = for (
         fixedEffectOptimizationConfiguration <- params.fixedEffectOptimizationConfigurations;
@@ -310,7 +316,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
           case fixedEffectDataSet: FixedEffectDataSet =>
             val optimizationConfiguration = fixedEffectOptimizationConfiguration(coordinateId)
-            val shardId = params.fixedEffectDataConfigurations(coordinateId).featureShardId
+            val featureShardId = params.fixedEffectDataConfigurations(coordinateId).featureShardId
             // If number of features is from moderate to large (>200000), then use tree aggregate,
             // otherwise use aggregate.
             val treeAggregateDepth = if (fixedEffectDataSet.numFeatures < FIXED_EFFECT_FEATURE_THRESHOLD) {
@@ -318,6 +324,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
             } else {
               DEEP_TREE_AGGREGATE_DEPTH
             }
+
             new FixedEffectCoordinate(
               fixedEffectDataSet,
               DistributedOptimizationProblem(
@@ -325,12 +332,13 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
                 selectDistributedLossFunction(optimizationConfiguration, treeAggregateDepth),
                 setupDownSampler(optimizationConfiguration.downSamplingRate),
                 glmConstructor,
-                defaultNormalizationContext,
+                contextBroadcasts.extractOrElse(featureShardId)(defaultNormalizationContext),
                 TRACK_STATE,
                 params.computeVariance
               ))
 
           case randomEffectDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace =>
+            val featureShardId = params.randomEffectDataConfigurations(coordinateId).featureShardId
             val optimizationConfiguration = randomEffectOptimizationConfiguration(coordinateId)
             new RandomEffectCoordinateInProjectedSpace(
               randomEffectDataSetInProjectedSpace,
@@ -339,13 +347,14 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
                 optimizationConfiguration,
                 selectSingleNodeLossFunction(optimizationConfiguration),
                 glmConstructor,
-                defaultNormalizationContext,
+                contextBroadcasts.extractOrElse(featureShardId)(defaultNormalizationContext),
                 TRACK_STATE,
                 params.computeVariance)
                 .setName(s"Random effect optimization problem of coordinate $coordinateId")
                 .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
 
           case randomEffectDataSet: RandomEffectDataSet =>
+            val featureShardId = params.randomEffectDataConfigurations(coordinateId).featureShardId
             val (randomEffectOptimizationConfiguration,
             latentFactorOptimizationConfiguration,
             mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
@@ -363,7 +372,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
                 latentObjectiveFunction,
                 setupDownSampler(latentFactorOptimizationConfiguration.downSamplingRate),
                 glmConstructor,
-                defaultNormalizationContext,
+                contextBroadcasts.extractOrElse(featureShardId)(defaultNormalizationContext),
                 TRACK_STATE,
                 params.computeVariance)
                 .setName(s"Factored random effect optimization problem of coordinate $coordinateId")

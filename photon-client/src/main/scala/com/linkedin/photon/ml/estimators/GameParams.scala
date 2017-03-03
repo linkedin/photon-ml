@@ -62,39 +62,44 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var trainDateRangeDaysAgoOpt: Option[String] = None
 
   /**
-   * Input directories of validating data. Multiple input directories are also accepted if they are separated by
+   * Input directories of validation data. Multiple input directories are also accepted if they are separated by
    * commas, e.g., inputDir1,inputDir2,inputDir3.
    */
-  var validateDirsOpt: Option[Array[String]] = None
+  var validationDirsOpt: Option[Array[String]] = None
 
   /**
    * Date range for the training data represented in the form start.date-end.date, e.g. 20150501-20150631.
-   * If validateDateRangeOpt is specified, the input directory is expected to be in the daily format structure
-   * (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat
-   * directories of input files (e.g., validateDir/input-data-files)."
+   * If validationDateRangeOpt is specified, the input directory is expected to be in the daily format structure
+   * (e.g., validationDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat
+   * directories of input files (e.g., validationDir/input-data-files)."
    */
-  var validateDateRangeOpt: Option[String] = None
+  var validationDateRangeOpt: Option[String] = None
 
   /**
    * Date range for the training data represented in the form start.daysAgo-end.daysAgo, e.g. 90-1.
-   * If validateDateRangeDaysAgoOpt is specified, the input directory is expected to be in the daily format structure
-   * (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat
-   * directories of input files (e.g., validateDir/input-data-files).
+   * If validationDateRangeDaysAgoOpt is specified, the input directory is expected to be in the daily format structure
+   * (e.g., validationDir/daily/2015/05/20/input-data-files). Otherwise, the input paths are assumed to be flat
+   * directories of input files (e.g., validationDir/input-data-files).
    */
-  var validateDateRangeDaysAgoOpt: Option[String] = None
+  var validationDateRangeDaysAgoOpt: Option[String] = None
 
   /**
-   * Minimum number of partitions for validating data (if provided).
+   * If summarization output dir is provided, basic statistics of training data will be written to the given directory
+   */
+  var summarizationOutputDirOpt: Option[String] = None
+
+  /**
+   * Minimum number of partitions for validation data (if provided)
    */
   var minPartitionsForValidation: Int = 1
 
   /**
-   * Output directory for logs and learned models.
+   * Output directory for logs and learned models
    */
   var outputDir: String = ""
 
   /**
-   * Number of coordinate descent iterations.
+   * Number of coordinate descent iterations
    */
   var numIterations: Int = 1
 
@@ -104,17 +109,17 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var computeVariance: Boolean = false
 
   /**
-   * Updating order of the ordinates (separated by commas) in the coordinate descent algorithm.
+   * Updating order of the ordinates (separated by commas) in the coordinate descent algorithm
    */
   var updatingSequence: Seq[CoordinateId] = Seq()
 
   /**
-   * Optimization configurations for the fixed effect optimization problem.
+   * Optimization configurations for the fixed effect optimization problem
    */
   var fixedEffectOptimizationConfigurations: Array[Map[CoordinateId, GLMOptimizationConfiguration]] = Array(Map())
 
   /**
-   * Configurations for each fixed effect data set.
+   * Configurations for each fixed effect data set
    */
   var fixedEffectDataConfigurations: Map[CoordinateId, FixedEffectDataConfiguration] = Map()
 
@@ -126,7 +131,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
 
   /**
    * Optimization configurations for each factored random effect optimization problem, multiple parameters are
-   * accepted and separated by semi-colon.
+   * accepted and separated by semi-colon
    */
   var factoredRandomEffectOptimizationConfigurations:
     Array[Map[CoordinateId,
@@ -138,7 +143,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var randomEffectDataConfigurations: Map[CoordinateId, RandomEffectDataConfiguration] = Map()
 
   /**
-   * GAME task type. Examples include logistic_regression and linear_regression.
+   * GAME task type. Examples include logistic_regression and linear_regression
    */
   var taskType: TaskType = TaskType.LOGISTIC_REGRESSION
 
@@ -148,7 +153,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var modelOutputMode: ModelOutputMode = ALL
 
   /**
-   * Number of output files to write for each random effect model.
+   * Number of output files to write for each random effect model
    */
   var numberOfOutputFilesForRandomEffectModel: Int = -1
 
@@ -158,12 +163,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var deleteOutputDirIfExists: Boolean = false
 
   /**
-   * If summarization output dir is provided, basic statistics of features will be written to the given directory.
-   */
-  var summarizationOutputDirOpt: Option[String] = None
-
-  /**
-   * Feature normalization method
+   * Training data normalization method
    */
   var normalizationType: NormalizationType = NormalizationType.NONE
 
@@ -176,9 +176,9 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
       s"trainDateRangeOpt: $trainDateRangeOpt\n" +
       s"trainDateRangeDaysAgoOpt: $trainDateRangeDaysAgoOpt\n" +
-      s"validateDirsOpt: ${validateDirsOpt.map(_.mkString(", "))}\n" +
-      s"validateDateRangeOpt: $validateDateRangeOpt\n" +
-      s"validateDateRangeDaysAgoOpt: $validateDateRangeDaysAgoOpt\n" +
+      s"validationDirsOpt: ${validationDirsOpt.map(_.mkString(", "))}\n" +
+      s"validationDateRangeOpt: $validationDateRangeOpt\n" +
+      s"validationDateRangeDaysAgoOpt: $validationDateRangeDaysAgoOpt\n" +
       s"minNumPartitionsForValidation: $minPartitionsForValidation\n" +
       s"featureNameAndTermSetInputPath: $featureNameAndTermSetInputPath\n" +
       s"featureShardIdToFeatureSectionKeysMap:\n${featureShardIdToFeatureSectionKeysMap.mapValues(_.mkString(", "))
@@ -209,6 +209,40 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
 
 object GameParams {
 
+  // NOTE: these are the parameter names for Game, and Photon has its own, slightly different list.
+
+  // Required parameters
+  val TRAIN_INPUT_DIRS = "train-input-dirs"
+  val TASK_TYPE = "task-type"
+  val OUTPUT_DIR = "output-dir"
+  val FEATURE_NAME_AND_TERM_SET_PATH = "feature-name-and-term-set-path"
+  val UPDATING_SEQUENCE = "updating-sequence"
+
+  // Optional parameters
+  val TRAIN_DATE_RANGE = "train-date-range"
+  val TRAIN_DATE_RANGE_DAYS_AGO = "train-date-range-days-ago"
+  val VALIDATION_INPUT_DIRS = "validate-input-dirs"
+  val VALIDATION_DATE_RANGE = "validate-date-range"
+  val VALIDATION_DATE_RANGE_DAYS_AGO = "validate-date-range-days-ago"
+  val MIN_PARTITIONS_FOR_VALIDATION = "min-partitions-for-validation"
+  val FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP = "feature-shard-id-to-feature-section-keys-map"
+  val FEATURE_SHARD_ID_TO_INTERCEPT_MAP = "feature-shard-id-to-intercept-map"
+  val NUM_ITERATIONS = "num-iterations"
+  val COMPUTE_VARIANCE = "compute-variance"
+  val FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS = "fixed-effect-optimization-configurations"
+  val FIXED_EFFECT_DATA_CONFIGURATIONS = "fixed-effect-data-configurations"
+  val RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "random-effect-optimization-configurations"
+  val FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS = "factored-random-effect-optimization-configurations"
+  val RANDOM_EFFECT_DATA_CONFIGURATIONS = "random-effect-data-configurations"
+  val SAVE_MODELS_TO_HDFS = "save-models-to-hdfs"
+  val MODEL_OUTPUT_MODE = "model-output-mode"
+  val NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL = "num-output-files-for-random-effect-model"
+  val DELETE_OUTPUT_DIR_IF_EXISTS = "delete-output-dir-if-exists"
+  val APPLICATION_NAME = "application-name"
+  val EVALUATOR_TYPE = "evaluator-type"
+  val SUMMARIZATION_OUTPUT_DIR = "summarization-output-dir"
+  val NORMALIZATION_TYPE = "normalization-type"
+
   /**
    * Parse parameters for Game from the arguments on the command line.
    *
@@ -222,30 +256,30 @@ object GameParams {
 
     val parser = new OptionParser[Unit]("Photon-Game") {
 
-      opt[String]("train-input-dirs")
+      opt[String](TRAIN_INPUT_DIRS)
         .required()
         .text("Input directories of training data. Multiple input directories are also accepted if they are " +
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
         .foreach(x => params.trainDirs = x.split(","))
 
-      opt[String]("task-type")
+      opt[String](TASK_TYPE)
         .required()
         .text("Task type. Examples include logistic_regression and linear_regression.")
         .foreach(x => params.taskType = TaskType.withName(x.toUpperCase))
 
-      opt[String]("output-dir")
+      opt[String](OUTPUT_DIR)
         .required()
         .text(s"Output directory for logs and learned models.")
         .foreach(x => params.outputDir = x.replace(',', '_'))
 
-      opt[String]("feature-name-and-term-set-path")
+      opt[String](FEATURE_NAME_AND_TERM_SET_PATH)
         .required()
         .text(s"Input path to the features name-and-term lists.\n" +
           s"DEPRECATED -- This option will be removed in the next major version. Use the offheap index map " +
           s"configuration instead")
         .foreach(x => params.featureNameAndTermSetInputPath = x)
 
-      opt[String]("updating-sequence")
+      opt[String](UPDATING_SEQUENCE)
         .required()
         .text(s"Updating order of the ordinates (separated by commas) in the coordinate descent algorithm. It is " +
           s"recommended to order different fixed/random effect models based on their stability (e.g., by looking " +
@@ -253,7 +287,7 @@ object GameParams {
           s"fixed/random effect model),")
         .foreach(x => params.updatingSequence = x.split(","))
 
-      opt[String]("train-date-range")
+      opt[String](TRAIN_DATE_RANGE)
         .text(s"Date range for the training data represented in the form start.date-end.date, " +
           s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
           s"daily format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths" +
@@ -261,7 +295,7 @@ object GameParams {
           s"Default: ${defaultParams.trainDateRangeOpt}.")
         .foreach(x => params.trainDateRangeOpt = Some(x))
 
-      opt[String]("train-date-range-days-ago")
+      opt[String](TRAIN_DATE_RANGE_DAYS_AGO)
         .text(s"Date range for the training data represented in the form start.daysAgo-end.daysAgo, " +
           s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the daily " +
           s"format structure (e.g., trainDir/daily/2015/05/20/input-data-files). Otherwise, the input paths " +
@@ -269,33 +303,33 @@ object GameParams {
           s"Default: ${defaultParams.trainDateRangeDaysAgoOpt}.")
         .foreach(x => params.trainDateRangeDaysAgoOpt = Some(x))
 
-      opt[String]("validate-input-dirs")
-        .text("Input directories of validating data. Multiple input directories are also accepted if they are " +
+      opt[String](VALIDATION_INPUT_DIRS)
+        .text("Input directories of validation data. Multiple input directories are also accepted if they are " +
           "separated by commas, e.g., inputDir1,inputDir2,inputDir3.")
-        .foreach(x => params.validateDirsOpt = Some(x.split(",")))
+        .foreach(x => params.validationDirsOpt = Some(x.split(",")))
 
-      opt[String]("validate-date-range")
-        .text(s"Date range for the validating data represented in the form start.date-end.date, " +
+      opt[String](VALIDATION_DATE_RANGE)
+        .text(s"Date range for the validation data represented in the form start.date-end.date, " +
           s"e.g. 20150501-20150631. If this parameter is specified, the input directory is expected to be in the " +
-          s"daily format structure (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input " +
-          s"paths are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
-          s"Default: ${defaultParams.validateDateRangeOpt}.")
-        .foreach(x => params.validateDateRangeOpt = Some(x))
+          s"daily format structure (e.g., validationDir/daily/2015/05/20/input-data-files). Otherwise, the input " +
+          s"paths are assumed to be flat directories of input files (e.g., validationDir/input-data-files). " +
+          s"Default: ${defaultParams.validationDateRangeOpt}.")
+        .foreach(x => params.validationDateRangeOpt = Some(x))
 
-      opt[String]("validate-date-range-days-ago")
-        .text(s"Date range for the validating data represented in the form start.daysAgo-end.daysAgo, " +
+      opt[String](VALIDATION_DATE_RANGE_DAYS_AGO)
+        .text(s"Date range for the validation data represented in the form start.daysAgo-end.daysAgo, " +
           s"e.g. 90-1. If this parameter is specified, the input directory is expected to be in the " +
-          s"daily format structure (e.g., validateDir/daily/2015/05/20/input-data-files). Otherwise, the input " +
-          s"paths are assumed to be flat directories of input files (e.g., validateDir/input-data-files). " +
-          s"Default: ${defaultParams.validateDateRangeDaysAgoOpt}.")
-        .foreach(x => params.validateDateRangeDaysAgoOpt = Some(x))
+          s"daily format structure (e.g., validationDir/daily/2015/05/20/input-data-files). Otherwise, the input " +
+          s"paths are assumed to be flat directories of input files (e.g., validationDir/input-data-files). " +
+          s"Default: ${defaultParams.validationDateRangeDaysAgoOpt}.")
+        .foreach(x => params.validationDateRangeDaysAgoOpt = Some(x))
 
-      opt[Int]("min-partitions-for-validation")
-        .text(s"Minimum number of partitions for validating data (if provided). " +
+      opt[Int](MIN_PARTITIONS_FOR_VALIDATION)
+        .text(s"Minimum number of partitions for validation data (if provided). " +
           s"Default: ${defaultParams.minPartitionsForValidation}")
         .foreach(x => params.minPartitionsForValidation = x)
 
-      opt[String]("feature-shard-id-to-feature-section-keys-map")
+      opt[String](FEATURE_SHARD_ID_TO_FEATURE_SECTION_KEYS_MAP)
         .text(s"A map between the feature shard id and it's corresponding feature section keys, in the following " +
           s"format: shardId1:sectionKey1,sectionKey2|shardId2:sectionKey2,sectionKey3.")
         .foreach(x => params.featureShardIdToFeatureSectionKeysMap =
@@ -309,7 +343,7 @@ object GameParams {
             .toMap
         )
 
-      opt[String]("feature-shard-id-to-intercept-map")
+      opt[String](FEATURE_SHARD_ID_TO_INTERCEPT_MAP)
         .text(s"A map between the feature shard id and a boolean variable that decides whether a dummy feature " +
           s"should be added to the corresponding shard in order to learn an intercept, for example, in the " +
           s"following format: shardId1:true|shardId2:false. The default is true for all shard ids.")
@@ -322,11 +356,11 @@ object GameParams {
             .toMap
         )
 
-      opt[Int]("num-iterations")
+      opt[Int](NUM_ITERATIONS)
         .text(s"Number of coordinate descent iterations, default: ${defaultParams.numIterations}")
         .foreach(x => params.numIterations = x)
 
-      opt[String]("fixed-effect-optimization-configurations")
+      opt[String](FIXED_EFFECT_OPTIMIZATION_CONFIGURATIONS)
         .text("Optimization configurations for the fixed effect optimization problem. " +
           s"Expected format (if the GAME model contains two fixed effect model called model1 and mode2):\n" +
           s"model1:${GLMOptimizationConfiguration.EXPECTED_FORMAT}" +
@@ -342,7 +376,7 @@ object GameParams {
               .toMap)
         )
 
-      opt[String]("fixed-effect-data-configurations")
+      opt[String](FIXED_EFFECT_DATA_CONFIGURATIONS)
         .text("Configurations for each fixed effect data set.")
         .foreach(x => params.fixedEffectDataConfigurations =
           x.split("\\|")
@@ -353,7 +387,7 @@ object GameParams {
             .toMap
         )
 
-      opt[String]("random-effect-optimization-configurations")
+      opt[String](RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS)
         .text("Optimization configurations for each random effect optimization problem. " +
           s"Expected format (if the GAME model contains two random effect model called model1 and mode2):\n" +
           s"model1:${GLMOptimizationConfiguration.EXPECTED_FORMAT}" +
@@ -369,7 +403,7 @@ object GameParams {
               .toMap)
         )
 
-      opt[String]("factored-random-effect-optimization-configurations")
+      opt[String](FACTORED_RANDOM_EFFECT_OPTIMIZATION_CONFIGURATIONS)
         .text("Optimization configurations for each factored random effect optimization problem, multiple " +
           "parameters are accepted and separated by semi-colon \";\".")
         .foreach(x => params.factoredRandomEffectOptimizationConfigurations =
@@ -385,7 +419,7 @@ object GameParams {
               .toMap)
         )
 
-      opt[String]("random-effect-data-configurations")
+      opt[String](RANDOM_EFFECT_DATA_CONFIGURATIONS)
         .text("Configurations for all the random effect data sets.")
         .foreach(x => params.randomEffectDataConfigurations =
           x.split("\\|")
@@ -396,25 +430,26 @@ object GameParams {
             .toMap
         )
 
-      opt[Boolean]("compute-variance")
+      opt[Boolean](COMPUTE_VARIANCE)
         .text(s"Whether to compute the coefficient variance, default: ${defaultParams.computeVariance}")
         .foreach(x => params.computeVariance = x)
 
-      opt[Boolean]("save-models-to-hdfs")
+      opt[Boolean](SAVE_MODELS_TO_HDFS)
         .text(s"DEPRECATED -- USE model-output-mode")
         .foreach(x => params.modelOutputMode = if (x) ALL else NONE)
 
-      opt[String]("model-output-mode")
+      opt[String](MODEL_OUTPUT_MODE)
         .text(s"Output mode of trained models to HDFS (ALL, BEST, or NONE). Default: ${defaultParams.modelOutputMode}")
         .foreach(x => params.modelOutputMode = ModelOutputMode.withName(x.toUpperCase))
 
-      opt[Int]("num-output-files-for-random-effect-model")
+      opt[Int](NUM_OUTPUT_FILES_FOR_RANDOM_EFFECT_MODEL)
         .text(s"Number of output files to write for each random effect model. Not setting this parameter or " +
           s"setting it to -1 means to use the default number of output files." +
           s"Default: ${defaultParams.numberOfOutputFilesForRandomEffectModel}")
         .foreach(x => params.numberOfOutputFilesForRandomEffectModel = x)
 
-      opt[Boolean]("delete-output-dir-if-exists")
+      val z = DELETE_OUTPUT_DIRS_IF_EXIST
+      opt[Boolean](DELETE_OUTPUT_DIR_IF_EXISTS)
         .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
         .foreach(x => params.deleteOutputDirIfExists = x)
 
@@ -433,9 +468,9 @@ object GameParams {
             "convention.")
         .foreach(x => params.offHeapIndexMapNumPartitions = x)
 
-      opt[String]("evaluator-type")
+      opt[String](EVALUATOR_TYPE)
         .text("Type of the evaluator used to evaluate the computed scores.")
-        .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName _))
+        .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName))
 
       opt[String](NORMALIZATION_TYPE)
         .text("The normalization type to use in training. Options: " +
@@ -452,8 +487,14 @@ object GameParams {
     }
 
     if (!parser.parse(args)) {
+
+      val argsString =
+        (for (i <- 0 until args.length/2 by 2)
+          yield args(2*i) + ": " + args(2*i+1))
+        .mkString("\n")
+
       throw new IllegalArgumentException(s"Parsing the command line arguments failed.\n" +
-        s"Input arguments are: ${args.mkString(", ")}).")
+        s"Input arguments are:\n$argsString")
     }
 
     params

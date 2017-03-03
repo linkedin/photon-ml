@@ -38,9 +38,10 @@ import com.linkedin.photon.ml.projector.Projector
  */
 protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
 
-  val numDataPoints = dataPoints.length
-  val numFeatures = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
-  val numActiveFeatures = if (numDataPoints > 0) dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size else 0
+  val numDataPoints: Int = dataPoints.length
+  val numFeatures: Int = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
+  val numActiveFeatures: Int =
+    if (numDataPoints > 0) dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size else 0
 
   private lazy val featureIndexCountMap: Map[Int, Int] = {
     dataPoints

@@ -14,15 +14,13 @@
  */
 package com.linkedin.photon.ml
 
-import scala.collection.Map
-
-import com.linkedin.photon.ml.util.IndexMapLoader
-
 /**
  * Some types that make the code easier to read and more documented.
+ * This class should be visible from everywehre in photon-ml.
  */
 object Types {
+
   type FeatureShardId = String
   type CoordinateId = String
-  type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
+
 }

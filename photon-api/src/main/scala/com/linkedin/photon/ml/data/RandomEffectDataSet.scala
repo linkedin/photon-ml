@@ -53,9 +53,9 @@ protected[ml] class RandomEffectDataSet(
   with RDDLike
   with BroadcastLike {
 
-  val randomEffectIdPartitioner = activeData.partitioner.get
-  val uniqueIdPartitioner = uniqueIdToRandomEffectIds.partitioner.get
-  val hasPassiveData = passiveDataOption.isDefined
+  val randomEffectIdPartitioner: Partitioner = activeData.partitioner.get
+  val uniqueIdPartitioner: Partitioner = uniqueIdToRandomEffectIds.partitioner.get
+  val hasPassiveData: Boolean = passiveDataOption.isDefined
 
   /**
    *
