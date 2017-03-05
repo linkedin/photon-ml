@@ -29,22 +29,14 @@ class ClassUtilsTest {
 
   @Test
   def testIsAnonClass(): Unit = {
-
-    val nonAnon = new Base
-    val anon = new Base {}
-
-    assertTrue(ClassUtils.isAnonClass(anon.getClass))
-    assertFalse(ClassUtils.isAnonClass(nonAnon.getClass))
+    assertTrue(ClassUtils.isAnonClass(new Base {}.getClass))
+    assertFalse(ClassUtils.isAnonClass((new Base).getClass))
   }
 
   @Test
   def testGetTrueClass(): Unit = {
-
-    val nonAnon = new Base
-    val anon = new Base {}
-
-    assertEquals(ClassUtils.getTrueClass(nonAnon), nonAnon.getClass)
-    assertEquals(ClassUtils.getTrueClass(anon), nonAnon.getClass)
-    assertEquals(ClassUtils.getTrueClass(anon), ClassUtils.getTrueClass(nonAnon))
+    assertEquals(ClassUtils.getTrueClass(new Base), (new Base).getClass)
+    assertEquals(ClassUtils.getTrueClass(new Base {}), (new Base).getClass)
+    assertEquals(ClassUtils.getTrueClass(new Base {}), ClassUtils.getTrueClass(new Base))
   }
 }

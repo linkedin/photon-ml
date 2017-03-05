@@ -14,11 +14,11 @@
  */
 package com.linkedin.photon.ml.io
 
-import java.util
 import java.io.File
+import java.util
 
-import org.apache.avro.generic.{GenericRecordBuilder, GenericRecord}
 import org.apache.avro.Schema
+import org.apache.avro.generic.{GenericRecord, GenericRecordBuilder}
 
 import com.linkedin.photon.avro.generated.FeatureAvro
 import com.linkedin.photon.ml.avro.ResponsePredictionFieldNames

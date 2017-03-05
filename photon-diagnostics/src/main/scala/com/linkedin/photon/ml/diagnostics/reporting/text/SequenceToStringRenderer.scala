@@ -14,9 +14,8 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.text
 
-import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
-import com.linkedin.photon.ml.diagnostics.reporting.{RenderStrategy, NumberingContext, PhysicalReport}
+import com.linkedin.photon.ml.diagnostics.reporting.{NumberingContext, PhysicalReport, RenderStrategy}
 
 /**
  * Generic rendering of sequences to text

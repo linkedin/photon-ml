@@ -14,16 +14,18 @@
  */
 package com.linkedin.photon.ml.diagnostics.fitting
 
+import org.testng.annotations.Test
+
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
-import org.testng.annotations.Test
 
 /**
  * Sanity checks for FittingToPhysicalReportTransformer
  */
 class FittingToPhysicalReportTransformerTest {
-  import FittingToPhysicalReportTransformerTest._
   import org.testng.Assert._
+
+  import FittingToPhysicalReportTransformerTest._
 
   @Test
   def checkHappyPath(): Unit = {

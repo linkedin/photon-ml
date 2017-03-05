@@ -16,11 +16,14 @@ package com.linkedin.photon.ml
 
 /**
  * Some types that make the code easier to read and more documented.
- * This class should be visible from everywehre in photon-ml.
+ * This class should be visible from everywhere in photon-ml.
  */
 object Types {
 
+  type SDV = org.apache.spark.mllib.linalg.DenseVector
+  type SSV = org.apache.spark.mllib.linalg.SparseVector
+  type SparkVector = org.apache.spark.mllib.linalg.Vector
+
   type FeatureShardId = String
   type CoordinateId = String
-
 }

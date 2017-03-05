@@ -92,7 +92,7 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
 }
 
 object PalDBIndexMapBuilder {
-  // Note: PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
+  // NOTE PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
   // lock the write. This will only block writing operations within the same JVM
   val WRITER_LOCK: String = "DB_WRITER_LOCK"
 }

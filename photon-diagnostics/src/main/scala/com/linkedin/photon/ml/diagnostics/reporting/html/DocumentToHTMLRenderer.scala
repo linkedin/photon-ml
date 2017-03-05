@@ -14,11 +14,10 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
+import scala.xml._
+
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
-import com.linkedin.photon.ml.diagnostics.reporting._
-
-import scala.xml._
 
 class DocumentToHTMLRenderer(
     renderStrategy: RenderStrategy[ChapterPhysicalReport, Node],

@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.util
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
+
 import scala.collection.JavaConverters._
 
 import org.apache.avro.generic.GenericRecord
@@ -22,8 +23,8 @@ import org.apache.avro.util.Utf8
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.io.GLMSuite
 
 // TODO: Better documentation.
@@ -239,7 +240,7 @@ protected[ml] object Utils {
   def getBooleanAvro(record: GenericRecord, key: String): Boolean = {
     record.get(key) match {
       case booleanValue: JBoolean => booleanValue.booleanValue
-      // Note: Scala String#toBoolean method is better than JBoolean#parseBoolean in the sense that it only accepts
+      // NOTE Scala String#toBoolean method is better than JBoolean#parseBoolean in the sense that it only accepts
       // "true" or "false" (case-insensitive) and throw exceptions for other string values.
       case id@(_: Utf8 | _: JString) => id.toString.toBoolean
       case obj: JObject => throw new IllegalArgumentException(s"$key = $obj is an unknown object")

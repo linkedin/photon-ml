@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.diagnostics.reporting.base
 
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.linkedin.photon.ml.diagnostics.reporting._
 
 /**
  * Facilitates rendering potentially nested sequences of things

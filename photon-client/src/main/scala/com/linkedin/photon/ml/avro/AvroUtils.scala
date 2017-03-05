@@ -23,13 +23,11 @@ import scala.collection.{Set, mutable}
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.mapred.{AvroInputFormat, AvroWrapper}
-import org.apache.hadoop.io.NullWritable
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.avro.data.{NameAndTerm, NameAndTermFeatureSetContainer}
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel

@@ -40,7 +40,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosti
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.event._
 import com.linkedin.photon.ml.io.{GLMSuite, InputDataFormat, InputFormatFactory}
-import com.linkedin.photon.ml.normalization.{NormalizationType, NoNormalization, NormalizationContext}
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}

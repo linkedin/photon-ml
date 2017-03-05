@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.test
 
 import scala.collection.immutable.TreeMap
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 import breeze.linalg.{SparseVector, Vector}

@@ -14,11 +14,12 @@
  */
 package com.linkedin.photon.ml.diagnostics.bootstrap
 
+import org.testng.Assert._
+import org.testng.annotations._
+
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting.SectionPhysicalReport
 import com.linkedin.photon.ml.supervised.model.CoefficientSummary
-import org.testng.Assert._
-import org.testng.annotations._
 
 class BootstrapToPhysicalReportTransformerTest {
   @Test

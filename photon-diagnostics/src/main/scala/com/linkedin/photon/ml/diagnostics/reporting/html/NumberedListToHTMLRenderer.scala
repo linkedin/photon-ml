@@ -14,9 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting._
-
 import scala.xml._
+
+import com.linkedin.photon.ml.diagnostics.reporting._
 
 class NumberedListToHTMLRenderer(
     renderStrategy: RenderStrategy[PhysicalReport, Node],

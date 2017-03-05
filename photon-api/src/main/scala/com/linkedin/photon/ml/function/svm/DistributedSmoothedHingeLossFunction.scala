@@ -104,6 +104,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sparkContext: SparkCont
 }
 
 object DistributedSmoothedHingeLossFunction {
+
   /**
    * Factory method to create a new objective function with DistributedSmoothedHingeLossFunction as the base loss
    * function.
@@ -113,10 +114,10 @@ object DistributedSmoothedHingeLossFunction {
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedSmoothedHingeLossFunction
    */
-  def create(
-    configuration: GLMOptimizationConfiguration,
-    sparkContext: SparkContext,
-    treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
+  def apply(
+      sparkContext: SparkContext,
+      configuration: GLMOptimizationConfiguration,
+      treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
 
@@ -129,10 +130,4 @@ object DistributedSmoothedHingeLossFunction {
       case _ => new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth)
     }
   }
-
-  def apply(
-      sparkContext: SparkContext,
-      configuration: GLMOptimizationConfiguration,
-      treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction =
-    create(configuration, sparkContext, treeAggregateDepth)
 }

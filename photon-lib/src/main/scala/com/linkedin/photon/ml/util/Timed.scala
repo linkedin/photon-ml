@@ -15,7 +15,8 @@
 package com.linkedin.photon.ml.util
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.{Duration, FiniteDuration, TimeUnit}
+
+import scala.concurrent.duration.{FiniteDuration, TimeUnit}
 
 import org.slf4j.Logger
 

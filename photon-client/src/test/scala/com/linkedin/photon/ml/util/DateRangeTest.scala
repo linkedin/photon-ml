@@ -14,11 +14,9 @@
  */
 package com.linkedin.photon.ml.util
 
-import org.joda.time.DateTime
-import org.joda.time.DateTimeUtils
-import org.joda.time.LocalDate
-import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
+import org.joda.time.{DateTime, DateTimeUtils, LocalDate}
 import org.testng.Assert._
+import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 
 /**
  * This class tests [[DateRange]].

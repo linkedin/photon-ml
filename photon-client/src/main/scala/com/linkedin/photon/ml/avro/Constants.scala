@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.avro
 
 /**
- * Some commonly used constants.
+ * Some commonly used String constants.
  */
 object Constants {
   protected[avro] val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"

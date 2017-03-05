@@ -27,9 +27,9 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.supervised.classification.{SmoothedHingeLossLinearSVMModel, LogisticRegressionModel}
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
-import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, LinearRegressionModel}
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
 /**
  * Factory for creating SparkContext instances. This handles the tricky details of things like setting up serialization,

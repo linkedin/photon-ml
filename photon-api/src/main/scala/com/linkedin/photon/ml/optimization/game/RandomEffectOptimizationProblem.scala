@@ -18,6 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+
 import com.linkedin.photon.ml.data.RandomEffectDataSet
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
@@ -105,7 +106,7 @@ object RandomEffectOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def create[RandomEffectObjective <: SingleNodeObjectiveFunction](
+  protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
       randomEffectDataSet: RandomEffectDataSet,
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: RandomEffectObjective,
@@ -117,7 +118,7 @@ object RandomEffectOptimizationProblem {
     // Build an optimization problem for each random effect type.
     val optimizationProblems = randomEffectDataSet
       .activeData
-      .mapValues(_ => SingleNodeOptimizationProblem.create(
+      .mapValues(_ => SingleNodeOptimizationProblem(
         configuration,
         objectiveFunction,
         glmConstructor,
@@ -127,22 +128,4 @@ object RandomEffectOptimizationProblem {
 
     new RandomEffectOptimizationProblem(optimizationProblems, isTrackingState)
   }
-
-  def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      randomEffectDataSet: RandomEffectDataSet,
-      configuration: GLMOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
-      glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: Broadcast[NormalizationContext],
-      isTrackingState: Boolean = false,
-      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] =
-
-    create(
-      randomEffectDataSet,
-      configuration,
-      objectiveFunction,
-      glmConstructor,
-      normalizationContext,
-      isTrackingState,
-      isComputingVariance)
 }

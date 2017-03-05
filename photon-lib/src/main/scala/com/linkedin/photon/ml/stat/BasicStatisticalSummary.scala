@@ -28,6 +28,9 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * It is a wrapper around spark-ml MultivariateStatisticalSummary, that relies on breeze Vector rather than
  * spark-ml Vector. We also tweak the numbers for our needs (see calculateBasicStatistics).
  *
+ * @note variance is calculated by spark.ml to be unbiased, so based on N-1 degrees of freedom, which is the
+ * standard statistical practice. A degree of freedom is lost when using an estimated mean to compute the variance.
+ *
  * TODO: rename just "BasicStatistics": descriptive statistics are summaries of the data by definition
  */
 case class BasicStatisticalSummary(
@@ -57,7 +60,7 @@ object BasicStatisticalSummary extends Logging {
     calculateBasicStatistics(Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))))
 
   /**
-   * This function accepts a RDD[MVector]. Used in Game.
+   * This function accepts a RDD[MVector]. Used in GAME.
    *
    * @param inputData The input data (usually training data)
    * @return An instance of BasicStatisticalSummary

@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.data.{FixedEffectDataSet, KeyValueScore, LabeledPoint, ScoredGameDatum}
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
-import com.linkedin.photon.ml.optimization.{FixedEffectOptimizationTracker, OptimizationTracker, DistributedOptimizationProblem}
+import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, FixedEffectOptimizationTracker, OptimizationTracker}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**

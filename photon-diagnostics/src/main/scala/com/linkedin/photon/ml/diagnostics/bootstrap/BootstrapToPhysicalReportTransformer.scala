@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.bootstrap
 
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
+import com.xeiam.xchart.{ChartBuilder, StyleManager}
 
 import com.linkedin.photon.ml.diagnostics.reporting._
 

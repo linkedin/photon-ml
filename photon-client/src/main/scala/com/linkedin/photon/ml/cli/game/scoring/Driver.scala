@@ -17,14 +17,14 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scala.collection.Map
 
 import org.apache.hadoop.fs.Path
-import org.slf4j.Logger
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
+import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters, GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
@@ -84,7 +84,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
    * @param gameDataSet The GAME data set
    */
   private def logGameDataSet(gameDataSet: RDD[(Long, GameDatum)]): Unit = {
-    // Log some simple summary info on the Game data set
+    // Log some simple summary info on the GAME data set
     logger.debug(s"Summary for the GAME data set")
     val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
@@ -104,7 +104,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
    * Load the GAME model and score the GAME data set.
    *
    * @param featureShardIdToIndexMapLoader A map of feature shard id to feature map loader
-   * @param gameDataSet The game data set
+   * @param gameDataSet The GAME data set
    * @return The scores
    */
   protected def scoreGameDataSet(

@@ -153,6 +153,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
 }
 
 object DistributedOptimizationProblem {
+
   /**
    * Factory method to create new DistributedOptimizationProblems.
    *
@@ -165,14 +166,14 @@ object DistributedOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new DistributedOptimizationProblem
    */
-  def create[Function <: DistributedObjectiveFunction](
-    configuration: GLMOptimizationConfiguration,
-    objectiveFunction: Function,
-    samplerOption: Option[DownSampler],
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    normalizationContext: Broadcast[NormalizationContext],
-    isTrackingState: Boolean,
-    isComputingVariance: Boolean): DistributedOptimizationProblem[Function] = {
+  def apply[Function <: DistributedObjectiveFunction](
+      configuration: GLMOptimizationConfiguration,
+      objectiveFunction: Function,
+      samplerOption: Option[DownSampler],
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean,
+      isComputingVariance: Boolean): DistributedOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -191,22 +192,4 @@ object DistributedOptimizationProblem {
       regularizationContext,
       isComputingVariance)
   }
-
-  def apply[Function <: DistributedObjectiveFunction](
-      configuration: GLMOptimizationConfiguration,
-      objectiveFunction: Function,
-      samplerOption: Option[DownSampler],
-      glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: Broadcast[NormalizationContext],
-      isTrackingState: Boolean,
-      isComputingVariance: Boolean): DistributedOptimizationProblem[Function] =
-
-    create[Function](
-      configuration,
-      objectiveFunction,
-      samplerOption,
-      glmConstructor,
-      normalizationContext,
-      isTrackingState,
-      isComputingVariance)
 }

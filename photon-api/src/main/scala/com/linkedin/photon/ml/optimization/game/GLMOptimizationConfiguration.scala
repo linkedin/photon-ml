@@ -80,7 +80,7 @@ object GLMOptimizationConfiguration {
    *  <li> Regularization type
    * </ol>
    *
-   * NOTE: this is still useful when coming from the templates, although we can read from JSON
+   * @note this is still useful when coming from the templates, although we can read from JSON
    *
    * @param string The string representation
    */

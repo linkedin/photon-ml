@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * workload of the executors: because we assume the data for each random effect is small, it will usually not even fill
  * a Spark data partition, so we fill up the partition (i.e. add (id/partition) records to idToPartitionMap with data
  * for multiple random effects. However, since idToPartitionMap is eventually broadcast to the executors, we also want
- * to keep the size of that Map under control. 
+ * to keep the size of that Map under control.
  *
  * @param idToPartitionMap Random effect type to partition map
  */

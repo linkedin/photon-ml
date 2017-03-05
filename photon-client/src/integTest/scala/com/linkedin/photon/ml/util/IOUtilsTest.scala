@@ -18,11 +18,10 @@ import java.io.File
 
 import scala.io.Source
 
-import org.joda.time.DateTime
-import org.joda.time.DateTimeUtils
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.joda.time.{DateTime, DateTimeUtils}
 import org.testng.Assert._
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
-import org.apache.hadoop.fs.{FileSystem, Path}
 
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 

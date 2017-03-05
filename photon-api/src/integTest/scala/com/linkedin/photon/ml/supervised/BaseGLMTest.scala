@@ -115,13 +115,9 @@ class BaseGLMTest extends SparkTestUtils {
       Array(
         "Linear regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.create(
+          DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction.create(
-              lbfgsConfig,
-              SquaredLossFunction,
-              sc,
-              treeAggregateDepth = 1),
+            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(SquaredLossFunction) ,
             None,
             LinearRegressionModel.apply,
             normalizationContext,
@@ -135,13 +131,9 @@ class BaseGLMTest extends SparkTestUtils {
       Array(
         "Poisson regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.create(
+          DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction.create(
-              lbfgsConfig,
-              PoissonLossFunction,
-              sc,
-              treeAggregateDepth = 1),
+            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(PoissonLossFunction) ,
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
@@ -157,13 +149,9 @@ class BaseGLMTest extends SparkTestUtils {
       Array(
         "Logistic regression, easy problem",
         (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
-          DistributedOptimizationProblem.create(
+          DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction.create(
-              lbfgsConfig,
-              LogisticLossFunction,
-              sc,
-              treeAggregateDepth = 1),
+            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(LogisticLossFunction),
             None,
             LogisticRegressionModel.apply,
             normalizationContext,

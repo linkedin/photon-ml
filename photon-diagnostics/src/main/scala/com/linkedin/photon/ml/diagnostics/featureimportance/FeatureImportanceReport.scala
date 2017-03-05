@@ -16,8 +16,6 @@ package com.linkedin.photon.ml.diagnostics.featureimportance
 
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
 
-import scala.collection.SortedMap
-
 /**
  * @param importanceType
  * The type of feature importance that is being represented

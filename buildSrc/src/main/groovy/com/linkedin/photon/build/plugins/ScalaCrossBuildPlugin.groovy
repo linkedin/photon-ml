@@ -16,6 +16,7 @@ package com.linkedin.photon.build.plugins
 
 import org.gradle.api.Plugin
 import org.gradle.api.initialization.Settings
+
 import static ScalaUtils.getScalaVersionSuffix
 
 /**

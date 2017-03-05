@@ -14,11 +14,12 @@
  */
 package com.linkedin.photon.ml.diagnostics.featureimportance
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.spark.rdd.RDD
 
 /**
   * Common base class for various notions of feature importance in GLM

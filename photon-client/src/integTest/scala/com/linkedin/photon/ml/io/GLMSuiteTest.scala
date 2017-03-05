@@ -33,8 +33,8 @@ import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, Train
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{DefaultIndexMap, IOUtils, Utils}
 import com.linkedin.photon.ml.util.VectorUtils.convertIndexAndValuePairArrayToSparseVector
+import com.linkedin.photon.ml.util.{DefaultIndexMap, IOUtils, Utils}
 
 /**
  * This class tests components of GLMSuite that requires integration with real RDD or other runtime environments.

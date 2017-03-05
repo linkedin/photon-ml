@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, M
 import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
- * Simple test for GAME training's [[GameParams]].
+ * Simple test for GAME training's [[GAMEParams]].
  */
 class GameParamsTest {
 

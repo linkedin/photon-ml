@@ -24,10 +24,10 @@ dependencies {
     // We don't need to import netty, and including it can cause version conflicts in downstream projects
     exclude group: 'io.netty'
   }
-  compile("org.apache.spark:spark-core$scalaSuffix:1.6.2") {
+  compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
-  compile("org.apache.spark:spark-mllib$scalaSuffix:1.6.2") {
+  compile("org.apache.spark:spark-mllib$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
 

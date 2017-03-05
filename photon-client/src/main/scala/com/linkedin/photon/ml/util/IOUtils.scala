@@ -14,12 +14,12 @@
  */
 package com.linkedin.photon.ml.util
 
+import java.io._
 import java.lang.{Double => JDouble}
 import java.util.{Map => JMap}
-import java.io._
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.util.Try
 
 import org.apache.hadoop.conf.Configuration
@@ -336,7 +336,7 @@ protected[ml] object IOUtils {
    * Write to a stream while handling exceptions, and closing the stream correctly whether writing to it
    * succeeded or not.
    *
-   * NOTE: remember that a Try instance can be understood as a collection, that can have zero
+   * @note remember that a Try instance can be understood as a collection, that can have zero
    * or one element. This code uses a "monadic flow" started by the Try. Try can be a Success or a Failure.
    * Success.map(lambda) applies lambda to the value wrapped in the Success instance, and returns the result,
    * which can itself be either Success or Failure, wrapping an instance of the type returned by the lambda.

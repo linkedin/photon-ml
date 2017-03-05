@@ -14,9 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.fitting
 
-import com.linkedin.photon.ml.Evaluation
+import com.xeiam.xchart.{ChartBuilder, StyleManager}
+
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
 class FittingToPhysicalReportTransformer
   extends LogicalToPhysicalReportTransformer[FittingReport, SectionPhysicalReport] {

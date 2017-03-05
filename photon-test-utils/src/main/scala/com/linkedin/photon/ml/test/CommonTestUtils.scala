@@ -14,11 +14,10 @@
  */
 package com.linkedin.photon.ml.test
 
-import breeze.linalg.Vector
-import breeze.linalg.DenseVector
-
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
+
+import breeze.linalg.{DenseVector, Vector}
 
 /**
  * A collection of methods useful for tests.

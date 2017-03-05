@@ -39,12 +39,12 @@ import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DefaultD
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.util.Implicits._
+import com.linkedin.photon.ml.util._
 
 
 /**
- * Estimator implementation for Game models.
+ * Estimator implementation for GAME models.
  *
  * @param params Configuration parameters for the estimator
  * @param sc The spark context
@@ -55,7 +55,6 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
   import GameEstimator._
 
   // 2 types that makes the code more readable
-  // TODO: Those look like they should be in file Types?
   type LossFunction = (PointwiseLossFunction) => SingleNodeGLMLossFunction
   type DistributedLossFunction = (PointwiseLossFunction) => DistributedGLMLossFunction
 
@@ -66,12 +65,12 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     sc.broadcast(NoNormalization())
 
   /**
-   * Fits Game models to the training dataset.
+   * Fits GAME models to the training dataset.
    *
    * @param data The training set
    * @param normalizationContexts Optional training data statistics used e.g. for normalization, for each feature shard
    * @param validationData Optional validation set for per-iteration validation
-   * @return A set of Game models, one for each combination of fixed and random effect combination specified in the
+   * @return A set of GAME models, one for each combination of fixed and random effect combination specified in the
    *         params
    */
   def fit(
@@ -94,13 +93,13 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     }
     gameDataSet.count()
 
-    // Transform the Game dataset into fixed and random effect specific datasets
+    // Transform the GAME dataset into fixed and random effect specific datasets
     val trainingDataSet = Timed("prepare training data") { prepareTrainingDataSet(gameDataSet) }
 
     val trainingLossFunctionEvaluator =
       Timed("prepare training loss evaluator") { prepareTrainingLossEvaluator(gameDataSet) }
 
-    // Purge the Game dataset, which is no longer needed in the following code
+    // Purge the GAME dataset, which is no longer needed in the following code
     gameDataSet.unpersist()
 
     val validationDataAndEvaluators =
@@ -268,14 +267,14 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
   }
 
   /**
-   * Train Game models. This method builds a coordinate descent optimization problem from the individual optimization
+   * Train GAME models. This method builds a coordinate descent optimization problem from the individual optimization
    * problems for the fixed effect, random effect, and factored random effect models.
    *
    * @param dataSets The training datasets
    * @param trainingEvaluator The training evaluator
    * @param validationDataAndEvaluators Optional validation dataset and evaluators
    * @param normalizationContexts Optional normalization contexts
-   * @return Trained Game models
+   * @return Trained GAME models
    */
   protected[estimators] def train(
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],

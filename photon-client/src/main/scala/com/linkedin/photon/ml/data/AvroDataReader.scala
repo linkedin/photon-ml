@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.data
 
 import java.util.{List => JList}
+
 import scala.collection.JavaConverters._
 
 import org.apache.avro.Schema
@@ -28,7 +29,7 @@ import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroIOUtils, AvroUtils}
-import com.linkedin.photon.ml.util.{DefaultIndexMapLoader, IndexMap, IndexMapLoader, Utils, VectorUtils}
+import com.linkedin.photon.ml.util._
 
 /**
  * A DataReader implementation that reads the Avro format.

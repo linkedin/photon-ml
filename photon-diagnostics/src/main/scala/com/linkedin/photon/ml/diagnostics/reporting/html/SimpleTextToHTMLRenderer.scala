@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.SimpleTextPhysicalReport
-import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, SpecificRenderer}
-
 import scala.xml._
+
+import com.linkedin.photon.ml.diagnostics.reporting.{SimpleTextPhysicalReport, SpecificRenderer}
 
 /**
  * Render simple text to a sequence of &lt;p/&gt; tags

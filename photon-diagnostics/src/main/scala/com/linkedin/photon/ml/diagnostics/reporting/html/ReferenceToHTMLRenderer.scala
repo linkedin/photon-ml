@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
-import com.linkedin.photon.ml.diagnostics.reporting.{ReferencePhysicalReport, SpecificRenderer}
-
 import scala.xml._
+
+import com.linkedin.photon.ml.diagnostics.reporting.{ReferencePhysicalReport, SpecificRenderer}
 
 
 class ReferenceToHTMLRenderer(

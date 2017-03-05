@@ -18,12 +18,11 @@ import scala.util.{Failure, Success, Try}
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.data._
@@ -38,13 +37,14 @@ import com.linkedin.photon.ml.util.Utils._
 import com.linkedin.photon.ml.util._
 
 /**
- * The Driver class, which drives the training of Game model.
- * Note: there is a separate Driver to drive the scoring of Game models.
+ * The Driver class, which drives the training of GAME model.
+ *
+ * @note there is a separate Driver to drive the scoring of GAME models.
  */
 final class Driver(val sc: SparkContext, val params: GameParams, implicit val logger: Logger)
   extends GAMEDriver(sc, params, logger) {
 
-  // These two types make the code easier to read, and are somewhat specific to the Game Driver
+  // These two types make the code easier to read, and are somewhat specific to the GAME Driver
   type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
   type FeatureShardStatisticsOpt = Option[FeatureShardStatistics]
   type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
@@ -52,6 +52,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
   /**
    * Prepare the training data, fit models and select best model.
    * There is one model for each combination of fixed and random effect specified in the params.
+   *
+   * @note all intercept terms are turned ON by default in prepareFeatureMaps.
    */
   def run(): Unit = {
 
@@ -165,11 +167,14 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @return One BasicStatisticalSummary per feature shard
    */
   private def calculateStatistics(
-    data: DataFrame,
-    featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics  =
+      data: DataFrame,
+      featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics =
 
-    featureIndexMapLoaders.keys.map
-      { featureShardId => (featureShardId, BasicStatisticalSummary(data.select(featureShardId).map(_.getAs[Vector](0)))) }
+    featureIndexMapLoaders.keys
+      .map {
+        featureShardId =>
+          (featureShardId, BasicStatisticalSummary(data.select(featureShardId).map(_.getAs[SparkVector](0))))
+      }
 
   /**
    * Compute basic statistics (same as spark-ml) of the training data for each feature shard.
@@ -240,14 +245,13 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
             s"$config\n" +
             s"Model summary:\n${model.toSummaryString}\n\n" +
             s"Evaluation result is : ${eval.head._2}")
-        case _ =>
-          logger.debug("No best model selection because no validation data was provided")
       }
 
   /**
    * Write the GAME models to HDFS.
    *
    * TODO: Deprecate model-spec then remove it in favor of model-metadata, but there are clients!
+   * TODO: Should we perform model selection for NONE output mode? NONE output mode is used mostly as a debugging tool.
    *
    * @param featureShardIdToFeatureMapLoader The shard ids
    * @param models All the models that were producing during training
@@ -306,14 +310,14 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
 }
 
 /**
- * This object is the main entry point for Game's training Driver. There is another one for the scoring Driver.
+ * This object is the main entry point for GAME's training Driver. There is another one for the scoring Driver.
  */
 object Driver {
 
   private val LOGS = "logs"
 
   /**
-   * Main entry point for Game training driver.
+   * Main entry point for GAME training driver.
    *
    * @param args The command line arguments
    */

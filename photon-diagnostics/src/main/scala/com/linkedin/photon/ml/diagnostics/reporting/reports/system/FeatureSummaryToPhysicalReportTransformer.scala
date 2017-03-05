@@ -15,8 +15,7 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 
 import com.linkedin.photon.ml.diagnostics.reporting.reports.DiagnosticUtils
-import com.linkedin.photon.ml.diagnostics.reporting.{
-  SimpleTextPhysicalReport, BulletedListPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, LogicalToPhysicalReportTransformer, SectionPhysicalReport, SimpleTextPhysicalReport}
 
 /**
  * Convert a feature summary into presentable form.

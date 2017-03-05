@@ -25,8 +25,8 @@ import org.apache.hadoop.mapred.JobConf
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.{ShardedPrecisionAtK, ShardedAUC}
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
+import com.linkedin.photon.ml.evaluation.{ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.test.TestTemplateWithTmpDir
 

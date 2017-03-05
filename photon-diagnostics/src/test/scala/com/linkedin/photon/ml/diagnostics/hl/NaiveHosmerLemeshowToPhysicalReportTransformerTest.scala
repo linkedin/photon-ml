@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
-import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, PlotPhysicalReport, SectionPhysicalReport, PhysicalReport}
 import org.testng.annotations.Test
+
+import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, PhysicalReport, PlotPhysicalReport, SectionPhysicalReport}
 
 /**
  * "Marble roll" test of transformer -- verify structure but not contents of output (this should ultimately be inspected

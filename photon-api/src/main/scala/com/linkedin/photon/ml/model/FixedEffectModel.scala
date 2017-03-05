@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -54,7 +53,7 @@ protected[ml] class FixedEffectModel(
    * Compute the score for the dataset.
    *
    * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GameDatum object, referred to in the GAME code as the "unique id".
+   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
    * @return The score.
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =

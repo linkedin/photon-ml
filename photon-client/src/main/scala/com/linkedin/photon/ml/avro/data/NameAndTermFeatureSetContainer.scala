@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.avro.data
 
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
+
 import scala.collection.{Map, Set}
 
 import org.apache.hadoop.conf.Configuration

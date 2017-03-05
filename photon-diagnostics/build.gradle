@@ -25,7 +25,7 @@ dependencies {
     exclude group: 'de.erichseifert.vectorgraphics2d'
   }
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.6.2") {
+  compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
   compile('org.apache.xmlgraphics:batik-svggen:1.7')

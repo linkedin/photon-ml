@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.Logging
 
@@ -114,49 +114,34 @@ object ModelTraining extends Logging {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = GLMOptimizationConfiguration(optimizerConfig, regularizationContext)
-    // Initialize the broadcasted normalization context
+    // Initialize the broadcast normalization context
     val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
 
     // Construct the generalized linear optimization problem
     val (glmConstructor, objectiveFunction) = taskType match {
       case TaskType.LOGISTIC_REGRESSION =>
         val constructor = LogisticRegressionModel.apply _
-        val objective = DistributedGLMLossFunction.create(
-          optimizationConfig,
-          LogisticLossFunction,
-          trainingData.sparkContext,
-          treeAggregateDepth)
+        val objective = DistributedGLMLossFunction(trainingData.sparkContext, optimizationConfig, treeAggregateDepth)(LogisticLossFunction)
         (constructor, objective)
 
       case TaskType.LINEAR_REGRESSION =>
         val constructor = LinearRegressionModel.apply _
-        val objective = DistributedGLMLossFunction.create(
-          optimizationConfig,
-          SquaredLossFunction,
-          trainingData.sparkContext,
-          treeAggregateDepth)
+        val objective = DistributedGLMLossFunction(trainingData.sparkContext, optimizationConfig, treeAggregateDepth)(SquaredLossFunction)
         (constructor, objective)
 
       case TaskType.POISSON_REGRESSION =>
         val constructor = PoissonRegressionModel.apply _
-        val objective = DistributedGLMLossFunction.create(
-          optimizationConfig,
-          PoissonLossFunction,
-          trainingData.sparkContext,
-          treeAggregateDepth)
+        val objective = DistributedGLMLossFunction(trainingData.sparkContext, optimizationConfig, treeAggregateDepth)(PoissonLossFunction)
         (constructor, objective)
 
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         val constructor = SmoothedHingeLossLinearSVMModel.apply _
-        val objective = DistributedSmoothedHingeLossFunction.create(
-          optimizationConfig,
-          trainingData.sparkContext,
-          treeAggregateDepth)
+        val objective = DistributedSmoothedHingeLossFunction(trainingData.sparkContext, optimizationConfig, treeAggregateDepth)
         (constructor, objective)
 
       case _ => throw new Exception(s"Loss function for taskType $taskType is currently not supported.")
     }
-    val optimizationProblem = DistributedOptimizationProblem.create(
+    val optimizationProblem = DistributedOptimizationProblem(
       optimizationConfig,
       objectiveFunction,
       samplerOption = None,

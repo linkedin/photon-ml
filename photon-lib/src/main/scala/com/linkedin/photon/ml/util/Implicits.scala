@@ -93,7 +93,7 @@ protected[ml] object Implicits {
    * When an Option contains a Map[K, V], extract V at K key from Map if Option isDefined, else apply f that
    * returns a default V.
    *
-   * NOTE: throws an exception if the Option isDefined but key is not found. The behavior of the Map is not changed,
+   * @note throws an exception if the Option isDefined but key is not found. The behavior of the Map is not changed,
    * the default provided is used only in case the Option itself isEmpty.
    *
    * @param o An Option that contains a Map[K, V]

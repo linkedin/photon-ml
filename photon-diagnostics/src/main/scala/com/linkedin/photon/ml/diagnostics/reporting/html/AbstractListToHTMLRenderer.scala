@@ -14,10 +14,10 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
+import scala.xml._
+
 import com.linkedin.photon.ml.diagnostics.reporting._
 import com.linkedin.photon.ml.diagnostics.reporting.base.BaseSequencePhysicalReportRender
-
-import scala.xml._
 
 class AbstractListToHTMLRenderer[-L <: SequencePhysicalReport[PhysicalReport]](
     listTag: String,

@@ -23,8 +23,8 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet, ScoredGameDatum}
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
-import com.linkedin.photon.ml.optimization.{RandomEffectOptimizationTracker, OptimizationTracker}
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
+import com.linkedin.photon.ml.optimization.{OptimizationTracker, RandomEffectOptimizationTracker}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**

@@ -14,17 +14,17 @@
  */
 package com.linkedin.photon.ml.estimators
 
-import java.io.PrintWriter
-
-import breeze.linalg.{DenseMatrix, DenseVector, pinv}
-import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import breeze.linalg.DenseVector
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.testng.Assert.{assertEquals, fail}
+import org.testng.Assert.{assertEquals, assertNotEquals, fail}
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
 
 /**
- * Integration tests for GameEstimator.
+ * Integration tests for GAMEEstimator.
  *
  * The test data set here is a subset of the Yahoo! music data set available on the internet.
  */
@@ -46,83 +46,163 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   import GameEstimatorTest._
 
   /**
-   * A very simple test that fits a toy data set using only the GameEstimator (not the full Driver).
-   * This is useful to understand the minimum setting in which a GameEstimator will function properly.
+   * A very simple test that fits a toy data set using only the GAMEEstimator (not the full Driver).
+   * This is useful to understand the minimum setting in which a GAMEEstimator will function properly,
+   * and to verify the algorithms manually.
    *
-   * NOTE 1:
-   *   Intercepts are optional in GameEstimator, but GameDriver will setup an intercept by default if
-   *   none is specified in GameParams.featureShardIdToInterceptMap.
-   *   This happens in GameDriver.prepareFeatureMapsDefault, and there only.
-   *   Here, we have to setup an intercept manually, otherwise GameEstimator learns only a dependence on the
+   * @note
+   *   Intercepts are optional in GAMEEstimator, but GAMEDriver will setup an intercept by default if
+   *   none is specified in GAMEParams.featureShardIdToInterceptMap.
+   *   This happens in GAMEDriver.prepareFeatureMapsDefault, and there only.
+   *   Here, we have to setup an intercept manually, otherwise GAMEEstimator learns only a dependence on the
    *   features.
    */
-  @Test
-  def simpleFixedEffectTest(): Unit = sparkTest("simpleFixedEffectTest") {
+  @Test(dataProvider = "trivialLabeledPoints")
+  def simpleHardcodedTest(labeledPoints: Seq[LabeledPoint]): Unit = sparkTest("simpleHardcodedTest") {
 
     // This example has only a single fixed effect
     val (coordinateId, featureShardId) = ("global", "features")
-    // We will use 10 points in dimension 2 (the third feature index for the intercept)
-    val (nSamples, nDimensions) = (10, 3) // including intercept in nDimensions
+    val nDimensions = labeledPoints.head.features.size
 
     // Setup feature names a feature index from feature name to feature index
-    val featureNames = (0 until nDimensions-1).map(i => s"feature-$i").toSet
-    val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions-1))
+    // Have to drop in an intercept "feature" but intercepts are turned ON by default
+    val featureNames = (0 until nDimensions).map(i => s"feature-$i").toSet
+    val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions))
 
     // Generate a Spark DataFrame containing labeled points (label, x, y)
-    val labeledPoints: Seq[LabeledPoint] = generateLabeledPoints(nSamples, nDimensions).toSeq
+    // :+ 1.0 is because we need to add that column to make up a correct design matrix, including that 1.0
+    // to multiply by the intercept term.
+    val label = GameConverters.FieldNames.RESPONSE
     val trainingData: DataFrame = new SQLContext(sc)
       .createDataFrame(labeledPoints
-        .map { datum: LabeledPoint => (datum.label, VectorUtils.breezeToMllib(datum.features)) })
-      .toDF(GameConverters.FieldNames.RESPONSE, featureShardId)
+        .map { point: LabeledPoint =>
+          val x = Vectors.dense(point.features.toDenseVector.toArray :+ 1.0).toSparse
+          (point.label, x) })
+      .toDF(label, featureShardId)
 
-    // We set args for the GameEstimator - only: so this is the minimum set of params required by GameEstimator
+    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[SparkVector](0)))
+
+    // We set args for the GAMEEstimator - only: so this is the minimum set of params required by GAMEEstimator
     // Default number of passes over the coordinates (numIterations) is 1, which is all we need if
     // we have a single fixed effect model
     val args = Map[String, String](
       "task-type" -> TaskType.LINEAR_REGRESSION.toString,
       "feature-shard-id-to-feature-section-keys-map" -> s"$featureShardId:${featureNames.mkString(",")}",
       "fixed-effect-data-configurations" -> s"$coordinateId:$featureShardId,1",
-      "fixed-effect-optimization-configurations" -> s"$coordinateId:1,1e-5,10,1,LBFGS,l2",
+      "fixed-effect-optimization-configurations" -> s"$coordinateId:100,1e-11,0.3,1,LBFGS,l2",
       "updating-sequence" -> coordinateId,
-      "normalization-type" -> NormalizationType.NONE.toString, // not required
-      "train-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
-      "validate-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
-      "output-dir" -> "", // required by GameParams parser, but not used in GameEstimator
-      "feature-name-and-term-set-path" -> "")  // required by GameParams parser, but not used in GameEstimator
+      "train-input-dirs" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
+      "validate-input-dirs" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
+      "output-dir" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
+      "feature-name-and-term-set-path" -> "")  // required by GAMEParams parser, but not used in GAMEEstimator
     val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
 
     // Compute normalization contexts based on statistics of the training data for this (unique) feature shard
     val normalizationContexts: Option[Map[String, NormalizationContext]] =
-      Some(Map((featureShardId, BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[MLVector](0)))))
+      Some(Map((featureShardId, stats))
         .mapValues { featureShardStats =>
           val intercept: Option[Int] = featureIndexMap.get(GLMSuite.INTERCEPT_NAME_TERM)
           NormalizationContext(params.normalizationType, featureShardStats, intercept)
         })
 
-    // Create GameEstimator and fit model
-    val (estimator, logger) = createEstimator(params, "simpleTest")
-
+    // Create GAMEEstimator and fit model
     // Returns (model, evaluation, optimizer config)
     val models: Seq[(GAMEModel, Option[EvaluationResults], String)] =
-      estimator.fit(trainingData, validationData = None, normalizationContexts)
+        createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
 
-    val model: FixedEffectModel = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel]
+    val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model
 
-    logger.info(s"Calculated ${models.size} models")
-    logger.info(s"Coefficients are:\n${model.model.coefficients}")
-    logger.info("Data points are:")
-    labeledPoints.foreach(pt => println(s"${pt.toRawString}"))
+    // Reference values from scikit-learn
+    assertEquals(model.coefficients.means(0), 0.3215554473500486, 1e-12)
+    assertEquals(model.coefficients.means(1), 0.17904355431985355, 1e-12)
+    assertEquals(model.coefficients.means(2), 0.4122241763914806, 1e-12)
+  }
 
-    val pw = new PrintWriter("test.txt")
-    labeledPoints.foreach { pt => pw.write(pt.toRawString + "\n") }
-    pw.close()
+  /**
+   * Build GAMEParams for each possible value of the normalization.
+   *
+   * @return An collection of GAMEParams with one entry for each normalization type.
+   */
+  @DataProvider
+  def normalizationParameters(): Array[Array[GameParams]] =
 
-    val Z = DenseVector(labeledPoints.map(x => x.label).toArray)
-    val X = new DenseMatrix(nSamples, nDimensions-1, labeledPoints.flatMap(x => x.features.toDenseVector.toArray).toArray)
-    val D = DenseMatrix.horzcat(DenseVector.ones[Double](nSamples).toDenseMatrix.t, X)
-    val XX = pinv(D)
-    val W = XX * Z
-    println(W)
+    Array(NormalizationType.values.map {
+      normalizationType =>
+        GameParams.parseFromCommandLine(CommonTestUtils.argArray(Map[String, String](
+          "task-type" -> TaskType.LINEAR_REGRESSION.toString,
+          "feature-shard-id-to-feature-section-keys-map" -> s"features:feature-0,feature-1",
+          "fixed-effect-data-configurations" -> s"global:features,1",
+          "fixed-effect-optimization-configurations" -> s"global:100,1e-11,0,1,LBFGS,l2",
+          "updating-sequence" -> "global",
+          "normalization-type" -> normalizationType.toString,
+          "train-input-dirs" -> "",
+          "validate-input-dirs" -> "",
+          "output-dir" -> "",
+          "feature-name-and-term-set-path" -> ""
+        )))
+    })
+
+  /**
+   * In this test, we just verify that we can fit a model with each possible normalization type, without verifying that
+   * the results are correct.
+   *
+   * Not using DataProviders, because they can't be composed to have multiple DataProviders serving arguments to
+   * a single function.
+   *
+   * @note when regularization is not involved, the model should be invariant under renormalization, since we undo
+   *       normalization after training.
+   */
+  @Test
+  def testNormalization(): Unit = sparkTest("testNormalization") {
+
+    val answer = DenseVector(0.34945501725815586, 0.26339479490270173, 0.4366125400310442)
+
+    for (params: GameParams <- normalizationParameters()(0)) {
+
+      // This example has only a single fixed effect
+      val (coordinateId, featureShardId) = ("global", "features")
+      val labeledPoints: Seq[LabeledPoint] = trivialLabeledPoints()(0)(0)
+      val nDimensions = labeledPoints.head.features.size
+
+      // Setup feature names a feature index from feature name to feature index
+      // Have to drop in an intercept "feature" but intercepts are turned ON by default
+      val featureNames = (0 until nDimensions).map(i => s"feature-$i").toSet
+      val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions))
+
+      // Generate a Spark DataFrame containing labeled points (label, x, y)
+      // :+ 1.0 is because we need to add that column to make up a correct design matrix, including that 1.0
+      // to multiply by the intercept term.
+      val label = GameConverters.FieldNames.RESPONSE
+      val trainingData: DataFrame = new SQLContext(sc)
+        .createDataFrame(labeledPoints
+          .map { point: LabeledPoint =>
+            val x = Vectors.dense(point.features.toDenseVector.toArray :+ 1.0).toSparse
+            (point.label, x)
+          })
+        .toDF(label, featureShardId)
+
+      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[SparkVector](0)))
+
+      // Compute normalization contexts based on statistics of the training data for this (unique) feature shard
+      val normalizationContexts: Option[Map[String, NormalizationContext]] =
+        Some(Map((featureShardId, stats))
+          .mapValues { featureShardStats =>
+            val intercept: Option[Int] = featureIndexMap.get(GLMSuite.INTERCEPT_NAME_TERM)
+            NormalizationContext(params.normalizationType, featureShardStats, intercept)
+          })
+
+      // Create GAMEEstimator and fit model
+      // Returns (model, evaluation, optimizer config)
+      val models: Seq[(GAMEModel, Option[EvaluationResults], String)] =
+      createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
+
+      val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model
+      for (i <- 0 until nDimensions)
+        assertNotEquals(model.coefficients.means(i), 0.0, 1e-12, s"${params.normalizationType.toString} i")
+      answer.toArray.zip(model.coefficients.means.toArray).foreach {
+        case (exp, act) => assertEquals(exp, act, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+      }
+    }
   }
 
   @Test
@@ -341,7 +421,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   /**
    * Creates a test estimator from the params.
    *
-   * @param params Game params object specifying estimator parameters
+   * @param params GAME params object specifying estimator parameters
    * @param testName Optional name of the test: if provided the logs with go to that dir in tmp dir
    *                 (tmp dir is per thread)
    * @return The created estimator and the logger (so we can use it in tests if needed)

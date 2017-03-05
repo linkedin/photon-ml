@@ -18,7 +18,7 @@ import scopt.OptionParser
 
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
-import com.linkedin.photon.ml.util.{Utils, PalDBIndexMapParams}
+import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
 
 /**
  * Command line arguments for GAME scoring driver.

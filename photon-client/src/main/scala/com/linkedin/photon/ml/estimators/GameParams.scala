@@ -99,7 +99,8 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var outputDir: String = ""
 
   /**
-   * Number of coordinate descent iterations
+   * Number of coordinate descent iterations, i.e. number of passes over all the coordinates. If set to 1, GAME
+   * will do one pass over all the coordinates, optimizing each coordinate in turn, then stop.
    */
   var numIterations: Int = 1
 
@@ -209,7 +210,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
 
 object GameParams {
 
-  // NOTE: these are the parameter names for Game, and Photon has its own, slightly different list.
+  // NOTE these are the parameter names for GAME, and Photon has its own, slightly different list.
 
   // Required parameters
   val TRAIN_INPUT_DIRS = "train-input-dirs"
@@ -244,10 +245,10 @@ object GameParams {
   val NORMALIZATION_TYPE = "normalization-type"
 
   /**
-   * Parse parameters for Game from the arguments on the command line.
+   * Parse parameters for GAME from the arguments on the command line.
    *
    * @param args An array containing each command line argument
-   * @return An instance of GameParams or an exception if the parameters cannot be parsed correctly
+   * @return An instance of GAMEParams or an exception if the parameters cannot be parsed correctly
    */
   protected[ml] def parseFromCommandLine(args: Array[String]): GameParams = {
 
@@ -448,7 +449,6 @@ object GameParams {
           s"Default: ${defaultParams.numberOfOutputFilesForRandomEffectModel}")
         .foreach(x => params.numberOfOutputFilesForRandomEffectModel = x)
 
-      val z = DELETE_OUTPUT_DIRS_IF_EXIST
       opt[Boolean](DELETE_OUTPUT_DIR_IF_EXISTS)
         .text(s"Whether to delete the output directory if exists. Default: ${defaultParams.deleteOutputDirIfExists}")
         .foreach(x => params.deleteOutputDirIfExists = x)

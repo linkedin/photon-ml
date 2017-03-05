@@ -21,14 +21,13 @@ import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.{ModelTraining, TaskType}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
-
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.{ModelTraining, TaskType}
 
 /**
  * All feature normalizations are affine transformation so the resulting models without regularization should be

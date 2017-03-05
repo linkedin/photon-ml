@@ -68,8 +68,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   /**
-   * Generate a decent Game model for subsequent tests.
-   * This Game model is a logistic regression. It has 1 fixed effect, and 2 different random effect models,
+   * Generate a decent GAME model for subsequent tests.
+   * This GAME model is a logistic regression. It has 1 fixed effect, and 2 different random effect models,
    * the random effect models have 2 and 3 "items" respectively.
    *
    * Notes:
@@ -83,18 +83,18 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    *
    * On HDFS the files for this model are:
    *
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/fixed-effect/fixed/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/fixed-effect/fixed/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/id-info
    *
-   * @return (GameModel, featureIndexLoaders, featureNames)
+   * @return (GAMEModel, featureIndexLoaders, featureNames)
    */
   def makeGameModel(): (GAMEModel, Map[String, DefaultIndexMapLoader], Map[String, IndexedSeq[String]]) = {
 
@@ -130,7 +130,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   /**
-   * Test that we can load a simple Game model with fixed and random effects, given a feature index.
+   * Test that we can load a simple GAME model with fixed and random effects, given a feature index.
    */
   @Test
   def testLoadAndSaveGameModels(): Unit = sparkTest("testLoadAndSaveGameModels") {
@@ -206,7 +206,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   /**
-   * Test that we can extract all features from a Game model correctly.
+   * Test that we can extract all features from a GAME model correctly.
    */
   @Test
   def testExtractGameModelFeatures(): Unit = sparkTest("testExtractGameModelFeatures") {
@@ -220,7 +220,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     // The first value returned is the feature index, which we don't need here
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(None, modelDir, sc)
 
-    // Let's extract all features from the Game model...
+    // Let's extract all features from the GAME model...
     val features = ModelProcessingUtils.extractGameModelFeatures(sc, loadedGameModel, newFeatureIndexLoaders)
 
     // ... and verify the models

@@ -14,12 +14,13 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
+import org.apache.commons.math3.distribution.{ChiSquaredDistribution, RealDistribution}
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
-import org.apache.commons.math3.distribution.{ChiSquaredDistribution, RealDistribution}
-import org.apache.spark.rdd.RDD
 
 /**
  * Implements the Hosmer-Lemeshow goodness-of-fit test for LR problems

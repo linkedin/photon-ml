@@ -315,9 +315,9 @@ Detailed usages are described via command:
 
 ## IntelliJ IDEA setup
 When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for
-development (IntelliJ IDEA's debugger can be used with all the tests).
-- Run ./gradlew first on the command line (some classes need to be generated once).
-- Open project in IDEA with "Import Project" and import as a Gradle project.
+development (IntelliJ IDEA's debugger can be used with all the tests). 
+- Run ./gradlew build first on the command line (some classes need to be generated once).
+- Open project as "New/Project from Existing Source", choose gradle project, and set gradle to use the local wrapper.
 
 ## How to Contribute
 We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.

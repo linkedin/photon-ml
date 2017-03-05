@@ -23,8 +23,9 @@ import org.testng.annotations.{DataProvider, Test}
  */
 class HosmerLemeshowDiagnosticTest {
 
-  import HosmerLemeshowDiagnosticTest._
   import org.testng.Assert._
+
+  import HosmerLemeshowDiagnosticTest._
 
   @DataProvider
   def generateHappyPathTestCases(): Array[Array[Any]] = {

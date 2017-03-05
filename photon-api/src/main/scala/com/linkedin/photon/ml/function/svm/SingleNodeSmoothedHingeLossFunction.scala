@@ -18,7 +18,7 @@ import breeze.linalg.Vector
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.{DiffFunction, SingleNodeObjectiveFunction, L2RegularizationDiff}
+import com.linkedin.photon.ml.function.{DiffFunction, L2RegularizationDiff, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
@@ -90,6 +90,7 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
 }
 
 object SingleNodeSmoothedHingeLossFunction {
+
   /**
    * Factory method to create a new objective function with SingleNodeSmoothedHingeLossFunction as the base loss
    * function.
@@ -97,7 +98,7 @@ object SingleNodeSmoothedHingeLossFunction {
    * @param configuration The optimization problem configuration
    * @return A new SingleNodeSmoothedHingeLossFunction
    */
-  def create(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
+  def apply(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
 
@@ -110,7 +111,4 @@ object SingleNodeSmoothedHingeLossFunction {
       case _ => new SingleNodeSmoothedHingeLossFunction
     }
   }
-
-  def apply(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction =
-    create(configuration)
 }

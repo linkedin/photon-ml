@@ -18,6 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+
 import com.linkedin.photon.ml.data.RandomEffectDataSet
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
@@ -118,7 +119,7 @@ object FactoredRandomEffectOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new RandomEffectOptimizationProblem
    */
-  protected[ml] def create[
+  protected[ml] def apply[
       RandomEffectObjective <: SingleNodeObjectiveFunction,
       LatentEffectObjective <: DistributedObjectiveFunction](
       randomEffectDataSet: RandomEffectDataSet,
@@ -135,7 +136,7 @@ object FactoredRandomEffectOptimizationProblem {
     : FactoredRandomEffectOptimizationProblem[RandomEffectObjective, LatentEffectObjective] = {
 
     val MFOptimizationConfiguration(numInnerIterations, latentSpaceDimension) = mfOptimizationConfiguration
-    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem.create(
+    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem(
       randomEffectDataSet,
       randomEffectOptimizationConfiguration,
       randomObjectiveFunction,
@@ -143,7 +144,7 @@ object FactoredRandomEffectOptimizationProblem {
       normalizationContext,
       isTrackingState,
       isComputingVariance)
-    val latentFactorOptimizationProblem = DistributedOptimizationProblem.create(
+    val latentFactorOptimizationProblem = DistributedOptimizationProblem(
       latentFactorOptimizationConfiguration,
       latentObjectiveFunction,
       latentSamplerOption,
@@ -159,34 +160,4 @@ object FactoredRandomEffectOptimizationProblem {
       numInnerIterations,
       latentSpaceDimension)
   }
-
-  def apply[
-      RandomEffectObjective <: SingleNodeObjectiveFunction,
-      LatentEffectObjective <: DistributedObjectiveFunction](
-      randomEffectDataSet: RandomEffectDataSet,
-      randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
-      latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
-      mfOptimizationConfiguration: MFOptimizationConfiguration,
-      randomObjectiveFunction: RandomEffectObjective,
-      latentObjectiveFunction: LatentEffectObjective,
-      latentSamplerOption: Option[DownSampler],
-      glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: Broadcast[NormalizationContext],
-      isTrackingState: Boolean = false,
-      isComputingVariance: Boolean = false)
-    : FactoredRandomEffectOptimizationProblem[RandomEffectObjective, LatentEffectObjective] =
-
-    create[RandomEffectObjective, LatentEffectObjective](
-      randomEffectDataSet,
-      randomEffectOptimizationConfiguration,
-      latentFactorOptimizationConfiguration,
-      mfOptimizationConfiguration,
-      randomObjectiveFunction,
-      latentObjectiveFunction,
-      latentSamplerOption,
-      glmConstructor,
-      normalizationContext,
-      isTrackingState,
-      isComputingVariance)
-
 }
