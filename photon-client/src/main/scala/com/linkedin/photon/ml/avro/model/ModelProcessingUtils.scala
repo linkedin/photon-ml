@@ -214,7 +214,7 @@ object ModelProcessingUtils {
     val gameModel = new GAMEModel(models.toMap)
 
     require(
-      gameModel.modelType == modelType,
+      modelType == TaskType.NONE || gameModel.modelType == modelType,
       s"GAME model type ${gameModel.modelType} does not match type $modelType listed in metadata")
 
     (gameModel, featureIndexLoaders.toMap)
@@ -578,7 +578,7 @@ object ModelProcessingUtils {
         case Some(modelType) => TaskType.withName(modelType.group(1))
         case _ => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
       }
-    }.getOrElse(TaskType.LINEAR_REGRESSION)
+    }.getOrElse(TaskType.NONE)
 
     params
   }

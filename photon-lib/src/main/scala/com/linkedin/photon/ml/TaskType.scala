@@ -19,5 +19,6 @@ package com.linkedin.photon.ml
  */
 object TaskType extends Enumeration {
   type TaskType = Value
+  // Currently 'NONE' is used for backwards compatibility when loading models of unrecorded type.
   val LINEAR_REGRESSION, POISSON_REGRESSION, LOGISTIC_REGRESSION, SMOOTHED_HINGE_LOSS_LINEAR_SVM, NONE = Value
 }
