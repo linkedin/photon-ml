@@ -23,7 +23,7 @@ import com.linkedin.paldb.api.{Configuration, PalDB, StoreReader}
 import org.apache.spark.{HashPartitioner, SparkFiles}
 
 /**
- * An off heap index map implementation using [[PalDB]].
+ * An off heap feature index map implementation using [[PalDB]].
  *
  * The internal implementation assumed the following things:
  * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
@@ -62,7 +62,7 @@ class PalDBIndexMap extends IndexMap {
    *
    * @param storePath The directory where the storage is put
    * @param partitionsNum The number of partitions, the storage contains
-   * @param namespace
+   * @param namespace The feature namespace
    * @param isLocal default: false, if set false will use SparkFiles to access cached files; otherwise,
    *                it will directly read from local files
    * @return A PalDBIndexMap instance

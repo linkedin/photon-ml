@@ -20,51 +20,26 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.SparkContext
 
 /**
- * A PalDBIndexMap loader
+ * A PalDBIndexMap loader.
  */
 class PalDBIndexMapLoader(
-  @transient sc: SparkContext,
-  storeDir: String,
-  numPartitions: Int,
-  namespace: String = IndexMap.GLOBAL_NS) extends IndexMapLoader {
-
-  private val _storeDir: String = storeDir
-  private val _numPartitions: Int = numPartitions
-  private val _namespace: String = namespace
-
-  // Check the input arguments and add the PalDB index files to the Spark nodes.
-  prepare()
+  private val storeDir: String,
+  private val numPartitions: Int,
+  private val namespace: String = IndexMap.GLOBAL_NS) extends IndexMapLoader {
 
   /**
-   *
-   */
-  private[this] def prepare(): Unit = {
-    val hadoopFS = FileSystem.get(sc.hadoopConfiguration)
-    val offHeapIndexMapDirPath = new Path(_storeDir)
-
-    // Check that the off-heap index map dir exists, is non-empty, and the loader is given a valid # of partitions.
-    require(_numPartitions > 0, s"Invalid # off-heap index map partitions: ${_numPartitions}")
-    require(hadoopFS.exists(offHeapIndexMapDirPath), s"Off-heap index map dir does not exist: ${_storeDir}")
-    require(
-      hadoopFS.getContentSummary(offHeapIndexMapDirPath).getFileCount > 0,
-      s"Off-heap index map dir is empty: ${_storeDir}")
-
-    (0 until _numPartitions).foreach { i =>
-      sc.addFile(PalDBIndexMapLoader.getPath(sc, new Path(_storeDir, PalDBIndexMap.partitionFilename(i, namespace))))
-    }
-  }
-
-  /**
+   * Load a feature index map, when in the driver.
    *
    * @return The loaded IndexMap for driver
    */
-  override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
+  override def indexMapForDriver(): IndexMap = new PalDBIndexMap().load(storeDir, numPartitions, namespace)
 
   /**
+   * Load feature index map, when in an executor.
    *
    * @return The loaded IndexMap for RDDs
    */
-  override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(_storeDir, _numPartitions, _namespace)
+  override def indexMapForRDD(): IndexMap = new PalDBIndexMap().load(storeDir, numPartitions, namespace)
 }
 
 object PalDBIndexMapLoader {
@@ -92,5 +67,38 @@ object PalDBIndexMapLoader {
           uri.getQuery,
           uri.getFragment).toString
     }
+  }
+
+  /**
+   * Factory methods for PalDBIndexMapLoaders.
+   *
+   * Throws exception if any parameter is not suitable to build a PalDBIndexMapLoader.
+   *
+   * @param sc The SparkContext
+   * @param storeDir The directory where the PalDB store will live (on HDFS)
+   * @param numPartitions The number of partitions for the PalDB store
+   * @param namespace A feature namespace, optional, defaults to IndexMap.GLOBAL_NS
+   * @return An instance of a PalDBIndexMapLoader.
+   */
+  def apply(sc: SparkContext,
+      storeDir: String,
+      numPartitions: Int,
+      namespace: String = IndexMap.GLOBAL_NS): PalDBIndexMapLoader = {
+
+    val hadoopFS = FileSystem.get(sc.hadoopConfiguration)
+    val offHeapIndexMapDirPath = new Path(storeDir)
+
+    // Pre-conditions
+    require(hadoopFS.exists(offHeapIndexMapDirPath), s"Off-heap index map dir does not exist: $storeDir")
+    require(hadoopFS.getContentSummary(offHeapIndexMapDirPath).getFileCount > 0,
+      s"Off-heap index map dir is empty: $storeDir")
+    require(numPartitions > 0, s"Invalid # off-heap index map partitions: $numPartitions")
+    // End pre-conditions
+
+    (0 until numPartitions).foreach { i =>
+      sc.addFile(PalDBIndexMapLoader.getPath(sc, new Path(storeDir, PalDBIndexMap.partitionFilename(i, namespace))))
+    }
+
+    new PalDBIndexMapLoader(storeDir, numPartitions, namespace)
   }
 }

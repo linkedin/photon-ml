@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.util
 
 /**
- * Use the default system HashMap to construct an index map. Highly inefficient in terms of memory usage, but easier to
- * handle.
+ * A feature index map backed by an immutable Map.
+ * Highly inefficient in terms of memory usage, but easier to handle.
  *
  * Recommended for small feature space cases (<= 200k).
  *
@@ -24,13 +24,20 @@ package com.linkedin.photon.ml.util
  *
  * @param featureNameToIdMap The map from raw feature string (name) to feature index (id)
  */
-class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) extends IndexMap {
-  @transient
+class DefaultIndexMap(val featureNameToIdMap: Map[String, Int]) extends IndexMap {
+
   private var _idToNameMap: Map[Int, String] = _
   private val _size: Int = featureNameToIdMap.size
 
   override def size(): Int = _size
   override def isEmpty(): Boolean = size == 0
+
+  /**
+   * This function lazily creates _idToNameMap when called for the first time.
+   *
+   * @param idx The feature index
+   * @return The feature name if found, NONE otherwise
+   */
   override def getFeatureName(idx: Int): Option[String] = {
     if (_idToNameMap == null) {
       _idToNameMap = featureNameToIdMap.map{case (k, v) => (v, k)}
@@ -38,11 +45,33 @@ class DefaultIndexMap(@transient val featureNameToIdMap: Map[String, Int]) exten
 
     _idToNameMap.get(idx)
   }
-  override def getIndex(name: String): Int = featureNameToIdMap.getOrElse(name, IndexMap.NULL_KEY)
-  override def +[B1 >: Int](kv: (String, B1)): Map[String, B1] = featureNameToIdMap.+(kv)
+
+  /**
+   * Get an Option containing the feature id for a given feature name, or None if there is no such feature.
+   *
+   * @param key The feature name
+   * @return Some(feature index) if the feature exists, None otherwise
+   */
   override def get(key: String): Option[Int] = featureNameToIdMap.get(key)
+
+  /**
+   * Get a feature index from a feature name.
+   *
+   * @param name The feature name
+   * @return The feature index if found, IndexMap.NULL_KEY otherwise
+   */
+  override def getIndex(name: String): Int = featureNameToIdMap.getOrElse(name, IndexMap.NULL_KEY)
+
+  /**
+   * Get an iterator over all the (feature name, feature index) pairs.
+   *
+   * @return The iterator
+   */
   override def iterator: Iterator[(String, Int)] = featureNameToIdMap.iterator
-  override def -(key: String): Map[String, Int] = featureNameToIdMap.-(key)
+
+  def +[B >: Int](kv: (String, B)): DefaultIndexMap =
+    new DefaultIndexMap(featureNameToIdMap. +(kv).asInstanceOf[Map[String, Int]])
+  def -(key: String): DefaultIndexMap = new DefaultIndexMap(featureNameToIdMap. -(key))
 }
 
 object DefaultIndexMap {

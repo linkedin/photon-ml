@@ -56,7 +56,7 @@ class AvroDataReaderTest extends SparkTestUtils {
     }
 
     val indexMapLoaders = featureSectionMap.map { case (shardId, _) =>
-      val indexMapLoader = new PalDBIndexMapLoader(
+      val indexMapLoader = PalDBIndexMapLoader(
         sc,
         indexMapParams.offHeapIndexMapDir.get,
         indexMapParams.offHeapIndexMapNumPartitions,

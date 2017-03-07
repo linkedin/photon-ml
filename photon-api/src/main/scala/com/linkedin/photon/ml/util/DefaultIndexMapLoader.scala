@@ -27,12 +27,14 @@ class DefaultIndexMapLoader(sc: SparkContext, featureNameToIdMap: Map[String, In
   private val _mapBroadCaster: Broadcast[Map[String, Int]] = sc.broadcast(featureNameToIdMap)
 
   /**
+   * Get the default feature index map when in the driver.
    *
    * @return The loaded IndexMap for driver
    */
   override def indexMapForDriver(): IndexMap = _indexMap
 
   /**
+   * Get the default feature index map when in an executor.
    *
    * @return The loaded IndexMap for RDDs
    */
@@ -42,7 +44,7 @@ class DefaultIndexMapLoader(sc: SparkContext, featureNameToIdMap: Map[String, In
 object DefaultIndexMapLoader {
 
   /**
-   * A factory method to create default index map loaders.
+   * A factory method to create default feature index map loaders.
    *
    * @note The resulting indexes take their values in [0..numFeatures] ("distinct.sorted.zipWithIndex").
    *
@@ -54,7 +56,7 @@ object DefaultIndexMapLoader {
     new DefaultIndexMapLoader(sc, featureNames.distinct.sorted.zipWithIndex.toMap)
 
   /**
-   * A factory method to create a default index map loader from an existing IndexMap, which is essentially
+   * A factory method to create a default feature index map loader from an existing IndexMap, which is essentially
    * the same as a Map[String, Int].
    *
    * @param sc The Spark context
