@@ -49,12 +49,12 @@ class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(files.size(), 1)
 
     // Read as specific record
-    val specificRdd = AvroIOUtils.readFromAvro[FeatureAvro](sc, outputDir, 1)
+    val specificRdd = AvroIOUtils.readAvroFilesInDir[FeatureAvro](sc, outputDir, 1)
     val actualSpecific = specificRdd.map(x => (x.getName.toString, x.getTerm.toString, x.getValue)).collect()
     assertEquals(actualSpecific, dataIn)
 
     // Read as generic record
-    val genericRdd = AvroIOUtils.readFromAvro[GenericRecord](sc, outputDir, 1)
+    val genericRdd = AvroIOUtils.readAvroFilesInDir[GenericRecord](sc, outputDir, 1)
     val actualGeneric = genericRdd.map(x => (x.get("name").toString, x.get("term").toString, x.get("value"))).collect()
     assertEquals(actualGeneric, dataIn)
 

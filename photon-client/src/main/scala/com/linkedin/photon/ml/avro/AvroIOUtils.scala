@@ -29,23 +29,47 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
- * Utility to write Avro files.
+ * Utility to read/write Avro files.
  */
 object AvroIOUtils {
+
   // The upper limit of the file size the for reading single Avro file: 100 MB
   private val READ_SINGLE_AVRO_FILE_SIZE_LIMIT: Long = 100 << 20
 
   /**
-   * Read GenericRecord. The output RDD needs to be transformed before any further processing.
+   * Read Avro generic records from the input paths on HDFS.
+   *
+   * @param sc The Spark context
+   * @param inputPaths The input paths to the generic records
+   * @param minPartitions Minimum number of partitions of the output RDD
+   * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
+   */
+  protected[ml] def readAvroFiles(
+    sc: SparkContext,
+    inputPaths: Seq[String],
+    minPartitions: Int): RDD[GenericRecord] = {
+
+    require(inputPaths.nonEmpty, "No input path specified - need at least 1")
+    val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
+    sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) } )
+  }
+
+  /**
+   * Read all the Avro files in the given directory on HDFS.
+   * The output RDD needs to be transformed before any further processing.
    *
    * @param sc Spark context
    * @param inputDir The input directory to the Avro files
    * @param minNumPartitions Minimum number of Hadoop Splits to generate.
    * @return A RDD of records
    */
-  def readFromAvro[T <: GenericRecord : ClassTag](sc: SparkContext, inputDir: String, minNumPartitions: Int): RDD[T] =
+  def readAvroFilesInDir[T <: GenericRecord : ClassTag](
+      sc: SparkContext,
+      inputDir: String,
+      minNumPartitions: Int): RDD[T] =
+
     sc.hadoopFile[AvroWrapper[T], NullWritable, AvroInputFormat[T]](inputDir, minNumPartitions)
-      .map { case (k, v) => k.datum() }
+      .map  { case (k, _) => k.datum() }
 
   /**
    * Save an RDD of GenericRecord to HDFS using saveAsHadoopFile().

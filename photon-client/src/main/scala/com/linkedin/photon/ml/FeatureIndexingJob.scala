@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml
 
 import java.util.{List => JList}
-
 import scala.collection.JavaConverters._
 
 import org.apache.hadoop.conf.Configuration
@@ -26,7 +25,7 @@ import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.avro.{AvroUtils, FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.avro._
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.util._
 
@@ -180,7 +179,7 @@ class FeatureIndexingJob(
    *
    */
   def run(): Unit = {
-    val inputRdd = AvroUtils.readAvroFiles(sc, inputPaths, 10)
+    val inputRdd = AvroIOUtils.readAvroFiles(sc, inputPaths, 10)
 
     ensureOutputPath(outputPath)
 

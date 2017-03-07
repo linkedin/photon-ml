@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.avro.data
 
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
-
 import scala.collection.{Map, Set}
 
 import org.apache.hadoop.conf.Configuration
@@ -25,7 +24,7 @@ import org.apache.spark.SparkContext
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.avro.AvroUtils
+import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.util._
 
 /**
@@ -234,7 +233,7 @@ object NameAndTermFeatureSetContainer {
       } else {
         numExecutors * 5
       }
-    val records = AvroUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
+    val records = AvroIOUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
     // numExecutors * 5 is too much for distinct operation when the data are huge. Use numExecutors instead.
     val nameAndTermFeatureSetContainer =
       AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys, numExecutors)

@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.data
 
 import java.util.{List => JList}
-
 import scala.collection.JavaConverters._
 
 import org.apache.avro.Schema
@@ -28,7 +27,7 @@ import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroUtils}
+import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.util.{DefaultIndexMapLoader, IndexMap, IndexMapLoader, Utils, VectorUtils}
 
 /**
@@ -91,7 +90,7 @@ class AvroDataReader(
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
-    val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
+    val records = AvroIOUtils.readAvroFiles(sc, paths, numPartitions)
     val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap)
 
     (readMerged(records, indexMapLoaders, featureColumnMap, numPartitions), indexMapLoaders)
@@ -128,7 +127,7 @@ class AvroDataReader(
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
-    val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
+    val records = AvroIOUtils.readAvroFiles(sc, paths, numPartitions)
 
     readMerged(records, indexMapLoaders, featureColumnMap, numPartitions)
   }
