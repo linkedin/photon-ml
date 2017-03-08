@@ -23,7 +23,7 @@ import org.apache.spark.{HashPartitioner, Partitioner}
 import com.linkedin.photon.ml.spark.BroadcastLike
 
 /**
- * Spark partitioner implementation for random effect datasets, that takes the imbalanced data size across different
+ * Partitioner implementation for random effect datasets, that takes the imbalanced data size across different
  * random effects into account (e.g., a popular item may be associated with more data points than a less popular one).
  *
  * @param idToPartitionMap Random effect type to partition map
@@ -32,11 +32,11 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   extends Partitioner
   with BroadcastLike {
 
-  val partitions = idToPartitionMap.value.values.max + 1
+  val numPartitions: Int = idToPartitionMap.value.values.max + 1
 
   /**
    *
-   * @return This object with all its broadcasted variables unpersisted
+   * @return This object with all its broadcast variables unpersisted
    */
   override def unpersistBroadcast(): this.type = {
     idToPartitionMap.unpersist()
@@ -44,9 +44,10 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   }
 
   /**
+   * Compares two RandomEffectDataSetPartitioner.
    *
-   * @param other
-   * @return
+   * @param other The other RandomEffectDataSetPartitioner to compare with
+   * @return true if the two partitioners have the same idToPartitionMap, false otherwise
    */
   override def equals(other: Any): Boolean = other match {
     case rep: RandomEffectDataSetPartitioner =>
@@ -55,45 +56,42 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   }
 
   /**
+   * Hash code for this partitioner.
    *
-   * @return
+   * @return A Int hash code
    */
   override def hashCode: Int = idToPartitionMap.hashCode()
 
   /**
+   * For a given key, get the corresponding partition id. If the key is not in any partition, we randomly assign
+   * the training vector to a partition (with Spark's HashPartitioner).
    *
-   * @return
-   */
-  def numPartitions: Int = partitions
-
-  /**
-   *
-   * @param key
-   * @return
+   * @param key A training vector key (String).
+   * @return The partition id to which the training vector belongs.
    */
   def getPartition(key: Any): Int = key match {
     case string: String =>
-      idToPartitionMap.value.getOrElse(string, defaultPartitioner.getPartition(string))
+      idToPartitionMap.value.getOrElse(string, new HashPartitioner(numPartitions).getPartition(string))
     case any =>
       throw new IllegalArgumentException(s"Expected key of ${this.getClass} is String, but ${any.getClass} found")
   }
-
-  /**
-   *
-   * @return
-   */
-  def defaultPartitioner: HashPartitioner = new HashPartitioner(partitions)
 }
 
 object RandomEffectDataSetPartitioner {
   /**
-   * Generate a partitioner from the random effect dataset.
+   * Generate a partitioner for one random effect model.
    *
-   * @param numPartitions Number of partitions
+   * A random effect model is composed of multiple sub-models, each trained on data points for a single item.
+   * We collect the training vector ids that correspond to the random effect, then build an id to partition map.
+   * Data should be distributed across partitions as equally as possible. Since some items have more data points
+   * than others, this partitioner uses simple 'bin packing' for distributing data load across partitions (using
+   * minHeap).
+   *
+   * @param numPartitions The number of partitions to fill
    * @param randomEffectType The random effect type (e.g. "memberId")
-   * @param gameDataSet The dataset
-   * @param partitionerCapacity Partitioner capacity
-   * @return The partitioner
+   * @param gameDataSet The GAME training dataset
+   * @param partitionerCapacity The partitioner capacity
+   * @return A partitioner for one random effect model
    */
   def generateRandomEffectDataSetPartitionerFromGameDataSet(
       numPartitions: Int,
@@ -102,6 +100,7 @@ object RandomEffectDataSetPartitioner {
       partitionerCapacity: Int = 10000): RandomEffectDataSetPartitioner = {
 
     assert(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")
+
     val sortedRandomEffectTypes =
       gameDataSet
           .values
@@ -113,7 +112,7 @@ object RandomEffectDataSetPartitioner {
           .take(partitionerCapacity)
 
     val ordering = new Ordering[(Int, Int)] {
-      def compare(pair1: (Int, Int), pair2: (Int, Int)) = pair2._2 compare pair1._2
+      def compare(pair1: (Int, Int), pair2: (Int, Int)): Int = pair2._2 compare pair1._2
     }
 
     val minHeap = mutable.PriorityQueue.newBuilder[(Int, Int)](ordering)
