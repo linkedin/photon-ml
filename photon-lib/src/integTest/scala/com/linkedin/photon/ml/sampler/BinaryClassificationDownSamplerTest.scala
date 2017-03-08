@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.sampler
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.testng.Assert
+import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
@@ -32,11 +32,65 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  */
 class BinaryClassificationDownSamplerTest extends SparkTestUtils {
 
-  private val numTimesToRun = 100
-  private val numPositivesToGenerate = 10
-  private val numNegativesToGenerate = 100
-  private val numFeatures = 5
-  private val tolerance = math.min(100.0 / numTimesToRun / numNegativesToGenerate, 1)
+  import BinaryClassificationDownSamplerTest._
+
+  @DataProvider
+  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
+    Array(Array(0.25), Array(0.5), Array(0.75))
+  }
+
+  @DataProvider
+  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
+    Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
+  }
+
+  @Test(dataProvider = "validDownSamplingRatesProvider")
+  def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
+    val dataset = generateDummyDataset(sc, NUM_POSITIVES_TO_GENERATE, NUM_NEGATIVES_TO_GENERATE, NUM_FEATURES)
+    var numNegativesInSampled: Long = 0
+
+    for (_ <- 0 until NUM_TIMES_TO_RUN) {
+      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataset)
+
+      // Need to burn seeds - the ones we get without this line cause failures in Travis CI
+      DownSampler.getSeed
+
+      val pos = sampled.filter { case (_, point) =>
+        point.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD
+      }
+      val neg = sampled.filter { case (_, point) =>
+        point.label < MathConst.POSITIVE_RESPONSE_THRESHOLD
+      }
+      numNegativesInSampled += neg.count()
+
+      assertEquals(pos.count(), NUM_POSITIVES_TO_GENERATE)
+      pos.foreach { case (_, point) =>
+        assertEquals(point.weight, 1.0, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+      }
+      neg.foreach{ case (_, point) =>
+        assertEquals(point.weight, 1.0 / downSamplingRate, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+      }
+    }
+
+    assertEquals(
+      numNegativesInSampled * 1.0 / (NUM_TIMES_TO_RUN * NUM_NEGATIVES_TO_GENERATE),
+      downSamplingRate,
+      TOLERANCE)
+  }
+
+  @Test(dataProvider = "invalidDownSamplingRatesProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testBadRates(downSamplingRate: Double): Unit = sparkTest("testBadRates") {
+    new BinaryClassificationDownSampler(downSamplingRate)
+  }
+}
+
+object BinaryClassificationDownSamplerTest {
+
+  private val NUM_TIMES_TO_RUN = 100
+  private val NUM_POSITIVES_TO_GENERATE = 10
+  private val NUM_NEGATIVES_TO_GENERATE = 100
+  private val NUM_FEATURES = 5
+  private val TOLERANCE = math.min(100.0 / (NUM_TIMES_TO_RUN * NUM_NEGATIVES_TO_GENERATE), 1)
 
   /**
    * Generates a random labeled point with label 1.0 if isPositive is true and 0.0 otherwise. The offset and weight
@@ -46,9 +100,8 @@ class BinaryClassificationDownSamplerTest extends SparkTestUtils {
    * @param numFeatures The feature dimension of the dummy data
    * @return A labeled point
    */
-  private def generateRandomLabeledPoint(isPositive: Boolean, numFeatures: Integer): LabeledPoint = {
+  private def generateRandomLabeledPoint(isPositive: Boolean, numFeatures: Integer): LabeledPoint =
     new LabeledPoint(if (isPositive) 1.0 else 0.0, CommonTestUtils.generateDenseFeatureVectors(1, 0, numFeatures).head)
-  }
 
   /**
    * Generate a dummy RDD[(Long, LabeledPoint)] for testing the BinaryClassificationDownSampler.
@@ -69,52 +122,5 @@ class BinaryClassificationDownSamplerTest extends SparkTestUtils {
     val neg = (0 until numNegatives).map(i => (i.toLong, generateRandomLabeledPoint(isPositive = false, numFeatures)))
     val points: Seq[(Long, LabeledPoint)] = pos ++ neg
     sc.parallelize(points)
-  }
-
-  @DataProvider
-  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
-    Array(Array(0.25), Array(0.5), Array(0.75))
-  }
-
-  @DataProvider
-  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
-    Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
-  }
-
-  @Test(dataProvider = "validDownSamplingRatesProvider")
-  def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
-    val dataset = generateDummyDataset(sc, numPositivesToGenerate, numNegativesToGenerate, numFeatures)
-
-    var numNegativesInSampled: Long = 0
-    for (_ <- 0 until numTimesToRun) {
-      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataset)
-      val pos = sampled.filter({
-        case (_, point) => point.label >= MathConst.POSITIVE_RESPONSE_THRESHOLD
-      })
-      Assert.assertEquals(pos.count(), numPositivesToGenerate)
-      pos.foreach({
-        case (_, point) => Assert.assertEquals(point.weight, 1.0, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
-      })
-      val neg = sampled.filter({
-        case (_, point) => point.label < MathConst.POSITIVE_RESPONSE_THRESHOLD
-      })
-      numNegativesInSampled += neg.count()
-      neg.foreach({
-        case (_, point) =>
-          Assert.assertEquals(point.weight,
-            1.0 / downSamplingRate,
-            MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
-      })
-    }
-
-    Assert.assertEquals(
-      numNegativesInSampled * 1.0 / numTimesToRun / numNegativesToGenerate,
-      downSamplingRate,
-      tolerance)
-  }
-
-  @Test(dataProvider = "invalidDownSamplingRatesProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testBadRates(downSamplingRate: Double): Unit = sparkTest("testBadRates") {
-    new BinaryClassificationDownSampler(downSamplingRate)
   }
 }

@@ -91,7 +91,13 @@ trait SparkTestUtils {
     val probabilityPositive = 0.5
 
     SparkTestUtils.numericallyBenignGeneratorFunctionForBinaryClassifier(
-      seed, desiredSparsity, dimensionality, positiveLabel, negativeLabel, probabilityPositive, 0,
+      seed,
+      desiredSparsity,
+      dimensionality,
+      positiveLabel,
+      negativeLabel,
+      probabilityPositive,
+      0,
       (0 until size).iterator)
   }
 
@@ -109,7 +115,11 @@ trait SparkTestUtils {
 
     val desiredSparsity = 0.1
     SparkTestUtils.numericallyBenignGeneratorFunctionForPoissonRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -126,7 +136,11 @@ trait SparkTestUtils {
 
     val desiredSparsity = 0.1
     SparkTestUtils.numericallyBenignGeneratorFunctionForLinearRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -147,7 +161,13 @@ trait SparkTestUtils {
     val probabilityPositive = 0.5
 
     SparkTestUtils.outlierGeneratorFunctionForBinaryClassifier(
-      seed, desiredSparsity, dimensionality, positiveLabel, negativeLabel, probabilityPositive, 0,
+      seed,
+      desiredSparsity,
+      dimensionality,
+      positiveLabel,
+      negativeLabel,
+      probabilityPositive,
+      0,
       (0 to size).iterator)
   }
 
@@ -164,8 +184,13 @@ trait SparkTestUtils {
       dimensionality: Int) : Iterator[(Double, Vector[Double])] = {
 
     val desiredSparsity = 0.1
+
     SparkTestUtils.outlierGeneratorFunctionForPoissonRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -181,8 +206,13 @@ trait SparkTestUtils {
       dimensionality: Int) : Iterator[(Double, Vector[Double])] = {
 
     val desiredSparsity = 0.1
+
     SparkTestUtils.outlierGeneratorFunctionForLinearRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -203,7 +233,13 @@ trait SparkTestUtils {
     val probabilityPositive = 0.5
 
     SparkTestUtils.invalidFeatureGeneratorFunctionForBinaryClassifier(
-      seed, desiredSparsity, dimensionality, positiveLabel, negativeLabel, probabilityPositive, 0,
+      seed,
+      desiredSparsity,
+      dimensionality,
+      positiveLabel,
+      negativeLabel,
+      probabilityPositive,
+      0,
       (0 until size).iterator)
   }
 
@@ -220,8 +256,13 @@ trait SparkTestUtils {
       dimensionality: Int) : Iterator[(Double, Vector[Double])] =  {
 
     val desiredSparsity = 0.1
+
     SparkTestUtils.invalidFeatureGeneratorFunctionForPoissonRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -237,8 +278,13 @@ trait SparkTestUtils {
       dimensionality: Int) : Iterator[(Double, Vector[Double])] =  {
 
     val desiredSparsity = 0.1
+
     SparkTestUtils.invalidFeatureGeneratorFunctionForLinearRegression(
-      seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
+      seed,
+      desiredSparsity,
+      dimensionality,
+      0,
+      (0 to size).iterator)
   }
 
   /**
@@ -254,6 +300,7 @@ trait SparkTestUtils {
       dimensionality:Int) : Iterator[(Double, Vector[Double])] = {
 
     val desiredSparsity = 0.1
+
     SparkTestUtils.invalidLabelGeneratorFunction(seed, desiredSparsity, dimensionality, 0, (0 to size).iterator)
   }
 }
@@ -261,7 +308,7 @@ trait SparkTestUtils {
 object SparkTestUtils {
   val log: Logger = LogManager.getLogger(classOf[SparkTestUtils])
 
-  val SPARK_LOCAL_CONFIG: String = "local[4]"
+  val SPARK_LOCAL_CONFIG: String = "local[*]"
   val INLIER_PROBABILITY: Double = 0.90
   val INLIER_STANDARD_DEVIATION: Double = 1e-3
   val OUTLIER_STANDARD_DEVIATION: Double = 1
@@ -286,7 +333,7 @@ object SparkTestUtils {
       negativeLabel: Int,
       probabilityPositive: Double,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -336,7 +383,7 @@ object SparkTestUtils {
       negativeLabel: Int,
       probabilityPositive: Double,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -386,7 +433,7 @@ object SparkTestUtils {
       negativeLabel: Int,
       probabilityPositive: Double,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -430,7 +477,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -466,7 +513,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -502,7 +549,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -538,7 +585,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -571,7 +618,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -604,7 +651,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -637,7 +684,7 @@ object SparkTestUtils {
       desiredSparsity: Double,
       desiredDimensionality: Int,
       index: Int,
-      items: Iterator[Int]) : Iterator[(Double, Vector[Double])] = {
+      items: Iterator[Int]): Iterator[(Double, Vector[Double])] = {
 
     val prng:RandomGenerator = new Well19937a(5000 * seed + index)
     val negBinomial:PascalDistribution = new PascalDistribution(prng, 1, desiredSparsity)
@@ -679,7 +726,7 @@ object SparkTestUtils {
       xAttribute: Double,
       desiredDimensionality: Int,
       prng: RandomGenerator,
-      negBinomial: PascalDistribution) : (Double, Vector[Double]) = {
+      negBinomial: PascalDistribution): (Double, Vector[Double]) = {
 
     // temporary storage for our items
     var features: Map[Int, Double] = TreeMap()
@@ -727,7 +774,7 @@ object SparkTestUtils {
       xAttribute: Double,
       desiredDimensionality: Int,
       prng: RandomGenerator,
-      negBinomial: PascalDistribution) : (Double, Vector[Double]) = {
+      negBinomial: PascalDistribution): (Double, Vector[Double]) = {
 
     // temporary storage for our items
     var features: Map[Int, Double] = TreeMap()
@@ -786,7 +833,7 @@ object SparkTestUtils {
       xAttribute: Double,
       desiredDimensionality: Int,
       prng: RandomGenerator,
-      negBinomial: PascalDistribution) : (Double, Vector[Double]) = {
+      negBinomial: PascalDistribution): (Double, Vector[Double]) = {
 
     // temporary storage for our items
     var features: Map[Int, Double] = TreeMap()

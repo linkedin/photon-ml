@@ -94,6 +94,14 @@ subprojects {
     tasks.withType(Test) {
       useTestNG()
 
+      // Exclude tests (ex. gradle test -Pexclude=SomeTestClass)
+      def excludedTests = project.properties['exclude']
+      if (excludedTests) {
+        excludedTests.replaceAll('\\s', '').split('[,]').each {
+          exclude "**/${it}.class"
+        }
+      }
+
       options {
         parallel = 'methods'
         threadCount = 4

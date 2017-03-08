@@ -67,18 +67,12 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     sparkTest("prepareFixedAndRandomEffectTrainingDataSet", useKryo = true) {
       val featureSectionMap = fixedAndRandomEffectFeatureSectionMap
       val data = getData(trainPath, featureSectionMap)
-
-      val partitioner = new LongHashPartitioner(data.rdd.partitions.length)
-      val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-        data,
-        featureSectionMap.keys.toSet,
-        idTypeSet,
-        isResponseRequired = true)
-        .partitionBy(partitioner)
-
-      val params = fixedAndRandomEffectParams
-      val estimator = getEstimator(params)
-      val trainingDataSet = estimator.prepareTrainingDataSet(gameDataSet)
+      val trainingDataSet = getEstimator(fixedAndRandomEffectParams).prepareTrainingDataSet(
+        GameConverters.getGameDataSetFromDataFrame(
+          data,
+          featureSectionMap.keys.toSet,
+          idTypeSet,
+          isResponseRequired = true).partitionBy(new LongHashPartitioner(data.rdd.partitions.length)))
 
       assertEquals(trainingDataSet.size, 4)
 

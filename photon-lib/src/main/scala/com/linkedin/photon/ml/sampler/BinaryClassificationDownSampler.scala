@@ -30,10 +30,15 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * @param downSamplingRate The down sampling rate
  */
 protected[ml] class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
+
   require((downSamplingRate > 0D) && (downSamplingRate < 1D), s"Invalid down-sampling rate: $downSamplingRate")
 
   /**
    * Down-sample the negatives in the dataset.
+   *
+   * @note The current down-sampling method does it in one pass, filtering negative data points and flat-scaling the
+   *       weights of the remaining negative data points. The correct solution would perform weight-proportional
+   *       sampling and weight-proportional scaling, though this would require multiple passes.
    *
    * @param labeledPoints The dataset
    * @param seed Random seed

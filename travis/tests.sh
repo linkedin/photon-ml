@@ -7,7 +7,7 @@
 #   http://stackoverflow.com/questions/26082444/how-to-work-around-travis-cis-4mb-output-limit
 #
 
-NUM_LINES=500
+NUM_LINES=4000
 
 # Helper functions
 dump_output() {
@@ -56,13 +56,13 @@ if [[ "$1" == "integration" ]]; then
   PING_LOOP_PID=$!
 
   # Run integration tests, redirect output to tmp file
-  ./gradlew check -x test &> ${BUILD_OUTPUT}
+  ./gradlew integTest -Pexclude=ml/DriverTest,training/DriverTest &> ${BUILD_OUTPUT}
 
   # Kill ping process, output final
   clean_up
 
 elif [[ "$1" == "unit" ]]; then
-  ./gradlew check -x integTest
+  ./gradlew test
 
 else
   echo "ERROR: Invalid test type specified; must be either 'unit' or 'integration'"

@@ -41,7 +41,6 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     try {
       logger.error(ERROR_MESSAGE)
-
     } finally {
       logger.close()
     }
@@ -107,7 +106,6 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
       logger.info(INFO_MESSAGE)
       logger.trace(TRACE_MESSAGE)
       logger.warn(WARN_MESSAGE)
-
     } finally {
       logger.close()
     }
@@ -121,7 +119,6 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   @Test
   def testLogMessageWithStackTrace(): Unit = sparkTest("logMessageWithStackTrace") {
-
     val logFile = s"$getTmpDir/multipleLogMessages"
     val logger = new PhotonLogger(logFile, sc)
 
@@ -129,12 +126,9 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     logger.setLogLevel(PhotonLogger.LogLevelError)
 
     try {
-        throw new TestException
-
+      throw new TestException
     } catch {
-      case e: TestException =>
-        logger.error(ERROR_MESSAGE, e)
-
+      case e: TestException => logger.error(ERROR_MESSAGE, e)
     } finally {
       logger.close()
     }
