@@ -1,6 +1,7 @@
 os:
   - linux
 language: scala
+sudo: required
 jdk:
   - oraclejdk8
 before_cache:
@@ -25,4 +26,4 @@ env:
   - TESTS=unit
   - TESTS=integration
 script:
-  - ./tests.sh $TESTS
+  - ./travis/tests.sh $TESTS

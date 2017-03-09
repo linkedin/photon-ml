@@ -31,38 +31,38 @@ import com.linkedin.photon.ml.util.{FunctionValuesConverged, GradientConverged, 
 /**
  * Verify that core optimizers do reasonable things on small test problems.
  */
-class OptimizerTest extends SparkTestUtils with Logging {
-  import OptimizerTest._
+class OptimizerIntegTest extends SparkTestUtils with Logging {
+  import OptimizerIntegTest._
 
   @DataProvider(parallel = true)
   def optimzersUsingInitialValue(): Array[Array[Object]] = {
     Array(
       Array(new LBFGS(
-        tolerance = OptimizerTest.CONVERGENCE_TOLERANCE,
-        maxNumIterations = OptimizerTest.MAX_ITERATIONS,
-        normalizationContext = OptimizerTest.NORMALIZATION_MOCK,
-        isTrackingState = OptimizerTest.ENABLE_TRACKING)),
+        tolerance = CONVERGENCE_TOLERANCE,
+        maxNumIterations = MAX_ITERATIONS,
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)),
       Array(new TRON(
-        tolerance = OptimizerTest.CONVERGENCE_TOLERANCE,
-        maxNumIterations = OptimizerTest.MAX_ITERATIONS,
-        normalizationContext = OptimizerTest.NORMALIZATION_MOCK,
-        isTrackingState = OptimizerTest.ENABLE_TRACKING)))
+        tolerance = CONVERGENCE_TOLERANCE,
+        maxNumIterations = MAX_ITERATIONS,
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)))
   }
 
   @DataProvider(parallel = true)
   def optimzersNotUsingInitialValue(): Array[Array[Object]] = {
     Array(
       Array(new LBFGS(
-        tolerance = OptimizerTest.CONVERGENCE_TOLERANCE,
-        maxNumIterations = OptimizerTest.MAX_ITERATIONS,
-        normalizationContext = OptimizerTest.NORMALIZATION_MOCK,
-        isTrackingState = OptimizerTest.ENABLE_TRACKING,
+        tolerance = CONVERGENCE_TOLERANCE,
+        maxNumIterations = MAX_ITERATIONS,
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING,
         isReusingPreviousInitialState = false)),
       Array(new TRON(
-        tolerance = OptimizerTest.CONVERGENCE_TOLERANCE,
-        maxNumIterations = OptimizerTest.MAX_ITERATIONS,
-        normalizationContext = OptimizerTest.NORMALIZATION_MOCK,
-        isTrackingState = OptimizerTest.ENABLE_TRACKING,
+        tolerance = CONVERGENCE_TOLERANCE,
+        maxNumIterations = MAX_ITERATIONS,
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING,
         isReusingPreviousInitialState = false)))
   }
 
@@ -72,52 +72,52 @@ class OptimizerTest extends SparkTestUtils with Logging {
   @Test(dataProvider = "optimzersUsingInitialValue")
   def checkEasyTestFunctionSparkNoInitialValue(optimizer: Optimizer[TwiceDiffFunction]): Unit =
     sparkTest("checkEasyTestFunctionSparkNoInitialValue") {
-      val features = new SparseVector[Double](Array(), Array(), OptimizerTest.PROBLEM_DIMENSION)
+      val features = new SparseVector[Double](Array(), Array(), PROBLEM_DIMENSION)
 
       // Test unweighted sample
       val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
       val data = sc.parallelize(Seq(pt))
       optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1))(data)
-      OptimizerTest.easyOptimizationStatesChecks(optimizer.getStateTracker.get)
+      easyOptimizationStatesChecks(optimizer.getStateTracker.get)
 
       // Test weighted sample
       val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 1.5)
       val data2 = sc.parallelize(Seq(pt2))
       optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1))(data2)
-      OptimizerTest.easyOptimizationStatesChecks(optimizer.getStateTracker.get)
+      easyOptimizationStatesChecks(optimizer.getStateTracker.get)
     }
 
   @Test(dataProvider = "optimzersNotUsingInitialValue")
   def checkEasyTestFunctionSparkInitialValue(optimizer: Optimizer[TwiceDiffFunction]): Unit =
     sparkTest("checkEasyTestFunctionSparkInitialValue") {
-      val features = new SparseVector[Double](Array(), Array(), OptimizerTest.PROBLEM_DIMENSION)
-      val r = new Random(OptimizerTest.RANDOM_SEED)
+      val features = new SparseVector[Double](Array(), Array(), PROBLEM_DIMENSION)
+      val r = new Random(RANDOM_SEED)
 
       // Test unweighted sample
       val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
       val data = sc.parallelize(Seq(pt))
-      for (iter <- 0 to OptimizerTest.RANDOM_SAMPLES) {
-        val initParam = DenseVector.fill[Double](OptimizerTest.PROBLEM_DIMENSION)(r.nextDouble())
+      for (iter <- 0 to RANDOM_SAMPLES) {
+        val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
         optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1), initParam)(data)
 
         assertTrue(optimizer.getStateTracker.isDefined)
         assertTrue(optimizer.isDone)
-        OptimizerTest.easyOptimizationStatesChecks(optimizer.getStateTracker.get)
+        easyOptimizationStatesChecks(optimizer.getStateTracker.get)
       }
 
     // Test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 0.5)
     val data2 = sc.parallelize(Seq(pt2))
-    for (iter <- 0 to OptimizerTest.RANDOM_SAMPLES) {
-      val initParam = DenseVector.fill[Double](OptimizerTest.PROBLEM_DIMENSION)(r.nextDouble())
+    for (iter <- 0 to RANDOM_SAMPLES) {
+      val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1), initParam)(data2)
 
-      OptimizerTest.easyOptimizationStatesChecks(optimizer.getStateTracker.get)
+      easyOptimizationStatesChecks(optimizer.getStateTracker.get)
     }
   }
 }
 
-object OptimizerTest extends Logging {
+object OptimizerIntegTest extends Logging {
 
   private val PROBLEM_DIMENSION: Int = 10
   private val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
