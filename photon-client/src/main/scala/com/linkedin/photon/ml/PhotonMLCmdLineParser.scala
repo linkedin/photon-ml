@@ -51,7 +51,7 @@ object PhotonMLCmdLineParser {
    */
   def checkConstraintStringValidity(inputString: String): Boolean = {
     JSON.parseFull(inputString) match {
-      case Some(_: List[Map[String, Any]]) => true // although there is a warning here, changing this line fails tests
+      case Some(_: List[Map[String, Any]]) => true // this generates a type erasure warning that we can ignore
       case _ => false
     }
   }

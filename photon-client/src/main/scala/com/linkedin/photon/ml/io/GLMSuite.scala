@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.io
 
 import java.io.IOException
 import java.util.{List => JList}
-
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
 import scala.util.parsing.json.JSON
@@ -26,11 +25,10 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.avro.{TrainingExampleFieldNames, ResponsePredictionFieldNames, AvroIOUtils}
+import com.linkedin.photon.ml.avro.{AvroIOUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
 import com.linkedin.photon.ml.data
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.io.FieldNamesType._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
 
@@ -67,7 +65,7 @@ class GLMSuite(
    * into memory. Making it transient in order to avoid it being serialized to the executors, which could be expensive
    * and is unnecessary.
    */
-  @transient var featureKeyToIdMap: IndexMap = null
+  @transient var featureKeyToIdMap: IndexMap = null // null intentional
 
   /* Map of feature indices to their (lowerBound, upperBound) constraints */
   @transient var constraintFeatureMap: Option[Map[Int, (Double, Double)]] = None
@@ -75,7 +73,7 @@ class GLMSuite(
   /* set of selected features. If empty, all features are used */
   @transient var selectedFeatures: Set[String] = Set.empty[String]
 
-  private var _indexMapLoader: IndexMapLoader = null
+  private var _indexMapLoader: IndexMapLoader = null // null intentional
 
   /**
    *
@@ -210,7 +208,8 @@ class GLMSuite(
       case Some(x) =>
         val parsedConstraints = JSON.parseFull(x)
         parsedConstraints match {
-          case Some(parsed: List[Map[String, Any]]) =>
+          case Some(p: Any) =>
+            val parsed = p.asInstanceOf[List[Map[String, Any]]] // to avoid warning about type erasure
             parsed.foreach(entry => {
               val message = s"Each map in the constraint map is expected to have the feature name field specified. " +
                   s"The input constraint string was [$constraintString] and the malformed map was [$entry]"
@@ -274,6 +273,7 @@ class GLMSuite(
                   })
               }
             })
+          case _ => throw new RuntimeException("Shouldn't be here")
         }
         if (constraintMap.nonEmpty) {
           Some(Map[Int, (Double, Double)]() ++ constraintMap)
@@ -381,6 +381,6 @@ protected[ml] object GLMSuite {
    */
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_NAME_TERM = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
+  val INTERCEPT_NAME_TERM: String = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
   val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
 }

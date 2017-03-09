@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.test
 
 import scala.collection.immutable.TreeMap
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 import breeze.linalg.{SparseVector, Vector}
@@ -836,8 +837,8 @@ object SparkTestUtils {
       negBinomial: PascalDistribution): (Double, Vector[Double]) = {
 
     // temporary storage for our items
-    var features: Map[Int, Double] = TreeMap()
-    features += (0 -> xAttribute)
+    val nonZeros = ListBuffer[(Int, Double)]()
+    nonZeros.append((0, xAttribute))
 
     // Fill in the rest with dummy binary variables
     //
@@ -851,32 +852,21 @@ object SparkTestUtils {
       // With probability > 0.99, generate a gaussian sample with zero mean and tiny covariance,
       // with probability 0.01, generate +-1
       if (prng.nextDouble() < INLIER_PROBABILITY) {
-        features += (i -> prng.nextGaussian() * INLIER_STANDARD_DEVIATION)
+        nonZeros.append((i, prng.nextGaussian() * INLIER_STANDARD_DEVIATION))
       } else {
         prng.nextInt(3) match {
-          case 0 => features += (i -> Double.NaN)
-          case 1 => features += (i -> Double.PositiveInfinity)
-          case 2 => features += (i -> Double.NegativeInfinity)
+          case 0 => nonZeros.append((i, Double.NaN))
+          case 1 => nonZeros.append((i, Double.PositiveInfinity))
+          case 2 => nonZeros.append((i, Double.NegativeInfinity))
         }
       }
 
       i += negBinomial.sample()
     }
-    features += (desiredDimensionality - 3 -> Double.NaN)
-    features += (desiredDimensionality - 2 -> Double.PositiveInfinity)
-    features += (desiredDimensionality - 1 -> Double.NegativeInfinity)
+    nonZeros.append((desiredDimensionality - 3, Double.NaN))
+    nonZeros.append((desiredDimensionality - 2, Double.PositiveInfinity))
+    nonZeros.append((desiredDimensionality - 1, Double.NegativeInfinity))
 
-    // Turn our temporary structures into our output sample
-    val indices = new Array[Int](features.size)
-    val values = new Array[Double](features.size)
-    var j: Int = 0
-
-    for ((idx: Int, v: Double) <- features) {
-      indices(j) = idx
-      values(j) = v
-      j += 1
-    }
-
-    (label, new SparseVector[Double](indices, values, indices.length, desiredDimensionality))
+    (label, SparseVector[Double](nonZeros.size)(nonZeros:_*))
   }
 }
