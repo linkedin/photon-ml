@@ -414,7 +414,7 @@ object ModelProcessingUtils {
       featureMapLoader: Option[IndexMapLoader],
       sc: SparkContext): (RDD[(String, GeneralizedLinearModel)], IndexMapLoader) = {
 
-    val modelAvros = AvroIOUtils.readFromAvro[BayesianLinearModelAvro](
+    val modelAvros = AvroIOUtils.readAvroFilesInDir[BayesianLinearModelAvro](
       sc,
       coefficientsRDDInputDir,
       minNumPartitions = sc.defaultParallelism)
@@ -466,7 +466,7 @@ object ModelProcessingUtils {
 
   private def loadLatentFactorsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, Vector[Double])] = {
     val minNumPartitions = sparkContext.defaultParallelism
-    val modelAvros = AvroIOUtils.readFromAvro[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
+    val modelAvros = AvroIOUtils.readAvroFilesInDir[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
     modelAvros.map(AvroUtils.convertLatentFactorAvroToLatentFactor)
   }
 

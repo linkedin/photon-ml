@@ -37,7 +37,7 @@ object ScoreProcessingUtils {
    * @return An [[RDD]] of model ids of type [[String] and scored items of type [[ScoredItem]]
    */
   protected[ml] def loadScoredItemsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, ScoredItem)] = {
-    val scoreAvros = AvroIOUtils.readFromAvro[ScoringResultAvro](sparkContext, inputDir,
+    val scoreAvros = AvroIOUtils.readAvroFilesInDir[ScoringResultAvro](sparkContext, inputDir,
       minNumPartitions = sparkContext.defaultParallelism)
     scoreAvros.map { scoreAvro =>
       val score = scoreAvro.getPredictionScore

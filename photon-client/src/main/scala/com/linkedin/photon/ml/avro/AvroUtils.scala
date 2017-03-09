@@ -44,27 +44,6 @@ import com.linkedin.photon.ml.util._
 object AvroUtils {
 
   /**
-   * Read Avro generic records from the input paths.
-   *
-   * @param sc The Spark context
-   * @param inputPaths The input paths of the generic records
-   * @param minPartitions Minimum number of partitions of the output RDD
-   * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
-   */
-  protected[ml] def readAvroFiles(
-      sc: SparkContext,
-      inputPaths: Seq[String],
-      minPartitions: Int): RDD[GenericRecord] = {
-
-    assert(inputPaths.nonEmpty, "The number of input paths is zero.")
-    val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
-    sc.union(inputPaths.map { path =>
-      sc.hadoopFile[AvroWrapper[GenericRecord], NullWritable, AvroInputFormat[GenericRecord]](path,
-        minPartitionsPerPath)
-    }).map(_._1.datum())
-  }
-
-  /**
    * Convert the vector of type [[Vector[Double]]] to an array of Avro records of type [[NameTermValueAvro]].
    *
    * @param vector The input vector
