@@ -23,8 +23,19 @@ import org.apache.spark.{HashPartitioner, Partitioner}
 import com.linkedin.photon.ml.spark.BroadcastLike
 
 /**
- * Partitioner implementation for random effect datasets, that takes the imbalanced data size across different
- * random effects into account (e.g., a popular item may be associated with more data points than a less popular one).
+ * Partitioner implementation for random effect datasets.
+ *
+ * In GAME, we can improve on Spark default partitioning by using domain-specific knowledge in two ways. First, we can
+ * reduce time spend in shuffle operations by leveraging training record keys (helping joins). Second, we assume that
+ * each random effect has less than the maximum partition size of associated training data, i.e. that all the training
+ * data for a given RE will fit within a single Spark data partition. So we can group the training records so that they
+ * all land in the same partition for a given RE, which is what RandomEffectDataSetPartitioner is about.
+ *
+ * RandomEffectDataSetPartitioner also makes sure that partition are as equally balanced as possible, to equalize the
+ * workload of the executors: because we assume the data for each random effect is small, it will usually not even fill
+ * a Spark data partition, so we fill up the partition (i.e. add (id/partition) records to idToPartitionMap with data
+ * for multiple random effects. However, since idToPartitionMap is eventually broadcast to the executors, we also want
+ * to keep the size of that Map under control. 
  *
  * @param idToPartitionMap Random effect type to partition map
  */
@@ -35,6 +46,7 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   val numPartitions: Int = idToPartitionMap.value.values.max + 1
 
   /**
+   * Asynchronously delete cached copies of this broadcast on the executors.
    *
    * @return This object with all its broadcast variables unpersisted
    */
@@ -86,6 +98,11 @@ object RandomEffectDataSetPartitioner {
    * Data should be distributed across partitions as equally as possible. Since some items have more data points
    * than others, this partitioner uses simple 'bin packing' for distributing data load across partitions (using
    * minHeap).
+   *
+   * We stop filling in idToPartitionMap at partitionerCapacity records, because this map is passed to the executors
+   * and we therefore wish to control/limit its size.
+   *
+   * Also see doc for the class, above.
    *
    * @param numPartitions The number of partitions to fill
    * @param randomEffectType The random effect type (e.g. "memberId")
