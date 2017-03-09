@@ -25,58 +25,58 @@ import org.apache.hadoop.fs.{FileSystem, Path}
  * A IndexMapBuilder implemented via PalDB: [[https://github.com/linkedin/paldb]].
  */
 class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
+
+  // The nulls here are intentional.
   @transient
   private var _storeWriter: StoreWriter = null
-
   private var _tmpFile: java.io.File = null
   private var _dstFilePath: Path = null
 
   /**
+   * Init a builder that will store feature name and indexes into a PalDB store.
    *
    * @param outputDir The HDFS directory to store the built index map file
    * @param partitionId The partition id of current builder
-   * @param namespace
+   * @param namespace A feature namespace
    * @return The current builder
    */
   override def init(outputDir: String, partitionId: Int, namespace: String): IndexMapBuilder = {
     val filename = PalDBIndexMap.partitionFilename(partitionId, namespace)
-    _tmpFile = new java.io.File(FileUtils.getTempDirectory, s"paldb-temp-${UUID.randomUUID().toString()}")
+    _tmpFile = new java.io.File(FileUtils.getTempDirectory, s"paldb-temp-${UUID.randomUUID().toString}")
     _storeWriter = PalDB.createWriter(_tmpFile)
     _dstFilePath = new Path(outputDir, filename)
-
+    checkInvariants()
     this
   }
 
   /**
+   * Store feature name and its index. The feature name and index are stored only in a writer.
    *
-   * @param name
-   * @param idx
+   * @param name The feature name
+   * @param idx The feature index
    * @return The current builder
    */
   override def put(name: String, idx: Int): IndexMapBuilder = {
-    validateConfig()
     _storeWriter.put(name, idx)
     // Also store the reversed mapping
     _storeWriter.put(idx, name)
-
     this
   }
 
   /**
-   *
+   * Upon close(), the writer's content actually goes to the PalDB store on disk.
    */
   override def close(): Unit = {
-    validateConfig()
     _storeWriter.close()
-
     val fs = FileSystem.get(new Configuration())
-    fs.copyFromLocalFile(new Path(_tmpFile.toString()), _dstFilePath)
+    fs.copyFromLocalFile(new Path(_tmpFile.toString), _dstFilePath)
   }
 
   /**
-   *
+   * Check the invariants that must hold for this object to be usable.
+   * Throws exceptions if this feature index map builder is not set up properly.
    */
-  private def validateConfig(): Unit = {
+  private def checkInvariants(): Unit = {
     if (_storeWriter == null) {
       throw new RuntimeException("Cannot proceed, storeWriter is null.")
     }

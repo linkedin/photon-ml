@@ -70,7 +70,7 @@ abstract class GAMEDriver(
    */
   protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] = {
     params.featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSections) => {
-      val indexMapLoader = new PalDBIndexMapLoader(
+      val indexMapLoader = PalDBIndexMapLoader(
         sparkContext,
         params.offHeapIndexMapDir.get,
         params.offHeapIndexMapNumPartitions,

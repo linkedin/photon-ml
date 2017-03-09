@@ -17,12 +17,12 @@ package com.linkedin.photon.ml.util
 import scala.collection.immutable.Map
 
 /**
- * The trait defines the methods supposed should be supported by an index map.
+ * The trait defines the methods supposed should be supported by a feature index map.
  */
 trait IndexMap extends Map[String, Int] with Serializable {
 
   /**
-   * Lazily compute and cache the feature dimension
+   * Lazily compute and cache the number of features in this index
    */
   lazy val featureDimension: Int = values.max + 1
 
@@ -35,7 +35,7 @@ trait IndexMap extends Map[String, Int] with Serializable {
   def getFeatureName(idx: Int): Option[String]
 
   /**
-   * Given a feature string, return the index.
+   * Given a feature name, return its index.
    *
    * @param name The feature name
    * @return The feature index if found, IndexMap.NULL_KEY otherwise
@@ -44,8 +44,9 @@ trait IndexMap extends Map[String, Int] with Serializable {
 }
 
 object IndexMap {
+
   // The key to indicate a feature does not exist in the map
-  val NULL_KEY:Int = -1
+  val NULL_KEY: Int = -1
 
   // "global" namespace for situations where either there aren't multiple namespaces, or we want to set apart a global
   // namespace from subspaces

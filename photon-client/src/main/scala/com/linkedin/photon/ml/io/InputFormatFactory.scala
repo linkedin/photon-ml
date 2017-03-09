@@ -36,7 +36,7 @@ object InputFormatFactory {
         // Prepare offHeapIndexMap loader if provided
         val offHeapIndexMapLoader = params.offHeapIndexMapDir match {
           case Some(offHeapDir) =>
-            Some(new PalDBIndexMapLoader(sc, offHeapDir, params.offHeapIndexMapNumPartitions))
+            Some(PalDBIndexMapLoader(sc, offHeapDir, params.offHeapIndexMapNumPartitions))
           case None => None
         }
 

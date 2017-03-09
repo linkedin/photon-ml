@@ -22,22 +22,27 @@ trait IndexMapBuilder {
   /**
    * Initialize an IndexMapBuilder, should be triggered as the 1st step of a builder.
    *
-   * @param outputDir The HDFS directory to store the built index map file
-   * @param partitionId The partition id of current builder
+   * @param outputDir The directory to store the built index map file
+   * @param partitionId The partition id of the current builder
    * @return The current builder
    */
   def init(outputDir: String, partitionId: Int, namespace: String): IndexMapBuilder
 
   /**
    * Close current builder.
+   *
+   * The contract is that after close(), the feature names and indexes need to be persisted
+   * on disk. They might not be before close() is called.
    */
   def close(): Unit
 
   /**
    * Put a feature into map using a specific indexing rule.
    *
-   * @param name
-   * @param idx
+   * This does not require that the feature name and index be persisted on disk.
+   *
+   * @param name The feature name
+   * @param idx The feature index
    * @return The current builder
    */
   def put(name: String, idx: Int): IndexMapBuilder
