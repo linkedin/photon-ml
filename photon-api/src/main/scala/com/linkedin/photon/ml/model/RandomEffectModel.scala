@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{HashPartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
@@ -204,29 +204,34 @@ object RandomEffectModel {
       randomEffectType: String,
       featureShardId: String): KeyValueScore = {
 
-    val scores = dataPoints
-      .map { case (uniqueId, gameData) =>
-        val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
-        val features = gameData.featureShardContainer(featureShardId)
-        (randomEffectId, (uniqueId, features))
-      }
-      .cogroup(modelsRDD)
-      .flatMap { case (randomEffectId, (uniqueIdAndFeaturesIterable, modelsIterable)) =>
-        // TODO: We should move that precondition upfront and check it only once, for speed.
-        assert(modelsIterable.size <= 1,
-          s"More than one model (${modelsIterable.size}) found for individual Id $randomEffectId of " +
-            s"random effect type $randomEffectType")
+    val hashPartitioner = new HashPartitioner(dataPoints.getNumPartitions)
 
-        if (modelsIterable.isEmpty) {
-          uniqueIdAndFeaturesIterable.map { case (uniqueId, _) => (uniqueId, 0.0) }
-        } else {
-          val model = modelsIterable.head
-          uniqueIdAndFeaturesIterable.map { case (uniqueId, features) =>
-            (uniqueId, model.computeScore(features))
+    /*
+     * We perform a replicated partitioned hash join here under the assumption that we can fit the per partition
+     * random effect models in memory. We first partition both relations using the same partitioner and then zip them.
+     * This ensures that the same keys from both relations go in the same partition. Given above, we can now perform the
+     * join by doing the following operations per partition:
+     *   1. Load the random effect models in memory
+     *   2. Iterate over the data points
+     *   3. For each data point, look up the corresponding random effect model in the in memory map and score
+     */
+    val scores = dataPoints
+      .map { case (uniqueId, gameDatum) =>
+        val randomEffectId = gameDatum.idTypeToValueMap(randomEffectType)
+        (randomEffectId, (uniqueId, gameDatum))
+      }
+      .partitionBy(hashPartitioner)
+      .zipPartitions(modelsRDD.partitionBy(hashPartitioner))(
+        (dataIt, modelIt) => {
+          val lookupTable = modelIt.toMap
+          dataIt.map {
+            case (id, (uid, datum)) =>
+              val score = lookupTable.get(id).map(model =>
+                model.computeScore(datum.featureShardContainer(featureShardId))).getOrElse(0.0)
+              (uid, datum.toScoredGameDatum(score))
           }
         }
-      }
-
+      )
     new KeyValueScore(scores)
   }
 }

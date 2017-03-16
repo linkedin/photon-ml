@@ -76,8 +76,8 @@ protected[ml] class RandomEffectDataSet(
 
     val updatedPassiveDataOption = passiveDataOption.map(
       _.join(scores.scores)
-        .mapValues { case ((randomEffectId, LabeledPoint(response, features, offset, weight)), score) =>
-          (randomEffectId, LabeledPoint(response, features, offset + score, weight))
+        .mapValues { case ((randomEffectId, LabeledPoint(response, features, offset, weight)), scoredDatum) =>
+          (randomEffectId, LabeledPoint(response, features, offset + scoredDatum.score, weight))
         })
 
     update(updatedActiveData, updatedPassiveDataOption)

@@ -19,7 +19,7 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.{DataSet, GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.{DataSet, GameDatum, KeyValueScore, ScoredGameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.{DatumScoringModel, GAMEModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
@@ -113,7 +113,7 @@ class CoordinateDescentTest {
     val tracker = mock(classOf[OptimizationTracker])
     val (score, validationScore) = (mock(classOf[KeyValueScore]), mock(classOf[KeyValueScore]))
     val coordinateModel = mock(classOf[DatumScoringModel])
-    val modelScores = mock(classOf[RDD[(Long, Double)]])
+    val modelScores = mock(classOf[RDD[(Long, ScoredGameDatum)]])
     val validationData = mock(classOf[RDD[(Long, GameDatum)]])
 
     val validationEvaluators = (0 until evaluatorCount).map { case (id) =>

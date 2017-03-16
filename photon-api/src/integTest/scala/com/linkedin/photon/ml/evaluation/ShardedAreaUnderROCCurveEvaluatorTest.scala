@@ -18,6 +18,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.ScoredGameDatum
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.SparkTestUtils
 
@@ -77,7 +78,9 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
     val expectedResult = (expectedAUCInNormalCase + expectedAUCInCornerCase) / 2
 
     val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores))
+    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
+      (id, ScoredGameDatum(score = score))
+    }))
     assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }
 
@@ -88,7 +91,9 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
     val scores = scoresInNormalCase ++ scoresInCornerCase ++ scoresWithPositiveLabelsOnly
 
     val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores))
+    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
+      (id, ScoredGameDatum(score = score))
+    }))
     assertTrue(actualResult.isNaN)
   }
 
@@ -99,7 +104,9 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
     val scores = scoresInNormalCase ++ scoresInCornerCase ++ scoresWithNegativeLabelsOnly
 
     val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores))
+    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
+      (id, ScoredGameDatum(score = score))
+    }))
     assertTrue(actualResult.isNaN)
   }
 }

@@ -30,6 +30,7 @@ import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters, GameDatum, K
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
 import com.linkedin.photon.ml.util._
 
+
 /**
  * Driver for GAME full model scoring.
  */
@@ -54,8 +55,6 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     val recordsPath = pathsForDateRange(inputDirs, dateRangeOpt, dateRangeDaysAgoOpt)
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
 
-    val gameDataPartitioner = new LongHashPartitioner(parallelism)
-
     val dataReader = new AvroDataReader(sparkContext)
     val data = dataReader.readMerged(
       recordsPath,
@@ -63,16 +62,19 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
       featureShardIdToFeatureSectionKeysMap,
       parallelism)
 
+    val partitioner = new LongHashPartitioner(parallelism)
     val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
       data,
       featureShardIdToFeatureSectionKeysMap.keys.toSet,
       idTypeSet,
       isResponseRequired = false)
-      .partitionBy(gameDataPartitioner)
+      .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-    logGameDataSet(gameDataSet)
+    if (logDatasetAndModelStats) {
+      logGameDataSet(gameDataSet)
+    }
     gameDataSet
   }
 
@@ -114,32 +116,42 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     // Load the model from HDFS, ignoring the feature index loader
     val (gameModel, _) =
       ModelProcessingUtils.loadGameModelFromHDFS(Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
+    gameModel.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-    logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
+    if (logDatasetAndModelStats) {
+      logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
+    }
 
-    val scores = gameModel.score(gameDataSet).persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+    val scores = gameModel
+      .score(gameDataSet)
+      .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .materialize()
 
-    gameModel.unpersist()
+    gameDataSet.unpersist()
+    gameModel.unpersist
     scores
   }
 
   /**
    * Save the computed scores to HDFS with auxiliary info.
    *
-   * @param gameDataSet The GAME data set
    * @param scores The computed scores
    */
-  protected def saveScoresToHDFS(
-      gameDataSet: RDD[(Long, GameDatum)],
-      scores: KeyValueScore): Unit = {
+  protected def saveScoresToHDFS(scores: KeyValueScore): Unit = {
 
     // Take the offset information into account when writing the scores to HDFS
-    val scoredItems = gameDataSet.join(scores.scores).map { case (_, (gameDatum, score)) =>
-      ScoredItem(score + gameDatum.offset, Some(gameDatum.response), gameDatum.weightOpt, gameDatum.idTypeToValueMap)
+    val scoredItems = scores.scores.map { case (_, scoredGameDatum) =>
+      ScoredItem(
+        scoredGameDatum.score + scoredGameDatum.offset,
+        Some(scoredGameDatum.response),
+        Some(scoredGameDatum.weight),
+        scoredGameDatum.idTypeToValueMap)
     }
     scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    val numScoredItems = scoredItems.count()
-    logger.info(s"Number of scored items to be written to HDFS: $numScoredItems (s)\n")
+    if (logDatasetAndModelStats) {
+      val numScoredItems = scoredItems.count()
+      logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")
+    }
     val scoredItemsToBeSaved =
       if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
         scoredItems.repartition(numOutputFilesForScores)
@@ -176,7 +188,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     logger.info(s"Time elapsed after computing scores: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    saveScoresToHDFS(gameDataSet, scores)
+    saveScoresToHDFS(scores)
     timer.stop()
     logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 

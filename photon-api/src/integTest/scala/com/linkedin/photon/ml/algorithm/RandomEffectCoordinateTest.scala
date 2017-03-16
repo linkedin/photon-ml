@@ -45,7 +45,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 
     // Score before model update
     val score = coordinate.score(model)
-    assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
+    assertTrue(score.scores.map(_._2).collect.forall(_.score == 0.0))
 
     // Update model
     val (newModel, _) = coordinate.updateModel(model)
@@ -53,7 +53,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
 
     // Score after model update
     val newScore = coordinate.score(newModel)
-    assertFalse(newScore.scores.map(_._2).collect.forall(_ == 0.0))
+    assertFalse(newScore.scores.map(_._2).collect.forall(_.score == 0.0))
   }
 
   @Test(dataProvider = "numEntitiesDataProvider")
@@ -68,7 +68,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
     val score = coordinate.score(model)
 
     assertEquals(score.scores.count, numEntities * NUM_TRAINING_SAMPLES)
-    assertTrue(score.scores.map(_._2).collect.forall(_ == 0.0))
+    assertTrue(score.scores.map(_._2).collect.forall(_.score == 0.0))
   }
 }
 

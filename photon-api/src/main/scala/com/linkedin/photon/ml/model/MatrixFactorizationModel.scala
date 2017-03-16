@@ -192,33 +192,33 @@ object MatrixFactorizationModel {
       colLatentFactors: RDD[(String, Vector[Double])]): KeyValueScore = {
 
     val scores = dataPoints
-      //For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
-      .map { case (uniqueId, gameData) =>
-      val rowEffectId = gameData.idTypeToValueMap(rowEffectType)
-      val colEffectId = gameData.idTypeToValueMap(colEffectType)
-      (rowEffectId, (colEffectId, uniqueId))
-    }
+      .map { case (uniqueId, gameDatum) =>
+        //For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
+        val rowEffectId = gameDatum.idTypeToValueMap(rowEffectType)
+        val colEffectId = gameDatum.idTypeToValueMap(colEffectType)
+        (rowEffectId, (colEffectId, uniqueId, gameDatum.toScoredGameDatum()))
+      }
       .cogroup(rowLatentFactors)
-      // Decorate rowEffectId with row latent factors
-      .flatMap { case (rowEffectId, (colEffectIdAndUniqueIdsIterable, rowLatentFactorIterable)) =>
-      assert(rowLatentFactorIterable.size <= 1, s"More than one row latent factor (${rowLatentFactorIterable.size}) " +
-        s"found for random effect id $rowEffectId of random effect type $rowEffectType")
-      colEffectIdAndUniqueIdsIterable.flatMap { case (colEffectId, uniqueId) =>
-        rowLatentFactorIterable.map(rowLatentFactor => (colEffectId, (rowLatentFactor, uniqueId)))
+      .flatMap { case (rowEffectId, (colEffectIdAndUniqueIdsAndDatumIterable, rowLatentFactorIterable)) =>
+        // Decorate rowEffectId with row latent factors
+        assert(rowLatentFactorIterable.size <= 1, s"More than one row latent factor (${rowLatentFactorIterable.size}) "
+          + s"found for random effect id $rowEffectId of random effect type $rowEffectType")
+        colEffectIdAndUniqueIdsAndDatumIterable.flatMap { case (colEffectId, uniqueId, scoredDatum) =>
+          rowLatentFactorIterable.map(rowLatentFactor => (colEffectId, (rowLatentFactor, uniqueId, scoredDatum)))
+        }
       }
-    }
-      // Decorate colEffectId with column latent factors
       .cogroup(colLatentFactors)
-      .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsIterable, colLatentFactorIterable)) =>
+      .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsAndDatumIterable, colLatentFactorIterable)) =>
+        // Decorate colEffectId with column latent factors
         val size = colLatentFactorIterable.size
-      assert(size <= 1, s"More than one column latent factor ($size) found for random effect id $colEffectId of " +
-        s"random effect type $colEffectType")
-      rowLatentFactorAndUniqueIdsIterable.flatMap { case (rowLatentFactor, uniqueId) =>
-        colLatentFactorIterable.map(colLatentFactor => (uniqueId, (rowLatentFactor, colLatentFactor)))
+        assert(size <= 1, s"More than one column latent factor ($size) found for random effect id $colEffectId of "
+          + s"random effect type $colEffectType")
+        rowLatentFactorAndUniqueIdsAndDatumIterable.flatMap { case (rowLatentFactor, uniqueId, scoredDatum) =>
+          colLatentFactorIterable.map { colLatentFactor =>
+            (uniqueId, scoredDatum.copy(score = rowLatentFactor.dot(colLatentFactor)))
+          }
+        }
       }
-    }
-      // Compute dot product for (row latent factors, column latent factors) tuple
-      .mapValues { case (rowLatentFactor, colLatentFactor) => rowLatentFactor.dot(colLatentFactor) }
 
     new KeyValueScore(scores)
   }

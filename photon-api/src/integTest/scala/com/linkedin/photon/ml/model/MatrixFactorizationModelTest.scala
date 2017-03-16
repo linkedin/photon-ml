@@ -18,6 +18,7 @@ import scala.util.Random
 
 import breeze.linalg.Vector
 import org.apache.spark.SparkContext
+
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
@@ -68,7 +69,7 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
       val gameDatum = new GameDatum(response = 1.0, offsetOpt = None, weightOpt = None, featureShardContainer = Map(),
         idTypeToValueMap = randomEffectTypeToIdMap)
       val score = rowLatentFactors(row)._2.dot(colLatentFactors(col)._2)
-      (gameDatum, score)
+      (gameDatum, gameDatum.toScoredGameDatum(score))
     }
       .zipWithIndex
       .map { case ((gameDatum, score), uniqueId) => ((uniqueId.toLong, gameDatum), (uniqueId.toLong, score)) }

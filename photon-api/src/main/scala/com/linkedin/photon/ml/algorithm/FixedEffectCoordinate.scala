@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, KeyValueScore, LabeledPoint}
+import com.linkedin.photon.ml.data.{FixedEffectDataSet, KeyValueScore, LabeledPoint, ScoredGameDatum}
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 import com.linkedin.photon.ml.optimization.{FixedEffectOptimizationTracker, OptimizationTracker, DistributedOptimizationProblem}
@@ -158,8 +158,8 @@ object FixedEffectCoordinate {
    */
   private def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): KeyValueScore = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
-    val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
-      modelBroadcast.value.computeScore(features)
+    val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(label, features, offset, weight) =>
+      ScoredGameDatum(label, offset, weight, modelBroadcast.value.computeScore(features), Map())
     }
 
     new KeyValueScore(scores)

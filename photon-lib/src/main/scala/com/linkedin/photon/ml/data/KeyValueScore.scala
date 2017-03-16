@@ -19,26 +19,27 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
- * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
- * offsets and residuals computed during each iteration. In the current implementation, the scores are of form
- * [[RDD]][([[Long]], [[Double]])], where the [[Long]] typed variable represents the unique ID of each data point,
- * while the [[Double]] typed variable represents the score.
- *
- * @param scores the scores consists of (unique ID, score) pairs as explained above.
- */
-protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLike {
+  * The scores used throughout [[com.linkedin.photon.ml.algorithm.CoordinateDescent]], in order to carry on both the
+  * offsets and residuals computed during each iteration. In the current implementation, the scores are of form
+  * [[RDD]][([[Long]], [[ScoredGameDatum]])], where the [[Long]] typed variable represents the unique ID of each data
+  * point, while the [[ScoredGameDatum]] typed variable represents the scored example.
+  *
+  * @param scores The scores consist of (unique ID, score) pairs as explained above.
+  */
+protected[ml] class KeyValueScore(val scores: RDD[(Long, ScoredGameDatum)]) extends RDDLike {
 
   /**
+   * Get the Spark context for the distributed scores.
    *
    * @return The Spark context
    */
   override def sparkContext: SparkContext = scores.sparkContext
 
   /**
+   * Set the name of the scores [[RDD]].
    *
    * @param name The parent name for all RDDs in this class
    * @return This object with all its RDDs' name assigned
@@ -49,6 +50,7 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
+   * Set the storage level of the scores [[RDD]]
    *
    * @param storageLevel The storage level
    * @return This object with all its RDDs' storage level set
@@ -59,6 +61,7 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
+   * Mark the scores [[RDD]] as no longer needed.
    *
    * @return This object with all its RDDs unpersisted
    */
@@ -68,6 +71,7 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
+   * Materialize the scores [[RDD]] (Spark [[RDD]] objects are lazy-computed: this forces computation).
    *
    * @return This object with all its RDDs materialized
    */
@@ -77,46 +81,62 @@ protected[ml] class KeyValueScore(val scores: RDD[(Long, Double)]) extends RDDLi
   }
 
   /**
-   * The plus operation for the key value scores.
+   * Generic method to combine two [[KeyValueScore]] objects.
+   *
+   * @param op The operator to combine two [[ScoredGameDatum]]
+   * @param that The [[KeyValueScore]] to merge with this instance
+   * @return A merged [[KeyValueScore]]
+   */
+  private def fullOuterJoin(op: (ScoredGameDatum, ScoredGameDatum) => ScoredGameDatum, that: KeyValueScore): KeyValueScore =
+    new KeyValueScore(
+      this
+        .scores
+        .cogroup(that.scores)
+        .flatMapValues {
+          case (Seq(sd1), Seq(sd2)) => Seq(op(sd1, sd2))
+          case (Seq(), Seq(sd2)) => Seq(op(sd2.getZeroScoreDatum, sd2))
+          case (Seq(sd1), Seq()) => Seq(op(sd1, sd1.getZeroScoreDatum))
+        })
+
+  /**
+   * The plus operation for the key-value scores.
+   *
+   * @note This operation performs a full outer join.
    *
    * @param that The other key value score instance
    * @return A new key value score instance encapsulating the accumulated values
    */
-  def +(that: KeyValueScore): KeyValueScore = {
-    val addedScores =
-      this.scores
-        .fullOuterJoin(that.scores)
-        .mapValues { case (thisScore, thatScore) => thisScore.getOrElse(0.0) + thatScore.getOrElse(0.0) }
-    new KeyValueScore(addedScores)
-  }
+  def +(that: KeyValueScore): KeyValueScore = fullOuterJoin((a, b) => a.copy(score = a.score + b.score), that)
 
   /**
-   * The minus operation for the key value scores.
+   * The minus operation for the key-value scores.
+   *
+   * @note This operation performs a full outer join.
    *
    * @param that The other key value score instance
    * @return A new key value score instance encapsulating the subtracted values
    */
-  def -(that: KeyValueScore): KeyValueScore = {
-    val subtractedScores =
-      this.scores
-        .fullOuterJoin(that.scores)
-        .mapValues { case (thisScore, thatScore) => thisScore.getOrElse(0.0) - thatScore.getOrElse(0.0) }
-    new KeyValueScore(subtractedScores)
-  }
+  def -(that: KeyValueScore): KeyValueScore = fullOuterJoin((a, b) => a.copy(score = a.score - b.score), that)
 
   /**
+   * Check if two [[KeyValueScore]]s are equal (if they have the [[ScoredGameDatum]] objects for each unique ID, and
+   * those objects are equal).
    *
-   * @param that
-   * @return
+   * @param that Some other object
+   * @return True if the input is a [[KeyValueScore]] with identical [[ScoredGameDatum]] for each unique ID, false
+   *         otherwise
    */
   override def equals(that: Any): Boolean = {
     that match {
-      case other: KeyValueScore => this.scores.fullOuterJoin(other.scores).mapPartitions(iterator =>
-        Iterator.single(iterator.forall { case (_, (thisScoreOpt1, thisScoreOpt2)) =>
-          thisScoreOpt1.isDefined && thisScoreOpt2.isDefined &&
-            math.abs(thisScoreOpt1.get - thisScoreOpt2.get) < MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
-        })
-      ).filter(!_).count() == 0
+      case other: KeyValueScore =>
+        this.scores
+          .fullOuterJoin(other.scores)
+          .mapPartitions(iterator =>
+            Iterator.single(iterator.forall { case (_, (thisScoreOpt1, thisScoreOpt2)) =>
+              thisScoreOpt1.isDefined && thisScoreOpt2.isDefined && thisScoreOpt1.get.equals(thisScoreOpt2.get)
+            })
+          )
+          .filter(!_).count() == 0
       case _ => false
     }
   }

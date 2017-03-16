@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.cli.game.scoring
 import scala.util.Random
 
 import org.apache.hadoop.fs.Path
-
 import org.apache.spark.SparkException
 import org.apache.spark.mllib.evaluation.RegressionMetrics
 
@@ -53,8 +52,9 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       weightOpt = Some(1.0),
       featureShardContainer = Map(),
       idTypeToValueMap = Map())
+    val scoredDatum = gameDatum.toScoredGameDatum()
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
-    val scores = new KeyValueScore(sc.parallelize(Seq((1L, 0.0))))
+    val scores = new KeyValueScore(sc.parallelize(Seq((1L, scoredDatum))))
     Driver.evaluateScores(evaluatorType = SmoothedHingeLoss, scores = scores, gameDataSet)
   }
 
@@ -184,7 +184,6 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testEvaluateScores(evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("testEvaluateScores") {
     val numSamples = 10
     val random = new Random(MathConst.RANDOM_SEED).self
-    val scores = new KeyValueScore(sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextDouble()))))
     val labels = sc.parallelize((0 until numSamples).map(idx => (idx.toLong, random.nextInt(2))))
 
     // Ensure that each queryId and documentId has both positive and negative labels, so that AUC will not return NaN
@@ -218,6 +217,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
         idTypeToValueMap = Map("queryId" -> random.nextInt(2).toString, "documentId" -> random.nextInt(2).toString)
       )
     ))
+
+    val scores = new KeyValueScore(gameDataSet.mapValues(datum => datum.toScoredGameDatum(random.nextDouble())))
 
     evaluatorTypes.foreach { evaluatorType =>
       val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)

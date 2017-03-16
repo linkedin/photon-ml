@@ -84,7 +84,7 @@ rat {
     'photon-api/src/integTest/resources/**',
     'photon-api/src/test/resources/**',
     'photon-client/src/integTest/resources/**',
-    'tests.sh'
+    'travis/**'
   ]
 }
 

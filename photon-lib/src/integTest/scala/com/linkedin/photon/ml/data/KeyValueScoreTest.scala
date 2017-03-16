@@ -31,7 +31,8 @@ class KeyValueScoreTest extends SparkTestUtils {
    * @return The [[KeyValueScore]] generated with the given scores
    */
   private def generateKeyValueScore(scores: Array[Double]): KeyValueScore = {
-    new KeyValueScore(sc.parallelize(scores.zipWithIndex.map { case (score, uniqueId) => (uniqueId.toLong, score) }))
+    new KeyValueScore(sc.parallelize(scores.zipWithIndex.map { case (score, uniqueId) =>
+      (uniqueId.toLong, ScoredGameDatum(score = score)) }))
   }
 
   /**
@@ -41,9 +42,8 @@ class KeyValueScoreTest extends SparkTestUtils {
    * @param values The given values
    * @return The [[KeyValueScore]] generated with the given keys and values
    */
-  private def generateKeyValueScore(keys: Array[Long], values: Array[Double]): KeyValueScore = {
-    new KeyValueScore(sc.parallelize(keys.zip(values)))
-  }
+  private def generateKeyValueScore(keys: Array[Long], values: Array[Double]): KeyValueScore =
+    new KeyValueScore(sc.parallelize(keys.zip(values.map(v => ScoredGameDatum(score = v)))))
 
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForKeyValueScores") {
