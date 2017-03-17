@@ -18,7 +18,7 @@ apply from: '../build-scripts/integration-test.gradle'
 dependencies {
   compile("org.testng:testng:6.9.9")
 
-  compile("org.apache.spark:spark-core$scalaSuffix:1.6.2") {
+  compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
   compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
