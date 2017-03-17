@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.util
 import java.io.{File => JFile}
 import java.util.{Arrays => JArrays, Map => JMap}
 
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 
 import com.linkedin.paldb.api.{Configuration, PalDB, StoreReader}
 import org.apache.spark.{HashPartitioner, SparkFiles}
@@ -80,7 +80,7 @@ class PalDBIndexMap extends IndexMap {
     _partitioner = new HashPartitioner(_partitionsNum)
 
     for (i <- 0 until partitionsNum) {
-      // Note: because we store both name -> idx and idx -> name in the same store
+      // NOTE because we store both name -> idx and idx -> name in the same store
       _offsets(i) = _size / 2
       val filename = partitionFilename(i, namespace)
 
@@ -118,7 +118,7 @@ class PalDBIndexMap extends IndexMap {
    */
   override def getFeatureName(idx: Int): Option[String] = {
     var i = JArrays.binarySearch(_offsets, idx)
-    // Note: check Arrays#binarySearch doc, >= 0 means we have a hit, otherwise it's (-insertion_pos-1)
+    // NOTE check Arrays#binarySearch doc, >= 0 means we have a hit, otherwise it's (-insertion_pos-1)
     // insertion position is the 1st element that's greater than the key
     if (i < 0) {
       // The position before insertion position
@@ -145,7 +145,7 @@ class PalDBIndexMap extends IndexMap {
    */
   override def getIndex(name: String): Int = {
     val i = getPartitionId(name)
-    // Note: very important to cast to java.lang.Object first; if directly casting to int,
+    // NOTE very important to cast to java.lang.Object first; if directly casting to int,
     // null will be cast to 0 by Scala
     PALDB_READER_LOCK.synchronized {
       _storeReaders(i).get(name).asInstanceOf[Any] match {

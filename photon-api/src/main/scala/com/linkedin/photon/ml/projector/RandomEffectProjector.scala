@@ -14,10 +14,11 @@
  */
 package com.linkedin.photon.ml.projector
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.RandomEffectDataSet
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.spark.rdd.RDD
 
 /**
  * A trait that performs two types of projections:

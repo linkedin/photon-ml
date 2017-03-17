@@ -32,7 +32,7 @@ protected[ml] class FixedEffectDataSet(
   extends DataSet[FixedEffectDataSet]
   with RDDLike {
 
-  lazy val numFeatures = labeledPoints.first()._2.features.length
+  lazy val numFeatures: Int = labeledPoints.first()._2.features.length
 
   /**
    * Add scores to data offsets.

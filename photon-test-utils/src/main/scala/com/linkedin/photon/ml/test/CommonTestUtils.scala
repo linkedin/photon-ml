@@ -14,11 +14,10 @@
  */
 package com.linkedin.photon.ml.test
 
-import breeze.linalg.Vector
-import breeze.linalg.DenseVector
-
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
+
+import breeze.linalg.{DenseVector, Vector}
 
 /**
  * A collection of methods useful for tests.
@@ -139,9 +138,8 @@ object CommonTestUtils {
   /**
    * Convert a [[Map]] of option name and value into a [[Seq]] of arguments.
    */
-  def mapToArray(args: Map[String, String]): Array[String] = {
+  def mapToArray(args: Map[String, String]): Array[String] =
     args.toArray.flatMap { case (name, value) => Seq(name, value) }
-  }
 
   /**
    * Create tuples of score, label, and weight by pairing two arrays of scores and labels, then adding a default weight.

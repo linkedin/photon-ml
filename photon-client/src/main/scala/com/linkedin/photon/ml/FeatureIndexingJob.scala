@@ -15,17 +15,18 @@
 package com.linkedin.photon.ml
 
 import java.util.{List => JList}
+
 import scala.collection.JavaConverters._
 
+import org.apache.avro.generic.GenericRecord
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.avro.generic.GenericRecord
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.io.FieldNamesType._
 import com.linkedin.photon.ml.avro._
+import com.linkedin.photon.ml.io.FieldNamesType._
 import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
 import com.linkedin.photon.ml.util._
 
@@ -133,7 +134,7 @@ class FeatureIndexingJob(
     }
 
     // Step 3. distinct and group by hashcode
-    // (note: integer's hashcode is still itself, this trick saves shuffle data size)
+    // (@note integer's hashcode is still itself, this trick saves shuffle data size)
     keyedFeaturesUnionedRDD.distinct().groupByKey(new HashPartitioner(partitionNum))
   }
 
@@ -151,7 +152,7 @@ class FeatureIndexingJob(
 
     val projectRdd = featuresRdd.mapPartitionsWithIndex{ case (idx, iter) =>
       var i: Int = 0
-      // Note: PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
+      // NOTE PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
       // lock the write. This will only block writing operations within the same JVM
       PalDBIndexMapBuilder.WRITER_LOCK.synchronized {
         val mapBuilder = new PalDBIndexMapBuilder().init(outputPath, idx, namespace)

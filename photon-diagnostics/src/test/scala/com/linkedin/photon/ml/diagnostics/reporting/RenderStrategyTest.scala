@@ -15,12 +15,14 @@
 package com.linkedin.photon.ml.diagnostics.reporting
 
 import java.awt.image.BufferedImage
-import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
-import com.linkedin.photon.ml.diagnostics.reporting.text.StringRenderStrategy
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
-import org.testng.annotations.{Test, DataProvider}
 
 import scala.xml._
+
+import com.xeiam.xchart.{ChartBuilder, StyleManager}
+import org.testng.annotations.{DataProvider, Test}
+
+import com.linkedin.photon.ml.diagnostics.reporting.html.HTMLRenderStrategy
+import com.linkedin.photon.ml.diagnostics.reporting.text.StringRenderStrategy
 
 /**
  * Generalized rendering test.

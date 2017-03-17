@@ -24,7 +24,7 @@ object EvaluatorFactory {
    * Factory for different types of [[Evaluator]].
    *
    * @param evaluatorType The type of the evaluator
-   * @param gameDataSet A [[RDD]] of (uniqueId: [[Long]], gameDatum: [[GameDatum]]), which are usually the
+   * @param gameDataSet A [[RDD]] of (uniqueId: [[Long]], GAMEDatum: [[GAMEDatum]]), which are usually the
    *                    validation/test data, used to construct the evaluator
    * @return The evaluator
    */

@@ -16,8 +16,8 @@ package com.linkedin.photon.ml.util
 
 import scala.collection.mutable
 
-import org.testng.annotations.Test
 import org.testng.Assert._
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.io.GLMSuite
 

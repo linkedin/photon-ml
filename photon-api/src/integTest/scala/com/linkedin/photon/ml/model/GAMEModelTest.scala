@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration tests for GameModel.
+ * Integration tests for GAMEModel.
  */
 class GAMEModelTest extends SparkTestUtils {
 
@@ -238,7 +238,7 @@ class GAMEModelTest extends SparkTestUtils {
     val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
     val RE2Model = new RandomEffectModel(glmRE2RDD, "REModel2", "RE2Features")
 
-    // This Game model has 1 fixed effect, and 2 different random effect models
+    // This GAME model has 1 fixed effect, and 2 different random effect models
     GAMEModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
   }
 
@@ -276,7 +276,7 @@ class GAMEModelTest extends SparkTestUtils {
     val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
     val RE2Model = new RandomEffectModel(glmRE2RDD, "REModel2", "RE2Features")
 
-    // This Game model has 1 fixed effect, and 2 different random effect models
+    // This GAME model has 1 fixed effect, and 2 different random effect models
     GAMEModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
   }
 }

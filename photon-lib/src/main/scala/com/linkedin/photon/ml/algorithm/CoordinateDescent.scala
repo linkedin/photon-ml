@@ -14,8 +14,8 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import org.slf4j.Logger
 import org.apache.spark.rdd.RDD
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
@@ -33,8 +33,8 @@ import com.linkedin.photon.ml.util.Timer
  *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator Training loss function evaluator
  * @param validatingDataAndEvaluatorsOption Optional validation data and evaluator. The validating data are a [[RDD]]
- *                                          of (uniqueId, [[GameDatum]] object pairs), where uniqueId is a unique
- *                                          identifier for each [[GameDatum]] object. The evaluators are
+ *                                          of (uniqueId, [[GAMEDatum]] object pairs), where uniqueId is a unique
+ *                                          identifier for each [[GAMEDatum]] object. The evaluators are
  *                                          a [[Seq]] of evaluators
  * @param logger A logger instance
  */
@@ -52,7 +52,7 @@ class CoordinateDescent(
    * Run coordinate descent.
    *
    * @param numIterations Number of iterations
-   * @param taskType
+   * @param taskType The task type
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
@@ -129,7 +129,7 @@ class CoordinateDescent(
 
     // This will track the "best" model according to the first evaluation function chosen by the user.
     // If the user did not specify any evaluation function, this var will be None.
-    // NOTE: these two variables are updated by comparing *FULL* models, including random effects, i.e.
+    // NOTE these two variables are updated by comparing *FULL* models, including random effects, i.e.
     // outside the loop on coordinates.
     // If we allowed the "best" model to be selected inside the loop over coordinates, the "best"
     // model could be one that doesn't contain some random effects.
@@ -286,4 +286,11 @@ object CoordinateDescent {
     s"lossFunctionValue: $lossFunctionValue, regularizationTermValue: $regularizationTermValue, " +
       s"objectiveFunctionValue: $objectiveFunctionValue"
   }
+
+  def apply(
+      coordinates: Seq[(String, Coordinate[_])],
+      trainingLossFunctionEvaluator: Evaluator,
+      validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+      logger: Logger) =
+    new CoordinateDescent(coordinates, trainingLossFunctionEvaluator, validatingDataAndEvaluatorsOption, logger)
 }

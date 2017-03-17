@@ -35,7 +35,7 @@ trait L2Regularization extends ObjectiveFunction {
   /**
    * Setter.
    *
-   * Note: This function definition uses the setter syntactic sugar trick. Statements like:
+   * @note This function definition uses the setter syntactic sugar trick. Statements like:
    *
    *    objectiveFunction.l2RegularizationWeight = 10
    *

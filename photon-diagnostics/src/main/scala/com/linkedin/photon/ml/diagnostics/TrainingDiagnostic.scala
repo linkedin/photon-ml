@@ -14,11 +14,12 @@
  */
 package com.linkedin.photon.ml.diagnostics
 
+import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import org.apache.spark.rdd.RDD
 
 /**
  * General interface for model diagnostics. In this case, all we require is a particular signature. We will expand

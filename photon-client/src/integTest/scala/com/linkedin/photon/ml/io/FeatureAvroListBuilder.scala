@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.io
 
-import java.util.{List => JList, ArrayList => JArrayList}
+import java.util.{ArrayList => JArrayList, List => JList}
 
 import com.linkedin.photon.avro.generated.FeatureAvro
 

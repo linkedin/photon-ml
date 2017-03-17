@@ -24,21 +24,21 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroUtils}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
+import com.linkedin.photon.ml.util._
 
 /**
  * Some basic functions to read/write GAME models from/to HDFS.
  *
  * The current implementation assumes the models are stored using an Avro format.
- * The main challenge in saving/loading Game models is that the number of random effect submodels can be
+ * The main challenge in saving/loading GAME models is that the number of random effect submodels can be
  * arbitrarily large. That's why e.g. "numberOfOutputFilesForRandomEffectModel" is needed.
  *
  * TODO: this object needs additional documentation
@@ -53,12 +53,12 @@ object ModelProcessingUtils {
   import com.linkedin.photon.ml.avro.Constants._
 
   /**
-   * Save a Game model to HDFS.
+   * Save a GAME model to HDFS.
    *
-   * @note Game models can grow very large, because they can accommodate an unlimited number of random effect submodels.
+   * @note GAME models can grow very large, because they can accommodate an unlimited number of random effect submodels.
    *       Therefore extra care is required when saving the random effects submodels.
    *
-   * @param gameModel The Game model to save
+   * @param gameModel The GAME model to save
    * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
    * @param outputDir The directory in HDFS where to save the model
    * @param params The parameters that were setup to run this model
@@ -116,7 +116,7 @@ object ModelProcessingUtils {
   }
 
   /**
-   * Load a Game model from HDFS.
+   * Load a GAME model from HDFS.
    *
    * This method can be called with or without a feature index. If a feature index is not provided, one is created
    * by scanning the loaded models. In that case, the indexes ranges are [0..numNonZeroFeatures], even if the feature
@@ -127,7 +127,7 @@ object ModelProcessingUtils {
    * @param featureShardIdToIndexMapLoader An optional feature index loader
    * @param modelsDir The directory on HDFS where the models are stored
    * @param sc The Spark context
-   * @return The Game model and feature index
+   * @return The GAME model and feature index
    */
   protected[ml] def loadGameModelFromHDFS(
       featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]],
@@ -198,7 +198,7 @@ object ModelProcessingUtils {
       s"Duplicated model names found:\n${datumScoringModelNames.mkString("\n")}")
 
     // Need to massage the data structure a bit so that we can return the feature index loader(s) and
-    // the Game model separately
+    // the GAME model separately
     val (models, featureIndexLoaders) = datumScoringModels
       .map {
         case ((name, featureIndexLoader, model: FixedEffectModel)) =>
@@ -244,10 +244,10 @@ object ModelProcessingUtils {
   }
 
   /**
-   * For a given Game model and feature indexes, returns names and values for all the non-zero features in the
+   * For a given GAME model and feature indexes, returns names and values for all the non-zero features in the
    * model.
    *
-   * Since Game models can be very large, the processing is distributed. In the case of random effects in
+   * Since GAME models can be very large, the processing is distributed. In the case of random effects in
    * particular, "mapPartitions" will serialize and send the content of the "iter => ..." lambda to the executors
    * in the Spark cluster. If we didn't do that, "indexMapForRDD" would be called for each single datum, which
    * would be too slow. In the case of fixed effect models (usually there is only one), we assume that the fixed
@@ -255,20 +255,20 @@ object ModelProcessingUtils {
    *
    * On HDFS the dirs/files data structures looks like, e.g.:
    *
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/fixed-effect/fixed/id-info
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/_SUCCESS
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/coefficients/part-00001.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE1/id-info
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/_SUCCESS
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00000.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/coefficients/part-00001.avro
-   *   hdfs://hostname:port/tmp/GameLaserModelTest/gameModel/random-effect/RE2/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/fixed-effect/fixed/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/fixed-effect/fixed/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE1/id-info
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/_SUCCESS
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00000.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00001.avro
+   *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/id-info
    *
-   * @param gameModel The Game model to extract all features from
+   * @param gameModel The GAME model to extract all features from
    * @param featureIndexLoaders The feature index loaders ; each feature space has a separate, named feature index
-   * @return All the (feature name, feature value) pairs of that Game model.
+   * @return All the (feature name, feature value) pairs of that GAME model.
    *         The first Map's keys are "(fixed|random, sectionName)". Then the RDD String keys are like
    *         "random effect id 123". Finally, each user has an element in the RDD element that contains
    *         an array of pairs (feature name, feature value)
@@ -547,8 +547,8 @@ object ModelProcessingUtils {
   /**
    * Load model metadata from JSON file.
    *
-   * NOTE: for now, we just output model type.
-   * TODO: load (and save) more metadata, and return an updated GameParams
+   * @note for now, we just output model type.
+   * TODO: load (and save) more metadata, and return an updated GAMEParams
    *
    * @note If using the builtin Scala JSON parser, watch out, it's not thread safe!
    * @note If there is no metadata file (old models trained before the metadata were introduced),

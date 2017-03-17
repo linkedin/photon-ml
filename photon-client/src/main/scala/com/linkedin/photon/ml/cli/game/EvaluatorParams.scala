@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.cli.game
 
-import com.linkedin.photon.ml.evaluation.{ShardedEvaluatorType, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedEvaluatorType}
 
 /**
  * Evaluator params common to GAME training and scoring.

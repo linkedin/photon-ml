@@ -18,13 +18,13 @@ For each feature, the name is set as id, and the term is empty.
 [Usage]:
 python libsvm_text_to_trainingexample_avro.py [input_path] [output_schema_path] [output_path] (optional: -r for regression)
 """
+import avro.schema
+import getopt
 import os
 import sys
-import getopt
+from avro.datafile import DataFileWriter
+from avro.io import DatumWriter
 
-import avro.schema
-from avro.datafile import DataFileReader, DataFileWriter
-from avro.io import DatumReader, DatumWriter
 
 def main():
   if len(sys.argv) <= 1:

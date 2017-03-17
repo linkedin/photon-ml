@@ -14,7 +14,7 @@
  */
 
 /*
- * NOTE: This code is heavily influenced by the SPARK LIBLINEAR TRON implementation,
+ * @note This code is heavily influenced by the SPARK LIBLINEAR TRON implementation,
  * though not an exact copy. It also subject to the LIBLINEAR project's license
  * and copyright notice:
  *
@@ -56,7 +56,7 @@ import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.{VectorUtils, Logging}
+import com.linkedin.photon.ml.util.{Logging, VectorUtils}
 
 /**
  * This class used to solve an optimization problem using trust region Newton method (TRON).

@@ -19,8 +19,8 @@ import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
 

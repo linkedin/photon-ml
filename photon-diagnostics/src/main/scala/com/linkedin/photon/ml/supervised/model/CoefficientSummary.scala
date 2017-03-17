@@ -21,7 +21,7 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics
 /**
  * Miscellaneous things that describe a GLM coefficient.
  *
- * Note: this code assumes that a relatively small number of samples (less than thousands) are being provided.
+ * @note this code assumes that a relatively small number of samples (less than thousands) are being provided.
  * If this is not the case, the quantile estimation will need to be revisited.
  */
 class CoefficientSummary extends Serializable {

@@ -137,7 +137,7 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(Files.exists(fs.getPath(logFile)))
 
     val lines = Source.fromFile(logFile).getLines().toArray
-    assertEquals(lines.length, 19) // NOTE: in IDEA, this is 34, depending on how you run the test (via gradle or not)
+    assertEquals(lines.length, 19) // NOTE in IDEA, this is 34, depending on how you run the test (via gradle or not)
     assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
     assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerTest$TestException")
   }

@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.cli.game
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.evaluation.EvaluatorType.{RMSE, AUC}
+import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
 import com.linkedin.photon.ml.evaluation.{ShardedAUC, ShardedPrecisionAtK}
 
 class EvaluatorParamsTest {

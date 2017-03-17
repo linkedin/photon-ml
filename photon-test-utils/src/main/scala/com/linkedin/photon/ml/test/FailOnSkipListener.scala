@@ -14,8 +14,7 @@
  */
 package com.linkedin.photon.ml.test
 
-import org.testng.ITestResult
-import org.testng.TestListenerAdapter
+import org.testng.{ITestResult, TestListenerAdapter}
 
 /**
  * Implements a TestNG listener that converts "skip" status to "fail". This is a global approach to a problem where

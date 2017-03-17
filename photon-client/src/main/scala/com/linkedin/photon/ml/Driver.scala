@@ -40,9 +40,9 @@ import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosti
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.event._
 import com.linkedin.photon.ml.io.{GLMSuite, InputDataFormat, InputFormatFactory}
-import com.linkedin.photon.ml.normalization.{NormalizationType, NoNormalization, NormalizationContext}
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
-import com.linkedin.photon.ml.stat.{BasicStatisticalSummary, BasicStatistics}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -173,7 +173,7 @@ protected[ml] class Driver(
     updateStage(DriverStage.TRAINED)
 
     params.validateDirOpt match {
-      case Some(x) =>
+      case Some(_) =>
         assertDriverStage(DriverStage.TRAINED)
         validate()
         updateStage(DriverStage.VALIDATED)
@@ -270,8 +270,9 @@ protected[ml] class Driver(
    * @return
    */
   protected def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
+
     val beforeSummarization = System.currentTimeMillis()
-    val summary = BasicStatistics.getBasicStatistics(trainingData)
+    val summary = BasicStatisticalSummary(trainingData)
 
     outputDir.foreach { dir =>
       IOUtils.writeBasicStatistics(
@@ -373,7 +374,7 @@ protected[ml] class Driver(
               metrics.keys
                 .toSeq
                 .sorted
-                .map(m => f"Iteration: [$index%6d] Metric: [$m] value: ${metrics.get(m).get}")
+                .map(m => f"Iteration: [$index%6d] Metric: [$m] value: ${metrics(m)}")
                 .mkString("\n")
             }
             .mkString("\n")
@@ -391,7 +392,7 @@ protected[ml] class Driver(
           val msg = metrics.keys
             .toSeq
             .sorted
-            .map(m => f"    Metric: [$m] value: ${metrics.get(m).get}")
+            .map(m => f"    Metric: [$m] value: ${metrics(m)}")
             .mkString("\n")
           perModelMetrics += (lambda -> metrics)
 
@@ -458,8 +459,8 @@ protected[ml] class Driver(
    *
    */
   protected def initializeDiagnosticReport(): Unit = {
-    diagnostic = new DiagnosticReport(
-      new SystemReport(inputDataFormat.indexMapLoader().indexMapForDriver(), summaryOption),
+    diagnostic = DiagnosticReport(
+      SystemReport(inputDataFormat.indexMapLoader().indexMapForDriver(), summaryOption),
       new ListBuffer[ModelDiagnosticReport[GeneralizedLinearModel]]())
   }
 

@@ -17,8 +17,8 @@ package com.linkedin.photon.ml.optimization
 import scala.collection.Map
 
 import breeze.linalg.Vector
-import org.testng.annotations.Test
 import org.testng.Assert.assertEquals
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.FunctionValuesConverged

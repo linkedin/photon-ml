@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.base
 
-import com.linkedin.photon.ml.diagnostics.reporting.PhysicalReport
-import com.linkedin.photon.ml.diagnostics.reporting.{Renderer, SpecificRenderer, PhysicalReport}
-
 import scala.reflect.ClassTag
+
+import com.linkedin.photon.ml.diagnostics.reporting.{PhysicalReport, Renderer, SpecificRenderer}
 
 /**
  * Attempts to act as a type-safe wrapper around renderers for specific types, allowing them to masquerade as if they

@@ -14,10 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 
-import java.util.Date
-
-import com.linkedin.photon.ml.diagnostics.reporting.{
-  BulletedListPhysicalReport, SimpleTextPhysicalReport, SectionPhysicalReport, LogicalToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.{BulletedListPhysicalReport, LogicalToPhysicalReportTransformer, SectionPhysicalReport}
 
 // TODO: Circular dependency with photon-client. Commented code can be uncommented once circular dependency is resolved.
 

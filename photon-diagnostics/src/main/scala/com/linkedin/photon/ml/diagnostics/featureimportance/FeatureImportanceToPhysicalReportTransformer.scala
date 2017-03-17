@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.featureimportance
 
+import com.xeiam.xchart.{ChartBuilder, StyleManager}
+
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
 /**
  * Prepare a feature importance report for presentation

@@ -47,6 +47,11 @@ allprojects {
 
 apply from: 'build-scripts/rat.gradle'
 
+// The gradle variables defined here are visible in sub-projects
+ext {
+  sparkVersion = '1.6.2'
+}
+
 rat {
   excludes = [
     '*.patch',
@@ -79,6 +84,8 @@ rat {
     '**/README.md',
     'LICENSE',
     'NOTICE',
+    'derby.log',
+    'metastore_db/**',
     'gradle.properties',
     'log4j.properties',
     'photon-api/src/integTest/resources/**',

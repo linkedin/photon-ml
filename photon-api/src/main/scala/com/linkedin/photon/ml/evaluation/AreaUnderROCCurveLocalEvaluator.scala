@@ -14,8 +14,8 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import java.util.{Comparator => JComparator, Arrays => JArrays}
 import java.lang.{Double => JDouble}
+import java.util.{Arrays => JArrays, Comparator => JComparator}
 
 import com.linkedin.photon.ml.constants.MathConst._
 

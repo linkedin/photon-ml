@@ -17,5 +17,5 @@ photon-ml/LOGISTIC*
 photon-ml/LINEAR*
 photon-ml/POISSON*
 photon-ml/SMOOTHED*
-derby.log
-metastore_db/
+derby.log # when running spark-shell here
+metastore_db # also when running spark-shell here

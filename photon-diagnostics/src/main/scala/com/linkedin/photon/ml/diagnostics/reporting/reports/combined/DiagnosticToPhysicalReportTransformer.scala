@@ -15,15 +15,15 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.combined
 
 import java.text.SimpleDateFormat
-import java.util.{Date, TimeZone, Calendar}
+import java.util.Date
+
+import com.xeiam.xchart.{ChartBuilder, StyleManager}
 
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.linkedin.photon.ml.diagnostics.reporting.reports.model.{
-  ModelDiagnosticReport, ModelDiagnosticToPhysicalReportTransformer}
+import com.linkedin.photon.ml.diagnostics.reporting.reports.model.{ModelDiagnosticReport, ModelDiagnosticToPhysicalReportTransformer}
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemToPhysicalReportTransformer
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.xeiam.xchart.{StyleManager, ChartBuilder}
 
 /**
  * Transform diagnostic reports into their physical report representation

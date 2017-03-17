@@ -14,15 +14,15 @@
  */
 package com.linkedin.photon.ml.data
 
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, SQLContext}
-import org.apache.spark.sql.types.{LongType, MapType, StructField, StructType, StringType}
-import org.testng.annotations.Test
 import org.testng.Assert._
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- *
+ * Unit tests for GAMEConverters.
  */
 class GameConvertersTest extends SparkTestUtils {
   import GameConvertersTest._

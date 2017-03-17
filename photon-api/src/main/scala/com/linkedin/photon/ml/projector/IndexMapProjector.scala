@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.projector
 import scala.collection.Map
 
 import breeze.linalg.Vector
+
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**

@@ -56,7 +56,7 @@ class MatrixFactorizationModel(
   /**
    *
    * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GameDatum object, referred to in the GAME code as the "unique id".
+   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
    * @return The score.
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {

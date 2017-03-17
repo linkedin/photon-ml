@@ -14,8 +14,7 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting
 
-import java.awt.Graphics2D
-import java.awt.Image
+import java.awt.{Graphics2D, Image}
 import java.awt.image.BufferedImage
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.dom.DOMSource

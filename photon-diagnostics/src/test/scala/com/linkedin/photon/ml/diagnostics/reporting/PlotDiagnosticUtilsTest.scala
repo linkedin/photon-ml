@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting
 
-import com.linkedin.photon.ml.Evaluation
 import org.testng.annotations._
+
+import com.linkedin.photon.ml.Evaluation
 
 /**
  * Check PlotUtils public methods

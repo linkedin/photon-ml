@@ -138,6 +138,7 @@ protected[ml] class DistributedGLMLossFunction private (
 }
 
 object DistributedGLMLossFunction {
+
   /**
    * Factory method to create a new objective function with DistributedGLMLossFunctions as the base loss function.
    *
@@ -147,11 +148,10 @@ object DistributedGLMLossFunction {
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedGLMLossFunction
    */
-  def create(
-      configuration: GLMOptimizationConfiguration,
-      singleLossFunction: PointwiseLossFunction,
+  def apply(
       sparkContext: SparkContext,
-      treeAggregateDepth: Int): DistributedGLMLossFunction = {
+      configuration: GLMOptimizationConfiguration,
+      treeAggregateDepth: Int)(singleLossFunction: PointwiseLossFunction): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
 

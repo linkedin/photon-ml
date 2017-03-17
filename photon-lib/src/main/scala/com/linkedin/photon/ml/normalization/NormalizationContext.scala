@@ -40,6 +40,7 @@ private[ml] case class NormalizationContext(
     shifts: Option[_ <: Vector[Double]],
     interceptId: Option[Int]) {
 
+  // TODO: can we test that earlier (in GAMEParams)?
   require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
   if (factors.isDefined && shifts.isDefined) {
     require(factors.get.size == shifts.get.size, "Factors and shifts vectors should have the same size")
@@ -138,8 +139,9 @@ private[ml] object NormalizationContext {
 private[ml] object NoNormalization {
 
   /**
+   * Constructor ex nihilo, comme appelé du néant.
    *
-   * @return
+   * @return An instance of NoNormalizationContext
    */
   def apply(): NormalizationContext = NormalizationContext(factors = None, shifts = None, interceptId = None)
 }

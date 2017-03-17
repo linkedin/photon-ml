@@ -61,7 +61,7 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
       val rowRange = 0 until numRows
       val colRange = 0 until numCols
 
-    // generate the synthetic game data and scores
+    // generate the synthetic GAME data and scores
     val (gameData, syntheticScores) = rowRange.zip(colRange).map { case (row, col) =>
       val rowId = row.toString
       val colId = col.toString

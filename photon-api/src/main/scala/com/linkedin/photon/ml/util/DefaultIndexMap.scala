@@ -71,19 +71,28 @@ class DefaultIndexMap(val featureNameToIdMap: Map[String, Int]) extends IndexMap
 
   def +[B >: Int](kv: (String, B)): DefaultIndexMap =
     new DefaultIndexMap(featureNameToIdMap. +(kv).asInstanceOf[Map[String, Int]])
+
   def -(key: String): DefaultIndexMap = new DefaultIndexMap(featureNameToIdMap. -(key))
 }
 
 object DefaultIndexMap {
   /**
-   * Factory to build default index maps from sets of feature names.
+   * Factory to build default index maps from a Seq of feature names.
    *
-   * NOTE: the resulting indexes take their values in [0..numFeatures] ("distinct.sorted.zipWithIndex").
+   * @note the resulting indexes take their values in [0..numFeatures] ("distinct.sorted.zipWithIndex").
    *
    * @param featureNames The feature names we need in the index map
    * @return A DefaultIndexMap instance for these feature names
    */
-  def apply(featureNames: Seq[String]): DefaultIndexMap = {
+  def apply(featureNames: Seq[String]): DefaultIndexMap =
     new DefaultIndexMap(featureNames.distinct.sorted.zipWithIndex.toMap)
-  }
+
+  /**
+   * Factory to build a default feature index map from feature names.
+   *
+   * @param featureNames The feature names
+   * @return A DefaultIndexMap instance for these feature names
+   */
+  def apply(featureNames: Set[String]): DefaultIndexMap =
+    new DefaultIndexMap(featureNames.zipWithIndex.toMap)
 }

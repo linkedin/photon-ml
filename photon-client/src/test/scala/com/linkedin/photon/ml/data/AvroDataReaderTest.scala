@@ -16,8 +16,7 @@ package com.linkedin.photon.ml.data
 
 import scala.collection.JavaConverters._
 
-import org.apache.avro.Schema
-import org.apache.avro.SchemaBuilder
+import org.apache.avro.{Schema, SchemaBuilder}
 import org.apache.avro.generic.GenericData
 import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.sql.types.DataTypes._

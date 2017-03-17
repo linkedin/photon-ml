@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.data.{KeyValueScore, GameDatum}
+import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
@@ -38,7 +38,7 @@ protected[ml] trait DatumScoringModel extends Summarizable {
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
    *
    * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GameDatum object, referred to in the GAME code as the "unique id".
+   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
    * @return The score.
    */
   def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore

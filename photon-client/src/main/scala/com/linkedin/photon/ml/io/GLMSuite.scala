@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.io
 
 import java.io.IOException
 import java.util.{List => JList}
+
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.collection.mutable
 import scala.util.parsing.json.JSON
@@ -40,7 +41,7 @@ import com.linkedin.photon.ml.util._
  * @param addIntercept Whether to add the an additional variable "1" to the feature vector for intercept learning
  *                     purpose
  */
-@SerialVersionUID(2L) // NOTE: Remember to change this if you add new member fields / make significant API modifications
+@SerialVersionUID(2L) // NOTE Remember to change this if you add new member fields / make significant API modifications
 class GLMSuite(
     fieldNamesType: FieldNamesType,
     addIntercept: Boolean,

@@ -20,7 +20,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
-import com.linkedin.photon.ml.avro.{AvroIOUtils, AvroFieldNames}
+import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroIOUtils}
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 
 /**

@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
-import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import org.apache.spark.rdd.RDD
+
+import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 
 /**
  * Handles most of the details of binning scores in a uniform way. The only missing piece of the puzzle is the number of

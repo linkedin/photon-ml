@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.supervised.model.{ModelTracker, GeneralizedLinearModel}
+import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 
 /**
  * An optimization problem solved by a single task on one executor. Used for solving the per-entity optimization
@@ -115,7 +115,7 @@ object SingleNodeOptimizationProblem {
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new SingleNodeOptimizationProblem
    */
-  def create[Function <: SingleNodeObjectiveFunction](
+  def apply[Function <: SingleNodeObjectiveFunction](
     configuration: GLMOptimizationConfiguration,
     objectiveFunction: Function,
     glmConstructor: Coefficients => GeneralizedLinearModel,

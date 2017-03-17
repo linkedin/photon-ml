@@ -275,11 +275,7 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
       doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
       val configuration = GLMOptimizationConfiguration()
-      val objective = DistributedGLMLossFunction.create(
-        configuration,
-        lossFunction,
-        sc,
-        treeAggregateDepth = 1)
+      val objective = DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,
@@ -323,11 +319,7 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
       val configuration = GLMOptimizationConfiguration(
         regularizationContext = L2RegularizationContext,
         regularizationWeight = regularizationWeight)
-      val objective = DistributedGLMLossFunction.create(
-        configuration,
-        lossFunction,
-        sc,
-        treeAggregateDepth = 1)
+      val objective = DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,

@@ -15,12 +15,13 @@
 package com.linkedin.photon.ml.diagnostics.featureimportance
 
 import breeze.linalg.DenseVector
+import org.testng.annotations._
+
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
-import org.testng.annotations._
 
 /**
  * Check feature importance diagnostics

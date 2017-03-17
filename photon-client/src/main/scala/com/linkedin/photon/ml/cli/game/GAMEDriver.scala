@@ -18,29 +18,28 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
+import com.linkedin.photon.ml.util._
 
 /**
  * Contains common functions for GAME training and scoring drivers.
  */
-abstract class GAMEDriver(
-    params: FeatureParams with PalDBIndexMapParams,
-    sparkContext: SparkContext,
-    logger: Logger) {
+abstract class GAMEDriver(sc: SparkContext, params: FeatureParams with PalDBIndexMapParams, logger: Logger) {
 
-  protected val hadoopConfiguration: Configuration = sparkContext.hadoopConfiguration
+  protected val hadoopConfiguration: Configuration = sc.hadoopConfiguration
 
-  protected val parallelism: Int = sparkContext.getConf.get("spark.default.parallelism",
-    s"${sparkContext.getExecutorStorageStatus.length * 3}").toInt
+  protected val parallelism: Int = sc.getConf.get("spark.default.parallelism",
+    s"${sc.getExecutorStorageStatus.length * 3}").toInt
 
   /**
    * Builds feature key to index map loaders according to configuration.
+   * Also, sets intercept terms ON by default.
    *
    * @return A map of shard id to feature map loader
    * @deprecated This function will be removed in the next major version.
    */
   protected[game] def prepareFeatureMapsDefault(): Map[String, IndexMapLoader] = {
+
     val allFeatureSectionKeys = params.featureShardIdToFeatureSectionKeysMap.values.reduce(_ ++ _)
     val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
       params.featureNameAndTermSetInputPath, allFeatureSectionKeys, hadoopConfiguration)
@@ -53,7 +52,7 @@ abstract class GAMEDriver(
           .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
           .toMap
 
-        val indexMapLoader = new DefaultIndexMapLoader(sparkContext, featureMap)
+        val indexMapLoader = new DefaultIndexMapLoader(sc, featureMap)
 
         (shardId, indexMapLoader)
       }
@@ -68,32 +67,24 @@ abstract class GAMEDriver(
    *
    * @return A map of shard id to feature map
    */
-  protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] = {
-    params.featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSections) => {
-      val indexMapLoader = PalDBIndexMapLoader(
-        sparkContext,
-        params.offHeapIndexMapDir.get,
-        params.offHeapIndexMapNumPartitions,
-        shardId)
-
-      (shardId, indexMapLoader)
-    }}
-  }
+  protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] =
+    params.featureShardIdToFeatureSectionKeysMap
+      .map { case (shardId, _) =>
+        (shardId, PalDBIndexMapLoader(sc, params.offHeapIndexMapDir.get, params.offHeapIndexMapNumPartitions, shardId))
+      }
 
   /**
    * Builds feature name-and-term to index maps according to configuration.
    *
    * @return A map of shard id to feature map
    */
-  protected[game] def prepareFeatureMaps(): Map[String, IndexMapLoader] = {
+  protected[game] def prepareFeatureMaps(): Map[String, IndexMapLoader] =
     params.offHeapIndexMapDir match {
       // If an off-heap map path is specified, use the paldb loader
       case Some(_) => prepareFeatureMapsPalDB()
-
       // Otherwise, fall back to the default loader
       case _ => prepareFeatureMapsDefault()
     }
-  }
 
   /**
    * Resolves paths for specified date ranges to physical file paths.
@@ -107,6 +98,7 @@ abstract class GAMEDriver(
       baseDirs: Seq[String],
       dateRangeOpt: Option[String],
       daysAgoOpt: Option[String]): Seq[String] = (dateRangeOpt, daysAgoOpt) match {
+
     // Specified as date range
     case (Some(dateRangeSpec), None) =>
       val dateRange = DateRange.fromDates(dateRangeSpec)

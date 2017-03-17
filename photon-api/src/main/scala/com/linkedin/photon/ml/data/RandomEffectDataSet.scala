@@ -23,7 +23,7 @@ import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.spark.{RDDLike, BroadcastLike}
+import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 
 /**
  * Data set implementation for random effect datasets:
@@ -53,9 +53,9 @@ protected[ml] class RandomEffectDataSet(
   with RDDLike
   with BroadcastLike {
 
-  val randomEffectIdPartitioner = activeData.partitioner.get
-  val uniqueIdPartitioner = uniqueIdToRandomEffectIds.partitioner.get
-  val hasPassiveData = passiveDataOption.isDefined
+  val randomEffectIdPartitioner: Partitioner = activeData.partitioner.get
+  val uniqueIdPartitioner: Partitioner = uniqueIdToRandomEffectIds.partitioner.get
+  val hasPassiveData: Boolean = passiveDataOption.isDefined
 
   /**
    *
@@ -201,7 +201,7 @@ object RandomEffectDataSet {
   /**
    * Build the random effect data set with the given configuration.
    *
-   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect data set
+   * @param gameDataSet The RDD of [[GAMEDatum]] used to generate the random effect data set
    * @param randomEffectDataConfiguration The data configuration for the random effect data set
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return A new random effect dataset with the given configuration

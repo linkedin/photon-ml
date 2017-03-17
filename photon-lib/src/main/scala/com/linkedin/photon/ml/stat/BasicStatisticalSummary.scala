@@ -14,50 +14,86 @@
  */
 package com.linkedin.photon.ml.stat
 
-import breeze.linalg.Vector
-import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
+import breeze.linalg.{Vector => BreezeVector}
+import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
+import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.{Logging, VectorUtils}
 
 /**
- * A wrapper of
- * [[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.MultivariateStatisticalSummary
- *  MultivariateStatisticalSummary]]
- * from mllib to use breeze vectors instead of mllib vectors.
- * The summary provides mean, variance, max, min, normL1 and normL2 for each feature, as well as the expected magnitude
- * of features (meanAbs) to assist in computing feature importance.
+ * Class BasicStatisticalSummary contains various statistics about that data.
+ *
+ * It is a wrapper around spark-ml MultivariateStatisticalSummary, that relies on breeze Vector rather than
+ * spark-ml Vector. We also tweak the numbers for our needs (see calculateBasicStatistics).
+ *
+ * @note variance is calculated by spark.ml to be unbiased, so based on N-1 degrees of freedom, which is the
+ * standard statistical practice. A degree of freedom is lost when using an estimated mean to compute the variance.
+ *
+ * TODO: rename just "BasicStatistics": descriptive statistics are summaries of the data by definition
  */
 case class BasicStatisticalSummary(
-    mean: Vector[Double],
-    variance: Vector[Double],
+    mean: BreezeVector[Double],
+    variance: BreezeVector[Double],
     count: Long,
-    numNonzeros: Vector[Double],
-    max: Vector[Double],
-    min: Vector[Double],
-    normL1: Vector[Double],
-    normL2: Vector[Double],
-    meanAbs: Vector[Double])
+    numNonzeros: BreezeVector[Double],
+    max: BreezeVector[Double],
+    min: BreezeVector[Double],
+    normL1: BreezeVector[Double],
+    normL2: BreezeVector[Double],
+    meanAbs: BreezeVector[Double])
 
+/**
+ * Object BasicStatisticalSummary has functions to actually compute statistical summaries from RDDs.
+ */
 object BasicStatisticalSummary extends Logging {
+
   /**
-   * Converts a
-   * [[https://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.mllib.stat.
-   * MultivariateStatisticalSummary]]
-   * of mllib to an instance of case class BasicStatisticalSummary using breeze vectors.
+   * This function accepts a RDD[LabeledPoint]. Used in Photon.
    *
-   * @param mllibSummary Summary from mllib
-   * @return The summary with breeze vectors
+   * @param inputData The input data (usually training data)
+   * @param p A DummyImplicit to allow the Scala compiler to distinguish from other apply function
+   * @return An instance of BasicStatisticalSummary
    */
-  def apply(mllibSummary: MultivariateStatisticalSummary, meanAbs: Vector[Double]): BasicStatisticalSummary = {
+  def apply(inputData: RDD[LabeledPoint])(implicit p: DummyImplicit): BasicStatisticalSummary =
+    calculateBasicStatistics(Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))))
 
+  /**
+   * This function accepts a RDD[MVector]. Used in GAME.
+   *
+   * @param inputData The input data (usually training data)
+   * @return An instance of BasicStatisticalSummary
+   */
+  def apply(inputData: RDD[MLVector]): BasicStatisticalSummary =
+    calculateBasicStatistics(Statistics.colStats(inputData))
 
-    val tMean = VectorUtils.mllibToBreeze(mllibSummary.mean)
-    val tVariance = VectorUtils.mllibToBreeze(mllibSummary.variance)
-    val tNumNonZeros = VectorUtils.mllibToBreeze(mllibSummary.numNonzeros)
-    val tMax = VectorUtils.mllibToBreeze(mllibSummary.max)
-    val tMin = VectorUtils.mllibToBreeze(mllibSummary.min)
-    val tNormL1 = VectorUtils.mllibToBreeze(mllibSummary.normL1)
-    val tNormL2 = VectorUtils.mllibToBreeze(mllibSummary.normL2)
+  /**
+   * Auxiliary function to scale vectors.
+   *
+   * @param count The number to use in the denominator of the scaling
+   * @param vector The vector to scale
+   * @return The vector, element wise divided by 1/count, or vector if count == 0
+   */
+  private def scale(count: Long, vector: BreezeVector[Double]): BreezeVector[Double] =
+    if (count > 0) vector / count.toDouble else vector
+
+  /**
+   * The function that actually calculates the statistics.
+   *
+   * @param summary An instance of spark-ml MultivariateStatisticalSummary
+   * @return An instance of BasicStatisticalSummary
+   */
+  private def calculateBasicStatistics(summary: MultivariateStatisticalSummary): BasicStatisticalSummary = {
+
+    val meanAbs = scale(summary.count, VectorUtils.mllibToBreeze(summary.normL1))
+    val tMean = VectorUtils.mllibToBreeze(summary.mean)
+    val tVariance = VectorUtils.mllibToBreeze(summary.variance)
+    val tNumNonZeros = VectorUtils.mllibToBreeze(summary.numNonzeros)
+    val tMax = VectorUtils.mllibToBreeze(summary.max)
+    val tMin = VectorUtils.mllibToBreeze(summary.min)
+    val tNormL1 = VectorUtils.mllibToBreeze(summary.normL1)
+    val tNormL2 = VectorUtils.mllibToBreeze(summary.normL2)
 
     val adjustedCount = tVariance.activeIterator.foldLeft(0)((count, idxValuePair) => {
       if (idxValuePair._2.isNaN || idxValuePair._2.isInfinite || idxValuePair._2 < 0) {
@@ -76,6 +112,6 @@ object BasicStatisticalSummary extends Logging {
     this(
       tMean,
       tVariance.mapActiveValues(x => if (x.isNaN || x.isInfinite || x < 0) 1.0 else x),
-      mllibSummary.count, tNumNonZeros, tMax, tMin, tNormL1, tNormL2, meanAbs)
+      summary.count, tNumNonZeros, tMax, tMin, tNormL1, tNormL2, meanAbs)
   }
 }

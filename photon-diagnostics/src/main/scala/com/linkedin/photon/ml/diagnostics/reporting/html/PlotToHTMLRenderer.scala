@@ -14,9 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.reporting.html
 
-import com.linkedin.photon.ml.diagnostics.reporting.{
-  SpecificRenderer, PlotPhysicalReport, RenderStrategy, PhysicalReport, PlotUtils}
 import scala.xml._
+
+import com.linkedin.photon.ml.diagnostics.reporting._
 
 class PlotToHTMLRenderer(
     renderStrategy: RenderStrategy[PhysicalReport, Node],

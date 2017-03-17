@@ -39,8 +39,8 @@ protected[ml] class GameDatum(
 
   import GameDatum._
 
-  val offset = offsetOpt.getOrElse(DEFAULT_OFFSET)
-  val weight = weightOpt.getOrElse(DEFAULT_WEIGHT)
+  val offset: Double = offsetOpt.getOrElse(DEFAULT_OFFSET)
+  val weight: Double = weightOpt.getOrElse(DEFAULT_WEIGHT)
 
   /**
    * Build a labeled point with sharded feature container.

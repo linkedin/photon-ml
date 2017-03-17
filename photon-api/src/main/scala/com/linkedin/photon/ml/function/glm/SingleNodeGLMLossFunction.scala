@@ -126,6 +126,7 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
 }
 
 object SingleNodeGLMLossFunction {
+
   /**
    * Factory method to create a new objective function with SingleNodeGLMLossFunctions as the base loss function.
    *
@@ -133,9 +134,8 @@ object SingleNodeGLMLossFunction {
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
    * @return A new SingleNodeGLMLossFunction
    */
-  def create(
-    configuration: GLMOptimizationConfiguration,
-    singleLossFunction: PointwiseLossFunction): SingleNodeGLMLossFunction = {
+  def apply(configuration: GLMOptimizationConfiguration)(singleLossFunction: PointwiseLossFunction)
+      : SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
 

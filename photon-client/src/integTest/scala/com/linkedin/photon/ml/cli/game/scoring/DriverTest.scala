@@ -19,7 +19,6 @@ import scala.util.Random
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkException
 import org.apache.spark.mllib.evaluation.RegressionMetrics
-
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
@@ -249,7 +248,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   /**
-   * Run the Game driver with the specified arguments.
+   * Run the GAME driver with the specified arguments.
    *
    * @param args The command-line arguments
    */
@@ -269,7 +268,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 object DriverTest {
 
   /**
-   * Arguments set for the Yahoo music data and model for the Game scoring driver.
+   * Arguments set for the Yahoo music data and model for the GAME scoring driver.
    *
    * @param outputDir
    * @param fixedEffectOnly

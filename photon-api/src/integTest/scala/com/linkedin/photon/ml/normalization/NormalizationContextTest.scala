@@ -14,12 +14,10 @@
  */
 package com.linkedin.photon.ml.normalization
 
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.rdd.RDD
-
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
-
-import breeze.linalg.{DenseVector, SparseVector, Vector}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
@@ -28,7 +26,7 @@ import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, Logistic
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{LBFGS, OptimizerType, TRON}
-import com.linkedin.photon.ml.stat.BasicStatistics
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.SparkTestUtils
 
@@ -66,7 +64,7 @@ class NormalizationContextTest extends SparkTestUtils {
       expectedShifts: Option[Array[Double]]): Unit = sparkTest("test") {
 
     val rdd = sc.parallelize(_features.map(x => new LabeledPoint(0, x)))
-    lazy val summary = BasicStatistics.getBasicStatistics(rdd)
+    lazy val summary = BasicStatisticalSummary(rdd)
     val normalizationContext = NormalizationContext(normalizationType, summary, _intercept)
     val factors = normalizationContext.factors
     (factors, expectedFactors) match {
@@ -149,7 +147,7 @@ class NormalizationContextTest extends SparkTestUtils {
       // Build normalization context
       val normalizationContext: NormalizationContext = {
         val dim = heartDataRDD.take(1)(0).features.size
-        lazy val summary = BasicStatistics.getBasicStatistics(heartDataRDD)
+        lazy val summary = BasicStatisticalSummary(heartDataRDD)
         NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(dim - 1))
       }
 
@@ -164,7 +162,7 @@ class NormalizationContextTest extends SparkTestUtils {
             new LabeledPoint(label, transformedFeatures, weight, offset)
         }.persist()
         // Verify that the transformed rdd will have the correct transformation condition
-        val summaryAfterStandardization = BasicStatistics.getBasicStatistics(transformedRDD)
+        val summaryAfterStandardization = BasicStatisticalSummary(transformedRDD)
         summaryAfterStandardization.mean.toArray.dropRight(1).foreach(x => assertEquals(0.0, x, _delta))
         summaryAfterStandardization.variance.toArray.dropRight(1).foreach(x => assertEquals(1.0, x, _delta))
         val dim = summaryAfterStandardization.mean.size
@@ -176,25 +174,13 @@ class NormalizationContextTest extends SparkTestUtils {
       val configuration = GLMOptimizationConfiguration()
       val objectiveFunction = taskType match {
         case TaskType.LOGISTIC_REGRESSION =>
-          DistributedGLMLossFunction.create(
-            configuration,
-            LogisticLossFunction,
-            sc,
-            treeAggregateDepth = 1)
+          DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(LogisticLossFunction)
 
         case TaskType.LINEAR_REGRESSION =>
-          DistributedGLMLossFunction.create(
-            configuration,
-            SquaredLossFunction,
-            sc,
-            treeAggregateDepth = 1)
+          DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(SquaredLossFunction)
 
         case TaskType.POISSON_REGRESSION =>
-          DistributedGLMLossFunction.create(
-            configuration,
-            PoissonLossFunction,
-            sc,
-            treeAggregateDepth = 1)
+          DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(PoissonLossFunction)
       }
       val optimizerNorm = optimizerType match {
         case OptimizerType.LBFGS =>

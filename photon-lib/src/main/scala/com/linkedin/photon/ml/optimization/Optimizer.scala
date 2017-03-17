@@ -20,8 +20,7 @@ import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.{
-  ConvergenceReason, FunctionValuesConverged, GradientConverged, MaxIterations, ObjectiveNotImproving, Logging}
+import com.linkedin.photon.ml.util._
 
 /**
  * Common base class for the Photon ML optimization problem solvers.

@@ -17,11 +17,11 @@ package com.linkedin.photon.ml
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
-import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.test.CommonTestUtils
 
 /**

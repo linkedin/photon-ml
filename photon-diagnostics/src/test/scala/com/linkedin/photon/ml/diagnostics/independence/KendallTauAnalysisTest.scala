@@ -20,6 +20,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 class KendallTauAnalysisTest {
   import org.testng.Assert._
+
   import KendallTauAnalysisTest._
 
   def printResult(result: KendallTauReport): Unit = {

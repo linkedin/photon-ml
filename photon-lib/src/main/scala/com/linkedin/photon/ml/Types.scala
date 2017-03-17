@@ -12,22 +12,18 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.diagnostics.reporting.html
+package com.linkedin.photon.ml
 
-import scala.xml._
+/**
+ * Some types that make the code easier to read and more documented.
+ * This class should be visible from everywhere in photon-ml.
+ */
+object Types {
 
-import com.linkedin.photon.ml.diagnostics.reporting.{ReferencePhysicalReport, SpecificRenderer}
+  type SDV = org.apache.spark.mllib.linalg.DenseVector
+  type SSV = org.apache.spark.mllib.linalg.SparseVector
+  type SparkVector = org.apache.spark.mllib.linalg.Vector
 
-
-class ReferenceToHTMLRenderer(
-    namespaceBinding: NamespaceBinding,
-    htmlPrefix: String,
-    svgPrefix: String)
-  extends SpecificRenderer[ReferencePhysicalReport, Node] {
-
-  def render(reference: ReferencePhysicalReport): Node = {
-    new Elem(
-      htmlPrefix, "a", new PrefixedAttribute(htmlPrefix, "href", "#" + reference.referee.getId.toString, Null),
-      namespaceBinding, true, new Text(reference.msg))
-  }
+  type FeatureShardId = String
+  type CoordinateId = String
 }

@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.diagnostics.hl
 
+import com.xeiam.xchart.{Chart, ChartBuilder, StyleManager}
+
 import com.linkedin.photon.ml.diagnostics.reporting._
-import com.xeiam.xchart.{StyleManager, ChartBuilder, QuickChart, Chart}
 
 /**
  * Simple, naive transformation (don't attempt to do anything clever with plots, for example) for HL test results

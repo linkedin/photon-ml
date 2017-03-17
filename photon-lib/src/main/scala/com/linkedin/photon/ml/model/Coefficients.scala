@@ -18,13 +18,12 @@ import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
 import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.util.Summarizable
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{Summarizable, VectorUtils}
 
 /**
  * Coefficients are a wrapper to store means and variances of model coefficients together.
  *
- * NOTE: Breeze's SparseVector does NOT sort the non-zeros in order of increasing index, but still supports
+ * @note Breeze's SparseVector does NOT sort the non-zeros in order of increasing index, but still supports
  * a get/set backed by a binary search!!! (11/18/2016)
  *
  * @param means The mean of the model coefficients
@@ -37,7 +36,7 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
   // and greatly reduces the number of combinations to check in unit testing.
   require(variancesOption.isEmpty || variancesOption.get.getClass == means.getClass,
     "Coefficients: If variances are provided, must be of the same vector type as means")
-  // Game over if variances are given but don't have the same length as the vector of means
+  // GAME over if variances are given but don't have the same length as the vector of means
   require(variancesOption.isEmpty || variancesOption.get.length == means.length,
     "Coefficients: Means and variances have different lengths")
 
