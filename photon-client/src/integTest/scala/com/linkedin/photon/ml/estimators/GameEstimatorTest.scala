@@ -26,6 +26,7 @@ import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.avro.AvroDataReader
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}

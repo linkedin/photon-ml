@@ -25,6 +25,7 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.avro.AvroFieldNames
+import com.linkedin.photon.ml.data.avro.AvroDataReader
 import com.linkedin.photon.ml.util._
 
 class AvroDataReaderTest {

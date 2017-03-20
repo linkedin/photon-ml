@@ -23,6 +23,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.avro.AvroDataReader
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util._
 

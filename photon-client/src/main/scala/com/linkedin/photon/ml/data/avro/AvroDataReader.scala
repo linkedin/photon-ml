@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.data
+package com.linkedin.photon.ml.data.avro
 
 import java.util.{List => JList}
 
@@ -29,6 +29,7 @@ import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroIOUtils, AvroUtils}
+import com.linkedin.photon.ml.data.DataReader
 import com.linkedin.photon.ml.util._
 
 /**

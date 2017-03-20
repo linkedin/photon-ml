@@ -29,7 +29,8 @@ import com.linkedin.photon.ml.avro.AvroIOUtils
 import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters}
+import com.linkedin.photon.ml.data.GameConverters
+import com.linkedin.photon.ml.data.avro.AvroDataReader
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}

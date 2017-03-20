@@ -26,6 +26,7 @@ import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
 import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.avro.AvroDataReader
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.{GLMSuite, ModelOutputMode}
