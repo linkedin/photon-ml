@@ -17,12 +17,7 @@ package com.linkedin.photon.ml.data.avro
 /**
  * TrainingExample format fields names.
  */
-object TrainingExampleFieldNames extends FieldNames {
-  val features: String = "features"
-  val name: String = "name"
-  val term: String = "term"
-  val value: String = "value"
-  val response: String = "label"
-  val offset: String = "offset"
-  val weight: String = "weight"
+object TrainingExampleFieldNames extends AvroFieldNames {
+
+  override val RESPONSE: String = "label" // do we really need a different name?
 }

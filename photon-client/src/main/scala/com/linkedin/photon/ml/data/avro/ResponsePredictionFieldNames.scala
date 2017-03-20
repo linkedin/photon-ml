@@ -17,12 +17,7 @@ package com.linkedin.photon.ml.data.avro
 /**
  * Response prediction format fields names.
  */
-object ResponsePredictionFieldNames extends FieldNames {
-  val features: String = "features"
-  val name: String = "name"
-  val term: String = "term"
-  val value: String = "value"
-  val response: String = "response"
-  val offset: String = "offset"
-  val weight: String = "weight"
+object ResponsePredictionFieldNames extends AvroFieldNames {
+
+  override val RESPONSE: String = "response" // do we really need a different name?
 }

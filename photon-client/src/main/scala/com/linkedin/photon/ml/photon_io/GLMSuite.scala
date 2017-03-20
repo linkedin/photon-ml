@@ -161,13 +161,13 @@ class GLMSuite(
       selectedFeatures: Set[String]): IndexMapLoader = {
 
     def getFeatures(avroRecord: GenericRecord): Array[String] = {
-      avroRecord.get(fieldNames.features) match {
+      avroRecord.get(fieldNames.FEATURES) match {
         case recordList: JList[_] =>
           recordList.toArray.map { case record: GenericRecord =>
-            Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, Constants.DELIMITER)
+            Utils.getFeatureKey(record, fieldNames.NAME, fieldNames.TERM, Constants.DELIMITER)
           }
         case other =>
-          throw new IOException(s"Avro field [${fieldNames.features}] (val = ${other.toString}) is not a list")
+          throw new IOException(s"Avro field [${fieldNames.FEATURES}] (val = ${other.toString}) is not a list")
       }
     }
 
@@ -296,7 +296,7 @@ class GLMSuite(
     def parseAvroRecord(avroRecord: GenericRecord, indexMap: IndexMap): LabeledPoint = {
       val numFeatures = indexMap.size
 
-      val features = avroRecord.get(fieldNames.features) match {
+      val features = avroRecord.get(fieldNames.FEATURES) match {
         case recordList: JList[_] =>
           val nnz =
             if (addIntercept) {
@@ -309,13 +309,13 @@ class GLMSuite(
           while (iter.hasNext) {
             iter.next match {
               case record: GenericRecord =>
-                val featureFullName = Utils.getFeatureKey(record, fieldNames.name, fieldNames.term, Constants.DELIMITER)
+                val featureFullName = Utils.getFeatureKey(record, fieldNames.NAME, fieldNames.TERM, Constants.DELIMITER)
                 val idx = indexMap.getIndex(featureFullName)
                 if (idx != IndexMap.NULL_KEY) {
-                  pairsArr += ((idx, Utils.getDoubleAvro(record, fieldNames.value)))
+                  pairsArr += ((idx, Utils.getDoubleAvro(record, fieldNames.VALUE)))
                 }
               case any =>
-                throw new IOException(s"${String.valueOf(any)} in ${fieldNames.features} list is not a record")
+                throw new IOException(s"${String.valueOf(any)} in ${fieldNames.FEATURES} list is not a record")
             }
           }
           if (addIntercept) {
@@ -327,19 +327,19 @@ class GLMSuite(
           val value = sortedPairsArray.map(_._2)
           new SparseVector[Double](index, value, numFeatures)
         case other =>
-          throw new IOException(s"Avro field [${fieldNames.features}] (val = ${String.valueOf(other)}) is not a list")
+          throw new IOException(s"Avro field [${fieldNames.FEATURES}] (val = ${String.valueOf(other)}) is not a list")
       }
 
-      val response = Utils.getDoubleAvro(avroRecord, fieldNames.response)
+      val response = Utils.getDoubleAvro(avroRecord, fieldNames.RESPONSE)
       val offset =
-        if (avroRecord.get(fieldNames.offset) != null) {
-          Utils.getDoubleAvro(avroRecord, fieldNames.offset)
+        if (avroRecord.get(fieldNames.OFFSET) != null) {
+          Utils.getDoubleAvro(avroRecord, fieldNames.OFFSET)
         } else {
           0
         }
       val weight =
-        if (avroRecord.get(fieldNames.weight) != null) {
-          Utils.getDoubleAvro(avroRecord, fieldNames.weight)
+        if (avroRecord.get(fieldNames.WEIGHT) != null) {
+          Utils.getDoubleAvro(avroRecord, fieldNames.WEIGHT)
         } else {
           1
         }

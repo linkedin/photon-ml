@@ -25,7 +25,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.data.avro.{AvroUtils, FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.photon_io.FieldNamesType
 import com.linkedin.photon.ml.photon_io.FieldNamesType._
 import com.linkedin.photon.ml.util._
@@ -60,7 +60,7 @@ class FeatureIndexingJob(
     val partitionNum: Int,
     val outputPath: String,
     val addIntercept: Boolean,
-    val fieldNames: FieldNames,
+    val fieldNames: AvroFieldNames,
     val featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
     val featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 
@@ -111,14 +111,14 @@ class FeatureIndexingJob(
               .toSet)
             .reduce(_ ++ _)
         case _ =>
-          record.get(fieldNamesRef.features)
+          record.get(fieldNamesRef.FEATURES)
             .asInstanceOf[JList[GenericRecord]]
             .asScala
             .toSet
       }
 
       features.map(f =>
-        Utils.getFeatureKey(f, fieldNamesRef.name, fieldNamesRef.term, Constants.DELIMITER))
+        Utils.getFeatureKey(f, fieldNamesRef.NAME, fieldNamesRef.TERM, Constants.DELIMITER))
 
     }.mapPartitions{ iter =>
       // Step 2. map features to (hashCode, featureName)
@@ -257,7 +257,7 @@ object FeatureIndexingJob {
     dateRangeOpt: Option[String] = None,
     dateRangeDaysAgoOpt: Option[String] = None,
     addIntercept: Boolean = true,
-    fieldNames: FieldNames = TrainingExampleFieldNames,
+    fieldNames: AvroFieldNames = TrainingExampleFieldNames,
     featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
     featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 

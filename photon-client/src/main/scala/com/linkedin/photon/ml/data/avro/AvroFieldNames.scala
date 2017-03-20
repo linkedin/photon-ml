@@ -17,13 +17,16 @@ package com.linkedin.photon.ml.data.avro
 /**
  * Common field names in the Avro data set used in Photon-ML.
  */
-object AvroFieldNames {
-   val NAME: String = "name"
-   val TERM: String = "term"
-   val VALUE: String = "value"
-   val RESPONSE: String = "response"
-   val OFFSET: String = "offset"
-   val WEIGHT: String = "weight"
-   val UID: String = "uid"
-   val META_DATA_MAP: String = "metadataMap"
+abstract class AvroFieldNames {
+
+  val UID: String = "uid"
+  val NAME: String = "name"
+  val TERM: String = "term"
+  val FEATURES: String = "features"
+  val VALUE: String = "value"
+  val RESPONSE: String
+  val OFFSET: String = "offset"
+  val WEIGHT: String = "weight"
+  val META_DATA_MAP: String = "metadataMap"
 }
+
