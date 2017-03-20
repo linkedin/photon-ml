@@ -28,7 +28,7 @@ import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-import com.linkedin.photon.ml.avro.{AvroFieldNames, AvroIOUtils, AvroUtils}
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.data.DataReader
 import com.linkedin.photon.ml.util._
 
@@ -230,7 +230,7 @@ class AvroDataReader(
       .reduceByKey { case (a, b) => (a ++ b).distinct }
       .collect
       .toMap
-      .mapValues { features => DefaultIndexMapLoader(sc, (features :+ INTERCEPT_KEY).toSeq) }
+      .mapValues { features => DefaultIndexMapLoader(sc, (features :+ Constants.INTERCEPT_NAME_TERM).toSeq) }
       // have to map identity here because mapValues produces a non-serializable map
       // https://issues.scala-lang.org/browse/SI-7005
       .map(identity)
@@ -238,6 +238,7 @@ class AvroDataReader(
 }
 
 object AvroDataReader {
+
   /**
    * Feature field names.
    */
@@ -246,13 +247,6 @@ object AvroDataReader {
     val TERM = "term"
     val VALUE = "value"
   }
-
-  /**
-   * Name, term, and feature key of the intercept
-   */
-  val INTERCEPT_NAME = "(INTERCEPT)"
-  val INTERCEPT_TERM = ""
-  val INTERCEPT_KEY: String = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
 
   /**
    * Reads feature keys and values from the avro generic record.
@@ -271,7 +265,7 @@ object AvroDataReader {
     fieldNames
       .toSeq
       .flatMap { fieldName => Option(record.get(fieldName)) match {
-        case Some(recordList: JList[_]) => recordList.asScala.toSeq
+        case Some(recordList: JList[_]) => recordList.asScala.toSeq // this .toSeq intentional
         case other => throw new IllegalArgumentException(
           s"Expected feature list $fieldName to be a Java List, found instead: ${other.getClass.getName}.")
       }}
@@ -280,7 +274,7 @@ object AvroDataReader {
           val nameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
           val featureKey = Utils.getFeatureKey(nameAndTerm.name, nameAndTerm.term)
 
-          featureKey -> Utils.getDoubleAvro(record, AvroFieldNames.VALUE)
+          featureKey -> Utils.getDoubleAvro(record, FieldNames.VALUE)
 
         case other => throw new IllegalArgumentException(s"$other in features list is not a GenericRecord")
       }.toArray
@@ -322,9 +316,9 @@ object AvroDataReader {
     }
 
     // Add intercept if necessary
-    val addIntercept = featureMap.contains(INTERCEPT_KEY)
+    val addIntercept = featureMap.contains(Constants.INTERCEPT_NAME_TERM)
     val featuresWithIntercept = if (addIntercept) {
-      featuresWithIndices ++ Array(featureMap.getIndex(INTERCEPT_KEY) -> 1.0)
+      featuresWithIndices ++ Array(featureMap.getIndex(Constants.INTERCEPT_NAME_TERM) -> 1.0)
     } else {
       featuresWithIndices
     }

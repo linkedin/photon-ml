@@ -23,14 +23,12 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
-import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.data.avro.AvroDataReader
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.model.{FixedEffectModel, GAMEModel}
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -68,7 +66,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     // Setup feature names a feature index from feature name to feature index
     // Have to drop in an intercept "feature" but intercepts are turned ON by default
     val featureNames = (0 until nDimensions).map(i => s"feature-$i").toSet
-    val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions))
+    val featureIndexMap = DefaultIndexMap(featureNames) + ((Constants.INTERCEPT_NAME_TERM, nDimensions))
 
     // Generate a Spark DataFrame containing labeled points (label, x, y)
     // :+ 1.0 is because we need to add that column to make up a correct design matrix, including that 1.0
@@ -103,7 +101,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     val normalizationContexts: Option[Map[String, NormalizationContext]] =
       Some(Map((featureShardId, stats))
         .mapValues { featureShardStats =>
-          val intercept: Option[Int] = featureIndexMap.get(GLMSuite.INTERCEPT_NAME_TERM)
+          val intercept: Option[Int] = featureIndexMap.get(Constants.INTERCEPT_NAME_TERM)
           NormalizationContext(params.normalizationType, featureShardStats, intercept)
         })
 
@@ -169,7 +167,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       // Setup feature names a feature index from feature name to feature index
       // Have to drop in an intercept "feature" but intercepts are turned ON by default
       val featureNames = (0 until nDimensions).map(i => s"feature-$i").toSet
-      val featureIndexMap = DefaultIndexMap(featureNames) + ((GLMSuite.INTERCEPT_NAME_TERM, nDimensions))
+      val featureIndexMap = DefaultIndexMap(featureNames) + ((Constants.INTERCEPT_NAME_TERM, nDimensions))
 
       // Generate a Spark DataFrame containing labeled points (label, x, y)
       // :+ 1.0 is because we need to add that column to make up a correct design matrix, including that 1.0
@@ -190,7 +188,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       val normalizationContexts: Option[Map[String, NormalizationContext]] =
         Some(Map((featureShardId, stats))
           .mapValues { featureShardStats =>
-            val intercept: Option[Int] = featureIndexMap.get(GLMSuite.INTERCEPT_NAME_TERM)
+            val intercept: Option[Int] = featureIndexMap.get(Constants.INTERCEPT_NAME_TERM)
             NormalizationContext(params.normalizationType, featureShardStats, intercept)
           })
 

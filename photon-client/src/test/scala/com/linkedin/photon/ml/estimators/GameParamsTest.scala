@@ -19,7 +19,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
-import com.linkedin.photon.ml.io.ModelOutputMode
+import com.linkedin.photon.ml.photon_io.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
 import com.linkedin.photon.ml.test.CommonTestUtils._

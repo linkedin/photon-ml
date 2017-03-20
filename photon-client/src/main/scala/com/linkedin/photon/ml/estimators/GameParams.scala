@@ -22,8 +22,8 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
-import com.linkedin.photon.ml.io.ModelOutputMode
-import com.linkedin.photon.ml.io.ModelOutputMode._
+import com.linkedin.photon.ml.photon_io.ModelOutputMode
+import com.linkedin.photon.ml.photon_io.ModelOutputMode._
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}

@@ -22,11 +22,9 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.avro.AvroDataReader
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils, ScoreProcessingUtils}
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
 import com.linkedin.photon.ml.util._

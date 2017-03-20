@@ -27,6 +27,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkConf, SparkContext}
 import org.slf4j.Logger
 
+import com.linkedin.photon.ml.data.avro.ModelProcessingUtils
 import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.bootstrap.{BootstrapReport, BootstrapTrainingDiagnostic}
@@ -39,7 +40,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{Diagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.event._
-import com.linkedin.photon.ml.io.{GLMSuite, InputDataFormat, InputFormatFactory}
+import com.linkedin.photon.ml.photon_io.{InputDataFormat, InputFormatFactory}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -275,7 +276,7 @@ protected[ml] class Driver(
     val summary = BasicStatisticalSummary(trainingData)
 
     outputDir.foreach { dir =>
-      IOUtils.writeBasicStatistics(
+      ModelProcessingUtils.writeBasicStatistics(
         sc,
         summary,
         dir,
@@ -315,7 +316,7 @@ protected[ml] class Driver(
       normalizationContext = NormalizationContext(
         params.normalizationType,
         summary,
-        inputDataFormat.indexMapLoader().indexMapForDriver().get(GLMSuite.INTERCEPT_NAME_TERM))
+        inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_NAME_TERM))
     }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001

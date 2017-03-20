@@ -14,10 +14,10 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.apache.spark.{HashPartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{HashPartitioner, SparkContext}
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}

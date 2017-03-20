@@ -19,9 +19,6 @@ import java.util.Random
 import scala.collection.{Map, Set, mutable}
 import scala.reflect.ClassTag
 
-import scala.collection.{Map, Set, mutable}
-import scala.reflect.ClassTag
-
 import breeze.linalg.{SparseVector, Vector}
 
 import com.linkedin.photon.ml.constants.MathConst

@@ -20,7 +20,7 @@ import scopt.OptionParser
 
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
-import com.linkedin.photon.ml.io.{ConstraintMapKeys, FieldNamesType, InputFormatType}
+import com.linkedin.photon.ml.photon_io.{ConstraintMapKeys, FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 

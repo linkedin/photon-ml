@@ -25,16 +25,13 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.avro.AvroIOUtils
-import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.data.GameConverters
-import com.linkedin.photon.ml.data.avro.AvroDataReader
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, AvroIOUtils, ModelProcessingUtils, NameAndTerm}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.io.ModelOutputMode
+import com.linkedin.photon.ml.photon_io.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType

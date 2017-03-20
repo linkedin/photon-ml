@@ -20,9 +20,9 @@ import com.linkedin.photon.ml.DataValidationType._
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode.DiagnosticMode
-import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.io.InputFormatType
-import com.linkedin.photon.ml.io.InputFormatType.InputFormatType
+import com.linkedin.photon.ml.photon_io.FieldNamesType._
+import com.linkedin.photon.ml.photon_io.InputFormatType
+import com.linkedin.photon.ml.photon_io.InputFormatType.InputFormatType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
 import com.linkedin.photon.ml.optimization.RegularizationType._
@@ -150,7 +150,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * A JSON string containing an array of maps specifying the box constraints on certain
    * coefficients, if any. Only keys from
-   * [[com.linkedin.photon.ml.io.ConstraintMapKeys]] will be sought. Others if
+   * [[com.linkedin.photon.ml.photon_io.ConstraintMapKeys]] will be sought. Others if
    * specified will be ignored. The term is allowed to be a wildcard "*" in which case the bounds
    * are applied to all features with the specified name irrespective of the term. The name cannot
    * be a wildcard except for the special case where both name and term are wildcards so that one

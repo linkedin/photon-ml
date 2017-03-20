@@ -25,9 +25,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.avro._
-import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
+import com.linkedin.photon.ml.data.avro.{AvroIOUtils, FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.photon_io.FieldNamesType
+import com.linkedin.photon.ml.photon_io.FieldNamesType._
 import com.linkedin.photon.ml.util._
 
 /**
@@ -118,7 +118,7 @@ class FeatureIndexingJob(
       }
 
       features.map(f =>
-        Utils.getFeatureKey(f, fieldNamesRef.name, fieldNamesRef.term, GLMSuite.DELIMITER))
+        Utils.getFeatureKey(f, fieldNamesRef.name, fieldNamesRef.term, Constants.DELIMITER))
 
     }.mapPartitions{ iter =>
       // Step 2. map features to (hashCode, featureName)
@@ -127,7 +127,7 @@ class FeatureIndexingJob(
 
     val keyedFeaturesUnionedRDD = if (addIntercept) {
       val interceptRDD = sc.parallelize(List[(Int, String)](
-          GLMSuite.INTERCEPT_NAME_TERM.hashCode() -> GLMSuite.INTERCEPT_NAME_TERM))
+          Constants.INTERCEPT_NAME_TERM.hashCode() -> Constants.INTERCEPT_NAME_TERM))
       keyedFeaturesRDD.union(interceptRDD)
     } else {
       keyedFeaturesRDD

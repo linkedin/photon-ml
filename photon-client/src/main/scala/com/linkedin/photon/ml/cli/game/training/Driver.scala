@@ -21,21 +21,19 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.cli.game.GAMEDriver
-import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.data.avro.AvroDataReader
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
-import com.linkedin.photon.ml.io.{GLMSuite, ModelOutputMode}
+import com.linkedin.photon.ml.photon_io.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils._
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
 
 /**
  * The Driver class, which drives the training of GAME model.
@@ -197,7 +195,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
             .tap { case (featureShardId, featureShardStats) =>
               val outputDir = summarizationOutputDir + "/" + featureShardId
               val indexMap = featureIndexMapLoaders(featureShardId).indexMapForDriver()
-              IOUtils.writeBasicStatistics(sc, featureShardStats, outputDir, indexMap)
+              ModelProcessingUtils.writeBasicStatistics(sc, featureShardStats, outputDir, indexMap)
             }
         }
       }
@@ -218,7 +216,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
       statistics
         .getOrElse(calculateStatistics(trainingData, featureIndexMapLoaders))
         .map { case (featureShardId, featureShardStats) =>
-          val intercept = featureIndexMapLoaders(featureShardId).indexMapForDriver().get(GLMSuite.INTERCEPT_NAME_TERM)
+          val intercept = featureIndexMapLoaders(featureShardId).indexMapForDriver().get(Constants.INTERCEPT_NAME_TERM)
           (featureShardId, NormalizationContext(params.normalizationType, featureShardStats, intercept))
         }
         .toMap
