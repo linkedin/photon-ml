@@ -350,7 +350,7 @@ object ModelProcessingUtils {
       featureMap)
     val modelOutputPath = new Path(outputDir, AvroConstants.DEFAULT_AVRO_FILE_NAME).toString
 
-    AvroIOUtils.saveAsSingleAvro(
+    AvroUtils.saveAsSingleAvro(
       sparkContext,
       Seq(bayesianLinearModelAvro),
       modelOutputPath,
@@ -375,7 +375,7 @@ object ModelProcessingUtils {
     // next line is log reg
     val linearModelAvroSchema = BayesianLinearModelAvro.getClassSchema.toString
     // next line is lin reg - we lost the log reg information
-    val linearModelAvro = AvroIOUtils.readFromSingleAvro[BayesianLinearModelAvro](sc, coefficientsPath,
+    val linearModelAvro = AvroUtils.readFromSingleAvro[BayesianLinearModelAvro](sc, coefficientsPath,
       linearModelAvroSchema).head
 
     val featureIndex = featureMap.getOrElse(AvroUtils.makeFeatureIndexForModel(linearModelAvro))
@@ -403,7 +403,7 @@ object ModelProcessingUtils {
       }
     }
 
-    AvroIOUtils.saveAsAvro(linearModelAvro, outputDir, BayesianLinearModelAvro.getClassSchema.toString)
+    AvroUtils.saveAsAvro(linearModelAvro, outputDir, BayesianLinearModelAvro.getClassSchema.toString)
   }
 
   /**
@@ -419,7 +419,7 @@ object ModelProcessingUtils {
       featureMapLoader: Option[IndexMapLoader],
       sc: SparkContext): (RDD[(String, GeneralizedLinearModel)], IndexMapLoader) = {
 
-    val modelAvros = AvroIOUtils.readAvroFilesInDir[BayesianLinearModelAvro](
+    val modelAvros = AvroUtils.readAvroFilesInDir[BayesianLinearModelAvro](
       sc,
       coefficientsRDDInputDir,
       minNumPartitions = sc.defaultParallelism)
@@ -458,7 +458,7 @@ object ModelProcessingUtils {
     val rowLatentFactorsAvro = rowLatentFactors.coalesce(numOutputFiles).map { case (rowId, latentFactor) =>
       AvroUtils.convertLatentFactorToLatentFactorAvro(rowId, latentFactor)
     }
-    AvroIOUtils.saveAsAvro(rowLatentFactorsAvro, rowLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
+    AvroUtils.saveAsAvro(rowLatentFactorsAvro, rowLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
 
     val colLatentFactors = matrixFactorizationModel.colLatentFactors
     val colEffectType = matrixFactorizationModel.colEffectType
@@ -466,12 +466,12 @@ object ModelProcessingUtils {
     val colLatentFactorsAvro = colLatentFactors.coalesce(numOutputFiles).map { case (colId, latentFactor) =>
       AvroUtils.convertLatentFactorToLatentFactorAvro(colId, latentFactor)
     }
-    AvroIOUtils.saveAsAvro(colLatentFactorsAvro, colLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
+    AvroUtils.saveAsAvro(colLatentFactorsAvro, colLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
   }
 
   private def loadLatentFactorsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, Vector[Double])] = {
     val minNumPartitions = sparkContext.defaultParallelism
-    val modelAvros = AvroIOUtils.readAvroFilesInDir[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
+    val modelAvros = AvroUtils.readAvroFilesInDir[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
     modelAvros.map(AvroUtils.convertLatentFactorAvroToLatentFactor)
   }
 
@@ -620,7 +620,7 @@ object ModelProcessingUtils {
 
     val outputFile = new Path(outputDir, AvroConstants.DEFAULT_AVRO_FILE_NAME).toString
 
-    AvroIOUtils.saveAsSingleAvro(
+    AvroUtils.saveAsSingleAvro(
       sc,
       outputAvro,
       outputFile,

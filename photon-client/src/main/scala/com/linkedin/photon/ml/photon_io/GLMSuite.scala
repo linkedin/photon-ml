@@ -27,7 +27,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.data.avro.{AvroIOUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.data.avro.{AvroUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
 import com.linkedin.photon.ml.photon_io.FieldNamesType._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
@@ -103,7 +103,7 @@ class GLMSuite(
       selectedFeaturesFile: Option[String],
       minNumPartitions: Int): RDD[LabeledPoint] = {
 
-    val avroRDD = AvroIOUtils.readAvroFilesInDir[GenericRecord](sc, inputDir, minNumPartitions)
+    val avroRDD = AvroUtils.readAvroFilesInDir[GenericRecord](sc, inputDir, minNumPartitions)
 
     if (selectedFeatures.isEmpty) {
       selectedFeatures = getSelectedFeatureSetFromFile(sc, selectedFeaturesFile)
@@ -139,7 +139,7 @@ class GLMSuite(
   def getSelectedFeatureSetFromFile(
       sc: SparkContext,
       selectedFeaturesFile: Option[String]): Set[String] = selectedFeaturesFile match {
-    case Some(filename: String) =>  AvroIOUtils.readAvroFilesInDir[GenericRecord](sc, filename, 1)
+    case Some(filename: String) =>  AvroUtils.readAvroFilesInDir[GenericRecord](sc, filename, 1)
       .map(x => Utils.getFeatureKey(x, "name", "term", Constants.DELIMITER))
       .collect().toSet
     case _ => Set.empty[String]

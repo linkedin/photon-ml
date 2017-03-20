@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 /**
  * This class tests basic IO utilities.
  */
-class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class AvroUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test
   def testAvroReadWrite(): Unit = sparkTest("testAvroReadWrite") {
     val schemaString = FeatureAvro.getClassSchema.toString
@@ -40,7 +40,7 @@ class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
         val builder = FeatureAvro.newBuilder()
         builder.setName(name).setTerm(term).setValue(value).build()
     }
-    AvroIOUtils.saveAsAvro[FeatureAvro](outputRdd, outputDir, schemaString)
+    AvroUtils.saveAsAvro[FeatureAvro](outputRdd, outputDir, schemaString)
 
     // TODO: Rewrite the filter logic when Photon has better file util supports
     val fileFilter = FileFilterUtils
@@ -49,12 +49,12 @@ class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(files.size(), 1)
 
     // Read as specific record
-    val specificRdd = AvroIOUtils.readAvroFilesInDir[FeatureAvro](sc, outputDir, 1)
+    val specificRdd = AvroUtils.readAvroFilesInDir[FeatureAvro](sc, outputDir, 1)
     val actualSpecific = specificRdd.map(x => (x.getName.toString, x.getTerm.toString, x.getValue)).collect()
     assertEquals(actualSpecific, dataIn)
 
     // Read as generic record
-    val genericRdd = AvroIOUtils.readAvroFilesInDir[GenericRecord](sc, outputDir, 1)
+    val genericRdd = AvroUtils.readAvroFilesInDir[GenericRecord](sc, outputDir, 1)
     val actualGeneric = genericRdd.map(x => (x.get("name").toString, x.get("term").toString, x.get("value"))).collect()
     assertEquals(actualGeneric, dataIn)
 
@@ -70,15 +70,15 @@ class AvroIOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
         val builder = FeatureAvro.newBuilder()
         builder.setName(name).setTerm(term).setValue(value).build()
     }
-    AvroIOUtils.saveAsSingleAvro[FeatureAvro](sc, writeData, outputDir, schemaString, forceOverwrite = true)
+    AvroUtils.saveAsSingleAvro[FeatureAvro](sc, writeData, outputDir, schemaString, forceOverwrite = true)
 
     // Read as specific record
-    val specificList = AvroIOUtils.readFromSingleAvro[FeatureAvro](sc, outputDir, schemaString = schemaString)
+    val specificList = AvroUtils.readFromSingleAvro[FeatureAvro](sc, outputDir, schemaString = schemaString)
     val actualSpecific = specificList.map(x => (x.getName.toString, x.getTerm.toString, x.getValue)).toArray
     assertEquals(actualSpecific, dataIn)
 
     // Read as generic record
-    val genericList = AvroIOUtils.readFromSingleAvro[GenericRecord](sc, outputDir, schemaString = schemaString)
+    val genericList = AvroUtils.readFromSingleAvro[GenericRecord](sc, outputDir, schemaString = schemaString)
     val actualGeneric = genericList.map(x => (x.get("name").toString, x.get("term").toString, x.get("value"))).toArray
     assertEquals(actualGeneric, dataIn)
   }

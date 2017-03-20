@@ -92,7 +92,7 @@ class AvroDataReader(
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
-    val records = AvroIOUtils.readAvroFiles(sc, paths, numPartitions)
+    val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
     val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap)
 
     (readMerged(records, indexMapLoaders, featureColumnMap, numPartitions), indexMapLoaders)
@@ -129,7 +129,7 @@ class AvroDataReader(
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
-    val records = AvroIOUtils.readAvroFiles(sc, paths, numPartitions)
+    val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
 
     readMerged(records, indexMapLoaders, featureColumnMap, numPartitions)
   }

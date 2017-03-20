@@ -25,7 +25,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.data.avro.{AvroIOUtils, FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.data.avro.{AvroUtils, FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
 import com.linkedin.photon.ml.photon_io.FieldNamesType
 import com.linkedin.photon.ml.photon_io.FieldNamesType._
 import com.linkedin.photon.ml.util._
@@ -180,7 +180,7 @@ class FeatureIndexingJob(
    *
    */
   def run(): Unit = {
-    val inputRdd = AvroIOUtils.readAvroFiles(sc, inputPaths, 10)
+    val inputRdd = AvroUtils.readAvroFiles(sc, inputPaths, 10)
 
     ensureOutputPath(outputPath)
 
