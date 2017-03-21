@@ -14,14 +14,16 @@
  */
 package com.linkedin.photon.ml.spark
 
+import org.apache.spark.broadcast.Broadcast
+
 /**
- * A trait to hold some simple operations on the Broadcasted variables.
+ * A trait containing simple operations on [[Broadcast]] variables.
  */
 protected[ml] trait BroadcastLike {
   /**
-   * Asynchronously delete cached copies of this broadcast on the executors.
+   * Asynchronously delete cached copies of internal [[Broadcast]]s on the executors.
    *
-   * @return This object with all its broadcasted variables unpersisted
+   * @return This object with all of its broadcast variables unpersisted
    */
-  def unpersistBroadcast(): this.type
+  def unpersistBroadcast(): BroadcastLike
 }

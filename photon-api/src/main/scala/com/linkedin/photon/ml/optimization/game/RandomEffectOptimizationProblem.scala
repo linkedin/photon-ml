@@ -43,13 +43,33 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
     val isTrackingState: Boolean)
   extends RDDLike {
 
-  def sparkContext: SparkContext = optimizationProblems.sparkContext
+  /**
+   * Get the Spark context.
+   *
+   * @return The Spark context
+   */
+  override def sparkContext: SparkContext = optimizationProblems.sparkContext
 
+  /**
+   * Assign a given name to [[optimizationProblems]].
+   *
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
+   *
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the name of [[optimizationProblems]] assigned
+   */
   override def setName(name: String): this.type = {
     optimizationProblems.setName(s"$name: Optimization problems")
     this
   }
 
+  /**
+   * Set the storage level of [[optimizationProblems]], and persist their values across the cluster the first time they
+   * are computed.
+   *
+   * @param storageLevel The storage level
+   * @return This object with the storage level of [[optimizationProblems]] set
+   */
   override def persistRDD(storageLevel: StorageLevel): this.type = {
     if (!optimizationProblems.getStorageLevel.isValid) {
       optimizationProblems.persist(storageLevel)
@@ -57,6 +77,11 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
     this
   }
 
+  /**
+   * Mark [[optimizationProblems]] as non-persistent, and remove all blocks for them from memory and disk.
+   *
+   * @return This object with [[optimizationProblems]] marked non-persistent
+   */
   override def unpersistRDD(): this.type = {
     if (optimizationProblems.getStorageLevel.isValid) {
       optimizationProblems.unpersist()
@@ -64,6 +89,11 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
     this
   }
 
+  /**
+   * Materialize [[optimizationProblems]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
+   *
+   * @return This object with [[optimizationProblems]] materialized
+   */
   override def materialize(): this.type = {
     optimizationProblems.count()
     this

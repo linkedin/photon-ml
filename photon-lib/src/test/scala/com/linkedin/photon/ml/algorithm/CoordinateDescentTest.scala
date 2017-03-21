@@ -19,9 +19,10 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.{DataSet, GameDatum, KeyValueScore, ScoredGameDatum}
+import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.scoring.{ModelDataScores, CoordinateDataScores, ScoredGameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.model.{DatumScoringModel, GAMEModel}
+import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -56,9 +57,9 @@ class CoordinateDescentTest {
     // Other mocks
     val evaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
-    val gameModel = mock(classOf[GAMEModel])
+    val gameModel = mock(classOf[GameModel])
     val tracker = mock(classOf[OptimizationTracker])
-    val score = mock(classOf[KeyValueScore])
+    val score = mock(classOf[CoordinateDataScores])
     val models = coordinates.map { _ =>
       mock(classOf[DatumScoringModel])
     }
@@ -111,7 +112,7 @@ class CoordinateDescentTest {
     val lossEvaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
     val tracker = mock(classOf[OptimizationTracker])
-    val (score, validationScore) = (mock(classOf[KeyValueScore]), mock(classOf[KeyValueScore]))
+    val (score, validationScore) = (mock(classOf[CoordinateDataScores]), mock(classOf[ModelDataScores]))
     val coordinateModel = mock(classOf[DatumScoringModel])
     val modelScores = mock(classOf[RDD[(Long, ScoredGameDatum)]])
     val validationData = mock(classOf[RDD[(Long, GameDatum)]])
@@ -135,7 +136,7 @@ class CoordinateDescentTest {
 
     // The very first GAME model will give rise to GAME model #1 via update,
     // and GAME model #1 will be the first one to go through best model selection
-    val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GAMEModel]) }
+    val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GameModel]) }
     (0 until iterationCount).map { i =>
       when(gameModels(i).getModel(Matchers.any())).thenReturn(Some(coordinateModel))
       when(gameModels(i).updateModel(Matchers.any(), Matchers.any())).thenReturn(gameModels(i + 1))

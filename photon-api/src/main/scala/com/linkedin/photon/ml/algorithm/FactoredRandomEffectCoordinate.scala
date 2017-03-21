@@ -19,6 +19,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization._
@@ -49,7 +50,7 @@ protected[ml] class FactoredRandomEffectCoordinate[
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = model match {
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
     case factoredRandomEffectModel: FactoredRandomEffectModel =>
       val projectionMatrixBroadcast = factoredRandomEffectModel.projectionMatrixBroadcast
       val randomEffectModel = factoredRandomEffectModel.toRandomEffectModel

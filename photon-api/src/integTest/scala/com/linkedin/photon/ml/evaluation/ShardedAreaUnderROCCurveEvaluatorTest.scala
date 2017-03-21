@@ -18,7 +18,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.ScoredGameDatum
+import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.SparkTestUtils
 

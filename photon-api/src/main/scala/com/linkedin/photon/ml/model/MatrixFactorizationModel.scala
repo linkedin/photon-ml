@@ -21,7 +21,8 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
@@ -54,18 +55,19 @@ class MatrixFactorizationModel(
     }
 
   /**
+   * Score the effect-specific data set in the coordinate with the input model.
    *
    * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
    *                   GAMEDatum object, referred to in the GAME code as the "unique id".
    * @return The score.
    */
-  override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore = {
+  override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
     MatrixFactorizationModel.score(dataPoints, rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
-  }
 
   /**
+   * Build a human-readable summary for this [[MatrixFactorizationModel]].
    *
-   * @return A summary of the object in string representation
+   * @return A summary of the [[MatrixFactorizationModel]] in string representation
    */
   override def toSummaryString: String = {
     val stringBuilder = new StringBuilder(s"Summary of matrix factorization model with rowEffectType $rowEffectType " +
@@ -81,9 +83,10 @@ class MatrixFactorizationModel(
   }
 
   /**
+   * Compares two [[MatrixFactorizationModel]] objects.
    *
-   * @param that
-   * @return
+   * @param that Some other object
+   * @return True if both models have the same row and column latent factors, false otherwise
    */
   override def equals(that: Any): Boolean = {
     that match {
@@ -99,56 +102,68 @@ class MatrixFactorizationModel(
     }
   }
 
-  // TODO: Violation of the hashCode() contract
   /**
+   * Returns a hash code value for the object.
    *
-   * @return
+   * TODO: Violation of the hashCode() contract
+   *
+   * @return An [[Int]] hash code
    */
   override def hashCode(): Int = super.hashCode()
 
   /**
+   * Get the Spark context.
    *
    * @return The Spark context
    */
   override def sparkContext: SparkContext = rowLatentFactors.sparkContext
 
   /**
+   * Assign a given name to [[rowLatentFactors]] and [[colLatentFactors]].
    *
-   * @param storageLevel The storage level
-   * @return This object with all its RDDs' storage level set
-   */
-  override def persistRDD(storageLevel: StorageLevel): this.type = {
-    if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
-    if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
-    this
-  }
-
-  /**
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
    *
-   * @return This object with all its RDDs unpersisted
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the names of [[rowLatentFactors]] and [[colLatentFactors]] assigned
    */
-  override def unpersistRDD(): this.type = {
-    if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
-    if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
-    this
-  }
-
-  /**
-   *
-   * @param name The parent name for all RDDs in this class
-   * @return This object with all its RDDs' name assigned
-   */
-  override def setName(name: String): this.type = {
+  override def setName(name: String): MatrixFactorizationModel = {
     rowLatentFactors.setName(s"$name: row latent factors")
     colLatentFactors.setName(s"$name: col latent factors")
     this
   }
 
   /**
+   * Set the storage level of [[rowLatentFactors]] and [[colLatentFactors]], and persist their values across the cluster
+   * the first time they are computed.
    *
-   * @return This object with all its RDDs materialized
+   * @param storageLevel The storage level
+   * @return This object with the storage level of [[rowLatentFactors]] and [[colLatentFactors]] set
    */
-  override def materialize(): this.type = {
+  override def persistRDD(storageLevel: StorageLevel): MatrixFactorizationModel = {
+    if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
+    if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
+    this
+  }
+
+  /**
+   * Mark [[rowLatentFactors]] and [[colLatentFactors]] as non-persistent, and remove all blocks for them from memory
+   * and disk.
+   *
+   * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] marked non-persistent
+   */
+  override def unpersistRDD(): MatrixFactorizationModel = {
+    if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
+    if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
+    this
+  }
+
+  /**
+   * Materialize [[rowLatentFactors]] and [[colLatentFactors]] (Spark [[RDD]]s are lazy evaluated: this method forces
+   * them to be evaluated).
+   *
+   * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] materialized
+   */
+  override def materialize(): MatrixFactorizationModel = {
     rowLatentFactors.count()
     colLatentFactors.count()
     this
@@ -189,11 +204,10 @@ object MatrixFactorizationModel {
       rowEffectType: String,
       colEffectType: String,
       rowLatentFactors: RDD[(String, Vector[Double])],
-      colLatentFactors: RDD[(String, Vector[Double])]): KeyValueScore = {
-
-    val scores = dataPoints
+      colLatentFactors: RDD[(String, Vector[Double])]): ModelDataScores =
+    new ModelDataScores(dataPoints
       .map { case (uniqueId, gameDatum) =>
-        //For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
+        // For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
         val rowEffectId = gameDatum.idTypeToValueMap(rowEffectType)
         val colEffectId = gameDatum.idTypeToValueMap(colEffectType)
         (rowEffectId, (colEffectId, uniqueId, gameDatum.toScoredGameDatum()))
@@ -218,8 +232,5 @@ object MatrixFactorizationModel {
             (uniqueId, scoredDatum.copy(score = rowLatentFactor.dot(colLatentFactor)))
           }
         }
-      }
-
-    new KeyValueScore(scores)
-  }
+      })
 }

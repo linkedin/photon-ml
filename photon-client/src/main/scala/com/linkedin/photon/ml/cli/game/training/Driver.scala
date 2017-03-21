@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
-import com.linkedin.photon.ml.model.GAMEModel
+import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.GameModelOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -230,8 +230,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @return The best model
    */
   protected[training] def selectBestModel(
-      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)]):
-        Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)] =
+      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)])
+    : Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)] =
 
     models
       .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
@@ -261,8 +261,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
-      bestModel: Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
+      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
+      bestModel: Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
 
     if (params.modelOutputMode != ModelOutputMode.NONE) {
 

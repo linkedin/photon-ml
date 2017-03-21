@@ -41,7 +41,7 @@ object Timed {
    * @tparam T The type returned by f
    * @return The value returned by f, of type T
    */
-  def apply[T](logger: Logger, msg: String, units: TimeUnit = TimeUnit.MILLISECONDS)(f: => T): T =
+  def apply[T](logger: Logger, msg: String, units: TimeUnit = TimeUnit.SECONDS)(f: => T): T =
     measureDuration(msg, units, f, logger)
 
   /**
@@ -54,7 +54,7 @@ object Timed {
    * @return The value returned by f, of type T
    */
   def apply[T](msg: String)(f: => T)(implicit logger: Logger): T =
-    measureDuration(msg, TimeUnit.MILLISECONDS, f, logger)
+    measureDuration(msg, TimeUnit.SECONDS, f, logger)
 
   /**
    * A private method used by both "apply" to actually measure the duration and print out the result.

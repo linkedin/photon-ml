@@ -23,8 +23,9 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.avro.ScoreProcessingUtils
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
@@ -53,7 +54,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       idTypeToValueMap = Map())
     val scoredDatum = gameDatum.toScoredGameDatum()
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
-    val scores = new KeyValueScore(sc.parallelize(Seq((1L, scoredDatum))))
+    val scores = new ModelDataScores(sc.parallelize(Seq((1L, scoredDatum))))
     Driver.evaluateScores(evaluatorType = SmoothedHingeLoss, scores = scores, gameDataSet)
   }
 
@@ -217,7 +218,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       )
     ))
 
-    val scores = new KeyValueScore(gameDataSet.mapValues(datum => datum.toScoredGameDatum(random.nextDouble())))
+    val scores = new ModelDataScores(gameDataSet.mapValues(datum => datum.toScoredGameDatum(random.nextDouble())))
 
     evaluatorTypes.foreach { evaluatorType =>
       val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)

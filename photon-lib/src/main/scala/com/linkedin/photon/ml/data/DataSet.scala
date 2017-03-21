@@ -14,17 +14,19 @@
  */
 package com.linkedin.photon.ml.data
 
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
  * Interface for GAME dataset implementations.
  */
 protected[ml] trait DataSet[D <: DataSet[_]] extends Summarizable {
+
   /**
    * Add residual scores to the data offsets.
    *
    * @param keyScore The residual scores
    * @return The dataset with updated offsets
    */
-  def addScoresToOffsets(keyScore: KeyValueScore): D
+  def addScoresToOffsets(keyScore: CoordinateDataScores): D
 }

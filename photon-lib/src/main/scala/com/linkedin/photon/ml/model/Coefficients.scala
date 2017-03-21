@@ -82,6 +82,13 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
   }
 
   /**
+   * Returns a string representation of the [[Coefficients]]
+   *
+   * @return A string representation of the coefficients vector
+   */
+  override def toString: String = means.toString
+
+  /**
    * Equality of coefficients is only within some tolerance. Also, Breeze's Vector can be either a dense or a sparse
    * vector, and we require that those match for both arguments of this equality.
    * Also note that in Breeze, a SparseVector and a DenseVector are equal if they contain the same values at the same
@@ -91,8 +98,7 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
    * @param that The other Coefficients to compare to
    * @return True if the Coefficients are equal, false otherwise
    */
-  override def equals(that: Any): Boolean = {
-
+  override def equals(that: Any): Boolean =
     that match {
       case other: Coefficients =>
         val (m1, v1, m2, v2) = (this.means, this.variancesOption, other.means, other.variancesOption)
@@ -108,22 +114,15 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
 
       case _ => false
     }
-  }
 
   /**
+   * Returns a hash code value for the object.
    *
-   * @return
-   */
-  // TODO: Violation of the hashCode() contract
-  override def hashCode(): Int = {
-    super.hashCode()
-  }
-
-  /**
+   * TODO: Violation of the hashCode() contract
    *
-   * @return
+   * @return An [[Int]] hash code
    */
-  override def toString: String = means.toString
+  override def hashCode(): Int = super.hashCode()
 }
 
 protected[ml] object Coefficients {

@@ -14,7 +14,8 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{KeyValueScore, RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.data.{RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
@@ -39,7 +40,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNo
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = model match {
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
     case randomEffectModelWithProjector: RandomEffectModelInProjectedSpace =>
       val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
       super.score(randomEffectModel)

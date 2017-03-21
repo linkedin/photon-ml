@@ -12,12 +12,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.data
+package com.linkedin.photon.ml.data.scoring
 
 import breeze.linalg.DenseVector
 import org.testng.Assert.{assertEquals, assertFalse, assertTrue}
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
 
 /**

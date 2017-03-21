@@ -20,7 +20,7 @@ import breeze.linalg.{DenseMatrix, DenseVector, Matrix, SparseVector, Vector}
 import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.{SparkConf, SparkContext}
 
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore, LabeledPoint, LocalDataSet}
+import com.linkedin.photon.ml.data.{GameDatum, LabeledPoint, LocalDataSet}
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.function.glm.{HessianVectorAggregator, ValueAndGradientAggregator}
 import com.linkedin.photon.ml.model.Coefficients
@@ -52,7 +52,6 @@ object SparkContextConfiguration {
     classOf[HessianVectorAggregator],
     classOf[SingleNodeObjectiveFunction],
     classOf[SingleNodeOptimizationProblem[_]],
-    classOf[KeyValueScore],
     classOf[LBFGS],
     classOf[LabeledPoint],
     classOf[LinearRegressionModel],

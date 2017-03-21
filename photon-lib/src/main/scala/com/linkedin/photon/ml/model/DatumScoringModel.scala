@@ -17,11 +17,12 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
- * Models that need to be available for scoring need to mix in this trait.
+ * Models that need to be available for scoring must extend this trait.
  */
 protected[ml] trait DatumScoringModel extends Summarizable {
 
@@ -41,5 +42,5 @@ protected[ml] trait DatumScoringModel extends Summarizable {
    *                   GAMEDatum object, referred to in the GAME code as the "unique id".
    * @return The score.
    */
-  def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore
+  def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores
 }

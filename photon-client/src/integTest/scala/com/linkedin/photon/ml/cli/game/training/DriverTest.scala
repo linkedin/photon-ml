@@ -26,8 +26,9 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.data.GameConverters
-import com.linkedin.photon.ml.data.avro.{AvroDataReader, AvroUtils, ModelProcessingUtils, NameAndTerm}
+import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
+import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
@@ -515,7 +516,11 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
     validatingLabelsAndOffsetsAndWeights.count()
 
-    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(indexMapLoaders), modelPath.toString, sc)
+    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      modelPath.toString,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(indexMapLoaders))
     val scores = gameModel.score(gameDataSet).scores
 
     Seq(new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores))

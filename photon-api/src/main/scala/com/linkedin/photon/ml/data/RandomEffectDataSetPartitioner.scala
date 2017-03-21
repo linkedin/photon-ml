@@ -39,7 +39,7 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  *
  * @param idToPartitionMap Random effect type to partition map
  */
-protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[Map[String, Int]])
+protected[ml] class RandomEffectDataSetPartitioner(private val idToPartitionMap: Broadcast[Map[String, Int]])
   extends Partitioner
   with BroadcastLike {
 
@@ -56,21 +56,21 @@ protected[ml] class RandomEffectDataSetPartitioner(idToPartitionMap: Broadcast[M
   }
 
   /**
-   * Compares two RandomEffectDataSetPartitioner.
+   * Compares two [[RandomEffectDataSetPartitioner]] objects.
    *
-   * @param other The other RandomEffectDataSetPartitioner to compare with
-   * @return true if the two partitioners have the same idToPartitionMap, false otherwise
+   * @param that Some other object
+   * @return True if the two partitioners have the same idToPartitionMap, false otherwise
    */
-  override def equals(other: Any): Boolean = other match {
-    case rep: RandomEffectDataSetPartitioner =>
-      idToPartitionMap.value.forall { case (key, partition) => rep.getPartition(key) == partition }
-    case _ => false
-  }
+  override def equals(that: Any): Boolean =
+    that match {
+      case other: RandomEffectDataSetPartitioner => this.idToPartitionMap.value.equals(other.idToPartitionMap.value)
+      case _ => false
+    }
 
   /**
-   * Hash code for this partitioner.
+   * Returns a hash code value for the object.
    *
-   * @return A Int hash code
+   * @return An [[Int]] hash code
    */
   override def hashCode: Int = idToPartitionMap.hashCode()
 

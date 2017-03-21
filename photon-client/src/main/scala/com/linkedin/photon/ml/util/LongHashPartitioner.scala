@@ -18,39 +18,45 @@ import org.apache.spark.Partitioner
 
 /**
  * The partitioner for [[Long]] typed keys with given number of partitions.
+ *
+ * @param partitions The total number of partitions available to the partitioner
  */
 protected[ml] class LongHashPartitioner(partitions: Int) extends Partitioner {
 
   /**
+   * Get the number of partitions for this [[LongHashPartitioner]].
    *
-   * @param key
-   * @return
+   * @return The number of partitions
    */
-  def getPartition(key: Any): Int = key match {
+  override def numPartitions: Int = partitions
+
+  /**
+   * Map a key to a partition.
+   *
+   * @param key The key
+   * @return The corresponding partition for the given key
+   */
+  override def getPartition(key: Any): Int = key match {
     case long: Long => (math.abs(long) % partitions).toInt
     case any =>
       throw new IllegalArgumentException(s"Expected key of ${this.getClass} is Long, but ${any.getClass} is found")
   }
 
   /**
+   * Compares two [[LongHashPartitioner]] objects.
    *
-   * @param other
-   * @return
+   * @param that Some other object
+   * @return True if both [[LongHashPartitioner]] split between the same number of partitions, false otherwise
    */
-  override def equals(other: Any): Boolean = other match {
-    case h: LongHashPartitioner => h.numPartitions == numPartitions
+  override def equals(that: Any): Boolean = that match {
+    case other: LongHashPartitioner => this.numPartitions == other.numPartitions
     case _ => false
   }
 
   /**
+   * Returns a hash code value for the object.
    *
-   * @return
-   */
-  def numPartitions: Int = partitions
-
-  /**
-   *
-   * @return
+   * @return An [[Int]] hash code
    */
   override def hashCode: Int = numPartitions
 }

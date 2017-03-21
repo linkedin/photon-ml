@@ -80,61 +80,66 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return The [[RDD]] of [[Coefficients]] in the original space
    */
   override def projectCoefficientsRDD(
-      coefficientsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] = {
-
+      coefficientsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
     coefficientsRDD
       .join(indexMapProjectorRDD)
       .mapValues { case (model, projector) =>
         val oldCoefficients = model.coefficients
+
         model.updateCoefficients(
           Coefficients(
             projector.projectCoefficients(oldCoefficients.means),
             oldCoefficients.variancesOption.map(projector.projectCoefficients)))
       }
-  }
 
   /**
+   * Get the Spark context.
    *
    * @return The Spark context
    */
-  override def sparkContext: SparkContext = {
-    indexMapProjectorRDD.sparkContext
-  }
+  override def sparkContext: SparkContext = indexMapProjectorRDD.sparkContext
 
   /**
+   * Assign a given name to [[indexMapProjectorRDD]].
    *
-   * @param name The parent name for all RDDs in this class
-   * @return This object with all its RDDs' name assigned
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
+   *
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the name of [[indexMapProjectorRDD]] assigned
    */
-  override def setName(name: String): this.type = {
+  override def setName(name: String): IndexMapProjectorRDD = {
     indexMapProjectorRDD.setName(name)
     this
   }
 
   /**
+   * Set the storage level of [[indexMapProjectorRDD]], and persist their values across the cluster the first time they are
+   * computed.
    *
    * @param storageLevel The storage level
-   * @return This object with all its RDDs' storage level set
+   * @return This object with the storage level of [[indexMapProjectorRDD]] set
    */
-  override def persistRDD(storageLevel: StorageLevel): this.type = {
+  override def persistRDD(storageLevel: StorageLevel): IndexMapProjectorRDD = {
     if (!indexMapProjectorRDD.getStorageLevel.isValid) indexMapProjectorRDD.persist(storageLevel)
     this
   }
 
   /**
+   * Mark [[indexMapProjectorRDD]] as non-persistent, and remove all blocks for them from memory and disk.
    *
-   * @return This object with all its RDDs unpersisted
+   * @return This object with [[indexMapProjectorRDD]] marked non-persistent
    */
-  override def unpersistRDD(): this.type = {
+  override def unpersistRDD(): IndexMapProjectorRDD = {
     if (indexMapProjectorRDD.getStorageLevel.isValid) indexMapProjectorRDD.unpersist()
     this
   }
 
   /**
+   * Materialize [[indexMapProjectorRDD]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
    *
-   * @return This object with all its RDDs materialized
+   * @return This object with [[indexMapProjectorRDD]] materialized
    */
-  override def materialize(): this.type = {
+  override def materialize(): IndexMapProjectorRDD = {
     indexMapProjectorRDD.count()
     this
   }

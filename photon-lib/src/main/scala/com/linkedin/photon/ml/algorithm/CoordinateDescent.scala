@@ -17,12 +17,11 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
-import com.linkedin.photon.ml.model.GAMEModel
+import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.util.Timer
 
@@ -33,8 +32,8 @@ import com.linkedin.photon.ml.util.Timer
  *                    (coordinateName, [[Coordinate]] object) pairs.
  * @param trainingLossFunctionEvaluator Training loss function evaluator
  * @param validatingDataAndEvaluatorsOption Optional validation data and evaluator. The validating data are a [[RDD]]
- *                                          of (uniqueId, [[GAMEDatum]] object pairs), where uniqueId is a unique
- *                                          identifier for each [[GAMEDatum]] object. The evaluators are
+ *                                          of (uniqueId, [[GameDatum]] object pairs), where uniqueId is a unique
+ *                                          identifier for each [[GameDatum]] object. The evaluators are
  *                                          a [[Seq]] of evaluators
  * @param logger A logger instance
  */
@@ -52,31 +51,32 @@ class CoordinateDescent(
    * Run coordinate descent.
    *
    * @param numIterations Number of iterations
-   * @param taskType The task type
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
-  def run(
-      numIterations: Int,
-      taskType: TaskType,
-      seed: Long = MathConst.RANDOM_SEED): (GAMEModel, Option[EvaluationResults]) = {
+  def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): (GameModel, Option[EvaluationResults]) = {
 
-    val initializedModelContainer = coordinates.map { case (coordinateId, coordinate) =>
+    val initializedModelContainer = coordinates
+      .map { case (coordinateId, coordinate) =>
+        val initializedModel = coordinate.initializeModel(seed)
 
-      val initializedModel = coordinate.initializeModel(seed)
-      initializedModel match {
-        case rddLike: RDDLike =>
-          rddLike
-            .setName(s"Initialized model with coordinate id $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-        case _ =>
+        initializedModel match {
+          case rddLike: RDDLike =>
+            rddLike
+              .setName(s"Initialized model with coordinate id $coordinateId")
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
+          case _ =>
+        }
+
+        logger.debug(s"Summary of model (${initializedModel.getClass}}) initialized for coordinate with " +
+            s"ID $coordinateId:\n${initializedModel.toSummaryString}\n")
+
+        (coordinateId, initializedModel)
       }
-      logger.debug(s"Summary of model (${initializedModel.getClass}}) initialized for coordinate with " +
-          s"ID $coordinateId:\n${initializedModel.toSummaryString}\n")
-      (coordinateId, initializedModel)
-    }.toMap
+      .toMap
 
-    val initialGAMEModel = new GAMEModel(initializedModelContainer)
+    val initialGAMEModel = new GameModel(initializedModelContainer)
     optimize(numIterations, initialGAMEModel)
   }
 
@@ -90,10 +90,11 @@ class CoordinateDescent(
    * @param gameModel The initial GAME model
    * @return The best GAME model (see above for exact meaning of "best")
    */
-  def optimize(numIterations: Int, gameModel: GAMEModel): (GAMEModel, Option[EvaluationResults]) = {
+  def optimize(numIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
 
     coordinates.foreach { case (coordinateId, _) =>
-      require(gameModel.getModel(coordinateId).isDefined,
+      require(
+        gameModel.getModel(coordinateId).isDefined,
         s"Model with coordinateId $coordinateId is expected but not found from the initial GAME model")
     }
 
@@ -133,7 +134,7 @@ class CoordinateDescent(
     // outside the loop on coordinates.
     // If we allowed the "best" model to be selected inside the loop over coordinates, the "best"
     // model could be one that doesn't contain some random effects.
-    var bestModel: Option[GAMEModel] = None
+    var bestModel: Option[GameModel] = None
     var bestEval: Option[EvaluationResults] = None
 
     for (iteration <- 0 until numIterations) {
@@ -207,7 +208,7 @@ class CoordinateDescent(
           regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
         // Compute the training objective function value
         val fullScore = updatedScoresContainer.values.reduce(_ + _)
-        val lossFunctionValue = trainingLossFunctionEvaluator.evaluate(fullScore.scores)
+        val lossFunctionValue = trainingLossFunctionEvaluator.evaluateTraining(fullScore.scores)
         val regularizationTermValue = regularizationTermValueContainer.values.sum
         logger.info(s"Training objective function value after updating coordinate with id $coordinateId at " +
             s"iteration $iteration is:\n${formatObjectiveValue(lossFunctionValue, regularizationTermValue)}")
@@ -215,8 +216,9 @@ class CoordinateDescent(
         // Update the validating score and evaluate the updated model on the validating data
         val currentEvaluation = validatingDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
           val validationTimer = Timer.start()
-          val validatingScores = updatedModel
-            .score(validatingData)
+          // Need to split these calls to maintain correct type
+          val validatingScores = updatedModel.score(validatingData)
+          validatingScores
             .setName(s"Updated validating scores with coordinateId $coordinateId")
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             .materialize()

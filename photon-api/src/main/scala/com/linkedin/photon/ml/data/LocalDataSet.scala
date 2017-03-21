@@ -79,11 +79,11 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(Long, ScoredGameDatum)]): LocalDataSet = {
+  def addScoresToOffsets(residualScores: Array[(Long, Double)]): LocalDataSet = {
     val updatedDataPoints = dataPoints.zip(residualScores).map {
       case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
         assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
-        (dataId, LabeledPoint(label, features, residualScoreDatum.score + offset, weight))
+        (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
     }
     LocalDataSet(updatedDataPoints)
   }

@@ -27,6 +27,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
@@ -67,18 +68,18 @@ object ModelProcessingUtils {
    * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
    * @param outputDir The directory in HDFS where to save the model
    * @param params The parameters that were setup to run this model
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    */
   protected[ml] def saveGameModelsToHDFS(
-      gameModel: GAMEModel,
+      gameModel: GameModel,
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       outputDir: String,
       params: GameParams,
-      sparkContext: SparkContext): Unit = {
+      sc: SparkContext): Unit = {
 
-    val hadoopConfiguration = sparkContext.hadoopConfiguration
+    val hadoopConfiguration = sc.hadoopConfiguration
 
-    saveGameModelMetadataToHDFS(sparkContext, params, outputDir)
+    saveGameModelMetadataToHDFS(sc, params, outputDir)
 
     gameModel.toMap.foreach { case (name, model) =>
       model match {
@@ -97,7 +98,7 @@ object ModelProcessingUtils {
           Utils.createHDFSDir(coefficientsOutputDir, hadoopConfiguration)
           val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
           val model = fixedEffectModel.model
-          saveModelToHDFS(model, indexMap, coefficientsOutputDir, sparkContext)
+          saveModelToHDFS(model, indexMap, coefficientsOutputDir, sc)
 
         case randomEffectModel: RandomEffectModel =>
           val randomEffectType = randomEffectModel.randomEffectType
@@ -135,9 +136,10 @@ object ModelProcessingUtils {
    * @return The GAME model and feature index
    */
   protected[ml] def loadGameModelFromHDFS(
-      featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]],
+      sc: SparkContext,
       modelsDir: String,
-      sc: SparkContext): (GAMEModel, Map[String, IndexMapLoader]) = {
+      storageLevel: StorageLevel,
+      featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]]): (GameModel, Map[String, IndexMapLoader]) = {
 
     val configuration = sc.hadoopConfiguration
     val inputDirAsPath = new Path(modelsDir)
@@ -210,13 +212,14 @@ object ModelProcessingUtils {
           ((name, model), (model.featureShardId, featureIndexLoader))
 
         case ((name, featureIndexLoader, model: RandomEffectModel)) =>
+          model.persistRDD(storageLevel)
           ((name, model), (model.featureShardId, featureIndexLoader))
 
         case ((name, _, _)) =>
           throw new RuntimeException(s"Unknown model type for: $name")
       }
       .unzip
-    val gameModel = new GAMEModel(models.toMap)
+    val gameModel = new GameModel(models.toMap)
 
     require(
       modelType == TaskType.NONE || gameModel.modelType == modelType,
@@ -280,8 +283,8 @@ object ModelProcessingUtils {
    */
   protected[ml] def extractGameModelFeatures(
       sc: SparkContext,
-      gameModel: GAMEModel,
-      featureIndexLoaders: Map[String, IndexMapLoader]): Map[(String, String), RDD[(String, Array[(String, Double)])]] = {
+      gameModel: GameModel,
+    featureIndexLoaders: Map[String, IndexMapLoader]): Map[(String, String), RDD[(String, Array[(String, Double)])]] = {
 
     gameModel.toMap.map {
 
@@ -336,13 +339,13 @@ object ModelProcessingUtils {
    * @param model
    * @param featureMap
    * @param outputDir
-   * @param sparkContext
+   * @param sc
    */
   private def saveModelToHDFS(
       model: GeneralizedLinearModel,
       featureMap: IndexMap,
       outputDir: String,
-      sparkContext: SparkContext): Unit = {
+      sc: SparkContext): Unit = {
 
     val bayesianLinearModelAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(
       model,
@@ -351,7 +354,7 @@ object ModelProcessingUtils {
     val modelOutputPath = new Path(outputDir, AvroConstants.DEFAULT_AVRO_FILE_NAME).toString
 
     AvroUtils.saveAsSingleAvro(
-      sparkContext,
+      sc,
       Seq(bayesianLinearModelAvro),
       modelOutputPath,
       BayesianLinearModelAvro.getClassSchema.toString)
@@ -444,13 +447,13 @@ object ModelProcessingUtils {
    * @param outputDir The HDFS output directory for the matrix factorization model
    * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix
    *                       factorization model
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    */
   protected[ml] def saveMatrixFactorizationModelToHDFS(
       matrixFactorizationModel: MatrixFactorizationModel,
       outputDir: String,
       numOutputFiles: Int,
-      sparkContext: SparkContext): Unit = {
+      sc: SparkContext): Unit = {
 
     val rowLatentFactors = matrixFactorizationModel.rowLatentFactors
     val rowEffectType = matrixFactorizationModel.rowEffectType
@@ -469,9 +472,9 @@ object ModelProcessingUtils {
     AvroUtils.saveAsAvro(colLatentFactorsAvro, colLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
   }
 
-  private def loadLatentFactorsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, Vector[Double])] = {
-    val minNumPartitions = sparkContext.defaultParallelism
-    val modelAvros = AvroUtils.readAvroFilesInDir[LatentFactorAvro](sparkContext, inputDir, minNumPartitions)
+  private def loadLatentFactorsFromHDFS(inputDir: String, sc: SparkContext): RDD[(String, Vector[Double])] = {
+    val minNumPartitions = sc.defaultParallelism
+    val modelAvros = AvroUtils.readAvroFilesInDir[LatentFactorAvro](sc, inputDir, minNumPartitions)
     modelAvros.map(AvroUtils.convertLatentFactorAvroToLatentFactor)
   }
 
@@ -481,16 +484,16 @@ object ModelProcessingUtils {
    * @param inputDir The input directory of the Avro files on HDFS
    * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
    * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
    */
   protected[ml] def loadMatrixFactorizationModelFromHDFS(
       inputDir: String,
       rowEffectType: String,
       colEffectType: String,
-      sparkContext: SparkContext): MatrixFactorizationModel = {
+      sc: SparkContext): MatrixFactorizationModel = {
 
-    val configuration = sparkContext.hadoopConfiguration
+    val configuration = sc.hadoopConfiguration
     val inputDirAsPath = new Path(inputDir)
     val fs = inputDirAsPath.getFileSystem(configuration)
     assert(fs.exists(inputDirAsPath),
@@ -498,11 +501,11 @@ object ModelProcessingUtils {
     val rowLatentFactorsPath = new Path(inputDir, rowEffectType)
     assert(fs.exists(rowLatentFactorsPath),
       s"Specified input directory $rowLatentFactorsPath for row latent factors is not found")
-    val rowLatentFactors = loadLatentFactorsFromHDFS(rowLatentFactorsPath.toString, sparkContext)
+    val rowLatentFactors = loadLatentFactorsFromHDFS(rowLatentFactorsPath.toString, sc)
     val colLatentFactorsPath = new Path(inputDir, colEffectType)
     assert(fs.exists(colLatentFactorsPath),
       s"Specified input directory $colLatentFactorsPath for column latent factors is not found")
-    val colLatentFactors = loadLatentFactorsFromHDFS(colLatentFactorsPath.toString, sparkContext)
+    val colLatentFactors = loadLatentFactorsFromHDFS(colLatentFactorsPath.toString, sc)
     new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
   }
 
@@ -511,10 +514,10 @@ object ModelProcessingUtils {
    *
    * @param outputDir The HDFS directory that will contain the metadata file
    * @param params The model parameters, from which metadata is extracted
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    */
   def saveGameModelMetadataToHDFS(
-      sparkContext: SparkContext,
+      sc: SparkContext,
       params: GameParams,
       outputDir: String,
       metadataFilename: String = "model-metadata.json"): Unit = {
@@ -537,7 +540,7 @@ object ModelProcessingUtils {
     val feConfigurations = writeConfigsArrayToJson("fixed-effect", params.fixedEffectOptimizationConfigurations)
     val reConfigurations = writeConfigsArrayToJson("random-effect", params.randomEffectOptimizationConfigurations)
 
-    IOUtils.toHDFSFile(sparkContext, outputDir + "/" + metadataFilename) {
+    IOUtils.toHDFSFile(sc, outputDir + "/" + metadataFilename) {
       writer => writer.println(
         s"""
            |{ "modelType": "${params.taskType}",
@@ -631,19 +634,19 @@ object ModelProcessingUtils {
   /**
    * Load model metadata from JSON file.
    *
-   * @note for now, we just output model type.
    * TODO: load (and save) more metadata, and return an updated GAMEParams
    *
+   * @note For now, we just output model type.
    * @note If using the builtin Scala JSON parser, watch out, it's not thread safe!
    * @note If there is no metadata file (old models trained before the metadata were introduced),
    *       we assume that the type of GAMEModel is a linear model (each subModel contains its own type)
    *
    * @param inputDir The HDFS directory where the metadata file is located
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    * @return Either a new Param object, or Failure if a metadata file was not found, or it did not contain "modelType"
    */
   def loadGameModelMetadataFromHDFS(
-      sparkContext: SparkContext,
+      sc: SparkContext,
       inputDir: String,
       metadataFileName: String = "model-metadata.json"): GameParams = {
 
@@ -651,7 +654,7 @@ object ModelProcessingUtils {
     val params = new GameParams
     val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
 
-    val fs = Try(inputPath.getFileSystem(sparkContext.hadoopConfiguration))
+    val fs = Try(inputPath.getFileSystem(sc.hadoopConfiguration))
     val stream = fs.map(f => f.open(inputPath))
     val fileContents = stream.map(s => Source.fromInputStream(s).getLines.mkString)
 
