@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
-import com.linkedin.photon.ml.photon_io.{FieldNamesType, InputFormatType}
+import com.linkedin.photon.ml.io.deprecated.{FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType

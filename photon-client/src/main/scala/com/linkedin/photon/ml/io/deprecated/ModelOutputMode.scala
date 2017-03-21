@@ -12,14 +12,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 /**
- * Enum of the keys that are expected to be present in the maps in the user-specified constraint string
- * The "name" and "term" keys are mandatory while one of "lowerBound" and "upperBound" is allowed to be skipped in
- * which case it is assumed to be -Inf / +Inf appropriately.
+ * Supported options for model output.
  */
-object ConstraintMapKeys extends Enumeration {
-  type ConstraintMapKeys = Value
-  val name, term, lowerBound, upperBound = Value
+object ModelOutputMode extends Enumeration {
+  type ModelOutputMode = Value
+  val ALL, BEST, NONE = Value
 }

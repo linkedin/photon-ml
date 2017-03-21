@@ -1,1 +1,0 @@
-This package is slated for removal when photon disappears (and photon models are handled as Game fixed effect models).

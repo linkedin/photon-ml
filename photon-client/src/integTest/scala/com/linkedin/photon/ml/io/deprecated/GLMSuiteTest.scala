@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 import java.io.File
 import java.util.{ArrayList => JArrayList}
@@ -216,7 +216,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     val featureMap = suite.featureKeyToIdMap
     val interceptId = if (addIntercept) {
-      featureMap(Constants.INTERCEPT_NAME_TERM)
+      featureMap(Constants.INTERCEPT_KEY)
     } else {
       // Dummy id
       Integer.MAX_VALUE
@@ -253,7 +253,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
     // Check feature map
     val featureMap = glmSuite.featureKeyToIdMap
 
-    val iId = Constants.INTERCEPT_NAME_TERM
+    val iId = Constants.INTERCEPT_KEY
     val f1t1Id = Utils.getFeatureKey("f1", "t1")
     val f2t2Id = Utils.getFeatureKey("f2", "t2")
     val f2t1Id = Utils.getFeatureKey("f2", "t1")
@@ -342,7 +342,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }
 
     val interceptId = if (addIntercept) {
-      featureMap(Constants.INTERCEPT_NAME_TERM)
+      featureMap(Constants.INTERCEPT_KEY)
     } else {
       // Dummy id
       Integer.MAX_VALUE

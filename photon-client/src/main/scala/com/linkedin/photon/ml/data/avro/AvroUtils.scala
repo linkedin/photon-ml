@@ -37,13 +37,10 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.avro.AvroDataReader.FieldNames
+import com.linkedin.photon.ml.data.avro.AvroFieldNames
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
-
-// TODO: Change the scope of all functions in the object to [[com.linkedin.photon.ml.avro]] after Avro related
-// classes/functions are decoupled from the rest of the code
 
 /**
  * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
@@ -55,6 +52,8 @@ object AvroUtils {
 
   /**
    * Read Avro generic records from the input paths on HDFS.
+   *
+   * @note used in FeatureIndexJob, so can't be protected
    *
    * @param sc The Spark context
    * @param inputPaths The input paths to the generic records
@@ -74,6 +73,8 @@ object AvroUtils {
   /**
    * Read all the Avro files in the given directory on HDFS.
    * The output RDD needs to be transformed before any further processing.
+   *
+   * @note used in GLMSuite, so can't be protected
    *
    * @param sc Spark context
    * @param inputDir The input directory to the Avro files
@@ -95,7 +96,7 @@ object AvroUtils {
    * @param outputDir The output directory to save the data as Avro files
    * @param schemaString The schema string of the data
    */
-  def saveAsAvro[T <: SpecificRecord : ClassTag](data: RDD[T], outputDir: String, schemaString: String): Unit = {
+  protected[avro] def saveAsAvro[T <: SpecificRecord : ClassTag](data: RDD[T], outputDir: String, schemaString: String): Unit = {
     val job = new JobConf
     val schema: Schema = new Parser().parse(schemaString)
     AvroJob.setOutputSchema(job, schema)
@@ -119,7 +120,7 @@ object AvroUtils {
    * @tparam T The record type
    * @return List of records
    */
-  def readFromSingleAvro[T <: GenericRecord : ClassTag](
+  protected[avro] def readFromSingleAvro[T <: GenericRecord : ClassTag](
     sc: SparkContext,
     path: String,
     schemaString: String = null): Seq[T] = {
@@ -161,7 +162,7 @@ object AvroUtils {
    * @param forceOverwrite Optional parameter to force overwrite
    * @tparam T The record type
    */
-  def saveAsSingleAvro[T <: SpecificRecord : ClassTag](
+  protected[avro] def saveAsSingleAvro[T <: SpecificRecord : ClassTag](
     sc: SparkContext,
     data: Seq[T],
     path: String,
@@ -186,7 +187,7 @@ object AvroUtils {
    * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
    * @return An array of Avro records that contains the information of the input vector
    */
-  def convertVectorAsArrayOfNameTermValueAvros(
+  protected[avro] def convertVectorAsArrayOfNameTermValueAvros(
       vector: Vector[Double],
       featureMap: IndexMap): Array[NameTermValueAvro] = {
 
@@ -228,9 +229,9 @@ object AvroUtils {
    * @param record The input Avro record
    * @return The nameAndTerm parsed from the Avro record
    */
-  def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
-    val name = Utils.getStringAvro(record, FieldNames.NAME)
-    val term = Utils.getStringAvro(record, FieldNames.TERM, isNullOK = true)
+  protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
+    val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
+    val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
     NameAndTerm(name, term)
   }
 
@@ -242,7 +243,7 @@ object AvroUtils {
    * @param featureSectionKey The user specified feature section keys
    * @return A set of nameAndTerms parsed from the input Avro records
    */
-  def readNameAndTermSetFromGenericRecords(
+  protected[avro] def readNameAndTermSetFromGenericRecords(
       genericRecords: RDD[GenericRecord],
       featureSectionKey: String,
       numPartitions: Int): Set[NameAndTerm] = {
@@ -263,7 +264,7 @@ object AvroUtils {
    * @param featureSectionKeys The set of feature section keys of interest in the input generic records
    * @return The generated [[NameAndTermFeatureSetContainer]]
    */
-  def readNameAndTermFeatureSetContainerFromGenericRecords(
+  protected[avro] def readNameAndTermFeatureSetContainerFromGenericRecords(
       genericRecords: RDD[GenericRecord],
       featureSectionKeys: Set[String],
       numPartitions: Int): NameAndTermFeatureSetContainer = {
@@ -284,7 +285,7 @@ object AvroUtils {
    * @param featureMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
    * @return The Avro record that contains the information of the input coefficients
    */
-  def convertGLMModelToBayesianLinearModelAvro(
+  protected[avro] def convertGLMModelToBayesianLinearModelAvro(
       model: GeneralizedLinearModel,
       modelId: String,
       featureMap: IndexMap): BayesianLinearModelAvro = {
@@ -315,7 +316,7 @@ object AvroUtils {
    * @param featureMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    * @return The generalized linear model converted from the Avro record
    */
-  def convertBayesianLinearModelAvroToGLM(
+  protected[avro] def convertBayesianLinearModelAvroToGLM(
       bayesianLinearModelAvro: BayesianLinearModelAvro,
       featureMap: IndexMap): GeneralizedLinearModel = {
 
@@ -362,7 +363,7 @@ object AvroUtils {
    * @param latentFactor The latent factor of the matrix factorization model
    * @return The Avro record that contains the information of the input latent factor
    */
-  def convertLatentFactorToLatentFactorAvro(
+  protected[avro] def convertLatentFactorToLatentFactorAvro(
       effectId: String,
       latentFactor: Vector[Double]): LatentFactorAvro = {
 
@@ -377,7 +378,7 @@ object AvroUtils {
    * @param latentFactorAvro The given Avro record
    * @return The (effectId, latentFactor) pair converted from the input Avro record
    */
-  def convertLatentFactorAvroToLatentFactor(
+  protected[avro] def convertLatentFactorAvroToLatentFactor(
       latentFactorAvro: LatentFactorAvro): (String, Vector[Double]) = {
 
     val effectId = latentFactorAvro.getEffectId.toString
@@ -397,7 +398,7 @@ object AvroUtils {
    * @param modelAvro The model (only one) to scan for feature names
    * @return A DefaultIndexMap, which associates a unique integer id to each feature name
    */
-  def makeFeatureIndexForModel(modelAvro: BayesianLinearModelAvro): IndexMap =
+  protected[avro] def makeFeatureIndexForModel(modelAvro: BayesianLinearModelAvro): IndexMap =
     DefaultIndexMap(
       modelAvro.getMeans.map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)))
 
@@ -414,7 +415,7 @@ object AvroUtils {
    * @param modelAvros The models to scan for feature names
    * @return A DefaultIndexMapLoader, which associates a unique integer id to each feature name
    */
-  def makeFeatureIndexForModel(
+  protected[avro] def makeFeatureIndexForModel(
       sc: SparkContext,
       modelAvros: RDD[BayesianLinearModelAvro]): IndexMapLoader = {
 

@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 import java.io.IOException
 import java.util.{List => JList}
@@ -28,7 +28,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.data.avro.{AvroUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
-import com.linkedin.photon.ml.photon_io.FieldNamesType._
+import com.linkedin.photon.ml.io.deprecated.FieldNamesType._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, data}
@@ -179,7 +179,7 @@ class GLMSuite(
     }
 
     if (addIntercept) {
-      new DefaultIndexMapLoader(sc, (featureSet + Constants.INTERCEPT_NAME_TERM).zipWithIndex.toMap)
+      new DefaultIndexMapLoader(sc, (featureSet + Constants.INTERCEPT_KEY).zipWithIndex.toMap)
     } else {
       new DefaultIndexMapLoader(sc, featureSet.zipWithIndex.toMap)
     }
@@ -237,7 +237,7 @@ class GLMSuite(
                       s" specified. The specified constraint string was [$constraintString]")
                   } else {
                     featureKeyToIdMap.foreach(x =>
-                      if (!x._1.equals(Constants.INTERCEPT_NAME_TERM)) {
+                      if (!x._1.equals(Constants.INTERCEPT_KEY)) {
                         constraintMap.put(x._2, (lowerBound, upperBound))
                       })
                   }
@@ -319,7 +319,7 @@ class GLMSuite(
             }
           }
           if (addIntercept) {
-            val featureFullName = Constants.INTERCEPT_NAME_TERM
+            val featureFullName = Constants.INTERCEPT_KEY
             pairsArr += ((indexMap.getIndex(featureFullName), 1.0))
           }
           val sortedPairsArray = pairsArr.toArray.sortBy(_._1)
@@ -359,5 +359,5 @@ class GLMSuite(
    *
    * @return The option for the intercept index value
    */
-  def getInterceptId: Option[Int] = featureKeyToIdMap.get(Constants.INTERCEPT_NAME_TERM)
+  def getInterceptId: Option[Int] = featureKeyToIdMap.get(Constants.INTERCEPT_KEY)
 }

@@ -53,7 +53,7 @@ import com.linkedin.photon.ml.{Constants, TaskType}
  * TODO: Change the scope of all functions to [[com.linkedin.photon.ml.avro]] after Avro related
  * classes/functions are decoupled from the rest of code
  *
- * TODO: separate what's Avro and what's not, and locate appropriately
+ * TODO: separate what's Avro and what's not, and locate appropriately: most of this should go into photon.ml.models
  */
 object ModelProcessingUtils {
 

@@ -40,7 +40,7 @@ import com.linkedin.photon.ml.diagnostics.reporting.reports.combined.{Diagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.reports.model.ModelDiagnosticReport
 import com.linkedin.photon.ml.diagnostics.reporting.reports.system.SystemReport
 import com.linkedin.photon.ml.event._
-import com.linkedin.photon.ml.photon_io.{InputDataFormat, InputFormatFactory}
+import com.linkedin.photon.ml.io.deprecated.{InputDataFormat, InputFormatFactory}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -316,7 +316,7 @@ protected[ml] class Driver(
       normalizationContext = NormalizationContext(
         params.normalizationType,
         summary,
-        inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_NAME_TERM))
+        inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_KEY))
     }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001

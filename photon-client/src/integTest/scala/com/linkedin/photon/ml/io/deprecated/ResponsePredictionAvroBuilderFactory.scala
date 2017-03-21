@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 import java.io.File
 import java.util

@@ -33,7 +33,7 @@ class IdentityIndexMapLoader(val featureDimension: Int, val useIntercept: Boolea
      */
     override def getFeatureName(idx: Int): Option[String] = {
       if (useIntercept && idx == d - 1) {
-        Some(Constants.INTERCEPT_NAME_TERM)
+        Some(Constants.INTERCEPT_KEY)
       } else {
         if (idx >= 0 && idx < d) Some(idx.toString) else None
       }
@@ -45,7 +45,7 @@ class IdentityIndexMapLoader(val featureDimension: Int, val useIntercept: Boolea
      * @return The feature index if found, IndexMap.NULL_KEY otherwise
      */
     override def getIndex(name: String): Int = {
-      if (useIntercept && name == Constants.INTERCEPT_NAME_TERM) {
+      if (useIntercept && name == Constants.INTERCEPT_KEY) {
         d - 1
       } else {
         val idx = Try(name.toInt).getOrElse(IndexMap.NULL_KEY)
@@ -87,7 +87,7 @@ class IdentityIndexMapLoader(val featureDimension: Int, val useIntercept: Boolea
     override def iterator: Iterator[(String, Int)] = {
       if (useIntercept) {
         (0 until d - 1).map(i => (i.toString, i)).toIterator ++
-          Some((Constants.INTERCEPT_NAME_TERM, d - 1)).toIterator
+          Some((Constants.INTERCEPT_KEY, d - 1)).toIterator
       } else {
         (0 until d).map(i => (i.toString, i)).toIterator
       }

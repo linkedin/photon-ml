@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.data.avro
 
 /**
  * Constants used in Avro related functions and objects only.
+ *
+ * TODO these constants are used only when writing/reading models (in ModelProcessingUtils today)
  */
 object AvroConstants {
 

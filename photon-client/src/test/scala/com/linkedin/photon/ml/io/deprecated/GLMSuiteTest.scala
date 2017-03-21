@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
@@ -83,7 +83,7 @@ class GLMSuiteTest {
       (Utils.getFeatureKey("foo", "bar"), 1),
       (Utils.getFeatureKey("foo", "baz"), 2),
       (Utils.getFeatureKey("qux", "bar"), 3),
-      (Constants.INTERCEPT_NAME_TERM, 4),
+      (Constants.INTERCEPT_KEY, 4),
       (Utils.getFeatureKey("qux", "baz"), 5),
       (Utils.getFeatureKey("qux", ""), 6),
       (Utils.getFeatureKey("quxl", ""), 7))

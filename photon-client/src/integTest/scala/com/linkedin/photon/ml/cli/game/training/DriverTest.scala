@@ -16,8 +16,6 @@ package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path, Paths}
 
-import scala.collection.JavaConversions._
-
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkException
 import org.apache.spark.sql.DataFrame
@@ -31,7 +29,7 @@ import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils, N
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.photon_io.ModelOutputMode
+import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType

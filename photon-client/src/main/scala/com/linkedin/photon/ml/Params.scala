@@ -20,9 +20,9 @@ import com.linkedin.photon.ml.DataValidationType._
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode.DiagnosticMode
-import com.linkedin.photon.ml.photon_io.FieldNamesType._
-import com.linkedin.photon.ml.photon_io.InputFormatType
-import com.linkedin.photon.ml.photon_io.InputFormatType.InputFormatType
+import com.linkedin.photon.ml.io.deprecated.FieldNamesType.FieldNamesType
+import com.linkedin.photon.ml.io.deprecated.InputFormatType.InputFormatType
+import com.linkedin.photon.ml.io.deprecated.{FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
 import com.linkedin.photon.ml.optimization.RegularizationType._
@@ -125,7 +125,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * Input Avro file's format, which contains the information of each field's name
    */
-  var fieldsNameType: FieldNamesType = RESPONSE_PREDICTION
+  var fieldsNameType: FieldNamesType = FieldNamesType.RESPONSE_PREDICTION
 
   /**
    * If summarization output dir is provided, basic statistics of features will be written to the given directory.
@@ -150,7 +150,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * A JSON string containing an array of maps specifying the box constraints on certain
    * coefficients, if any. Only keys from
-   * [[com.linkedin.photon.ml.photon_io.ConstraintMapKeys]] will be sought. Others if
+   * [[com.linkedin.photon.ml.io.deprecated.ConstraintMapKeys.ConstraintMapKeys]] will be sought. Others if
    * specified will be ignored. The term is allowed to be a wildcard "*" in which case the bounds
    * are applied to all features with the specified name irrespective of the term. The name cannot
    * be a wildcard except for the special case where both name and term are wildcards so that one

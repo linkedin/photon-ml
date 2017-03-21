@@ -19,14 +19,29 @@ package com.linkedin.photon.ml.data.avro
  */
 abstract class AvroFieldNames {
 
+  val UID = AvroFieldNames.UID
+  val NAME = AvroFieldNames.NAME
+  val TERM = AvroFieldNames.TERM
+  val FEATURES = AvroFieldNames.FEATURES
+  val VALUE = AvroFieldNames.VALUE
+  val RESPONSE: String
+  val OFFSET = AvroFieldNames.OFFSET
+  val WEIGHT = AvroFieldNames.WEIGHT
+  val META_DATA_MAP = AvroFieldNames.META_DATA_MAP
+}
+
+object AvroFieldNames {
+
   val UID: String = "uid"
   val NAME: String = "name"
   val TERM: String = "term"
   val FEATURES: String = "features"
   val VALUE: String = "value"
-  val RESPONSE: String
+  val RESPONSE: String = "response"
   val OFFSET: String = "offset"
   val WEIGHT: String = "weight"
   val META_DATA_MAP: String = "metadataMap"
 }
+
+
 

@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.cli.game.GAMEDriver
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
-import com.linkedin.photon.ml.photon_io.ModelOutputMode
+import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -216,7 +216,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
       statistics
         .getOrElse(calculateStatistics(trainingData, featureIndexMapLoaders))
         .map { case (featureShardId, featureShardStats) =>
-          val intercept = featureIndexMapLoaders(featureShardId).indexMapForDriver().get(Constants.INTERCEPT_NAME_TERM)
+          val intercept = featureIndexMapLoaders(featureShardId).indexMapForDriver().get(Constants.INTERCEPT_KEY)
           (featureShardId, NormalizationContext(params.normalizationType, featureShardStats, intercept))
         }
         .toMap

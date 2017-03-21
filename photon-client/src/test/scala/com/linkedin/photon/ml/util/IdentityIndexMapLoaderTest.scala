@@ -45,9 +45,9 @@ class IdentityIndexMapLoaderTest {
       assertEquals(driverMap.getFeatureName(i).get, String.valueOf(i))
     }
 
-    assertEquals(driverMap(Constants.INTERCEPT_NAME_TERM), 9)
-    assertEquals(driverMap.getIndex(Constants.INTERCEPT_NAME_TERM), 9)
-    assertEquals(driverMap.getFeatureName(9).get, Constants.INTERCEPT_NAME_TERM)
+    assertEquals(driverMap(Constants.INTERCEPT_KEY), 9)
+    assertEquals(driverMap.getIndex(Constants.INTERCEPT_KEY), 9)
+    assertEquals(driverMap.getFeatureName(9).get, Constants.INTERCEPT_KEY)
 
     assertTrue(driverMap.get("RANDOM_KEY").isEmpty)
     assertEquals(driverMap.getIndex("RANDOM_KEY"), IndexMap.NULL_KEY)
@@ -59,7 +59,7 @@ class IdentityIndexMapLoaderTest {
       if (idx != 9) {
         assertEquals(name.toInt, idx)
       } else {
-        assertEquals(name, Constants.INTERCEPT_NAME_TERM)
+        assertEquals(name, Constants.INTERCEPT_KEY)
       }
 
       nameSet.add(name)
@@ -72,7 +72,7 @@ class IdentityIndexMapLoaderTest {
       if (i != 9) {
         assertTrue(nameSet.contains(i.toString))
       } else {
-        assertTrue(nameSet.contains(Constants.INTERCEPT_NAME_TERM))
+        assertTrue(nameSet.contains(Constants.INTERCEPT_KEY))
       }
       assertTrue(idxSet.contains(i))
     }
@@ -98,8 +98,8 @@ class IdentityIndexMapLoaderTest {
       assertEquals(driverMap.getFeatureName(i).get, String.valueOf(i))
     }
 
-    assertTrue(driverMap.get(Constants.INTERCEPT_NAME_TERM).isEmpty)
-    assertEquals(driverMap.getIndex(Constants.INTERCEPT_NAME_TERM), IndexMap.NULL_KEY)
+    assertTrue(driverMap.get(Constants.INTERCEPT_KEY).isEmpty)
+    assertEquals(driverMap.getIndex(Constants.INTERCEPT_KEY), IndexMap.NULL_KEY)
     assertEquals(driverMap.getFeatureName(9).get, "9")
 
     assertTrue(driverMap.get("RANDOM_KEY").isEmpty)

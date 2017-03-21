@@ -230,7 +230,7 @@ class AvroDataReader(
       .reduceByKey { case (a, b) => (a ++ b).distinct }
       .collect
       .toMap
-      .mapValues { features => DefaultIndexMapLoader(sc, (features :+ Constants.INTERCEPT_NAME_TERM).toSeq) }
+      .mapValues { features => DefaultIndexMapLoader(sc, (features :+ Constants.INTERCEPT_KEY).toSeq) }
       // have to map identity here because mapValues produces a non-serializable map
       // https://issues.scala-lang.org/browse/SI-7005
       .map(identity)
@@ -238,15 +238,6 @@ class AvroDataReader(
 }
 
 object AvroDataReader {
-
-  /**
-   * Feature field names.
-   */
-  object FieldNames {
-    val NAME = "name"
-    val TERM = "term"
-    val VALUE = "value"
-  }
 
   /**
    * Reads feature keys and values from the avro generic record.
@@ -274,7 +265,7 @@ object AvroDataReader {
           val nameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
           val featureKey = Utils.getFeatureKey(nameAndTerm.name, nameAndTerm.term)
 
-          featureKey -> Utils.getDoubleAvro(record, FieldNames.VALUE)
+          featureKey -> Utils.getDoubleAvro(record, TrainingExampleFieldNames.VALUE)
 
         case other => throw new IllegalArgumentException(s"$other in features list is not a GenericRecord")
       }.toArray
@@ -316,9 +307,9 @@ object AvroDataReader {
     }
 
     // Add intercept if necessary
-    val addIntercept = featureMap.contains(Constants.INTERCEPT_NAME_TERM)
+    val addIntercept = featureMap.contains(Constants.INTERCEPT_KEY)
     val featuresWithIntercept = if (addIntercept) {
-      featuresWithIndices ++ Array(featureMap.getIndex(Constants.INTERCEPT_NAME_TERM) -> 1.0)
+      featuresWithIndices ++ Array(featureMap.getIndex(Constants.INTERCEPT_KEY) -> 1.0)
     } else {
       featuresWithIndices
     }

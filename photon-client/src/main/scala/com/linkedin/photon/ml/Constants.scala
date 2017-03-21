@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.util.Utils
+
 /**
  * Some commonly used String constants.
  */
@@ -35,5 +37,5 @@ object Constants {
 
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_NAME_TERM: String = INTERCEPT_NAME + DELIMITER + INTERCEPT_TERM
+  val INTERCEPT_KEY: String = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
 }

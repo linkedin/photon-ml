@@ -301,7 +301,7 @@ class FeatureIndexingJobTest {
     }
     // Intercept
     if (addIntercept) {
-      val idx = indexMap.getIndex(Constants.INTERCEPT_NAME_TERM)
+      val idx = indexMap.getIndex(Constants.INTERCEPT_KEY)
       val name = indexMap.getFeatureName(idx).get
       assertNotEquals(idx, IndexMap.NULL_KEY)
       assertNotNull(name)

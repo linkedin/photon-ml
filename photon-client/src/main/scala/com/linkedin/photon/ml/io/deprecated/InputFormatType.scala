@@ -12,16 +12,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.photon_io
+package com.linkedin.photon.ml.io.deprecated
 
 /**
- * A trait that defines the common methods for implementing a factory that provides builders for training inputs.
- * Different formats might implement it different. This is intended to be used in tests.
+ * An enum type that indicates the input data file formats.
+ *
+ * Currently supports:
+ *   AVRO: serialized format using Avro: https://avro.apache.org/
+ *   LIBSVM: a text format following conventions indicated
+ *       by LIBSVM: https://www.csie.ntu.edu.tw/~cjlin/libsvm/
  */
-trait TrainingAvroBuilderFactory {
-  /**
-   *
-   * @return
-   */
-  def newBuilder(): TrainingAvroBuilder
+object InputFormatType extends Enumeration {
+  type InputFormatType = Value
+  val AVRO, LIBSVM, NONE = Value
 }
