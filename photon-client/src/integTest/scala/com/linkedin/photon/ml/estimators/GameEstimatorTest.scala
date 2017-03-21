@@ -80,7 +80,8 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
           (point.label, x) })
       .toDF(label, featureShardId)
 
-    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[SparkVector](0)))
+    // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
 
     // We set args for the GAMEEstimator - only: so this is the minimum set of params required by GAMEEstimator
     // Default number of passes over the coordinates (numIterations) is 1, which is all we need if
@@ -181,7 +182,8 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
           })
         .toDF(label, featureShardId)
 
-      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[SparkVector](0)))
+      // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
 
       // Compute normalization contexts based on statistics of the training data for this (unique) feature shard
       val normalizationContexts: Option[Map[String, NormalizationContext]] =
