@@ -73,7 +73,8 @@ class BasicStatisticalSummaryTest extends SparkTestUtils {
         .map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features)) })
       .toDF("response", featureShardId)
 
-    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).map(_.getAs[SparkVector](0)))
+    // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
 
     assertEquals(stats.count, 10)
     assertEquals(stats.mean(0), 0.3847210904276229, EPSILON)

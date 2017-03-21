@@ -173,7 +173,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
     featureIndexMapLoaders.keys
       .map {
         featureShardId =>
-          (featureShardId, BasicStatisticalSummary(data.select(featureShardId).map(_.getAs[SparkVector](0))))
+          // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+          (featureShardId, BasicStatisticalSummary(data.select(featureShardId).rdd.map(_.getAs[SparkVector](0))))
       }
 
   /**
