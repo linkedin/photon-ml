@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.data.avro
 /**
  * Common field names in the Avro data set used in Photon-ML.
  */
-abstract class AvroFieldNames {
+abstract class AvroFieldNames extends Serializable {
 
   val UID = AvroFieldNames.UID
   val NAME = AvroFieldNames.NAME

@@ -84,7 +84,7 @@ object ModelProcessingUtils {
       model match {
         case fixedEffectModel: FixedEffectModel =>
           val featureShardId = fixedEffectModel.featureShardId
-          val fixedEffectModelOutputDir = new Path(outputDir, s"$AvroConstants.FIXED_EFFECT/$name").toString
+          val fixedEffectModelOutputDir = new Path(outputDir, s"${AvroConstants.FIXED_EFFECT}/$name").toString
           Utils.createHDFSDir(fixedEffectModelOutputDir, hadoopConfiguration)
 
           //Write the model ID info
@@ -102,7 +102,7 @@ object ModelProcessingUtils {
         case randomEffectModel: RandomEffectModel =>
           val randomEffectType = randomEffectModel.randomEffectType
           val featureShardId = randomEffectModel.featureShardId
-          val randomEffectModelOutputDir = new Path(outputDir, s"$AvroConstants.RANDOM_EFFECT/$name")
+          val randomEffectModelOutputDir = new Path(outputDir, s"${AvroConstants.RANDOM_EFFECT}/$name")
 
           //Write the model ID info
           val modelIdInfoPath = new Path(randomEffectModelOutputDir, AvroConstants.ID_INFO)
