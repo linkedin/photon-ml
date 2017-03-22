@@ -153,7 +153,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     assertTrue(fs.exists(outputDirAsPath))
 
     // Check if the numberOfOutputFilesForRandomEffectModel parameter is working or not
-    val randomEffectModelCoefficientsDir = new Path(outputDirAsPath, s"$RANDOM_EFFECT/RE1/$COEFFICIENTS")
+    val randomEffectModelCoefficientsDir =
+      new Path(outputDirAsPath, s"${AvroConstants.RANDOM_EFFECT}/RE1/${AvroConstants.COEFFICIENTS}")
     val numRandomEffectModelFiles = fs.listStatus(randomEffectModelCoefficientsDir)
       .count(_.getPath.toString.contains("part"))
     assertEquals(numRandomEffectModelFiles, numberOfOutputFilesForRandomEffectModel,
@@ -224,12 +225,12 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // ... and verify the models
     features.foreach {
-      case ((FIXED_EFFECT, "fixed"), modelRDD) =>
+      case ((AvroConstants.FIXED_EFFECT, "fixed"), modelRDD) =>
         val calculated: Array[(String, Double)] = modelRDD.collect()(0)._2
         val ans = List(1, 2, 5).map(i => featureNames("fixed")(i)) zip List(11,21,51)
         assert(calculated sameElements ans)
 
-      case ((RANDOM_EFFECT, "RE1"), modelRDD) =>
+      case ((AvroConstants.RANDOM_EFFECT, "RE1"), modelRDD) =>
         val features = featureNames("RE1")
         modelRDD.collect.foreach {
 
@@ -240,7 +241,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
             assert(coefficients sameElements (List(1, 2).map(i => features(i)) zip List(112, 512)))
         }
 
-      case ((RANDOM_EFFECT, "RE2"), modelRDD) =>
+      case ((AvroConstants.RANDOM_EFFECT, "RE2"), modelRDD) =>
         val features = featureNames("RE2")
         modelRDD.collect.foreach {
 

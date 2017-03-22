@@ -25,7 +25,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.data.GameConverters
-import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils, NameAndTerm}
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, AvroUtils, ModelProcessingUtils, NameAndTerm}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}

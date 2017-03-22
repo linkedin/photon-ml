@@ -52,7 +52,7 @@ object ResponsePredictionAvroBuilderFactory {
      * @return
      */
     override def setLabel(label: Double): TrainingAvroBuilder = {
-      builder.set(ResponsePredictionFieldNames.response, label)
+      builder.set(ResponsePredictionFieldNames.RESPONSE, label)
       this
     }
 
@@ -62,7 +62,7 @@ object ResponsePredictionAvroBuilderFactory {
      * @return
      */
     override def setFeatures(features: util.List[FeatureAvro]): TrainingAvroBuilder = {
-      builder.set(ResponsePredictionFieldNames.features, features)
+      builder.set(ResponsePredictionFieldNames.FEATURES, features)
       this
     }
 
@@ -72,7 +72,7 @@ object ResponsePredictionAvroBuilderFactory {
      * @return
      */
     override def setWeight(weight: Double): TrainingAvroBuilder = {
-      builder.set(ResponsePredictionFieldNames.weight, weight)
+      builder.set(ResponsePredictionFieldNames.WEIGHT, weight)
       this
     }
 
@@ -92,7 +92,7 @@ object ResponsePredictionAvroBuilderFactory {
      * @return
      */
     override def setOffset(offset: Double): TrainingAvroBuilder = {
-      builder.set(ResponsePredictionFieldNames.offset, offset)
+      builder.set(ResponsePredictionFieldNames.OFFSET, offset)
       this
     }
   }

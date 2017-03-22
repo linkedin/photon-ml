@@ -113,13 +113,15 @@ object AvroUtils {
    * Read data from a single Avro file. It will return a list so do not use this method if data are large. According to
    * the class tag, this method will return generic or specific records.
    *
+   * @note not protected because used in integTest training/DriverTest
+   *
    * @param sc Spark context
    * @param path The path to a single Avro file (not the parent directory)
    * @param schemaString Optional schema string for reading
    * @tparam T The record type
    * @return List of records
    */
-  protected[avro] def readFromSingleAvro[T <: GenericRecord : ClassTag](
+  def readFromSingleAvro[T <: GenericRecord : ClassTag](
     sc: SparkContext,
     path: String,
     schemaString: String = null): Seq[T] = {
