@@ -259,7 +259,6 @@ protected[ml] object IOUtils {
    * which can itself be either Success or Failure, wrapping an instance of the type returned by the lambda.
    * Failure.map(lambda) ignores lambda, and returns itself, but changing the contained type to the type
    * returned by the lambda (see scala.util.Try). Failure thus contains an exception, if one is thrown.
-   * On the last line, flatMap is used to avoid returning Try[Try[Unit] ].
    *
    * @param outputStreamGenerator A lambda that generates an output stream
    * @param op A lambda that writes to the stream

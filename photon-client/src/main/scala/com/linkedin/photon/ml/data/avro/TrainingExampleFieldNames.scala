@@ -19,5 +19,5 @@ package com.linkedin.photon.ml.data.avro
  */
 object TrainingExampleFieldNames extends AvroFieldNames {
 
-  override val RESPONSE: String = "label" // do we really need a different name?
+  override val RESPONSE: String = "label"
 }

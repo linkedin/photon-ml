@@ -147,9 +147,9 @@ object AvroDataReaderTest {
     .record("testNameAndTermSchema")
     .namespace("com.linkedin.photon.ml.avro.data")
     .fields()
-    .name(ResponsePredictionFieldNames.NAME).`type`().stringType().noDefault()
-    .name(ResponsePredictionFieldNames.TERM).`type`().stringType().noDefault()
-    .name(ResponsePredictionFieldNames.VALUE).`type`().doubleType().noDefault()
+    .name(AvroFieldNames.NAME).`type`().stringType().noDefault()
+    .name(AvroFieldNames.TERM).`type`().stringType().noDefault()
+    .name(AvroFieldNames.VALUE).`type`().doubleType().noDefault()
     .endRecord()
 
   private val avroSchema: Schema = SchemaBuilder
@@ -192,14 +192,14 @@ object AvroDataReaderTest {
   record.put(NullableLongField, null)
 
   private val feature1 = new GenericData.Record(nameAndTermSchema)
-  feature1.put(ResponsePredictionFieldNames.NAME, FeatureName1)
-  feature1.put(ResponsePredictionFieldNames.TERM, "")
-  feature1.put(ResponsePredictionFieldNames.VALUE, FeatureVal1)
+  feature1.put(AvroFieldNames.NAME, FeatureName1)
+  feature1.put(AvroFieldNames.TERM, "")
+  feature1.put(AvroFieldNames.VALUE, FeatureVal1)
 
   private val feature2 = new GenericData.Record(nameAndTermSchema)
-  feature2.put(ResponsePredictionFieldNames.NAME, FeatureName2)
-  feature2.put(ResponsePredictionFieldNames.TERM, "")
-  feature2.put(ResponsePredictionFieldNames.VALUE, FeatureVal2)
+  feature2.put(AvroFieldNames.NAME, FeatureName2)
+  feature2.put(AvroFieldNames.TERM, "")
+  feature2.put(AvroFieldNames.VALUE, FeatureVal2)
 
   record.put(FeaturesField, List(feature1, feature2).asJava)
 }

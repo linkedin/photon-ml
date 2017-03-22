@@ -37,11 +37,8 @@ object AvroFieldNames {
   val TERM: String = "term"
   val FEATURES: String = "features"
   val VALUE: String = "value"
-  val RESPONSE: String = "response"
+  val RESPONSE: String = null
   val OFFSET: String = "offset"
   val WEIGHT: String = "weight"
   val META_DATA_MAP: String = "metadataMap"
 }
-
-
-

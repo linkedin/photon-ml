@@ -256,7 +256,7 @@ object AvroDataReader {
     fieldNames
       .toSeq
       .flatMap { fieldName => Option(record.get(fieldName)) match {
-        case Some(recordList: JList[_]) => recordList.asScala.toSeq // this .toSeq intentional
+        case Some(recordList: JList[_]) => recordList.asScala.toSeq
         case other => throw new IllegalArgumentException(
           s"Expected feature list $fieldName to be a Java List, found instead: ${other.getClass.getName}.")
       }}
