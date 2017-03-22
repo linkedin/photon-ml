@@ -18,7 +18,6 @@ import java.io._
 import java.lang.{Double => JDouble}
 import java.util.{Map => JMap}
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.util.Try
 
@@ -27,10 +26,7 @@ import org.apache.hadoop.fs.{FileContext, Options, Path}
 import org.apache.spark.SparkContext
 import org.joda.time.Days
 
-import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.avro.AvroIOUtils
-import com.linkedin.photon.ml.io.GLMSuite
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -233,7 +229,7 @@ protected[ml] object IOUtils {
             .foreach { case (value, index) =>
               val nameAndTerm = indexMap.getFeatureName(index)
               nameAndTerm.foreach { s =>
-                val tokens = s.split(GLMSuite.DELIMITER)
+                val tokens = s.split(Constants.DELIMITER)
                 if (tokens.length == 1) {
                   builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
                 } else if (tokens.length == 2) {
@@ -253,85 +249,6 @@ protected[ml] object IOUtils {
       .saveAsTextFile(modelDir)
   }
 
-  private case class BasicSummaryItems(
-    max: Double,
-    min: Double,
-    mean: Double,
-    normL1: Double,
-    normL2: Double,
-    numNonzeros: Double,
-    variance: Double)
-
-  /**
-   * Write basic feature statistics in Avro format.
-   *
-   * @param sc Spark context
-   * @param summary The summary of the features
-   * @param outputDir Output directory
-   */
-  def writeBasicStatistics(
-      sc: SparkContext,
-      summary: BasicStatisticalSummary, outputDir: String,
-      keyToIdMap: IndexMap): Unit = {
-
-    def featureStringToTuple(str: String): (String, String) = {
-      val splits = str.split(GLMSuite.DELIMITER)
-      if (splits.length == 2) {
-        (splits(0), splits(1))
-      } else {
-        (splits(0), "")
-      }
-    }
-
-    val featureTuples = keyToIdMap
-      .toArray
-      .sortBy[Int] { case (_, id) => id }
-      .map { case (key, _) => featureStringToTuple(key) }
-
-    val summaryList = List(
-      summary.max.toArray,
-      summary.min.toArray,
-      summary.mean.toArray,
-      summary.normL1.toArray,
-      summary.normL2.toArray,
-      summary.numNonzeros.toArray,
-      summary.variance.toArray)
-      .transpose
-      .map {
-        case List(max, min, mean, normL1, normL2, numNonZeros, variance) =>
-          BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
-      }
-
-    val outputAvro = featureTuples
-      .zip(summaryList)
-      .map {
-        case ((name, term), items) =>
-          val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(Map(
-            "max" -> items.max,
-            "min" -> items.min,
-            "mean" -> items.mean,
-            "normL1" -> items.normL1,
-            "normL2" -> items.normL2,
-            "numNonzeros" -> items.numNonzeros,
-            "variance" -> items.variance))
-
-          FeatureSummarizationResultAvro.newBuilder()
-            .setFeatureName(name)
-            .setFeatureTerm(term)
-            .setMetrics(jMap)
-            .build()
-      }
-
-    val outputFile = new Path(outputDir, GLMSuite.DEFAULT_AVRO_FILE_NAME).toString
-
-    AvroIOUtils.saveAsSingleAvro(
-      sc,
-      outputAvro,
-      outputFile,
-      FeatureSummarizationResultAvro.getClassSchema.toString,
-      forceOverwrite = true)
-  }
-
   /**
    * Write to a stream while handling exceptions, and closing the stream correctly whether writing to it
    * succeeded or not.
@@ -342,7 +259,6 @@ protected[ml] object IOUtils {
    * which can itself be either Success or Failure, wrapping an instance of the type returned by the lambda.
    * Failure.map(lambda) ignores lambda, and returns itself, but changing the contained type to the type
    * returned by the lambda (see scala.util.Try). Failure thus contains an exception, if one is thrown.
-   * On the last line, flatMap is used to avoid returning Try[Try[Unit]].
    *
    * @param outputStreamGenerator A lambda that generates an output stream
    * @param op A lambda that writes to the stream

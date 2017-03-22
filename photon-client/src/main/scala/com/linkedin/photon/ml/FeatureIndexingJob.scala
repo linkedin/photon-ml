@@ -25,9 +25,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkConf, SparkContext}
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.avro._
-import com.linkedin.photon.ml.io.FieldNamesType._
-import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite}
+import com.linkedin.photon.ml.data.avro._
+import com.linkedin.photon.ml.io.deprecated.FieldNamesType
 import com.linkedin.photon.ml.util._
 
 /**
@@ -60,7 +59,7 @@ class FeatureIndexingJob(
     val partitionNum: Int,
     val outputPath: String,
     val addIntercept: Boolean,
-    val fieldNames: FieldNames,
+    val fieldNames: AvroFieldNames,
     val featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
     val featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 
@@ -111,14 +110,14 @@ class FeatureIndexingJob(
               .toSet)
             .reduce(_ ++ _)
         case _ =>
-          record.get(fieldNamesRef.features)
+          record.get(fieldNamesRef.FEATURES)
             .asInstanceOf[JList[GenericRecord]]
             .asScala
             .toSet
       }
 
       features.map(f =>
-        Utils.getFeatureKey(f, fieldNamesRef.name, fieldNamesRef.term, GLMSuite.DELIMITER))
+        Utils.getFeatureKey(f, fieldNamesRef.NAME, fieldNamesRef.TERM, Constants.DELIMITER))
 
     }.mapPartitions{ iter =>
       // Step 2. map features to (hashCode, featureName)
@@ -127,7 +126,7 @@ class FeatureIndexingJob(
 
     val keyedFeaturesUnionedRDD = if (addIntercept) {
       val interceptRDD = sc.parallelize(List[(Int, String)](
-          GLMSuite.INTERCEPT_NAME_TERM.hashCode() -> GLMSuite.INTERCEPT_NAME_TERM))
+          Constants.INTERCEPT_KEY.hashCode() -> Constants.INTERCEPT_KEY))
       keyedFeaturesRDD.union(interceptRDD)
     } else {
       keyedFeaturesRDD
@@ -180,7 +179,7 @@ class FeatureIndexingJob(
    *
    */
   def run(): Unit = {
-    val inputRdd = AvroIOUtils.readAvroFiles(sc, inputPaths, 10)
+    val inputRdd = AvroUtils.readAvroFiles(sc, inputPaths, 10)
 
     ensureOutputPath(outputPath)
 
@@ -257,7 +256,7 @@ object FeatureIndexingJob {
     dateRangeOpt: Option[String] = None,
     dateRangeDaysAgoOpt: Option[String] = None,
     addIntercept: Boolean = true,
-    fieldNames: FieldNames = TrainingExampleFieldNames,
+    fieldNames: AvroFieldNames = TrainingExampleFieldNames,
     featureShardIdToFeatureSectionKeysMap: Option[Map[String, Set[String]]] = None,
     featureShardIdToInterceptMap: Option[Map[String, Boolean]] = None) {
 
@@ -320,8 +319,8 @@ object FeatureIndexingJob {
         .action((x, c) => {
           val fieldNamesType = FieldNamesType.withName(x)
           c.copy(fieldNames = fieldNamesType match {
-            case RESPONSE_PREDICTION => ResponsePredictionFieldNames
-            case TRAINING_EXAMPLE => TrainingExampleFieldNames
+            case FieldNamesType.RESPONSE_PREDICTION => ResponsePredictionFieldNames
+            case FieldNamesType.TRAINING_EXAMPLE => TrainingExampleFieldNames
             case _ => throw new IllegalArgumentException(
               s"Input training file's field name type cannot be ${fieldNamesType}")
           })

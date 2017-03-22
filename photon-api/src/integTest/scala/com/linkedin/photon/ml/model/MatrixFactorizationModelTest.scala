@@ -18,7 +18,6 @@ import scala.util.Random
 
 import breeze.linalg.Vector
 import org.apache.spark.SparkContext
-
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 

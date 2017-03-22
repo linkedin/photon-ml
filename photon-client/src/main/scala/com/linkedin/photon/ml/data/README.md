@@ -1,0 +1,1 @@
+This directory contains data readers for various data formats (Avro, Parquet...).

@@ -75,6 +75,7 @@ rat {
     '**/build/**',
     '.reviewboardrc',
     '.travis.yml',
+    'out/**',
     'derby.log', // from running spark-shell in photon-ml dir
     'metastore_db/**', // from running spark-shell in photon-m dir
     'dev-scripts/license_template.txt',

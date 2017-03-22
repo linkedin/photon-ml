@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
-import com.linkedin.photon.ml.io.{FieldNamesType, GLMSuite, InputFormatType}
+import com.linkedin.photon.ml.io.deprecated.{FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -1038,7 +1038,7 @@ object DriverTest {
       // Heart scale dataset feature names are indices, and they don't have terms.
       // Thus, we are ignoring tokens(1)
       val name = tokens(0)
-      if (name == GLMSuite.INTERCEPT_NAME) {
+      if (name == Constants.INTERCEPT_NAME) {
         intercept = Some(tokens(2).toDouble)
       } else {
         coeffs += ((tokens(0).toLong, tokens(2).toDouble))

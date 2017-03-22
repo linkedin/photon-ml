@@ -18,7 +18,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.avro.data.NameAndTermFeatureSetContainer
+import com.linkedin.photon.ml.data.avro.NameAndTermFeatureSetContainer
 import com.linkedin.photon.ml.util._
 
 /**

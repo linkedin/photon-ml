@@ -25,9 +25,9 @@ import org.apache.hadoop.mapred.JobConf
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.io.GLMSuite
 import com.linkedin.photon.ml.test.TestTemplateWithTmpDir
 
 /**
@@ -107,7 +107,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
   @Test
   def testGetFeatureKey(): Unit = {
-    assertEquals(Utils.getFeatureKey("foo", "bar"), s"foo${GLMSuite.DELIMITER}bar")
+    assertEquals(Utils.getFeatureKey("foo", "bar"), s"foo${Constants.DELIMITER}bar")
     assertEquals(Utils.getFeatureKey("foo", "bar", "\t"), "foo\tbar")
     assertEquals(Utils.getFeatureKey("foo", "bar", " "), "foo bar")
   }

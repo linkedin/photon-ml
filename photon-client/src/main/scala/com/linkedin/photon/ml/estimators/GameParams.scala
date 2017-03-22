@@ -22,8 +22,8 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
-import com.linkedin.photon.ml.io.ModelOutputMode
-import com.linkedin.photon.ml.io.ModelOutputMode._
+import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
+import com.linkedin.photon.ml.io.deprecated.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
@@ -151,7 +151,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   /**
    * Model output mode (output all models, best model, or no models)
    */
-  var modelOutputMode: ModelOutputMode = ALL
+  var modelOutputMode: ModelOutputMode = ModelOutputMode.ALL
 
   /**
    * Number of output files to write for each random effect model
@@ -437,7 +437,7 @@ object GameParams {
 
       opt[Boolean](SAVE_MODELS_TO_HDFS)
         .text(s"DEPRECATED -- USE model-output-mode")
-        .foreach(x => params.modelOutputMode = if (x) ALL else NONE)
+        .foreach(x => params.modelOutputMode = if (x) ModelOutputMode.ALL else ModelOutputMode.NONE)
 
       opt[String](MODEL_OUTPUT_MODE)
         .text(s"Output mode of trained models to HDFS (ALL, BEST, or NONE). Default: ${defaultParams.modelOutputMode}")

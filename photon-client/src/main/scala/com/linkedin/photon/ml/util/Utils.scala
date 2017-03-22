@@ -23,9 +23,9 @@ import org.apache.avro.util.Utf8
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.io.GLMSuite
 
 // TODO: Better documentation.
 
@@ -49,23 +49,23 @@ protected[ml] object Utils {
 
   /**
    * Get the feature key as a concatenation of name and term delimited by
-   * [[com.linkedin.photon.ml.io.GLMSuite.DELIMITER]].
+   * [[com.linkedin.photon.ml.Constants.DELIMITER]].
    *
    * @param name Feature name
    * @param term Feature term
    * @return Feature key
    */
-  def getFeatureKey(name: CharSequence, term: CharSequence, delimiter: String = GLMSuite.DELIMITER): String =
+  def getFeatureKey(name: CharSequence, term: CharSequence, delimiter: String = Constants.DELIMITER): String =
     name + delimiter + term
 
   /**
    * Get the feature name from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods.
    *
    * @param key Feature key
-   * @param delimiter Delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
+   * @param delimiter Delimiter used to form the key. Default value is [[Constants.DELIMITER]]
    * @return The feature name
    */
-  def getFeatureNameFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
+  def getFeatureNameFromKey(key: String, delimiter: String = Constants.DELIMITER): String = {
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
     key.split(delimiter).headOption.getOrElse("")
   }
@@ -74,10 +74,10 @@ protected[ml] object Utils {
    * Get the feature term from the feature key, expected to be formed using one of the [[getFeatureKey()]] methods.
    *
    * @param key Feature key
-   * @param delimiter Delimiter used to form the key. Default value is [[GLMSuite.DELIMITER]]
+   * @param delimiter Delimiter used to form the key. Default value is [[Constants.DELIMITER]]
    * @return The feature term
    */
-  def getFeatureTermFromKey(key: String, delimiter: String = GLMSuite.DELIMITER): String = {
+  def getFeatureTermFromKey(key: String, delimiter: String = Constants.DELIMITER): String = {
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
     key.split(delimiter).lift(1).getOrElse("")
   }

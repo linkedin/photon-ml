@@ -22,8 +22,8 @@ import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.avro.data.ScoreProcessingUtils
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.data.avro.ScoreProcessingUtils
 import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._

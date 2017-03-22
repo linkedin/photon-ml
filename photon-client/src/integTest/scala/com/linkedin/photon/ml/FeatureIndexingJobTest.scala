@@ -23,8 +23,7 @@ import org.apache.spark.{SparkConf, SparkContext, SparkException}
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.avro.{FieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
-import com.linkedin.photon.ml.io.GLMSuite
+import com.linkedin.photon.ml.data.avro.{AvroFieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{IndexMap, PalDBIndexMap}
 
@@ -131,7 +130,7 @@ class FeatureIndexingJobTest {
       outputDir: String = "/tmp/index-output",
       numPartitions: Int,
       addIntercept: Boolean,
-      fieldNames: FieldNames): Unit = {
+      fieldNames: AvroFieldNames): Unit = {
 
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
       FileUtils.deleteDirectory(new java.io.File(outputDir))
@@ -293,7 +292,7 @@ class FeatureIndexingJobTest {
     val indicesSet = mutable.Set[Int]()
     val namesSet = mutable.Set[String]()
     (1 to 13).foreach{i =>
-      val idx = indexMap.getIndex(i + GLMSuite.DELIMITER)
+      val idx = indexMap.getIndex(i + Constants.DELIMITER)
       val name = indexMap.getFeatureName(idx).get
       assertNotEquals(idx, IndexMap.NULL_KEY)
       assertNotNull(name)
@@ -302,7 +301,7 @@ class FeatureIndexingJobTest {
     }
     // Intercept
     if (addIntercept) {
-      val idx = indexMap.getIndex(GLMSuite.INTERCEPT_NAME_TERM)
+      val idx = indexMap.getIndex(Constants.INTERCEPT_KEY)
       val name = indexMap.getFeatureName(idx).get
       assertNotEquals(idx, IndexMap.NULL_KEY)
       assertNotNull(name)

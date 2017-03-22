@@ -25,15 +25,13 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.avro.AvroIOUtils
-import com.linkedin.photon.ml.avro.data.NameAndTerm
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
-import com.linkedin.photon.ml.data.{AvroDataReader, GameConverters}
+import com.linkedin.photon.ml.data.GameConverters
+import com.linkedin.photon.ml.data.avro.{AvroDataReader, AvroUtils, ModelProcessingUtils, NameAndTerm}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
-import com.linkedin.photon.ml.io.ModelOutputMode
+import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -457,7 +455,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
 
     val modelAvro =
-      AvroIOUtils
+      AvroUtils
         .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
 
     val model = modelId match {
@@ -479,7 +477,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
    */
   def modelContainsIntercept(path: Path): Boolean =
 
-    AvroIOUtils
+    AvroUtils
       .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
       .head
       .getMeans

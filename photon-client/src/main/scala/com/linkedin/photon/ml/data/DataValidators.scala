@@ -18,10 +18,10 @@ import breeze.linalg.{DenseVector, SparseVector}
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
-import com.linkedin.photon.ml.{DataValidationType, TaskType}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.util.Logging
+import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
