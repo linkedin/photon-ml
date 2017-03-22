@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.cli.game.training
 
 import java.nio.file.{FileSystems, Files, Path, Paths}
 
+import scala.collection.JavaConversions._
+
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkException
 import org.apache.spark.sql.DataFrame
