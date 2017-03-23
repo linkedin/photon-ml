@@ -30,6 +30,7 @@ import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.model.{FixedEffectModel, GAMEModel}
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.optimization.game.GameModelOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
@@ -107,7 +108,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     // Create GAMEEstimator and fit model
     // Returns (model, evaluation, optimizer config)
-    val models: Seq[(GAMEModel, Option[EvaluationResults], String)] =
+    val models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
         createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
 
     val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model
@@ -194,7 +195,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
       // Create GAMEEstimator and fit model
       // Returns (model, evaluation, optimizer config)
-      val models: Seq[(GAMEModel, Option[EvaluationResults], String)] =
+      val models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
       createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
 
       val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model

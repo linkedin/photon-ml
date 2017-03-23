@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
-import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationProblem, GLMOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.sampler.{BinaryClassificationDownSampler, DefaultDownSampler, DownSampler}
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
@@ -76,8 +76,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
   def fit(
       data: DataFrame,
       validationData: Option[DataFrame] = None,
-      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]])
-      : Seq[(GAMEModel, Option[EvaluationResults], String)] = {
+      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]]):
+        Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
 
     val numPartitions = data.rdd.partitions.length
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
@@ -280,8 +280,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
       validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
-      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]])
-    : Seq[(GAMEModel, Option[EvaluationResults], String)] = {
+      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]]):
+        Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
 
     val contextBroadcasts: Option[Map[FeatureShardId, Broadcast[NormalizationContext]]] = normalizationContexts.map {
       contextsMap => contextsMap.mapValues { context => sc.broadcast(context) }
@@ -292,10 +292,10 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         randomEffectOptimizationConfiguration <- params.randomEffectOptimizationConfigurations;
         factoredRandomEffectOptimizationConfiguration <- params.factoredRandomEffectOptimizationConfigurations) yield {
 
-      // TODO: this is for humans, but we need to save those in machine readable format too (model metadata)
-      val modelConfig = fixedEffectOptimizationConfiguration.mkString("\n") + "\n" +
-          randomEffectOptimizationConfiguration.mkString("\n") + "\n" +
-          factoredRandomEffectOptimizationConfiguration.mkString("\n")
+      val modelConfig = GameModelOptimizationConfiguration(
+        fixedEffectOptimizationConfiguration,
+        randomEffectOptimizationConfiguration,
+        factoredRandomEffectOptimizationConfiguration)
 
       val timer = Timer.start()
       logger.info(s"Start to train the Game model with the following config:\n$modelConfig\n")
