@@ -354,9 +354,9 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
           case randomEffectDataSet: RandomEffectDataSet =>
             val featureShardId = params.randomEffectDataConfigurations(coordinateId).featureShardId
-            val (randomEffectOptimizationConfiguration,
-            latentFactorOptimizationConfiguration,
-            mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
+            val FactoredRandomEffectOptimizationConfiguration(randomEffectOptimizationConfiguration,
+              latentFactorOptimizationConfiguration,
+              mfOptimizationConfiguration) = factoredRandomEffectOptimizationConfiguration(coordinateId)
             val (randomObjectiveFunction, latentObjectiveFunction) =
               selectRandomLatentObjectiveFunction(randomEffectOptimizationConfiguration,
                 latentFactorOptimizationConfiguration)

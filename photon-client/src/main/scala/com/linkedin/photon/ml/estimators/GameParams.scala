@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDa
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
 
 /**
@@ -135,8 +135,7 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
    * accepted and separated by semi-colon
    */
   var factoredRandomEffectOptimizationConfigurations:
-    Array[Map[CoordinateId,
-    (GLMOptimizationConfiguration, GLMOptimizationConfiguration, MFOptimizationConfiguration)]] = Array(Map())
+    Array[Map[CoordinateId, FactoredRandomEffectOptimizationConfiguration]] = Array(Map())
 
   /**
    * Configurations for all the random effect data sets.
@@ -415,7 +414,8 @@ object GameParams {
                 val randomEffectOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s1)
                 val latentFactorOptConfig = GLMOptimizationConfiguration.parseAndBuildFromString(s2)
                 val mfOptimizationOptConfig = MFOptimizationConfiguration.parseAndBuildFromString(s3)
-                (key, (randomEffectOptConfig, latentFactorOptConfig, mfOptimizationOptConfig))
+                (key, FactoredRandomEffectOptimizationConfiguration(
+                  randomEffectOptConfig, latentFactorOptConfig, mfOptimizationOptConfig))
               }
               .toMap)
         )

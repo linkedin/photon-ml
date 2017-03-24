@@ -25,8 +25,7 @@ package com.linkedin.photon.ml.optimization.game
 case class GameModelOptimizationConfiguration(
     fixedEffectOptimizationConfiguration: Map[String, GLMOptimizationConfiguration],
     randomEffectOptimizationConfiguration: Map[String, GLMOptimizationConfiguration],
-    factoredRandomEffectOptimizationConfiguration: Map[String,
-      (GLMOptimizationConfiguration, GLMOptimizationConfiguration, MFOptimizationConfiguration)]) {
+    factoredRandomEffectOptimizationConfiguration: Map[String, FactoredRandomEffectOptimizationConfiguration]) {
 
   /**
     * Build a custom string representation of the configuration
