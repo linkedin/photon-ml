@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
@@ -227,10 +227,10 @@ class GameParamsTest {
     val latentFactorOptConfig2 = GLMOptimizationConfiguration.parseAndBuildFromString(latentFactorOptConfig2InStr)
     val mfOptimizationOptConfig2 = MFOptimizationConfiguration.parseAndBuildFromString(mfOptimizationOptConfig2InStr)
     val expectedValue = Array(
-      Map("factor1" -> (randomEffectOptConfig1, latentFactorOptConfig1, mfOptimizationOptConfig1),
-        "factor2" -> (randomEffectOptConfig2, latentFactorOptConfig2, mfOptimizationOptConfig2)),
-      Map("factor1" -> (randomEffectOptConfig2, latentFactorOptConfig2, mfOptimizationOptConfig2),
-        "factor2" -> (randomEffectOptConfig1, latentFactorOptConfig1, mfOptimizationOptConfig1))
+      Map("factor1" -> FactoredRandomEffectOptimizationConfiguration(randomEffectOptConfig1, latentFactorOptConfig1, mfOptimizationOptConfig1),
+        "factor2" -> FactoredRandomEffectOptimizationConfiguration(randomEffectOptConfig2, latentFactorOptConfig2, mfOptimizationOptConfig2)),
+      Map("factor1" -> FactoredRandomEffectOptimizationConfiguration(randomEffectOptConfig2, latentFactorOptConfig2, mfOptimizationOptConfig2),
+        "factor2" -> FactoredRandomEffectOptimizationConfiguration(randomEffectOptConfig1, latentFactorOptConfig1, mfOptimizationOptConfig1))
     )
     assertEquals(params.factoredRandomEffectOptimizationConfigurations.deep, expectedValue.deep)
   }

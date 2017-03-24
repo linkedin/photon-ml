@@ -29,6 +29,7 @@ import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.model.GAMEModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.optimization.game.GameModelOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils._
@@ -229,7 +230,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @return The best model
    */
   protected[training] def selectBestModel(
-      models: Seq[(GAMEModel, Option[EvaluationResults], String)]): Option[(GAMEModel, EvaluationResults, String)] =
+      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)]):
+        Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)] =
 
     models
       .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
@@ -259,8 +261,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      models: Seq[(GAMEModel, Option[EvaluationResults], String)],
-      bestModel: Option[(GAMEModel, EvaluationResults, String)]): Unit =
+      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
+      bestModel: Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
 
     if (params.modelOutputMode != ModelOutputMode.NONE) {
 
@@ -273,7 +275,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
           Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
 
           val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
-          IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration,
+          IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString), modelSpecDir, hadoopConfiguration,
             forceOverwrite = false)
 
           ModelProcessingUtils.saveGameModelsToHDFS(model, featureShardIdToFeatureMapLoader, modelOutputDir,
@@ -295,7 +297,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
             val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
 
             Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
-            IOUtils.writeStringsToHDFS(Iterator(modelConfig), modelSpecDir, hadoopConfiguration, forceOverwrite = false)
+            IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString), modelSpecDir, hadoopConfiguration,
+              forceOverwrite = false)
             ModelProcessingUtils.saveGameModelsToHDFS(
               model,
               featureShardIdToFeatureMapLoader,
