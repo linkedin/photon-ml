@@ -452,11 +452,11 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   @DataProvider(name = "badWeightsInputs")
   def badWeightsInputs(): Array[Array[String]] = {
 
-    val inputDir = getClass.getClassLoader.getResource("DriverIntegTest/input/bad-weights/").getPath
+    val inputDir = getClass.getClassLoader.getResource("DriverIntegTest/input/bad-weights").getPath
     new File(inputDir)
       .listFiles
       .filter(_.getName.endsWith(".avro"))
-      .map(f => Array(inputDir + "feature-lists", f.getAbsolutePath))
+      .map(f => Array(inputDir + "/feature-lists", f.getAbsolutePath))
   }
 
   /**
@@ -467,23 +467,54 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   def testBadSampleWeights(featuresDir: String, inputFile: String): Unit = sparkTest("testBadSampleWeights") {
 
     val args =
-      Map("task-type" -> TaskType.LINEAR_REGRESSION.toString,
-        "feature-name-and-term-set-path" -> featuresDir,
-        "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
-        "train-input-dirs" -> inputFile,
-        "fixed-effect-data-configurations" -> "global:shard1,2",
-        "fixed-effect-optimization-configurations" -> "global:100,1e-11,0.3,1,LBFGS,l2",
-        "updating-sequence" -> "global",
-        "validate-input-dirs" -> "",
-        "output-dir" -> s"$getTmpDir/output",
-        "num-iterations" -> "5",
-        "check-data" -> "true")
+      Map(("task-type", TaskType.LINEAR_REGRESSION.toString),
+        ("feature-name-and-term-set-path", featuresDir),
+        ("feature-shard-id-to-feature-section-keys-map", "shard1:features"),
+        ("train-input-dirs", inputFile),
+        ("fixed-effect-data-configurations", "global:shard1,2"),
+        ("fixed-effect-optimization-configurations", "global:100,1e-11,0.3,1,LBFGS,l2"),
+        ("updating-sequence", "global"),
+        ("validate-input-dirs", ""),
+        ("output-dir", s"$getTmpDir/output"),
+        ("num-iterations", "5"),
+        ("check-data", "true"))
 
     val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
 
     driver.run()
+  }
+
+  /**
+   * Make sure that we can read and train a data set with alternate column names.
+   */
+  @Test
+  def testInputColumnsNames(): Unit = sparkTest("testInputColumnsNames") {
+
+    val inputDir = getClass.getClassLoader.getResource("DriverIntegTest/input/different-column-names").getPath
+
+    val args =
+      Map(("task-type", TaskType.LINEAR_REGRESSION.toString),
+        ("feature-name-and-term-set-path", s"$inputDir/feature-lists"),
+        ("feature-shard-id-to-feature-section-keys-map", "shard1:features"),
+        ("train-input-dirs", s"$inputDir/diff-col-names.avro"),
+        ("fixed-effect-data-configurations", "global:shard1,2"),
+        ("fixed-effect-optimization-configurations", "global:100,1e-11,0.3,1,LBFGS,l2"),
+        ("updating-sequence", "global"),
+        ("validate-input-dirs", s"$inputDir/diff-col-names.avro"),
+        ("output-dir", s"$getTmpDir/output"),
+        ("num-iterations", "1"),
+        ("check-data", "true"),
+        ("input-column-names", "response:the_label|weight:w|offset:intercept|metadataMap:metadata"))
+
+    val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
+    val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
+    val driver = new Driver(sc, params, logger)
+
+    driver.run()
+
+    assertModelSane(bestModelPath(params.outputDir, "fixed-effect", "global"), 13)
   }
 
   /**
@@ -542,12 +573,12 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataSet =
-      GameConverters
-        .getGameDataSetFromDataFrame(
+      GameConverters.getGameDataSetFromDataFrame(
           testData,
           featureSectionMap.keys.toSet,
           idTypeSet,
-          isResponseRequired = true)
+          isResponseRequired = true,
+          driver.params.inputColumnsNames)
         .partitionBy(partitioner)
 
     val validatingLabelsAndOffsetsAndWeights =

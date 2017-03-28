@@ -37,5 +37,5 @@ object Constants {
 
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
-  val INTERCEPT_KEY: String = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
+  val INTERCEPT_KEY = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
 }

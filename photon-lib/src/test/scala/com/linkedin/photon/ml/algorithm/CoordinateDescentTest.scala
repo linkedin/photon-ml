@@ -20,7 +20,7 @@ import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.data.scoring.{ModelDataScores, CoordinateDataScores, ScoredGameDatum}
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker

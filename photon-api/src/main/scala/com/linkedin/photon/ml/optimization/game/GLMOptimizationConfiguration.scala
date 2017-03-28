@@ -46,9 +46,9 @@ protected[ml] case class GLMOptimizationConfiguration (
   }
 
   override def toString: String =
-    s"optimizerConfig: ${optimizerConfig.toSummaryString}," +
-      s"regularizationContext: ${regularizationContext.toSummaryString}," +
-      s"regularizationWeight: $regularizationWeight," +
+    s"optimizerConfig: ${optimizerConfig.toSummaryString}, " +
+      s"regularizationContext: ${regularizationContext.toSummaryString}, " +
+      s"regularizationWeight: $regularizationWeight, " +
       s"downSamplingRate: $downSamplingRate"
 
   def toJson: String =

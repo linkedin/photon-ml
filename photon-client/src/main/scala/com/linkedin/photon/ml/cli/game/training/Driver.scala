@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils._
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
+import com.linkedin.photon.ml.{Constants, InputColumnsNames, SparkContextConfiguration}
 
 /**
  * The Driver class, which drives the training of GAME model.
@@ -180,17 +180,20 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @return A data set where zero-weight samples have been removed, or an exception if we couldn't find at least one
    *         sample with a strictly positive weight
    */
-  protected[training] def checkData(data: Option[DataFrame]): Option[DataFrame] =
+  protected[training] def checkData(data: Option[DataFrame]): Option[DataFrame] = {
+
+    val weightColumnName = params.inputColumnsNames(InputColumnsNames.WEIGHT)
 
     data.map { dataframe =>
       if (params.checkData) {
         val numBad = dataframe
-          .map { row => if (row.getAs[Double]("weight") <= 0.0) 1 else 0 }
+          .map { row => if (row.getAs[Double](weightColumnName) <= 0.0) 1 else 0 }
           .reduce(_ + _)
         require(numBad == 0, s"Found $numBad data points with weights <= 0. Please fix data set.")
       }
       dataframe
     }
+  }
 
   /**
    * Helper to avoid writing the same code for training and validation data: read some data set, and then optionally
@@ -331,7 +334,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
           Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
 
           val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
-          IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString), modelSpecDir, hadoopConfiguration,
+          IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString()), modelSpecDir, hadoopConfiguration,
             forceOverwrite = false)
 
           ModelProcessingUtils.saveGameModelsToHDFS(model, featureShardIdToFeatureMapLoader, modelOutputDir,
@@ -353,7 +356,7 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
             val modelSpecDir = new Path(modelOutputDir, "model-spec").toString
 
             Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
-            IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString), modelSpecDir, hadoopConfiguration,
+            IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString()), modelSpecDir, hadoopConfiguration,
               forceOverwrite = false)
             ModelProcessingUtils.saveGameModelsToHDFS(
               model,

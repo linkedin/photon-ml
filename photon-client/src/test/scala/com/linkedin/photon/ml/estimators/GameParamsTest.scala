@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.estimators
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.{InputColumnsNames, TaskType}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
@@ -79,6 +79,8 @@ class GameParamsTest {
     assertEquals(params.numberOfOutputFilesForRandomEffectModel, defaultParams.numberOfOutputFilesForRandomEffectModel)
     assertEquals(params.deleteOutputDirIfExists, defaultParams.deleteOutputDirIfExists)
     assertEquals(params.applicationName, defaultParams.applicationName)
+    assertEquals(params.checkData, defaultParams.checkData)
+    assertEquals(params.inputColumnsNames.toString, defaultParams.inputColumnsNames.toString)
   }
 
   @Test
@@ -326,13 +328,23 @@ class GameParamsTest {
         assertEquals(parse(requiredArgsModified(NORMALIZATION_TYPE, value.toString)).normalizationType, value)
     }
   }
+
+  @Test
+  def testCheckData(): Unit = {
+    val params = parse(requiredArgsModified(CHECK_DATA, "true"))
+    assertEquals(params.checkData, true)
+  }
+
+  @Test
+  def testInputColumnsNames(): Unit = {
+    val params = parse(requiredArgsModified("input-column-names", "response:label"))
+    assertEquals(params.inputColumnsNames(InputColumnsNames.RESPONSE), "label")
+  }
 }
 
 object GameParamsTest {
 
   import GameParams._
-
-  private val defaultParams = new GameParams
 
   private val REQUIRED_OPTIONS =
     Array(TRAIN_INPUT_DIRS, OUTPUT_DIR, TASK_TYPE, FEATURE_NAME_AND_TERM_SET_PATH, UPDATING_SEQUENCE)

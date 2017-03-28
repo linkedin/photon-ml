@@ -26,6 +26,9 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util._
 
+/**
+ * Unit tests for AvroDataReader
+ */
 class AvroDataReaderTest extends SparkTestUtils {
 
   private val tol = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
@@ -34,12 +37,12 @@ class AvroDataReaderTest extends SparkTestUtils {
   private val inputPath2 = getClass.getClassLoader.getResource(inputDir + "/test").getPath
   private val duplicateFeaturesPath = getClass.getClassLoader.getResource(inputDir + "/duplicateFeatures").getPath
   private val indexMapPath = getClass.getClassLoader.getResource(inputDir + "/feature-indexes").getPath
+  private val numPartitions = 4
   private val featureSectionMap = Map(
     "shard1" -> Set("userFeatures", "songFeatures"),
     "shard2" -> Set("userFeatures"),
     "shard3" -> Set("songFeatures")
   )
-  private val numPartitions = 4
 
   @Test
   def testRead(): Unit = sparkTest("testRead") {

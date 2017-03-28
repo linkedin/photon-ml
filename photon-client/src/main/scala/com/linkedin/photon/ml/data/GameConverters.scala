@@ -14,11 +14,13 @@
  */
 package com.linkedin.photon.ml.data
 
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Row}
 
+import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -26,22 +28,15 @@ import com.linkedin.photon.ml.util.VectorUtils
  */
 object GameConverters {
 
-  /**
-   * Standard field names
-   */
-  object FieldNames {
-    val RESPONSE: String = "response"
-    val OFFSET: String = "offset"
-    val WEIGHT: String = "weight"
-    val UID: String = "uid"
-    val META_DATA_MAP: String = "metadataMap"
-  }
-
   // Column name for the synthesized unique id column
-  val UNIQUE_ID_COLUMN_NAME = "___photon:uniqueId___"
+  private val UNIQUE_ID_COLUMN_NAME = "___photon:uniqueId___"
 
   /**
    * Converts a DataFrame into an [[RDD]] of type [[GameDatum]].
+   *
+   * @note We "decode" the Map of column names into an Array[String] which we broadcast for performance.
+   *       inputColumnsNames is populated with all the default column names, and then possibly patched with
+   *       user-specified, custom column names.
    *
    * @param data The source DataFrame
    * @param featureShards A set of feature shard ids
@@ -49,25 +44,22 @@ object GameConverters {
    * @param isResponseRequired Whether the response variable is expected to be found in the row. For example, if GAME
    *   data set to be parsed is used for model training, then the response variable is expected to be found in row. If
    *   the GAME data set is used for scoring, then we don't expect to find response.
+   * @param inputColumnsNames User-supplied input column names to read the input data
    * @return The [[RDD]] of type [[GameDatum]]
    */
   protected[ml] def getGameDataSetFromDataFrame(
-    data: DataFrame,
-    featureShards: Set[String],
-    idTypeSet: Set[String],
-    isResponseRequired: Boolean): RDD[(Long, GameDatum)] = {
+      data: DataFrame,
+      featureShards: Set[String],
+      idTypeSet: Set[String],
+      isResponseRequired: Boolean,
+      inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(Long, GameDatum)] = {
 
-    // Add unique id
     val recordsWithUniqueId = data.withColumn(UNIQUE_ID_COLUMN_NAME, monotonicallyIncreasingId)
+    val inputColumnsNamesBroadcast = data.sqlContext.sparkContext.broadcast(inputColumnsNames)
 
     recordsWithUniqueId.rdd.map { row: Row =>
-      val id = row.getAs[Long](UNIQUE_ID_COLUMN_NAME)
-      (id, getGameDatumFromRow(
-        row,
-        featureShards,
-        idTypeSet,
-        isResponseRequired
-      ))
+      (row.getAs[Long](UNIQUE_ID_COLUMN_NAME),
+        getGameDatumFromRow(row, featureShards, idTypeSet, isResponseRequired, inputColumnsNamesBroadcast))
     }
   }
 
@@ -80,10 +72,11 @@ object GameConverters {
    */
   protected[data] def getIdTypeToValueMapFromRow(
       row: Row,
-      idTypeSet: Set[String]): Map[String, String] = {
+      idTypeSet: Set[String],
+      columns: InputColumnsNames = InputColumnsNames()): Map[String, String] = {
 
-    val metaMap = if (row.schema.fieldNames.contains(FieldNames.META_DATA_MAP)) {
-      Some(row.getAs[Map[String, String]](FieldNames.META_DATA_MAP))
+    val metaMap = if (row.schema.fieldNames.contains(columns(InputColumnsNames.META_DATA_MAP))) {
+      Some(row.getAs[Map[String, String]](columns(InputColumnsNames.META_DATA_MAP)))
     } else {
       None
     }
@@ -110,6 +103,7 @@ object GameConverters {
    * Build a [[GameDatum]] from a DataFrame row.
    *
    * @param row The source DataFrame row, must contain spark.ml SparseVector instances
+   * @param columnsBroadcast The names of the columns to look for in the input rows, in order
    * @param featureShards A set of feature shard ids
    * @param idTypeSet A set of id types expected to be found in the row
    * @param isResponseRequired Whether the response variable is expected to be found in the row. For example, if GAME
@@ -121,7 +115,10 @@ object GameConverters {
       row: Row,
       featureShards: Set[String],
       idTypeSet: Set[String],
-      isResponseRequired: Boolean): GameDatum = {
+      isResponseRequired: Boolean,
+      columnsBroadcast: Broadcast[InputColumnsNames]): GameDatum = {
+
+    val columns = columnsBroadcast.value
 
     val featureShardContainer = featureShards.map { shardId =>
       val features = row.getAs[SparseVector](shardId)
@@ -129,34 +126,35 @@ object GameConverters {
     }.toMap
 
     val response = if (isResponseRequired) {
-      row.getAs[Number](FieldNames.RESPONSE).doubleValue
+      row.getAs[Number](columns(InputColumnsNames.RESPONSE)).doubleValue
     } else {
-      if (row.schema.fieldNames.contains(FieldNames.RESPONSE)) {
-        row.getAs[Number](FieldNames.RESPONSE).doubleValue
+      if (row.schema.fieldNames.contains(columns(InputColumnsNames.RESPONSE))) {
+        row.getAs[Number](columns(InputColumnsNames.RESPONSE)).doubleValue
       } else {
         Double.NaN
       }
     }
 
-    val offset = if (row.schema.fieldNames.contains(FieldNames.OFFSET)) {
-      Option(row.getAs[Number](FieldNames.OFFSET)).map(_.doubleValue)
+    val offset = if (row.schema.fieldNames.contains(columns(InputColumnsNames.OFFSET))) {
+      Option(row.getAs[Number](columns(InputColumnsNames.OFFSET))).map(_.doubleValue)
     } else {
       None
     }
 
-    val weight = if (row.schema.fieldNames.contains(FieldNames.WEIGHT)) {
-      Option(row.getAs[Number](FieldNames.WEIGHT)).map(_.doubleValue)
+    val weight = if (row.schema.fieldNames.contains(columns(InputColumnsNames.WEIGHT))) {
+      Option(row.getAs[Number](columns(InputColumnsNames.WEIGHT))).map(_.doubleValue)
     } else {
       None
     }
 
     val idTypeToValueMap =
-      //TODO: find a better way to handle the field "uid", which is used in ScoringResult
-      if (row.schema.fieldNames.contains(FieldNames.UID) && row.getAs[Any](FieldNames.UID) != null) {
-        getIdTypeToValueMapFromRow(row, idTypeSet) +
-            (FieldNames.UID -> row.getAs[Any](FieldNames.UID).toString)
+      //TODO find a better way to handle the field "uid", which is used in ScoringResult
+      if (row.schema.fieldNames.contains(columns(InputColumnsNames.UID))
+          && row.getAs[Any](columns(InputColumnsNames.UID)) != null) {
+        getIdTypeToValueMapFromRow(row, idTypeSet, columns) +
+            (InputColumnsNames.UID.toString -> row.getAs[Any](columns(InputColumnsNames.UID)).toString)
       } else {
-        getIdTypeToValueMapFromRow(row, idTypeSet)
+        getIdTypeToValueMapFromRow(row, idTypeSet, columns)
       }
 
     new GameDatum(

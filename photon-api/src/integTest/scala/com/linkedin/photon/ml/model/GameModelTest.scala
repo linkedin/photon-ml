@@ -18,7 +18,6 @@ import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
@@ -164,20 +163,13 @@ class GameModelTest extends SparkTestUtils {
     val REModel1 = getRandomEffectModel(sc, 1)
     val REModel2 = getRandomEffectModel(sc, 1)
 
-    val gameModel1111 =
-      new GameModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel1))
-    val gameModel1112 =
-      new GameModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel2))
-    val gameModel1212 =
-      new GameModel(Map(FEModelName1 -> FEModel2, REModelName1 -> REModel2))
-    val gameModel1122 =
-      new GameModel(Map(FEModelName1 -> FEModel1, REModelName2 -> REModel2))
-    val gameModel2121 =
-      new GameModel(Map(FEModelName2 -> FEModel1, REModelName2 -> REModel1))
-    val gameModel2211 =
-      new GameModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel1))
-    val gameModel2212 =
-      new GameModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel2))
+    val gameModel1111 = GameModel((FEModelName1, FEModel1), (REModelName1, REModel1))
+    val gameModel1112 = GameModel((FEModelName1, FEModel1), (REModelName1, REModel2))
+    val gameModel1212 = GameModel((FEModelName1, FEModel2), (REModelName1, REModel2))
+    val gameModel1122 = GameModel((FEModelName1, FEModel1), (REModelName2, REModel2))
+    val gameModel2121 = GameModel((FEModelName2, FEModel1), (REModelName2, REModel1))
+    val gameModel2211 = GameModel((FEModelName2, FEModel2), (REModelName1, REModel1))
+    val gameModel2212 = GameModel((FEModelName2, FEModel2), (REModelName1, REModel2))
 
     // Same name and model
     assertEquals(gameModel1111, gameModel1111)
@@ -196,7 +188,7 @@ class GameModelTest extends SparkTestUtils {
     // Features: we have two feature spaces, one for the fix model, and one for the random model
     // Each model has its own, separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
-    val numFeaturesPerModel = Map("fixedFeatures" -> 10, "RE1Features" -> 10, "RE2Features" -> 10)
+    val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))
 
     // Fixed effect model
     val glm = new LogisticRegressionModel(Coefficients(numFeaturesPerModel("fixedFeatures"))(1,2,5)(11,21,51))
@@ -234,7 +226,7 @@ class GameModelTest extends SparkTestUtils {
     // Features: we have two feature spaces, one for the fix model, and one for the random model
     // Each model has its own, separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
-    val numFeaturesPerModel = Map("fixedFeatures" -> 10, "RE1Features" -> 10, "RE2Features" -> 10)
+    val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))
 
     // Fixed effect model
     val glm = new LogisticRegressionModel(Coefficients(numFeaturesPerModel("fixedFeatures"))(1,2,5)(11,21,51))

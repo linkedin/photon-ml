@@ -19,55 +19,66 @@ import org.apache.spark.sql.{Row, SQLContext}
 import org.testng.Assert._
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
  * Unit tests for GameConverters.
  */
 class GameConvertersTest extends SparkTestUtils {
+
   import GameConvertersTest._
 
   private val uid = "foo"
 
   @Test
   def testGetGameDatumFromRowWithUID(): Unit = sparkTest("testGetGameDatumFromRowWithUID") {
+
     val sqlContext = new SQLContext(sc)
-    val schema = StructType(Seq(StructField(GameConverters.FieldNames.UID, StringType)))
+    val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+    val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
-    val gameDatumWithoutResponse = GameConverters.getGameDatumFromRow(
-      row = dataFrame.head,
-      featureShards = Set(),
-      idTypeSet = Set(),
-      isResponseRequired = false)
+    val gameDatumWithoutResponse =
+      GameConverters
+        .getGameDatumFromRow(
+          row = dataFrame.head,
+          featureShards = Set(),
+          idTypeSet = Set(),
+          isResponseRequired = false,
+          inputColumnsNamesBroadcast)
 
-    assertEquals(gameDatumWithoutResponse.idTypeToValueMap.get(GameConverters.FieldNames.UID), Some(uid))
+    assertEquals(gameDatumWithoutResponse.idTypeToValueMap.get(InputColumnsNames.UID.toString), Some(uid))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetGameDatumFromRowWithNoResponse(): Unit =
-      sparkTest("testGetGameDatumFromGenericRecordWithNoResponse") {
+    sparkTest("testGetGameDatumFromGenericRecordWithNoResponse") {
 
-    val sqlContext = new SQLContext(sc)
-    val schema = StructType(Seq(StructField(GameConverters.FieldNames.UID, StringType)))
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+      val sqlContext = new SQLContext(sc)
+      val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
+      val dataFrame = sqlContext.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+      val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
-    GameConverters.getGameDatumFromRow(
-      row = dataFrame.head,
-      featureShards = Set(),
-      idTypeSet = Set(),
-      isResponseRequired = true)
-  }
+      GameConverters
+        .getGameDatumFromRow(
+          row = dataFrame.head,
+          featureShards = Set(),
+          idTypeSet = Set(),
+          isResponseRequired = true,
+          inputColumnsNamesBroadcast)
+    }
 
   @Test
   def testMakeRandomEffectTypeMapWithIdField(): Unit = sparkTest("testMakeRandomEffectTypeMapWithIdField") {
+
     val userIdStr = "11A"
     val jobIdVal = 112L
     val jobIdValStr = "112"
 
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
-      StructField(GameConverters.FieldNames.UID, StringType),
+      StructField(InputColumnsNames.UID.toString, StringType),
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType)))
 
@@ -88,13 +99,14 @@ class GameConvertersTest extends SparkTestUtils {
 
   @Test
   def testMakeRandomEffectTypeMapWithMetadataMap(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMetadataMap") {
+
     val userIdStr = "11A"
     val jobIdValStr = "112"
 
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
-      StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
+      StructField(InputColumnsNames.UID.toString, StringType),
+      StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr)))
@@ -113,6 +125,7 @@ class GameConvertersTest extends SparkTestUtils {
 
   @Test
   def testMakeRandomEffectTypeMapWithBothFields(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMetadataMap") {
+
     // Expecting 1st layer fields override the metadataMap fields
     val userId1Str = "11B"
     val userId2Str = "11A"
@@ -122,10 +135,10 @@ class GameConvertersTest extends SparkTestUtils {
 
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
-      StructField(GameConverters.FieldNames.UID, StringType),
+      StructField(InputColumnsNames.UID.toString, StringType),
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
+      StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, userId1Str, jobId1Val, Map(USER_ID_NAME -> userId2Str, JOB_ID_NAME -> jobId2Str)))
@@ -145,11 +158,12 @@ class GameConvertersTest extends SparkTestUtils {
 
   @Test
   def testNoRandomEffectTypeAtAll(): Unit = sparkTest("testNoRandomEffectTypeAtAll") {
+
     // Excepting the method to still proceed but return an empty map
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
-      StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
+      StructField(InputColumnsNames.UID.toString, StringType),
+      StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
@@ -161,11 +175,12 @@ class GameConvertersTest extends SparkTestUtils {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testMakeRandomEffectTypeMapWithMissingField(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMissingField") {
+
     // Expecting errors to be raised since nothing is present
     val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
-      StructField(GameConverters.FieldNames.UID, StringType),
-      StructField(GameConverters.FieldNames.META_DATA_MAP, MapType(StringType, StringType, valueContainsNull = false))))
+      StructField(InputColumnsNames.UID.toString, StringType),
+      StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sqlContext.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))

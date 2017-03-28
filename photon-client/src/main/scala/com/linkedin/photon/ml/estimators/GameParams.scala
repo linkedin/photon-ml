@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.estimators
 
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
@@ -26,6 +25,7 @@ import com.linkedin.photon.ml.io.deprecated.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
+import com.linkedin.photon.ml.{InputColumnsNames, TaskType}
 
 /**
  * A bean class for GAME training parameters to replace the original case class for input parameters.
@@ -172,9 +172,15 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
   var applicationName: String = "Game-Full-Model-Training"
 
   /**
-   * Turn on additional tests on the training and validation data
+   * Turn on additional tests on the training and validation data. Off by default, because it requires iterating
+   * over the whole training/validation data set, which can be time consuming.
    */
   var checkData: Boolean = false
+
+  /**
+   * Names of the input columns to use when reading data
+   */
+  var inputColumnsNames = InputColumnsNames()
 
   override def toString: String =
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
@@ -209,7 +215,8 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions\n" +
       s"normalizationType: $normalizationType\n" +
       s"summarizationOutputDirOpt: $summarizationOutputDirOpt\n" +
-      s"checkData: $checkData"
+      s"checkData: $checkData\n" +
+      s"inputColumnsNames: $inputColumnsNames"
 }
 
 object GameParams {
@@ -250,6 +257,9 @@ object GameParams {
   val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
   val CHECK_DATA = "check-data"
+  val INPUT_COLUMNS_NAMES = "input-column-names"
+
+  val defaultParams = new GameParams()
 
   /**
    * Parse parameters for GAME from the arguments on the command line.
@@ -259,9 +269,7 @@ object GameParams {
    */
   protected[ml] def parseFromCommandLine(args: Array[String]): GameParams = {
 
-    val defaultParams = new GameParams()
     val params = new GameParams()
-
     val parser = new OptionParser[Unit]("Photon-Game") {
 
       opt[String](TRAIN_INPUT_DIRS)
@@ -493,6 +501,17 @@ object GameParams {
         .text(s"Whether to check the data or not. " +
           s"default: ${defaultParams.checkData}")
         .foreach(x => params.checkData = x)
+
+      opt[String](INPUT_COLUMNS_NAMES)
+        .text(s"A map of the input columns names, in format: response:label|offset:offset|uid:uid ... ")
+        .foreach { x =>
+          x.split("\\|").foreach { line =>
+            line.split(":").map(_.trim) match {
+              case Array(key, value) => params.inputColumnsNames.updated(InputColumnsNames.withName(key), value)
+              case other => s"Whoops, couldn't interpret: '$other'"
+            }
+          }
+        }
 
       help("help").text("prints usage text.")
 
