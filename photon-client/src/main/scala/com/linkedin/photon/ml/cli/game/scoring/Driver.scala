@@ -115,7 +115,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     // Load the model from HDFS, ignoring the feature index loader
     val (gameModel, _) =
       ModelProcessingUtils.loadGameModelFromHDFS(Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
-    gameModel.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    gameModel.persist(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
     if (logDatasetAndModelStats) {
       logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
@@ -123,7 +123,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
 
     val scores = gameModel
       .score(gameDataSet)
-      .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persistRDD(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
       .materialize()
 
     gameDataSet.unpersist()
@@ -146,7 +146,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
         Some(scoredGameDatum.weight),
         scoredGameDatum.idTypeToValueMap)
     }
-    scoredItems.setName("Scored items").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     if (logDatasetAndModelStats) {
       val numScoredItems = scoredItems.count()
       logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")
