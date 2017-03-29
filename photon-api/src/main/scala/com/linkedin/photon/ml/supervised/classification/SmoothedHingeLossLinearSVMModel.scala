@@ -58,6 +58,8 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
     new SmoothedHingeLossLinearSVMModel(updatedCoefficients)
 
   /**
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
    *
    * @param other Some object
    * @return Whether this object can equal the other object

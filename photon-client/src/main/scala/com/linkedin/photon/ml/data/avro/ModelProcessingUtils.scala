@@ -634,12 +634,12 @@ object ModelProcessingUtils {
   /**
    * Load model metadata from JSON file.
    *
-   * TODO: load (and save) more metadata, and return an updated GAMEParams
+   * TODO: load (and save) more metadata, and return an updated GameParams
    *
    * @note For now, we just output model type.
    * @note If using the builtin Scala JSON parser, watch out, it's not thread safe!
    * @note If there is no metadata file (old models trained before the metadata were introduced),
-   *       we assume that the type of GAMEModel is a linear model (each subModel contains its own type)
+   *       we assume that the type of [[GameModel]] is a linear model (each subModel contains its own type)
    *
    * @param inputDir The HDFS directory where the metadata file is located
    * @param sc The Spark context

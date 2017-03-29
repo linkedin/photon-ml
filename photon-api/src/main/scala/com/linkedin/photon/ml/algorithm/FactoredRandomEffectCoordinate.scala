@@ -113,9 +113,7 @@ protected[ml] class FactoredRandomEffectCoordinate[
           // First update the coefficients
           val randomEffectDataSetInProjectedSpace = updatedProjectionMatrixBroadcast.projectRandomEffectDataSet(
             randomEffectDataSet)
-          val randomEffectModel = factoredRandomEffectModel
-            .updateRandomEffectModelInProjectedSpace(updatedModelsRDD)
-            .toRandomEffectModel
+          val randomEffectModel = factoredRandomEffectModel.update(updatedModelsRDD).toRandomEffectModel
           val (updatedRandomEffectModel, randomEffectOptimizationTracker) = RandomEffectCoordinate.updateModel(
             randomEffectDataSetInProjectedSpace,
             randomEffectOptimizationProblem,

@@ -22,7 +22,7 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.cli.game.GAMEDriver
+import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
 import com.linkedin.photon.ml.data.avro._
@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.util._
  * Driver for GAME full model scoring.
  */
 class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
-  extends GAMEDriver(sc, params, logger) {
+  extends GameDriver(sc, params, logger) {
 
   import params._
 
@@ -250,7 +250,7 @@ object Driver {
         s"evaluator $evaluatorType")
 
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
-    evaluator.evaluate(scores.scores)
+    evaluator.evaluate(scores.scores.mapValues(_.score))
   }
 
   /**

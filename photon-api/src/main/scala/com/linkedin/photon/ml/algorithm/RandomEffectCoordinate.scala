@@ -115,7 +115,7 @@ object RandomEffectCoordinate {
           optimizationProblem.run(trainingLabeledPoints, localModel)
       }
     val updatedRandomEffectModel = randomEffectModel
-      .updateRandomEffectModel(updatedModels)
+      .update(updatedModels)
       .setName(s"Updated random effect model")
     val optimizationTracker = if (randomEffectOptimizationProblem.isTrackingState) {
         val stateTrackers = randomEffectOptimizationProblem.optimizationProblems.map(_._2.getStatesTracker.get)

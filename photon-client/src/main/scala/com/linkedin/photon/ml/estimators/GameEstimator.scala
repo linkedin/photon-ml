@@ -87,7 +87,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         idTypeSet,
         isResponseRequired = true)
         .partitionBy(gameDataPartitioner)
-        .setName("Game training data")
+        .setName("GAME training data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     }
     gameDataSet.count()
@@ -101,8 +101,9 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     // Purge the GAME dataset, which is no longer needed in the following code
     gameDataSet.unpersist()
 
-    val validationDataAndEvaluators =
-      Timed("prepare validation evaluators") { validationData.map { data => prepareValidationEvaluators(data) } }
+    val validationDataAndEvaluators = Timed("prepare validation evaluators") {
+      validationData.map(prepareValidationEvaluators)
+    }
 
     val gameModelsMap = Timed("train") {
       train(trainingDataSet, trainingLossFunctionEvaluator, validationDataAndEvaluators, normalizationContexts)
@@ -234,7 +235,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
     val validatingLabelsAndOffsetsAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
-      .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .setName(s"Validating labels and offsets")
+      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     validatingLabelsAndOffsetsAndWeights.count()
 
     val evaluators =
@@ -256,7 +258,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         params.evaluatorTypes.map(EvaluatorFactory.buildEvaluator(_, gameDataSet))
       }
 
-    val randomScores = gameDataSet.mapValues(datum => datum.toScoredGameDatum(math.random))
+    val randomScores = gameDataSet.mapValues(_ => math.random)
     evaluators.foreach { evaluator =>
       val metric = evaluator.evaluate(randomScores)
       logger.info(s"Random guessing based baseline evaluation metric for ${evaluator.getEvaluatorName}: $metric")

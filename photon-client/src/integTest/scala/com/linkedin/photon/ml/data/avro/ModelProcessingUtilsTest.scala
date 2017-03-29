@@ -93,7 +93,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00001.avro
    *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/id-info
    *
-   * @return (GAMEModel, featureIndexLoaders, featureNames)
+   * @return ([[GameModel]], feature index loaders, feature names)
    */
   def makeGameModel(): (GameModel, Map[String, DefaultIndexMapLoader], Map[String, IndexedSeq[String]]) = {
 

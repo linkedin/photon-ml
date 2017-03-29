@@ -44,7 +44,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def failedTestRunWithNaNInGAMEData(): Unit = sparkTest("failedTestRunWithNaNInGAMEData") {
+  def failedTestRunWithNaNInGameData(): Unit = sparkTest("failedTestRunWithNaNInGameData") {
 
     val gameDatum = new GameDatum(
       response = Double.NaN,
@@ -66,7 +66,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 
   @Test
-  def testGAMEModelId(): Unit = sparkTest("testGAMEModelId") {
+  def testGameModelId(): Unit = sparkTest("testGameModelId") {
 
     val modelId = "someModelIdForTest"
     val outputDir = getTmpDir
@@ -223,7 +223,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     evaluatorTypes.foreach { evaluatorType =>
       val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
-      val expectedMetric = evaluator.evaluate(scores.scores)
+      val expectedMetric = evaluator.evaluate(scores.scores.mapValues(_.score))
       assertEquals(computedMetric, expectedMetric, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
     }
   }

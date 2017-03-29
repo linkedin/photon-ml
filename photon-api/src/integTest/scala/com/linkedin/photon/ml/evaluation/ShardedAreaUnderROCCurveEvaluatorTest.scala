@@ -79,7 +79,7 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
 
     val evaluator = getEvaluator(labels, ids)
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, ScoredGameDatum(score = score))
+      (id, score)
     }))
     assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }
@@ -92,7 +92,7 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
 
     val evaluator = getEvaluator(labels, ids)
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, ScoredGameDatum(score = score))
+      (id, score)
     }))
     assertTrue(actualResult.isNaN)
   }
@@ -105,7 +105,7 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
 
     val evaluator = getEvaluator(labels, ids)
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, ScoredGameDatum(score = score))
+      (id, score)
     }))
     assertTrue(actualResult.isNaN)
   }

@@ -18,7 +18,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
+import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
@@ -34,13 +34,22 @@ protected[ml] trait DatumScoringModel extends Summarizable {
   def modelType: TaskType
 
   /**
-   * Compute the score for the GAME data set.
+   * Compute the scores for the GAME data set.
    *
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
-   *
-   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
-   * @return The score.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
    */
   def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores
+
+  /**
+   * Compute the scores for the GAME data set, and store the scores only.
+   *
+   * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
+   */
+  def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores
 }

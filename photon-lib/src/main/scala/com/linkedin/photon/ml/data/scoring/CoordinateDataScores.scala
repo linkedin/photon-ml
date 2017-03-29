@@ -17,13 +17,15 @@ package com.linkedin.photon.ml.data.scoring
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 
+import com.linkedin.photon.ml.data.GameDatum
+
 /**
  * The class used to track scored data points throughout training. The score objects are scores only, with no additional
  * information.
  *
  * @param scores The scores consist of (unique ID, score) pairs as explained above.
  */
-protected[ml] class CoordinateDataScores(val scores: RDD[(Long, Double)])
+protected[ml] class CoordinateDataScores(override val scores: RDD[(Long, Double)])
   extends DataScores[Double, CoordinateDataScores](scores) {
 
   /**
@@ -33,16 +35,12 @@ protected[ml] class CoordinateDataScores(val scores: RDD[(Long, Double)])
    * @param that The [[CoordinateDataScores]] instance to merge with this instance
    * @return A merged [[CoordinateDataScores]]
    */
-  private def fullOuterJoin(op: (Double, Double) => Double, that: CoordinateDataScores): CoordinateDataScores =
+  private def joinAndApply(op: (Double, Double) => Double, that: CoordinateDataScores): CoordinateDataScores =
     new CoordinateDataScores(
       this
         .scores
-        .cogroup(that.scores)
-        .mapValues {
-          case (Seq(sd1), Seq(sd2)) => op(sd1, sd2)
-          case (Seq(), Seq(sd2)) => op(0.0, sd2)
-          case (Seq(sd1), Seq()) => op(sd1, 0.0)
-        })
+        .fullOuterJoin(that.scores)
+        .mapValues { case (thisScore, thatScore) => op(thisScore.getOrElse(0.0), thatScore.getOrElse(0.0)) })
 
   /**
    * The addition operation for [[CoordinateDataScores]].
@@ -51,7 +49,7 @@ protected[ml] class CoordinateDataScores(val scores: RDD[(Long, Double)])
    * @param that The [[CoordinateDataScores]] instance to add to this instance
    * @return A new [[CoordinateDataScores]] instance encapsulating the accumulated values
    */
-  override def +(that: CoordinateDataScores): CoordinateDataScores = fullOuterJoin((a, b) => a + b, that)
+  override def +(that: CoordinateDataScores): CoordinateDataScores = joinAndApply((a, b) => a + b, that)
 
   /**
    * The minus operation for [[CoordinateDataScores]].
@@ -60,26 +58,34 @@ protected[ml] class CoordinateDataScores(val scores: RDD[(Long, Double)])
    * @param that The [[CoordinateDataScores]] instance to subtract from this instance
    * @return A new [[CoordinateDataScores]] instance encapsulating the subtracted values
    */
-  override def -(that: CoordinateDataScores): CoordinateDataScores = fullOuterJoin((a, b) => a - b, that)
+  override def -(that: CoordinateDataScores): CoordinateDataScores = joinAndApply((a, b) => a - b, that)
 
   /**
-   * Compare two [[CoordinateDataScores]]s objects.
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
    *
-   * @param that Some other object
-   * @return True if the both [[CoordinateDataScores]] objects have identical scores for each unique ID, false otherwise
+   * @param other Some other object
+   * @return Whether this object can equal the other object
    */
-  override def equals(that: Any): Boolean = {
-    that match {
-      case other: CoordinateDataScores =>
-        this.scores
-          .fullOuterJoin(other.scores)
-          .mapPartitions(iterator =>
-            Iterator.single(iterator.forall { case (_, (thisScoreOpt1, thisScoreOpt2)) =>
-              thisScoreOpt1.isDefined && thisScoreOpt2.isDefined && thisScoreOpt1.get.equals(thisScoreOpt2.get)
-            })
-          )
-          .filter(!_).count() == 0
-      case _ => false
-    }
-  }
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[CoordinateDataScores]
+}
+
+object CoordinateDataScores {
+
+  /**
+   * A factory method to create a [[CoordinateDataScores]] object from an [[RDD]] of scores.
+   *
+   * @param scores The scores, consisting of (unique ID, score) pairs.
+   * @return A new [[CoordinateDataScores]] object
+   */
+  def apply(scores: RDD[(Long, Double)]): CoordinateDataScores = new CoordinateDataScores(scores)
+
+  /**
+   * Convert a [[GameDatum]] and a raw score into a score object. For [[CoordinateDataScores]] this is the raw score.
+   *
+   * @param datum The datum which was scored
+   * @param score The raw score for the datum
+   * @return The score object
+   */
+  def toScore(datum: GameDatum, score: Double): Double = score
 }

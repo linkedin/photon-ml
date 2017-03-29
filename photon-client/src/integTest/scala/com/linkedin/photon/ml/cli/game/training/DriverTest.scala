@@ -26,10 +26,11 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.avro.model.ModelProcessingUtils
 import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.cli.game.GameDriver
+import com.linkedin.photon.ml.data.GameConverters
 import com.linkedin.photon.ml.data.avro._
-import com.linkedin.photon.ml.estimators.GameParams
+import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
@@ -68,9 +69,9 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   /**
-   * Intercepts are optional in GAMEEstimator, but GAMEDriver will setup an intercept by default if
-   * none is specified in GAMEParams.featureShardIdToInterceptMap.
-   * This happens in GAMEDriver.prepareFeatureMapsDefault, and there only.
+   * Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default if
+   * none is specified in [[GameParams.featureShardIdToInterceptMap]].
+   * This happens in [[GameDriver]].prepareFeatureMapsDefault, and there only.
    */
   @Test
   def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
@@ -95,7 +96,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   /**
-   * Since intercept terms are ON by default, you need to explicitly turn them off in GAMEParams if you
+   * Since intercept terms are ON by default, you need to explicitly turn them off in [[GameParams]] if you
    * don't want them.
    */
   @Test
@@ -120,7 +121,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   /**
    * This test should fail: normalization without intercept is not allowed.
    *
-   * TODO this is only a setup failure, it should be detected in GAMEParams, rather than in NormalizationContext.
+   * TODO this is only a setup failure, it should be detected in GameParams, rather than in NormalizationContext.
    */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testFixedEffectsWithoutInterceptWithNormalization(): Unit =
@@ -521,7 +522,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
       modelPath.toString,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
       Some(indexMapLoaders))
-    val scores = gameModel.score(gameDataSet).scores
+    val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)
 
     Seq(new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores))
   }

@@ -33,25 +33,7 @@ protected[ml] trait Evaluator {
    * @param scores The scores to evaluate
    * @return An evaluation metric value
    */
-  protected[ml] def evaluate(scores: RDD[(Long, ScoredGameDatum)]): Double = {
-    // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
-    val defaultScore = this.defaultScore
-    val scoreAndLabelAndWeights = scores
-      .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoredDatumOption, (label, offset, weight)) =>
-        val score = scoredDatumOption.map(_.score).getOrElse(defaultScore)
-        (score + offset, label, weight)
-      }
-    evaluateWithScoresAndLabelsAndWeights(scoreAndLabelAndWeights)
-  }
-
-  /**
-   * Evaluate the scores of the model.
-   *
-   * @param scores The scores to evaluate
-   * @return An evaluation metric value
-   */
-  protected[ml] def evaluateTraining(scores: RDD[(Long, Double)]): Double = {
+  protected[ml] def evaluate(scores: RDD[(Long, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
     val scoreAndLabelAndWeights = scores

@@ -152,7 +152,6 @@ object FixedEffectCoordinate {
    *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
    *       through non-linear link function in logistic regression!).
-   *
    * @param fixedEffectDataSet The dataset to score
    * @param fixedEffectModel The model to score the dataset with
    * @return The computed scores

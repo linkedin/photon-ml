@@ -40,69 +40,16 @@ protected[ml] class RandomEffectModelInProjectedSpace(
     featureShardId) {
 
   /**
-   *
-   * @param storageLevel The storage level
-   * @return This object with all its RDDs' storage level set
-   */
-  override def persistRDD(storageLevel: StorageLevel): this.type = {
-    if (!modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.persist(storageLevel)
-    this
-  }
-
-  /**
-   *
-   * @return This object with all its RDDs unpersisted
-   */
-  override def unpersistRDD(): this.type = {
-    if (modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.unpersist()
-    this
-  }
-
-  /**
-   *
-   * @param name The parent name for the model RDD in this class
-   * @return This object with all its RDDs' name assigned
-   */
-  override def setName(name: String): this.type = {
-    modelsInProjectedSpaceRDD.setName(name)
-    this
-  }
-
-  /**
-   *
-   * @return This object with all its RDDs materialized
-   */
-  override def materialize(): this.type = {
-    modelsInProjectedSpaceRDD.count()
-    this
-  }
-
-  /**
-   * Summarize this model in text format.
-   *
-   * @return A model summary in text format.
-   */
-  override def toSummaryString: String = {
-    val stringBuilder = new StringBuilder(s"Random effect model with projector with " +
-      s"randomEffectType $randomEffectType, featureShardId $featureShardId summary:")
-    stringBuilder.append("\ncoefficientsRDDInProjectedSpace:")
-    stringBuilder.append(s"\nLength: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.means.length).stats()}")
-    stringBuilder.append(s"\nMean: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.meansL2Norm).stats()}")
-    if (modelsInProjectedSpaceRDD.first()._2.coefficients.variancesOption.isDefined) {
-      stringBuilder.append(
-        s"\nVar: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
-    }
-    stringBuilder.toString()
-  }
-
-  /**
    * Convert the projected space model into a [[RandomEffectModel]].
    *
    * @return A [[RandomEffectModel]]
    */
   def toRandomEffectModel: RandomEffectModel = {
+
     val currType = this.modelType
+
     new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectType, featureShardId) {
+
       // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
       override lazy val modelType: TaskType = currType
     }
@@ -115,16 +62,85 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    *                                         effect ID
    * @return The updated random effect model in projected space
    */
-  def updateRandomEffectModelInProjectedSpace(
-      updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
+  override def update(
+    updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
+
     val currType = this.modelType
+
     new RandomEffectModelInProjectedSpace(
-      updatedModelsRDDInProjectedSpace,
-      randomEffectProjector,
-      randomEffectType,
-      featureShardId) {
+        updatedModelsRDDInProjectedSpace,
+        randomEffectProjector,
+        randomEffectType,
+        featureShardId) {
+
       // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
       override lazy val modelType: TaskType = currType
     }
+  }
+
+  /**
+   * Summarize this model in text format.
+   *
+   * @return A model summary in text format.
+   */
+  override def toSummaryString: String = {
+
+    val stringBuilder = new StringBuilder(s"Random effect model with projector with " +
+      s"randomEffectType $randomEffectType, featureShardId $featureShardId summary:")
+    stringBuilder.append("\ncoefficientsRDDInProjectedSpace:")
+    stringBuilder.append(s"\nLength: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.means.length).stats()}")
+    stringBuilder.append(s"\nMean: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.meansL2Norm).stats()}")
+    if (modelsInProjectedSpaceRDD.first()._2.coefficients.variancesOption.isDefined) {
+      stringBuilder.append(
+        s"\nVar: ${modelsInProjectedSpaceRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
+    }
+
+    stringBuilder.toString()
+  }
+
+  /**
+   *
+   * @param storageLevel The storage level
+   * @return This object with all its RDDs' storage level set
+   */
+  override def persistRDD(storageLevel: StorageLevel): RandomEffectModelInProjectedSpace = {
+
+    if (!modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.persist(storageLevel)
+
+    this
+  }
+
+  /**
+   *
+   * @return This object with all its RDDs unpersisted
+   */
+  override def unpersistRDD(): RandomEffectModelInProjectedSpace = {
+
+    if (modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.unpersist()
+
+    this
+  }
+
+  /**
+   *
+   * @param name The parent name for the model RDD in this class
+   * @return This object with all its RDDs' name assigned
+   */
+  override def setName(name: String): RandomEffectModelInProjectedSpace = {
+
+    modelsInProjectedSpaceRDD.setName(name)
+
+    this
+  }
+
+  /**
+   *
+   * @return This object with all its RDDs materialized
+   */
+  override def materialize(): RandomEffectModelInProjectedSpace = {
+
+    modelsInProjectedSpaceRDD.count()
+
+    this
   }
 }

@@ -18,7 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
+import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -44,22 +44,40 @@ protected[ml] class FixedEffectModel(
   def model: GeneralizedLinearModel = modelBroadcast.value
 
   /**
-   * Clean up coefficient broadcast.
+   * Create an updated model with the coefficients.
+   *
+   * @param updatedModelBroadcast New coefficients
+   * @return Updated model
    */
-  override def unpersistBroadcast(): BroadcastLike = {
-    modelBroadcast.unpersist()
-    this
-  }
+  def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
+    new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
   /**
-   * Compute the score for the dataset.
+   * Compute the scores for the dataset.
    *
-   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
-   * @return The score.
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
-    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
+    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, ModelDataScores.toScore, ModelDataScores.apply)
+
+  /**
+   * Compute the scores for the GAME data set, and store the scores only.
+   *
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
+   */
+  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+    FixedEffectModel.score(
+      dataPoints,
+      modelBroadcast,
+      featureShardId,
+      CoordinateDataScores.toScore,
+      CoordinateDataScores.apply)
 
   /**
    * Build a summary string for the coefficients.
@@ -70,13 +88,12 @@ protected[ml] class FixedEffectModel(
     s"Fixed effect model with featureShardId $featureShardId summary:\n${model.toSummaryString}"
 
   /**
-   * Create an updated model with the coefficients.
-   *
-   * @param updatedModelBroadcast New coefficients
-   * @return Updated model
+   * Clean up coefficient broadcast.
    */
-  def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
-    new FixedEffectModel(updatedModelBroadcast, featureShardId)
+  override def unpersistBroadcast(): BroadcastLike = {
+    modelBroadcast.unpersist()
+    this
+  }
 
   /**
    * Compares two [[FixedEffectModel]] objects.
@@ -105,21 +122,24 @@ protected[ml] class FixedEffectModel(
 object FixedEffectModel {
 
   /**
-   * Compute the scores for the dataset
-   *
-   * TODO: Do we really need this method to be static?
+   * Compute the scores for the dataset.
    *
    * @param dataPoints The dataset to score
    * @param modelBroadcast The model to use for scoring
    * @param featureShardId The feature shard id
-   * @return The score
+   * @return The scores
    */
-  private def score(
+  private def score[T, V](
       dataPoints: RDD[(Long, GameDatum)],
       modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: String): ModelDataScores =
-    new ModelDataScores(
-      dataPoints.mapValues { gameDatum =>
-        gameDatum.toScoredGameDatum(modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId)))
-      })
+      featureShardId: String,
+      toScore: (GameDatum, Double) => T,
+      toResult: (RDD[(Long, T)]) => V): V = {
+
+    val scores = dataPoints.mapValues { gameDatum =>
+      toScore(gameDatum, modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId)))
+    }
+
+    toResult(scores)
+  }
 }

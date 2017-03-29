@@ -17,13 +17,15 @@ package com.linkedin.photon.ml.data.scoring
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 
+import com.linkedin.photon.ml.data.GameDatum
+
 /**
  * The class used to track scored data points throughout scoring and validation. The score objects are
  * [[ScoredGameDatum]], full data points with score information.
  *
  * @param scores Data point scores, as described above
  */
-protected[ml] class ModelDataScores(val scores: RDD[(Long, ScoredGameDatum)])
+protected[ml] class ModelDataScores(override val scores: RDD[(Long, ScoredGameDatum)])
   extends DataScores[ScoredGameDatum, ModelDataScores](scores) {
 
   /**
@@ -33,7 +35,7 @@ protected[ml] class ModelDataScores(val scores: RDD[(Long, ScoredGameDatum)])
    * @param that The [[ModelDataScores]] instance to merge with this instance
    * @return A merged [[ModelDataScores]]
    */
-  private def fullOuterJoin(
+  private def joinAndApply(
       op: (ScoredGameDatum, ScoredGameDatum) => ScoredGameDatum,
       that: ModelDataScores): ModelDataScores =
     new ModelDataScores(
@@ -54,7 +56,7 @@ protected[ml] class ModelDataScores(val scores: RDD[(Long, ScoredGameDatum)])
    * @return A new [[ModelDataScores]] instance encapsulating the accumulated values
    */
   override def +(that: ModelDataScores): ModelDataScores =
-    fullOuterJoin((a, b) => a.copy(score = a.score + b.score), that)
+    joinAndApply((a, b) => a.copy(score = a.score + b.score), that)
 
   /**
    * The minus operation for [[ModelDataScores]].
@@ -64,27 +66,34 @@ protected[ml] class ModelDataScores(val scores: RDD[(Long, ScoredGameDatum)])
    * @return A new [[ModelDataScores]] instance encapsulating the subtracted values
    */
   override def -(that: ModelDataScores): ModelDataScores =
-    fullOuterJoin((a, b) => a.copy(score = a.score - b.score), that)
+    joinAndApply((a, b) => a.copy(score = a.score - b.score), that)
 
   /**
-   * Compare two [[ModelDataScores]]s objects.
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
    *
-   * @param that Some other object
-   * @return True if the both [[ModelDataScores]] objects have identical [[ScoredGameDatum]] for each unique ID, false
-   *         otherwise
+   * @param other Some other object
+   * @return Whether this object can equal the other object
    */
-  override def equals(that: Any): Boolean = {
-    that match {
-      case other: ModelDataScores =>
-        this.scores
-          .fullOuterJoin(other.scores)
-          .mapPartitions(iterator =>
-            Iterator.single(iterator.forall { case (_, (thisScoreOpt1, thisScoreOpt2)) =>
-              thisScoreOpt1.isDefined && thisScoreOpt2.isDefined && thisScoreOpt1.get.equals(thisScoreOpt2.get)
-            })
-          )
-          .filter(!_).count() == 0
-      case _ => false
-    }
-  }
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[ModelDataScores]
+}
+
+object ModelDataScores {
+
+  /**
+   * A factory method to create a [[ModelDataScores]] object from an [[RDD]] of scores.
+   *
+   * @param scores The scores, consisting of (unique ID, scored datum) pairs.
+   * @return A new [[ModelDataScores]] object
+   */
+  def apply(scores: RDD[(Long, ScoredGameDatum)]): ModelDataScores = new ModelDataScores(scores)
+
+  /**
+   * Convert a [[GameDatum]] and a raw score into a score object. For [[CoordinateDataScores]] this is the raw score.
+   *
+   * @param datum The datum which was scored
+   * @param score The raw score for the datum
+   * @return The score object
+   */
+  def toScore(datum: GameDatum, score: Double): ScoredGameDatum = datum.toScoredGameDatum(score)
 }

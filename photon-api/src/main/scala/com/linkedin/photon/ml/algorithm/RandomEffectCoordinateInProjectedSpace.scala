@@ -91,8 +91,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNo
         val randomEffectModel = randomEffectModelWithProjector.toRandomEffectModel
         val (updatedModel, optimizationTracker) = super.updateModel(randomEffectModel)
         val updatedModelsRDD = updatedModel.asInstanceOf[RandomEffectModel].modelsRDD
-        val updatedRandomEffectModelWithProjector = randomEffectModelWithProjector
-          .updateRandomEffectModelInProjectedSpace(updatedModelsRDD)
+        val updatedRandomEffectModelWithProjector = randomEffectModelWithProjector.update(updatedModelsRDD)
 
         (updatedRandomEffectModelWithProjector, optimizationTracker)
 

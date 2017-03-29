@@ -23,6 +23,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
@@ -37,7 +38,7 @@ import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, TaskType}
 
 /**
- * Integration tests for GAMEEstimator.
+ * Integration tests for [[GameEstimator]].
  *
  * The test data set here is a subset of the Yahoo! music data set available on the internet.
  */
@@ -46,16 +47,14 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   import GameEstimatorTest._
 
   /**
-   * A very simple test that fits a toy data set using only the GAMEEstimator (not the full Driver).
-   * This is useful to understand the minimum setting in which a GAMEEstimator will function properly,
+   * A very simple test that fits a toy data set using only the [[GameEstimator]] (not the full Driver).
+   * This is useful to understand the minimum setting in which a [[GameEstimator]] will function properly,
    * and to verify the algorithms manually.
    *
-   * @note
-   *   Intercepts are optional in GAMEEstimator, but GAMEDriver will setup an intercept by default if
-   *   none is specified in GAMEParams.featureShardIdToInterceptMap.
-   *   This happens in GAMEDriver.prepareFeatureMapsDefault, and there only.
-   *   Here, we have to setup an intercept manually, otherwise GAMEEstimator learns only a dependence on the
-   *   features.
+   * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default if none
+   *       is specified in [[GameParams.featureShardIdToInterceptMap]]. This happens in
+   *       [[GameDriver.prepareFeatureMapsDefault]], and there only. Here, we have to setup an intercept manually,
+   *       otherwise [[GameEstimator]] learns only a dependence on the features.
    */
   @Test(dataProvider = "trivialLabeledPoints")
   def simpleHardcodedTest(labeledPoints: Seq[LabeledPoint]): Unit = sparkTest("simpleHardcodedTest") {
@@ -83,7 +82,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
     val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
 
-    // We set args for the GAMEEstimator - only: so this is the minimum set of params required by GAMEEstimator
+    // We set args for the GameEstimator - only: so this is the minimum set of params required by GameEstimator
     // Default number of passes over the coordinates (numIterations) is 1, which is all we need if
     // we have a single fixed effect model
     val args = Map[String, String](
@@ -92,10 +91,10 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       "fixed-effect-data-configurations" -> s"$coordinateId:$featureShardId,1",
       "fixed-effect-optimization-configurations" -> s"$coordinateId:100,1e-11,0.3,1,LBFGS,l2",
       "updating-sequence" -> coordinateId,
-      "train-input-dirs" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
-      "validate-input-dirs" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
-      "output-dir" -> "", // required by GAMEParams parser, but not used in GAMEEstimator
-      "feature-name-and-term-set-path" -> "")  // required by GAMEParams parser, but not used in GAMEEstimator
+      "train-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
+      "validate-input-dirs" -> "", // required by GameParams parser, but not used in GameEstimator
+      "output-dir" -> "", // required by GameParams parser, but not used in GameEstimator
+      "feature-name-and-term-set-path" -> "")  // required by GameParams parser, but not used in GameEstimator
     val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
 
     // Compute normalization contexts based on statistics of the training data for this (unique) feature shard
@@ -106,7 +105,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
           NormalizationContext(params.normalizationType, featureShardStats, intercept)
         })
 
-    // Create GAMEEstimator and fit model
+    // Create GameEstimator and fit model
     // Returns (model, evaluation, optimizer config)
     val models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
         createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
@@ -120,9 +119,9 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   }
 
   /**
-   * Build GAMEParams for each possible value of the normalization.
+   * Build [[GameParams]] for each possible value of the normalization.
    *
-   * @return An collection of GAMEParams with one entry for each normalization type.
+   * @return An collection of [[GameParams]] with one entry for each normalization type.
    */
   @DataProvider
   def normalizationParameters(): Array[Array[GameParams]] =
@@ -193,7 +192,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
             NormalizationContext(params.normalizationType, featureShardStats, intercept)
           })
 
-      // Create GAMEEstimator and fit model
+      // Create GameEstimator and fit model
       // Returns (model, evaluation, optimizer config)
       val models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
       createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)

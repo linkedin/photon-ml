@@ -247,7 +247,7 @@ object GameParams {
    * Parse parameters for GAME from the arguments on the command line.
    *
    * @param args An array containing each command line argument
-   * @return An instance of GAMEParams or an exception if the parameters cannot be parsed correctly
+   * @return An instance of [[GameParams]] or an exception if the parameters cannot be parsed correctly
    */
   protected[ml] def parseFromCommandLine(args: Array[String]): GameParams = {
 

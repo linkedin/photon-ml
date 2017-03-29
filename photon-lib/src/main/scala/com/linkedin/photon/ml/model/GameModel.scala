@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
+import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.ClassUtils
 
 /**
@@ -31,8 +31,8 @@ import com.linkedin.photon.ml.util.ClassUtils
 class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
 
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
-  // determineModelType. However, for non-anonymous instances of GAMEModel (i.e. those not created from an existing
-  // GAMEModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
+  // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
+  // GameModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
   override lazy val modelType = GameModel.determineModelType(gameModels)
   modelType
 
@@ -86,12 +86,16 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
    * Compute score, PRIOR to going through any link function, i.e. just compute a dot product of feature values
    * and model coefficients.
    *
-   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
-   * @return The score.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores = {
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
+  }
+
+  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores = {
+    gameModels.values.map(_.scoreForCoordinateDescent(dataPoints)).reduce(_ + _)
   }
 
   /**
@@ -136,7 +140,7 @@ object GameModel {
   /**
    * Factory method to make code more readable.
    *
-   * @param subModels The sub-models that make up this GAMEModel
+   * @param subModels The sub-models that make up this [[GameModel]]
    * @return A new GameModel
    */
   def apply(subModels: (String, DatumScoringModel)*): GameModel = new GameModel(Map(subModels:_*))

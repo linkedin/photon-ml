@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration tests for GAMEModel.
+ * Integration tests for GameModel.
  */
 class GameModelTest extends SparkTestUtils {
 

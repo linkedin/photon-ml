@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.data.scoring
 
+import scala.reflect.ClassTag
+
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -27,7 +29,25 @@ import com.linkedin.photon.ml.spark.RDDLike
  *
  * @param scores Data point scores, as described above
  */
-abstract protected[ml] class DataScores[T, D <: DataScores[T, D]](scores: RDD[(Long, T)]) extends RDDLike {
+abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val scores: RDD[(Long, T)]) extends RDDLike {
+
+  /**
+   * The addition operation for [[DataScores]].
+   *
+   * @note This operation performs a full outer join.
+   * @param that The [[DataScores]] instance to add to this instance
+   * @return A new [[DataScores]] instance encapsulating the accumulated values
+   */
+  def +(that: D): D
+
+  /**
+   * The minus operation for [[DataScores]].
+   *
+   * @note This operation performs a full outer join.
+   * @param that The [[DataScores]] instance to subtract from this instance
+   * @return A new [[DataScores]] instance encapsulating the subtracted values
+   */
+  def -(that: D): D
 
   /**
    * Get the Spark context for the distributed scores.
@@ -79,20 +99,42 @@ abstract protected[ml] class DataScores[T, D <: DataScores[T, D]](scores: RDD[(L
   }
 
   /**
-   * The addition operation for [[DataScores]].
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
    *
-   * @note This operation performs a full outer join.
-   * @param that The [[DataScores]] instance to add to this instance
-   * @return A new [[DataScores]] instance encapsulating the accumulated values
+   * @param other Some other object
+   * @return Whether this object can equal the other object
    */
-  def +(that: D): D
+  def canEqual(other: Any): Boolean = other.isInstanceOf[DataScores[T, D]]
 
   /**
-   * The minus operation for [[DataScores]].
+   * Compare two [[DataScores]]s objects.
    *
-   * @note This operation performs a full outer join.
-   * @param that The [[DataScores]] instance to subtract from this instance
-   * @return A new [[DataScores]] instance encapsulating the subtracted values
+   * @param other Some other object
+   * @return True if the both [[DataScores]] objects have identical scores for each unique ID, false otherwise
    */
-  def -(that: D): D
+  override def equals(other: Any): Boolean =
+    other match {
+      case that: DataScores[T, D] =>
+        canEqual(that) &&
+          this
+            .scores
+            .fullOuterJoin(that.scores)
+            .mapPartitions(iterator =>
+              Iterator.single(iterator.forall {
+                case (_, (Some(thisScore), Some(thatScore))) => thisScore.equals(thatScore)
+                case _ => false
+              }))
+            .filter(!_)
+            .count() == 0
+
+      case _ => false
+    }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = scores.hashCode()
 }

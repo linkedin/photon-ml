@@ -41,7 +41,7 @@ object GameConverters {
   val UNIQUE_ID_COLUMN_NAME = "___photon:uniqueId___"
 
   /**
-   * Converts a DataFrame into an [[RDD]] of type [[GAMEDatum]].
+   * Converts a DataFrame into an [[RDD]] of type [[GameDatum]].
    *
    * @param data The source DataFrame
    * @param featureShards A set of feature shard ids
@@ -49,7 +49,7 @@ object GameConverters {
    * @param isResponseRequired Whether the response variable is expected to be found in the row. For example, if GAME
    *   data set to be parsed is used for model training, then the response variable is expected to be found in row. If
    *   the GAME data set is used for scoring, then we don't expect to find response.
-   * @return The [[RDD]] of type [[GAMEDatum]]
+   * @return The [[RDD]] of type [[GameDatum]]
    */
   protected[ml] def getGameDataSetFromDataFrame(
     data: DataFrame,
@@ -107,7 +107,7 @@ object GameConverters {
   }
 
   /**
-   * Build a [[GAMEDatum]] from a DataFrame row.
+   * Build a [[GameDatum]] from a DataFrame row.
    *
    * @param row The source DataFrame row, must contain spark.ml SparseVector instances
    * @param featureShards A set of feature shard ids
@@ -115,7 +115,7 @@ object GameConverters {
    * @param isResponseRequired Whether the response variable is expected to be found in the row. For example, if GAME
    *   data set to be parsed is used for model training, then the response variable is expected to be found in row. If
    *   the GAME data set is used for scoring, then we don't expect to find response.
-   * @return The [[GAMEDatum]]
+   * @return The [[GameDatum]]
    */
   protected[data] def getGameDatumFromRow(
       row: Row,

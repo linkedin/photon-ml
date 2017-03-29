@@ -22,7 +22,7 @@ import org.apache.spark.storage.StorageLevel
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
+import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
@@ -39,7 +39,7 @@ class MatrixFactorizationModel(
     val rowLatentFactors: RDD[(String, Vector[Double])],
     val colLatentFactors: RDD[(String, Vector[Double])]) extends DatumScoringModel with RDDLike {
 
-  // TODO: This will need to change to play nicely with the other DatumScoringModels as part of a single GAMEModel.
+  // TODO: This will need to change to play nicely with the other DatumScoringModels as part of a single GameModel.
   val modelType: TaskType = TaskType.NONE
 
   /**
@@ -55,14 +55,60 @@ class MatrixFactorizationModel(
     }
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Check whether two latent factors are the same.
    *
-   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
-   * @return The score.
+   * @param latentFactors1 The first latent factor
+   * @param latentFactors2 The second latent factor
+   * @return True if the two latent factors are the same, false otherwise
+   */
+  private def isSameLatentFactors(
+      latentFactors1: RDD[(String, Vector[Double])],
+      latentFactors2: RDD[(String, Vector[Double])]): Boolean =
+    latentFactors1
+      .fullOuterJoin(latentFactors2)
+      .mapPartitions(iterator =>
+        Iterator.single(iterator.forall {
+          case (_, (Some(factor1), Some(factor2))) => factor1.equals(factor2)
+          case _ => false
+        }))
+      .filter(!_)
+      .count() == 0
+
+  /**
+   * Score the given GAME data points with the row and column latent factors.
+   *
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
    */
   override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
-    MatrixFactorizationModel.score(dataPoints, rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
+    MatrixFactorizationModel.score(
+      dataPoints,
+      rowEffectType,
+      colEffectType,
+      rowLatentFactors,
+      colLatentFactors,
+      ModelDataScores.toScore,
+      ModelDataScores.apply)
+
+  /**
+   * Score the given GAME data points with the row and column latent factors, but record only the scores.
+   *
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
+   */
+  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+    MatrixFactorizationModel.score(
+      dataPoints,
+      rowEffectType,
+      colEffectType,
+      rowLatentFactors,
+      colLatentFactors,
+      CoordinateDataScores.toScore,
+      CoordinateDataScores.apply)
 
   /**
    * Build a human-readable summary for this [[MatrixFactorizationModel]].
@@ -70,6 +116,7 @@ class MatrixFactorizationModel(
    * @return A summary of the [[MatrixFactorizationModel]] in string representation
    */
   override def toSummaryString: String = {
+
     val stringBuilder = new StringBuilder(s"Summary of matrix factorization model with rowEffectType $rowEffectType " +
       s"and colEffectType $colEffectType:")
     val rowLatentFactorsL2NormStats =
@@ -83,35 +130,6 @@ class MatrixFactorizationModel(
   }
 
   /**
-   * Compares two [[MatrixFactorizationModel]] objects.
-   *
-   * @param that Some other object
-   * @return True if both models have the same row and column latent factors, false otherwise
-   */
-  override def equals(that: Any): Boolean = {
-    that match {
-      case other: MatrixFactorizationModel =>
-        val sameMetaData = this.rowEffectType == other.rowEffectType && this.colEffectType == other.colEffectType &&
-          this.numLatentFactors == other.numLatentFactors
-        val sameRowLatentFactors =
-          MatrixFactorizationModel.isSameLatentFactors(this.rowLatentFactors, other.rowLatentFactors)
-        val sameColLatentFactors =
-          MatrixFactorizationModel.isSameLatentFactors(this.colLatentFactors, other.colLatentFactors)
-        sameMetaData && sameRowLatentFactors && sameColLatentFactors
-      case _ => false
-    }
-  }
-
-  /**
-   * Returns a hash code value for the object.
-   *
-   * TODO: Violation of the hashCode() contract
-   *
-   * @return An [[Int]] hash code
-   */
-  override def hashCode(): Int = super.hashCode()
-
-  /**
    * Get the Spark context.
    *
    * @return The Spark context
@@ -122,11 +140,11 @@ class MatrixFactorizationModel(
    * Assign a given name to [[rowLatentFactors]] and [[colLatentFactors]].
    *
    * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
-   *
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the names of [[rowLatentFactors]] and [[colLatentFactors]] assigned
    */
   override def setName(name: String): MatrixFactorizationModel = {
+
     rowLatentFactors.setName(s"$name: row latent factors")
     colLatentFactors.setName(s"$name: col latent factors")
     this
@@ -140,6 +158,7 @@ class MatrixFactorizationModel(
    * @return This object with the storage level of [[rowLatentFactors]] and [[colLatentFactors]] set
    */
   override def persistRDD(storageLevel: StorageLevel): MatrixFactorizationModel = {
+
     if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
     if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
     this
@@ -152,6 +171,7 @@ class MatrixFactorizationModel(
    * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] marked non-persistent
    */
   override def unpersistRDD(): MatrixFactorizationModel = {
+
     if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
     if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
     this
@@ -164,30 +184,43 @@ class MatrixFactorizationModel(
    * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] materialized
    */
   override def materialize(): MatrixFactorizationModel = {
+
     rowLatentFactors.count()
     colLatentFactors.count()
     this
   }
+
+  /**
+   * Compares two [[MatrixFactorizationModel]] objects.
+   *
+   * @param that Some other object
+   * @return True if both models have the same row and column latent factors, false otherwise
+   */
+  override def equals(that: Any): Boolean =
+    that match {
+      case other: MatrixFactorizationModel =>
+        val sameMetaData = this.rowEffectType == other.rowEffectType &&
+          this.colEffectType == other.colEffectType &&
+          this.numLatentFactors == other.numLatentFactors
+        val sameRowLatentFactors = isSameLatentFactors(this.rowLatentFactors, other.rowLatentFactors)
+        val sameColLatentFactors = isSameLatentFactors(this.colLatentFactors, other.colLatentFactors)
+
+        sameMetaData && sameRowLatentFactors && sameColLatentFactors
+
+      case _ => false
+    }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * TODO: Violation of the hashCode() contract
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode(): Int = super.hashCode()
 }
 
 object MatrixFactorizationModel {
-
-  /**
-   * Check whether two latent factors are the same.
-   *
-   * @param latentFactors1 The first latent factor
-   * @param latentFactors2 The second latent factor
-   * @return True if the two latent factors are the same, false otherwise
-   */
-  protected def isSameLatentFactors(
-    latentFactors1: RDD[(String, Vector[Double])],
-    latentFactors2: RDD[(String, Vector[Double])]): Boolean = {
-    latentFactors1.fullOuterJoin(latentFactors2).mapPartitions(iterator =>
-      Iterator.single(iterator.forall { case (_, (factor1, factor2)) =>
-        factor1.isDefined && factor2.isDefined && factor1.get.equals(factor2.get)
-      })
-    ).filter(!_).count() == 0
-  }
 
   /**
    * Score the given GAME data points with the row and column latent factors.
@@ -199,38 +232,56 @@ object MatrixFactorizationModel {
    * @param colLatentFactors The col latent factors
    * @return The computed scores
    */
-  protected def score(
+  private def score[T, V](
       dataPoints: RDD[(Long, GameDatum)],
       rowEffectType: String,
       colEffectType: String,
       rowLatentFactors: RDD[(String, Vector[Double])],
-      colLatentFactors: RDD[(String, Vector[Double])]): ModelDataScores =
-    new ModelDataScores(dataPoints
+      colLatentFactors: RDD[(String, Vector[Double])],
+      toScore: (GameDatum, Double) => T,
+      toResult: (RDD[(Long, T)]) => V): V = {
+
+    // TODO: Which is slower - passing through the GameDatum or the final join and map?
+    val scores = dataPoints
       .map { case (uniqueId, gameDatum) =>
         // For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
         val rowEffectId = gameDatum.idTypeToValueMap(rowEffectType)
         val colEffectId = gameDatum.idTypeToValueMap(colEffectType)
-        (rowEffectId, (colEffectId, uniqueId, gameDatum.toScoredGameDatum()))
+        (rowEffectId, (colEffectId, uniqueId))
       }
       .cogroup(rowLatentFactors)
-      .flatMap { case (rowEffectId, (colEffectIdAndUniqueIdsAndDatumIterable, rowLatentFactorIterable)) =>
+      .flatMap { case (rowEffectId, (colEffectIdAndUniqueIdsIterable, rowLatentFactorIterable)) =>
         // Decorate rowEffectId with row latent factors
-        assert(rowLatentFactorIterable.size <= 1, s"More than one row latent factor (${rowLatentFactorIterable.size}) "
-          + s"found for random effect id $rowEffectId of random effect type $rowEffectType")
-        colEffectIdAndUniqueIdsAndDatumIterable.flatMap { case (colEffectId, uniqueId, scoredDatum) =>
-          rowLatentFactorIterable.map(rowLatentFactor => (colEffectId, (rowLatentFactor, uniqueId, scoredDatum)))
+        val size = rowLatentFactorIterable.size
+        require(
+          size <= 1,
+          s"More than one row latent factor ($size) found for random effect id $rowEffectId of random effect " +
+            s"type $rowEffectType")
+
+        colEffectIdAndUniqueIdsIterable.flatMap { case (colEffectId, uniqueId) =>
+          rowLatentFactorIterable.map(rowLatentFactor => (colEffectId, (rowLatentFactor, uniqueId)))
         }
       }
       .cogroup(colLatentFactors)
-      .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsAndDatumIterable, colLatentFactorIterable)) =>
+      .flatMap { case (colEffectId, (rowLatentFactorAndUniqueIdsIterable, colLatentFactorIterable)) =>
         // Decorate colEffectId with column latent factors
         val size = colLatentFactorIterable.size
-        assert(size <= 1, s"More than one column latent factor ($size) found for random effect id $colEffectId of "
-          + s"random effect type $colEffectType")
-        rowLatentFactorAndUniqueIdsAndDatumIterable.flatMap { case (rowLatentFactor, uniqueId, scoredDatum) =>
+        require(
+          size <= 1,
+          s"More than one column latent factor ($size) found for random effect id $colEffectId of random effect " +
+            s"type $colEffectType")
+
+        rowLatentFactorAndUniqueIdsIterable.flatMap { case (rowLatentFactor, uniqueId) =>
           colLatentFactorIterable.map { colLatentFactor =>
-            (uniqueId, scoredDatum.copy(score = rowLatentFactor.dot(colLatentFactor)))
+            (uniqueId, rowLatentFactor.dot(colLatentFactor))
           }
         }
-      })
+      }
+      .join(dataPoints)
+      .map { case (uniqueId, (score, datum)) =>
+        (uniqueId, toScore(datum, score))
+      }
+
+    toResult(scores)
+  }
 }
