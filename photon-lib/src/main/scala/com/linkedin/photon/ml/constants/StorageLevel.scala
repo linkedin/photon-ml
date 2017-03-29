@@ -20,6 +20,7 @@ import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
  * Storage level constants.
  */
 object StorageLevel {
+  protected[ml] val VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL = SparkStorageLevel.MEMORY_ONLY
   protected[ml] val FREQUENT_REUSE_RDD_STORAGE_LEVEL = SparkStorageLevel.MEMORY_AND_DISK
   protected[ml] val INFREQUENT_REUSE_RDD_STORAGE_LEVEL = SparkStorageLevel.DISK_ONLY
 }
