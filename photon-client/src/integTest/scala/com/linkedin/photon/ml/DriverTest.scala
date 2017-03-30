@@ -38,7 +38,7 @@ import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.Utils
+import com.linkedin.photon.ml.util.{PhotonLogger, Utils}
 
 /**
   * This class tests Driver with a set of important configuration parameters
@@ -46,6 +46,39 @@ import com.linkedin.photon.ml.util.Utils
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   import DriverTest._
+
+
+  @Test
+  def fromAvroTest(): Unit = sparkTest("fromAvroTest") {
+
+    val args = "--training-data-directory /Users/fastier/work/data" +
+      " --output-directory /Users/fastier/work/data/model" +
+      " --optimization-tracker true --job-name run-spark-train --task POISSON_REGRESSION --min-partitions 60" +
+      " --normalization-type STANDARDIZATION --regularization-type L2" +
+      " --regularization-weights 0.0001,0.001,0.01,0.1,1,10,100 --num-iterations 100 --format TRAINING_EXAMPLE" +
+      " --summarization-output-dir /Users/fastier/work/data/summarization" +
+      " --delete-output-dirs-if-exist true --convergence-tolerance 1e-8"
+    val params = PhotonMLCmdLineParser.parseFromCommandLine(args.split(" "))
+
+    val logPath = new Path(params.outputDir, "log-message.txt")
+    val logger = new PhotonLogger(logPath, sc)
+
+    logger.setLogLevel(PhotonLogger.LogLevelDebug)
+
+    try {
+      val job = new Driver(params, sc, logger)
+      job.run()
+
+    } catch {
+      case e: Exception =>
+        logger.error("Failure while running the driver", e)
+        throw e
+
+    } finally {
+      logger.close()
+      sc.stop()
+    }
+  }
 
   @Test
   def testRunWithMinimalArguments(): Unit = sparkTest("testRunWithMinimalArguments") {
