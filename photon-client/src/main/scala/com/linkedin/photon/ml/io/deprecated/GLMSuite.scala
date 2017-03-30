@@ -344,13 +344,22 @@ class GLMSuite(
           1
         }
 
+      require(weight >= 0, "Found sample with negative weight.")
+
       new LabeledPoint(response, features, offset, weight)
     }
 
-    avroRDD.mapPartitions { iter =>
-      val map = _indexMapLoader.indexMapForRDD()
-      iter.map { r => parseAvroRecord(r, map) }
-    }
+    val labeledPoints = avroRDD
+      .mapPartitions { iter =>
+        val map = _indexMapLoader.indexMapForRDD()
+        iter.map { r => parseAvroRecord(r, map) }
+      }
+      .filter(aPoint => aPoint.weight > 0.0)
+
+    // TODO: This is caught later (Photon Driver.prepareTrainingData) in a check that we have at least 1 training sample
+    //require(labeledPoints.count > 0)
+
+    labeledPoints
   }
 
   /**

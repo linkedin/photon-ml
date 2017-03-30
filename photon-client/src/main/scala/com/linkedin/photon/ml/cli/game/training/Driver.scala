@@ -19,6 +19,7 @@ import scala.util.{Failure, Success, Try}
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
@@ -63,12 +64,22 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
     val featureIndexMapLoaders = Timed("prepare features") {
       prepareFeatureMaps()
     }
-    val trainingData = Timed("read training data") {
+    val trainingDataToVerify = Timed("read training data") {
       readTrainingData(featureIndexMapLoaders)
     }
-    val validationData = Timed("read validation data") {
+
+    val trainingData = Timed("verify training data") {
+      preprocessData(trainingDataToVerify)
+    }
+
+    val validationDataToVerify = Timed("read validation data") {
       readValidationData(featureIndexMapLoaders)
     }
+
+    val validationData = Timed("verify validation data") {
+      validationDataToVerify.tap(preprocessData(_))
+    }
+
     val featureShardStats = Timed("calculate statistics for each feature shard") {
       calculateAndSaveFeatureShardStats(trainingData, featureIndexMapLoaders)
     }
@@ -158,6 +169,31 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
             params.featureShardIdToFeatureSectionKeysMap,
             params.minPartitionsForValidation)
     }
+
+  /**
+   * Preprocess data.
+   *
+   * This can be used to transform a data set (training or validation data), or to validate it with various checks.
+   *
+   * For now, we just check that the data contains at least a sample with non-zero weight). We throw out samples that
+   * have a weight less than or equal to 0. If we don't find at least one sample with a strictly positive weight, we
+   * throw an IllegalArgumentException, otherwise we return the filtered data set.
+   *
+   * @note this is somewhat expensive (it iterates over the whole data set), so we can turn it off
+   *
+   * @param data The data to check
+   * @return A data set where zero-weight samples have been removed, or an exception if we couldn't find at least one
+   *         sample with a strictly positive weight
+   */
+  protected[training] def preprocessData(data: DataFrame): DataFrame = {
+    if (params.checkData) {
+      data
+        .filter(col("weight") > 0.0)
+        .tap(df => require(df.count > 0, "Didn't find any data point with a weight >= 0. Aborting."))
+    } else {
+      data
+    }
+  }
 
   /**
    * Calculate basic statistics (same as spark-ml) on a DataFrame.
