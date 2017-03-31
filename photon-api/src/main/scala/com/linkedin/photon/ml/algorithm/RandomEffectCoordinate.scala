@@ -20,7 +20,8 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{KeyValueScore, LabeledPoint, RandomEffectDataSet, ScoredGameDatum}
+import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
@@ -45,7 +46,7 @@ protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjec
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = {
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(dataSet, randomEffectModel)
 
@@ -114,7 +115,7 @@ object RandomEffectCoordinate {
           optimizationProblem.run(trainingLabeledPoints, localModel)
       }
     val updatedRandomEffectModel = randomEffectModel
-      .updateRandomEffectModel(updatedModels)
+      .update(updatedModels)
       .setName(s"Updated random effect model")
     val optimizationTracker = if (randomEffectOptimizationProblem.isTrackingState) {
         val stateTrackers = randomEffectOptimizationProblem.optimizationProblems.map(_._2.getStatesTracker.get)
@@ -132,6 +133,9 @@ object RandomEffectCoordinate {
   /**
    * Score a dataset using a given model.
    *
+   * For information about the differences between active and passive data, see the [[RandomEffectDataSet]]
+   * documentation.
+   *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
    *       through non-linear link function in logistic regression!).
    *
@@ -141,14 +145,14 @@ object RandomEffectCoordinate {
    */
   protected[algorithm] def score(
     randomEffectDataSet: RandomEffectDataSet,
-    randomEffectModel: RandomEffectModel): KeyValueScore = {
+    randomEffectModel: RandomEffectModel): CoordinateDataScores = {
 
     val activeScores = randomEffectDataSet
       .activeData
       .join(randomEffectModel.modelsRDD)
       .flatMap { case (_, (localDataSet, model)) =>
         localDataSet.dataPoints.map { case (uniqueId, labeledPoint) =>
-          (uniqueId, ScoredGameDatum(labeledPoint, model.computeScore(labeledPoint.features), Map[String, String]()))
+          (uniqueId, model.computeScore(labeledPoint.features))
         }
       }
       .partitionBy(randomEffectDataSet.uniqueIdPartitioner)
@@ -165,15 +169,17 @@ object RandomEffectCoordinate {
         .setName("Passive scores")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-      new KeyValueScore(activeScores ++ passiveScores)
+      new CoordinateDataScores(activeScores ++ passiveScores)
     } else {
-      new KeyValueScore(activeScores)
+      new CoordinateDataScores(activeScores)
     }
   }
 
-  // TODO: Explain passive data
   /**
    * Computes passive scores.
+   *
+   * For information about the differences between active and passive data, see the [[RandomEffectDataSet]]
+   * documentation.
    *
    * @param passiveData The passive dataset to score
    * @param passiveDataRandomEffectIds The set of random effect ids
@@ -183,7 +189,7 @@ object RandomEffectCoordinate {
   private def computePassiveScores(
       passiveData: RDD[(Long, (String, LabeledPoint))],
       passiveDataRandomEffectIds: Broadcast[Set[String]],
-      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, ScoredGameDatum)] = {
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
 
     val modelsForPassiveData = modelsRDD
       .filter { case (shardId, _) =>
@@ -194,10 +200,7 @@ object RandomEffectCoordinate {
     //TODO: Need a better design that properly unpersists the broadcasted variables and persists the computed RDD
     val modelsForPassiveDataBroadcast = passiveData.sparkContext.broadcast(modelsForPassiveData)
     val passiveScores = passiveData.mapValues { case (randomEffectId, labeledPoint) =>
-      ScoredGameDatum(
-        labeledPoint,
-        modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features),
-        Map[String, String]())
+      modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features)
     }
 
     passiveScores.setName("Passive scores").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).count()

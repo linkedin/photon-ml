@@ -20,9 +20,9 @@ import breeze.linalg.Vector
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-class GAMEDatumTest {
+class GameDatumTest {
 
-  import GAMEDatumTest._
+  import GameDatumTest._
 
   private val gameDatumWithEverything = new GameDatum(
     response = 1.0,
@@ -100,6 +100,6 @@ class GAMEDatumTest {
   }
 }
 
-object GAMEDatumTest {
+object GameDatumTest {
   private val DEFAULT_SHARD_ID = "shardId"
 }

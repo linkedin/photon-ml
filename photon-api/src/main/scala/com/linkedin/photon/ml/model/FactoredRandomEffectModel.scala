@@ -41,12 +41,27 @@ protected[ml] class FactoredRandomEffectModel(
     featureShardId) with BroadcastLike {
 
   /**
+   * Update the factored random effect model with new models per individual.
    *
-   * @return This object with all its broadcasted variables unpersisted
+   * @param updatedModelsInProjectedSpaceRDD The new models with updated coefficients in projected space
+   * @param updatedProjectionMatrixBroadcast The updated projection matrix
+   * @return The updated factored random effect model in projected space
    */
-  override def unpersistBroadcast(): this.type = {
-    projectionMatrixBroadcast.unpersistBroadcast()
-    this
+  def updateFactoredRandomEffectModel(
+    updatedModelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
+    updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
+
+    val currType = this.modelType
+
+    new FactoredRandomEffectModel(
+        updatedModelsInProjectedSpaceRDD,
+        updatedProjectionMatrixBroadcast,
+        randomEffectType,
+        featureShardId) {
+
+      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
+      override lazy val modelType: TaskType = currType
+    }
   }
 
   /**
@@ -55,30 +70,22 @@ protected[ml] class FactoredRandomEffectModel(
    * @return String representation
    */
   override def toSummaryString: String = {
+
     val stringBuilder = new StringBuilder(super.toSummaryString)
     stringBuilder.append("\nprojectionMatrix:")
     stringBuilder.append(s"\n${projectionMatrixBroadcast.projectionMatrix.toSummaryString}")
+
     stringBuilder.toString()
   }
 
   /**
-   * Update the factored random effect model with new models per individual.
    *
-   * @param updatedModelsInProjectedSpaceRDD The new models with updated coefficients in projected space
-   * @param updatedProjectionMatrixBroadcast The updated projection matrix
-   * @return The updated factored random effect model in projected space
+   * @return This object with all its broadcasted variables unpersisted
    */
-  def updateFactoredRandomEffectModel(
-      updatedModelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
-      updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
-    val currType = this.modelType
-    new FactoredRandomEffectModel(
-      updatedModelsInProjectedSpaceRDD,
-      updatedProjectionMatrixBroadcast,
-      randomEffectType,
-      featureShardId) {
-      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-      override lazy val modelType: TaskType = currType
-    }
+  override def unpersistBroadcast(): this.type = {
+
+    projectionMatrixBroadcast.unpersistBroadcast()
+
+    this
   }
 }

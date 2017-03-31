@@ -22,12 +22,12 @@ import org.apache.spark.sql.DataFrame
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
-import com.linkedin.photon.ml.cli.game.GAMEDriver
+import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
-import com.linkedin.photon.ml.model.GAMEModel
+import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.GameModelOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
  * @note there is a separate Driver to drive the scoring of GAME models.
  */
 final class Driver(val sc: SparkContext, val params: GameParams, implicit val logger: Logger)
-  extends GAMEDriver(sc, params, logger) {
+  extends GameDriver(sc, params, logger) {
 
   // These two types make the code easier to read, and are somewhat specific to the GAME Driver
   type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
@@ -230,8 +230,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    * @return The best model
    */
   protected[training] def selectBestModel(
-      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)]):
-        Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)] =
+      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)])
+    : Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)] =
 
     models
       .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
@@ -245,8 +245,12 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
         case (model, eval, config) =>
           logger.info(s"Evaluator ${eval.head._1.getEvaluatorName} selected model with the following config:\n" +
             s"$config\n" +
-            s"Model summary:\n${model.toSummaryString}\n\n" +
             s"Evaluation result is : ${eval.head._2}")
+
+          // TODO: Computing model summary is slow, we should only do it if necessary
+          if (logger.isDebugEnabled) {
+            logger.debug(s"Model summary:\n${model.toSummaryString}\n")
+          }
       }
 
   /**
@@ -261,8 +265,8 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    */
   protected[training] def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      models: Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
-      bestModel: Option[(GAMEModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
+      models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
+      bestModel: Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
 
     if (params.modelOutputMode != ModelOutputMode.NONE) {
 
@@ -342,7 +346,7 @@ object Driver {
         val sc = SparkContextConfiguration.asYarnClient(params.applicationName, useKryo = true)
         val logsDir = new Path(params.outputDir, LOGS).toString
         implicit val logger = new PhotonLogger(logsDir, sc)
-        //TODO: This Photon log level should be made configurable
+        // TODO: This Photon log level should be made configurable
         logger.setLogLevel(PhotonLogger.LogLevelInfo)
         logger.debug(params.toString + "\n")
 

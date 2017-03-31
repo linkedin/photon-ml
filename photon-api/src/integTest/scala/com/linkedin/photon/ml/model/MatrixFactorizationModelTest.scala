@@ -22,7 +22,8 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
@@ -78,7 +79,7 @@ class MatrixFactorizationModelTest extends SparkTestUtils {
       val randomMFModel = new MatrixFactorizationModel(rowEffectType, colEffectType,
         rowLatentFactors = sc.parallelize(rowLatentFactors), colLatentFactors = sc.parallelize(colLatentFactors))
 
-      val expectedScores = new KeyValueScore(sc.parallelize(syntheticScores))
+      val expectedScores = new ModelDataScores(sc.parallelize(syntheticScores))
       val computedScores = randomMFModel.score(sc.parallelize(gameData))
 
       assertEquals(computedScores, expectedScores)
@@ -154,7 +155,7 @@ object MatrixFactorizationModelTest {
    * @param colEffectType
    * @param rowFactorGenerator
    * @param colFactorGenerator
-   * @param sparkContext
+   * @param sc
    * @return
    */
   private def generateMatrixFactorizationModel(
@@ -164,12 +165,12 @@ object MatrixFactorizationModelTest {
       colEffectType: String,
       rowFactorGenerator: => Vector[Double],
       colFactorGenerator: => Vector[Double],
-      sparkContext: SparkContext): MatrixFactorizationModel = {
+      sc: SparkContext): MatrixFactorizationModel = {
 
     val rowLatentFactors =
-      sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
+      sc.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
     val colLatentFactors =
-      sparkContext.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
+      sc.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
     new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
   }
 }

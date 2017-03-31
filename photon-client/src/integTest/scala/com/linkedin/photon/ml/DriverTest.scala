@@ -58,8 +58,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -92,8 +92,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += InputFormatType.LIBSVM.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -128,8 +128,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += InputFormatType.LIBSVM.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -160,8 +160,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -181,8 +181,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -205,8 +205,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       // Number of features is not 0; 1 feature should exist for the intercept
       expectedNumFeatures = 1,
@@ -237,8 +237,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -266,8 +266,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -300,8 +300,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += LIGHT_MAX_NUM_ITERATIONS.toString
 
       MockDriver.runLocally(
-        args = args.toArray,
-        sparkContext = sc,
+        args.toArray,
+        sc,
         expectedStages = Array(
           DriverStage.INIT,
           DriverStage.PREPROCESSED,
@@ -339,8 +339,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += LIGHT_MAX_NUM_ITERATIONS.toString
 
       MockDriver.runLocally(
-        args = args.toArray,
-        sparkContext = sc,
+        args.toArray,
+        sc,
         expectedStages = Array(
           DriverStage.INIT,
           DriverStage.PREPROCESSED,
@@ -374,8 +374,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -402,8 +402,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -438,8 +438,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS.toString
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = 13,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -489,8 +489,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += HEAVY_MAX_NUM_ITERATIONS_FOR_LBFGS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -536,8 +536,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -564,8 +564,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -593,8 +593,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += 2.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -624,8 +624,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += summarizationOutputDir
 
       MockDriver.runLocally(
-        args = args.toArray,
-        sparkContext = sc,
+        args.toArray,
+        sc,
         expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
         expectedNumFeatures = EXPECTED_NUM_FEATURES,
         expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -645,8 +645,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(DriverStage.INIT, DriverStage.PREPROCESSED, DriverStage.TRAINED),
       expectedNumFeatures = EXPECTED_NUM_FEATURES,
       expectedNumTrainingData = EXPECTED_NUM_TRAINING_DATA,
@@ -679,8 +679,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -715,8 +715,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -764,8 +764,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += HEAVY_MAX_NUM_ITERATIONS_FOR_TRON.toString
 
       MockDriver.runLocally(
-        args = args.toArray,
-        sparkContext = sc,
+        args.toArray,
+        sc,
         expectedStages = Array(
           DriverStage.INIT,
           DriverStage.PREPROCESSED,
@@ -873,7 +873,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     MockDriver.runLocally(
       args = args,
-      sparkContext = sc,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -898,8 +898,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,
@@ -923,8 +923,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
     MockDriver.runLocally(
-      args = args.toArray,
-      sparkContext = sc,
+      args.toArray,
+      sc,
       expectedStages = Array(
         DriverStage.INIT,
         DriverStage.PREPROCESSED,

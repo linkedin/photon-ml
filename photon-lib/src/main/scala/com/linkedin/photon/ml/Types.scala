@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml
 
 /**
- * Some types that make the code easier to read and more documented.
- * This class should be visible from everywhere in photon-ml.
+ * Some types that make the code easier to read and more documented. This class should be visible from everywhere in
+ * photon-ml.
  */
 object Types {
 
@@ -24,6 +24,6 @@ object Types {
   type SSV = org.apache.spark.mllib.linalg.SparseVector
   type SparkVector = org.apache.spark.mllib.linalg.Vector
 
-  type FeatureShardId = String
   type CoordinateId = String
+  type FeatureShardId = String
 }

@@ -62,12 +62,12 @@ protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[S
    * Write each of the feature map to HDFS.
    *
    * @param nameAndTermFeatureSetContainerOutputDir The HDFS directory to write the feature sets as text files
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    */
-  def saveAsTextFiles(nameAndTermFeatureSetContainerOutputDir: String, sparkContext: SparkContext): Unit = {
+  def saveAsTextFiles(nameAndTermFeatureSetContainerOutputDir: String, sc: SparkContext): Unit = {
     nameAndTermFeatureSets.foreach { case (featureSectionKey, featureSet) =>
       val featureSetPath = new Path(nameAndTermFeatureSetContainerOutputDir, featureSectionKey)
-      NameAndTermFeatureSetContainer.saveNameAndTermSetAsTextFiles(featureSet, sparkContext, featureSetPath)
+      NameAndTermFeatureSetContainer.saveNameAndTermSetAsTextFiles(featureSet, sc, featureSetPath)
     }
   }
 }
@@ -118,15 +118,16 @@ object NameAndTermFeatureSetContainer {
    * Write the [[Set]] of [[NameAndTerm]]s to HDFS as text files.
    *
    * @param nameAndTermSet The map to be written
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    * @param outputPath The HDFS path to which write the map
    */
   private def saveNameAndTermSetAsTextFiles(
       nameAndTermSet: Set[NameAndTerm],
-      sparkContext: SparkContext,
+      sc: SparkContext,
       outputPath: Path): Unit = {
-    val iterator = nameAndTermSet.iterator.map { case NameAndTerm(name, term) => s"$name\t$term" }
-    IOUtils.writeStringsToHDFS(iterator, outputPath, sparkContext.hadoopConfiguration, forceOverwrite = false)
+
+    val iterator = nameAndTermSet.iterator.map(_.toString)
+    IOUtils.writeStringsToHDFS(iterator, outputPath, sc.hadoopConfiguration, forceOverwrite = false)
   }
 
   /**

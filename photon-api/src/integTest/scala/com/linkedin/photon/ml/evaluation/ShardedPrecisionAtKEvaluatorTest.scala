@@ -18,7 +18,7 @@ import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.ScoredGameDatum
+import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.SparkTestUtils
 
@@ -79,7 +79,7 @@ class ShardedPrecisionAtKEvaluatorTest extends SparkTestUtils {
     val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, defaultOffset, defaultWeight))
     val evaluator = new ShardedPrecisionAtKEvaluator(k, idType = "", sc.parallelize(ids), labelAndOffsetAndWeights)
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, ScoredGameDatum(score = score))
+      (id, score)
     }))
     assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
   }

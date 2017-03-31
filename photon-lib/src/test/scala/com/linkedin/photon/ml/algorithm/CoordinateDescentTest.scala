@@ -19,9 +19,10 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.{DataSet, GameDatum, KeyValueScore, ScoredGameDatum}
+import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.scoring.{ModelDataScores, CoordinateDataScores, ScoredGameDatum}
 import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.model.{DatumScoringModel, GAMEModel}
+import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -56,15 +57,16 @@ class CoordinateDescentTest {
     // Other mocks
     val evaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
-    val gameModel = mock(classOf[GAMEModel])
+    val gameModel = mock(classOf[GameModel])
     val tracker = mock(classOf[OptimizationTracker])
-    val score = mock(classOf[KeyValueScore])
+    val score = mock(classOf[CoordinateDataScores])
     val models = coordinates.map { _ =>
       mock(classOf[DatumScoringModel])
     }
 
-    // KeyValueScore mock setup
-    doReturn(score).when(score). +(score)
+    // Scores mock setup
+    when(score + score).thenReturn(score)
+    when(score - score).thenReturn(score)
     doReturn(score).when(score).setName(Matchers.any(classOf[String]))
     doReturn(score).when(score).persistRDD(Matchers.any())
 
@@ -76,14 +78,14 @@ class CoordinateDescentTest {
       doReturn((model, Some(tracker))).when(coordinate).updateModel(model)
       doReturn((model, Some(tracker))).when(coordinate).updateModel(model, score)
 
-      // GAMEModel mock setup
+      // GameModel mock setup
       doReturn(gameModel).when(gameModel).updateModel(coordinateId, model)
       doReturn(Some(model)).when(gameModel).getModel(coordinateId)
     }
 
     // Run coordinate descent - None = no validation
     val coordinateDescent =
-      new CoordinateDescent(coordinates, evaluator, validatingDataAndEvaluatorsOption = None, logger)
+      new CoordinateDescent(coordinates, evaluator, validationDataAndEvaluatorsOption = None, logger)
     coordinateDescent.optimize(numIterations, gameModel)
 
     // Verify the calls to updateModel
@@ -111,9 +113,9 @@ class CoordinateDescentTest {
     val lossEvaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
     val tracker = mock(classOf[OptimizationTracker])
-    val (score, validationScore) = (mock(classOf[KeyValueScore]), mock(classOf[KeyValueScore]))
+    val (score, validationScore) = (mock(classOf[CoordinateDataScores]), mock(classOf[CoordinateDataScores]))
     val coordinateModel = mock(classOf[DatumScoringModel])
-    val modelScores = mock(classOf[RDD[(Long, ScoredGameDatum)]])
+    val modelScores = mock(classOf[RDD[(Long, Double)]])
     val validationData = mock(classOf[RDD[(Long, GameDatum)]])
 
     val validationEvaluators = (0 until evaluatorCount).map { case (id) =>
@@ -124,10 +126,12 @@ class CoordinateDescentTest {
     }
 
     when(score + score).thenReturn(score)
+    when(score - score).thenReturn(score)
     when(score.setName(Matchers.any())).thenReturn(score)
     when(score.persistRDD(Matchers.any())).thenReturn(score)
 
     when(validationScore + validationScore).thenReturn(validationScore)
+    when(validationScore - validationScore).thenReturn(validationScore)
     when(validationScore.scores).thenReturn(modelScores)
     when(validationScore.setName(Matchers.any())).thenReturn(validationScore)
     when(validationScore.persistRDD(Matchers.any())).thenReturn(validationScore)
@@ -135,13 +139,13 @@ class CoordinateDescentTest {
 
     // The very first GAME model will give rise to GAME model #1 via update,
     // and GAME model #1 will be the first one to go through best model selection
-    val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GAMEModel]) }
+    val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GameModel]) }
     (0 until iterationCount).map { i =>
       when(gameModels(i).getModel(Matchers.any())).thenReturn(Some(coordinateModel))
       when(gameModels(i).updateModel(Matchers.any(), Matchers.any())).thenReturn(gameModels(i + 1))
     }
 
-    when(coordinateModel.score(Matchers.any())).thenReturn(validationScore)
+    when(coordinateModel.scoreForCoordinateDescent(Matchers.any())).thenReturn(validationScore)
     when(coordinate.score(Matchers.any())).thenReturn(score)
     when(coordinate.updateModel(coordinateModel)).thenReturn((coordinateModel, Some(tracker)))
     when(coordinate.updateModel(coordinateModel, score)).thenReturn((coordinateModel, Some(tracker)))

@@ -23,7 +23,7 @@ import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
@@ -93,9 +93,9 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/coefficients/part-00001.avro
    *   hdfs://hostname:port/tmp/GAMELaserModelTest/GAMEModel/random-effect/RE2/id-info
    *
-   * @return (GAMEModel, featureIndexLoaders, featureNames)
+   * @return ([[GameModel]], feature index loaders, feature names)
    */
-  def makeGameModel(): (GAMEModel, Map[String, DefaultIndexMapLoader], Map[String, IndexedSeq[String]]) = {
+  def makeGameModel(): (GameModel, Map[String, DefaultIndexMapLoader], Map[String, IndexedSeq[String]]) = {
 
     val numFeatures = Map("fixed" -> 10, "RE1" -> 10, "RE2" -> 10)
 
@@ -123,7 +123,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
     val RE2Model = new RandomEffectModel(glmRE2RDD, "randomEffectModel2", "RE2")
 
-    (GAMEModel(("fixed", fixedEffectModel), ("RE1", RE1Model), ("RE2", RE2Model)),
+    (GameModel(("fixed", fixedEffectModel), ("RE1", RE1Model), ("RE2", RE2Model)),
       featureIndexLoaders,
       featureNames)
   }
@@ -163,7 +163,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The second value returned is the feature index, which we don't need here
-    val (loadedGameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(Some(featureIndexLoaders), outputDir, sc)
+    val (loadedGameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      outputDir,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(featureIndexLoaders))
     assertTrue(gameModel == loadedGameModel)
   }
 
@@ -179,7 +183,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, params, sc)
 
-    val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(None, modelDir, sc)
+    val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      modelDir,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      None)
 
     // Since the feature index after the load is not the same as before the save, we need to calculate an
     // invariant that survives the save/load. That invariant is Map[feature value, feature name].
@@ -218,7 +226,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The first value returned is the feature index, which we don't need here
-    val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(None, modelDir, sc)
+    val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      modelDir,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      None)
 
     // Let's extract all features from the GAME model...
     val features = ModelProcessingUtils.extractGameModelFeatures(sc, loadedGameModel, newFeatureIndexLoaders)
@@ -285,12 +297,12 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
           colEffectType: String,
           rowFactorGenerator: => Vector[Double],
           colFactorGenerator: => Vector[Double],
-          sparkContext: SparkContext): MatrixFactorizationModel = {
+          sc: SparkContext): MatrixFactorizationModel = {
 
         val rowLatentFactors =
-          sparkContext.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
+          sc.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
         val colLatentFactors =
-          sparkContext.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
+          sc.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
         new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
       }
 

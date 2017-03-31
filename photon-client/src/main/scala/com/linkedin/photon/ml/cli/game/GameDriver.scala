@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.util._
 /**
  * Contains common functions for GAME training and scoring drivers.
  */
-abstract class GAMEDriver(sc: SparkContext, params: FeatureParams with PalDBIndexMapParams, logger: Logger) {
+abstract class GameDriver(sc: SparkContext, params: FeatureParams with PalDBIndexMapParams, logger: Logger) {
 
   protected val hadoopConfiguration: Configuration = sc.hadoopConfiguration
 

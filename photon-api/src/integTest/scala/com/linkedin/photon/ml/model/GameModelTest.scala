@@ -25,9 +25,9 @@ import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration tests for GAMEModel.
+ * Integration tests for GameModel.
  */
-class GAMEModelTest extends SparkTestUtils {
+class GameModelTest extends SparkTestUtils {
 
   /**
    * Generate a toy fixed effect model.
@@ -86,19 +86,19 @@ class GAMEModelTest extends SparkTestUtils {
     val REModel2 = getRandomEffectModel(sc, 2)
 
     // case 1: fixed effect model only
-    val FEModelOnly = GAMEModel((FEModelName1, FEModel1), (FEModelName2, FEModel2))
+    val FEModelOnly = GameModel((FEModelName1, FEModel1), (FEModelName2, FEModel2))
     assertEquals(FEModel1, FEModelOnly.getModel(FEModelName1).get)
     assertEquals(FEModel2, FEModelOnly.getModel(FEModelName2).get)
     assertTrue(FEModelOnly.getModel(REModelName1).isEmpty)
 
     // case 2: random effect model only
-    val REModelOnly = GAMEModel((REModelName1, REModel1), (REModelName2, REModel2))
+    val REModelOnly = GameModel((REModelName1, REModel1), (REModelName2, REModel2))
     assertEquals(REModel1, REModelOnly.getModel(REModelName1).get)
     assertEquals(REModel2, REModelOnly.getModel(REModelName2).get)
     assertTrue(REModelOnly.getModel(FEModelName2).isEmpty)
 
     // case 3: fixed and random effect model
-    val fixedAndRandomEffectModel = GAMEModel((FEModelName1, FEModel1), (REModelName2, REModel2))
+    val fixedAndRandomEffectModel = GameModel((FEModelName1, FEModel1), (REModelName2, REModel2))
     assertEquals(FEModel1, fixedAndRandomEffectModel.getModel(FEModelName1).get)
     assertEquals(REModel2, fixedAndRandomEffectModel.getModel(REModelName2).get)
     assertTrue(fixedAndRandomEffectModel.getModel(FEModelName2).isEmpty)
@@ -116,7 +116,7 @@ class GAMEModelTest extends SparkTestUtils {
     val REModel1 = getRandomEffectModel(sc, 1)
     val REModel2 = getRandomEffectModel(sc, 2)
 
-    val gameModel11 = GAMEModel((FEModelName, FEModel1), (REModelName, REModel1))
+    val gameModel11 = GameModel((FEModelName, FEModel1), (REModelName, REModel1))
     assertEquals(gameModel11.getModel(FEModelName).get, FEModel1)
     assertEquals(gameModel11.getModel(REModelName).get, REModel1)
     val gameModel21 = gameModel11.updateModel(FEModelName, FEModel2)
@@ -133,7 +133,7 @@ class GAMEModelTest extends SparkTestUtils {
     val FEModel = getFixedEffectModel(sc, 1)
     val REModel = getRandomEffectModel(sc, 1)
 
-    val gameModel = GAMEModel((FEModelName, FEModel))
+    val gameModel = GameModel((FEModelName, FEModel))
     gameModel.updateModel(FEModelName, REModel)
   }
 
@@ -147,22 +147,8 @@ class GAMEModelTest extends SparkTestUtils {
     val REModel = getRandomEffectModel(sc, 1)
 
     val modelsMap = Map(FEModelName -> FEModel, REModelName -> REModel)
-    val gameModel = new GAMEModel(modelsMap)
+    val gameModel = new GameModel(modelsMap)
     assertEquals(gameModel.toMap, modelsMap)
-  }
-
-  @Test
-  def testPersistAndUnpersist(): Unit = sparkTest("testPersistAndUnpersist") {
-
-    val REModelName = "random"
-    val REModel = getRandomEffectModel(sc, 1)
-    val gameModel = GAMEModel((REModelName, REModel))
-
-    assertFalse(REModel.modelsRDD.getStorageLevel.isValid)
-    gameModel.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    assertEquals(REModel.modelsRDD.getStorageLevel, StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    gameModel.unpersist()
-    assertFalse(REModel.modelsRDD.getStorageLevel.isValid)
   }
 
   @Test
@@ -179,19 +165,19 @@ class GAMEModelTest extends SparkTestUtils {
     val REModel2 = getRandomEffectModel(sc, 1)
 
     val gameModel1111 =
-      new GAMEModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel1))
+      new GameModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel1))
     val gameModel1112 =
-      new GAMEModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel2))
+      new GameModel(Map(FEModelName1 -> FEModel1, REModelName1 -> REModel2))
     val gameModel1212 =
-      new GAMEModel(Map(FEModelName1 -> FEModel2, REModelName1 -> REModel2))
+      new GameModel(Map(FEModelName1 -> FEModel2, REModelName1 -> REModel2))
     val gameModel1122 =
-      new GAMEModel(Map(FEModelName1 -> FEModel1, REModelName2 -> REModel2))
+      new GameModel(Map(FEModelName1 -> FEModel1, REModelName2 -> REModel2))
     val gameModel2121 =
-      new GAMEModel(Map(FEModelName2 -> FEModel1, REModelName2 -> REModel1))
+      new GameModel(Map(FEModelName2 -> FEModel1, REModelName2 -> REModel1))
     val gameModel2211 =
-      new GAMEModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel1))
+      new GameModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel1))
     val gameModel2212 =
-      new GAMEModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel2))
+      new GameModel(Map(FEModelName2 -> FEModel2, REModelName1 -> REModel2))
 
     // Same name and model
     assertEquals(gameModel1111, gameModel1111)
@@ -239,7 +225,7 @@ class GAMEModelTest extends SparkTestUtils {
     val RE2Model = new RandomEffectModel(glmRE2RDD, "REModel2", "RE2Features")
 
     // This GAME model has 1 fixed effect, and 2 different random effect models
-    GAMEModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
+    GameModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -277,6 +263,6 @@ class GAMEModelTest extends SparkTestUtils {
     val RE2Model = new RandomEffectModel(glmRE2RDD, "REModel2", "RE2Features")
 
     // This GAME model has 1 fixed effect, and 2 different random effect models
-    GAMEModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
+    GameModel(("fixed", FEModel), ("RE1", RE1Model), ("RE2", RE2Model))
   }
 }

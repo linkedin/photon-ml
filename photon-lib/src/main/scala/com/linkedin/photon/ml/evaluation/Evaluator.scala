@@ -16,41 +16,30 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.ScoredGameDatum
+import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
 
 /**
- * Interface for evaluation implementations at the [[RDD]] level.
+ * An interface for evaluation implementations at the [[RDD]] level.
  */
 protected[ml] trait Evaluator {
 
-  /**
-   * A [[RDD]] of (id, (labels, offsets, weights)) pairs.
-   */
   protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]
-
-  /**
-   * The default score used to compute the metric.
-   */
-  protected[ml] var defaultScore: Double = 0.0
-
-  /**
-   * The type of the evaluator.
-   */
+  protected[ml] val defaultScore: Double = 0.0
   protected[ml] val evaluatorType: EvaluatorType
 
   /**
    * Evaluate the scores of the model.
    *
    * @param scores The scores to evaluate
-   * @return Evaluation metric value
+   * @return An evaluation metric value
    */
-  protected[ml] def evaluate(scores: RDD[(Long, ScoredGameDatum)]): Double = {
+  protected[ml] def evaluate(scores: RDD[(Long, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
     val scoreAndLabelAndWeights = scores
       .rightOuterJoin(labelAndOffsetAndWeights)
       .mapValues { case (scoredDatumOption, (label, offset, weight)) =>
-        val score = scoredDatumOption.map(_.score).getOrElse(defaultScore)
+        val score = scoredDatumOption.getOrElse(defaultScore)
         (score + offset, label, weight)
       }
     evaluateWithScoresAndLabelsAndWeights(scoreAndLabelAndWeights)
@@ -59,25 +48,26 @@ protected[ml] trait Evaluator {
   /**
    * Evaluate scores with labels and weights.
    *
-   * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
-   * @return Evaluation metric value
+   * @param scoresAndLabelsAndWeights A [[RDD]] of (uniqueId, (score, label, weight)) pairs
+   * @return An evaluation metric value
    */
   protected[ml] def evaluateWithScoresAndLabelsAndWeights(
     scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double
 
   /**
-   * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
+   * Determine the better between two scores returned by this [[Evaluator]]. In some cases, the better score is higher
    * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
    *
    * @param score1 The first score to compare
    * @param score2 The second score to compare
-   * @return True if the first score is better than the second
+   * @return True if the first score is better than the second, false otherwise
    */
   def betterThan(score1: Double, score2: Double): Boolean
 
   /**
+   * Get the name of this [[Evaluator]] object.
    *
-   * @return
+   * @return The name of this [[Evaluator]].
    */
   protected[ml] def getEvaluatorName: String = evaluatorType.name
 }

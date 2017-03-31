@@ -22,19 +22,20 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
-import com.linkedin.photon.ml.cli.game.GAMEDriver
+import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils, ScoreProcessingUtils}
-import com.linkedin.photon.ml.data.{GameConverters, GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
+import com.linkedin.photon.ml.data.avro._
+import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
+import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
-
 
 /**
  * Driver for GAME full model scoring.
  */
-class Driver(val params: Params, val sparkContext: SparkContext, val logger: Logger)
-  extends GAMEDriver(sparkContext, params, logger) {
+class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
+  extends GameDriver(sc, params, logger) {
 
   import params._
 
@@ -54,7 +55,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     val recordsPath = pathsForDateRange(inputDirs, dateRangeOpt, dateRangeDaysAgoOpt)
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
 
-    val dataReader = new AvroDataReader(sparkContext)
+    val dataReader = new AvroDataReader(sc)
     val data = dataReader.readMerged(
       recordsPath,
       featureShardIdToFeatureMapLoader.toMap,
@@ -108,26 +109,31 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
    */
   protected def scoreGameDataSet(
       featureShardIdToIndexMapLoader: Map[String, IndexMapLoader],
-      gameDataSet: RDD[(Long, GameDatum)]): KeyValueScore = {
+      gameDataSet: RDD[(Long, GameDatum)]): ModelDataScores = {
 
     // TODO: make the number of files written to HDFS configurable
 
     // Load the model from HDFS, ignoring the feature index loader
-    val (gameModel, _) =
-      ModelProcessingUtils.loadGameModelFromHDFS(Some(featureShardIdToIndexMapLoader), gameModelInputDir, sparkContext)
-    gameModel.persist(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      gameModelInputDir,
+      StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(featureShardIdToIndexMapLoader))
 
     if (logDatasetAndModelStats) {
       logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
     }
 
-    val scores = gameModel
-      .score(gameDataSet)
-      .persistRDD(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
-      .materialize()
+    // Need to split these calls to keep correct return type
+    val scores = gameModel.score(gameDataSet)
+    scores.persistRDD(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
 
     gameDataSet.unpersist()
-    gameModel.unpersist
+    gameModel.toMap.foreach {
+      case (_, model: RandomEffectModel) => model.unpersistRDD()
+      case _ =>
+    }
+
     scores
   }
 
@@ -136,7 +142,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
    *
    * @param scores The computed scores
    */
-  protected def saveScoresToHDFS(scores: KeyValueScore): Unit = {
+  protected def saveScoresToHDFS(scores: ModelDataScores): Unit = {
 
     // Take the offset information into account when writing the scores to HDFS
     val scoredItems = scores.scores.map { case (_, scoredGameDatum) =>
@@ -169,7 +175,7 @@ class Driver(val params: Params, val sparkContext: SparkContext, val logger: Log
     val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
-    IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sparkContext.hadoopConfiguration)
+    IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sc.hadoopConfiguration)
 
     timer.start()
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
@@ -233,7 +239,7 @@ object Driver {
    */
   protected[scoring] def evaluateScores(
       evaluatorType: EvaluatorType,
-      scores: KeyValueScore,
+      scores: ModelDataScores,
       gameDataSet: RDD[(Long, GameDatum)]): Double = {
 
     // Make sure the GAME data set makes sense
@@ -244,7 +250,7 @@ object Driver {
         s"evaluator $evaluatorType")
 
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
-    evaluator.evaluate(scores.scores)
+    evaluator.evaluate(scores.scores.mapValues(_.score))
   }
 
   /**

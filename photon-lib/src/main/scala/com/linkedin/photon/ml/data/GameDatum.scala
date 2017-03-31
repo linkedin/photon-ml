@@ -18,6 +18,8 @@ import scala.collection.Map
 
 import breeze.linalg.Vector
 
+import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
+
 /**
  * Representation of a single GAME data point.
  *
@@ -52,6 +54,12 @@ protected[ml] class GameDatum(
     LabeledPoint(label = response, features = featureShardContainer(featureShardId), offset = offset, weight = weight)
   }
 
+  /**
+   * Generate a scored data point, using this data point as a base.
+   *
+   * @param score The score for this data point
+   * @return A new [[ScoredGameDatum]] instance
+   */
   def toScoredGameDatum(score: Double = ScoredGameDatum.ZERO_SCORE): ScoredGameDatum = {
     ScoredGameDatum(response, offset, weight, score, idTypeToValueMap)
   }

@@ -24,8 +24,8 @@ object EvaluatorFactory {
    * Factory for different types of [[Evaluator]].
    *
    * @param evaluatorType The type of the evaluator
-   * @param gameDataSet A [[RDD]] of (uniqueId: [[Long]], GAMEDatum: [[GAMEDatum]]), which are usually the
-   *                    validation/test data, used to construct the evaluator
+   * @param gameDataSet A [[RDD]] of ([[Long]], [[GameDatum]]), which are usually the validation/test data, used to
+   *                    construct the evaluator
    * @return The evaluator
    */
   protected[ml] def buildEvaluator(evaluatorType: EvaluatorType, gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {

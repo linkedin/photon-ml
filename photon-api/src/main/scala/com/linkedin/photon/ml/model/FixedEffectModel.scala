@@ -17,7 +17,8 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.{GameDatum, KeyValueScore}
+import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -36,36 +37,11 @@ protected[ml] class FixedEffectModel(
   override lazy val modelType = modelBroadcast.value.modelType
 
   /**
+   * Get the underlying [[GeneralizedLinearModel]].
    *
-   * @return
+   * @return The broadcast [[GeneralizedLinearModel]]
    */
   def model: GeneralizedLinearModel = modelBroadcast.value
-
-  /**
-   * Clean up coefficient broadcast.
-   */
-  override def unpersistBroadcast(): this.type = {
-    modelBroadcast.unpersist()
-    this
-  }
-
-  /**
-   * Compute the score for the dataset.
-   *
-   * @param dataPoints The dataset to score. Note that the Long in the RDD is a unique identifier for the paired
-   *                   GAMEDatum object, referred to in the GAME code as the "unique id".
-   * @return The score.
-   */
-  override def score(dataPoints: RDD[(Long, GameDatum)]): KeyValueScore =
-    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
-
-  /**
-   * Build a summary string for the coefficients.
-   *
-   * @return String representation
-   */
-  override def toSummaryString: String =
-    s"Fixed effect model with featureShardId $featureShardId summary:\n${model.toSummaryString}"
 
   /**
    * Create an updated model with the coefficients.
@@ -77,47 +53,93 @@ protected[ml] class FixedEffectModel(
     new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
   /**
+   * Compute the scores for the dataset.
    *
-   * @param that
-   * @return
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
+   */
+  override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
+    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, ModelDataScores.toScore, ModelDataScores.apply)
+
+  /**
+   * Compute the scores for the GAME data set, and store the scores only.
+   *
+   * @note Use a static method to avoid serializing entire model object during RDD operations.
+   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @return The computed scores
+   */
+  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+    FixedEffectModel.score(
+      dataPoints,
+      modelBroadcast,
+      featureShardId,
+      CoordinateDataScores.toScore,
+      CoordinateDataScores.apply)
+
+  /**
+   * Build a summary string for the coefficients.
+   *
+   * @return String representation
+   */
+  override def toSummaryString: String =
+    s"Fixed effect model with featureShardId $featureShardId summary:\n${model.toSummaryString}"
+
+  /**
+   * Clean up coefficient broadcast.
+   */
+  override def unpersistBroadcast(): BroadcastLike = {
+    modelBroadcast.unpersist()
+    this
+  }
+
+  /**
+   * Compares two [[FixedEffectModel]] objects.
+   *
+   * @param that Some other object
+   * @return True if both models have the same feature shard ID and underlying models, false otherwise
    */
   override def equals(that: Any): Boolean = {
     that match {
       case other: FixedEffectModel =>
         val sameMetaData = this.featureShardId == other.featureShardId
-        lazy val sameCoefficients = this.model.equals(other.model)
-        sameMetaData && sameCoefficients
+        lazy val sameModel = this.model.equals(other.model)
+        sameMetaData && sameModel
       case _ => false
     }
   }
 
-  // TODO: Violation of the hashCode() contract
   /**
+   * Returns a hash code value for the object.
    *
-   * @return
+   * @return An [[Int]] hash code
    */
-  override def hashCode: Int = super.hashCode()
+  override def hashCode: Int = featureShardId.hashCode + model.hashCode
 }
 
 object FixedEffectModel {
 
   /**
-   * Compute the scores for the dataset
-   *
-   * TODO: Do we really need this method to be static?
+   * Compute the scores for the dataset.
    *
    * @param dataPoints The dataset to score
    * @param modelBroadcast The model to use for scoring
    * @param featureShardId The feature shard id
-   * @return The score
+   * @return The scores
    */
-  private def score(
+  private def score[T, V](
       dataPoints: RDD[(Long, GameDatum)],
       modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: String): KeyValueScore = {
+      featureShardId: String,
+      toScore: (GameDatum, Double) => T,
+      toResult: (RDD[(Long, T)]) => V): V = {
 
-    val scores = dataPoints.mapValues(gameDatum =>
-      gameDatum.toScoredGameDatum(modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId))))
-    new KeyValueScore(scores)
+    val scores = dataPoints.mapValues { gameDatum =>
+      toScore(gameDatum, modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId)))
+    }
+
+    toResult(scores)
   }
 }

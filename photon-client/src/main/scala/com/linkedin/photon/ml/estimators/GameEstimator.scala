@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.function.svm.{DistributedSmoothedHingeLossFunction, SingleNodeSmoothedHingeLossFunction}
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
-import com.linkedin.photon.ml.model.GAMEModel
+import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
 import com.linkedin.photon.ml.optimization.game._
@@ -41,7 +41,6 @@ import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util._
-
 
 /**
  * Estimator implementation for GAME models.
@@ -76,8 +75,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
   def fit(
       data: DataFrame,
       validationData: Option[DataFrame] = None,
-      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]]):
-        Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
+      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]])
+    : Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
 
     val numPartitions = data.rdd.partitions.length
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
@@ -88,7 +87,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         idTypeSet,
         isResponseRequired = true)
         .partitionBy(gameDataPartitioner)
-        .setName("Game training data")
+        .setName("GAME training data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     }
     gameDataSet.count()
@@ -102,8 +101,9 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     // Purge the GAME dataset, which is no longer needed in the following code
     gameDataSet.unpersist()
 
-    val validationDataAndEvaluators =
-      Timed("prepare validation evaluators") { validationData.map { data => prepareValidationEvaluators(data) } }
+    val validationDataAndEvaluators = Timed("prepare validation evaluators") {
+      validationData.map(prepareValidationEvaluators)
+    }
 
     val gameModelsMap = Timed("train") {
       train(trainingDataSet, trainingLossFunctionEvaluator, validationDataAndEvaluators, normalizationContexts)
@@ -235,7 +235,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
     val validatingLabelsAndOffsetsAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
-      .setName(s"Validating labels and offsets").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .setName(s"Validating labels and offsets")
+      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     validatingLabelsAndOffsetsAndWeights.count()
 
     val evaluators =
@@ -257,7 +258,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
         params.evaluatorTypes.map(EvaluatorFactory.buildEvaluator(_, gameDataSet))
       }
 
-    val randomScores = gameDataSet.mapValues(datum => datum.toScoredGameDatum(math.random))
+    val randomScores = gameDataSet.mapValues(_ => math.random)
     evaluators.foreach { evaluator =>
       val metric = evaluator.evaluate(randomScores)
       logger.info(s"Random guessing based baseline evaluation metric for ${evaluator.getEvaluatorName}: $metric")
@@ -280,8 +281,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
       dataSets: Map[String, DataSet[_ <: DataSet[_]]],
       trainingEvaluator: Evaluator,
       validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
-      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]]):
-        Seq[(GAMEModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
+      normalizationContexts: Option[Map[FeatureShardId, NormalizationContext]])
+    :Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
 
     val contextBroadcasts: Option[Map[FeatureShardId, Broadcast[NormalizationContext]]] = normalizationContexts.map {
       contextsMap => contextsMap.mapValues { context => sc.broadcast(context) }
@@ -385,7 +386,7 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
       val (gameModel, evaluation) =
         CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
-        .run(params.numIterations, params.taskType)
+        .run(params.numIterations)
 
       timer.stop()
       logger.info(s"Finished training model with the following config:\n$modelConfig\n" +

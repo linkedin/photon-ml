@@ -17,7 +17,8 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, KeyValueScore, LabeledPoint, ScoredGameDatum}
+import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, FixedEffectOptimizationTracker, OptimizationTracker}
@@ -41,7 +42,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): KeyValueScore = {
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         FixedEffectCoordinate.score(dataSet, fixedEffectModel)
@@ -151,17 +152,16 @@ object FixedEffectCoordinate {
    *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
    *       through non-linear link function in logistic regression!).
-   *
    * @param fixedEffectDataSet The dataset to score
    * @param fixedEffectModel The model to score the dataset with
    * @return The computed scores
    */
-  private def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): KeyValueScore = {
+  private def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
-    val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(label, features, offset, weight) =>
-      ScoredGameDatum(label, offset, weight, modelBroadcast.value.computeScore(features), Map())
+    val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
+      modelBroadcast.value.computeScore(features)
     }
 
-    new KeyValueScore(scores)
+    new CoordinateDataScores(scores)
   }
 }

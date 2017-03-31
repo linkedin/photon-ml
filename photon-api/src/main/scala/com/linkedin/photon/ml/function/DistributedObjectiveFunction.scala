@@ -25,13 +25,13 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * The base objective function used by DistributedOptimizationProblems. This function works with an RDD of data
  * distributed across the cluster.
  *
- * @param sparkContext The Spark context
+ * @param sc The Spark context
  * @param treeAggregateDepth The depth used by treeAggregate. Depth 1 indicates normal linear aggregate. Using
  *                           depth > 1 can reduce memory consumption in the Driver and may also speed up the
  *                           aggregation. It is experimental currently because treeAggregate is unstable in Spark
  *                           versions 1.4 and 1.5.
  */
-abstract class DistributedObjectiveFunction(sparkContext: SparkContext, treeAggregateDepth: Int)
+abstract class DistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int)
   extends ObjectiveFunction {
 
   type Data = RDD[LabeledPoint]
@@ -54,7 +54,7 @@ abstract class DistributedObjectiveFunction(sparkContext: SparkContext, treeAggr
    * @return A broadcast of the given coefficients Vector
    */
   override protected[ml] def convertFromVector(coefficients: Vector[Double]): Coefficients =
-    sparkContext.broadcast(coefficients)
+    sc.broadcast(coefficients)
 
   /**
    * DistributedObjectiveFunctions handle broadcasted Vectors. Fetch the underlying Vector.

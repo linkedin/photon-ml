@@ -48,23 +48,54 @@ protected[ml] class FactoredRandomEffectOptimizationProblem[
     val latentSpaceDimension: Int)
   extends RDDLike {
 
+  /**
+   * Get the Spark context.
+   *
+   * @return The Spark context
+   */
   override def sparkContext: SparkContext = randomEffectOptimizationProblem.sparkContext
 
+  /**
+   * Assign a given name to [[randomEffectOptimizationProblem]].
+   *
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
+   *
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the name of [[randomEffectOptimizationProblem]] assigned
+   */
   override def setName(name: String): this.type = {
     randomEffectOptimizationProblem.setName(name)
     this
   }
 
+  /**
+   * Set the storage level of [[randomEffectOptimizationProblem]], and persist its values across the cluster the first
+   * time they are computed.
+   *
+   * @param storageLevel The storage level
+   * @return This object with the storage level of [[randomEffectOptimizationProblem]] set
+   */
   override def persistRDD(storageLevel: StorageLevel): this.type = {
     randomEffectOptimizationProblem.persistRDD(storageLevel)
     this
   }
 
+  /**
+   * Mark [[randomEffectOptimizationProblem]] as non-persistent, and remove all blocks for it from memory and disk.
+   *
+   * @return This object with [[randomEffectOptimizationProblem]] marked non-persistent
+   */
   override def unpersistRDD(): this.type = {
     randomEffectOptimizationProblem.unpersistRDD()
     this
   }
 
+  /**
+   * Materialize [[randomEffectOptimizationProblem]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be
+   * evaluated).
+   *
+   * @return This object with [[randomEffectOptimizationProblem]] materialized
+   */
   override def materialize(): this.type = {
     randomEffectOptimizationProblem.materialize()
     this

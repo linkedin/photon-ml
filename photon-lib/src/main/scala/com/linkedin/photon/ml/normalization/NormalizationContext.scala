@@ -40,7 +40,7 @@ private[ml] case class NormalizationContext(
     shifts: Option[_ <: Vector[Double]],
     interceptId: Option[Int]) {
 
-  // TODO: can we test that earlier (in GAMEParams)?
+  // TODO: can we test that earlier (in GameParams)?
   require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
   if (factors.isDefined && shifts.isDefined) {
     require(factors.get.size == shifts.get.size, "Factors and shifts vectors should have the same size")

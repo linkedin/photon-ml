@@ -108,7 +108,7 @@ object MockDriver {
    * Setup a mock Photon-ML Driver and run it, then verify that the actual results match the expected results.
    *
    * @param args The Driver runtime arguments
-   * @param sparkContext The Spark context
+   * @param sc The Spark context
    * @param expectedStages The Photon-ML stages the mock run is expected to pass through
    * @param expectedNumFeatures The expected number of features in the input data
    * @param expectedNumTrainingData The expected number of training records
@@ -117,7 +117,7 @@ object MockDriver {
    */
   def runLocally(
       args: Array[String],
-      sparkContext: SparkContext,
+      sc: SparkContext,
       expectedStages: Array[DriverStage],
       expectedNumFeatures: Int,
       expectedNumTrainingData: Int,
@@ -127,8 +127,8 @@ object MockDriver {
     // Parse the parameters from command line, should always be the 1st line in main
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
     val logPath = new Path(params.outputDir, "log-message.txt")
-    val logger = new PhotonLogger(logPath, sparkContext)
-    val job = new MockDriver(params, sparkContext, logger, seed)
+    val logger = new PhotonLogger(logPath, sc)
+    val job = new MockDriver(params, sc, logger, seed)
     job.run()
 
     val actualStages = job.stages()

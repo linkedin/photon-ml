@@ -14,17 +14,35 @@
  */
 package com.linkedin.photon.ml.data.avro
 
+import com.linkedin.photon.ml.util.Summarizable
+
 /**
  * A compact way to represent the feature key as (name, term) pair.
+ *
+ * TODO: Change the scope of this class and all functions in the companion object to [[com.linkedin.photon.ml.avro]]
+ *       after Avro related classes/functions are decoupled from the rest of code
  */
-// TODO: Change the scope of this class and all functions in the companion object to [[com.linkedin.photon.ml.avro]]
-// after Avro related classes/functions are decoupled from the rest of code
-protected[ml] case class NameAndTerm(name: String, term: String) {
+protected[ml] case class NameAndTerm(name: String, term: String) extends Summarizable {
 
   /**
+   * Build a human-readable summary for the [[NameAndTerm]].
    *
-   * @param that
-   * @return
+   * @return A summary of the [[NameAndTerm]] in string representation
+   */
+  override def toSummaryString: String = s"name: $name, term: $term"
+
+  /**
+   * Returns a string representation of the [[NameAndTerm]]
+   *
+   * @return A string representation of the name-term pair
+   */
+  override def toString: String = s"$name\t$term"
+
+  /**
+   * Compares two [[NameAndTerm]] objects.
+   *
+   * @param that Some other object
+   * @return True if they have the same name and term, false otherwise
    */
   override def equals(that: Any): Boolean = that match {
     case other: NameAndTerm => name == other.name && term == other.term
@@ -32,19 +50,15 @@ protected[ml] case class NameAndTerm(name: String, term: String) {
   }
 
   /**
+   * Returns a hash code value for the object.
    *
-   * @return
+   * @return An [[Int]] hash code
    */
   override def hashCode: Int = (name + NameAndTerm.DELIMITER + term).hashCode
-
-  /**
-   *
-   * @return
-   */
-  override def toString: String = s"name: $name, term: $term"
 }
 
 object NameAndTerm {
+
   private val DELIMITER = "\u0000"
 
   protected[ml] val INTERCEPT_NAME_AND_TERM = NameAndTerm("(INTERCEPT)", "")

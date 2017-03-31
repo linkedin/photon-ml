@@ -23,6 +23,7 @@ import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 
 /**
@@ -58,11 +59,12 @@ protected[ml] class RandomEffectDataSet(
   val hasPassiveData: Boolean = passiveDataOption.isDefined
 
   /**
+   * Add residual scores to the data offsets.
    *
-   * @param scores
+   * @param scores The residual scores
    * @return The dataset with updated offsets
    */
-  override def addScoresToOffsets(scores: KeyValueScore): RandomEffectDataSet = {
+  override def addScoresToOffsets(scores: CoordinateDataScores): RandomEffectDataSet = {
     val scoresGroupedByRandomEffectId = scores
       .scores
       .join(uniqueIdToRandomEffectIds)
@@ -76,25 +78,30 @@ protected[ml] class RandomEffectDataSet(
 
     val updatedPassiveDataOption = passiveDataOption.map(
       _.join(scores.scores)
-        .mapValues { case ((randomEffectId, LabeledPoint(response, features, offset, weight)), scoredDatum) =>
-          (randomEffectId, LabeledPoint(response, features, offset + scoredDatum.score, weight))
+        .mapValues { case ((randomEffectId, LabeledPoint(response, features, offset, weight)), score) =>
+          (randomEffectId, LabeledPoint(response, features, offset + score, weight))
         })
 
     update(updatedActiveData, updatedPassiveDataOption)
   }
 
   /**
+   * Get the Spark context.
    *
    * @return The Spark context
    */
   override def sparkContext: SparkContext = activeData.sparkContext
 
   /**
+   * Assign a given name to [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]].
    *
-   * @param name The parent name for all RDDs in this class
-   * @return This object with all its RDDs' name assigned
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
+   *
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the names [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]]
+   *         assigned
    */
-  override def setName(name: String): this.type = {
+  override def setName(name: String): RandomEffectDataSet = {
     activeData.setName(s"$name: Active data")
     uniqueIdToRandomEffectIds.setName(s"$name: unique id to individual Id")
     passiveDataOption.foreach(_.setName(s"$name: Passive data"))
@@ -102,11 +109,14 @@ protected[ml] class RandomEffectDataSet(
   }
 
   /**
+   * Set the storage level of [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]], and persist
+   * their values across the cluster the first time they are computed.
    *
    * @param storageLevel The storage level
-   * @return This object with all its RDDs' storage level set
+   * @return This object with the storage level of [[activeData]], [[uniqueIdToRandomEffectIds]], and
+   *         [[passiveDataOption]] set
    */
-  override def persistRDD(storageLevel: SparkStorageLevel): this.type = {
+  override def persistRDD(storageLevel: SparkStorageLevel): RandomEffectDataSet = {
     if (!activeData.getStorageLevel.isValid) activeData.persist(storageLevel)
     if (!uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.persist(storageLevel)
     passiveDataOption.foreach { passiveData =>
@@ -116,10 +126,13 @@ protected[ml] class RandomEffectDataSet(
   }
 
   /**
+   * Mark [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]] as non-persistent, and remove all
+   * blocks for them from memory and disk.
    *
-   * @return This object with all its RDDs unpersisted
+   * @return This object with [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]] marked
+   *         non-persistent
    */
-  override def unpersistRDD(): this.type = {
+  override def unpersistRDD(): RandomEffectDataSet = {
     if (activeData.getStorageLevel.isValid) activeData.unpersist()
     if (uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.unpersist()
     passiveDataOption.foreach { passiveData =>
@@ -129,22 +142,25 @@ protected[ml] class RandomEffectDataSet(
   }
 
   /**
+   * Materialize [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]] (Spark [[RDD]]s are lazy
+   * evaluated: this method forces them to be evaluated).
    *
-   * @return This object with all its broadcasted variables unpersisted
+   * @return This object with [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]] materialized
    */
-  override def unpersistBroadcast(): this.type = {
-    passiveDataRandomEffectIdsOption.foreach(_.unpersist())
+  override def materialize(): RandomEffectDataSet = {
+    activeData.count()
+    uniqueIdToRandomEffectIds.count()
+    passiveDataOption.foreach(_.count())
     this
   }
 
   /**
+   * Asynchronously delete cached copies of [[passiveDataRandomEffectIdsOption]] on the executors.
    *
-   * @return This object with all its RDDs materialized
+   * @return This object with [[passiveDataRandomEffectIdsOption]] variables unpersisted
    */
-  override def materialize(): this.type = {
-    activeData.count()
-    uniqueIdToRandomEffectIds.count()
-    passiveDataOption.foreach(_.count())
+  override def unpersistBroadcast(): RandomEffectDataSet = {
+    passiveDataRandomEffectIdsOption.foreach(_.unpersist())
     this
   }
 
@@ -168,6 +184,7 @@ protected[ml] class RandomEffectDataSet(
   }
 
   /**
+   * Build a human-readable summary for [[RandomEffectDataSet]].
    *
    * @return A summary of the object in string representation
    */
@@ -201,7 +218,7 @@ object RandomEffectDataSet {
   /**
    * Build the random effect data set with the given configuration.
    *
-   * @param gameDataSet The RDD of [[GAMEDatum]] used to generate the random effect data set
+   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect data set
    * @param randomEffectDataConfiguration The data configuration for the random effect data set
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return A new random effect dataset with the given configuration

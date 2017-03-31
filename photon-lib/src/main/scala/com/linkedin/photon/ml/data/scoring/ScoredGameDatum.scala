@@ -12,10 +12,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.data
+package com.linkedin.photon.ml.data.scoring
 
 import scala.collection.Map
 
+import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
 
 /**
@@ -48,10 +49,10 @@ case class ScoredGameDatum(
   def getZeroScoreDatum: ScoredGameDatum = this.copy(score = ScoredGameDatum.ZERO_SCORE)
 
   /**
-   * Check if two scored data are equal (if all of their fields are equal).
+   * Compare two [[ScoredGameDatum]]s objects.
    *
    * @param that Some other object
-   * @return True if the input is a [[ScoredGameDatum]] with values identical this instance, false otherwise.
+   * @return True if both [[ScoredGameDatum]] objects have identical values within a small tolerance, false otherwise
    */
   override def equals(that: Any): Boolean =
     that match {
@@ -86,5 +87,5 @@ object ScoredGameDatum {
    * @return A new [[ScoredGameDatum]]
    */
   def apply(labeledPoint: LabeledPoint, score: Double, idTypeToValueMap: Map[String, String]): ScoredGameDatum =
-    new ScoredGameDatum(labeledPoint.label, labeledPoint.offset, labeledPoint.weight, score, idTypeToValueMap)
+    ScoredGameDatum(labeledPoint.label, labeledPoint.offset, labeledPoint.weight, score, idTypeToValueMap)
 }

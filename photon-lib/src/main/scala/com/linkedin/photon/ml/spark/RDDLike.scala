@@ -15,10 +15,11 @@
 package com.linkedin.photon.ml.spark
 
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 /**
- * A trait to hold some simple operations on the RDDs.
+ * A trait containing simple operations on [[RDD]]s.
  */
 protected[ml] trait RDDLike {
 
@@ -30,36 +31,35 @@ protected[ml] trait RDDLike {
   def sparkContext: SparkContext
 
   /**
-   * Assign the name for all RDDs in this class.
+   * Assign a given name to all [[RDD]]s in this object.
    *
-   * @note Actually not used to reference models in the logic of photon-ml, just used in the logs currently.
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
    *
-   * @param name The parent name for all RDDs in this class
-   * @return This object with all its RDDs' name assigned
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the names of all of its [[RDD]]s assigned
    */
   def setName(name: String): RDDLike
 
   /**
-   * Set the storage level for all RDDs in this class, and to persist their values across operations after the first
-   * time it is computed. This can only be used to assign a new storage level if the RDD does not
-   * have a storage level set yet.
+   * Set the storage level of all [[RDD]]s in this object, and persist their values across the cluster the first time
+   * they are computed.
    *
    * @param storageLevel The storage level
-   * @return This object with all its RDDs' storage level set
+   * @return This object with the storage level of all of its [[RDD]]s set
    */
   def persistRDD(storageLevel: StorageLevel): RDDLike
 
   /**
-   * Mark the all RDDs as non-persistent, and remove all blocks for them from memory and disk.
+   * Mark all [[RDD]]s in this object as non-persistent, and remove all blocks for them from memory and disk.
    *
-   * @return This object with all its RDDs unpersisted
+   * @return This object with all of its [[RDD]]s marked non-persistent
    */
   def unpersistRDD(): RDDLike
 
   /**
-   * Materialize all the RDDs.
+   * Materialize all the [[RDD]]s (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
    *
-   * @return This object with all its RDDs materialized
+   * @return This object with all of its [[RDD]]s materialized
    */
   def materialize(): RDDLike
 }

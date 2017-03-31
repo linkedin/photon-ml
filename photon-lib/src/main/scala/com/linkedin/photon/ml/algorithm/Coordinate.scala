@@ -14,7 +14,8 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{DataSet, KeyValueScore}
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.data.DataSet
 import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 
@@ -30,7 +31,7 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param model The input model
    * @return The output scores
    */
-  protected[algorithm] def score(model: DatumScoringModel): KeyValueScore
+  protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
 
   /**
    * Initialize a basic model for scoring GAME data.
@@ -56,12 +57,9 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @return A tuple of the updated model and the optimization states tracker
    */
   protected[algorithm] def updateModel(
-    model: DatumScoringModel,
-    score: KeyValueScore): (DatumScoringModel, Option[OptimizationTracker]) = {
-
-    val dataSetWithUpdatedOffsets = dataSet.addScoresToOffsets(score)
-    updateCoordinateWithDataSet(dataSetWithUpdatedOffsets).updateModel(model)
-  }
+      model: DatumScoringModel,
+      score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
+    updateCoordinateWithDataSet(dataSet.addScoresToOffsets(score)).updateModel(model)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as

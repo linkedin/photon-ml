@@ -22,7 +22,7 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Unit tests for GAMEConverters.
+ * Unit tests for GameConverters.
  */
 class GameConvertersTest extends SparkTestUtils {
   import GameConvertersTest._

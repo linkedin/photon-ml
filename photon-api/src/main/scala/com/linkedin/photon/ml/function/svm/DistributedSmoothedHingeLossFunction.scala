@@ -34,14 +34,14 @@ import com.linkedin.photon.ml.util.VectorUtils
  * A:   Using cumGradient allows the functions to avoid memory allocation by modifying and returning cumGradient instead
  *      of creating a new gradient vector.
  *
- * @param sparkContext The Spark context
+ * @param sc The Spark context
  * @param treeAggregateDepth The depth used by treeAggregate. Depth 1 indicates normal linear aggregate. Using
  *                           depth > 1 can reduce memory consumption in the Driver and may also speed up the
  *                           aggregation. It is experimental currently because treeAggregate is unstable in Spark
  *                           versions 1.4 and 1.5.
  */
-protected[ml] class DistributedSmoothedHingeLossFunction(sparkContext: SparkContext, treeAggregateDepth: Int)
-  extends DistributedObjectiveFunction(sparkContext, treeAggregateDepth)
+protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeAggregateDepth: Int)
+  extends DistributedObjectiveFunction(sc, treeAggregateDepth)
   with DiffFunction {
 
   /**
@@ -110,12 +110,12 @@ object DistributedSmoothedHingeLossFunction {
    * function.
    *
    * @param configuration The optimization problem configuration
-   * @param sparkContext The current Spark context
+   * @param sc The current Spark context
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedSmoothedHingeLossFunction
    */
   def apply(
-      sparkContext: SparkContext,
+      sc: SparkContext,
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
 
@@ -123,11 +123,11 @@ object DistributedSmoothedHingeLossFunction {
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
-        new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth) with L2RegularizationDiff {
+        new DistributedSmoothedHingeLossFunction(sc, treeAggregateDepth) with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
         }
 
-      case _ => new DistributedSmoothedHingeLossFunction(sparkContext, treeAggregateDepth)
+      case _ => new DistributedSmoothedHingeLossFunction(sc, treeAggregateDepth)
     }
   }
 }

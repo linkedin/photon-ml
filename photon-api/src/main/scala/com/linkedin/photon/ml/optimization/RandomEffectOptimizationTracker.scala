@@ -31,24 +31,55 @@ import com.linkedin.photon.ml.spark.RDDLike
 protected[ml] class RandomEffectOptimizationTracker(val optimizationStatesTrackers: RDD[OptimizationStatesTracker])
   extends OptimizationTracker with RDDLike {
 
+  /**
+   * Get the Spark context.
+   *
+   * @return The Spark context
+   */
   override def sparkContext: SparkContext = optimizationStatesTrackers.sparkContext
 
-  override def setName(name: String): this.type = {
+  /**
+   * Assign a given name to [[optimizationStatesTrackers]].
+   *
+   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
+   *
+   * @param name The parent name for all [[RDD]]s in this class
+   * @return This object with the name of [[optimizationStatesTrackers]] assigned
+   */
+  override def setName(name: String): RandomEffectOptimizationTracker = {
     optimizationStatesTrackers.setName(name)
     this
   }
 
-  override def persistRDD(storageLevel: StorageLevel): this.type = {
+  /**
+   * Set the storage level of [[optimizationStatesTrackers]], and persist their values across the cluster the first time
+   * they are computed.
+   *
+   * @param storageLevel The storage level
+   * @return This object with the storage level of [[optimizationStatesTrackers]] set
+   */
+  override def persistRDD(storageLevel: StorageLevel): RandomEffectOptimizationTracker = {
     if (!optimizationStatesTrackers.getStorageLevel.isValid) optimizationStatesTrackers.persist(storageLevel)
     this
   }
 
-  override def unpersistRDD(): this.type = {
+  /**
+   * Mark [[optimizationStatesTrackers]] as non-persistent, and remove all blocks for them from memory and disk.
+   *
+   * @return This object with [[optimizationStatesTrackers]] marked non-persistent
+   */
+  override def unpersistRDD(): RandomEffectOptimizationTracker = {
     if (optimizationStatesTrackers.getStorageLevel.isValid) optimizationStatesTrackers.unpersist()
     this
   }
 
-  override def materialize(): this.type = {
+  /**
+   * Materialize [[optimizationStatesTrackers]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be
+   * evaluated).
+   *
+   * @return This object with [[optimizationStatesTrackers]] materialized
+   */
+  override def materialize(): RandomEffectOptimizationTracker = {
     optimizationStatesTrackers.count()
     this
   }
