@@ -1,6 +1,7 @@
 # Photon Machine Learning (Photon ML)
 
 [![Build Status](https://travis-ci.org/linkedin/photon-ml.svg?branch=master)](https://travis-ci.org/linkedin/photon-ml)
+[![Coverage Status](https://coveralls.io/repos/github/linkedin/photon-ml/badge.svg?branch=master)](https://coveralls.io/github/linkedin/photon-ml?branch=master)
 
 **New**: check out our [hands-on tutorial](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
 

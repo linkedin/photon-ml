@@ -30,6 +30,7 @@ buildscript {
     classpath 'com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0'
     classpath 'org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2'
     classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    classpath "org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.8.1"
   }
 }
 
@@ -168,6 +169,16 @@ subprojects {
         includeTestSourceDirectory = false
         source = sourceSets.main.scala
       }
+    }
+  }
+
+  apply plugin: "jacoco"
+  apply plugin: 'com.github.kt3k.coveralls'
+
+  jacocoTestReport {
+    reports {
+      xml.enabled = true // coveralls plugin depends on xml format report
+      html.enabled = true
     }
   }
 
