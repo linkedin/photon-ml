@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.util
 
 import scala.language.higherKinds
 
+import org.apache.spark.sql.DataFrame
+
 /**
  * This object contains a few implicits that we used to make the syntax cleaner, by removing unessential details.
  * Note that as a team, we tend to avoid implicits when they make tracing harder ("invisible" implicits). In that
@@ -79,6 +81,15 @@ protected[ml] object Implicits {
    */
   implicit class TapOption[T](o: Option[T]) {
     def tap(f: T => Unit): Option[T] = { o.foreach(f); o }
+  }
+
+  /**
+   * Tap for DataFrame. See documentation for TapMap.
+   *
+   * @param o A DataFrame to tap
+   */
+  implicit class TapDataFrame(o: DataFrame) {
+    def tap(f: DataFrame => Unit): DataFrame = { f(o); o }
   }
 
   /**

@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.estimators
 
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
@@ -172,6 +171,11 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
    */
   var applicationName: String = "Game-Full-Model-Training"
 
+  /**
+   * Turn on additional tests on the training and validation data
+   */
+  var checkData: Boolean = false
+
   override def toString: String =
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
       s"trainDateRangeOpt: $trainDateRangeOpt\n" +
@@ -204,7 +208,8 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions\n" +
       s"normalizationType: $normalizationType\n" +
-      s"summarizationOutputDirOpt: $summarizationOutputDirOpt"
+      s"summarizationOutputDirOpt: $summarizationOutputDirOpt\n" +
+      s"checkData: $checkData"
 }
 
 object GameParams {
@@ -242,6 +247,9 @@ object GameParams {
   val EVALUATOR_TYPE = "evaluator-type"
   val SUMMARIZATION_OUTPUT_DIR = "summarization-output-dir"
   val NORMALIZATION_TYPE = "normalization-type"
+  val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
+  val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
+  val CHECK_DATA = "check-data"
 
   /**
    * Parse parameters for GAME from the arguments on the command line.
@@ -480,6 +488,11 @@ object GameParams {
       opt[String](SUMMARIZATION_OUTPUT_DIR)
         .text("An optional directory to output statistics about the training data")
         .foreach(x => params.summarizationOutputDirOpt = Some(x))
+
+      opt[Boolean](CHECK_DATA)
+        .text(s"Whether to check the data or not. " +
+          s"default: ${defaultParams.checkData}")
+        .foreach(x => params.checkData = x)
 
       help("help").text("prints usage text.")
 

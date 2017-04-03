@@ -85,7 +85,7 @@ protected[ml] class Driver(
 
   private[this] var inputDataFormat: InputDataFormat = null
   private[this] var trainingData: RDD[LabeledPoint] = null
-  private[this] var validatingData: RDD[LabeledPoint] = null
+  private[this] var validationData: RDD[LabeledPoint] = null
 
   private[this] val regularizationContext: RegularizationContext =
     new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
@@ -200,7 +200,7 @@ protected[ml] class Driver(
     // Unpersist the training and validation data
     trainingData.unpersist()
     if (params.validateDirOpt.isDefined) {
-      validatingData.unpersist()
+      validationData.unpersist()
     }
 
     /* Store all the learned models and log messages to their corresponding directories */
@@ -235,7 +235,8 @@ protected[ml] class Driver(
 
     trainingDataNum = trainingData.count().toInt
     require(trainingDataNum > 0,
-      "No training data found. Ensure that training data exists and feature vectors are not empty.")
+      "No training data found. Ensure that training data exists and feature vectors are not empty, " +
+        "and that at least one training sample has a weight > 0.")
 
     featureNum = trainingData.first().features.size
 
@@ -253,14 +254,20 @@ protected[ml] class Driver(
    *
    * @param validateDir
    */
-  protected def prepareValidatingData(validateDir: String): Unit = {
+  protected def prepareValidationData(validateDir: String): Unit = {
     logger.info(s"\nRead validation data from $validateDir")
 
     // Read validation data after the training data are unpersisted.
-    validatingData = inputDataFormat
+    validationData = inputDataFormat
       .loadLabeledPoints(sc, validateDir, params.selectedFeaturesFile, params.minNumPartitions)
-      .persist(trainDataStorageLevel).setName("validating data")
-    if (! DataValidators.sanityCheckData(validatingData, params.taskType, params.dataValidationType)) {
+      .persist(trainDataStorageLevel)
+      .setName("validation data")
+
+    require(trainingData.count() > 0,
+      "No validation data found. Ensure that validation data exists and feature vectors are not empty, " +
+        "and that at least one validation sample has a weight > 0.")
+
+    if (! DataValidators.sanityCheckData(validationData, params.taskType, params.dataValidationType)) {
       throw new IllegalArgumentException("Validation data has issues")
     }
   }
@@ -306,7 +313,7 @@ protected[ml] class Driver(
     prepareTrainingData()
 
     params.validateDirOpt.foreach { validateDir =>
-      prepareValidatingData(validateDir)
+      prepareValidationData(validateDir)
     }
 
     // Summarize
@@ -369,7 +376,7 @@ protected[ml] class Driver(
       case (true, Some(lambdaModelTrackerTuples)) =>
         // Calculate metrics for all (models, iterations)
         lambdaModelTrackerTuples.foreach { case (lambda, modelTracker) =>
-          val perIterationMetrics = modelTracker.models.map(Evaluation.evaluate(_, validatingData))
+          val perIterationMetrics = modelTracker.models.map(Evaluation.evaluate(_, validationData))
           val msg = perIterationMetrics.zipWithIndex
             .map { case (metrics, index) =>
               metrics.keys
@@ -389,7 +396,7 @@ protected[ml] class Driver(
       case _ =>
         // Calculate metrics for all models
         val perLambdaValidationMetrics = lambdaModelTuples.map { case (lambda: Double, model: GeneralizedLinearModel) =>
-          val metrics = Evaluation.evaluate(model, validatingData)
+          val metrics = Evaluation.evaluate(model, validationData)
           val msg = metrics.keys
             .toSeq
             .sorted
@@ -420,16 +427,16 @@ protected[ml] class Driver(
     val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
       case TaskType.LINEAR_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
-        ModelSelection.selectBestLinearRegressionModel(models, validatingData)
+        ModelSelection.selectBestLinearRegressionModel(models, validationData)
       case TaskType.POISSON_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
-        ModelSelection.selectBestPoissonRegressionModel(models, validatingData)
+        ModelSelection.selectBestPoissonRegressionModel(models, validationData)
       case TaskType.LOGISTIC_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
-        ModelSelection.selectBestLinearClassifier(models, validatingData)
+        ModelSelection.selectBestLinearClassifier(models, validationData)
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
-        ModelSelection.selectBestLinearClassifier(models, validatingData)
+        ModelSelection.selectBestLinearClassifier(models, validationData)
     }
 
     logger.info(s"Regularization weight of the best model is: $bestModelWeight")
@@ -523,9 +530,9 @@ protected[ml] class Driver(
     val predictionErrorDiagnostic = new PredictionErrorIndependenceDiagnostic()
     val lambdaMeanVarImportancePredictionErrorMap =
       lambdaModelTuples.map(x => (x._1,
-        (meanImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption),
-        varImportanceDiagnostic.diagnose(x._2, validatingData, summaryOption),
-        predictionErrorDiagnostic.diagnose(x._2, validatingData, summaryOption)))
+        (meanImportanceDiagnostic.diagnose(x._2, validationData, summaryOption),
+        varImportanceDiagnostic.diagnose(x._2, validationData, summaryOption),
+        predictionErrorDiagnostic.diagnose(x._2, validationData, summaryOption)))
       ).toMap
 
     val modelDiagnosticTime = (System.currentTimeMillis - modelDiagnosticStart) / 1000.0
@@ -549,7 +556,7 @@ protected[ml] class Driver(
     val hlDiagnostic = new HosmerLemeshowDiagnostic()
     val lambdaHLReport = lambdaModelTuples.map { case Pair(lambda, model) =>
       val hlReport = model match {
-        case lm: LogisticRegressionModel => Some(hlDiagnostic.diagnose(lm, validatingData, summaryOption))
+        case lm: LogisticRegressionModel => Some(hlDiagnostic.diagnose(lm, validationData, summaryOption))
         case _ => None
       }
       (lambda, hlReport)
