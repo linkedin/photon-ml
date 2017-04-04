@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.data.avro
 import scala.collection.JavaConverters._
 
 import org.apache.avro.generic.GenericData
+import org.apache.avro.Schema.Type._
 import org.apache.avro.{Schema, SchemaBuilder}
 import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.sql.types.DataTypes._
@@ -42,11 +43,12 @@ class AvroDataReaderTest {
       Array(avroSchema.getFields.get(7).schema, IntegerType),
       Array(avroSchema.getFields.get(8).schema, LongType),
       Array(avroSchema.getFields.get(9).schema, DoubleType),
-      Array(avroSchema.getFields.get(10).schema, IntegerType),
-      Array(avroSchema.getFields.get(11).schema, BooleanType),
-      Array(avroSchema.getFields.get(12).schema, DoubleType),
-      Array(avroSchema.getFields.get(13).schema, FloatType),
-      Array(avroSchema.getFields.get(14).schema, LongType))
+      Array(avroSchema.getFields.get(10).schema, DoubleType),
+      Array(avroSchema.getFields.get(11).schema, IntegerType),
+      Array(avroSchema.getFields.get(12).schema, BooleanType),
+      Array(avroSchema.getFields.get(13).schema, DoubleType),
+      Array(avroSchema.getFields.get(14).schema, FloatType),
+      Array(avroSchema.getFields.get(15).schema, LongType))
   }
 
   @Test(dataProvider = "fieldSchemaProvider")
@@ -68,16 +70,17 @@ class AvroDataReaderTest {
       AvroDataReader.avroTypeToSql(UnionField, avroSchema.getFields.get(7).schema),
       AvroDataReader.avroTypeToSql(UnionFieldIntLong, avroSchema.getFields.get(8).schema),
       AvroDataReader.avroTypeToSql(UnionFieldFloatDouble, avroSchema.getFields.get(9).schema),
-      AvroDataReader.avroTypeToSql(NullableIntField, avroSchema.getFields.get(10).schema),
-      AvroDataReader.avroTypeToSql(NullableBooleanField, avroSchema.getFields.get(11).schema),
-      AvroDataReader.avroTypeToSql(NullableDoubleField, avroSchema.getFields.get(12).schema),
-      AvroDataReader.avroTypeToSql(NullableFloatField, avroSchema.getFields.get(13).schema),
-      AvroDataReader.avroTypeToSql(NullableLongField, avroSchema.getFields.get(14).schema)).flatten
+      AvroDataReader.avroTypeToSql(UnionFieldIntLongFloatDouble, avroSchema.getFields.get(10).schema),
+      AvroDataReader.avroTypeToSql(NullableIntField, avroSchema.getFields.get(11).schema),
+      AvroDataReader.avroTypeToSql(NullableBooleanField, avroSchema.getFields.get(12).schema),
+      AvroDataReader.avroTypeToSql(NullableDoubleField, avroSchema.getFields.get(13).schema),
+      AvroDataReader.avroTypeToSql(NullableFloatField, avroSchema.getFields.get(14).schema),
+      AvroDataReader.avroTypeToSql(NullableLongField, avroSchema.getFields.get(15).schema)).flatten
 
     val vals = AvroDataReader.readColumnValuesFromRecord(record, fields)
     assertEquals(vals,
       Seq(IntValue, StringValue, BooleanValue, DoubleValue, FloatValue, LongValue, MapValue, UnionIntValue,
-        UnionIntLongValue, UnionFloatDoubleValue, null, null, null, null, null))
+        UnionIntLongValue, UnionFloatDoubleValue, UnionIntLongFloatDoubleValue, null, null, null, null, null))
   }
 
   @Test
@@ -106,6 +109,23 @@ class AvroDataReaderTest {
 
     AvroDataReader.readFeatureVectorFromRecord(record, Set(FeaturesField), indexMap)
   }
+
+  @Test
+  def testAllNumericTypes(): Unit = {
+    assertFalse(AvroDataReader.allNumericTypes(List(INT, STRING)))
+    assertTrue(AvroDataReader.allNumericTypes(List(INT, FLOAT)))
+    assertFalse(AvroDataReader.allNumericTypes(List(INT, LONG, FLOAT, DOUBLE, STRING)))
+    assertTrue(AvroDataReader.allNumericTypes(List(INT, LONG, FLOAT, DOUBLE)))
+  }
+
+  @Test
+  def testGetDominantNumericType(): Unit = {
+    assertEquals(AvroDataReader.getDominantNumericType(List(INT, LONG)), LONG)
+    assertEquals(AvroDataReader.getDominantNumericType(List(FLOAT, DOUBLE)), DOUBLE)
+    assertEquals(AvroDataReader.getDominantNumericType(List(INT, FLOAT)), FLOAT)
+    assertEquals(AvroDataReader.getDominantNumericType(List(INT, LONG, FLOAT, DOUBLE)), DOUBLE)
+    assertEquals(AvroDataReader.getDominantNumericType(List(INT, DOUBLE, LONG)), DOUBLE)
+  }
 }
 
 object AvroDataReaderTest {
@@ -130,6 +150,8 @@ object AvroDataReaderTest {
   private val UnionIntLongValue = 17
   private val UnionFieldFloatDouble = "unionFieldFloatDouble"
   private val UnionFloatDoubleValue = 43.5
+  private val UnionFieldIntLongFloatDouble = "unionFieldIntLongFloatDouble"
+  private val UnionIntLongFloatDoubleValue = 5
   private val NullableIntField = "nullableIntField"
   private val NullableBooleanField = "nullableBooleanField"
   private val NullableDoubleField = "nullableDoubleField"
@@ -166,6 +188,7 @@ object AvroDataReaderTest {
     .name(UnionField).`type`().unionOf().intType().and().nullType().endUnion().noDefault()
     .name(UnionFieldIntLong).`type`().unionOf().intType().and().longType().endUnion().noDefault()
     .name(UnionFieldFloatDouble).`type`().unionOf().floatType().and().doubleType().and().nullType().endUnion().noDefault()
+    .name(UnionFieldIntLongFloatDouble).`type`().unionOf().intType().and().longType().and().floatType().and().doubleType().and().nullType().endUnion().noDefault()
     .name(NullableIntField).`type`().unionOf().intType().and().nullType().endUnion().noDefault()
     .name(NullableBooleanField).`type`().unionOf().booleanType().and().nullType().endUnion().noDefault()
     .name(NullableDoubleField).`type`().unionOf().doubleType().and().nullType().endUnion().noDefault()
@@ -185,6 +208,7 @@ object AvroDataReaderTest {
   record.put(UnionField, UnionIntValue)
   record.put(UnionFieldIntLong, UnionIntLongValue)
   record.put(UnionFieldFloatDouble, UnionFloatDoubleValue)
+  record.put(UnionFieldIntLongFloatDouble, UnionIntLongFloatDoubleValue)
   record.put(NullableIntField, null)
   record.put(NullableBooleanField, null)
   record.put(NullableDoubleField, null)

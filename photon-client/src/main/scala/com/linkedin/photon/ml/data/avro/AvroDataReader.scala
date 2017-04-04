@@ -239,6 +239,25 @@ class AvroDataReader(
 
 object AvroDataReader {
 
+  // Avro to sql primitive type map
+  private val primitiveTypeMap = Map(
+    INT -> IntegerType,
+    LONG -> LongType,
+    FLOAT -> FloatType,
+    DOUBLE -> DoubleType,
+    STRING -> StringType,
+    BOOLEAN -> BooleanType
+  )
+
+  /**
+   *  Establishes precedence among numeric types, for resolving unions where multiple types are specified. Appearing
+   *  earlier in the list means higher precedence.
+   *
+   *  @note This doesn't need to be exactly right -- its purpose is to allow us to do something basically sensible when
+   *  the data contains strange union types. Data specified with proper types are not affected.
+   */
+  private val numericPrecedence = List(DOUBLE, FLOAT, LONG, INT)
+
   /**
    * Reads feature keys and values from the avro generic record.
    *
@@ -335,6 +354,25 @@ object AvroDataReader {
     .headOption
 
   /**
+   * Determines whether all the types are numeric
+   *
+   * @param types the types to check
+   * @return true if all specified types are numeric
+   */
+  protected[data] def allNumericTypes(types: Seq[Schema.Type]): Boolean =
+    types.forall(numericPrecedence.toSet)
+
+  /**
+   * Selects the "dominant" avro numeric type from the list. Dominance in this sense means the numeric type with highest
+   * precedence.
+   *
+   * @param types the avro types from which to select
+   * @return the dominant numeric type
+   */
+  protected[data] def getDominantNumericType(types: Seq[Schema.Type]): Schema.Type =
+    numericPrecedence.filter(types.toSet).head
+
+  /**
    * Converts the named avro field schema to an equivalent spark sql schema type.
    *
    * @param name The field name
@@ -342,14 +380,10 @@ object AvroDataReader {
    * @return Spark sql schema for the field
    */
   protected[data] def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] =
-
     avroSchema.getType match {
-      case INT => Some(StructField(name, IntegerType, nullable = false))
-      case STRING => Some(StructField(name, StringType, nullable = false))
-      case BOOLEAN => Some(StructField(name, BooleanType, nullable = false))
-      case DOUBLE => Some(StructField(name, DoubleType, nullable = false))
-      case FLOAT => Some(StructField(name, FloatType, nullable = false))
-      case LONG => Some(StructField(name, LongType, nullable = false))
+      case avroType @ (INT | LONG | FLOAT | DOUBLE | STRING | BOOLEAN) =>
+        Some(StructField(name, primitiveTypeMap(avroType), nullable = false))
+
       case MAP =>
         avroTypeToSql(name, avroSchema.getValueType).map { valueSchema =>
           StructField(
@@ -369,12 +403,13 @@ object AvroDataReader {
           }
 
         } else avroSchema.getTypes.asScala.map(_.getType) match {
+          // When there are cases of multiple non-null types, resolve to a single sql type
           case Seq(t1) =>
             avroTypeToSql(name, avroSchema.getTypes.get(0))
-          case Seq(t1, t2) if Set(t1, t2) == Set(INT, LONG) =>
-            Some(StructField(name, LongType, nullable = false))
-          case Seq(t1, t2) if Set(t1, t2) == Set(FLOAT, DOUBLE) =>
-            Some(StructField(name, DoubleType, nullable = false))
+
+          case numericTypes if allNumericTypes(numericTypes) =>
+            Some(StructField(name, primitiveTypeMap(getDominantNumericType(numericTypes)), nullable = false))
+
           case _ =>
             // Unsupported union type. Drop this for now.
             None
