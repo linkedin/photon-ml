@@ -345,13 +345,14 @@ object AvroDataReader {
    * @param records The avro records
    * @return The spark sql field schema, or None if no records were found
    */
-  protected[data] def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] = records
-    .map(r => r.getSchema
-      .getFields
-      .asScala
-      .flatMap { f => avroTypeToSql(f.name, f.schema) })
-    .take(1)
-    .headOption
+  protected[data] def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] =
+    records
+      .map(r => r.getSchema
+        .getFields
+        .asScala
+        .flatMap { f => avroTypeToSql(f.name, f.schema) })
+      .take(1)
+      .headOption
 
   /**
    * Determines whether all the types are numeric

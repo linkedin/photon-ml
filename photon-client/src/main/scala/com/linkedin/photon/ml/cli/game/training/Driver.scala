@@ -19,7 +19,6 @@ import scala.util.{Failure, Success, Try}
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.col
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
@@ -58,41 +57,34 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
    */
   def run(): Unit = {
 
-    Timed("clean output directories") {
+    Timed("Clean output directories") {
       cleanOutputDirs()
     }
-    val featureIndexMapLoaders = Timed("prepare features") {
+
+    val featureIndexMapLoaders = Timed("Prepare features") {
       prepareFeatureMaps()
     }
-    val trainingDataToVerify = Timed("read training data") {
-      readTrainingData(featureIndexMapLoaders)
-    }
 
-    val trainingData = Timed("verify training data") {
-      preprocessData(trainingDataToVerify)
-    }
+    val trainingData = readAndCheck(readTrainingData(featureIndexMapLoaders), "training data").get
+    val validationData = readAndCheck(readValidationData(featureIndexMapLoaders), "validation data")
 
-    val validationDataToVerify = Timed("read validation data") {
-      readValidationData(featureIndexMapLoaders)
-    }
-
-    val validationData = Timed("verify validation data") {
-      validationDataToVerify.tap(preprocessData(_))
-    }
-
-    val featureShardStats = Timed("calculate statistics for each feature shard") {
+    val featureShardStats = Timed("Calculate statistics for each feature shard") {
       calculateAndSaveFeatureShardStats(trainingData, featureIndexMapLoaders)
     }
-    val normalizationContexts = Timed("prepare normalization contexts") {
+
+    val normalizationContexts = Timed("Prepare normalization contexts") {
       prepareNormalizationContexts(trainingData, featureIndexMapLoaders, featureShardStats)
     }
-    val models = Timed("fit") {
+
+    val models = Timed("Fit model") {
       new GameEstimator(sc, params, logger).fit(trainingData, validationData, normalizationContexts)
     }
-    val bestModel = Timed("select best model") {
+
+    val bestModel = Timed("Select best model") {
       selectBestModel(models)
     }
-    Timed("save model") {
+
+    Timed("Save model") {
       saveModelToHDFS(featureIndexMapLoaders, models, bestModel)
     }
   }
@@ -111,10 +103,13 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
   /**
    * Reads the training dataset, handling specifics of input date ranges in the params.
    *
+   * @note this returns an Option rather than a naked DataFrame to harmonize the signature with readValidationData.
+   *       readTrainingData will most probably always return a "full" Option.
+   *
    * @param featureIndexMapLoaders The feature index map loaders
-   * @return The loaded data frame
+   * @return An Option containing the loaded data frame
    */
-  protected[training] def readTrainingData(featureIndexMapLoaders: Map[String, IndexMapLoader]): DataFrame = {
+  protected[training] def readTrainingData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] = {
 
     val trainingRecordsPath =
       pathsForDateRange(params.trainDirs, params.trainDateRangeOpt, params.trainDateRangeDaysAgoOpt)
@@ -136,11 +131,11 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
     val numPartitions = math.max(numFixedEffectPartitions, numRandomEffectPartitions)
     require(numPartitions > 0, "Invalid configuration: neither fixed effect nor random effect partitions specified.")
 
-    new AvroDataReader(sc).readMerged(
+    Some(new AvroDataReader(sc).readMerged(
       trainingRecordsPath,
       featureIndexMapLoaders,
       params.featureShardIdToFeatureSectionKeysMap,
-      numPartitions)
+      numPartitions))
   }
 
   /**
@@ -171,28 +166,49 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
     }
 
   /**
-   * Preprocess data.
-   *
-   * This can be used to transform a data set (training or validation data), or to validate it with various checks.
+   * Check data, i.e. verify that it is admissible for training and/or validation.
    *
    * For now, we just check that the data contains at least a sample with non-zero weight). We throw out samples that
    * have a weight less than or equal to 0. If we don't find at least one sample with a strictly positive weight, we
    * throw an IllegalArgumentException, otherwise we return the filtered data set.
    *
-   * @note this is somewhat expensive (it iterates over the whole data set), so we can turn it off
+   * @note this function has the side-effect of possibly reducing the size of the data set
+   * @note this is somewhat expensive (it iterates over the whole data), so the user can control it via parameter
+   *       checkData
    *
    * @param data The data to check
    * @return A data set where zero-weight samples have been removed, or an exception if we couldn't find at least one
    *         sample with a strictly positive weight
    */
-  protected[training] def preprocessData(data: DataFrame): DataFrame = {
-    if (params.checkData) {
-      data
-        .filter(col("weight") > 0.0)
-        .tap(df => require(df.count > 0, "Didn't find any data point with a weight >= 0. Aborting."))
-    } else {
-      data
+  protected[training] def checkData(data: Option[DataFrame]): Option[DataFrame] =
+
+    data.map { dataframe =>
+      if (params.checkData) {
+        val numBad = dataframe
+          .map { row => if (row.getAs[Double]("weight") <= 0.0) 1 else 0 }
+          .reduce(_ + _)
+        require(numBad == 0, s"Found $numBad data points with weights <= 0. Please fix data set.")
+      }
+      dataframe
     }
+
+  /**
+   * Helper to avoid writing the same code for training and validation data: read some data set, and then optionally
+   * validate it, while timing each step separately.
+   *
+   * @param reader A function that will read a data set to an Option[DataFrame]
+   * @param dataName The name of the data set to read and check ("training", "validation"...)
+   * @return An Option[DataFrame] containing the data set if the checks are successul (an IllegalArgumentException is
+   *         thrown otherwise)
+   */
+  protected[training] def readAndCheck(reader: => Option[DataFrame], dataName: String): Option[DataFrame] = {
+
+    val tmp = Timed(s"Read $dataName") { reader }
+
+    if (params.checkData)
+      Timed(s"Check $dataName") { checkData(tmp) }
+    else
+      tmp
   }
 
   /**

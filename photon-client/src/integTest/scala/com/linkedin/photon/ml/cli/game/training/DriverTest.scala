@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
+import java.io.File
 import java.nio.file.{FileSystems, Files, Path, Paths}
 
 import scala.collection.JavaConversions._
@@ -26,8 +27,8 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.cli.game.GameDriver
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameConverters
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
@@ -80,7 +81,8 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
     val errorThreshold = 1.7
 
-    val driver = runDriver(CommonTestUtils.argArray(fixedEffectSeriousRunArgs() ++ Map("output-dir" -> outputDir)))
+    val Z = fixedEffectSeriousRunArgs() ++ Map("output-dir" -> outputDir)
+    val driver = runDriver(CommonTestUtils.argArray(Z))
 
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
@@ -125,7 +127,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
    */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testFixedEffectsWithoutInterceptWithNormalization(): Unit =
-  sparkTest("testFixedEffectsWithoutInterceptWithNormalization", useKryo = true) {
+    sparkTest("testFixedEffectsWithoutInterceptWithNormalization", useKryo = true) {
 
     val outputDir = s"$getTmpDir/fixedEffects"
 
@@ -445,6 +447,43 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
         assertTrue(stats(featureShardId).mean.length > 0)
         assertTrue(Files.exists(Paths.get(outputDir + "/" + featureShardId)))
     }
+  }
+
+  @DataProvider(name = "badWeightsInputs")
+  def badWeightsInputs(): Array[Array[String]] = {
+
+    val inputDir = getClass.getClassLoader.getResource("DriverIntegTest/input/bad-weights/").getPath
+    new File(inputDir)
+      .listFiles
+      .filter(_.getName.endsWith(".avro"))
+      .map(f => Array(inputDir + "feature-lists", f.getAbsolutePath))
+  }
+
+  /**
+   * Make sure we filter out negative or zero sample weights, and throw an exception if there are no samples left after
+   * filtering.
+   */
+  @Test(dataProvider = "badWeightsInputs", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testBadSampleWeights(featuresDir: String, inputFile: String): Unit = sparkTest("testBadSampleWeights") {
+
+    val args =
+      Map("task-type" -> TaskType.LINEAR_REGRESSION.toString,
+        "feature-name-and-term-set-path" -> featuresDir,
+        "feature-shard-id-to-feature-section-keys-map" -> "shard1:features",
+        "train-input-dirs" -> inputFile,
+        "fixed-effect-data-configurations" -> "global:shard1,2",
+        "fixed-effect-optimization-configurations" -> "global:100,1e-11,0.3,1,LBFGS,l2",
+        "updating-sequence" -> "global",
+        "validate-input-dirs" -> "",
+        "output-dir" -> s"$getTmpDir/output",
+        "num-iterations" -> "5",
+        "check-data" -> "true")
+
+    val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
+    val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
+    val driver = new Driver(sc, params, logger)
+
+    driver.run()
   }
 
   /**

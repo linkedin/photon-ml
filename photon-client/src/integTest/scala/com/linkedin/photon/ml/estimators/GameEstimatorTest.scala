@@ -51,6 +51,8 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * This is useful to understand the minimum setting in which a [[GameEstimator]] will function properly,
    * and to verify the algorithms manually.
    *
+   * @note This is a very good pedagogical example that uses a minimal setup to run the GameEstimator.
+   *
    * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default if none
    *       is specified in [[GameParams.featureShardIdToInterceptMap]]. This happens in
    *       [[GameDriver.prepareFeatureMapsDefault]], and there only. Here, we have to setup an intercept manually,
