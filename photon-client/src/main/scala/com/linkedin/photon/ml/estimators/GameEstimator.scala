@@ -93,19 +93,19 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     gameDataSet.count()
 
     // Transform the GAME dataset into fixed and random effect specific datasets
-    val trainingDataSet = Timed("prepare training data") { prepareTrainingDataSet(gameDataSet) }
+    val trainingDataSet = Timed("Prepare training data") { prepareTrainingDataSet(gameDataSet) }
 
     val trainingLossFunctionEvaluator =
-      Timed("prepare training loss evaluator") { prepareTrainingLossEvaluator(gameDataSet) }
+      Timed("Prepare training loss evaluator") { prepareTrainingLossEvaluator(gameDataSet) }
 
     // Purge the GAME dataset, which is no longer needed in the following code
     gameDataSet.unpersist()
 
-    val validationDataAndEvaluators = Timed("prepare validation evaluators") {
+    val validationDataAndEvaluators = Timed("Prepare validation evaluators") {
       validationData.map(prepareValidationEvaluators)
     }
 
-    val gameModelsMap = Timed("train") {
+    val gameModelsMap = Timed("Train model") {
       train(trainingDataSet, trainingLossFunctionEvaluator, validationDataAndEvaluators, normalizationContexts)
     }
 
