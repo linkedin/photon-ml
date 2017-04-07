@@ -80,12 +80,14 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
 
     val numPartitions = data.rdd.partitions.length
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
-    val gameDataSet = Timed("convert data set from dataframe") {
-      GameConverters.getGameDataSetFromDataFrame(
-        data,
-        params.featureShardIdToFeatureSectionKeysMap.keys.toSet,
-        idTypeSet,
-        isResponseRequired = true)
+
+    val gameDataSet = Timed("Convert data set from dataframe") {
+      GameConverters
+        .getGameDataSetFromDataFrame(data,
+          params.featureShardIdToFeatureSectionKeysMap.keys.toSet,
+          idTypeSet,
+          isResponseRequired = true,
+          params.inputColumnsNames)
         .partitionBy(gameDataPartitioner)
         .setName("GAME training data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -224,11 +226,13 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
   protected[estimators] def prepareValidationEvaluators(data: DataFrame): (RDD[(Long, GameDatum)], Seq[Evaluator]) = {
 
     val partitioner = new LongHashPartitioner(data.rdd.partitions.length)
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      data,
-      params.featureShardIdToFeatureSectionKeysMap.keys.toSet,
-      idTypeSet,
-      isResponseRequired = true)
+    val gameDataSet =
+      GameConverters
+        .getGameDataSetFromDataFrame(data,
+          params.featureShardIdToFeatureSectionKeysMap.keys.toSet,
+          idTypeSet,
+          isResponseRequired = true,
+          params.inputColumnsNames)
       .partitionBy(partitioner)
       .setName("Validating Game data set")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)

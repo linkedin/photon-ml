@@ -194,9 +194,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
           offsetOpt = Some(0.0),
           weightOpt = Some(1.0),
           featureShardContainer = Map(),
-          idTypeToValueMap = Map(
-            "queryId" -> queryId.toString,
-            "documentId" -> documentId.toString)
+          idTypeToValueMap = Map(("queryId", queryId.toString), ("documentId", documentId.toString))
         )
       }
     }
@@ -214,7 +212,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
         offsetOpt = Some(0.0),
         weightOpt = Some(1.0),
         featureShardContainer = Map(),
-        idTypeToValueMap = Map("queryId" -> random.nextInt(2).toString, "documentId" -> random.nextInt(2).toString)
+        idTypeToValueMap = Map(("queryId", random.nextInt(2).toString), ("documentId", random.nextInt(2).toString))
       )
     ))
 
@@ -233,8 +231,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val outputDir = getTmpDir
     val indexMapPath = getClass.getClassLoader.getResource("GameIntegTest/input/test-with-uid-feature-indexes").getPath
     val args = DriverTest.yahooMusicArgs(outputDir, fixedEffectOnly = false, deleteOutputDirIfExists = true) ++ Map(
-      "offheap-indexmap-dir" -> indexMapPath,
-      "offheap-indexmap-num-partitions" -> "1")
+      ("offheap-indexmap-dir", indexMapPath),
+      ("offheap-indexmap-num-partitions", "1"))
     runDriver(CommonTestUtils.argArray(args))
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
@@ -271,13 +269,13 @@ object DriverTest {
   /**
    * Arguments set for the Yahoo music data and model for the GAME scoring driver.
    *
-   * @param outputDir
-   * @param fixedEffectOnly
-   * @param deleteOutputDirIfExists
-   * @param numOutputFiles
-   * @param modelId
-   * @param evaluatorTypes
-   * @return
+   * @param outputDir The output directory when running Game
+   * @param fixedEffectOnly Whether to use fixed effects only
+   * @param deleteOutputDirIfExists Whether to delete the output diretory or not
+   * @param numOutputFiles The number of output files to use
+   * @param modelId The model id
+   * @param evaluatorTypes The types of evaluators to use
+   * @return A well-formed set of arguments to run Yahoo music
    */
   def yahooMusicArgs(
       outputDir: String,
@@ -308,14 +306,14 @@ object DriverTest {
     val applicationName = "GAME-Scoring-Integ-Test"
 
     Map(
-      "input-data-dirs" -> inputDir,
-      "feature-name-and-term-set-path" -> featurePath,
-      "game-model-id" -> modelId,
-      "output-dir" -> outputDir,
-      "num-files" -> numOutputFiles.toString,
-      "delete-output-dir-if-exists" -> deleteOutputDirIfExists.toString,
-      "application-name" -> applicationName,
-      "evaluator-type" -> evaluatorTypes.mkString(",")
+      ("input-data-dirs", inputDir),
+      ("feature-name-and-term-set-path", featurePath),
+      ("game-model-id", modelId),
+      ("output-dir", outputDir),
+      ("num-files", numOutputFiles.toString),
+      ("delete-output-dir-if-exists", deleteOutputDirIfExists.toString),
+      ("application-name", applicationName),
+      ("evaluator-type", evaluatorTypes.mkString(","))
     ) ++ argumentsForGLMix
   }
 }

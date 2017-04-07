@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.cli.game.scoring
 
 import scopt.OptionParser
 
+import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
@@ -96,8 +97,14 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
   var applicationName: String = "Game-Scoring"
 
   /**
+   * Names of the input columns to use when reading data
+   */
+  var inputColumnsNames: InputColumnsNames = InputColumnsNames()
+
+  /**
+   * Construct a human-readable string for an instance of Params.
    *
-   * @return
+   * @return A human-readable string representing this Params
    */
   override def toString: String = {
     s"inputDirs: ${inputDirs.mkString(", ")}\n" +
@@ -118,16 +125,18 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"evaluatorTypes: ${evaluatorTypes.map(_.name).mkString("\t")}\n" +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
-      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"
+      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"+
+      s"inputColumnsNames: $inputColumnsNames"
   }
 }
 
 object Params {
 
   /**
+   * Parse parameters an array of strings.
    *
-   * @param args
-   * @return
+   * @param args An array of arguments to parse
+   * @return A well-formed instance of Params
    */
   def parseFromCommandLine(args: Array[String]): Params = {
     val defaultParams = new Params()
@@ -225,7 +234,7 @@ object Params {
 
       opt[String]("evaluator-type")
         .text("Type of the evaluator used to evaluate the computed scores.")
-        .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName _))
+        .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName))
 
       // TODO: Remove the task-type option
       opt[String]("task-type")
@@ -241,6 +250,16 @@ object Params {
             "feature index building and has zero performance impact on training other than maintaining a " +
             "convention.")
         .foreach(x => params.offHeapIndexMapNumPartitions = x)
+
+      opt[String]("input-columns-names")
+        .text(s"A map of the input columns names, in format: response:label|offset:offset|uid:uid ... ")
+        .foreach(x =>
+          x.split("\\|")
+            .foreach { line =>
+              val Array(key, value) = line.split(":").map(_.trim)
+              params.inputColumnsNames.updated(InputColumnsNames.withName(key), value)
+            }
+        )
 
       help("help").text("Prints usage text")
     }

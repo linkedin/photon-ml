@@ -18,7 +18,7 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.{MathUtils, GameTestUtils}
+import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
  * Tests for the RandomEffectCoordinate implementation.

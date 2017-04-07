@@ -18,7 +18,6 @@ import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.SparkTestUtils
 

@@ -14,8 +14,8 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.data.DataSet
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 

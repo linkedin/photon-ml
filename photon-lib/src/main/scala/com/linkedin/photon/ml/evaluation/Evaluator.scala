@@ -16,8 +16,6 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
-
 /**
  * An interface for evaluation implementations at the [[RDD]] level.
  */

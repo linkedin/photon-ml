@@ -24,9 +24,9 @@ import org.slf4j.Logger
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
-import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
+import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
@@ -63,11 +63,14 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
       parallelism)
 
     val partitioner = new LongHashPartitioner(parallelism)
-    val gameDataSet = GameConverters.getGameDataSetFromDataFrame(
-      data,
-      featureShardIdToFeatureSectionKeysMap.keys.toSet,
-      idTypeSet,
-      isResponseRequired = false)
+    val gameDataSet =
+      GameConverters
+        .getGameDataSetFromDataFrame(
+          data,
+          featureShardIdToFeatureSectionKeysMap.keys.toSet,
+          idTypeSet,
+          isResponseRequired = false,
+          params.inputColumnsNames)
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -208,22 +211,25 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
 }
 
 object Driver {
+
   private val SCORES = "scores"
   private val LOGS = "logs"
 
   /**
+   * Get scores directory
    *
-   * @param outputDir
-   * @return
+   * @param outputDir Directory where the scores will be written
+   * @return The directory name for the scores
    */
   protected[scoring] def getScoresDir(outputDir: String): String = {
-    new Path(outputDir, Driver.SCORES).toString
+    new Path(outputDir, SCORES).toString
   }
 
   /**
+   * Get logs directory
    *
-   * @param outputDir
-   * @return
+   * @param outputDir Directory where the logs will be written
+   * @return The directory name for the logs
    */
   protected[scoring] def getLogsPath(outputDir: String): String = {
     new Path(outputDir, LOGS).toString
@@ -256,7 +262,7 @@ object Driver {
   /**
    * Main entry point.
    *
-   * @param args
+   * @param args The command line arguments to parse
    */
   def main(args: Array[String]): Unit = {
 
