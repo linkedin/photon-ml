@@ -29,7 +29,7 @@ buildscript {
   dependencies {
     classpath 'com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0'
     classpath 'org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2'
-    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
+    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
   }
 }
 
