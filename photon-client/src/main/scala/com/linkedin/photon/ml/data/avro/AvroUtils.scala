@@ -95,7 +95,7 @@ object AvroUtils {
    * @param outputDir The output directory to save the data as Avro files
    * @param schemaString The schema string of the data
    */
-  protected[avro] def saveAsAvro[T <: SpecificRecord : ClassTag](data: RDD[T], outputDir: String, schemaString: String): Unit = {
+  protected[ml] def saveAsAvro[T <: SpecificRecord : ClassTag](data: RDD[T], outputDir: String, schemaString: String): Unit = {
     val job = new JobConf
     val schema: Schema = new Parser().parse(schemaString)
     AvroJob.setOutputSchema(job, schema)
@@ -163,7 +163,7 @@ object AvroUtils {
    * @param forceOverwrite Optional parameter to force overwrite
    * @tparam T The record type
    */
-  protected[avro] def saveAsSingleAvro[T <: SpecificRecord : ClassTag](
+  protected[ml] def saveAsSingleAvro[T <: SpecificRecord : ClassTag](
     sc: SparkContext,
     data: Seq[T],
     path: String,
