@@ -171,13 +171,8 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Determine the convergence reason once optimization is complete.
    */
-  protected def determineConvergenceReason(): Unit = {
-    // Set the convergenceReason when the optimization is done
-    statesTracker match {
-      case Some(y) => y.convergenceReason = getConvergenceReason
-      case None =>
-    }
-  }
+  protected def determineConvergenceReason(): Unit =
+    statesTracker.foreach(_.convergenceReason = getConvergenceReason)
 
   /**
    * Check whether optimization has completed.

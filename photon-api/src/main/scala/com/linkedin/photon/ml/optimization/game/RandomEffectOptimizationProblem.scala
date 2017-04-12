@@ -59,7 +59,9 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @return This object with the name of [[optimizationProblems]] assigned
    */
   override def setName(name: String): this.type = {
+
     optimizationProblems.setName(s"$name: Optimization problems")
+
     this
   }
 
@@ -71,9 +73,9 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @return This object with the storage level of [[optimizationProblems]] set
    */
   override def persistRDD(storageLevel: StorageLevel): this.type = {
-    if (!optimizationProblems.getStorageLevel.isValid) {
-      optimizationProblems.persist(storageLevel)
-    }
+
+    if (!optimizationProblems.getStorageLevel.isValid) optimizationProblems.persist(storageLevel)
+
     this
   }
 
@@ -83,9 +85,9 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @return This object with [[optimizationProblems]] marked non-persistent
    */
   override def unpersistRDD(): this.type = {
-    if (optimizationProblems.getStorageLevel.isValid) {
-      optimizationProblems.unpersist()
-    }
+
+    if (optimizationProblems.getStorageLevel.isValid) optimizationProblems.unpersist()
+
     this
   }
 
@@ -95,7 +97,9 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @return This object with [[optimizationProblems]] materialized
    */
   override def materialize(): this.type = {
-    optimizationProblems.count()
+
+    materializeOnce(optimizationProblems)
+
     this
   }
 
@@ -114,14 +118,13 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @param modelsRDD The trained models
    * @return The combined regularization term value
    */
-  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)]): Double = {
+  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)]): Double =
     optimizationProblems
       .join(modelsRDD)
       .map {
         case (_, (optimizationProblem, model)) => optimizationProblem.getRegularizationTermValue(model)
       }
       .reduce(_ + _)
-  }
 }
 
 object RandomEffectOptimizationProblem {

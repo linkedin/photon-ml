@@ -15,22 +15,23 @@
 package com.linkedin.photon.ml.optimization.game
 
 /**
-  * Represents the complete Game optimization configuration as it appeared for a single run with a particular setting
-  * for each hyperparameter.
-  *
-  * @param fixedEffectOptimizationConfiguration the optimization configuration for each fixed effect
-  * @param randomEffectOptimizationConfiguration the optimization configuration for each random effect
-  * @param factoredRandomEffectOptimizationConfiguration the optimization configuration for each factored random effect
-  */
+ * Represents the complete Game optimization configuration as it appeared for a single run with a particular setting
+ * for each hyperparameter.
+ *
+ * @param fixedEffectOptimizationConfiguration the optimization configuration for each fixed effect
+ * @param randomEffectOptimizationConfiguration the optimization configuration for each random effect
+ * @param factoredRandomEffectOptimizationConfiguration the optimization configuration for each factored random effect
+ */
 case class GameModelOptimizationConfiguration(
     fixedEffectOptimizationConfiguration: Map[String, GLMOptimizationConfiguration],
     randomEffectOptimizationConfiguration: Map[String, GLMOptimizationConfiguration],
     factoredRandomEffectOptimizationConfiguration: Map[String, FactoredRandomEffectOptimizationConfiguration]) {
 
   /**
-    * Build a custom string representation of the configuration
-    */
-  override def toString() = Seq(fixedEffectOptimizationConfiguration.mkString("\n"),
+   * Build a custom string representation of the configuration
+   */
+  override def toString = Seq(
+    fixedEffectOptimizationConfiguration.mkString("\n"),
     randomEffectOptimizationConfiguration.mkString("\n"),
     factoredRandomEffectOptimizationConfiguration.mkString("\n")).mkString("\n")
 }

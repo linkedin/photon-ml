@@ -126,6 +126,7 @@ class MatrixFactorizationModel(
     stringBuilder.append(s"\nnumLatentFactors: $numLatentFactors")
     stringBuilder.append(s"\nrowLatentFactors L2 norm: $rowLatentFactorsL2NormStats")
     stringBuilder.append(s"\ncolLatentFactors L2 norm: $colLatentFactorsL2NormStats")
+
     stringBuilder.toString()
   }
 
@@ -147,6 +148,7 @@ class MatrixFactorizationModel(
 
     rowLatentFactors.setName(s"$name: row latent factors")
     colLatentFactors.setName(s"$name: col latent factors")
+
     this
   }
 
@@ -161,6 +163,7 @@ class MatrixFactorizationModel(
 
     if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
     if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
+
     this
   }
 
@@ -174,6 +177,7 @@ class MatrixFactorizationModel(
 
     if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
     if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
+
     this
   }
 
@@ -185,8 +189,8 @@ class MatrixFactorizationModel(
    */
   override def materialize(): MatrixFactorizationModel = {
 
-    rowLatentFactors.count()
-    colLatentFactors.count()
+    materializeOnce(rowLatentFactors, colLatentFactors)
+
     this
   }
 

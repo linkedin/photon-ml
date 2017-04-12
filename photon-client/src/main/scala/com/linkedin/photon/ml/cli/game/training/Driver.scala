@@ -402,7 +402,7 @@ object Driver {
         val logsDir = new Path(params.outputDir, LOGS).toString
         implicit val logger = new PhotonLogger(logsDir, sc)
         // TODO: This Photon log level should be made configurable
-        logger.setLogLevel(PhotonLogger.LogLevelInfo)
+        logger.setLogLevel(PhotonLogger.LogLevelDebug)
         logger.debug(params.toString + "\n")
 
         try {
