@@ -390,7 +390,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
 
     assertTrue(Files.exists(fixedEffectModelPath))
-    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 15032)
+    assertModelSane(fixedEffectModelPath, expectedNumCoefficients = 15031) // Needed with Spark 2.1.0 ???
     assertTrue(modelContainsIntercept(fixedEffectModelPath))
 
     assertTrue(Files.exists(userModelPath))

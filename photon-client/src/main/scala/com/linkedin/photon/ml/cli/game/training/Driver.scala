@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, SparkVector}
@@ -186,9 +186,12 @@ final class Driver(val sc: SparkContext, val params: GameParams, implicit val lo
 
     data.map { dataframe =>
       if (params.checkData) {
-        val numBad = dataframe
-          .map { row => if (row.getAs[Double](weightColumnName) <= 0.0) 1 else 0 }
-          .reduce(_ + _)
+        val numBad = dataframe.filter(s"$weightColumnName <= 0.0").count()
+        // This doesn't work with Spark 2.1.0
+//        val numBad = dataframe
+//          .map { row =>
+//            if (row.getAs[Double](weightColumnName) <= 0.0) 1 else 0 }
+//          .reduce(_ + _)
         require(numBad == 0, s"Found $numBad data points with weights <= 0. Please fix data set.")
       }
       dataframe
