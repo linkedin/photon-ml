@@ -22,6 +22,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
 import org.apache.spark.{Partitioner, SparkContext}
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.constants.StorageLevel
@@ -48,10 +49,11 @@ import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 protected[ml] class RandomEffectDataSet(
     val activeData: RDD[(REId, LocalDataSet)],
     protected[data] val uniqueIdToRandomEffectIds: RDD[(UniqueSampleId, REId)],
-    val passiveDataOption: Option[RDD[(UniqueSampleId, (String, LabeledPoint))]],
+    val passiveDataOption: Option[RDD[(UniqueSampleId, (REId, LabeledPoint))]],
     val passiveDataRandomEffectIdsOption: Option[Broadcast[Set[String]]],
     val randomEffectType: REType,
-    val featureShardId: FeatureShardId)
+    val featureShardId: FeatureShardId,
+    val logger: Logger = null)
   extends DataSet[RandomEffectDataSet]
   with RDDLike
   with BroadcastLike {
@@ -68,29 +70,40 @@ protected[ml] class RandomEffectDataSet(
    */
   override def addScoresToOffsets(scores: CoordinateDataScores): RandomEffectDataSet = {
 
-    val scoresGroupedByRandomEffectId: RDD[(REId, Array[(UniqueSampleId, Double)])] = scores
-      .scores
-      .join(uniqueIdToRandomEffectIds)
-      .map { case (sampleId, (score, localREId)) => (localREId, (sampleId, score)) }
-      .groupByKey(randomEffectIdPartitioner)
-      .mapValues(_.toArray.sortBy(_._1))
+    val ZZ: RDD[(UniqueSampleId, Double)] = scores.scores
+
+    val scoresGroupedByRandomEffectId: RDD[(REId, Array[(UniqueSampleId, Double)])] =
+      ZZ.join(uniqueIdToRandomEffectIds)
+        .map { case (uniqueSampleId, (score, localREId)) => (localREId, (uniqueSampleId, score)) }
+        .groupByKey(randomEffectIdPartitioner)
+        .mapValues(_.toArray.sortBy(_._1))
 
 //    val updatedActiveData: RDD[(REId, LocalDataSet)] = activeData
 //      .join(scoresGroupedByRandomEffectId)
 //      .mapValues { case (localData, localScore) => localData.addScoresToOffsets(localScore) }
 
-    val updatedActiveData: RDD[(REId, LocalDataSet)] = activeData
-      .join(scoresGroupedByRandomEffectId)
-      .mapValues { case (localData, localScore) =>
-        Try(localData.addScoresToOffsets(localScore)) match {
-          case Success(v) => v
+    val Z0: RDD[(REId, (LocalDataSet, Array[(UniqueSampleId, Double)]))] =
+      activeData.join(scoresGroupedByRandomEffectId)
+
+    val updatedActiveData: RDD[(REId, LocalDataSet)] =
+      Z0.map { case (reId, (localData, localScores)) =>
+        Try(localData.addScoresToOffsets(localScores)) match {
+          case Success(v) => (reId, v)
           case Failure(e) =>
-
-            // Log the random effect ID
-            // Log the uniqueIds for this random effect ID's dataset
-            // Check that there is an entry in both uniqueIdToRandomEffectIds and scores for each of the above uniqueIds
-            // Log the entries in the uniqueIdToRandomEffectIds map for the above uniqueIds
-
+            if (logger != null) {
+              logger.error(s"Random effect id: $reId")
+              val localIds = localScores.map(x => x._1).toSet
+              logger.error(s"Sample ids for that RE id: ${localIds.mkString(" ")}")
+              logger.error(s"uniqueIdToRandomEffectIds count = ${uniqueIdToRandomEffectIds.count}")
+              logger.error(s"localIds count = ${localIds.size}")
+              uniqueIdToRandomEffectIds.foreach { case (uniqueSampleId, _) =>
+                if (!localIds.contains(uniqueSampleId))
+                  logger.error(s"uniqueSampleId $uniqueSampleId not in sample ids")
+                val count = scores.scores.keys.filter(id => id == uniqueSampleId).count()
+                if (count != 1)
+                  logger.error(s"uniqueSampleId $uniqueSampleId found $count times in scores")
+              }
+            }
             throw e
         }
       }
@@ -204,7 +217,8 @@ protected[ml] class RandomEffectDataSet(
       updatedPassiveDataOption,
       passiveDataRandomEffectIdsOption,
       randomEffectType,
-      featureShardId)
+      featureShardId,
+      logger)
 
   /**
    * Build a human-readable summary for [[RandomEffectDataSet]].
@@ -247,10 +261,11 @@ object RandomEffectDataSet {
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return A new random effect dataset with the given configuration
    */
-  protected[ml] def buildWithConfiguration(
+  protected[ml] def apply(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner): RandomEffectDataSet = {
+      randomEffectPartitioner: Partitioner,
+      logger: Logger): RandomEffectDataSet = {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
@@ -283,7 +298,8 @@ object RandomEffectDataSet {
       passiveDataOption,
       passiveDataRandomEffectIdsOption,
       randomEffectType,
-      featureShardId)
+      featureShardId,
+      logger)
   }
 
   /**
@@ -402,7 +418,7 @@ object RandomEffectDataSet {
    *
    * @param gameDataSet The input dataset
    * @param activeData The active dataset
-   * @param gameDataPartitioner A global paritioner
+   * @param gameDataPartitioner A global partitioner
    * @param randomEffectDataConfiguration The random effect data configuration
    * @return The passive dataset
    */

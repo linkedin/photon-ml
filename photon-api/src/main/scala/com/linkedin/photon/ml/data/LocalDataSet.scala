@@ -80,14 +80,14 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataSet = {
-    val updatedDataPoints = dataPoints.zip(residualScores).map {
-      case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
-        require(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
-        (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
-    }
-    LocalDataSet(updatedDataPoints)
-  }
+  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataSet =
+
+    LocalDataSet(
+      dataPoints.zip(residualScores).map {
+        case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
+          require(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+          (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
+      })
 
   /**
    * Project the features of the underlying [[dataPoints]] from the original space to the projected
