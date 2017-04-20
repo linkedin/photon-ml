@@ -159,8 +159,8 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
     val randomEffectDataSets = params.randomEffectDataConfigurations.map {
       case (id, randomEffectDataConfiguration) =>
         val randomEffectPartitioner = randomEffectPartitionerMap(id)
-        val rawRandomEffectDataSet = RandomEffectDataSet
-          .buildWithConfiguration(gameDataSet, randomEffectDataConfiguration, randomEffectPartitioner)
+        val rawRandomEffectDataSet =
+          RandomEffectDataSet(gameDataSet, randomEffectDataConfiguration, randomEffectPartitioner, logger)
           .setName(s"Random effect data set with coordinate id $id")
           .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
           .materialize()
