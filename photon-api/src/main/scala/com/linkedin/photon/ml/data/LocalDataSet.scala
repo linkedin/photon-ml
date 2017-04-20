@@ -21,6 +21,7 @@ import scala.reflect.ClassTag
 
 import breeze.linalg.{SparseVector, Vector}
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
 
@@ -33,7 +34,7 @@ import com.linkedin.photon.ml.projector.Projector
  *
  * @param dataPoints Local data points consists of (globalId, labeledPoint) pairs
  */
-protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
+protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, LabeledPoint)]) {
 
   val numDataPoints: Int = dataPoints.length
   val numFeatures: Int = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
@@ -79,10 +80,10 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(Long, Double)]): LocalDataSet = {
+  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataSet = {
     val updatedDataPoints = dataPoints.zip(residualScores).map {
       case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
-        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+        require(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
         (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
     }
     LocalDataSet(updatedDataPoints)
@@ -181,7 +182,7 @@ object LocalDataSet {
    * @param isSortedByFirstIndex Whether or not to sort the data by global ID
    * @return A new LocalDataSet
    */
-  protected[ml] def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
+  protected[ml] def apply(dataPoints: Array[(UniqueSampleId, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
     if (isSortedByFirstIndex) {
       LocalDataSet(dataPoints)
     } else {
