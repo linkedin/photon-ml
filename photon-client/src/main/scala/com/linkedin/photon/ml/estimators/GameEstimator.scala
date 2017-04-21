@@ -347,13 +347,13 @@ class GameEstimator(val sc: SparkContext, val params: GameParams, implicit val l
             new RandomEffectCoordinateInProjectedSpace(
               randomEffectDataSetInProjectedSpace,
               RandomEffectOptimizationProblem(
-                randomEffectDataSetInProjectedSpace,
-                optimizationConfiguration,
-                selectSingleNodeLossFunction(optimizationConfiguration),
-                glmConstructor,
-                contextBroadcasts.extractOrElse(featureShardId)(defaultNormalizationContext),
-                TRACK_STATE,
-                params.computeVariance)
+                  randomEffectDataSetInProjectedSpace,
+                  optimizationConfiguration,
+                  selectSingleNodeLossFunction(optimizationConfiguration),
+                  glmConstructor,
+                  contextBroadcasts.extractOrElse(featureShardId)(defaultNormalizationContext),
+                  TRACK_STATE,
+                  params.computeVariance)
                 .setName(s"Random effect optimization problem of coordinate $coordinateId")
                 .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
 

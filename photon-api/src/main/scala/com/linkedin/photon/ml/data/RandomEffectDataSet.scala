@@ -65,6 +65,7 @@ protected[ml] class RandomEffectDataSet(
    * @return The dataset with updated offsets
    */
   override def addScoresToOffsets(scores: CoordinateDataScores): RandomEffectDataSet = {
+
     val scoresGroupedByRandomEffectId = scores
       .scores
       .join(uniqueIdToRandomEffectIds)
@@ -102,9 +103,11 @@ protected[ml] class RandomEffectDataSet(
    *         assigned
    */
   override def setName(name: String): RandomEffectDataSet = {
+
     activeData.setName(s"$name: Active data")
     uniqueIdToRandomEffectIds.setName(s"$name: unique id to individual Id")
     passiveDataOption.foreach(_.setName(s"$name: Passive data"))
+
     this
   }
 
@@ -117,11 +120,13 @@ protected[ml] class RandomEffectDataSet(
    *         [[passiveDataOption]] set
    */
   override def persistRDD(storageLevel: SparkStorageLevel): RandomEffectDataSet = {
+
     if (!activeData.getStorageLevel.isValid) activeData.persist(storageLevel)
     if (!uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.persist(storageLevel)
     passiveDataOption.foreach { passiveData =>
       if (!passiveData.getStorageLevel.isValid) passiveData.persist(storageLevel)
     }
+
     this
   }
 
@@ -133,11 +138,13 @@ protected[ml] class RandomEffectDataSet(
    *         non-persistent
    */
   override def unpersistRDD(): RandomEffectDataSet = {
+
     if (activeData.getStorageLevel.isValid) activeData.unpersist()
     if (uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.unpersist()
     passiveDataOption.foreach { passiveData =>
       if (passiveData.getStorageLevel.isValid) passiveData.unpersist()
     }
+
     this
   }
 
@@ -148,9 +155,12 @@ protected[ml] class RandomEffectDataSet(
    * @return This object with [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]] materialized
    */
   override def materialize(): RandomEffectDataSet = {
-    activeData.count()
-    uniqueIdToRandomEffectIds.count()
-    passiveDataOption.foreach(_.count())
+
+    passiveDataOption match {
+      case Some(passiveData) => materializeOnce(activeData, uniqueIdToRandomEffectIds, passiveData)
+      case None => materializeOnce(activeData, uniqueIdToRandomEffectIds)
+    }
+
     this
   }
 
@@ -160,7 +170,9 @@ protected[ml] class RandomEffectDataSet(
    * @return This object with [[passiveDataRandomEffectIdsOption]] variables unpersisted
    */
   override def unpersistBroadcast(): RandomEffectDataSet = {
+
     passiveDataRandomEffectIdsOption.foreach(_.unpersist())
+
     this
   }
 
@@ -173,7 +185,7 @@ protected[ml] class RandomEffectDataSet(
    */
   def update(
       updatedActiveData: RDD[(String, LocalDataSet)],
-      updatedPassiveDataOption: Option[RDD[(Long, (String, LabeledPoint))]]): RandomEffectDataSet = {
+      updatedPassiveDataOption: Option[RDD[(Long, (String, LabeledPoint))]]): RandomEffectDataSet =
     new RandomEffectDataSet(
       updatedActiveData,
       uniqueIdToRandomEffectIds,
@@ -181,7 +193,6 @@ protected[ml] class RandomEffectDataSet(
       passiveDataRandomEffectIdsOption,
       randomEffectType,
       featureShardId)
-  }
 
   /**
    * Build a human-readable summary for [[RandomEffectDataSet]].
@@ -189,6 +200,7 @@ protected[ml] class RandomEffectDataSet(
    * @return A summary of the object in string representation
    */
   override def toSummaryString: String = {
+
     val numActiveSamples = uniqueIdToRandomEffectIds.count()
     val activeSampleWeighSum = activeData.values.map(_.getWeights.map(_._2).sum).sum()
     val activeSampleResponseSum = activeData.values.map(_.getLabels.map(_._2).sum).sum()

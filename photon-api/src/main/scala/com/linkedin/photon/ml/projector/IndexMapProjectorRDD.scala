@@ -38,6 +38,7 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return The sharded data set in the projected space
    */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
     val passiveDataRandomEffectIdsOption = randomEffectDataSet.passiveDataRandomEffectIdsOption
@@ -108,7 +109,9 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return This object with the name of [[indexMapProjectorRDD]] assigned
    */
   override def setName(name: String): IndexMapProjectorRDD = {
+
     indexMapProjectorRDD.setName(name)
+
     this
   }
 
@@ -120,7 +123,9 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return This object with the storage level of [[indexMapProjectorRDD]] set
    */
   override def persistRDD(storageLevel: StorageLevel): IndexMapProjectorRDD = {
+
     if (!indexMapProjectorRDD.getStorageLevel.isValid) indexMapProjectorRDD.persist(storageLevel)
+
     this
   }
 
@@ -130,7 +135,9 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return This object with [[indexMapProjectorRDD]] marked non-persistent
    */
   override def unpersistRDD(): IndexMapProjectorRDD = {
+
     if (indexMapProjectorRDD.getStorageLevel.isValid) indexMapProjectorRDD.unpersist()
+
     this
   }
 
@@ -140,7 +147,9 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @return This object with [[indexMapProjectorRDD]] materialized
    */
   override def materialize(): IndexMapProjectorRDD = {
-    indexMapProjectorRDD.count()
+
+    materializeOnce(indexMapProjectorRDD)
+
     this
   }
 }

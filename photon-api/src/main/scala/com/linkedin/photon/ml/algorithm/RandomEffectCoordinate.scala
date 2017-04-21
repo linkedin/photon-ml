@@ -104,28 +104,39 @@ object RandomEffectCoordinate {
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
       randomEffectModel: RandomEffectModel): (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
-    val updatedModels = randomEffectDataSet
+    val updatedModelsAndTrackers = randomEffectDataSet
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
       .join(randomEffectModel.modelsRDD)
       .mapValues {
         case (((localDataSet, optimizationProblem), localModel)) =>
           val trainingLabeledPoints = localDataSet.dataPoints.map(_._2)
+          val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
+          val stateTrackers = optimizationProblem.getStatesTracker
 
-          optimizationProblem.run(trainingLabeledPoints, localModel)
+          (updatedModel, stateTrackers)
       }
+      .setName(s"Updated models and state trackers for random effect ${randomEffectDataSet.randomEffectType}")
+      .persist(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     val updatedRandomEffectModel = randomEffectModel
-      .update(updatedModels)
-      .setName(s"Updated random effect model")
-    val optimizationTracker = if (randomEffectOptimizationProblem.isTrackingState) {
-        val stateTrackers = randomEffectOptimizationProblem.optimizationProblems.map(_._2.getStatesTracker.get)
+      .update(updatedModelsAndTrackers.mapValues(_._1))
+      .setName(s"Updated models for random effect ${randomEffectDataSet.randomEffectType}")
+      .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .materialize()
+    val optimizationTracker: Option[RandomEffectOptimizationTracker] =
+      if (randomEffectOptimizationProblem.isTrackingState) {
+        val stateTrackers = updatedModelsAndTrackers.map(_._2._2.get)
         val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
-          .setName(s"Random effect optimization tracker")
+          .setName(s"State trackers for random effect ${randomEffectDataSet.randomEffectType}")
           .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
           .materialize()
 
         Some(randomEffectTracker)
-      } else None
+      } else {
+        None.asInstanceOf[Option[RandomEffectOptimizationTracker]]
+      }
+
+    updatedModelsAndTrackers.unpersist()
 
     (updatedRandomEffectModel, optimizationTracker)
   }
@@ -138,7 +149,6 @@ object RandomEffectCoordinate {
    *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
    *       through non-linear link function in logistic regression!).
-   *
    * @param randomEffectDataSet The active dataset to score
    * @param randomEffectModel The model to score the dataset with
    * @return The computed scores

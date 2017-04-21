@@ -14,9 +14,11 @@
  */
 package com.linkedin.photon.ml.spark
 
+import scala.reflect.ClassTag
+
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.storage.{RDDInfo, StorageLevel}
 
 /**
  * A trait containing simple operations on [[RDD]]s.
@@ -34,7 +36,6 @@ protected[ml] trait RDDLike {
    * Assign a given name to all [[RDD]]s in this object.
    *
    * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
-   *
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the names of all of its [[RDD]]s assigned
    */
@@ -62,4 +63,19 @@ protected[ml] trait RDDLike {
    * @return This object with all of its [[RDD]]s materialized
    */
   def materialize(): RDDLike
+
+  /**
+   * Materialize the given [[RDD]]s, if they are not already materialized and cached. Forcing an [[RDD]] to be evaluated
+   * is a waste of resources if it is already materialized.
+   *
+   * @tparam T Generic type to handle any [[RDD]]
+   * @param rdds The [[RDD]]s to materialize
+   */
+  protected def materializeOnce[T <: RDD[_] : ClassTag](rdds: T*): Unit = {
+    val idSet = sparkContext.getRDDStorageInfo.map(_.id).toSet
+
+    rdds.foreach { rdd =>
+      if (!idSet.contains(rdd.id)) rdd.count()
+    }
+  }
 }

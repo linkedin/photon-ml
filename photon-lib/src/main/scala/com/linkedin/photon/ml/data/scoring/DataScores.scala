@@ -29,7 +29,9 @@ import com.linkedin.photon.ml.spark.RDDLike
  *
  * @param scores Data point scores, as described above
  */
-abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val scores: RDD[(Long, T)]) extends RDDLike {
+abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
+    val scores: RDD[(Long, T)])
+  extends RDDLike {
 
   /**
    * The addition operation for [[DataScores]].
@@ -63,7 +65,9 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val
    * @return This object with the name of [[scores]] assigned
    */
   override def setName(name: String): RDDLike = {
+
     scores.setName(name)
+
     this
   }
 
@@ -74,7 +78,9 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val
    * @return This object with the storage level of [[scores]] set
    */
   override def persistRDD(storageLevel: StorageLevel): RDDLike = {
+
     if (!scores.getStorageLevel.isValid) scores.persist(storageLevel)
+
     this
   }
 
@@ -84,7 +90,9 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val
    * @return This object with [[scores]] marked non-persistent
    */
   override def unpersistRDD(): RDDLike = {
+
     if (scores.getStorageLevel.isValid) scores.unpersist()
+
     this
   }
 
@@ -94,7 +102,9 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](val
    * @return This object with [[scores]] materialized
    */
   override def materialize(): RDDLike = {
-    scores.count()
+
+    materializeOnce(scores)
+
     this
   }
 

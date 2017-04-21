@@ -42,6 +42,7 @@ protected[ml] class FixedEffectDataSet(
    * @return An updated dataset with scores added to offsets
    */
   override def addScoresToOffsets(scores: CoordinateDataScores): FixedEffectDataSet = {
+
     val updatedLabeledPoints = labeledPoints
       .leftOuterJoin(scores.scores)
       .mapValues { case (LabeledPoint(label, features, offset, weight), scoredDatumOption) =>
@@ -67,7 +68,9 @@ protected[ml] class FixedEffectDataSet(
    * @return This object with the name of [[labeledPoints]] assigned
    */
   override def setName(name: String): FixedEffectDataSet = {
+
     labeledPoints.setName(name)
+
     this
   }
 
@@ -79,7 +82,9 @@ protected[ml] class FixedEffectDataSet(
    * @return This object with the storage level of [[labeledPoints]] set
    */
   override def persistRDD(storageLevel: StorageLevel): FixedEffectDataSet = {
+
     if (!labeledPoints.getStorageLevel.isValid) labeledPoints.persist(storageLevel)
+
     this
   }
 
@@ -89,7 +94,9 @@ protected[ml] class FixedEffectDataSet(
    * @return This object with [[labeledPoints]] marked non-persistent
    */
   override def unpersistRDD(): FixedEffectDataSet = {
+
     if (labeledPoints.getStorageLevel.isValid) labeledPoints.unpersist()
+
     this
   }
 
@@ -99,7 +106,9 @@ protected[ml] class FixedEffectDataSet(
    * @return This object with [[labeledPoints]] materialized
    */
   override def materialize(): FixedEffectDataSet = {
-    labeledPoints.count()
+
+    materializeOnce(labeledPoints)
+
     this
   }
 
@@ -109,10 +118,12 @@ protected[ml] class FixedEffectDataSet(
    * @return A String representation of the dataset
    */
   override def toSummaryString: String = {
+
     val numSamples = labeledPoints.count()
     val weightSum = labeledPoints.values.map(_.weight).sum()
     val responseSum = labeledPoints.values.map(_.label).sum()
     val featureStats = labeledPoints.values.map(_.features.activeSize).stats()
+
     s"numSamples: $numSamples\nweightSum: $weightSum\nresponseSum: $responseSum" +
         s"\nnumFeatures: $numFeatures\nfeatureStats: $featureStats"
   }
