@@ -35,9 +35,6 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  *                       Restriction:  numCorrections > 0
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
- * @param isReusingPreviousInitialState Whether to reuse the previous initial state or not. When warm-start training is
- *                                      desired, i.e. in grid-search based hyper-parameter tuning, this field is
- *                                      recommended to set to true for consistent convergence check.
  */
 class LBFGS(
     normalizationContext: Broadcast[NormalizationContext],
@@ -45,15 +42,13 @@ class LBFGS(
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
     constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
-    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
-    isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends Optimizer[DiffFunction](
     tolerance,
     maxNumIterations,
     normalizationContext,
     constraintMap,
-    isTrackingState,
-    isReusingPreviousInitialState) {
+    isTrackingState) {
 
   /**
    * Under the hood, this adaptor uses an LBFGS
@@ -97,10 +92,10 @@ class LBFGS(
    * @param initState The initial state of the optimizer, prior to starting optimization
    * @param data The training data
    */
-  override def init(objectiveFunction: DiffFunction, initState: OptimizerState)(data: objectiveFunction.Data): Unit = {
+  def init(objectiveFunction: DiffFunction, initState: OptimizerState)(data: objectiveFunction.Data): Unit = {
     val breezeDiffFunction = new BreezeDiffFunction[Vector[Double]]() {
         // Calculating the gradient and value of the objective function
-        override def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
+        def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
           val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
           val result = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
 
@@ -120,7 +115,7 @@ class LBFGS(
    * @param data The training data
    * @return The current optimizer state
    */
-  override protected def getState
+  protected def calculateState
     (objectiveFunction: DiffFunction, coefficients: Vector[Double], iter: Int = 0)
     (data: objectiveFunction.Data) : OptimizerState = {
 
@@ -132,9 +127,9 @@ class LBFGS(
   }
 
   /**
-   *
+   * Just reset the whole BreezeOptimization instance.
    */
-  override def clearOptimizerInnerState(): Unit = breezeOptimization = _: BreezeOptimization
+  def clearOptimizerInnerState(): Unit = breezeOptimization = _ : BreezeOptimization
 
   /**
    * Run one iteration of the optimizer given the current state.
@@ -144,12 +139,13 @@ class LBFGS(
    * @param data The training data
    * @return The updated state of the optimizer
    */
-  override protected def runOneIteration
+  protected def runOneIteration
     (objectiveFunction: DiffFunction, currState: OptimizerState)
     (data: objectiveFunction.Data): OptimizerState = breezeOptimization.next(currState)
 }
 
 object LBFGS {
+  // TODO: Default tolerance and max # iterations should be in GameParams or GLMOptimizationConfiguration defaults
   val DEFAULT_MAX_ITER = 100
   val DEFAULT_NUM_CORRECTIONS = 10
   val DEFAULT_TOLERANCE = 1.0E-7

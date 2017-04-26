@@ -259,6 +259,10 @@ object PhotonMLCmdLineParser {
         .text("A preliminary indicator of how many features the input data contains (just an upper bound, not including intercept). Only used by LIBSVM format and is to be removed soon.")
         .foreach(x => params.featureDimension = x)
 
+      opt[Boolean](USE_WARM_START)
+        .text("Whether to use warm start when exploring hyper-parameters or not. Default is 'true'.")
+        .foreach(x => params.useWarmStart = x)
+
       help(HELP_OPTION).text("prints Photon-ML's usage text")
 
       override def showUsageOnError = true

@@ -63,7 +63,8 @@ object ModelTraining extends Logging {
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
-      treeAggregateDepth: Int): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) =
+      treeAggregateDepth: Int,
+      useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) =
     trainGeneralizedLinearModel(
       trainingData,
       taskType,
@@ -76,10 +77,13 @@ object ModelTraining extends Logging {
       enableOptimizationStateTracker,
       constraintMap,
       Map.empty,
-      treeAggregateDepth)
+      treeAggregateDepth,
+      useWarmStart)
 
   /**
    * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings.
+   * Sets up a GLM of the appropriate kind then trains it for various regularization weights, performing hyper-parameter
+   * tuning.
    *
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
@@ -93,8 +97,9 @@ object ModelTraining extends Logging {
    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
    *                                       per-iteration log information of the running optimizer
    * @param constraintMap An optional mapping of feature indices to box constraints
-   * @param warmStartModels Map of &lambda; &rarr; model to use for warm
+   * @param warmStartModels Map of (lambda -> model) to use for warm start training
    * @param treeAggregateDepth The depth for tree aggregation
+   * @param useWarmStart Whether to use warm start or not in hyper-parameter tuning
    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
    *         regularization weight used to train the model
    */
@@ -110,7 +115,8 @@ object ModelTraining extends Logging {
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels: Map[Double, GeneralizedLinearModel],
-      treeAggregateDepth: Int): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+      treeAggregateDepth: Int,
+      useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = GLMOptimizationConfiguration(optimizerConfig, regularizationContext)
@@ -148,8 +154,7 @@ object ModelTraining extends Logging {
       glmConstructor,
       broadcastNormalizationContext,
       enableOptimizationStateTracker,
-      isComputingVariance = false
-    )
+      isComputingVariance = false)
 
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
@@ -162,6 +167,7 @@ object ModelTraining extends Logging {
     logger.info(s"Starting model fits with $numWarmStartModels warm start models for lambdas " +
       s"${warmStartModels.keys.mkString(", ")}")
 
+    // Hyper-parameter tuning
     val initWeightsAndModels = List[(Double, GeneralizedLinearModel)]()
     val finalWeightsAndModels = sortedRegularizationWeights
       .foldLeft(initWeightsAndModels) {
@@ -171,23 +177,32 @@ object ModelTraining extends Logging {
 
           if (numWarmStartModels == 0) {
             logger.info(s"No warm start model found; beginning training with a 0-coefficients model")
-
-              List((currentWeight, optimizationProblem.run(trainingData)))
+            List((currentWeight, optimizationProblem.run(trainingData)))
           } else {
             val maxLambda = warmStartModels.keys.max
             logger.info(s"Starting training using warm-start model with lambda = $maxLambda")
-
             List((currentWeight, optimizationProblem.run(trainingData, warmStartModels.get(maxLambda).get)))
           }
 
         case (latestWeightsAndModels, currentWeight) =>
+
           // Train the rest of the models
-          val previousModel = latestWeightsAndModels.head._2
-          optimizationProblem.updateRegularizationWeight(currentWeight)
+          if (useWarmStart) {
 
-          logger.info(s"Training model with regularization weight $currentWeight finished")
+            val previousModel = latestWeightsAndModels.head._2
 
-          (currentWeight, optimizationProblem.run(trainingData, previousModel)) +: latestWeightsAndModels
+            optimizationProblem.updateRegularizationWeight(currentWeight)
+            logger.info(s"Training model with regularization weight $currentWeight finished (warm start)")
+
+            (currentWeight, optimizationProblem.run(trainingData, previousModel)) +: latestWeightsAndModels
+
+          } else {
+
+            optimizationProblem.updateRegularizationWeight(currentWeight)
+            logger.info(s"Training model with regularization weight $currentWeight finished (no warm start)")
+
+            (currentWeight, optimizationProblem.run(trainingData)) +: latestWeightsAndModels
+          }
       }
 
     val finalWeightsAndModelTrackers = optimizationProblem.getModelTracker.map(sortedRegularizationWeights.zip(_))

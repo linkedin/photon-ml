@@ -86,7 +86,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
     coefficients: Broadcast[Vector[Double]],
     normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
 
-    val initialCumGradient = VectorUtils.initializeZerosVectorOfSameType(coefficients.value)
+    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients.value)
     val result = input.treeAggregate((0.0, initialCumGradient))(
       seqOp = {
         case ((loss, cumGradient), datum) =>

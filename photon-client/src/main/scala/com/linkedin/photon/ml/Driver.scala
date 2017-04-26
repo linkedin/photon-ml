@@ -98,7 +98,8 @@ protected[ml] class Driver(
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
   private[this] var diagnostic: DiagnosticReport = _
-  private[this] var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
+
+  protected var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
 
   protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
   protected var stage: DriverStage = DriverStage.INIT
@@ -352,7 +353,9 @@ protected[ml] class Driver(
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
       constraintMap = inputDataFormat.constraintFeatureMap(),
-      treeAggregateDepth = params.treeAggregateDepth)
+      treeAggregateDepth = params.treeAggregateDepth,
+      useWarmStart = params.useWarmStart)
+
     lambdaModelTuples = _lambdaModelTuples
     lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
 
@@ -493,7 +496,8 @@ protected[ml] class Driver(
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
       constraintMap = inputDataFormat.constraintFeatureMap(),
       warmStartModels = y,
-      treeAggregateDepth = params.treeAggregateDepth)._1
+      treeAggregateDepth = params.treeAggregateDepth,
+      params.useWarmStart)._1
   }
 
   /**

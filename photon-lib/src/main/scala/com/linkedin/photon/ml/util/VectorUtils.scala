@@ -105,13 +105,14 @@ object VectorUtils {
    * @param prototypeVector The input prototype vector
    * @return The initialized vector
    */
-  def initializeZerosVectorOfSameType(prototypeVector: Vector[Double]): Vector[Double] = {
+  def zeroOfSameType(prototypeVector: Vector[Double]): Vector[Double] = {
+
     prototypeVector match {
       case dense: DenseVector[Double] => DenseVector.zeros[Double](dense.length)
       case sparse: SparseVector[Double] =>
         new SparseVector[Double](sparse.array.index, Array.fill(sparse.array.index.length)(0.0), sparse.length)
       case _ => throw new IllegalArgumentException("Vector types other than " + classOf[DenseVector[Double]]
-        + " and " + classOf[SparseVector[Double]] + " is not supported. Current class type: "
+        + " and " + classOf[SparseVector[Double]] + " are not supported. Current class type: "
         + prototypeVector.getClass.getName + ".")
     }
   }
@@ -159,6 +160,7 @@ object VectorUtils {
    * @return The mllib vector
    */
   def breezeToMllib(breezeVector: Vector[Double]): SparkVector = {
+
     breezeVector match {
       case v: DenseVector[Double] =>
         if (v.offset == 0 && v.stride == 1 && v.length == v.data.length) {
@@ -188,6 +190,7 @@ object VectorUtils {
    * @return The Breeze vector
    */
   def mllibToBreeze(mllibVector: SparkVector): Vector[Double] =
+
     mllibVector match {
       case v: SSV =>
         new SparseVector[Double](v.indices, v.values, v.size)
@@ -210,7 +213,8 @@ object VectorUtils {
    * @return True if the two vectors are "equal within epsilon", false otherwise
    */
   def areAlmostEqual(v1: Vector[Double], v2: Vector[Double]): Boolean =
+
     v1.length == v2.length && v1.toArray.zip(v2.toArray).forall { case (m1, m2) =>
-      Math.abs(m2 - m1) < MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+      MathUtils.isAlmostZero(m2 - m1)
     }
 }

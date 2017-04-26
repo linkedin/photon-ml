@@ -196,18 +196,10 @@ class NormalizationContextTest extends SparkTestUtils {
       }
 
       // Train the original data with a loss function binding normalization
-      val (model1, objective1) = optimizerNorm.optimize(objectiveFunction)(heartDataRDD)
-      // TODO(fastier): grep for all those println (and make sure they are not logging) and clean up
-      println("Optimization 1: Train the original data with a loss function binding standardization")
-      println(optimizerNorm.getStateTracker.get.toString)
-      println("Model 1: " + model1)
-      println("Objective 1: " + objective1)
+      val zero = Vector.zeros[Double](objectiveFunction.domainDimension(heartDataRDD))
+      val (model1, objective1) = optimizerNorm.optimize(objectiveFunction, zero)(heartDataRDD)
       // Train the transformed data with a normal loss function
-      val (model2, objective2) = optimizerNoNorm.optimize(objectiveFunction)(transformedRDD)
-      println("Optimization 2: Train the transformed data with a plain loss function")
-      println(optimizerNoNorm.getStateTracker.get.toString)
-      println("Model 2: " + model2)
-      println("Objective 2: " + objective2)
+      val (model2, objective2) = optimizerNoNorm.optimize(objectiveFunction, zero)(transformedRDD)
 
       normalizationBroadcast.unpersist()
       noNormalizationBroadcast.unpersist()

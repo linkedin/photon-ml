@@ -24,6 +24,17 @@ object Types {
   type SSV = org.apache.spark.mllib.linalg.SparseVector
   type SparkVector = org.apache.spark.mllib.linalg.Vector
 
+  // A "sample" is a training, validation or scoring vector of feature values
+  type UniqueSampleId = Long
+
+  // A CoordinateId is a fixed effect type, random effect type, or matrix factorization model type
+  // (e.g. "per-user", "per-song" ...)
   type CoordinateId = String
+
+  // RE stands for "random effect"
+  type REType = String
+  type REId = String
+
+  // A "feature shard" is an arbitrary set of "feature bags"
   type FeatureShardId = String
 }

@@ -116,12 +116,12 @@ object SingleNodeOptimizationProblem {
    * @return A new SingleNodeOptimizationProblem
    */
   def apply[Function <: SingleNodeObjectiveFunction](
-    configuration: GLMOptimizationConfiguration,
-    objectiveFunction: Function,
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    normalizationContext: Broadcast[NormalizationContext],
-    isTrackingState: Boolean,
-    isComputingVariance: Boolean): SingleNodeOptimizationProblem[Function] = {
+      configuration: GLMOptimizationConfiguration,
+      objectiveFunction: Function,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: Broadcast[NormalizationContext],
+      isTrackingState: Boolean,
+      isComputingVariance: Boolean): SingleNodeOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext

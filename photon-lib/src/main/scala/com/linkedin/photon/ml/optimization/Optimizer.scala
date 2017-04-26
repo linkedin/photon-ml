@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, norm}
+import breeze.linalg.{norm, Vector}
 import breeze.numerics.abs
 import org.apache.spark.broadcast.Broadcast
 
@@ -25,43 +25,74 @@ import com.linkedin.photon.ml.util._
 /**
  * Common base class for the Photon ML optimization problem solvers.
  *
- * @param tolerance The tolerance threshold for improvement between iterations as a percentage of the initial loss
- * @param maxNumIterations The cut-off for number of optimization iterations to perform.
+ * @tparam Function Generic type of the objective function to be optimized
+ * @param relTolerance The relative tolerance used to gauge improvement between iterations.
+ *                     Separate absolute tolerances for the loss function and the gradient are set from this relative
+ *                     tolerance.
+ * @param maxNumIterations The max number of iterations to perform
  * @param normalizationContext The normalization context
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
- * @param isReusingPreviousInitialState Whether to reuse the previous initial state or not. When warm-start training is
- *                                      desired, i.e. in grid-search based hyper-parameter tuning, this field is
- *                                      recommended to set to true for consistent convergence check.
- * @tparam Function Generic type of the objective function to be optimized.
  */
 abstract class Optimizer[-Function <: ObjectiveFunction](
-    tolerance: Double,
+    relTolerance: Double,
     maxNumIterations: Int,
     normalizationContext: Broadcast[NormalizationContext],
     constraintMap: Option[Map[Int, (Double, Double)]],
-    isTrackingState: Boolean,
-    isReusingPreviousInitialState: Boolean)
+    isTrackingState: Boolean)
   extends Serializable
   with Logging {
 
-  protected var statesTracker: Option[OptimizationStatesTracker] = if (isTrackingState) {
-    Some(new OptimizationStatesTracker())
-  } else {
-    None
-  }
-  protected var initialState: Option[OptimizerState] = None
-  protected var currentState: Option[OptimizerState] = None
-  protected var previousState: Option[OptimizerState] = None
+  /**
+   * OptimizationStatesTracker optionally tracks all the states of the optimizer and times the optimization.
+   */
+  private var statesTracker: Option[OptimizationStatesTracker] = initStateTracker()
 
   /**
-   * Initialize the context of the optimizer (e.g., the history of LBFGS; the trust region size of TRON; etc.).
-   *
-   * @param objectiveFunction The objective function to be optimized
-   * @param initState The initial state of the optimizer
-   * @param data The training data
+   * The absolute tolerances for the optimization problem.
    */
-  protected def init(objectiveFunction: Function, initState: OptimizerState)(data: objectiveFunction.Data): Unit
+  private var lossAbsTolerance: Double = 0D
+  private var gradientAbsTolerance: Double = 0D
+
+  /**
+   * The current and previous states of the Optimizer: coefficients, loss, gradient and iteration number.
+   */
+  private var currentState: Option[OptimizerState] = None
+  private var previousState: Option[OptimizerState] = None
+
+  /**
+   * Set the absolute tolerances for the optimizer from the loss and gradient values in the provided state.
+   *
+   * @param state The initial state
+   */
+  private def setAbsTolerances(state: OptimizerState) = {
+    lossAbsTolerance = state.loss * relTolerance
+    gradientAbsTolerance = norm(state.gradient, 2) * relTolerance
+  }
+
+  /**
+   * Update the current and previous states for the optimizer.
+   *
+   * @param state The current state
+   */
+  private def updateCurrentState(state: OptimizerState) = {
+    (statesTracker, currentState) match {
+      case (Some(tracker), Some(currState)) =>
+        // Only tracks the state if it is different from the previous state (e.g., different objects)
+        if (state != currState) {
+          tracker.track(state)
+        }
+      case _ =>
+    }
+    previousState = currentState
+    currentState = Some(state)
+  }
+
+  /**
+   * Clear the [[OptimizationStatesTracker]].
+   */
+  private def initStateTracker(): Option[OptimizationStatesTracker] =
+    if (isTrackingState) Some(new OptimizationStatesTracker()) else None
 
   /**
    * Get the normalization context.
@@ -72,26 +103,6 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * Get the state tracker.
    */
   def getStateTracker: Option[OptimizationStatesTracker] = statesTracker
-
-  /**
-   * Get the optimizer's state.
-   *
-   * @param objectiveFunction The objective function to be optimized
-   * @param coefficients The model coefficients
-   * @param iter The current iteration of the optimizer
-   * @param data The training data
-   * @return The current optimizer state
-   */
-  protected def getState
-    (objectiveFunction: Function, coefficients: Vector[Double], iter: Int = 0)
-    (data: objectiveFunction.Data): OptimizerState
-
-  /**
-   * Get the initial state of the optimizer (used for checking convergence).
-   *
-   * @return The initial state of the optimizer
-   */
-  def getInitialState: Option[OptimizerState] = initialState
 
   /**
    * Get the current state of the optimizer.
@@ -108,60 +119,20 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   def getPreviousState: Option[OptimizerState] = previousState
 
   /**
-   * Set the initial state for the optimizer.
-   *
-   * @param state The initial state
-   */
-  protected def setInitialState(state: OptimizerState): Unit = {
-    initialState = Some(state)
-  }
-
-  /**
-   * Update the current and previous states for the optimizer.
-   *
-   * @param state The current state
-   */
-  protected def updateCurrentState(state: OptimizerState): Unit = {
-    (statesTracker, currentState) match {
-      case (Some(tracker), Some(currState)) =>
-        // Only tracks the state if it is different from the previous state (e.g., different objects)
-        if (state != currState) {
-          tracker.track(state)
-        }
-      case _ =>
-    }
-    previousState = currentState
-    currentState = Some(state)
-  }
-
-  /**
-   * Clear the [[OptimizationStatesTracker]].
-   */
-  protected def clearOptimizationStatesTracker(): Unit =
-    statesTracker = statesTracker.map(tracker => new OptimizationStatesTracker())
-
-  /**
-   * Clear the optimizer (e.g. the history of LBFGS; the trust region size of TRON; etc.).
-   *
-   * @note This function should be protected and not exposed.
-   */
-  protected def clearOptimizerInnerState(): Unit
-
-  /**
    * Get the optimizer convergence reason.
    *
    * @return The convergence reason
    */
   def getConvergenceReason: Option[ConvergenceReason] = {
-    if (initialState.isEmpty || currentState.isEmpty || previousState.isEmpty) {
+    if (currentState.isEmpty) {
       None
     } else if (currentState.get.iter >= maxNumIterations) {
       Some(MaxIterations)
     } else if (currentState.get.iter == previousState.get.iter) {
       Some(ObjectiveNotImproving)
-    } else if (abs(currentState.get.value - previousState.get.value) <= tolerance * initialState.get.value) {
+    } else if (abs(currentState.get.loss - previousState.get.loss) <= lossAbsTolerance) {
       Some(FunctionValuesConverged)
-    } else if (norm(currentState.get.gradient, 2) <= tolerance * norm(initialState.get.gradient, 2)) {
+    } else if (norm(currentState.get.gradient, 2) <= gradientAbsTolerance) {
       Some(GradientConverged)
     } else {
       None
@@ -169,17 +140,80 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   }
 
   /**
-   * Determine the convergence reason once optimization is complete.
-   */
-  protected def determineConvergenceReason(): Unit =
-    statesTracker.foreach(_.convergenceReason = getConvergenceReason)
-
-  /**
    * Check whether optimization has completed.
    *
    * @return True if the optimizer thinks it's done, false otherwise
    */
   def isDone: Boolean = getConvergenceReason.nonEmpty
+
+  /**
+   * Solve the provided convex optimization problem.
+   *
+   * @note This function is called for each regularization weight separately.
+   * @note For cold start, initialCoefficients are always zero, so that the first current state for each regularization
+   *       weight is always computed from 0.
+   *       For warm start, initialCoefficients contains the coefficients of the model optimized for the previous
+   *       regularization weight.
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param data The training data
+   * @return Optimized model coefficients and corresponding objective function's value
+   */
+  protected[ml] def optimize
+    (objectiveFunction: Function, initialCoefficients: Vector[Double])
+    (data: objectiveFunction.Data): (Vector[Double], Double) = {
+
+    // Reset Optimizer inner state and state tracker
+    clearOptimizerInnerState()
+    statesTracker = initStateTracker()
+
+    // We set the absolute tolerances from the magnitudes of the first loss and gradient
+    setAbsTolerances(calculateState(objectiveFunction, VectorUtils.zeroOfSameType(initialCoefficients))(data))
+
+    // TODO for cold start, we call calculateState with the same arguments twice
+    val initialState = calculateState(objectiveFunction, initialCoefficients)(data)
+    init(objectiveFunction, initialState)(data)
+    updateCurrentState(initialState)
+
+    do {
+      updateCurrentState(runOneIteration(objectiveFunction, getCurrentState.get)(data))
+    } while (!isDone)
+
+    statesTracker.foreach(_.convergenceReason = getConvergenceReason)
+    val currState = getCurrentState.get
+    (currState.coefficients, currState.loss)
+  }
+
+  /**
+   * Initialize the context of the optimizer (e.g., the history of LBFGS; the trust region size of TRON; etc.).
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param initState The initial state of the optimizer
+   * @param data The training data
+   */
+  protected def init(objectiveFunction: Function, initState: OptimizerState)(data: objectiveFunction.Data): Unit
+
+  /**
+   * Calculate the Optimizer state given some data.
+   *
+   * @note involves a calculation over the whole data set, so can be expensive.
+   *
+   * @param objectiveFunction The objective function to be optimized
+   * @param coefficients The model coefficients
+   * @param iter The current iteration of the optimizer
+   * @param data The training data
+   * @return The current optimizer state
+   */
+  protected def calculateState
+    (objectiveFunction: Function, coefficients: Vector[Double], iter: Int = 0)
+    (data: objectiveFunction.Data): OptimizerState
+
+  /**
+   * Clear the optimizer (e.g. the history of LBFGS; the trust region size of TRON; etc.).
+   *
+   * @note This function should be protected and not exposed.
+   */
+  protected def clearOptimizerInnerState(): Unit
 
   /**
    * Run one iteration of the optimizer given the current state.
@@ -192,55 +226,9 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   protected def runOneIteration
     (objectiveFunction: Function, currState: OptimizerState)
     (data: objectiveFunction.Data): OptimizerState
-
-  /**
-   * Solve the provided convex optimization problem.
-   *
-   * @param objectiveFunction The objective function to be optimized
-   * @param data The training data
-   * @return Optimized coefficients and the optimized objective function's value
-   */
-  protected[ml] def optimize(objectiveFunction: Function)(data: objectiveFunction.Data): (Vector[Double], Double) = {
-    val initialCoefficients = Vector.zeros[Double](objectiveFunction.domainDimension(data))
-    optimize(objectiveFunction, initialCoefficients)(data)
-  }
-
-  /**
-   * Solve the provided convex optimization problem.
-   *
-   * @param objectiveFunction The objective function to be optimized
-   * @param initialCoefficients Initial coefficients
-   * @param data The training data
-   * @return Optimized coefficients and the optimized objective function's value
-   */
-  protected[ml] def optimize
-    (objectiveFunction: Function, initialCoefficients: Vector[Double])
-    (data: objectiveFunction.Data): (Vector[Double], Double) = {
-
-    clearOptimizerInnerState()
-    clearOptimizationStatesTracker()
-
-    val startState = getState(objectiveFunction, initialCoefficients)(data)
-    updateCurrentState(startState)
-    // Initialize the optimizer state if it's not being initialized yet, or if we don't need to reuse the existing
-    // initial state for consistent convergence check across multiple runs.
-    if (getInitialState.isEmpty || !isReusingPreviousInitialState) {
-      setInitialState(startState)
-    }
-    init(objectiveFunction, startState)(data)
-
-    do {
-      updateCurrentState(runOneIteration(objectiveFunction, getCurrentState.get)(data))
-    } while (!isDone)
-
-    determineConvergenceReason()
-    val currState = getCurrentState
-    (currState.get.coefficients, currState.get.value)
-  }
 }
 
 object Optimizer {
   val DEFAULT_CONSTRAINT_MAP = None
   val DEFAULT_TRACKING_STATE = true
-  val DEFAULT_REUSE_PREVIOUS_INIT_STATE = true
 }

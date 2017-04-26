@@ -182,6 +182,13 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
    */
   var inputColumnsNames = InputColumnsNames()
 
+  /**
+   * Whether to use warm start when optimizing multiple models with different regularization parameters. If warm start
+   * is used, the previous optimal model is used to initialize the next model (for the next regularization parameter(s)
+   * to use).
+   */
+  var useWarmStart: Boolean = false
+
   override def toString: String =
     s"trainDirs: ${trainDirs.mkString(", ")}\n" +
       s"trainDateRangeOpt: $trainDateRangeOpt\n" +
@@ -216,7 +223,8 @@ class GameParams extends FeatureParams with PalDBIndexMapParams with EvaluatorPa
       s"normalizationType: $normalizationType\n" +
       s"summarizationOutputDirOpt: $summarizationOutputDirOpt\n" +
       s"checkData: $checkData\n" +
-      s"inputColumnsNames: $inputColumnsNames"
+      s"inputColumnsNames: $inputColumnsNames" +
+      s"useWarmStart: $useWarmStart"
 }
 
 object GameParams {
@@ -258,6 +266,7 @@ object GameParams {
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
   val CHECK_DATA = "check-data"
   val INPUT_COLUMNS_NAMES = "input-column-names"
+  val USE_WARM_START = "use-warm-start"
 
   val defaultParams = new GameParams()
 
@@ -512,6 +521,10 @@ object GameParams {
             }
           }
         }
+
+      opt[Boolean](USE_WARM_START)
+        .text(s"Whether to use wamr start in hyper-parameter tuning. Default: ${defaultParams.useWarmStart}")
+        .foreach(x => params.useWarmStart)
 
       help("help").text("prints usage text.")
 

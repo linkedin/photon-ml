@@ -74,7 +74,7 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
     normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
-    val initialCumGradient = VectorUtils.initializeZerosVectorOfSameType(coefficients)
+    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
 
     input.aggregate((0.0, initialCumGradient))(
       seqop = {
