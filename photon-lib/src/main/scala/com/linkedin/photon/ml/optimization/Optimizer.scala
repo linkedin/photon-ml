@@ -121,6 +121,11 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Get the optimizer convergence reason.
    *
+   * @note It is not strictly necessary to check both the convergence of the loss function and the convergence of the
+   *       gradient, from a correctness point of view. All we need in the end is convergence of the loss function to
+   *       its optimum value. However, it can be useful to have a stopping criterion based on the gradient norm as
+   *       the gradient can "misbehave" around the optimum of the loss function (oscillations, numerical issues...).
+   *
    * @return The convergence reason
    */
   def getConvergenceReason: Option[ConvergenceReason] = {

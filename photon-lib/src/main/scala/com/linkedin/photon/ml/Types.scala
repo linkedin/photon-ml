@@ -27,14 +27,18 @@ object Types {
   // A "sample" is a training, validation or scoring vector of feature values
   type UniqueSampleId = Long
 
-  // A CoordinateId is a fixed effect type, random effect type, or matrix factorization model type
-  // (e.g. "per-user", "per-song" ...)
+  // A CoordinateId corresponds to a fixed effect model, random effect model, or matrix factorization model
+  // e.g. "per-user", "per-song"
   type CoordinateId = String
 
   // RE stands for "random effect"
+  // A random effect model has a single random effect type
   type REType = String
+
+  // REId is a specific, per-item, instance of a random effect model e.g. "user123", "user456" for "per-user"
   type REId = String
 
   // A "feature shard" is an arbitrary set of "feature bags"
+  // A random effect model corresponds to a single feature shard
   type FeatureShardId = String
 }

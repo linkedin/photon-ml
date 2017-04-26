@@ -252,9 +252,15 @@ object AvroUtils {
     genericRecords.flatMap(_.get(featureSectionKey) match {
       case recordList: JList[_] => recordList.asScala.map {
         case record: GenericRecord => AvroUtils.readNameAndTermFromGenericRecord(record)
-        case any => throw new IllegalArgumentException(s"$any in features list is not a record")
+        case any =>
+          val msg = s"$any in features list is not a record. It needs to be an Avro record containg a name and term " +
+            s"for each feature."
+          throw new IllegalArgumentException()
       }
-      case _ => throw new IllegalArgumentException(s"$featureSectionKey is not a list (and might be null)")
+      case _ =>
+        val msg = s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records " +
+          s"containing a name and a term for each feature."
+        throw new IllegalArgumentException(msg)
     }).distinct(numPartitions).collect().toSet
   }
 
