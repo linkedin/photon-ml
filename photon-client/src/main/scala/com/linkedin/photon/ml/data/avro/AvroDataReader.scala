@@ -72,11 +72,9 @@ class AvroDataReader(
    * @param paths The paths to the avro files or folders
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *
    *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures".
+   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
    * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
    *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
    *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
@@ -86,8 +84,8 @@ class AvroDataReader(
    */
   override def readMerged(
       paths: Seq[String],
-      featureColumnMap: Map[String, Set[String]],
-      numPartitions: Int): (DataFrame, Map[String, IndexMapLoader]) = {
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
@@ -108,11 +106,9 @@ class AvroDataReader(
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *
    *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures".
+   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
    * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
    *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
    *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
@@ -122,8 +118,8 @@ class AvroDataReader(
    */
   override def readMerged(
       paths: Seq[String],
-      indexMapLoaders: Map[String, IndexMapLoader],
-      featureColumnMap: Map[String, Set[String]],
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
       numPartitions: Int): DataFrame = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
@@ -144,11 +140,9 @@ class AvroDataReader(
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *
    *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures".
+   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
    * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
    *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
    *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
@@ -158,8 +152,8 @@ class AvroDataReader(
    */
   protected def readMerged(
       records: RDD[GenericRecord],
-      indexMapLoaders: Map[String, IndexMapLoader],
-      featureColumnMap: Map[String, Set[String]],
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
       numPartitions: Int): DataFrame = {
 
     // Infer sql schema from avro schema
@@ -181,7 +175,7 @@ class AvroDataReader(
 
         // Read feature columns
         val featureCols = featureColumnMap.map { case (destCol, sourceCols) =>
-          val featureMap = featureShardIdToIndexMap(destCol)
+          val featureMap: IndexMap = featureShardIdToIndexMap(destCol)
           readFeatureVectorFromRecord(
             record,
             sourceCols,
@@ -206,18 +200,16 @@ class AvroDataReader(
    * Generates default index map loaders by scanning the data.
    *
    * @param records The avro records to scan for features
-   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
+   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the names
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *
    *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures".
+   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
    * @return The index map loaders
    */
   protected def generateIndexMapLoaders(
       records: RDD[GenericRecord],
-      featureColumnMap: Map[String, Set[String]]): Map[String, IndexMapLoader] = {
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]]): Map[MergedColumnName, IndexMapLoader] = {
 
     // Read a flattened collection of tuples of (shardId, features)
     val featuresByShard = records.flatMap { record =>
