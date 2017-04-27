@@ -42,7 +42,10 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils, TestTemplat
 import com.linkedin.photon.ml.util._
 
 /**
- * Test cases for the GAME training driver
+ * Test cases for the GAME training driver.
+ *
+ * Most of the cases are based on the Yahoo! Music data set in:
+ * photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
  */
 class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWithTmpDir {
 
@@ -616,6 +619,8 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
 object DriverTest {
 
+  // This is the Yahoo! Music dataset:
+  // photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
   private val fs = FileSystems.getDefault
   private val inputPath = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
   private val trainPath = inputPath + "/train"

@@ -70,8 +70,8 @@ object Timed {
     val t0 = System.nanoTime()
     val res = f
     val t1 = System.nanoTime()
-    val duration = FiniteDuration(t1 - t0, TimeUnit.NANOSECONDS)
-    logger.info(s"$msg: executed in ${duration.toUnit(units)} $units")
+    val duration = FiniteDuration(t1 - t0, TimeUnit.NANOSECONDS).toUnit(units)
+    logger.info(s"$msg: executed in $duration $units")
     res
   }
 }

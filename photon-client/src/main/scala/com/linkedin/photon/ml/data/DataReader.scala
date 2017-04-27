@@ -25,7 +25,13 @@ import com.linkedin.photon.ml.util.IndexMapLoader
  */
 abstract class DataReader(protected val defaultFeatureColumn: String = "features") {
 
-  val defaultFeatureColumnMap = Map(defaultFeatureColumn -> Set(defaultFeatureColumn))
+  type InputColumnName = String
+  type MergedColumnName = String
+
+  /**
+   * This map defines the "feature bags" or "feature shards".
+   */
+  private val defaultFeatureColumnMap = Map(defaultFeatureColumn -> Set(defaultFeatureColumn))
 
   /**
    * Reads the file at the given path into a DataFrame, assuming the default feature vector.
@@ -55,7 +61,7 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    *   to the GAME data. We expose this setting here to avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(path: String, indexMapLoaders: Map[String, IndexMapLoader], numPartitions: Int): DataFrame =
+  def read(path: String, indexMapLoaders: Map[MergedColumnName, IndexMapLoader], numPartitions: Int): DataFrame =
     readMerged(Seq(path), indexMapLoaders, defaultFeatureColumnMap, numPartitions)
 
     /**
@@ -86,7 +92,7 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    *   to the GAME data. We expose this setting here to avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(paths: Seq[String], indexMapLoaders: Map[String, IndexMapLoader], numPartitions: Int): DataFrame =
+  def read(paths: Seq[String], indexMapLoaders: Map[MergedColumnName, IndexMapLoader], numPartitions: Int): DataFrame =
     readMerged(paths, indexMapLoaders, defaultFeatureColumnMap, numPartitions)
 
   /**
@@ -112,8 +118,8 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    */
   def readMerged(
       path: String,
-      featureColumnMap: Map[String, Set[String]],
-      numPartitions: Int): (DataFrame, Map[String, IndexMapLoader]) =
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
     readMerged(Seq(path), featureColumnMap, numPartitions)
 
   /**
@@ -140,8 +146,8 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    */
   def readMerged(
       path: String,
-      indexMapLoaders: Map[String, IndexMapLoader],
-      featureColumnMap: Map[String, Set[String]],
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
       numPartitions: Int): DataFrame =
     readMerged(Seq(path), indexMapLoaders, featureColumnMap, numPartitions)
 
@@ -168,8 +174,8 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    */
   def readMerged(
       paths: Seq[String],
-      featureColumnMap: Map[String, Set[String]],
-      numPartitions: Int): (DataFrame, Map[String, IndexMapLoader])
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader])
 
   /**
    * Reads the files at the given paths into a DataFrame, using the given index map for feature names. Merges source
@@ -195,7 +201,7 @@ abstract class DataReader(protected val defaultFeatureColumn: String = "features
    */
   def readMerged(
       paths: Seq[String],
-      indexMapLoaders: Map[String, IndexMapLoader],
-      featureColumnMap: Map[String, Set[String]],
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
       numPartitions: Int): DataFrame
 }
