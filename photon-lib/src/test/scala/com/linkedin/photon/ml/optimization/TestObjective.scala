@@ -71,7 +71,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
     coefficients: Vector[Double],
     normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
 
-    val initialCumGradient = VectorUtils.initializeZerosVectorOfSameType(coefficients)
+    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
 
     input.aggregate((0.0, initialCumGradient))(
       seqop = {
@@ -100,7 +100,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
     multiplyVector: Vector[Double],
     normalizationContext: Broadcast[NormalizationContext]) : Vector[Double] = {
 
-    val initialCumHessianVector = VectorUtils.initializeZerosVectorOfSameType(coefficients)
+    val initialCumHessianVector = VectorUtils.zeroOfSameType(coefficients)
 
     input.aggregate(initialCumHessianVector)(
       seqop = (cumHessianVector, datum) => {

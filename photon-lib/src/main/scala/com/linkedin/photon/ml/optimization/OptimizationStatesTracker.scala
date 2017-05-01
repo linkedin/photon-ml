@@ -29,8 +29,8 @@ import com.linkedin.photon.ml.util.{ConvergenceReason, FunctionValuesConverged, 
  *        changed or removed in future releases.
  */
 protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable with Logging {
-  private val _startTime = System.currentTimeMillis()
 
+  private val _startTime = System.currentTimeMillis()
   private var _times = Queue[Long]()
   private var _states = Queue[OptimizerState]()
   private var numStates = 0

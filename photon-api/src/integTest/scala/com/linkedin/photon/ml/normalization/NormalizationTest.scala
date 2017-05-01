@@ -117,14 +117,14 @@ class NormalizationTest extends SparkTestUtils {
       TaskType.LOGISTIC_REGRESSION,
       OptimizerType.LBFGS,
       L2RegularizationContext,
-      List(0.0),
+      regularizationWeights = List(0.0),
       normalizationContext,
       _numIter,
       _tolerance,
       enableOptimizationStateTracker = true,
-      None,
-      1
-    )
+      constraintMap = None,
+      treeAggregateDepth = 1,
+      useWarmStart = false)
     assertEquals(models.size, 1)
     val model = models.head._2.asInstanceOf[BinaryClassifier]
     // For all types of normalization, the unregularized trained model should predictClass the same label.

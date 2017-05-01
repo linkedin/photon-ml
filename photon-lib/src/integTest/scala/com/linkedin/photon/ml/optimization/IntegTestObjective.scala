@@ -79,7 +79,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
       coefficients: Broadcast[Vector[Double]],
       normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
 
-    val initialCumGradient = VectorUtils.initializeZerosVectorOfSameType(coefficients.value)
+    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients.value)
 
     input.treeAggregate((0.0, initialCumGradient))(
       seqOp = {
@@ -108,7 +108,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
       multiplyVector: Broadcast[Vector[Double]],
       normalizationContext: Broadcast[NormalizationContext]) : Vector[Double] = {
 
-    val initialCumHessianVector = VectorUtils.initializeZerosVectorOfSameType(coefficients.value)
+    val initialCumHessianVector = VectorUtils.zeroOfSameType(coefficients.value)
 
     input.treeAggregate(initialCumHessianVector)(
       seqOp = (cumHessianVector, datum) => {

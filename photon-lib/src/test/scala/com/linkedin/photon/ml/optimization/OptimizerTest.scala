@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.optimization
 
 import java.util.Random
 
-import breeze.linalg.{DenseVector, SparseVector, norm}
+import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -56,14 +56,12 @@ class OptimizerTest extends Logging {
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
         normalizationContext = NORMALIZATION_MOCK,
-        isTrackingState = ENABLE_TRACKING,
-        isReusingPreviousInitialState = false)),
+        isTrackingState = ENABLE_TRACKING)),
       Array(new TRON(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
         normalizationContext = NORMALIZATION_MOCK,
-        isTrackingState = ENABLE_TRACKING,
-        isReusingPreviousInitialState = false)))
+        isTrackingState = ENABLE_TRACKING)))
   }
 
   // TODO: Currently the test objective function used by this test ignores weights, so testing points with varying
@@ -75,13 +73,14 @@ class OptimizerTest extends Logging {
     val objective = new TestObjective
 
     // Test unweighted sample
-    val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
-    optimizer.optimize(objective)(Seq(pt))
+    val pt1 = Seq(new LabeledPoint(label = 1, features, offset = 0, weight = 1))
+    val zero = Vector.zeros[Double](objective.domainDimension(pt1))
+    optimizer.optimize(objective, zero)(pt1)
     easyOptimizationStatesChecks(optimizer.getStateTracker.get)
 
     // Test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 1.5)
-    optimizer.optimize(objective)(Seq(pt2))
+    optimizer.optimize(objective, zero)(Seq(pt2))
     easyOptimizationStatesChecks(optimizer.getStateTracker.get)
   }
 
@@ -137,9 +136,9 @@ object OptimizerTest extends Logging {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
+      assertTrue(lastValue >= state.loss, "Objective should be monotonically decreasing (current=[" + state.loss +
         "], previous=[" + lastValue + "])")
-      lastValue = state.value
+      lastValue = state.loss
     }
   }
 
@@ -163,7 +162,7 @@ object OptimizerTest extends Logging {
     assertFalse(optimizerStatesTracker.getTrackedStates.isEmpty)
     assertEquals(optimizerStatesTracker.getTrackedStates.length, optimizerStatesTracker.getTrackedTimeHistory.length)
 
-    val optimizedObj = optimizerStatesTracker.getTrackedStates.last.value
+    val optimizedObj = optimizerStatesTracker.getTrackedStates.last.loss
     val optimizedGradientNorm = norm(optimizerStatesTracker.getTrackedStates.last.gradient, 2)
     val optimizedParam = optimizerStatesTracker.getTrackedStates.last.coefficients
 

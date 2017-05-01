@@ -76,9 +76,6 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * @param maxNumIterations The cut-off for number of optimization iterations to perform.
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
- * @param isReusingPreviousInitialState Whether to reuse the previous initial state or not. When warm-start training is
- *                                      desired, i.e. in grid-search based hyper-parameter tuning, this field is
- *                                      recommended to set to true for consistent convergence check.
  */
 class TRON(
     normalizationContext: Broadcast[NormalizationContext],
@@ -86,15 +83,13 @@ class TRON(
     tolerance: Double = TRON.DEFAULT_TOLERANCE,
     maxNumIterations: Int = TRON.DEFAULT_MAX_ITER,
     constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
-    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
-    isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends Optimizer[TwiceDiffFunction](
     tolerance,
     maxNumIterations,
     normalizationContext,
     constraintMap,
-    isTrackingState,
-    isReusingPreviousInitialState) {
+    isTrackingState) {
 
   /**
    * Initialize the hyper-parameters for Tron. See the Reference2 for more details on the hyper-parameters.
@@ -114,7 +109,7 @@ class TRON(
    * @param initState The initial state of the optimizer
    * @param data The training data
    */
-  override def init(objectiveFunction: TwiceDiffFunction, initState: OptimizerState)(data: objectiveFunction.Data) =
+  def init(objectiveFunction: TwiceDiffFunction, initState: OptimizerState)(data: objectiveFunction.Data): Unit =
     delta = norm(initState.gradient, 2)
 
   /**
@@ -126,7 +121,7 @@ class TRON(
    * @param data The training data
    * @return The current optimizer state
    */
-  override protected def getState
+  protected def calculateState
     (objectiveFunction: TwiceDiffFunction, coefficients: Vector[Double], iter: Int = 0)
     (data: objectiveFunction.Data): OptimizerState = {
 
@@ -140,7 +135,7 @@ class TRON(
   /**
    * Clear the [[OptimizationStatesTracker]].
    */
-  override def clearOptimizerInnerState(): Unit = delta = Double.MaxValue
+  def clearOptimizerInnerState(): Unit = delta = Double.MaxValue
 
   /**
    * Run one iteration of the optimizer given the current state.
@@ -150,13 +145,13 @@ class TRON(
    * @param data The training data
    * @return The updated state of the optimizer
    */
-  override protected def runOneIteration
+  protected def runOneIteration
     (objectiveFunction: TwiceDiffFunction, currState: OptimizerState)
     (data: objectiveFunction.Data): OptimizerState = {
 
     val prevCoefficients = currState.coefficients
     val convertedPrevCoefficients = objectiveFunction.convertFromVector(prevCoefficients)
-    val prevFunctionValue = currState.value
+    val prevFunctionValue = currState.loss
     val prevFunctionGradient = currState.gradient
     val prevIter = currState.iter
     val isFirstIteration = currState.iter == 0
@@ -285,7 +280,7 @@ object TRON extends Logging {
     (data: objectiveFunction.Data,
     coefficients: objectiveFunction.Coefficients): (Int, Vector[Double], Vector[Double]) = {
 
-    val step = VectorUtils.initializeZerosVectorOfSameType(gradient)
+    val step = VectorUtils.zeroOfSameType(gradient)
     val residual = gradient * -1.0
     val direction = residual.copy
     val conjugateGradientConvergenceTolerance = 0.1 * norm(gradient, 2)

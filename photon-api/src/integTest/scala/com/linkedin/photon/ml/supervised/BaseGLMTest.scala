@@ -235,9 +235,9 @@ object BaseGLMTest {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
+      assertTrue(lastValue >= state.loss, "Objective should be monotonically decreasing (current=[" + state.loss +
         "], previous=[" + lastValue + "])")
-      lastValue = state.value
+      lastValue = state.loss
     }
   }
 }

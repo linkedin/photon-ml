@@ -33,8 +33,6 @@ protected[ml] object OptimizerFactory {
    * @param regularizationContext The regularization context
    * @param regularizationWeight The regularization weight
    * @param isTrackingState Should the Optimizer track intermediate states during optimization?
-   * @param isReusingPreviousInitialState Should the Optimizer reuse the initial starting state during warm-start
-   *                                      model training?
    * @return A new Optimizer
    */
   def build(
@@ -42,8 +40,7 @@ protected[ml] object OptimizerFactory {
       normalizationContext: Broadcast[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double = 0,
-      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
-      isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
     : Optimizer[TwiceDiffFunction] =
 
     (config.optimizerType, regularizationContext.regularizationType) match {
@@ -54,8 +51,7 @@ protected[ml] object OptimizerFactory {
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
           constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState,
-          isReusingPreviousInitialState = isReusingPreviousInitialState)
+          isTrackingState = isTrackingState)
 
       case (OptimizerType.LBFGS, RegularizationType.L2 | RegularizationType.NONE) =>
         new LBFGS(
@@ -63,8 +59,7 @@ protected[ml] object OptimizerFactory {
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
           constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState,
-          isReusingPreviousInitialState = isReusingPreviousInitialState)
+          isTrackingState = isTrackingState)
 
       case (OptimizerType.TRON, RegularizationType.L2 | RegularizationType.NONE) =>
         new TRON(
@@ -72,8 +67,7 @@ protected[ml] object OptimizerFactory {
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
           constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState,
-          isReusingPreviousInitialState = isReusingPreviousInitialState)
+          isTrackingState = isTrackingState)
 
       case (OptimizerType.TRON, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>
         throw new IllegalArgumentException("TRON optimizer incompatible with L1 regularization")

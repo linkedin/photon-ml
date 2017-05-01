@@ -75,7 +75,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
     //when the prototype vector is dense
     val prototypeDenseVector = DenseVector.fill(VECTOR_DIMENSION)(r.nextDouble())
-    val initializedDenseVector = VectorUtils.initializeZerosVectorOfSameType(prototypeDenseVector)
+    val initializedDenseVector = VectorUtils.zeroOfSameType(prototypeDenseVector)
     assertEquals(prototypeDenseVector.length, initializedDenseVector.length,
       s"Length of the initialized vector (${initializedDenseVector.length}) " +
         s"is different from the prototype vector (${initializedDenseVector.length}})")
@@ -87,7 +87,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
     val indices = Array.tabulate[Int](VECTOR_DIMENSION)(i => i).filter(_ => r.nextBoolean())
     val values = indices.map(_ => r.nextDouble())
     val prototypeSparseVector = new SparseVector[Double](indices, values, VECTOR_DIMENSION)
-    val initializedSparseVector = VectorUtils.initializeZerosVectorOfSameType(prototypeSparseVector)
+    val initializedSparseVector = VectorUtils.zeroOfSameType(prototypeSparseVector)
     assertEquals(prototypeSparseVector.length, initializedSparseVector.length,
       s"Length of the initialized vector (${initializedSparseVector.length}) " +
         s"is different from the prototype vector (${prototypeSparseVector.length}})")
@@ -101,7 +101,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInitializeZerosVectorOfSameTypeOfUnsupportedVectorType(): Unit = {
-    VectorUtils.initializeZerosVectorOfSameType(new MockVector[Double]())
+    VectorUtils.zeroOfSameType(new MockVector[Double]())
   }
 
 

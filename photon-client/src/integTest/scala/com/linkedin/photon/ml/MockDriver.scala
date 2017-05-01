@@ -40,23 +40,29 @@ class MockDriver(
   extends Driver(params: Params, sc: SparkContext, logger: PhotonLogger, seed) {
 
   /**
-    * Have the input features been summarized
-    */
+   * Diagnostic status for current run
+   */
+  private val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
+  /**
+   * Have the input features been summarized
+   */
   private var isSummarized = false
 
   /**
-    * Diagnostic status for current run
-    */
-  private val diagnosticStatus = DiagnosticStatus(trainDiagnosed = false, validateDiagnosed = false)
-
-  /**
-    * Get the sequence of completed stages up to and including the current stage.
-    *
-    * @return An array of DriverStage objects
-    */
-  def stages(): Array[DriverStage] = {
+   * Get the sequence of completed stages up to and including the current stage.
+   *
+   * @return An array of DriverStage objects
+   */
+  def stages: Array[DriverStage] = {
     (stageHistory += stage).toArray
   }
+
+  /**
+   * Get the validation metrics for the trained models.
+   *
+   * @return A map of (lambda -> map of (metric name -> metric value))
+   */
+  def metrics: Map[Double, Map[String, Double]] = perModelMetrics
 
   /**
    *
@@ -122,7 +128,7 @@ object MockDriver {
       expectedNumFeatures: Int,
       expectedNumTrainingData: Int,
       expectedIsSummarized: Boolean,
-      expectedDiagnosticMode: DiagnosticMode): Unit = {
+      expectedDiagnosticMode: DiagnosticMode): MockDriver = {
 
     // Parse the parameters from command line, should always be the 1st line in main
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
@@ -131,7 +137,7 @@ object MockDriver {
     val job = new MockDriver(params, sc, logger, seed)
     job.run()
 
-    val actualStages = job.stages()
+    val actualStages = job.stages
 
     assertEquals(actualStages, expectedStages,
       "The actual stages Driver went through, " + actualStages.mkString(",") +
@@ -145,5 +151,7 @@ object MockDriver {
 
     // Closing up
     logger.close()
+
+    job
   }
 }

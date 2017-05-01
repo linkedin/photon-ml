@@ -197,6 +197,14 @@ class Params extends PalDBIndexMapParams {
   var featureDimension: Int = -1
 
   /**
+   * Whether to use warm start or not during hyper-parameter tuning. If true, the optimization with the next value of
+   * the regularization parameter starts from the best model found with the previous value of the regularization
+   * parameter. If false, an initial model with all coefficients identically set to zero is used to optimize the model
+   * for each value of the regularization parameter.
+   */
+  var useWarmStart: Boolean = true
+
+  /**
    * Validate this parameters. Exception will be thrown if the parameter combination is invalid.
    */
   def validate(): Unit = {

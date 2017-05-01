@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.optimization
 
 import java.util.Random
 
-import breeze.linalg.{DenseVector, SparseVector, norm}
+import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -56,14 +56,12 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
         normalizationContext = NORMALIZATION_MOCK,
-        isTrackingState = ENABLE_TRACKING,
-        isReusingPreviousInitialState = false)),
+        isTrackingState = ENABLE_TRACKING)),
       Array(new TRON(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
         normalizationContext = NORMALIZATION_MOCK,
-        isTrackingState = ENABLE_TRACKING,
-        isReusingPreviousInitialState = false)))
+        isTrackingState = ENABLE_TRACKING)))
   }
 
   // TODO: Currently the test objective function used by this test ignores weights, so testing points with varying
@@ -77,13 +75,15 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
       // Test unweighted sample
       val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
       val data = sc.parallelize(Seq(pt))
-      optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1))(data)
+      val objective: IntegTestObjective = new IntegTestObjective(sc, treeAggregateDepth = 1)
+      val zero = Vector.zeros[Double](objective.domainDimension(data))
+      optimizer.optimize(objective, zero)(data)
       easyOptimizationStatesChecks(optimizer.getStateTracker.get)
 
       // Test weighted sample
       val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 1.5)
       val data2 = sc.parallelize(Seq(pt2))
-      optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1))(data2)
+      optimizer.optimize(objective, zero)(data2)
       easyOptimizationStatesChecks(optimizer.getStateTracker.get)
     }
 
@@ -96,7 +96,7 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
       // Test unweighted sample
       val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
       val data = sc.parallelize(Seq(pt))
-      for (iter <- 0 to RANDOM_SAMPLES) {
+      for (_ <- 0 to RANDOM_SAMPLES) {
         val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
         optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1), initParam)(data)
 
@@ -108,7 +108,7 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
     // Test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 0.5)
     val data2 = sc.parallelize(Seq(pt2))
-    for (iter <- 0 to RANDOM_SAMPLES) {
+    for (_ <- 0 to RANDOM_SAMPLES) {
       val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(new IntegTestObjective(sc, treeAggregateDepth = 1), initParam)(data2)
 
@@ -121,7 +121,7 @@ object OptimizerIntegTest extends Logging {
 
   private val PROBLEM_DIMENSION: Int = 10
   private val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
-  private val CONVERGENCE_TOLERANCE: Double = 1e-12
+  private val CONVERGENCE_TOLERANCE: Double = 1e-13
   private val OBJECTIVE_TOLERANCE: Double = 1e-6
   private val GRADIENT_TOLERANCE: Double = 1e-6
   private val PARAMETER_TOLERANCE: Double = 1e-4
@@ -141,9 +141,9 @@ object OptimizerIntegTest extends Logging {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      assertTrue(lastValue >= state.value, "Objective should be monotonically decreasing (current=[" + state.value +
+      assertTrue(lastValue >= state.loss, "Objective should be monotonically decreasing (current=[" + state.loss +
         "], previous=[" + lastValue + "])")
-      lastValue = state.value
+      lastValue = state.loss
     }
   }
 
@@ -167,7 +167,7 @@ object OptimizerIntegTest extends Logging {
     assertFalse(optimizerStatesTracker.getTrackedStates.isEmpty)
     assertEquals(optimizerStatesTracker.getTrackedStates.length, optimizerStatesTracker.getTrackedTimeHistory.length)
 
-    val optimizedObj = optimizerStatesTracker.getTrackedStates.last.value
+    val optimizedObj = optimizerStatesTracker.getTrackedStates.last.loss
     val optimizedGradientNorm = norm(optimizerStatesTracker.getTrackedStates.last.gradient, 2)
     val optimizedParam = optimizerStatesTracker.getTrackedStates.last.coefficients
 

@@ -94,13 +94,43 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
   }
 
   /**
-   * Run the algorithm with the configured parameters, starting from an initial model of all-0 coefficients.
+   * Run the algorithm with the configured parameters, starting from an initial model of all-0 coefficients
+   * (cold start in iterations over the regularization weights for hyper-parameter tuning).
    *
    * @param input The training data
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   override def run(input: RDD[LabeledPoint]): GeneralizedLinearModel =
     run(input, initializeZeroModel(input.first.features.size))
+
+  /**
+   * Run the algorithm with the configured parameters, starting from the initial model provided
+   * (warm start in iterations over the regularization weights for hyper-parameter tuning).
+   *
+   * @param input The training data
+   * @param initialModel The initial model from which to begin optimization
+   * @return The learned generalized linear models of each regularization weight and iteration.
+   */
+  override def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+    val normalizationContext = optimizer.getNormalizationContext
+    val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
+    val optimizedVariances = computeVariances(input, optimizedCoefficients)
+
+    modelTrackerBuilder.foreach { modelTrackerBuilder =>
+      val tracker = optimizer.getStateTracker.get
+      logger.info(s"History tracker information:\n $tracker")
+      val modelsPerIteration = tracker.getTrackedStates.map { x =>
+        val coefficients = x.coefficients
+        val variances = computeVariances(input, coefficients)
+        createModel(normalizationContext, coefficients, variances)
+      }
+      logger.info(s"Number of iterations: ${modelsPerIteration.length}")
+      modelTrackerBuilder += ModelTracker(tracker, modelsPerIteration)
+    }
+
+    createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
+  }
+
 
   /**
    * Run the algorithm with the configured parameters, starting from the initial model provided, and down-sample the
@@ -122,33 +152,6 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     data.unpersist()
 
     result
-  }
-
-  /**
-   * Run the algorithm with the configured parameters, starting from the initial model provided.
-   *
-   * @param input The training data
-   * @param initialModel The initial model from which to begin optimization
-   * @return The learned generalized linear models of each regularization weight and iteration.
-   */
-  override def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
-    val normalizationContext = optimizer.getNormalizationContext
-    val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
-    val optimizedVariances = computeVariances(input, optimizedCoefficients)
-
-    modelTrackerBuilder.foreach { modelTrackerBuilder =>
-      val tracker = optimizer.getStateTracker.get
-      logger.info(s"History tracker information:\n $tracker")
-      val modelsPerIteration = tracker.getTrackedStates.map { x =>
-        val coefficients = x.coefficients
-        val variances = computeVariances(input, coefficients)
-        createModel(normalizationContext, coefficients, variances)
-      }
-      logger.info(s"Number of iterations: ${modelsPerIteration.length}")
-      modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
-    }
-
-    createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
   }
 }
 

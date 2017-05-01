@@ -50,6 +50,7 @@ object PhotonOptionNames {
   val EVENT_LISTENERS = "event-listeners"
   val FEATURE_DIMENSION = "feature-dimension"
   val INPUT_FILE_FORMAT = "input-file-format"
+  val USE_WARM_START = "use-warm-start"
 
   @deprecated("Use 'diagnostic-mode'", "1.0")
   val TRAINING_DIAGNOSTICS = "training-diagnostics"

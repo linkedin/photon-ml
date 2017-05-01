@@ -36,9 +36,6 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  * @param maxNumIterations The cut-off for number of optimization iterations to perform.
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
- * @param isReusingPreviousInitialState Whether to reuse the previous initial state or not. When warm-start training is
- *                                      desired, i.e. in grid-search based hyper-parameter tuning, this field is
- *                                      recommended to set to true for consistent convergence check.
  */
 class OWLQN(
     l1RegWeight: Double,
@@ -47,16 +44,14 @@ class OWLQN(
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
     constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
-    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE,
-    isReusingPreviousInitialState: Boolean = Optimizer.DEFAULT_REUSE_PREVIOUS_INIT_STATE)
+    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends LBFGS(
     normalizationContext,
     numCorrections,
     tolerance,
     maxNumIterations,
     constraintMap,
-    isTrackingState,
-    isReusingPreviousInitialState) {
+    isTrackingState) {
 
   protected var regularizationWeight: Double = l1RegWeight
 

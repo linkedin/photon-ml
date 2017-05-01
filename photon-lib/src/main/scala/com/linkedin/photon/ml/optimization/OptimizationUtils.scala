@@ -56,9 +56,10 @@ object OptimizationUtils {
   def projectCoefficientsToHypercube(
       coefficients: Vector[Double],
       constraintMap: Option[Map[Int, (Double, Double)]]): Vector[Double] =
+
     constraintMap match {
       case Some(x: Map[Int, (Double, Double)]) =>
-        val projectedCoefficients = VectorUtils.initializeZerosVectorOfSameType(coefficients)
+        val projectedCoefficients = VectorUtils.zeroOfSameType(coefficients)
         coefficients.activeIterator.foreach {
           case (key, value) =>
             if (x.contains(key)) {

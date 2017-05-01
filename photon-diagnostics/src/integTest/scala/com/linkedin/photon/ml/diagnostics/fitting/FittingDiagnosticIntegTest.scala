@@ -41,6 +41,7 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         .repartition(NUM_PARTITIONS)
         .cache()
 
+    // TODO: Passing in warm-start models doesn't work as intended currently
     val modelFit = (data: RDD[LabeledPoint], warmStart: Map[Double, GeneralizedLinearModel]) => {
       ModelTraining.trainGeneralizedLinearModel(
         data,
@@ -54,7 +55,8 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         enableOptimizationStateTracker = false,
         None,
         warmStart,
-        1)._1
+        1,
+        useWarmStart = false)._1
     }
 
     val diagnostic = new FittingDiagnostic()
