@@ -151,7 +151,7 @@ class ImplicitsTest {
     assertEquals(pwo.toString, "123")
 
     var str = ""
-    assertTrue(None.tap(_ => str += "nope").isEmpty)
+    assertTrue(Option[String](null).tap(_ => str += "nope").isEmpty)
     assertEquals(str, "")
   }
 
