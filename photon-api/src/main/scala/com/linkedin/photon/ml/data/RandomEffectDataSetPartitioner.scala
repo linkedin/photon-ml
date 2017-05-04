@@ -26,16 +26,16 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * Partitioner implementation for random effect datasets.
  *
  * In GAME, we can improve on Spark default partitioning by using domain-specific knowledge in two ways. First, we can
- * reduce time spend in shuffle operations by leveraging training record keys (helping joins). Second, we assume that
+ * reduce time spent in shuffle operations by leveraging training record keys (helping joins). Second, we assume that
  * each random effect has less than the maximum partition size of associated training data, i.e. that all the training
  * data for a given RE will fit within a single Spark data partition. So we can group the training records so that they
  * all land in the same partition for a given RE, which is what RandomEffectDataSetPartitioner is about.
  *
- * RandomEffectDataSetPartitioner also makes sure that partition are as equally balanced as possible, to equalize the
+ * RandomEffectDataSetPartitioner also makes sure that partitions are as equally balanced as possible, to equalize the
  * workload of the executors: because we assume the data for each random effect is small, it will usually not even fill
  * a Spark data partition, so we fill up the partition (i.e. add (id/partition) records to idToPartitionMap with data
- * for multiple random effects. However, since idToPartitionMap is eventually broadcast to the executors, we also want
- * to keep the size of that Map under control.
+ * for multiple random effects). However, since idToPartitionMap is eventually broadcast to the executors, we also want
+ * to keep the size of that Map under control (parameter partitionerCapcity below).
  *
  * @param idToPartitionMap Random effect type to partition map
  */
@@ -93,16 +93,15 @@ object RandomEffectDataSetPartitioner {
   /**
    * Generate a partitioner for one random effect model.
    *
-   * A random effect model is composed of multiple sub-models, each trained on data points for a single item.
-   * We collect the training vector ids that correspond to the random effect, then build an id to partition map.
-   * Data should be distributed across partitions as equally as possible. Since some items have more data points
-   * than others, this partitioner uses simple 'bin packing' for distributing data load across partitions (using
-   * minHeap).
+   * Multiple random effect models, one per random effect ID (e.g. "user123"), are instantiated for a single random
+   * effect type (e.g. "per-user"), and each of these instantiations is trained with training vectors marked for that
+   * random effect ID. We collect the training vector ids that correspond to the random effect type, then build an id
+   * to partition map. Data should be distributed across partitions as equally as possible. Since some items have more
+   * data points than others, this partitioner uses simple 'bin packing' for distributing data load across partitions
+   * (using minHeap).
    *
    * We stop filling in idToPartitionMap at partitionerCapacity records, because this map is passed to the executors
    * and we therefore wish to control/limit its size.
-   *
-   * Also see doc for the class, above.
    *
    * @param numPartitions The number of partitions to fill
    * @param randomEffectType The random effect type (e.g. "memberId")
