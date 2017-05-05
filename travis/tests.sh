@@ -36,6 +36,9 @@ error_handler() {
 # Abort on error
 set -e
 
+# Clean up any previous build artifacts
+./gradlew clean
+
 if [[ $# -ne 1 ]]; then
   echo "ERROR: Wrong # of arguments"
   exit 1
