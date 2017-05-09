@@ -28,7 +28,7 @@ import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.{Constants, InputColumnsNames}
 import com.linkedin.photon.ml.data.DataReader
 import com.linkedin.photon.ml.util._
 
@@ -53,7 +53,7 @@ import com.linkedin.photon.ml.util._
  */
 class AvroDataReader(
     sc: SparkContext,
-    defaultFeatureColumn: String = "features")
+    defaultFeatureColumn: String = InputColumnsNames.FEATURES_DEFAULT.toString)
   extends DataReader(defaultFeatureColumn) {
 
   import AvroDataReader._
@@ -327,7 +327,7 @@ object AvroDataReader {
 
     // Create feature vector
     VectorUtils.breezeToMllib(
-      VectorUtils.convertIndexAndValuePairArrayToSparseVector(
+      VectorUtils.toSparseVector(
         featuresWithIntercept, featureMap.featureDimension))
   }
 

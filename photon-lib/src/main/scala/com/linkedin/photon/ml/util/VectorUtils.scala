@@ -19,8 +19,6 @@ import scala.collection.mutable
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SparkVector}
 
-import com.linkedin.photon.ml.constants.MathConst
-
 /**
  * A utility object that contains some operations on [[Vector]].
  */
@@ -41,15 +39,15 @@ object VectorUtils {
    *                                          [[DenseVector]] is chosen.
    * @return The converted [[Vector]]
    */
-  protected[ml] def convertIndexAndValuePairArrayToVector(
+  protected[ml] def toVector(
       indexAndData: Array[(Int, Double)],
       length: Int,
       sparseVectorActiveSizeToSizeRatio: Double = SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO): Vector[Double] = {
 
     if (length * SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO < indexAndData.length) {
-      convertIndexAndValuePairArrayToDenseVector(indexAndData, length)
+      toDenseVector(indexAndData, length)
     } else {
-      convertIndexAndValuePairArrayToSparseVector(indexAndData, length)
+      toSparseVector(indexAndData, length)
     }
   }
 
@@ -60,20 +58,14 @@ object VectorUtils {
    * @param length The length of the resulting sparse vector
    * @return The converted [[SparseVector]]
    */
-  protected[ml] def convertIndexAndValuePairArrayToSparseVector(
-      indexAndData: Array[(Int, Double)],
-      length: Int): SparseVector[Double] = {
+  protected[ml] def toSparseVector(indexAndData: Array[(Int, Double)], length: Int): SparseVector[Double] = {
+
+    // This would be all we need, but breeze doesn't like it.
+    //SparseVector[Double](length)(indexAndData.sortBy(_._1):_*)
 
     val sortedIndexAndData = indexAndData.sortBy(_._1)
-    val index = new Array[Int](sortedIndexAndData.length)
-    val data = new Array[Double](sortedIndexAndData.length)
-    var i = 0
-    while (i < sortedIndexAndData.length) {
-      index(i) = sortedIndexAndData(i)._1
-      data(i) = sortedIndexAndData(i)._2
-      i += 1
-    }
-    new SparseVector[Double](index, data, length)
+    val (index, data) = sortedIndexAndData.unzip
+    new SparseVector[Double](index.toArray, data.toArray, length)
   }
 
   /**
@@ -83,9 +75,7 @@ object VectorUtils {
    * @param length The length of the resulting dense vector
    * @return The converted [[DenseVector]]
    */
-  protected[ml] def convertIndexAndValuePairArrayToDenseVector(
-      indexAndData: Array[(Int, Double)],
-      length: Int): DenseVector[Double] = {
+  protected[ml] def toDenseVector(indexAndData: Array[(Int, Double)], length: Int): DenseVector[Double] = {
 
     val dataArray = new Array[Double](length)
     var i = 0

@@ -57,16 +57,20 @@ class InputColumnsNames extends Serializable {
  * They can be changed by the user in the parameters.
  *
  * @note RESPONSE is required, together with features in input data, all other columns are optional
+ * @note Although there is a default feature column name here, there can be multiple feature bags, each with their own
+ *       name.
  */
 object InputColumnsNames extends Enumeration {
 
+  val UID = Value("uid")
   val RESPONSE = Value("response")
   val OFFSET = Value("offset")
   val WEIGHT = Value("weight")
-  val UID = Value("uid")
   val META_DATA_MAP = Value("metadataMap")
+  val FEATURES_DEFAULT = Value("features")
 
-  val all = Array(RESPONSE, OFFSET, WEIGHT, UID, META_DATA_MAP)
+  // FEATURES_DEFAULT is excluded because feature shard names rely on another mechanism (see AvroDataReader)
+  val all = Array(UID, RESPONSE, OFFSET, WEIGHT, META_DATA_MAP)
 
   /**
    * Constructor for instances of class InputColumnsNames.

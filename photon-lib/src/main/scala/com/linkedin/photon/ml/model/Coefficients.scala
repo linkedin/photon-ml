@@ -103,10 +103,10 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
       case other: Coefficients =>
         val (m1, v1, m2, v2) = (this.means, this.variancesOption, other.means, other.variancesOption)
         val sameType = m1.getClass == m2.getClass && v1.map(_.getClass) == v2.map(_.getClass)
-        lazy val sameMeans = m1.length == m2.length && VectorUtils.areAlmostEqual(m1, m2)
+        lazy val sameMeans = VectorUtils.areAlmostEqual(m1, m2)
         lazy val sameVariance = (v1, v2) match {
           case (None, None) => true
-          case (Some(val1), Some(val2)) => val1.length == val2.length && VectorUtils.areAlmostEqual(val1, val2)
+          case (Some(val1), Some(val2)) => VectorUtils.areAlmostEqual(val1, val2)
           case (_, _) => false
         }
 

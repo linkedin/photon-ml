@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.data.avro.ModelProcessingUtils
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.VectorUtils.convertIndexAndValuePairArrayToSparseVector
+import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
 import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
 
 /**
@@ -239,7 +239,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
         }
     }
     val numFeatures = singlePoint.features.length
-    val actualFeatures = convertIndexAndValuePairArrayToSparseVector(actualIndexAndData, numFeatures)
+    val actualFeatures = toSparseVector(actualIndexAndData, numFeatures)
     assertEquals(singlePoint.features, actualFeatures)
   }
 
@@ -398,7 +398,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
             }
           case _ => throw new RuntimeException(s"Observed an unexpected labeled point: $point")
         }
-      val actualFeatures = convertIndexAndValuePairArrayToSparseVector(actualIndexAndData, numFeatures)
+      val actualFeatures = toSparseVector(actualIndexAndData, numFeatures)
       assertEquals(point.features, actualFeatures)
     }
   }
@@ -408,17 +408,17 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
   def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
     val dim: Int = 5
     val minVector =
-      convertIndexAndValuePairArrayToSparseVector(Array((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d)), dim)
+      toSparseVector(Array((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d)), dim)
     val maxVector =
-      convertIndexAndValuePairArrayToSparseVector(Array((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+      toSparseVector(Array((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
     val normL1Vector =
-      convertIndexAndValuePairArrayToSparseVector(Array((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+      toSparseVector(Array((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
     val normL2Vector =
-      convertIndexAndValuePairArrayToSparseVector(Array((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d)), dim)
+      toSparseVector(Array((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d)), dim)
     val numNonzeros =
-      convertIndexAndValuePairArrayToSparseVector(Array((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d)), dim)
-    val meanVector = convertIndexAndValuePairArrayToSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
-    val varVector = convertIndexAndValuePairArrayToSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
+      toSparseVector(Array((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d)), dim)
+    val meanVector = toSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
+    val varVector = toSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
 
 
     val summary = BasicStatisticalSummary(

@@ -523,7 +523,7 @@ object GameParams {
         }
 
       opt[Boolean](USE_WARM_START)
-        .text(s"Whether to use wamr start in hyper-parameter tuning. Default: ${defaultParams.useWarmStart}")
+        .text(s"Whether to use warm start in hyper-parameter tuning. Default: ${defaultParams.useWarmStart}")
         .foreach(x => params.useWarmStart)
 
       help("help").text("prints usage text.")
