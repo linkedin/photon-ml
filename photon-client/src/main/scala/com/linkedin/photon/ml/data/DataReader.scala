@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.data
 
 import org.apache.spark.sql.DataFrame
 
+import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.util.IndexMapLoader
 
 /**
@@ -23,7 +24,7 @@ import com.linkedin.photon.ml.util.IndexMapLoader
  *
  * @param defaultFeatureColumn The default column to use for features
  */
-abstract class DataReader(protected val defaultFeatureColumn: String = "features") {
+abstract class DataReader(protected val defaultFeatureColumn: String = InputColumnsNames.FEATURES_DEFAULT.toString) {
 
   type InputColumnName = String
   type MergedColumnName = String

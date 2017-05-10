@@ -56,7 +56,9 @@ class AvroUtilsTest {
       modelId, indexMap)
     val recoveredSparseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(sparseCoefficientsAvro, indexMap)
 
-    assertEquals(sparseCoefficients, recoveredSparseGlm.coefficients)
+    val Z: Coefficients = recoveredSparseGlm.coefficients
+    val Z1: Coefficients = sparseCoefficients
+    assertEquals(Z1, Z)
 
     val denseGlm: GeneralizedLinearModel = new LogisticRegressionModel(denseCoefficients)
 

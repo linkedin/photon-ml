@@ -28,7 +28,7 @@ class InputColumnsNamesTest {
     val columnsNames = InputColumnsNames()
     InputColumnsNames.all.foreach(n => assertEquals(columnsNames(n), n.toString))
 
-    val defaultStr = "response: response, offset: offset, weight: weight, uid: uid, metadataMap: metadataMap"
+    val defaultStr = "uid: uid, response: response, offset: offset, weight: weight, metadataMap: metadataMap"
     assertEquals(columnsNames.toString, defaultStr)
   }
 

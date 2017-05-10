@@ -347,7 +347,7 @@ object AvroUtils {
 
     val length = featureMap.featureDimension
     val coefficients = Coefficients(
-      VectorUtils.convertIndexAndValuePairArrayToVector(indexAndValueArrayBuffer.toArray, length))
+      VectorUtils.toVector(indexAndValueArrayBuffer.toArray, length))
 
     // Load and instantiate the model
     try {
