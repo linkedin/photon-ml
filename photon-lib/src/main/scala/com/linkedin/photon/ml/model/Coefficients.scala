@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.util.{MathUtils, Summarizable, VectorUtils}
  * @param means The mean of the model coefficients
  * @param variancesOption Optional variance of the model coefficients
  */
-protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
+case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
   extends Summarizable {
 
   // Force means and variances to be of the same type (dense or sparse). This seems reasonable

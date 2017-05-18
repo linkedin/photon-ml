@@ -105,7 +105,7 @@ class VectorUtilsTest {
 
   @Test(dataProvider = "featureValsProvider")
   def testSparseBreezeToMllib(featureVals: Array[Double]): Unit = {
-    val dim = featureVals.length
+    val dim = featureVals.length + 1
     val (vals, indexes) = featureVals
       .zipWithIndex
       .flatMap( pair => if (random.nextBoolean()) Seq(pair) else Seq())
@@ -136,7 +136,7 @@ class VectorUtilsTest {
 
   @Test(dataProvider = "featureValsProvider")
   def testSparseMllibToBreeze(featureVals: Array[Double]): Unit = {
-    val dim = featureVals.length
+    val dim = featureVals.length + 1
     val (vals, indexes) = featureVals
       .zipWithIndex
       .flatMap( pair => if (random.nextBoolean()) Seq(pair) else Seq())

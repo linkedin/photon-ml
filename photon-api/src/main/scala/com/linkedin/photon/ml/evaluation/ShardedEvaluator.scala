@@ -25,12 +25,13 @@ import org.apache.spark.rdd.RDD
  *            search results of given a query, the id can be the query itself.
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
-protected[ml] abstract class ShardedEvaluator(
+abstract class ShardedEvaluator(
   protected[ml] val localEvaluator: LocalEvaluator,
   protected[ml] val ids: RDD[(Long, String)],
   protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight))
    * @return Evaluation metric value

@@ -25,9 +25,10 @@ import org.apache.spark.rdd.RDD
 protected[ml] class AreaUnderROCCurveEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.AUC
+  val evaluatorType = EvaluatorType.AUC
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value

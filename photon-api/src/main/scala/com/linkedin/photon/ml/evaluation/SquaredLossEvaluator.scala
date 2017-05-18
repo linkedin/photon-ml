@@ -26,9 +26,10 @@ import com.linkedin.photon.ml.function.glm.SquaredLossFunction
 protected[ml] class SquaredLossEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.SquaredLoss
+  val evaluatorType = EvaluatorType.SquaredLoss
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value

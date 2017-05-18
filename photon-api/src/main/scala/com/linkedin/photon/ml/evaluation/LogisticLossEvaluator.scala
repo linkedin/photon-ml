@@ -26,9 +26,10 @@ import com.linkedin.photon.ml.function.glm.LogisticLossFunction
 protected[ml] class LogisticLossEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.LogisticLoss
+  val evaluatorType = EvaluatorType.LogisticLoss
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value

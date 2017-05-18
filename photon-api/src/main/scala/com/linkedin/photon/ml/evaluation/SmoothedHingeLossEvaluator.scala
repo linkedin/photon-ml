@@ -26,9 +26,10 @@ import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 protected[ml] class SmoothedHingeLossEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.SmoothedHingeLoss
+  val evaluatorType = EvaluatorType.SmoothedHingeLoss
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value

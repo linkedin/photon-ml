@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param randomEffectType The random effect type
  * @param featureShardId The feature shard id
  */
-protected[ml] class RandomEffectModel(
+class RandomEffectModel(
     val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
@@ -124,7 +124,7 @@ protected[ml] class RandomEffectModel(
    *
    * @return The Spark context
    */
-  override def sparkContext: SparkContext = modelsRDD.sparkContext
+  override protected[ml] def sparkContext: SparkContext = modelsRDD.sparkContext
 
   /**
    * Assign a given name to [[modelsRDD]].
@@ -133,7 +133,7 @@ protected[ml] class RandomEffectModel(
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the name of [[modelsRDD]] assigned
    */
-  override def setName(name: String): RandomEffectModel = {
+  override protected[ml] def setName(name: String): RandomEffectModel = {
 
     modelsRDD.setName(name)
 
@@ -147,7 +147,7 @@ protected[ml] class RandomEffectModel(
    * @param storageLevel The storage level
    * @return This object with the storage level of [[modelsRDD]] set
    */
-  override def persistRDD(storageLevel: StorageLevel): RandomEffectModel = {
+  override protected[ml] def persistRDD(storageLevel: StorageLevel): RandomEffectModel = {
 
     if (!modelsRDD.getStorageLevel.isValid) modelsRDD.persist(storageLevel)
 
@@ -159,7 +159,7 @@ protected[ml] class RandomEffectModel(
    *
    * @return This object with [[modelsRDD]] marked non-persistent
    */
-  override def unpersistRDD(): RandomEffectModel = {
+  override protected[ml] def unpersistRDD(): RandomEffectModel = {
 
     if (modelsRDD.getStorageLevel.isValid) modelsRDD.unpersist()
 
@@ -171,7 +171,7 @@ protected[ml] class RandomEffectModel(
    *
    * @return This object with [[modelsRDD]] materialized
    */
-  override def materialize(): RandomEffectModel = {
+  override protected[ml] def materialize(): RandomEffectModel = {
 
     materializeOnce(modelsRDD)
 

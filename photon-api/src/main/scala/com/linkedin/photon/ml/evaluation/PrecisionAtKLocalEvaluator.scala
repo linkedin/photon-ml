@@ -29,8 +29,9 @@ import com.linkedin.photon.ml.constants.MathConst
 protected[ml] class PrecisionAtKLocalEvaluator(k: Int) extends LocalEvaluator {
 
   /**
+   * Evaluate the scores of the model.
    *
-   * @param scoreLabelAndWeights
+   * @param scoreLabelAndWeights An [[Iterable]] of (score, label, weight) used to for evaluation
    * @return Score metric value
    */
   protected[ml] override def evaluate(scoreLabelAndWeights: Array[(Double, Double, Double)]): Double = {
