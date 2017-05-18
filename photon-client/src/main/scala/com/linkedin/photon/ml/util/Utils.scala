@@ -331,5 +331,5 @@ protected[ml] object Utils {
    * @tparam T The return type of f
    * @return Some[T] if p or None
    */
-  def Filter[T](p: => Boolean)(f: => T): Option[T] = if (p) Some(f) else None
+  def filter[T](p: => Boolean)(f: => T): Option[T] = if (p) Some(f) else None
 }

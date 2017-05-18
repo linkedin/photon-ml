@@ -15,8 +15,6 @@
 package com.linkedin.photon.ml.data
 
 import org.apache.spark.sql.DataFrame
-
-import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.util.IndexMapLoader
 
 /**

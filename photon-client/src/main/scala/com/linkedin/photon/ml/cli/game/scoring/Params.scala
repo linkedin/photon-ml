@@ -15,10 +15,9 @@
 package com.linkedin.photon.ml.cli.game.scoring
 
 import scopt.OptionParser
-
-import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
 
 /**
@@ -122,7 +121,7 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"outputDir: $outputDir\n" +
       s"numOutputFilesForScores: $numOutputFilesForScores\n" +
       s"deleteOutputDirIfExists: $deleteOutputDirIfExists\n" +
-      s"evaluatorTypes: ${evaluatorTypes.map(_.name).mkString("\t")}\n" +
+      s"evaluatorTypes: ${evaluatorTypes.getOrElse(Seq()).map(_.name).mkString("\t")}\n" +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
       s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"+
@@ -234,7 +233,7 @@ object Params {
 
       opt[String]("evaluator-type")
         .text("Type of the evaluator used to evaluate the computed scores.")
-        .foreach(x => params.evaluatorTypes = x.split(",").map(Utils.evaluatorWithName))
+        .foreach(x => params.evaluatorTypes = Some(x.split(",").map(Utils.evaluatorWithName)))
 
       // TODO: Remove the task-type option
       opt[String]("task-type")

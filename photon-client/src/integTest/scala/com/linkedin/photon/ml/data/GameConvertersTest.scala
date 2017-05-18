@@ -15,11 +15,9 @@
 package com.linkedin.photon.ml.data
 
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Row, SQLContext}
+import org.apache.spark.sql.Row
 import org.testng.Assert._
 import org.testng.annotations.Test
-
-import com.linkedin.photon.ml.InputColumnsNames
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
@@ -34,9 +32,8 @@ class GameConvertersTest extends SparkTestUtils {
   @Test
   def testGetGameDatumFromRowWithUID(): Unit = sparkTest("testGetGameDatumFromRowWithUID") {
 
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+    val dataFrame = spark.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
     val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
     val gameDatumWithoutResponse =
@@ -55,9 +52,8 @@ class GameConvertersTest extends SparkTestUtils {
   def testGetGameDatumFromRowWithNoResponse(): Unit =
     sparkTest("testGetGameDatumFromGenericRecordWithNoResponse") {
 
-      val sqlContext = new SQLContext(sc)
       val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
-      val dataFrame = sqlContext.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+      val dataFrame = spark.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
       val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
       GameConverters
@@ -76,13 +72,12 @@ class GameConvertersTest extends SparkTestUtils {
     val jobIdVal = 112L
     val jobIdValStr = "112"
 
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType)))
 
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(
+    val dataFrame = spark.createDataFrame(sc.parallelize(
       Seq(Row(uid, userIdStr, jobIdVal))
     ), schema)
     val row = dataFrame.head
@@ -103,12 +98,11 @@ class GameConvertersTest extends SparkTestUtils {
     val userIdStr = "11A"
     val jobIdValStr = "112"
 
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(
+    val dataFrame = spark.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr)))
     ), schema)
     val row = dataFrame.head
@@ -133,14 +127,13 @@ class GameConvertersTest extends SparkTestUtils {
     val jobId1Str = "113"
     val jobId2Str = "112"
 
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(
+    val dataFrame = spark.createDataFrame(sc.parallelize(
       Seq(Row(uid, userId1Str, jobId1Val, Map(USER_ID_NAME -> userId2Str, JOB_ID_NAME -> jobId2Str)))
     ), schema)
     val row = dataFrame.head
@@ -160,12 +153,11 @@ class GameConvertersTest extends SparkTestUtils {
   def testNoRandomEffectTypeAtAll(): Unit = sparkTest("testNoRandomEffectTypeAtAll") {
 
     // Excepting the method to still proceed but return an empty map
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(
+    val dataFrame = spark.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
     ), schema)
     val row = dataFrame.head
@@ -177,12 +169,11 @@ class GameConvertersTest extends SparkTestUtils {
   def testMakeRandomEffectTypeMapWithMissingField(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMissingField") {
 
     // Expecting errors to be raised since nothing is present
-    val sqlContext = new SQLContext(sc)
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = sqlContext.createDataFrame(sc.parallelize(
+    val dataFrame = spark.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
     ), schema)
     val row = dataFrame.head

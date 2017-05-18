@@ -15,29 +15,42 @@
 package com.linkedin.photon.ml.evaluation
 
 /**
- * Trait for sharded evaluator, i.e., evaluator applied on sharded data set.
+ * Trait for sharded evaluator (i.e. evaluator applied to a data set sharded by ID).
  */
 trait ShardedEvaluatorType extends EvaluatorType {
   /**
-   * Type of the id used to shard the data for evaluation, e.g., documentId or queryId
+   * ID column used to shard the data for evaluation (e.g. documentId, queryId, etc.)
    */
-  val idType: String
+  val idColumn: String
 }
 
 object ShardedEvaluatorType {
   val shardedEvaluatorIdNameSplitter = ":"
+
+  /**
+   * Get all id types used to compute sharded evaluation metrics.
+   *
+   * @return
+   */
+  def getShardedEvaluatorTypeColumns(evaluators: Seq[EvaluatorType]): Set[String] =
+    evaluators
+      .flatMap {
+        case shardedEvaluatorType: ShardedEvaluatorType => Some(shardedEvaluatorType.idColumn)
+        case _ => None
+      }
+      .toSet
 }
 
-case class ShardedPrecisionAtK(k: Int, idType: String) extends ShardedEvaluatorType {
-  val name = s"PRECISION@$k${ShardedEvaluatorType.shardedEvaluatorIdNameSplitter}$idType"
+case class ShardedPrecisionAtK(k: Int, override val idColumn: String) extends ShardedEvaluatorType {
+  val name = s"PRECISION@$k${ShardedEvaluatorType.shardedEvaluatorIdNameSplitter}$idColumn"
 }
 
 object ShardedPrecisionAtK {
   val shardedPrecisionAtKPattern = s"(?i:PRECISION)@(\\d+)${ShardedEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
 }
 
-case class ShardedAUC(idType: String) extends ShardedEvaluatorType {
-  val name = s"AUC${ShardedEvaluatorType.shardedEvaluatorIdNameSplitter}$idType"
+case class ShardedAUC(override val idColumn: String) extends ShardedEvaluatorType {
+  val name = s"AUC${ShardedEvaluatorType.shardedEvaluatorIdNameSplitter}$idColumn"
 }
 
 object ShardedAUC {

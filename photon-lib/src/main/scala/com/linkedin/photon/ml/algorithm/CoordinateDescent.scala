@@ -50,11 +50,11 @@ class CoordinateDescent(
   /**
    * Run coordinate descent.
    *
-   * @param numIterations Number of iterations
+   * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
    * @return A trained GAME model
    */
-  def run(numIterations: Int, seed: Long = MathConst.RANDOM_SEED): (GameModel, Option[EvaluationResults]) = {
+  def run(descentIterations: Int, seed: Long = MathConst.RANDOM_SEED): (GameModel, Option[EvaluationResults]) = {
 
     val initializedModelContainer = coordinates
       .map { case (coordinateId, coordinate) =>
@@ -81,7 +81,7 @@ class CoordinateDescent(
       .toMap
 
     val initialGameModel = new GameModel(initializedModelContainer)
-    optimize(numIterations, initialGameModel)
+    optimize(descentIterations, initialGameModel)
   }
 
   /**
@@ -90,11 +90,11 @@ class CoordinateDescent(
    * best evaluation on the validation data set w.r.t. the primary evaluation function. Otherwise, it's simply the
    * trained model.
    *
-   * @param numIterations Number of iterations
+   * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
    * @param gameModel The initial GAME model
    * @return The best GAME model (see above for exact meaning of "best")
    */
-  def optimize(numIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
+  def optimize(descentIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
 
     // Verify that the model being optimized has entries for each coordinate
     coordinates.foreach { case (coordinateId, _) =>
@@ -165,7 +165,7 @@ class CoordinateDescent(
     // Optimization
     //
 
-    for (iteration <- 0 until numIterations) {
+    for (iteration <- 0 until descentIterations) {
       Timed(s"Coordinate descent iteration $iteration") {
         coordinates.map { case (coordinateId, coordinate) =>
           Timed(s"Update coordinate $coordinateId") {

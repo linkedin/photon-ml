@@ -51,8 +51,10 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
    * @return The score
    */
   def computeScore(features: Vector[Double]): Double = {
-    require(means.length == features.length,
+    require(
+      means.length == features.length,
       s"Coefficients length (${means.length}) != features length (${features.length})")
+
     means.dot(features)
   }
 

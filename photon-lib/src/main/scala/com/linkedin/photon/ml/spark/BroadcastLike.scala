@@ -25,5 +25,5 @@ protected[ml] trait BroadcastLike {
    *
    * @return This object with all of its broadcast variables unpersisted
    */
-  def unpersistBroadcast(): BroadcastLike
+  protected[ml] def unpersistBroadcast(): BroadcastLike
 }

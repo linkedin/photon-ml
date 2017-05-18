@@ -19,6 +19,7 @@ import scala.collection.{Map, SortedMap}
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.ClassUtils
@@ -28,7 +29,7 @@ import com.linkedin.photon.ml.util.ClassUtils
  *
  * @param gameModels A (modelName -> model) map containing the sub-models that make up the complete GAME model
  */
-class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
+class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) extends DatumScoringModel {
 
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
   // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing

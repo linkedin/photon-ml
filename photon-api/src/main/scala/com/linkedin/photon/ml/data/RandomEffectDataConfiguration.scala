@@ -39,7 +39,7 @@ import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjection,
  * @param projectorType The projector type, which is used to project the feature space of the random effect data set
  *                      into a different space, usually one with lower dimension.
  */
-protected[ml] case class RandomEffectDataConfiguration private (
+case class RandomEffectDataConfiguration(
     randomEffectType: String,
     featureShardId: String,
     numPartitions: Int,

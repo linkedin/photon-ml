@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
-import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{ShardedEvaluatorType, EvaluatorFactory, EvaluatorType}
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
 
@@ -40,7 +40,7 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
   import params._
 
   protected[game] val idTypeSet: Set[String] = {
-    randomEffectTypeSet ++ getShardedEvaluatorIdTypes
+    randomEffectTypeSet ++ evaluatorTypes.map(ShardedEvaluatorType.getShardedEvaluatorTypeColumns).getOrElse(Seq())
   }
 
   /**
@@ -63,14 +63,13 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
       parallelism)
 
     val partitioner = new LongHashPartitioner(parallelism)
-    val gameDataSet =
-      GameConverters
-        .getGameDataSetFromDataFrame(
-          data,
-          featureShardIdToFeatureSectionKeysMap.keys.toSet,
-          idTypeSet,
-          isResponseRequired = false,
-          params.inputColumnsNames)
+    val gameDataSet = GameConverters
+      .getGameDataSetFromDataFrame(
+        data,
+        featureShardIdToFeatureSectionKeysMap.keys.toSet,
+        idTypeSet,
+        isResponseRequired = false,
+        params.inputColumnsNames)
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -201,10 +200,10 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    evaluatorTypes.foreach { evaluatorType =>
+    evaluatorTypes.foreach(_.foreach { evaluatorType =>
       val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
-    }
+    })
     timer.stop()
     logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
   }

@@ -23,8 +23,8 @@ import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.cli.game.training.GameTrainingParams
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
-import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
@@ -43,11 +43,11 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
    * @param updates A sequence of pairs (Params field name, field value) to customize the Params returned
    * @return An instance of Params
    */
-  def setupParams(updates: (String, Any)*): GameParams = {
+  def setupParams(updates: (String, Any)*): GameTrainingParams = {
 
     import GLMOptimizationConfiguration.{SPLITTER => S}
 
-    val params = new GameParams
+    val params = new GameTrainingParams
 
     // Some default optimization configurations
     val feConfig1 = GLMOptimizationConfiguration(s"10${S}1e-2${S}1.0${S}0.3${S}TRON${S}L2")

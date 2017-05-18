@@ -14,27 +14,14 @@
  */
 package com.linkedin.photon.ml.cli.game
 
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedEvaluatorType}
+import com.linkedin.photon.ml.evaluation.EvaluatorType
 
 /**
  * Evaluator params common to GAME training and scoring.
  */
 trait EvaluatorParams {
   /**
-   * A list of evaluators separated by comma (e.g, AUC,Precision@1:documentId,Precision@3:documentId,Logistic_Loss).
+   * An optional list of evaluators (e.g. AUC, Precision@1:documentId, Precision@3:documentId, Logistic_Loss).
    */
-  var evaluatorTypes: Seq[EvaluatorType] = Seq()
-
-  /**
-   * Get all id types used to compute sharded evaluation metrics.
-   *
-   * @return
-   */
-  def getShardedEvaluatorIdTypes: Set[String] =
-    evaluatorTypes
-      .flatMap {
-        case shardedEvaluatorType: ShardedEvaluatorType => Some(shardedEvaluatorType.idType)
-        case _ => None
-      }
-      .toSet
+  var evaluatorTypes: Option[Seq[EvaluatorType]] = None
 }

@@ -28,7 +28,7 @@ import breeze.linalg.Vector
  * </li>
  * </ul>
  */
-protected[ml] trait Projector {
+protected[ml] trait Projector extends Serializable {
 
   /**
    * Dimension of the original space

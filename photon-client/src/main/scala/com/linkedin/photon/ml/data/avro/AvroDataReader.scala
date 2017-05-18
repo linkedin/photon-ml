@@ -28,8 +28,8 @@ import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-import com.linkedin.photon.ml.{Constants, InputColumnsNames}
-import com.linkedin.photon.ml.data.DataReader
+import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.data.{InputColumnsNames, DataReader}
 import com.linkedin.photon.ml.util._
 
 /**
@@ -47,7 +47,6 @@ import com.linkedin.photon.ml.util._
  *       of partitions needed, which causes a huge repartition/shuffle step during reading. Here we pass the partition
  *       count explicitly to the "read" function to get around this problem. Once we revisit Photon's sensitivity to
  *       choice of partition count, we can remove this parameter.
- *
  * @param sc The Spark context
  * @param defaultFeatureColumn The default column to use for features
  */
@@ -93,7 +92,7 @@ class AvroDataReader(
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
     val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap)
 
-    (readMerged(records, indexMapLoaders, featureColumnMap, numPartitions), indexMapLoaders)
+    (readMerged(records, indexMapLoaders, featureColumnMap), indexMapLoaders)
   }
 
   /**
@@ -127,7 +126,7 @@ class AvroDataReader(
 
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
 
-    readMerged(records, indexMapLoaders, featureColumnMap, numPartitions)
+    readMerged(records, indexMapLoaders, featureColumnMap)
   }
 
   /**
@@ -143,18 +142,12 @@ class AvroDataReader(
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
    *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
    *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
-   *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
-   *   Photon (especially GAME), so this caused a lot of shuffling when repartitioning from the auto-partitioned data
-   *   to the GAME data. We expose this setting here to avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   protected def readMerged(
       records: RDD[GenericRecord],
       indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
-      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
-      numPartitions: Int): DataFrame = {
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]]): DataFrame = {
 
     // Infer sql schema from avro schema
     val srcFeatureCols = featureColumnMap.values.flatten.toSet
@@ -176,6 +169,7 @@ class AvroDataReader(
         // Read feature columns
         val featureCols = featureColumnMap.map { case (destCol, sourceCols) =>
           val featureMap: IndexMap = featureShardIdToIndexMap(destCol)
+
           readFeatureVectorFromRecord(
             record,
             sourceCols,
@@ -191,8 +185,8 @@ class AvroDataReader(
     val featureFields = featureColumnMap.map { case (destCol, _) =>
       StructField(destCol, new VectorUDT())
     }
-
     val sqlSchema = new StructType((schemaFields ++ featureFields).toArray)
+
     sqlContext.createDataFrame(rows, sqlSchema)
   }
 
@@ -326,9 +320,7 @@ object AvroDataReader {
     }
 
     // Create feature vector
-    VectorUtils.breezeToMllib(
-      VectorUtils.toSparseVector(
-        featuresWithIntercept, featureMap.featureDimension))
+    VectorUtils.breezeToMllib(VectorUtils.toSparseVector(featuresWithIntercept, featureMap.featureDimension))
   }
 
   /**

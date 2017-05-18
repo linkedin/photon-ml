@@ -19,6 +19,7 @@ import scala.collection.Set
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
@@ -199,7 +200,7 @@ object RandomEffectCoordinate {
   private def computePassiveScores(
       passiveData: RDD[(Long, (String, LabeledPoint))],
       passiveDataRandomEffectIds: Broadcast[Set[String]],
-      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
+      modelsRDD: RDD[(REId, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
 
     val modelsForPassiveData = modelsRDD
       .filter { case (shardId, _) =>

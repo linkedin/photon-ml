@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.Types.FeatureShardId
  * @param featureShardId Key of the feature shard used to generate the data set
  * @param minNumPartitions Minimum number of partitions of the fixed effect data
  */
-protected[ml] case class FixedEffectDataConfiguration private (featureShardId: FeatureShardId, minNumPartitions: Int) {
+case class FixedEffectDataConfiguration(featureShardId: FeatureShardId, minNumPartitions: Int) {
 
   require(0 <= minNumPartitions)
 

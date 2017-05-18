@@ -30,7 +30,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro, LatentFactorAvro}
-import com.linkedin.photon.ml.estimators.GameParams
+import com.linkedin.photon.ml.cli.game.training.GameTrainingParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
@@ -62,7 +62,6 @@ object ModelProcessingUtils {
    *
    * @note GAME models can grow very large, because they can accommodate an unlimited number of random effect submodels.
    *       Therefore extra care is required when saving the random effects submodels.
-   *
    * @param gameModel The GAME model to save
    * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
    * @param outputDir The directory in HDFS where to save the model
@@ -73,7 +72,7 @@ object ModelProcessingUtils {
       gameModel: GameModel,
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       outputDir: String,
-      params: GameParams,
+      params: GameTrainingParams,
       sc: SparkContext): Unit = {
 
     val hadoopConfiguration = sc.hadoopConfiguration
@@ -517,7 +516,7 @@ object ModelProcessingUtils {
    */
   def saveGameModelMetadataToHDFS(
       sc: SparkContext,
-      params: GameParams,
+      params: GameTrainingParams,
       outputDir: String,
       metadataFilename: String = "model-metadata.json"): Unit = {
 
@@ -639,7 +638,6 @@ object ModelProcessingUtils {
    * @note If using the builtin Scala JSON parser, watch out, it's not thread safe!
    * @note If there is no metadata file (old models trained before the metadata were introduced),
    *       we assume that the type of [[GameModel]] is a linear model (each subModel contains its own type)
-   *
    * @param inputDir The HDFS directory where the metadata file is located
    * @param sc The Spark context
    * @return Either a new Param object, or Failure if a metadata file was not found, or it did not contain "modelType"
@@ -647,10 +645,10 @@ object ModelProcessingUtils {
   def loadGameModelMetadataFromHDFS(
       sc: SparkContext,
       inputDir: String,
-      metadataFileName: String = "model-metadata.json"): GameParams = {
+      metadataFileName: String = "model-metadata.json"): GameTrainingParams = {
 
     val inputPath = new Path(inputDir, metadataFileName)
-    val params = new GameParams
+    val params = new GameTrainingParams
     val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
 
     val fs = Try(inputPath.getFileSystem(sc.hadoopConfiguration))

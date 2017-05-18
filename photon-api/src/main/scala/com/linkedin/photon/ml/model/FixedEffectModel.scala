@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param modelBroadcast The coefficients
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectModel(
+class FixedEffectModel(
     val modelBroadcast: Broadcast[GeneralizedLinearModel],
     val featureShardId: String)
   extends DatumScoringModel
