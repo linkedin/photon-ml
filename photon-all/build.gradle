@@ -13,7 +13,7 @@
  * under the License.
  */
 apply plugin: 'scala'
-apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.github.johnrengelman.shadow' // See doc at: http://imperceptiblethoughts.com/shadow/.
 
 dependencies {
   compile project(":photon-ml$scalaSuffix")
