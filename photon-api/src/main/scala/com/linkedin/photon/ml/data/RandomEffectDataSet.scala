@@ -294,7 +294,7 @@ object RandomEffectDataSet {
     val numActiveDataPointsToKeepUpperBound = randomEffectDataConfiguration.numActiveDataPointsToKeepUpperBound
 
     val keyedRandomEffectDataSet = gameDataSet.map { case (uniqueId, gameData) =>
-      val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
+      val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, (uniqueId, labeledPoint))
     }
@@ -410,7 +410,7 @@ object RandomEffectDataSet {
     // The remaining data not included in the active data will be kept as passive data
     val activeDataUniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
     val keyedRandomEffectDataSet = gameDataSet.mapValues { gameData =>
-      val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
+      val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, labeledPoint)
     }

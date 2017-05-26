@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.data.GameConverters
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, EvaluatorType, RMSEEvaluator}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
@@ -341,9 +341,9 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   @DataProvider
   def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] =
     Array(
-      Array(Seq(AUC, ShardedAUC("foo"))),
-      Array(Seq(ShardedAUC("foo"), ShardedPrecisionAtK(10, "bar"))),
-      Array(Seq(ShardedPrecisionAtK(1, "foo")))
+      Array(Seq(AUC, MultiAUC("foo"))),
+      Array(Seq(MultiAUC("foo"), MultiPrecisionAtK(10, "bar"))),
+      Array(Seq(MultiPrecisionAtK(1, "foo")))
     )
 
   @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "shardedEvaluatorOfUnknownIdTypeProvider")
@@ -569,7 +569,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     */
   def evaluateModel(driver: Driver, modelPath: Path): Seq[Double] = {
 
-    val idTypeSet = Set("userId", "artistId", "songId")
+    val idTagSet = Set("userId", "artistId", "songId")
     val indexMapLoaders = driver.prepareFeatureMaps()
     val featureSectionMap = driver.params.featureShardIdToFeatureSectionKeysMap
     val testData = new AvroDataReader(sc).readMerged(testPath, indexMapLoaders, featureSectionMap, 2)
@@ -579,7 +579,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
       GameConverters.getGameDataSetFromDataFrame(
           testData,
           featureSectionMap.keys.toSet,
-          idTypeSet,
+          idTagSet,
           isResponseRequired = true,
           driver.params.inputColumnsNames)
         .partitionBy(partitioner)

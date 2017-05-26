@@ -49,9 +49,9 @@ class ScoredGameDatumTest {
 
   private val mapStr = idMap.toString
   private val datumZeroScoreOneResponseStr =
-    s"[response=1.0, offset=0.0, weight=1.0, score=0.0, idTypeToValueMap=${Map().toString}]"
+    s"[response=1.0, offset=0.0, weight=1.0, score=0.0, idTagToValueMap=${Map().toString}]"
   private val customDatumStr =
-    s"[response=$label, offset=$offset, weight=$weight, score=$score, idTypeToValueMap=$mapStr]"
+    s"[response=$label, offset=$offset, weight=$weight, score=$score, idTagToValueMap=$mapStr]"
 
   @Test
   def testZeroScoreDatum(): Unit = {

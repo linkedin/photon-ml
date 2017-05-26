@@ -180,7 +180,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
 
     // Group additional columns to include in GameDatum
     val randomEffectIdCols: Set[String] = randomEffectDataConfigurations.values.map(_.randomEffectType).toSet
-    val evaluatorCols = evaluatorTypes.map(ShardedEvaluatorType.getShardedEvaluatorTypeColumns).getOrElse(Set())
+    val evaluatorCols = evaluatorTypes.map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Set())
     val additionalCols = randomEffectIdCols ++ evaluatorCols
 
     // Transform the GAME dataset into fixed and random effect specific datasets

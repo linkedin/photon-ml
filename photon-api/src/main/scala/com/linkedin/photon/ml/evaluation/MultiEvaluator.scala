@@ -16,19 +16,21 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
+
 /**
- * Evaluator sharded with the specified ids.
+ * Evaluator applied to a collection of samples grouped by some ID.
  *
  * @param localEvaluator The underlying evaluator type
- * @param ids IDs based on which the labels and scores are grouped (sharded) to compute the evaluation metric for each
- *            shard/group. Such ids can be thought as a recommendation context, e.g. in evaluating the relevance of
- *            search results of given a query, the id can be the query itself.
- * @param labelAndOffsetAndWeights A [[RDD]] of (id, (labels, offsets, weights)) pairs
+ * @param ids A [[RDD]] of (unique sample identifier, ID) pairs. The IDs are used to group samples, then the evaluation
+ *            metric is computed on the groups per-ID and averaged. Such IDs can be thought of as a recommendation
+ *            context (e.g. queryId when evaluating the relevance of search results for given queries).
+ * @param labelAndOffsetAndWeights A [[RDD]] of (unique sample identifier, (label, offset, weight)) pairs
  */
-abstract class ShardedEvaluator(
+abstract class MultiEvaluator(
   protected[ml] val localEvaluator: LocalEvaluator,
-  protected[ml] val ids: RDD[(Long, String)],
-  protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+  protected[ml] val ids: RDD[(UniqueSampleId, String)],
+  protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
 
   /**
    * Evaluate scores with labels and weights.
@@ -37,16 +39,19 @@ abstract class ShardedEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
     // Create a local copy of the localEvaluator, so that the underlying object won't get shipped to the executor nodes
     val localEvaluator = this.localEvaluator
+
+    // TODO: Log which IDs had invalid evaluation metric values
     scoresAndLabelsAndWeights
       .join(ids)
       .map { case (uniqueId, (scoreLabelAndWeight, id)) => (id, scoreLabelAndWeight) }
       .groupByKey()
       .values
       .map(scoreLabelAndWeights => localEvaluator.evaluate(scoreLabelAndWeights.toArray))
+      .filter(result => !(result.isInfinite || result.isNaN))
       .mean()
   }
 }

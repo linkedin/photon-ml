@@ -23,9 +23,14 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- *
+ * Integration test cases for the [[MultiEvaluator]]
  */
-class ShardedEvaluatorTest extends SparkTestUtils {
+class MultiEvaluatorTest extends SparkTestUtils {
+
+  /**
+   * Test that the [[MultiEvaluator]] will correctly group records by ID and pass them to a [[LocalEvaluator]] for
+   * evaluation.
+   */
   @Test
   def testEvaluateWithLabelAndWeight(): Unit = sparkTest("testEvaluateWithLabelAndWeight") {
 
@@ -44,11 +49,11 @@ class ShardedEvaluatorTest extends SparkTestUtils {
     val scoresAndLabelsAndWeights =
       labelAndOffsetAndWeights.mapValues { case (label, _, weight) => (random.nextDouble(), label, weight) }
 
-    val shardedEvaluator = mock(classOf[ShardedEvaluator], CALLS_REAL_METHODS)
-    doReturn(labelAndOffsetAndWeights).when(shardedEvaluator).labelAndOffsetAndWeights
-    doReturn(localEvaluatorMock).when(shardedEvaluator).localEvaluator
-    doReturn(ids).when(shardedEvaluator).ids
+    val multiEvaluator = mock(classOf[MultiEvaluator], CALLS_REAL_METHODS)
+    doReturn(labelAndOffsetAndWeights).when(multiEvaluator).labelAndOffsetAndWeights
+    doReturn(localEvaluatorMock).when(multiEvaluator).localEvaluator
+    doReturn(ids).when(multiEvaluator).ids
 
-    assertEquals(shardedEvaluator.evaluateWithScoresAndLabelsAndWeights(scoresAndLabelsAndWeights), expectedResult)
+    assertEquals(multiEvaluator.evaluateWithScoresAndLabelsAndWeights(scoresAndLabelsAndWeights), expectedResult)
   }
 }

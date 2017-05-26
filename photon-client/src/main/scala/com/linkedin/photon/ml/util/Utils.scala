@@ -25,7 +25,7 @@ import org.apache.hadoop.fs.Path
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, ShardedAUC, ShardedPrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, EvaluatorType}
 
 // TODO: Better documentation.
 
@@ -314,12 +314,12 @@ protected[ml] object Utils {
     case PoissonLoss.name | "POISSONLOSS" => PoissonLoss
     case SmoothedHingeLoss.name | "SMOOTHEDHINGELOSS" => SmoothedHingeLoss
     case SquaredLoss.name | "SQUAREDLOSS" => SquaredLoss
-    case ShardedPrecisionAtK.shardedPrecisionAtKPattern(k, _) =>
-      val ShardedPrecisionAtK.shardedPrecisionAtKPattern(_, idName) = name.trim
-      ShardedPrecisionAtK(k.toInt, idName)
-    case ShardedAUC.shardedAUCPattern(_) =>
-      val ShardedAUC.shardedAUCPattern(idName) = name.trim
-      ShardedAUC(idName)
+    case MultiPrecisionAtK.batchPrecisionAtKPattern(k, _) =>
+      val MultiPrecisionAtK.batchPrecisionAtKPattern(_, idName) = name.trim
+      MultiPrecisionAtK(k.toInt, idName)
+    case MultiAUC.batchAUCPattern(_) =>
+      val MultiAUC.batchAUCPattern(idName) = name.trim
+      MultiAUC(idName)
     case _ => throw new IllegalArgumentException(s"Unsupported evaluator $name")
   }
 

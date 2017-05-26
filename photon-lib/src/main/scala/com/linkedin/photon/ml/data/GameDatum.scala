@@ -27,17 +27,20 @@ import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
  * @param offsetOpt An optional field for offset
  * @param weightOpt An optional field for importance weight
  * @param featureShardContainer The sharded feature vectors
- * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
- *                         point. A few examples of the ids types are: (i) ids used to build the random effect model
- *                         such as userId and itemId; (ii) ids used to compute certain metrics like precision@k such
- *                         as documentId or queryId; (iii) ids that are used to uniquely identify each training record.
+ * @param idTagToValueMap A map of ID tag to ID for this data point. An ID tag is a column or metadata field containing
+ *                        IDs used to group or uniquely identify samples. Examples of ID tags that may be stored as keys
+ *                        in this map are:
+ *
+ *                        (i) ID tags used to build random effect models (e.g. userId, jobId);
+ *                        (ii) ID tags used to compute evaluation metrics like precision@k (e.g. documentId, queryId);
+ *                        (iii) ID tags used to uniquely identify training records (e.g. uid)
  */
 protected[ml] class GameDatum(
     val response: Double,
     val offsetOpt: Option[Double],
     val weightOpt: Option[Double],
     val featureShardContainer: Map[String, Vector[Double]],
-    val idTypeToValueMap: Map[String, String]) extends Serializable {
+    val idTagToValueMap: Map[String, String]) extends Serializable {
 
   import GameDatum._
 
@@ -61,7 +64,7 @@ protected[ml] class GameDatum(
    * @return A new [[ScoredGameDatum]] instance
    */
   def toScoredGameDatum(score: Double = ScoredGameDatum.ZERO_SCORE): ScoredGameDatum = {
-    ScoredGameDatum(response, offset, weight, score, idTypeToValueMap)
+    ScoredGameDatum(response, offset, weight, score, idTagToValueMap)
   }
 }
 

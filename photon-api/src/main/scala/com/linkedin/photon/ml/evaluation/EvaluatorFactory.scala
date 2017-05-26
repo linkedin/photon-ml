@@ -40,12 +40,12 @@ object EvaluatorFactory {
       case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
       case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
       case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
-      case ShardedPrecisionAtK(k, idType) =>
-        val ids = gameDataSet.mapValues(_.idTypeToValueMap(idType))
-        new ShardedPrecisionAtKEvaluator(k, idType, ids, labelAndOffsetAndWeights)
-      case ShardedAUC(idType) =>
-        val ids = gameDataSet.mapValues(_.idTypeToValueMap(idType))
-        new ShardedAreaUnderROCCurveEvaluator(idType, ids, labelAndOffsetAndWeights)
+      case MultiPrecisionAtK(k, idTag) =>
+        val ids = gameDataSet.mapValues(_.idTagToValueMap(idTag))
+        new PrecisionAtKMultiEvaluator(k, idTag, ids, labelAndOffsetAndWeights)
+      case MultiAUC(idTag) =>
+        val ids = gameDataSet.mapValues(_.idTagToValueMap(idTag))
+        new AreaUnderROCCurveMultiEvaluator(idTag, ids, labelAndOffsetAndWeights)
       case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
     }
   }

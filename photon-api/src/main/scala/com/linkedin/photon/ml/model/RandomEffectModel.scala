@@ -274,7 +274,7 @@ object RandomEffectModel {
      */
     val scores = dataPoints
       .map { case (uniqueId, gameDatum) =>
-        val randomEffectId = gameDatum.idTypeToValueMap(randomEffectType)
+        val randomEffectId = gameDatum.idTagToValueMap(randomEffectType)
         (randomEffectId, (uniqueId, gameDatum))
       }
       .partitionBy(hashPartitioner)

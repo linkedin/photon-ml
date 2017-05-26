@@ -289,15 +289,15 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   /**
    * Provide a list of validation [[EvaluatorType]]s, in varying combinations.
    *
-   * @return A list of [[EvaluatorType]] and/or [[ShardedEvaluatorType]]
+   * @return A list of [[EvaluatorType]] and/or [[MultiEvaluatorType]]
    */
   @DataProvider
   def multipleEvaluatorTypeProvider(): Array[Array[Any]] =
 
     Array(
       Array(Seq(RMSE, SquaredLoss)),
-      Array(Seq(LogisticLoss, AUC, ShardedPrecisionAtK(1, "userId"), ShardedPrecisionAtK(10, "songId"))),
-      Array(Seq(AUC, ShardedAUC("userId"), ShardedAUC("songId"))),
+      Array(Seq(LogisticLoss, AUC, MultiPrecisionAtK(1, "userId"), MultiPrecisionAtK(10, "songId"))),
+      Array(Seq(AUC, MultiAUC("userId"), MultiAUC("songId"))),
       Array(Seq(PoissonLoss))
     )
 
@@ -310,7 +310,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   def testMultipleEvaluators(
       evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("multipleEvaluatorsWithFullModel", useKryo = true) {
 
-    val evaluatorCols = ShardedEvaluatorType.getShardedEvaluatorTypeColumns(evaluatorTypes)
+    val evaluatorCols = MultiEvaluatorType.getMultiEvaluatorIdTags(evaluatorTypes)
     val mockValidationData = getMockDataRDD(evaluatorCols)
     val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
       .setEvaluatorTypes(Some(evaluatorTypes))

@@ -120,8 +120,8 @@ object RandomEffectDataSetPartitioner {
     val sortedRandomEffectTypes =
       gameDataSet
           .values
-          .filter(_.idTypeToValueMap.contains(randomEffectType))
-          .map(gameData => (gameData.idTypeToValueMap(randomEffectType), 1))
+          .filter(_.idTagToValueMap.contains(randomEffectType))
+          .map(gameData => (gameData.idTagToValueMap(randomEffectType), 1))
           .reduceByKey(_ + _)
           .collect()
           .sortBy(_._2 * -1)

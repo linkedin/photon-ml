@@ -21,10 +21,13 @@ import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- *
+ * Integration test cases for the [[PrecisionAtKMultiEvaluator]]
  */
-class ShardedPrecisionAtKEvaluatorTest extends SparkTestUtils {
+class PrecisionAtKMultiEvaluatorTest extends SparkTestUtils {
 
+  /**
+   * Provide test K values, labels, IDs, scores, and expected results.
+   */
   @DataProvider
   def getEvaluateTestCases: Array[Array[Any]] = {
     // A trivial case but with different Ks
@@ -64,21 +67,26 @@ class ShardedPrecisionAtKEvaluatorTest extends SparkTestUtils {
     trivialCase1 ++ trivialCase2 ++ trivialCase3 ++ trivialCase4 ++ metronomeCase
   }
 
+  /**
+   * Test that the [[PrecisionAtKMultiEvaluator]] correctly computes precision @ K for trivial and non-trivial cases,
+   * and that it correctly averages the results across IDs.
+   */
   @Test(dataProvider = "getEvaluateTestCases")
   def testEvaluate(
-    k: Int,
-    labels: Array[(Long, Double)],
-    ids: Array[(Long, String)],
-    scores: Array[(Long, Double)],
-    expectedResult: Double): Unit = sparkTest("testEvaluate") {
+      k: Int,
+      labels: Array[(Long, Double)],
+      ids: Array[(Long, String)],
+      scores: Array[(Long, Double)],
+      expectedResult: Double): Unit = sparkTest("testEvaluate") {
 
     val defaultOffset = 0.0
     val defaultWeight = 1.0
     val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, defaultOffset, defaultWeight))
-    val evaluator = new ShardedPrecisionAtKEvaluator(k, idType = "", sc.parallelize(ids), labelAndOffsetAndWeights)
+    val evaluator = new PrecisionAtKMultiEvaluator(k, idTag = "", sc.parallelize(ids), labelAndOffsetAndWeights)
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
       (id, score)
     }))
+
     assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }

@@ -27,7 +27,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
-import com.linkedin.photon.ml.evaluation.{ShardedAUC, ShardedPrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK}
 import com.linkedin.photon.ml.test.TestTemplateWithTmpDir
 
 /**
@@ -437,10 +437,10 @@ class UtilsTest extends TestTemplateWithTmpDir {
 
     // Test sharded evaluators
     val precisionAt10 = " prEcIsiON@10:queryId   "
-    assertEquals(ShardedPrecisionAtK(10, "queryId"), Utils.evaluatorWithName(precisionAt10))
+    assertEquals(MultiPrecisionAtK(10, "queryId"), Utils.evaluatorWithName(precisionAt10))
 
     val shardedAuc = "   AuC:foobar "
-    assertEquals(ShardedAUC("foobar"), Utils.evaluatorWithName(shardedAuc))
+    assertEquals(MultiAUC("foobar"), Utils.evaluatorWithName(shardedAuc))
   }
 
   @DataProvider

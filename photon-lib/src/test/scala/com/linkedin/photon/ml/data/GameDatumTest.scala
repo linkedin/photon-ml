@@ -20,6 +20,9 @@ import breeze.linalg.Vector
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+/**
+ * Unit test cases for the [[GameDatum]]
+ */
 class GameDatumTest {
 
   import GameDatumTest._
@@ -29,42 +32,39 @@ class GameDatumTest {
     offsetOpt = Some(-10.0),
     weightOpt = Some(5.0),
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map("foo" -> "bar")
-  )
+    idTagToValueMap = Map("foo" -> "bar"))
 
   private val gameDatumWithoutOffset = new GameDatum(
     response = 1.0,
     offsetOpt = None,
     weightOpt = Some(5.0),
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map("foo" -> "bar")
-  )
+    idTagToValueMap = Map("foo" -> "bar"))
 
   private val gameDatumWithoutWeight = new GameDatum(
     response = 1.0,
     offsetOpt = Some(-10.0),
     weightOpt = None,
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map("uid" -> "uid")
-  )
+    idTagToValueMap = Map("uid" -> "uid"))
 
   private val gameDatumWithoutIdTypeToValueMap = new GameDatum(
     response = 1.0,
     offsetOpt = Some(-10.0),
     weightOpt = Some(5.0),
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map()
-  )
+    idTagToValueMap = Map())
 
   private val gameDatumWithResponseAndFeatures = new GameDatum(
     response = 1.0,
     offsetOpt = None,
     weightOpt = None,
     featureShardContainer = Map(DEFAULT_SHARD_ID -> Vector.zeros[Double](1)),
-    idTypeToValueMap = Map()
-  )
+    idTagToValueMap = Map())
 
-
+  /**
+   * Provide constructed [[GameDatum]] as testing input.
+   */
   @DataProvider
   def gameDatumDataProvider(): Array[Array[Any]] = {
     Array(
@@ -72,10 +72,12 @@ class GameDatumTest {
       Array(gameDatumWithoutOffset),
       Array(gameDatumWithoutWeight),
       Array(gameDatumWithoutIdTypeToValueMap),
-      Array(gameDatumWithResponseAndFeatures)
-    )
+      Array(gameDatumWithResponseAndFeatures))
   }
 
+  /**
+   * Test that [[GameDatum]] can correctly construct a [[LabeledPoint]] for a known feature shard.
+   */
   @Test(dataProvider = "gameDatumDataProvider")
   def generateLabeledPointWithFeatureShardIdTest(gameDatum: GameDatum): Unit = {
 
@@ -83,9 +85,7 @@ class GameDatumTest {
       label = gameDatum.response,
       features = gameDatum.featureShardContainer(DEFAULT_SHARD_ID),
       offset = gameDatum.offset,
-      weight = gameDatum.weight
-    )
-
+      weight = gameDatum.weight)
     val actualLabeledPoint = gameDatum.generateLabeledPointWithFeatureShardId(DEFAULT_SHARD_ID)
 
     assertEquals(actualLabeledPoint.label, expectedLabeledPoint.label)
@@ -94,6 +94,10 @@ class GameDatumTest {
     assertEquals(actualLabeledPoint.weight, expectedLabeledPoint.weight)
   }
 
+  /**
+   * Test that [[GameDatum]] throws exception when attempting to construct a [[LabeledPoint]] for an unknown feature
+   * shard.
+   */
   @Test(expectedExceptions = Array(classOf[NoSuchElementException]))
   def generateLabeledPointWithNonExistentFeatureShardIdTest(): Unit = {
     gameDatumWithResponseAndFeatures.generateLabeledPointWithFeatureShardId("unknownShardId")

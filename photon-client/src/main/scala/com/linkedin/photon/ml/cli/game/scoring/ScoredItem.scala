@@ -22,11 +22,16 @@ import scala.collection.Map
  * @param predictionScore The prediction score
  * @param label An optional label of the score
  * @param weight An optional weight of the score
- * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
- *                         point, e.g. Map("userId" -> "1234", "itemId" -> "abcd").
+ * @param idTagToValueMap A map of ID tag to ID for this data point. An ID tag is a column or metadata field containing
+ *                        IDs used to group or uniquely identify samples. Examples of ID tags that may be stored as keys
+ *                        in this map are:
+ *
+ *                        (i) ID tags used to build random effect models (e.g. userId, jobId);
+ *                        (ii) ID tags used to compute evaluation metrics like precision@k (e.g. documentId, queryId);
+ *                        (iii) ID tags used to uniquely identify training records (e.g. uid)
  */
 case class ScoredItem(
     predictionScore: Double,
     label: Option[Double],
     weight: Option[Double],
-    idTypeToValueMap: Map[String, String])
+    idTagToValueMap: Map[String, String])

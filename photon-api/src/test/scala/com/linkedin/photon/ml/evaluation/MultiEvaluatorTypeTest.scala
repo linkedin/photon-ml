@@ -19,18 +19,24 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.evaluation.EvaluatorType.{RMSE, AUC}
 
-class ShardedEvaluatorTypeTest {
+/**
+ * Integration test cases for the [[MultiEvaluatorType]]
+ */
+class MultiEvaluatorTypeTest {
 
+  /**
+   * Test that the [[MultiEvaluatorType]] correctly computes the set of unique ID tags for a group of [[EvaluatorType]]s.
+   */
   @Test
-  def testGetShardedEvaluatorIdTypes(): Unit = {
+  def testGetMultiEvaluatorIdTags(): Unit = {
 
-    val expectedIdTypeSet = Set("documentId", "queryId", "foo", "bar")
-    val shardedPrecisionAtKEvaluators = Set("documentId", "foo")
+    val expectedIdTagSet = Set("documentId", "queryId", "foo", "bar")
+    val precisionAtKEvaluators = Set("documentId", "foo")
       .toSeq
-      .flatMap(t => Seq(1, 3, 5, 10).map(ShardedPrecisionAtK(_, t)))
-    val shardedAreaUnderROCCurveEvaluators = Set("queryId", "bar").toSeq.map(ShardedAUC(_))
-    val allEvaluators = Seq(AUC, RMSE) ++ shardedPrecisionAtKEvaluators ++ shardedAreaUnderROCCurveEvaluators
+      .flatMap(t => Seq(1, 3, 5, 10).map(MultiPrecisionAtK(_, t)))
+    val areaUnderROCCurveEvaluators = Set("queryId", "bar").toSeq.map(MultiAUC(_))
+    val allEvaluators = Seq(AUC, RMSE) ++ precisionAtKEvaluators ++ areaUnderROCCurveEvaluators
 
-    assertEquals(ShardedEvaluatorType.getShardedEvaluatorTypeColumns(allEvaluators), expectedIdTypeSet)
+    assertEquals(MultiEvaluatorType.getMultiEvaluatorIdTags(allEvaluators), expectedIdTagSet)
   }
 }
