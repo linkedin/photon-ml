@@ -18,14 +18,13 @@ import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
 import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.util.{Summarizable, VectorUtils}
+import com.linkedin.photon.ml.util.{MathUtils, Summarizable, VectorUtils}
 
 /**
  * Coefficients are a wrapper to store means and variances of model coefficients together.
  *
- * @note Breeze's SparseVector does NOT sort the non-zeros in order of increasing index, but still supports
- * a get/set backed by a binary search!!! (11/18/2016)
- *
+ * @note Breeze's SparseVector does NOT sort the non-zeros in order of increasing index, but still supports a get/set
+ *       backed by a binary search (11/18/2016)
  * @param means The mean of the model coefficients
  * @param variancesOption Optional variance of the model coefficients
  */
@@ -48,7 +47,6 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
    * Compute the score for the given features.
    *
    * @note Score can be done with either sparse or dense vectors for the features.
-   *
    * @param features Features to score
    * @return The score
    */
@@ -66,18 +64,20 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
   override def toSummaryString: String = {
     val sb = new StringBuilder()
     val isDense = means.getClass.getName.contains("Dense")
-    val eps = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+    val meanAndVar = meanAndVariance(means)
+
     sb.append(s"Type: ${if (isDense) "dense" else "sparse"}, ")
     sb.append(s"length: $length, ${if (variancesOption.isDefined) "with variances" else "without variances" }\n")
     if (!isDense) {
       sb.append(s"Number of declared non-zeros: ${means.activeSize}\n")
-      sb.append(s"Number of counted non-zeros (abs > $eps): ${means.toArray.count(Math.abs(_) > eps)}")
+      sb.append(
+        s"Number of counted non-zeros (abs > ${MathConst.EPSILON}): ${means.toArray.count(!MathUtils.isAlmostZero(_))}")
       sb.append("\n")
     }
-    val meanAndVar = meanAndVariance(means)
     sb.append(s"Mean and stddev of the mean: ${meanAndVar.mean} ${meanAndVar.stdDev}\n")
     sb.append(s"l2 norm of the mean: $meansL2Norm\n")
-    variancesL2NormOption.map(_ => sb.append(s"l2 norm of the variance ${variancesL2NormOption.get}"))
+    variancesL2NormOption.map(norm => sb.append(s"l2 norm of the variance $norm"))
+
     sb.toString()
   }
 
@@ -149,7 +149,6 @@ protected[ml] object Coefficients {
    * Constructor for an instance backed by a Breeze SparseVector.
    *
    * @note The non-zeros must be sorted in order of increasing indices!!!
-   *
    * @param length The Coefficients dimension ( (1,0,0,4) has dimension 4)
    * @param indices The indices of the non-zeros
    * @param nnz The non-zero values

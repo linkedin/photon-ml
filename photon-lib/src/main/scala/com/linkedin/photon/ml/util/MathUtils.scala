@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.constants.MathConst
 object MathUtils {
 
   /**
-   * This function is copied from MLlib's MLUtils.log1pExp.
+   * This function is copied from MLlib's MLUtils.log1pExp (it is copied instead of imported because it is private).
    *
    * When `x` is positive and large, computing `math.log(1 + math.exp(x))` will lead to arithmetic overflow. This will
    * happen when `x > 709.78` which is not a very large number. It can be addressed by rewriting the formula into
@@ -45,5 +45,5 @@ object MathUtils {
    * @param x The value to test for near-equality to zero
    * @return True if x is "as good as" zero, false if it is "significantly" different from zero
    */
-  def isAlmostZero(x: Double): Boolean = math.abs(x) < MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
+  def isAlmostZero(x: Double): Boolean = math.abs(x) < MathConst.EPSILON
 }

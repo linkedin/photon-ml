@@ -34,7 +34,7 @@ protected[ml] class FixedEffectModel(
   extends DatumScoringModel
   with BroadcastLike {
 
-  override lazy val modelType = modelBroadcast.value.modelType
+  override val modelType = modelBroadcast.value.modelType
 
   /**
    * Get the underlying [[GeneralizedLinearModel]].

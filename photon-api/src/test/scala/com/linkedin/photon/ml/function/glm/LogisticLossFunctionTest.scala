@@ -18,7 +18,7 @@ import breeze.linalg.DenseVector
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.test.CommonTestUtils
 
 /**
  * Test some edge cases of the functions in [[LogisticLossFunction]]. For more tests by numerical methods please see
@@ -28,7 +28,6 @@ class LogisticLossFunctionTest {
 
   @Test
   def testCalculate(): Unit = {
-    val delta = MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
     val features = DenseVector[Double](12.21, 10.0, -0.03, 10.3)
     val coefficients = DenseVector[Double](1.0, 12.3, -21.0, 0.0)
     val offset = 1.5
@@ -40,17 +39,16 @@ class LogisticLossFunctionTest {
     val (value1, _) = LogisticLossFunction.lossAndDzLoss(margin, positiveLabel)
     // Compute the expected value by explicit computation
     val expected1 = math.log(1 + math.exp(-margin))
-    assertEquals(value1, expected1, delta)
+    assertEquals(value1, expected1, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Test negative label
     val (value2, _) = LogisticLossFunction.lossAndDzLoss(margin, negativeLabel)
     val expected2 = math.log(1 + math.exp(margin))
-    assertEquals(value2, expected2, delta)
+    assertEquals(value2, expected2, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test
   def testGradient(): Unit = {
-    val delta = MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
     val features = DenseVector[Double](12.21, 10.0, -0.03, 10.3)
     val coefficients = DenseVector[Double](1.0, 1.0, 1.0, 1.0)
     val offset = 0D
@@ -62,17 +60,16 @@ class LogisticLossFunctionTest {
     val (_, gradient1) = LogisticLossFunction.lossAndDzLoss(margin, positiveLabel)
     // Calculate gradient explicitly
     val expected1 = -1.0 / (1.0 + math.exp(margin))
-    assertEquals(gradient1, expected1, delta)
+    assertEquals(gradient1, expected1, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Test negative label
     val expected2 = 1.0 / (1.0 + math.exp(-margin))
     val (_, gradient2) = LogisticLossFunction.lossAndDzLoss(margin, negativeLabel)
-    assertEquals(gradient2, expected2, delta)
+    assertEquals(gradient2, expected2, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test
   def testHessianVector(): Unit = {
-    val delta = MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD
     val label = 1D
     val offset = 0D
 
@@ -83,7 +80,7 @@ class LogisticLossFunctionTest {
     val sigma1 = 1.0 / (1.0 + math.exp(-margin1))
     val expected1 = sigma1 * (1 - sigma1)
     val D_1 = LogisticLossFunction.DzzLoss(margin1, label)
-    assertEquals(D_1, expected1, delta)
+    assertEquals(D_1, expected1, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Test non-zero vectors
     val features2 = DenseVector[Double](1.0, 0.0, 0.0, 0.0)
@@ -92,6 +89,6 @@ class LogisticLossFunctionTest {
     val sigma2 = 1.0 / (1.0 + math.exp(-margin2))
     val expected2 = sigma2 * (1 - sigma2)
     val D_2 = LogisticLossFunction.DzzLoss(margin2, label)
-    assertEquals(D_2, expected2, delta)
+    assertEquals(D_2, expected2, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }

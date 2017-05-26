@@ -91,9 +91,6 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(prototypeSparseVector.length, initializedSparseVector.length,
       s"Length of the initialized vector (${initializedSparseVector.length}) " +
         s"is different from the prototype vector (${prototypeSparseVector.length}})")
-    assertEquals(prototypeSparseVector.activeSize, initializedSparseVector.activeSize,
-      s"Active size of the initialized vector (${initializedSparseVector.activeSize}) " +
-        s"is different from the prototype vector (${prototypeSparseVector.activeSize}})")
     assertTrue(initializedSparseVector.isInstanceOf[SparseVector[Double]],
       s"The initialized sparse vector (${initializedSparseVector.getClass}) " +
         s"is not an instance of the prototype vectors' class (${prototypeSparseVector.getClass})")

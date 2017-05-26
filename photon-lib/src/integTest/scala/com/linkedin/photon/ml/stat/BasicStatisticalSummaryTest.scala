@@ -22,18 +22,15 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.Types.SparkVector
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
-import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * Tests for BasicStatisticalSummary.
  */
 class BasicStatisticalSummaryTest extends SparkTestUtils {
-
-  private val EPSILON: Double = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
 
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.
@@ -77,22 +74,22 @@ class BasicStatisticalSummaryTest extends SparkTestUtils {
     val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
 
     assertEquals(stats.count, 10)
-    assertEquals(stats.mean(0), 0.3847210904276229, EPSILON)
-    assertEquals(stats.mean(1), -0.26976712031174965, EPSILON)
-    assertEquals(stats.variance(0), 0.40303763661250336, EPSILON)
-    assertEquals(stats.variance(1), 0.13748971393448942, EPSILON)
+    assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.mean(1), -0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.variance(0), 0.40303763661250336, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.variance(1), 0.13748971393448942, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertEquals(stats.numNonzeros(0), 10.0)
     assertEquals(stats.numNonzeros(1), 4.0)
-    assertEquals(stats.max(0), 0.9699938346531928, EPSILON)
-    assertEquals(stats.max(1), 0.0, EPSILON)
-    assertEquals(stats.min(0), -0.7306653538519616, EPSILON)
-    assertEquals(stats.min(1), -0.8972778242305388, EPSILON)
-    assertEquals(stats.normL1(0), 6.652510022278823, EPSILON)
-    assertEquals(stats.normL1(1), 2.6976712031174963, EPSILON)
-    assertEquals(stats.normL2(0), 2.2599650226741836, EPSILON)
-    assertEquals(stats.normL2(1), 1.401838227979015, EPSILON)
-    assertEquals(stats.meanAbs(0), 0.6652510022278822, EPSILON)
-    assertEquals(stats.meanAbs(1), 0.26976712031174965, EPSILON)
+    assertEquals(stats.max(0), 0.9699938346531928, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.max(1), 0.0, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.min(0), -0.7306653538519616, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.min(1), -0.8972778242305388, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.normL1(0), 6.652510022278823, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.normL1(1), 2.6976712031174963, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.normL2(0), 2.2599650226741836, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.normL2(1), 1.401838227979015, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.meanAbs(0), 0.6652510022278822, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(stats.meanAbs(1), 0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   /**
@@ -137,13 +134,13 @@ class BasicStatisticalSummaryTest extends SparkTestUtils {
     val variance = items.map(_._6)
     val numNonzeros = items.map(_._7)
 
-    assertIterableEqualsWithTolerance(summary.max.toArray, max, EPSILON)
-    assertIterableEqualsWithTolerance(summary.min.toArray, min, EPSILON)
-    assertIterableEqualsWithTolerance(summary.mean.toArray, mean, EPSILON)
-    assertIterableEqualsWithTolerance(summary.variance.toArray, variance, EPSILON)
-    assertIterableEqualsWithTolerance(summary.normL1.toArray, normL1, EPSILON)
-    assertIterableEqualsWithTolerance(summary.normL2.toArray, normL2, EPSILON)
-    assertIterableEqualsWithTolerance(summary.numNonzeros.toArray, numNonzeros, EPSILON)
-    assertIterableEqualsWithTolerance(summary.meanAbs.toArray, meanAbs, EPSILON)
+    assertIterableEqualsWithTolerance(summary.max.toArray, max, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.min.toArray, min, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.mean.toArray, mean, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.variance.toArray, variance, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.normL1.toArray, normL1, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.normL2.toArray, normL2, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.numNonzeros.toArray, numNonzeros, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.meanAbs.toArray, meanAbs, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }

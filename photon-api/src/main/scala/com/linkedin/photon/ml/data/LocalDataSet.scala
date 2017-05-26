@@ -250,22 +250,20 @@ object LocalDataSet {
       val std = math.sqrt(math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum))
       val denominator = std * math.sqrt(numSamples * labelSecondOrderSum - labelFirstOrderSum * labelFirstOrderSum)
 
-      val score =
       // When the standard deviation of the feature is close to 0, we treat it as the intercept term
-        if (std < MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD) {
-          if (interceptAdded) {
-            0.0
-          } else {
-            interceptAdded = true
-            1.0
-          }
+      val score = if (std < MathConst.EPSILON) {
+        if (interceptAdded) {
+          0.0
         } else {
-          numerator / (denominator + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+          interceptAdded = true
+          1.0
         }
+      } else {
+        numerator / (denominator + MathConst.EPSILON)
+      }
 
-      assert(math.abs(score) <= 1 + MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD,
-        s"Computed pearson correlation score is $score, " +
-        s"while the score's magnitude should be less than 1. " +
+      require(math.abs(score) <= 1 + MathConst.EPSILON,
+        s"Computed pearson correlation score is $score, while the score's magnitude should be less than 1. " +
         s"(Diagnosis:\n" +
         s"numerator=$numerator\n" +
         s"denominator=$denominator\n" +

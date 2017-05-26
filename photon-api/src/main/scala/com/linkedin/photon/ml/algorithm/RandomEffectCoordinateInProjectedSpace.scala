@@ -132,7 +132,8 @@ object RandomEffectCoordinateInProjectedSpace {
 
     val glm = randomEffectOptimizationProblem.initializeModel(0)
     val randomEffectModelsRDD = randomEffectDataSetInProjectedSpace.activeData.mapValues { localDataSet =>
-      glm.updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
+      glm
+        .updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
         .asInstanceOf[GeneralizedLinearModel]
     }
     val randomEffectType = randomEffectDataSetInProjectedSpace.randomEffectType

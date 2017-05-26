@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import breeze.linalg.Matrix
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
@@ -149,9 +149,11 @@ protected[ml] class FactoredRandomEffectCoordinate[
         val updatedFactoredRandomEffectModel = factoredRandomEffectModel.updateFactoredRandomEffectModel(
           updatedModelsRDD,
           updatedProjectionMatrixBroadcast)
-        val factoredRandomEffectOptimizationTracker = if (isTrackingState) {
+        val factoredRandomEffectOptimizationTracker: Option[OptimizationTracker] = if (isTrackingState) {
           Some(new FactoredRandomEffectOptimizationTracker(factoredRandomEffectOptimizationTrackerArray))
-        } else None
+        } else {
+          None
+        }
 
         (updatedFactoredRandomEffectModel, factoredRandomEffectOptimizationTracker)
 
@@ -234,10 +236,7 @@ object FactoredRandomEffectCoordinate {
     val numRows = latentProjectionMatrix.rows
     val numCols = latentProjectionMatrix.cols
     val uniqueIdPartitioner = randomEffectDataSet.uniqueIdPartitioner
-    val generatedTrainingData = kroneckerProductFeaturesAndCoefficients(
-        localDataSetRDD,
-        modelsRDD,
-        sparsityToleranceThreshold = MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+    val generatedTrainingData = kroneckerProductFeaturesAndCoefficients(localDataSetRDD, modelsRDD)
       .partitionBy(uniqueIdPartitioner)
       .setName("Generated training data for latent projection matrix")
       .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -260,24 +259,20 @@ object FactoredRandomEffectCoordinate {
    *
    * @param localDataSetRDD The training dataset
    * @param modelsRDD The individual random effect models
-   * @param sparsityToleranceThreshold If the product between a certain feature and coefficient is smaller than
-   *                                   sparsityToleranceThreshold, then it will be stored as 0 for sparsity
-   *                                   consideration
    * @return Kronecker product result
    */
   private def kroneckerProductFeaturesAndCoefficients(
       localDataSetRDD: RDD[(String, LocalDataSet)],
-      modelsRDD: RDD[(String, GeneralizedLinearModel)],
-      sparsityToleranceThreshold: Double = 0.0): RDD[(Long, LabeledPoint)] = {
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(Long, LabeledPoint)] = {
 
     localDataSetRDD.join(modelsRDD).flatMap { case (_, (localDataSet, model)) =>
       localDataSet.dataPoints.map { case (uniqueId, labeledPoint) =>
-        val generatedFeatures = VectorUtils.kroneckerProduct(
-          labeledPoint.features,
-          model.coefficients.means,
-          sparsityToleranceThreshold)
-        val generatedLabeledPoint =
-          new LabeledPoint(labeledPoint.label, generatedFeatures, labeledPoint.offset, labeledPoint.weight)
+        val generatedFeatures = VectorUtils.kroneckerProduct(labeledPoint.features, model.coefficients.means)
+        val generatedLabeledPoint = new LabeledPoint(
+          labeledPoint.label,
+          generatedFeatures,
+          labeledPoint.offset,
+          labeledPoint.weight)
 
         (uniqueId, generatedLabeledPoint)
       }

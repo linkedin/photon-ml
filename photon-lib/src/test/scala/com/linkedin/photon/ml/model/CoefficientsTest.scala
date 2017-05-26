@@ -18,30 +18,14 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.test.CommonTestUtils
 
 /**
  * Unit tests for Coefficients.
  */
 class CoefficientsTest {
 
-  /**
-   *
-   * @param values
-   * @return
-   */
-  private def dense(values: Double*) =
-    new DenseVector[Double](Array[Double](values: _*))
-
-  /**
-   *
-   * @param length
-   * @param indices
-   * @param nnz
-   * @return
-   */
-  private def sparse(length: Int)(indices: Int*)(nnz: Double*) =
-    new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length)
+  import CoefficientsTest._
 
   @DataProvider(name = "invalidVectorProvider")
   def makeInvalidVectors(): Array[Array[Vector[Double]]] =
@@ -69,6 +53,27 @@ class CoefficientsTest {
   @Test
   def testComputeScore(): Unit =
     for { v1 <- List(dense(1,0,3,0), sparse(4)(0,2)(1,3))
-          v2 <- List(dense(-1,0,0,1), sparse(4)(0,3)(-1,1)) }
-      assertEquals(Coefficients(v1).computeScore(v2), v1.dot(v2), MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+          v2 <- List(dense(-1,0,0,1), sparse(4)(0,3)(-1,1)) } {
+      assertEquals(Coefficients(v1).computeScore(v2), v1.dot(v2), CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    }
+}
+
+object CoefficientsTest {
+
+  /**
+   *
+   * @param values
+   * @return
+   */
+  private def dense(values: Double*) = new DenseVector[Double](Array[Double](values: _*))
+
+  /**
+   *
+   * @param length
+   * @param indices
+   * @param nnz
+   * @return
+   */
+  private def sparse(length: Int)(indices: Int*)(nnz: Double*) =
+    new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length)
 }

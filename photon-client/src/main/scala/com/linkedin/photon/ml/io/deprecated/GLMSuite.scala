@@ -322,10 +322,21 @@ class GLMSuite(
             val featureFullName = Constants.INTERCEPT_KEY
             pairsArr += ((indexMap.getIndex(featureFullName), 1.0))
           }
+
           val sortedPairsArray = pairsArr.toArray.sortBy(_._1)
+
+          // Check for duplicate features (copied from AvroDataReader)
+          val duplicateFeatures = sortedPairsArray
+            .groupBy(_._1)
+            .filter(_._2.length > 1)
+            .map { case (k, v) => (k, v.map(_._2).toList) }
+          require(duplicateFeatures.isEmpty, s"Duplicate features found: ${duplicateFeatures.toString}")
+
           val index = sortedPairsArray.map(_._1)
           val value = sortedPairsArray.map(_._2)
+
           new SparseVector[Double](index, value, numFeatures)
+
         case other =>
           throw new IOException(s"Avro field [${fieldNames.FEATURES}] (val = ${String.valueOf(other)}) is not a list")
       }

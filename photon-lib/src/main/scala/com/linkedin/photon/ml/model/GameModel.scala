@@ -51,22 +51,29 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
    * @param model The new model
    * @return A GAME model with updated sub-model `name`
    */
-  def updateModel(name: String, model: DatumScoringModel): GameModel = {
+  def updateModel(name: String, model: DatumScoringModel): GameModel =
 
-    getModel(name).foreach { oldModel =>
-      val oldModelClass = ClassUtils.getTrueClass(oldModel)
-      val newModelClass = ClassUtils.getTrueClass(model)
+    getModel(name) match {
+      case Some(oldModel) =>
+        val oldModelClass = ClassUtils.getTrueClass(oldModel)
+        val newModelClass = ClassUtils.getTrueClass(model)
 
-      if (!oldModelClass.equals(newModelClass)) {
-        throw new UnsupportedOperationException(s"Update model of $oldModelClass to model of $newModelClass is not " +
-          s"supported")
-      }
+        if (!oldModelClass.equals(newModelClass)) {
+          throw new UnsupportedOperationException(
+            s"$name: Update model of class $oldModelClass to model of class $newModelClass is not supported")
+        }
+
+        require(
+          oldModel.modelType == model.modelType,
+          s"$name: Updated model type ${model.modelType} does not match current type ${oldModel.modelType}")
+
+        // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
+        val currType = this.modelType
+        new GameModel(gameModels.updated(name, model)) { override lazy val modelType: TaskType = currType }
+
+      // TODO: What should we do when updateModel called for non-existant coordinate?
+      case None => this
     }
-
-    // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-    val currType = this.modelType
-    new GameModel(gameModels.updated(name, model)) { override lazy val modelType: TaskType = currType }
-  }
 
   /**
    * Convert the GAME model into a (modelName -> model) map representation.

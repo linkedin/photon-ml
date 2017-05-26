@@ -69,7 +69,7 @@ class LBFGS(
         val breezeState = breezeStates.next()
         // Project coefficients into constrained space, if any, before updating the state
         OptimizerState(
-          OptimizationUtils.projectCoefficientsToHypercube(breezeState.x, constraintMap),
+          OptimizationUtils.projectCoefficientsToSubspace(breezeState.x, constraintMap),
           breezeState.adjustedValue,
           breezeState.adjustedGradient,
           state.iter + 1)

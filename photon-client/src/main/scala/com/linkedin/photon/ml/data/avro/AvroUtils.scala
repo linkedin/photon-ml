@@ -36,7 +36,6 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
@@ -190,39 +189,53 @@ object AvroUtils {
    */
   protected[avro] def convertVectorAsArrayOfNameTermValueAvros(
       vector: Vector[Double],
-      featureMap: IndexMap): Array[NameTermValueAvro] = {
+      featureMap: IndexMap): Array[NameTermValueAvro] =
 
+    // TODO: Make vector sparsity configurable
     vector match {
       case dense: DenseVector[Double] =>
-        dense.toArray.zipWithIndex.map(_.swap).filter { case (key, value) =>
-          math.abs(value) > MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD
-        }
-          .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2)).map { case (index, value) =>
-          featureMap.getFeatureName(index) match {
-            case Some(featureKey: String) =>
-              val name = Utils.getFeatureNameFromKey(featureKey)
-              val term = Utils.getFeatureTermFromKey(featureKey)
-              NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
-            case None =>
-              throw new NoSuchElementException(s"Feature index $index not found in the feature map")
+        dense
+          .toArray
+          .zipWithIndex
+          .map(_.swap)
+          .filter { case (key, value) =>
+            math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
           }
-        }
+          .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
+          .map { case (index, value) =>
+            featureMap.getFeatureName(index) match {
+              case Some(featureKey: String) =>
+                val name = Utils.getFeatureNameFromKey(featureKey)
+                val term = Utils.getFeatureTermFromKey(featureKey)
+
+                NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
+
+              case None =>
+                throw new NoSuchElementException(s"Feature index $index not found in the feature map")
+            }
+          }
+
       case sparse: SparseVector[Double] =>
-        sparse.activeIterator.filter { case (key, value) =>
-          math.abs(value) > MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD
-        }.toArray
-          .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2)).map { case (index, value) =>
-          featureMap.getFeatureName(index) match {
-            case Some(featureKey: String) =>
-              val name = Utils.getFeatureNameFromKey(featureKey)
-              val term = Utils.getFeatureTermFromKey(featureKey)
-              NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
-            case None =>
-              throw new NoSuchElementException(s"Feature index $index not found in the feature map")
+        sparse
+          .activeIterator
+          .filter { case (key, value) =>
+            math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
           }
-        }
+          .toArray
+          .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
+          .map { case (index, value) =>
+            featureMap.getFeatureName(index) match {
+              case Some(featureKey: String) =>
+                val name = Utils.getFeatureNameFromKey(featureKey)
+                val term = Utils.getFeatureTermFromKey(featureKey)
+
+                NameTermValueAvro.newBuilder().setName(name).setTerm(term).setValue(value).build()
+
+              case None =>
+                throw new NoSuchElementException(s"Feature index $index not found in the feature map")
+            }
+          }
     }
-  }
 
   /**
    * Read the nameAndTerm of type [[NameAndTerm]] from Avro record of type [[GenericRecord]].

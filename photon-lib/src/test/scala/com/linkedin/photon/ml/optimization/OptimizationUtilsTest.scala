@@ -52,6 +52,6 @@ class OptimizationUtilsTest {
       expectedVectorOutput: Vector[Double]): Unit =
 
     Assert.assertEquals(
-      OptimizationUtils.projectCoefficientsToHypercube(coefficients, constraints),
+      OptimizationUtils.projectCoefficientsToSubspace(coefficients, constraints),
       expectedVectorOutput)
 }

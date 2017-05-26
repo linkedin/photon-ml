@@ -22,7 +22,7 @@ object ClassUtils {
   private val ANON_CLASS_MARKER = "$anon$"
 
   /**
-   * Method for detecting anonymous classes (the isAnonymousClass method is broken in Scala).
+   * Method for detecting anonymous classes (the isAnonymousClass method is broken in Scala as late as 2.11).
    *
    * @param clazz A class
    * @return True if the given class is anonymous, false otherwise.
@@ -30,7 +30,7 @@ object ClassUtils {
   def isAnonClass(clazz: Class[_]): Boolean = clazz.getName.contains(ANON_CLASS_MARKER)
 
   /**
-   * Get the true class type of an object, if it can be of anonymous type.
+   * Get the true class type of an object, if it is an anonymous derived class.
    *
    * @tparam T Any type
    * @param obj An object

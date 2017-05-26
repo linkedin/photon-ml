@@ -105,6 +105,34 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
     suite.readLabeledPointsFromAvro(sc, path, None, 1).count()
   }
 
+  @Test(expectedExceptions = Array(classOf[SparkException]))
+  def testReadLabeledPointsWithDuplicateFeatures(): Unit = sparkTest("testReadLabeledPointsWithDuplicateFeatures") {
+
+    val name = "f1"
+    val term = "t1"
+
+    val suite = new GLMSuite(FieldNamesType.RESPONSE_PREDICTION, false, None)
+    val builderFactory = new ResponsePredictionAvroBuilderFactory()
+    val avroPath = getTmpDir
+    val records = new ArrayBuffer[GenericRecord]()
+
+    records += builderFactory
+      .newBuilder()
+      .setLabel(1D)
+      .setFeatures(new FeatureAvroListBuilder()
+        .append(name, term, 1D)
+        .append(name, term, 2D)
+        .build())
+      .setOffset(1D)
+      .build()
+
+    suite.selectedFeatures = Set[String](Utils.getFeatureKey(name, term))
+
+    writeToTempDir(records, avroPath, ResponsePredictionAvroBuilderFactory.SCHEMA)
+
+    suite.readLabeledPointsFromAvro(sc, avroPath, None, 1).count()
+  }
+
   @DataProvider
   def dataProviderForTestReadLabelPointsFromAvro(): Array[Array[Any]] = {
     Array(

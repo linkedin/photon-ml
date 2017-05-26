@@ -20,9 +20,12 @@ import scala.util.Random
 import breeze.linalg.{DenseVector, Vector}
 
 /**
- * A collection of methods useful for tests.
+ * A collection of methods/constants useful for tests.
  */
 object CommonTestUtils {
+
+  val LOW_PRECISION_TOLERANCE = 1e-8
+  val HIGH_PRECISION_TOLERANCE = 1e-12
 
   /**
    * Append prefix to a CMD line option name, forming an argument string.

@@ -111,7 +111,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
     // Compare with the RMSE capture from an assumed-correct implementation on 5/20/2016
-    assertEquals(rootMeanSquaredError, 1.32106, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(rootMeanSquaredError, 1.32106001, CommonTestUtils.LOW_PRECISION_TOLERANCE)
   }
 
   @Test
@@ -129,7 +129,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
     // Compare with the RMSE capture from an assumed-correct implementation on 7/27/2016
-    assertEquals(rootMeanSquaredError, 1.321715, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(rootMeanSquaredError, 1.32171515, CommonTestUtils.LOW_PRECISION_TOLERANCE)
   }
 
   @Test
@@ -222,7 +222,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       val computedMetric = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
       val expectedMetric = evaluator.evaluate(scores.scores.mapValues(_.score))
-      assertEquals(computedMetric, expectedMetric, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+      assertEquals(computedMetric, expectedMetric, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     }
   }
 
@@ -243,7 +243,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
 
     // Compare with the RMSE capture from an assumed-correct implementation on 5/20/2016
-    assertEquals(rootMeanSquaredError, 1.32106, MathConst.LOW_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(rootMeanSquaredError, 1.32106001, CommonTestUtils.LOW_PRECISION_TOLERANCE)
   }
 
   /**

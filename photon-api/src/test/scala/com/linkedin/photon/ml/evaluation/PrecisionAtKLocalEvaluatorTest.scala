@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.evaluation
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.test.CommonTestUtils
 import com.linkedin.photon.ml.test.CommonTestUtils.getScoreLabelAndWeights
 
 /**
@@ -85,6 +85,6 @@ class PrecisionAtKLocalEvaluatorTest {
 
     val evaluator = new PrecisionAtKLocalEvaluator(k)
     val actualResult = evaluator.evaluate(scoreLabelAndWeights)
-    assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }
