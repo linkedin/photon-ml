@@ -35,7 +35,7 @@ import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
+import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel

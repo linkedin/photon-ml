@@ -29,8 +29,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro}
+import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro, LatentFactorAvro}
 import com.linkedin.photon.ml.estimators.GameParams
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
