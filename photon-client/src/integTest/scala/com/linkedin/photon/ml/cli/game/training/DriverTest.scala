@@ -31,9 +31,9 @@ import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameConverters
 import com.linkedin.photon.ml.data.avro._
-import com.linkedin.photon.ml.estimators.{GameEstimator, GameParams}
+import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, RMSEEvaluator, ShardedAUC, ShardedPrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, EvaluatorType, RMSEEvaluator}
 import com.linkedin.photon.ml.io.deprecated.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType
@@ -74,7 +74,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
 
   /**
    * Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default if
-   * none is specified in [[GameParams.featureShardIdToInterceptMap]].
+   * none is specified in [[GameTrainingParams.featureShardIdToInterceptMap]].
    * This happens in [[GameDriver]].prepareFeatureMapsDefault, and there only.
    */
   @Test
@@ -101,7 +101,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   /**
-   * Since intercept terms are ON by default, you need to explicitly turn them off in [[GameParams]] if you
+   * Since intercept terms are ON by default, you need to explicitly turn them off in [[GameTrainingParams]] if you
    * don't want them.
    */
   @Test
@@ -138,7 +138,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
       Map(
         "feature-shard-id-to-intercept-map" -> "shard1:false",
         "output-dir" -> outputDir,
-        GameParams.NORMALIZATION_TYPE -> NormalizationType.STANDARDIZATION.toString)))
+        GameTrainingParams.NORMALIZATION_TYPE -> NormalizationType.STANDARDIZATION.toString)))
   }
 
   /**
@@ -154,7 +154,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     runDriver(CommonTestUtils.argArray(fixedEffectToyRunArgs() ++
       Map("feature-shard-id-to-intercept-map" -> "shard1:false",
         "output-dir" -> outputDir,
-        GameParams.NORMALIZATION_TYPE -> NormalizationType.NONE.toString)))
+        GameTrainingParams.NORMALIZATION_TYPE -> NormalizationType.NONE.toString)))
 
     val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
@@ -341,9 +341,9 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   @DataProvider
   def shardedEvaluatorOfUnknownIdTypeProvider(): Array[Array[Any]] =
     Array(
-      Array(Seq(AUC, ShardedAUC("foo"))),
-      Array(Seq(ShardedAUC("foo"), ShardedPrecisionAtK(10, "bar"))),
-      Array(Seq(ShardedPrecisionAtK(1, "foo")))
+      Array(Seq(AUC, MultiAUC("foo"))),
+      Array(Seq(MultiAUC("foo"), MultiPrecisionAtK(10, "bar"))),
+      Array(Seq(MultiPrecisionAtK(1, "foo")))
     )
 
   @Test(expectedExceptions = Array(classOf[SparkException]), dataProvider = "shardedEvaluatorOfUnknownIdTypeProvider")
@@ -428,7 +428,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
           "summarization-output-dir" -> outputDir))
 
     val trainingRecordsPath = getClass.getClassLoader.getResource("GameIntegTest/input/train").getPath
-    val params = GameParams.parseFromCommandLine(args)
+    val params = GameTrainingParams.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
     val featureIndexMapLoaders = driver.prepareFeatureMaps()
@@ -482,7 +482,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
         ("num-iterations", "5"),
         ("check-data", "true"))
 
-    val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
+    val params = GameTrainingParams.parseFromCommandLine(CommonTestUtils.argArray(args))
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
 
@@ -511,7 +511,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
         ("check-data", "true"),
         ("input-column-names", "response:the_label|weight:w|offset:intercept|metadataMap:metadata"))
 
-    val params = GameParams.parseFromCommandLine(CommonTestUtils.argArray(args))
+    val params = GameTrainingParams.parseFromCommandLine(CommonTestUtils.argArray(args))
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
 
@@ -569,7 +569,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     */
   def evaluateModel(driver: Driver, modelPath: Path): Seq[Double] = {
 
-    val idTypeSet = Set("userId", "artistId", "songId")
+    val idTagSet = Set("userId", "artistId", "songId")
     val indexMapLoaders = driver.prepareFeatureMaps()
     val featureSectionMap = driver.params.featureShardIdToFeatureSectionKeysMap
     val testData = new AvroDataReader(sc).readMerged(testPath, indexMapLoaders, featureSectionMap, 2)
@@ -579,7 +579,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
       GameConverters.getGameDataSetFromDataFrame(
           testData,
           featureSectionMap.keys.toSet,
-          idTypeSet,
+          idTagSet,
           isResponseRequired = true,
           driver.params.inputColumnsNames)
         .partitionBy(partitioner)
@@ -607,7 +607,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
     */
   def runDriver(args: Array[String]): Driver = {
 
-    val params = GameParams.parseFromCommandLine(args)
+    val params = GameTrainingParams.parseFromCommandLine(args)
     val logger = new PhotonLogger(s"${params.outputDir}/log", sc)
     val driver = new Driver(sc, params, logger)
 

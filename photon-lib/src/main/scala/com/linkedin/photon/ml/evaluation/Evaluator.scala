@@ -19,11 +19,12 @@ import org.apache.spark.rdd.RDD
 /**
  * An interface for evaluation implementations at the [[RDD]] level.
  */
-protected[ml] trait Evaluator {
+trait Evaluator {
+
+  val defaultScore: Double = 0.0
+  val evaluatorType: EvaluatorType
 
   protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]
-  protected[ml] val defaultScore: Double = 0.0
-  protected[ml] val evaluatorType: EvaluatorType
 
   /**
    * Evaluate the scores of the model.
@@ -67,7 +68,7 @@ protected[ml] trait Evaluator {
    *
    * @return The name of this [[Evaluator]].
    */
-  protected[ml] def getEvaluatorName: String = evaluatorType.name
+  def getEvaluatorName: String = evaluatorType.name
 }
 
 object Evaluator {

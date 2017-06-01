@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param modelBroadcast The coefficients
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectModel(
+class FixedEffectModel(
     val modelBroadcast: Broadcast[GeneralizedLinearModel],
     val featureShardId: String)
   extends DatumScoringModel
@@ -49,7 +49,7 @@ protected[ml] class FixedEffectModel(
    * @param updatedModelBroadcast New coefficients
    * @return Updated model
    */
-  def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
+  protected[ml] def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
     new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
   /**
@@ -71,7 +71,7 @@ protected[ml] class FixedEffectModel(
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
     FixedEffectModel.score(
       dataPoints,
       modelBroadcast,
@@ -90,7 +90,7 @@ protected[ml] class FixedEffectModel(
   /**
    * Clean up coefficient broadcast.
    */
-  override def unpersistBroadcast(): BroadcastLike = {
+  override protected[ml] def unpersistBroadcast(): BroadcastLike = {
     modelBroadcast.unpersist()
     this
   }

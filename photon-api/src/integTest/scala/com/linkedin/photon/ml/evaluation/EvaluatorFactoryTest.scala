@@ -21,10 +21,18 @@ import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.test.SparkTestUtils
 
+/**
+ * Integration test cases for the [[EvaluatorFactory]]
+ */
 class EvaluatorFactoryTest extends SparkTestUtils {
 
+  import EvaluatorFactoryTest._
+
+  /**
+   * Provide [[EvaluatorType]]s.
+   */
   @DataProvider
-  def evaluatorTypeProvider(): Array[Array[Any]] = {
+  def evaluatorTypeProvider(): Array[Array[Any]] =
     Array(
       Array(AUC),
       Array(RMSE),
@@ -32,26 +40,29 @@ class EvaluatorFactoryTest extends SparkTestUtils {
       Array(LogisticLoss),
       Array(SmoothedHingeLoss),
       Array(SquaredLoss),
-      Array(ShardedPrecisionAtK(1, EvaluatorFactoryTest.idType)),
-      Array(ShardedPrecisionAtK(5, EvaluatorFactoryTest.idType)),
-      Array(ShardedAUC(EvaluatorFactoryTest.idType))
-    )
-  }
+      Array(MultiPrecisionAtK(1, idTag)),
+      Array(MultiPrecisionAtK(5, idTag)),
+      Array(MultiAUC(idTag)))
 
+  /**
+   * Test that the [[EvaluatorFactory]] can correctly construct [[Evaluator]]s from [[EvaluatorType]]s.
+   */
   @Test(dataProvider = "evaluatorTypeProvider")
   def testBuildEvaluator(evaluatorType: EvaluatorType): Unit = sparkTest("testBuildEvaluator") {
+
     val gameDatum = new GameDatum(
       response = 1.0,
       offsetOpt = Some(0.0),
       weightOpt = None,
       featureShardContainer = Map(),
-      idTypeToValueMap = Map(EvaluatorFactoryTest.idType -> "id"))
+      idTagToValueMap = Map(idTag -> "id"))
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
+
     assertEquals(evaluator.getEvaluatorName, evaluatorType.name)
   }
 }
 
 object EvaluatorFactoryTest {
-  private val idType = "idType"
+  private val idTag = "idTag"
 }

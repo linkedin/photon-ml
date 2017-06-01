@@ -48,11 +48,15 @@ protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[S
       featureSectionKeys: Set[String],
       isAddingIntercept: Boolean): Map[NameAndTerm, Int] = {
 
-    val featureNameAndTermToIndexMap = nameAndTermFeatureSets.filterKeys(featureSectionKeys.contains).values
-        .fold(Set[NameAndTerm]())(_ ++ _).zipWithIndex.toMap
+    val featureNameAndTermToIndexMap = nameAndTermFeatureSets
+      .filterKeys(featureSectionKeys.contains)
+      .values
+      .fold(Set[NameAndTerm]())(_ ++ _)
+      .zipWithIndex
+      .toMap
+
     if (isAddingIntercept) {
-      featureNameAndTermToIndexMap +
-          (NameAndTerm.INTERCEPT_NAME_AND_TERM -> featureNameAndTermToIndexMap.size)
+      featureNameAndTermToIndexMap + (NameAndTerm.INTERCEPT_NAME_AND_TERM -> featureNameAndTermToIndexMap.size)
     } else {
       featureNameAndTermToIndexMap
     }

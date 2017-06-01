@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.util.{MathUtils, Summarizable, VectorUtils}
  * @param means The mean of the model coefficients
  * @param variancesOption Optional variance of the model coefficients
  */
-protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
+case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
   extends Summarizable {
 
   // Force means and variances to be of the same type (dense or sparse). This seems reasonable
@@ -51,8 +51,10 @@ protected[ml] case class Coefficients(means: Vector[Double], variancesOption: Op
    * @return The score
    */
   def computeScore(features: Vector[Double]): Double = {
-    require(means.length == features.length,
+    require(
+      means.length == features.length,
       s"Coefficients length (${means.length}) != features length (${features.length})")
+
     means.dot(features)
   }
 

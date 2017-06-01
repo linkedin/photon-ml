@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.util
 import scala.collection.mutable
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SparkVector}
+import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
 /**
  * A utility object that contains operations to create, copy, compare, and convert Breeze [[Vector]] objects.
@@ -64,9 +64,9 @@ object VectorUtils {
 
     // This would be all we need, but breeze doesn't like it.
     //SparseVector[Double](length)(indexAndData.sortBy(_._1):_*)
-
     val sortedIndexAndData = indexAndData.sortBy(_._1)
     val (index, data) = sortedIndexAndData.unzip
+
     new SparseVector[Double](index.toArray, data.toArray, length)
   }
 
@@ -153,16 +153,16 @@ object VectorUtils {
     breezeVector match {
       case v: DenseVector[Double] =>
         if (v.offset == 0 && v.stride == 1 && v.length == v.data.length) {
-          new SDV(v.data)
+          new SparkDenseVector(v.data)
         } else {
-          new SDV(v.toArray)  // Can't use underlying array directly, so make a new one
+          new SparkDenseVector(v.toArray)  // Can't use underlying array directly, so make a new one
         }
 
       case v: SparseVector[Double] =>
         if (v.index.length == v.used) {
-          new SSV(v.length, v.index, v.data)
+          new SparkSparseVector(v.length, v.index, v.data)
         } else {
-          new SSV(v.length, v.index.slice(0, v.used), v.data.slice(0, v.used))
+          new SparkSparseVector(v.length, v.index.slice(0, v.used), v.data.slice(0, v.used))
         }
 
       case v: Vector[_] =>
@@ -181,10 +181,10 @@ object VectorUtils {
   def mllibToBreeze(mllibVector: SparkVector): Vector[Double] =
 
     mllibVector match {
-      case v: SSV =>
+      case v: SparkSparseVector =>
         new SparseVector[Double](v.indices, v.values, v.size)
 
-      case v: SDV =>
+      case v: SparkDenseVector =>
         new DenseVector[Double](v.values)
 
       case v =>

@@ -28,8 +28,8 @@ import com.linkedin.photon.ml.spark.RDDLike
 /**
  * Representation of a matrix factorization model.
  *
- * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
- * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
+ * @param rowEffectType What each row of the matrix corresponds to (e.g. memberId, itemId, etc.)
+ * @param colEffectType What each column of the matrix corresponds to (e.g. memberId, itemId, etc.)
  * @param rowLatentFactors Latent factors for row effect
  * @param colLatentFactors Latent factors for column effect
  */
@@ -100,7 +100,7 @@ class MatrixFactorizationModel(
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
     MatrixFactorizationModel.score(
       dataPoints,
       rowEffectType,
@@ -135,7 +135,7 @@ class MatrixFactorizationModel(
    *
    * @return The Spark context
    */
-  override def sparkContext: SparkContext = rowLatentFactors.sparkContext
+  override protected[ml] def sparkContext: SparkContext = rowLatentFactors.sparkContext
 
   /**
    * Assign a given name to [[rowLatentFactors]] and [[colLatentFactors]].
@@ -144,7 +144,7 @@ class MatrixFactorizationModel(
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the names of [[rowLatentFactors]] and [[colLatentFactors]] assigned
    */
-  override def setName(name: String): MatrixFactorizationModel = {
+  override protected[ml] def setName(name: String): MatrixFactorizationModel = {
 
     rowLatentFactors.setName(s"$name: row latent factors")
     colLatentFactors.setName(s"$name: col latent factors")
@@ -159,7 +159,7 @@ class MatrixFactorizationModel(
    * @param storageLevel The storage level
    * @return This object with the storage level of [[rowLatentFactors]] and [[colLatentFactors]] set
    */
-  override def persistRDD(storageLevel: StorageLevel): MatrixFactorizationModel = {
+  override protected[ml] def persistRDD(storageLevel: StorageLevel): MatrixFactorizationModel = {
 
     if (!rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.persist(storageLevel)
     if (!colLatentFactors.getStorageLevel.isValid) colLatentFactors.persist(storageLevel)
@@ -173,7 +173,7 @@ class MatrixFactorizationModel(
    *
    * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] marked non-persistent
    */
-  override def unpersistRDD(): MatrixFactorizationModel = {
+  override protected[ml] def unpersistRDD(): MatrixFactorizationModel = {
 
     if (rowLatentFactors.getStorageLevel.isValid) rowLatentFactors.unpersist()
     if (colLatentFactors.getStorageLevel.isValid) colLatentFactors.unpersist()
@@ -187,7 +187,7 @@ class MatrixFactorizationModel(
    *
    * @return This object with [[rowLatentFactors]] and [[colLatentFactors]] materialized
    */
-  override def materialize(): MatrixFactorizationModel = {
+  override protected[ml] def materialize(): MatrixFactorizationModel = {
 
     materializeOnce(rowLatentFactors, colLatentFactors)
 
@@ -249,8 +249,8 @@ object MatrixFactorizationModel {
     val scores = dataPoints
       .map { case (uniqueId, gameDatum) =>
         // For each datum, collect a (rowEffectId, (colEffectId, uniqueId)) tuple.
-        val rowEffectId = gameDatum.idTypeToValueMap(rowEffectType)
-        val colEffectId = gameDatum.idTypeToValueMap(colEffectType)
+        val rowEffectId = gameDatum.idTagToValueMap(rowEffectType)
+        val colEffectId = gameDatum.idTagToValueMap(colEffectType)
         (rowEffectId, (colEffectId, uniqueId))
       }
       .cogroup(rowLatentFactors)

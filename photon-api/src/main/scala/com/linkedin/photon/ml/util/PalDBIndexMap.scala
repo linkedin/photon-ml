@@ -26,9 +26,8 @@ import org.apache.spark.{HashPartitioner, SparkFiles}
  * An off heap feature index map implementation using [[PalDB]].
  *
  * The internal implementation assumed the following things:
- * 1. One DB storage is partitioned into multiple pieces we call partitions. It should be generated and controlled by
- * [[com.linkedin.photon.ml.FeatureIndexingJob]]. The partition strategy is via the hashcode of the feature names,
- * following the rules defined in [[org.apache.spark.HashPartitioner]].
+ * 1. One DB storage is partitioned into multiple pieces we call partitions. The partition strategy is via the hashcode
+ * of the feature names, following the rules defined in [[org.apache.spark.HashPartitioner]].
  *
  * 2. Each time when a user is querying the index of a certain feature, the index map will first compute the hashcode,
  * and then compute the expected partition of the storageReader.

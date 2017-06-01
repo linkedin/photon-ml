@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
-import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{MultiEvaluatorType, EvaluatorFactory, EvaluatorType}
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
 
@@ -39,8 +39,8 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
 
   import params._
 
-  protected[game] val idTypeSet: Set[String] = {
-    randomEffectTypeSet ++ getShardedEvaluatorIdTypes
+  protected[game] val idTagSet: Set[String] = {
+    randomEffectTypeSet ++ evaluatorTypes.map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
   }
 
   /**
@@ -63,14 +63,13 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
       parallelism)
 
     val partitioner = new LongHashPartitioner(parallelism)
-    val gameDataSet =
-      GameConverters
-        .getGameDataSetFromDataFrame(
-          data,
-          featureShardIdToFeatureSectionKeysMap.keys.toSet,
-          idTypeSet,
-          isResponseRequired = false,
-          params.inputColumnsNames)
+    val gameDataSet = GameConverters
+      .getGameDataSetFromDataFrame(
+        data,
+        featureShardIdToFeatureSectionKeysMap.keys.toSet,
+        idTagSet,
+        isResponseRequired = false,
+        params.inputColumnsNames)
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -91,15 +90,15 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     logger.debug(s"Summary for the GAME data set")
     val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
-    randomEffectTypeSet.foreach { idType =>
+    randomEffectTypeSet.foreach { idTag =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
-          val idValue = gameData.idTypeToValueMap(idType)
+          val idValue = gameData.idTagToValueMap(idTag)
           (idValue, 1)
         }
         .reduceByKey(_ + _)
         .values
         .stats()
-      logger.debug(s"numSamples for $idType: $numSamplesStats")
+      logger.debug(s"numSamples for $idTag: $numSamplesStats")
     }
   }
 
@@ -153,7 +152,7 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
         scoredGameDatum.score + scoredGameDatum.offset,
         Some(scoredGameDatum.response),
         Some(scoredGameDatum.weight),
-        scoredGameDatum.idTypeToValueMap)
+        scoredGameDatum.idTagToValueMap)
     }
     scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
     if (logDatasetAndModelStats) {
@@ -201,10 +200,10 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    evaluatorTypes.foreach { evaluatorType =>
+    evaluatorTypes.foreach(_.foreach { evaluatorType =>
       val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
       logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
-    }
+    })
     timer.stop()
     logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
   }

@@ -67,18 +67,17 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    */
   @DataProvider
   def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] =
-
-  Array(Array(Seq(
-    LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
-    LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
-    LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
-    LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
-    LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
-    LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
+    Array(Array(Seq(
+      LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
+      LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
+      LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
+      LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
+      LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
+      LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
 
   /**
    * Generates Photon ML labeled points.

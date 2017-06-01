@@ -87,5 +87,5 @@ object CoordinateDataScores {
    * @param score The raw score for the datum
    * @return The score object
    */
-  def toScore(datum: GameDatum, score: Double): Double = score
+  protected[ml] def toScore(datum: GameDatum, score: Double): Double = score
 }

@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.util.Summarizable
 /**
  * Models that need to be available for scoring must extend this trait.
  */
-protected[ml] trait DatumScoringModel extends Summarizable {
+trait DatumScoringModel extends Summarizable {
 
   /**
    * Even though a model may have many sub-problems, there is only one loss function type for a given DatumScoringModel.
@@ -49,5 +49,5 @@ protected[ml] trait DatumScoringModel extends Summarizable {
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores
+  protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores
 }

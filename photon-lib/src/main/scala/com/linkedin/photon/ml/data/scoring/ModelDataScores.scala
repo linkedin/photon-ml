@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.data.GameDatum
  *
  * @param scores Data point scores, as described above
  */
-protected[ml] class ModelDataScores(override val scores: RDD[(Long, ScoredGameDatum)])
+class ModelDataScores(override val scores: RDD[(Long, ScoredGameDatum)])
   extends DataScores[ScoredGameDatum, ModelDataScores](scores) {
 
   /**
@@ -95,5 +95,5 @@ object ModelDataScores {
    * @param score The raw score for the datum
    * @return The score object
    */
-  def toScore(datum: GameDatum, score: Double): ScoredGameDatum = datum.toScoredGameDatum(score)
+  protected[ml] def toScore(datum: GameDatum, score: Double): ScoredGameDatum = datum.toScoredGameDatum(score)
 }

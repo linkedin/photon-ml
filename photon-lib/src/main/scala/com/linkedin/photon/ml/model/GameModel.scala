@@ -19,6 +19,7 @@ import scala.collection.{Map, SortedMap}
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.ClassUtils
@@ -28,7 +29,7 @@ import com.linkedin.photon.ml.util.ClassUtils
  *
  * @param gameModels A (modelName -> model) map containing the sub-models that make up the complete GAME model
  */
-class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends DatumScoringModel {
+class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) extends DatumScoringModel {
 
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
   // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
@@ -42,7 +43,7 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
    * @param name The model name
    * @return An [[Option]] containing the sub-model associated with `name` in the GAME model, or `None` if none exists.
    */
-  def getModel(name: String): Option[DatumScoringModel] = gameModels.get(name)
+  def getModel(name: CoordinateId): Option[DatumScoringModel] = gameModels.get(name)
 
   /**
    * Creates an updated GAME model by updating a named sub-model.
@@ -51,7 +52,7 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
    * @param model The new model
    * @return A GAME model with updated sub-model `name`
    */
-  def updateModel(name: String, model: DatumScoringModel): GameModel =
+  def updateModel(name: CoordinateId, model: DatumScoringModel): GameModel =
 
     getModel(name) match {
       case Some(oldModel) =>
@@ -80,14 +81,14 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
    *
    * @return A (modelName -> model) map representation of this GAME model
    */
-  protected[ml] def toMap: Map[String, DatumScoringModel] = gameModels
+  def toMap: Map[CoordinateId, DatumScoringModel] = gameModels
 
   /**
    * Convert the GAME model into a (modelName -> model) map representation with a reliable ordering on the keys.
    *
    * @return The (modelName -> model) map representation of this GAME model
    */
-  protected[ml] def toSortedMap: SortedMap[String, DatumScoringModel] = SortedMap(gameModels.toSeq: _*)
+  def toSortedMap: SortedMap[CoordinateId, DatumScoringModel] = SortedMap(gameModels.toSeq: _*)
 
   /**
    * Compute score, PRIOR to going through any link function, i.e. just compute a dot product of feature values
@@ -101,7 +102,7 @@ class GameModel(private val gameModels: Map[String, DatumScoringModel]) extends 
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
   }
 
-  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores = {
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores = {
     gameModels.values.map(_.scoreForCoordinateDescent(dataPoints)).reduce(_ + _)
   }
 
@@ -150,7 +151,7 @@ object GameModel {
    * @param subModels The sub-models that make up this [[GameModel]]
    * @return A new GameModel
    */
-  def apply(subModels: (String, DatumScoringModel)*): GameModel = new GameModel(Map(subModels:_*))
+  def apply(subModels: (CoordinateId, DatumScoringModel)*): GameModel = new GameModel(Map(subModels:_*))
 
   /**
    * Determine the GAME model type: even though a model may have many sub-problems, there is only one loss function type
@@ -159,7 +160,7 @@ object GameModel {
    * @param gameModels A (modelName -> model) map containing the models that make up the complete GAME model
    * @return The GAME model type
    */
-  private def determineModelType(gameModels: Map[String, DatumScoringModel]): TaskType = {
+  private def determineModelType(gameModels: Map[CoordinateId, DatumScoringModel]): TaskType = {
     val modelTypes = gameModels.values.map(_.modelType).toSet
 
     require(modelTypes.size == 1, s"GAME model has multiple model types:\n${modelTypes.mkString(", ")}")

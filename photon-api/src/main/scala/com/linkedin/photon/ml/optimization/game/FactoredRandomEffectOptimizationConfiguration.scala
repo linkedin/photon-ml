@@ -21,7 +21,7 @@ package com.linkedin.photon.ml.optimization.game
  * @param latentFactorOptimizationConfiguration the latent factor optimization configuration
  * @param mfOptimizationConfiguration the matrix factorization optimization configuration
  */
-protected[ml] case class FactoredRandomEffectOptimizationConfiguration(
+case class FactoredRandomEffectOptimizationConfiguration(
     randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
     latentFactorOptimizationConfiguration: GLMOptimizationConfiguration,
     mfOptimizationConfiguration: MFOptimizationConfiguration)

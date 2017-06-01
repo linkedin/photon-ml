@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
+import com.linkedin.photon.ml.projector.{ProjectionMatrix, IndexMapProjector, Projector}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -45,15 +46,14 @@ object SparkContextConfiguration {
     classOf[Coefficients],
     classOf[DenseMatrix[Double]],
     classOf[DenseVector[Double]],
-    classOf[GLMOptimizationConfiguration],
     classOf[GameDatum],
     classOf[GeneralizedLinearModel],
     classOf[GeneralizedLinearOptimizationProblem[_]],
+    classOf[GLMOptimizationConfiguration],
     classOf[HessianVectorAggregator],
-    classOf[SingleNodeObjectiveFunction],
-    classOf[SingleNodeOptimizationProblem[_]],
-    classOf[LBFGS],
+    classOf[IndexMapProjector],
     classOf[LabeledPoint],
+    classOf[LBFGS],
     classOf[LinearRegressionModel],
     classOf[LocalDataSet],
     classOf[LogisticRegressionModel],
@@ -66,8 +66,12 @@ object SparkContextConfiguration {
     classOf[Option[_]],
     classOf[OWLQN],
     classOf[PoissonRegressionModel],
+    classOf[Projector],
+    classOf[ProjectionMatrix],
     classOf[RegularizationContext],
     classOf[Set[Int]],
+    classOf[SingleNodeObjectiveFunction],
+    classOf[SingleNodeOptimizationProblem[_]],
     classOf[SmoothedHingeLossLinearSVMModel],
     classOf[SparseVector[Double]],
     classOf[TRON],

@@ -24,11 +24,12 @@ import org.apache.spark.rdd.RDD
 protected[ml] class RMSEEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.RMSE
+  val evaluatorType = EvaluatorType.RMSE
 
   private val squaredLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights)
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value

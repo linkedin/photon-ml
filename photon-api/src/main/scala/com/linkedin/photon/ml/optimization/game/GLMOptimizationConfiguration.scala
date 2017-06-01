@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.optimization._
  * @param regularizationWeight Regularization weight
  * @param downSamplingRate Down-sampling rate
  */
-protected[ml] case class GLMOptimizationConfiguration (
+case class GLMOptimizationConfiguration (
     optimizerConfig: OptimizerConfig = OptimizerConfig(OptimizerType.TRON, 20, 1E-5, None),
     regularizationContext: RegularizationContext = NoRegularizationContext,
     regularizationWeight: Double = 0D,

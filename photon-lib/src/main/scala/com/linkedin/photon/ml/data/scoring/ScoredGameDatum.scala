@@ -29,17 +29,20 @@ import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
  * @param offset offset
  * @param weight importance weight
  * @param score computed score for this instance
- * @param idTypeToValueMap The id type to value map that holds different types of ids associated with this data
- *                         point. A few examples of the ids types are: (i) ids used to build the random effect model
- *                         such as userId and itemId; (ii) ids used to compute certain metrics like precision@k such
- *                         as documentId or queryId; (iii) ids that are used to uniquely identify each training record.
+ * @param idTagToValueMap A map of ID tag to ID for this data point. An ID tag is a column or metadata field containing
+ *                        IDs used to group or uniquely identify samples. Examples of ID tags that may be stored as keys
+ *                        in this map are:
+ *
+ *                        (i) ID tags used to build random effect models (e.g. userId, jobId);
+ *                        (ii) ID tags used to compute evaluation metrics like precision@k (e.g. documentId, queryId);
+ *                        (iii) ID tags used to uniquely identify training records (e.g. uid)
  */
 case class ScoredGameDatum(
     response: Double = 1.0,
     offset: Double = 0.0,
     weight: Double = 1.0,
     score: Double = ScoredGameDatum.ZERO_SCORE,
-    idTypeToValueMap: Map[String, String] = Map()) extends Serializable {
+    idTagToValueMap: Map[String, String] = Map()) extends Serializable {
 
   /**
    * Get a copy of the current instance with a score of [[ScoredGameDatum.ZERO_SCORE]]
@@ -61,7 +64,7 @@ case class ScoredGameDatum(
           isAlmostZero(this.offset - other.offset) &&
           isAlmostZero(this.weight - other.weight) &&
           isAlmostZero(this.score - other.score) &&
-          this.idTypeToValueMap.equals(other.idTypeToValueMap)
+          this.idTagToValueMap.equals(other.idTagToValueMap)
 
       case _ => false
     }
@@ -72,7 +75,7 @@ case class ScoredGameDatum(
    * @return String representation of the scored datum
    */
   override def toString: String =
-    s"[response=$response, offset=$offset, weight=$weight, score=$score, idTypeToValueMap=$idTypeToValueMap]"
+    s"[response=$response, offset=$offset, weight=$weight, score=$score, idTagToValueMap=$idTagToValueMap]"
 }
 
 object ScoredGameDatum {
@@ -83,9 +86,9 @@ object ScoredGameDatum {
    *
    * @param labeledPoint A [[LabeledPoint]]
    * @param score The score for the above point
-   * @param idTypeToValueMap The ID type to value map
+   * @param idTagToValueMap A map of ID tag to ID for the point
    * @return A new [[ScoredGameDatum]]
    */
-  def apply(labeledPoint: LabeledPoint, score: Double, idTypeToValueMap: Map[String, String]): ScoredGameDatum =
-    ScoredGameDatum(labeledPoint.label, labeledPoint.offset, labeledPoint.weight, score, idTypeToValueMap)
+  def apply(labeledPoint: LabeledPoint, score: Double, idTagToValueMap: Map[String, String]): ScoredGameDatum =
+    ScoredGameDatum(labeledPoint.label, labeledPoint.offset, labeledPoint.weight, score, idTagToValueMap)
 }

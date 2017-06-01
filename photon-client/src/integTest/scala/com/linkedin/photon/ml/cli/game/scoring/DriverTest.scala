@@ -51,7 +51,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       offsetOpt = Some(0.0),
       weightOpt = Some(1.0),
       featureShardContainer = Map(),
-      idTypeToValueMap = Map())
+      idTagToValueMap = Map())
     val scoredDatum = gameDatum.toScoredGameDatum()
     val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
     val scores = new ModelDataScores(sc.parallelize(Seq((1L, scoredDatum))))
@@ -142,7 +142,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       evaluatorTypes = Seq("precision@1:userId, precision@5:songId, precision@10:numFeatures"))
 
     val driver = runDriver(CommonTestUtils.argArray(args))
-    assertEquals(driver.idTypeSet, Set("userId", "songId", "numFeatures"))
+    assertEquals(driver.idTagSet, Set("userId", "songId", "numFeatures"))
   }
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
@@ -175,8 +175,8 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       Array(Seq(PoissonLoss)),
       Array(Seq(RMSE, SquaredLoss)),
       Array(Seq(SmoothedHingeLoss)),
-      Array(Seq(ShardedPrecisionAtK(1, "queryId"), ShardedPrecisionAtK(5, "documentId"))),
-      Array(Seq(ShardedAUC("queryId"), ShardedAUC("documentId")))
+      Array(Seq(MultiPrecisionAtK(1, "queryId"), MultiPrecisionAtK(5, "documentId"))),
+      Array(Seq(MultiAUC("queryId"), MultiAUC("documentId")))
     )
   }
 
@@ -194,7 +194,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
           offsetOpt = Some(0.0),
           weightOpt = Some(1.0),
           featureShardContainer = Map(),
-          idTypeToValueMap = Map(("queryId", queryId.toString), ("documentId", documentId.toString))
+          idTagToValueMap = Map(("queryId", queryId.toString), ("documentId", documentId.toString))
         )
       }
     }
@@ -212,7 +212,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
         offsetOpt = Some(0.0),
         weightOpt = Some(1.0),
         featureShardContainer = Map(),
-        idTypeToValueMap = Map(("queryId", random.nextInt(2).toString), ("documentId", random.nextInt(2).toString))
+        idTagToValueMap = Map(("queryId", random.nextInt(2).toString), ("documentId", random.nextInt(2).toString))
       )
     ))
 

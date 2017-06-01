@@ -17,7 +17,8 @@ package com.linkedin.photon.ml.evaluation
 /**
  * Interface for evaluation implementations at the local level.
  */
-protected[ml] trait LocalEvaluator extends Serializable {
+trait LocalEvaluator extends Serializable {
+
   /**
    * Evaluate the scores of the model.
    *

@@ -30,7 +30,7 @@ protected[ml] trait RDDLike {
    *
    * @return The Spark context
    */
-  def sparkContext: SparkContext
+  protected[ml] def sparkContext: SparkContext
 
   /**
    * Assign a given name to all [[RDD]]s in this object.
@@ -39,7 +39,7 @@ protected[ml] trait RDDLike {
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the names of all of its [[RDD]]s assigned
    */
-  def setName(name: String): RDDLike
+  protected[ml] def setName(name: String): RDDLike
 
   /**
    * Set the storage level of all [[RDD]]s in this object, and persist their values across the cluster the first time
@@ -48,21 +48,21 @@ protected[ml] trait RDDLike {
    * @param storageLevel The storage level
    * @return This object with the storage level of all of its [[RDD]]s set
    */
-  def persistRDD(storageLevel: StorageLevel): RDDLike
+  protected[ml] def persistRDD(storageLevel: StorageLevel): RDDLike
 
   /**
    * Mark all [[RDD]]s in this object as non-persistent, and remove all blocks for them from memory and disk.
    *
    * @return This object with all of its [[RDD]]s marked non-persistent
    */
-  def unpersistRDD(): RDDLike
+  protected[ml] def unpersistRDD(): RDDLike
 
   /**
    * Materialize all the [[RDD]]s (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
    *
    * @return This object with all of its [[RDD]]s materialized
    */
-  def materialize(): RDDLike
+  protected[ml] def materialize(): RDDLike
 
   /**
    * Materialize the given [[RDD]]s, if they are not already materialized and cached. Forcing an [[RDD]] to be evaluated

@@ -294,7 +294,7 @@ object RandomEffectDataSet {
     val numActiveDataPointsToKeepUpperBound = randomEffectDataConfiguration.numActiveDataPointsToKeepUpperBound
 
     val keyedRandomEffectDataSet = gameDataSet.map { case (uniqueId, gameData) =>
-      val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
+      val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, (uniqueId, labeledPoint))
     }
@@ -410,7 +410,7 @@ object RandomEffectDataSet {
     // The remaining data not included in the active data will be kept as passive data
     val activeDataUniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
     val keyedRandomEffectDataSet = gameDataSet.mapValues { gameData =>
-      val randomEffectId = gameData.idTypeToValueMap(randomEffectType)
+      val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, labeledPoint)
     }
@@ -419,16 +419,22 @@ object RandomEffectDataSet {
         .setName("tmp passive data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-    val passiveDataRandomEffectIdCountsMap = passiveData.map { case (_, (randomEffectId, _)) => (randomEffectId, 1) }
-        .reduceByKey(_ + _).collectAsMap()
+    val passiveDataRandomEffectIdCountsMap = passiveData
+      .map { case (_, (randomEffectId, _)) =>
+        (randomEffectId, 1)
+      }
+      .reduceByKey(_ + _)
+      .collectAsMap()
 
     // Only keep the passive data whose total number of data points is larger than the given lower bound
     val passiveDataRandomEffectIds = passiveDataRandomEffectIdCountsMap
-        .filter(_._2 > numPassiveDataPointsToKeepLowerBound).keySet
+      .filter(_._2 > numPassiveDataPointsToKeepLowerBound)
+      .keySet
     val sparkContext = gameDataSet.sparkContext
     val passiveDataRandomEffectIdsBroadcast = sparkContext.broadcast(passiveDataRandomEffectIds)
-    val filteredPassiveData = passiveData.filter { case ((_, (id, _))) =>
-      passiveDataRandomEffectIdsBroadcast.value.contains(id)
+    val filteredPassiveData = passiveData
+      .filter { case (_, (id, _)) =>
+        passiveDataRandomEffectIdsBroadcast.value.contains(id)
       }
       .setName("passive data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)

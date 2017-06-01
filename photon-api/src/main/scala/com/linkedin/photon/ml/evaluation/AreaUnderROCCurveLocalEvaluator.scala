@@ -25,8 +25,9 @@ import com.linkedin.photon.ml.constants.MathConst._
 protected[ml] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
 
   /**
+   * Evaluate the scores of the model.
    *
-   * @param scoreLabelAndWeights
+   * @param scoreLabelAndWeights An [[Iterable]] of (score, label, weight) used to for evaluation
    * @return score metric value
    */
   protected[ml] override def evaluate(scoreLabelAndWeights: Array[(Double, Double, Double)]): Double = {

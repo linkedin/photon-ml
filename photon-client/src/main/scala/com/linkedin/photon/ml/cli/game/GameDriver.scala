@@ -19,10 +19,15 @@ import org.apache.spark.SparkContext
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.data.avro.NameAndTermFeatureSetContainer
+import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util._
 
 /**
  * Contains common functions for GAME training and scoring drivers.
+ *
+ * @param sc The Spark context for the application
+ * @param params The input parameters
+ * @param logger The logger instance for recording log output
  */
 abstract class GameDriver(sc: SparkContext, params: FeatureParams with PalDBIndexMapParams, logger: Logger) {
 
@@ -47,7 +52,8 @@ abstract class GameDriver(sc: SparkContext, params: FeatureParams with PalDBInde
     val featureShardIdToFeatureMapLoader =
       params.featureShardIdToFeatureSectionKeysMap.map { case (shardId, featureSectionKeys) =>
         val featureMap = nameAndTermFeatureSetContainer
-          .getFeatureNameAndTermToIndexMap(featureSectionKeys,
+          .getFeatureNameAndTermToIndexMap(
+            featureSectionKeys,
             params.featureShardIdToInterceptMap.getOrElse(shardId, true))
           .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
           .toMap
@@ -56,10 +62,10 @@ abstract class GameDriver(sc: SparkContext, params: FeatureParams with PalDBInde
 
         (shardId, indexMapLoader)
       }
-    featureShardIdToFeatureMapLoader.foreach { case (shardId, featureMapLoader) =>
+
+    featureShardIdToFeatureMapLoader.tap { case (shardId, featureMapLoader) =>
       logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMapLoader.indexMapForDriver().size}")
     }
-    featureShardIdToFeatureMapLoader
   }
 
   /**

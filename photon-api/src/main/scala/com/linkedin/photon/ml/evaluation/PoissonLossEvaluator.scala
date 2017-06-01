@@ -26,9 +26,10 @@ import com.linkedin.photon.ml.function.glm.PoissonLossFunction
 protected[ml] class PoissonLossEvaluator(
     override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
 
-  protected[ml] val evaluatorType = EvaluatorType.PoissonLoss
+  val evaluatorType = EvaluatorType.PoissonLoss
 
   /**
+   * Evaluate scores with labels and weights.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
    * @return Evaluation metric value
