@@ -17,9 +17,8 @@ package com.linkedin.photon.ml.evaluation
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
-import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
  *
@@ -80,6 +79,6 @@ class ShardedPrecisionAtKEvaluatorTest extends SparkTestUtils {
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
       (id, score)
     }))
-    assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }

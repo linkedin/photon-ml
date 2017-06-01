@@ -26,10 +26,8 @@ import com.linkedin.photon.ml.util.Summarizable
  */
 protected[ml] trait DatumScoringModel extends Summarizable {
 
-  /** The model type: even though a model may have many sub-problems, there is only one loss function type for a given
-   *  DatumScoringModel.
-   *
-   *  @return The type of model which is scored
+  /**
+   * Even though a model may have many sub-problems, there is only one loss function type for a given DatumScoringModel.
    */
   def modelType: TaskType
 

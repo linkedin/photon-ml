@@ -21,7 +21,6 @@ import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.constants.MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
@@ -29,6 +28,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
+import com.linkedin.photon.ml.test.CommonTestUtils
 import com.linkedin.photon.ml.test.CommonTestUtils.generateDenseVector
 
 /**
@@ -180,13 +180,19 @@ class GeneralizedLinearOptimizationProblemTest {
     doReturn(l2RegWeight).when(objectiveL2Reg).l2RegularizationWeight
     doReturn(coefficients).when(initialModel).coefficients
 
-    assertEquals(0.0, problemNone.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
-    assertEquals(expectedL1Term, problemL1.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
-    assertEquals(expectedL2Term, problemL2.getRegularizationTermValue(initialModel), HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(0.0, problemNone.getRegularizationTermValue(initialModel), CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(
+      expectedL1Term,
+      problemL1.getRegularizationTermValue(initialModel),
+      CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(
+      expectedL2Term,
+      problemL2.getRegularizationTermValue(initialModel),
+      CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertEquals(
       expectedElasticNetTerm,
       problemElasticNet.getRegularizationTermValue(initialModel),
-      HIGH_PRECISION_TOLERANCE_THRESHOLD)
+      CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }
 

@@ -18,9 +18,7 @@ package com.linkedin.photon.ml.constants
  * Math constants.
  */
 object MathConst {
-  protected[ml] val HIGH_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-12
-  protected[ml] val MEDIUM_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-8
-  protected[ml] val LOW_PRECISION_TOLERANCE_THRESHOLD: Double = 1e-4
+  protected[ml] val EPSILON: Double = 1e-12
   protected[ml] val RANDOM_SEED: Long = 1234567890L
   protected[ml] val POSITIVE_RESPONSE_THRESHOLD = 0.5
   protected[ml] val DEFAULT_WEIGHT = 1.0

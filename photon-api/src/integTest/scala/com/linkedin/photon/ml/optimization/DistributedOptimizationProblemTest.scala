@@ -230,34 +230,34 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
       isComputingVariances = false)
 
     // Check update to L1/L2 weights individually
-    assertNotEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, TOLERANCE)
+    assertNotEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     l1Problem.updateRegularizationWeight(finalL1Weight)
     l2Problem.updateRegularizationWeight(finalL2Weight)
 
-    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, TOLERANCE)
+    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Check updates to L1/L2 weights together
     optimizerL1.l1RegularizationWeight = initL1Weight
     objectiveFunctionL2.l2RegularizationWeight = initL2Weight
 
-    assertNotEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, TOLERANCE)
+    assertNotEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     elasticProblem.updateRegularizationWeight(finalElasticWeight)
 
-    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, TOLERANCE)
+    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test(dataProvider = "variancesSimpleInput")
@@ -290,13 +290,13 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
         combOp = (vector1: Vector[Double], vector2: Vector[Double]) => vector1 + vector2,
         depth = 1)
       // Simple estimate of the diagonal of the covariance matrix (instead of a full inverse).
-      val expected = hessianDiagonal.map( v => 1D / (v + TOLERANCE))
+      val expected = hessianDiagonal.map( v => 1D / (v + MathConst.EPSILON))
       val actual: Vector[Double] = optimizationProblem.computeVariances(input, coefficients).get
 
       assertEquals(actual.length, DIMENSIONS)
       assertEquals(actual.length, expected.length)
       for (i <- 0 until DIMENSIONS) {
-        assertEquals(actual(i), expected(i), TOLERANCE)
+        assertEquals(actual(i), expected(i), CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       }
     }
 
@@ -335,13 +335,13 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
         depth = 1)
       val hessianDiagonalWithL2 = hessianDiagonal + regularizationWeight
       // Simple estimate of the diagonal of the covariance matrix (instead of a full inverse).
-      val expected = hessianDiagonalWithL2.map( v => 1D / (v + TOLERANCE))
+      val expected = hessianDiagonalWithL2.map( v => 1D / (v + MathConst.EPSILON))
       val actual: Vector[Double] = optimizationProblem.computeVariances(input, coefficients).get
 
       assertEquals(actual.length, DIMENSIONS)
       assertEquals(actual.length, expected.length)
       for (i <- 0 until DIMENSIONS) {
-        assertEquals(actual(i), expected(i), TOLERANCE)
+        assertEquals(actual(i), expected(i), CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       }
     }
 
@@ -386,7 +386,6 @@ object DistributedOptimizationProblemTest {
   private val WEIGHT_RANDOM_MAX = 10
   private val DIMENSIONS: Int = 5
   private val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
-  private val TOLERANCE = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
   private val NORMALIZATION = NoNormalization()
   private val NORMALIZATION_MOCK: Broadcast[NormalizationContext] = mock(classOf[Broadcast[NormalizationContext]])
 

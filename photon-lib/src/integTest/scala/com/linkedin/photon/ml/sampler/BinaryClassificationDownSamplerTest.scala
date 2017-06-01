@@ -65,10 +65,10 @@ class BinaryClassificationDownSamplerTest extends SparkTestUtils {
 
       assertEquals(pos.count(), NUM_POSITIVES_TO_GENERATE)
       pos.foreach { case (_, point) =>
-        assertEquals(point.weight, 1.0, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+        assertEquals(point.weight, 1.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
       }
       neg.foreach{ case (_, point) =>
-        assertEquals(point.weight, 1.0 / downSamplingRate, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+        assertEquals(point.weight, 1.0 / downSamplingRate, CommonTestUtils.LOW_PRECISION_TOLERANCE)
       }
     }
 

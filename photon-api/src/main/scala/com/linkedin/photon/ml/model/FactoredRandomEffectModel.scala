@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.{FeatureShardId, REType, REId}
 import com.linkedin.photon.ml.projector.ProjectionMatrixBroadcast
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -30,15 +31,16 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param featureShardId The feature shard id
  */
 protected[ml] class FactoredRandomEffectModel(
-    override val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
+    override val modelsInProjectedSpaceRDD: RDD[(REId, GeneralizedLinearModel)],
     val projectionMatrixBroadcast: ProjectionMatrixBroadcast,
-    override val randomEffectType: String,
-    override val featureShardId: String)
+    override val randomEffectType: REType,
+    override val featureShardId: FeatureShardId)
   extends RandomEffectModelInProjectedSpace(
     modelsInProjectedSpaceRDD,
     projectionMatrixBroadcast,
     randomEffectType,
-    featureShardId) with BroadcastLike {
+    featureShardId)
+  with BroadcastLike {
 
   /**
    * Update the factored random effect model with new models per individual.
@@ -48,8 +50,8 @@ protected[ml] class FactoredRandomEffectModel(
    * @return The updated factored random effect model in projected space
    */
   def updateFactoredRandomEffectModel(
-    updatedModelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
-    updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
+      updatedModelsInProjectedSpaceRDD: RDD[(REId, GeneralizedLinearModel)],
+      updatedProjectionMatrixBroadcast: ProjectionMatrixBroadcast): FactoredRandomEffectModel = {
 
     val currType = this.modelType
 

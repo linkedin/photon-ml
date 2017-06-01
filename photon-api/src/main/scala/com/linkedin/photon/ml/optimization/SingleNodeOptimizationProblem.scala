@@ -59,7 +59,7 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
       case (true, twiceDiffFunc: TwiceDiffFunction) =>
         Some(twiceDiffFunc
           .hessianDiagonal(input, coefficients)
-          .map(v => 1.0 / (v + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)))
+          .map(v => 1.0 / (v + MathConst.EPSILON)))
 
       case _ =>
         None

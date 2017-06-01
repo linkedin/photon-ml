@@ -22,8 +22,7 @@ import org.apache.spark.sql.functions._
 import org.testng.Assert._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
 
 /**
@@ -31,18 +30,7 @@ import com.linkedin.photon.ml.util._
  */
 class AvroDataReaderTest extends SparkTestUtils {
 
-  private val tol = MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD
-  private val inputDir = "GameIntegTest/input"
-  private val inputPath = getClass.getClassLoader.getResource(inputDir + "/train").getPath
-  private val inputPath2 = getClass.getClassLoader.getResource(inputDir + "/test").getPath
-  private val duplicateFeaturesPath = getClass.getClassLoader.getResource(inputDir + "/duplicateFeatures").getPath
-  private val indexMapPath = getClass.getClassLoader.getResource(inputDir + "/feature-indexes").getPath
-  private val numPartitions = 4
-  private val featureSectionMap = Map(
-    "shard1" -> Set("userFeatures", "songFeatures"),
-    "shard2" -> Set("userFeatures"),
-    "shard3" -> Set("songFeatures")
-  )
+  import AvroDataReaderTest._
 
   @Test
   def testRead(): Unit = sparkTest("testRead") {
@@ -118,6 +106,21 @@ class AvroDataReaderTest extends SparkTestUtils {
     val dr = new AvroDataReader(sc)
     dr.read(emptyInputPath, numPartitions)
   }
+}
+
+object AvroDataReaderTest {
+
+  private val inputDir = "GameIntegTest/input"
+  private val inputPath = getClass.getClassLoader.getResource(inputDir + "/train").getPath
+  private val inputPath2 = getClass.getClassLoader.getResource(inputDir + "/test").getPath
+  private val duplicateFeaturesPath = getClass.getClassLoader.getResource(inputDir + "/duplicateFeatures").getPath
+  private val indexMapPath = getClass.getClassLoader.getResource(inputDir + "/feature-indexes").getPath
+  private val numPartitions = 4
+  private val featureSectionMap = Map(
+    "shard1" -> Set("userFeatures", "songFeatures"),
+    "shard2" -> Set("userFeatures"),
+    "shard3" -> Set("songFeatures")
+  )
 
   /**
    * Verifies that the DataFrame has expected shape and statistics.
@@ -132,26 +135,26 @@ class AvroDataReaderTest extends SparkTestUtils {
     assertTrue(df.columns.contains("shard1"))
     val vector1 = df.select(col("shard1")).take(1)(0).getAs[SparseVector](0)
     assertEquals(vector1.numActives, 61)
-    assertEquals(Vectors.norm(vector1, 2), 3.2298996752519407, tol)
+    assertEquals(Vectors.norm(vector1, 2), 3.2298996752519407, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     val (mu1: Double, _, var1: Double) = DescriptiveStats.meanAndCov(vector1.values, vector1.values)
-    assertEquals(mu1, 0.044020727910406766, tol)
-    assertEquals(var1, 0.17190074364268512, tol)
+    assertEquals(mu1, 0.044020727910406766, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(var1, 0.17190074364268512, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     assertTrue(df.columns.contains("shard2"))
     val vector2 = df.select(col("shard2")).take(1)(0).getAs[SparseVector](0)
     assertEquals(vector2.numActives, 31)
-    assertEquals(Vectors.norm(vector2, 2), 2.509607963949448, tol)
+    assertEquals(Vectors.norm(vector2, 2), 2.509607963949448, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     val (mu2: Double, _, var2: Double) = DescriptiveStats.meanAndCov(vector2.values, vector2.values)
-    assertEquals(mu2, 0.05196838235602745, tol)
-    assertEquals(var2, 0.20714700123375754, tol)
+    assertEquals(mu2, 0.05196838235602745, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(var2, 0.20714700123375754, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     assertTrue(df.columns.contains("shard3"))
     val vector3 = df.select(col("shard3")).take(1)(0).getAs[SparseVector](0)
     assertEquals(vector3.numActives, 31)
-    assertEquals(Vectors.norm(vector3, 2), 2.265859611598675, tol)
+    assertEquals(Vectors.norm(vector3, 2), 2.265859611598675, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     val (mu3: Double, _, var3: Double) = DescriptiveStats.meanAndCov(vector3.values, vector3.values)
-    assertEquals(mu3, 0.06691111449993427, tol)
-    assertEquals(var3, 0.16651099216405915, tol)
+    assertEquals(mu3, 0.06691111449993427, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(var3, 0.16651099216405915, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Relationship between columns is the same across the entire dataframe
     df.foreach { row =>

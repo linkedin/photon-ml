@@ -19,7 +19,10 @@ import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{HashPartitioner, SparkContext}
 
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.{UniqueSampleId, REId, REType, FeatureShardId}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.RDDLike
@@ -33,10 +36,11 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param featureShardId The feature shard id
  */
 protected[ml] class RandomEffectModel(
-    val modelsRDD: RDD[(String, GeneralizedLinearModel)],
-    val randomEffectType: String,
-    val featureShardId: String)
-  extends DatumScoringModel with RDDLike {
+    val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+    val randomEffectType: REType,
+    val featureShardId: FeatureShardId)
+  extends DatumScoringModel
+  with RDDLike {
 
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
   // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
@@ -50,7 +54,7 @@ protected[ml] class RandomEffectModel(
    * @param updatedModelsRdd The new underlying models, one per individual
    * @return The updated random effect model
    */
-  def update(updatedModelsRdd: RDD[(String, GeneralizedLinearModel)]): RandomEffectModel = {
+  def update(updatedModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel = {
 
     val currType = this.modelType
 
@@ -69,7 +73,8 @@ protected[ml] class RandomEffectModel(
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
+  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
+
     RandomEffectModel.score(
       dataPoints,
       modelsRDD,
@@ -86,7 +91,8 @@ protected[ml] class RandomEffectModel(
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+  override def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
+
     RandomEffectModel.score(
       dataPoints,
       modelsRDD,
@@ -225,9 +231,9 @@ object RandomEffectModel {
    * @param modelsRDD The random effect models
    * @return The GAME model type
    */
-  private def determineModelType(
-      randomEffectType: String,
-      modelsRDD: RDD[(String, GeneralizedLinearModel)]): TaskType = {
+  protected def determineModelType(
+      randomEffectType: REType,
+      modelsRDD: RDD[(REId, GeneralizedLinearModel)]): TaskType = {
 
     val modelTypes = modelsRDD.values.map(_.modelType).distinct().collect()
 
@@ -248,12 +254,12 @@ object RandomEffectModel {
    * @return The scores
    */
   private def score[T, V](
-      dataPoints: RDD[(Long, GameDatum)],
-      modelsRDD: RDD[(String, GeneralizedLinearModel)],
-      randomEffectType: String,
-      featureShardId: String,
+      dataPoints: RDD[(UniqueSampleId, GameDatum)],
+      modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+      randomEffectType: REType,
+      featureShardId: FeatureShardId,
       toScore: (GameDatum, Double) => T,
-      toResult: (RDD[(Long, T)]) => V): V = {
+      toResult: (RDD[(UniqueSampleId, T)]) => V): V = {
 
     val hashPartitioner = new HashPartitioner(dataPoints.getNumPartitions)
 

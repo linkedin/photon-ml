@@ -83,7 +83,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
         val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
         val result = Some(twiceDiffFunc
           .hessianDiagonal(input, broadcastCoefficients)
-          .map(v => 1.0 / (v + MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)))
+          .map(v => 1.0 / (v + MathConst.EPSILON)))
 
         broadcastCoefficients.unpersist()
         result

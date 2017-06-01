@@ -20,11 +20,13 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.mllib.linalg.{DenseVector => SDV, SparseVector => SSV, Vector => SparkVector}
 
 /**
- * A utility object that contains some operations on [[Vector]].
+ * A utility object that contains operations to create, copy, compare, and convert Breeze [[Vector]] objects.
  */
 object VectorUtils {
 
   protected[ml] val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
+  // TODO: Make this configurable
+  protected[ml] val SPARSITY_THRESHOLD: Double = 1e-4
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[Vector]].
@@ -32,8 +34,8 @@ object VectorUtils {
    * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs of indices and data to be converted to a [[Vector]]
    * @param length The length of the resulting vector
    * @param sparseVectorActiveSizeToSizeRatio The ratio used to determine whether a [[DenseVector]] or a
-   *                                          [[SparseVector]] should be used to represent the underlying [[Vector]],
-   *                                          for example, if the active size of the underlying vector is smaller than
+   *                                          [[SparseVector]] should be used to represent the underlying [[Vector]].
+   *                                          For example, if the active size of the underlying vector is smaller than
    *                                          the length * sparseVectorActiveSizeToSizeRatio, then the [[SparseVector]]
    *                                          is chosen to represent the underlying [[Vector]], otherwise
    *                                          [[DenseVector]] is chosen.
@@ -42,17 +44,17 @@ object VectorUtils {
   protected[ml] def toVector(
       indexAndData: Array[(Int, Double)],
       length: Int,
-      sparseVectorActiveSizeToSizeRatio: Double = SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO): Vector[Double] = {
-
+      sparseVectorActiveSizeToSizeRatio: Double = SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO): Vector[Double] =
     if (length * SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO < indexAndData.length) {
       toDenseVector(indexAndData, length)
     } else {
       toSparseVector(indexAndData, length)
     }
-  }
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[SparseVector]].
+   *
+   * @note Does not check for repeated indices.
    *
    * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs
    * @param length The length of the resulting sparse vector
@@ -71,57 +73,54 @@ object VectorUtils {
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[DenseVector]].
    *
+   * @note Does not check for repeated indices.
+   *
    * @param indexAndData An [[Array]] of ([[Int]], [[Double]]) pairs
    * @param length The length of the resulting dense vector
    * @return The converted [[DenseVector]]
    */
   protected[ml] def toDenseVector(indexAndData: Array[(Int, Double)], length: Int): DenseVector[Double] = {
 
-    val dataArray = new Array[Double](length)
-    var i = 0
-    while (i < indexAndData.length) {
-      val (index, data) = indexAndData(i)
-      dataArray(index) = data
-      i += 1
-    }
-    new DenseVector[Double](dataArray)
+    val data = new Array[Double](length)
+
+    indexAndData.foreach(i => data(i._1) = i._2)
+
+    new DenseVector[Double](data)
   }
 
   /**
-   * Initialize the a zeros vector of the same type as the input prototype vector. I.e., if the prototype vector is
-   * a sparse vector, then the initialized zeros vector should also be initialized as a sparse vector, and if the
-   * prototype vector is a dense vector, then the initialized zeros vector should also be initialized as a dense vector.
+   * Initialize a zero vector of the same type as the input prototype vector (i.e. if the prototype vector is
+   * a sparse vector, then the new vector should also be sparse).
    *
-   * @param prototypeVector The input prototype vector
-   * @return The initialized vector
+   * @param prototypeVector The prototype vector
+   * @return A newly initialized zero vector
    */
-  def zeroOfSameType(prototypeVector: Vector[Double]): Vector[Double] = {
+  def zeroOfSameType(prototypeVector: Vector[Double]): Vector[Double] =
 
     prototypeVector match {
       case dense: DenseVector[Double] => DenseVector.zeros[Double](dense.length)
-      case sparse: SparseVector[Double] =>
-        new SparseVector[Double](sparse.array.index, Array.fill(sparse.array.index.length)(0.0), sparse.length)
-      case _ => throw new IllegalArgumentException("Vector types other than " + classOf[DenseVector[Double]]
-        + " and " + classOf[SparseVector[Double]] + " are not supported. Current class type: "
-        + prototypeVector.getClass.getName + ".")
+      case sparse: SparseVector[Double] => SparseVector.zeros[Double](sparse.length)
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Vector types other than ${classOf[DenseVector[Double]]} and ${classOf[SparseVector[Double]]} are not " +
+            s"supported. Current class type: ${prototypeVector.getClass.getName}.")
     }
-  }
 
   /**
-   * The Kronecker product between two vectors: vector1 and vector2
-   * Wiki reference on the Kronecker product: [[https://en.wikipedia.org/wiki/Kronecker_product]].
+   * The Kronecker product between two vectors. Wiki reference on the Kronecker product (also referred to as the "outer
+   * product"): [[https://en.wikipedia.org/wiki/Kronecker_product]].
    *
    * @param vector1 The left vector
    * @param vector2 The right vector
-   * @param threshold Threshold of the cross value
+   * @param threshold Threshold of the cross value (any value below the threshold will be recorded as 0)
    * @return The resulting Kronecker product between vector1 and vector2
    */
   protected[ml] def kroneckerProduct(
       vector1: Vector[Double],
       vector2: Vector[Double],
-      threshold: Double): Vector[Double] = {
+      threshold: Double = SPARSITY_THRESHOLD): Vector[Double] = {
 
-    assert(vector1.isInstanceOf[SparseVector[Double]] || vector2.isInstanceOf[SparseVector[Double]],
+    require(vector1.isInstanceOf[SparseVector[Double]] || vector2.isInstanceOf[SparseVector[Double]],
       "Kronecker product between two dense vectors is currently not supported")
 
     val length = vector1.length * vector2.length
@@ -193,12 +192,12 @@ object VectorUtils {
     }
 
   /**
-   * Determines when two vectors are "equal" within a very small tolerance (using isAlmostZero for Double).
+   * Determines when two vectors are "equal" within a very small tolerance.
    *
-   * @note Watch out! Zip stops without an error when the shortest argument stops! For that reason, we are going
-   *       to return false if the 2 vectors have different length.
+   * @note Zip stops without an error when the shortest argument stops! For that reason, we are going to return false if
+   *       the 2 vectors have different lengths.
    *
-   * @param v1 The first vector in the test
+   * @param v1 The first vector
    * @param v2 The second vector
    * @return True if the two vectors are "equal within epsilon", false otherwise
    */

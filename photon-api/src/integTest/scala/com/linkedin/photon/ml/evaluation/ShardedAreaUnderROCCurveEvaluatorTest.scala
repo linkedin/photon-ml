@@ -19,7 +19,7 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
-import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
  *
@@ -39,7 +39,7 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
   private val labelsInCornerCase = zipWithIndex(Array[Double](0, 1, 0, 0, 1, 1, 1), startIndex)
   private val scoresInCornerCase = zipWithIndex(Array[Double](-0.1, -1, 0, -1, 2, 6, 8), startIndex)
   private val idsInCornerCase = zipWithIndex(Array.fill[String](scoresInCornerCase.length)("corner"), startIndex)
-  private val expectedAUCInCornerCase = 0.79166667
+  private val expectedAUCInCornerCase = 0.791666666667
   startIndex += labelsInCornerCase.length
 
   // where all examples have positive label
@@ -80,7 +80,7 @@ class ShardedAreaUnderROCCurveEvaluatorTest extends SparkTestUtils {
     val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
       (id, score)
     }))
-    assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test

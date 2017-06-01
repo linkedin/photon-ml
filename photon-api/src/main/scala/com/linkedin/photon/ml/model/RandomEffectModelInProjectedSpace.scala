@@ -16,8 +16,10 @@ package com.linkedin.photon.ml.model
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import org.dmg.pmml.GeneralRegressionModel.ModelType
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.{FeatureShardId, REType, REId}
 import com.linkedin.photon.ml.projector.RandomEffectProjector
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -30,10 +32,10 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param featureShardId The feature shard id
  */
 protected[ml] class RandomEffectModelInProjectedSpace(
-    val modelsInProjectedSpaceRDD: RDD[(String, GeneralizedLinearModel)],
+    val modelsInProjectedSpaceRDD: RDD[(REId, GeneralizedLinearModel)],
     val randomEffectProjector: RandomEffectProjector,
-    override val randomEffectType: String,
-    override val featureShardId: String)
+    override val randomEffectType: REType,
+    override val featureShardId: FeatureShardId)
   extends RandomEffectModel(
     randomEffectProjector.projectCoefficientsRDD(modelsInProjectedSpaceRDD),
     randomEffectType,
@@ -63,7 +65,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    * @return The updated random effect model in projected space
    */
   override def update(
-    updatedModelsRDDInProjectedSpace: RDD[(String, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
+      updatedModelsRDDInProjectedSpace: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
 
     val currType = this.modelType
 

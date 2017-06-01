@@ -23,7 +23,6 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, NameAndTermFeatureSetContainer}
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
@@ -52,7 +51,6 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * and to verify the algorithms manually.
    *
    * @note This is a very good pedagogical example that uses a minimal setup to run the GameEstimator.
-   *
    * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default if none
    *       is specified in [[GameParams.featureShardIdToInterceptMap]]. This happens in
    *       [[GameDriver.prepareFeatureMapsDefault]], and there only. Here, we have to setup an intercept manually,
@@ -110,14 +108,14 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     // Create GameEstimator and fit model
     // Returns (model, evaluation, optimizer config)
     val models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
-        createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
+      createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
 
     val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model
 
     // Reference values from scikit-learn
-    assertEquals(model.coefficients.means(0), 0.3215554473500486, 1e-12)
-    assertEquals(model.coefficients.means(1), 0.17904355431985355, 1e-12)
-    assertEquals(model.coefficients.means(2), 0.4122241763914806, 1e-12)
+    assertEquals(model.coefficients.means(0), 0.3215554473500486, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(model.coefficients.means(1), 0.17904355431985355, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertEquals(model.coefficients.means(2), 0.4122241763914806, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   /**
@@ -197,14 +195,19 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       // Create GameEstimator and fit model
       // Returns (model, evaluation, optimizer config)
       val models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] =
-      createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
-
+        createEstimator(params, "simpleTest")._1.fit(trainingData, validationData = None, normalizationContexts)
       val model = models.head._1.getModel(coordinateId).head.asInstanceOf[FixedEffectModel].model
-      for (i <- 0 until nDimensions)
-        assertNotEquals(model.coefficients.means(i), 0.0, 1e-12, s"${params.normalizationType.toString} i")
-      answer.toArray.zip(model.coefficients.means.toArray).foreach {
-        case (exp, act) => assertEquals(exp, act, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+
+      for (i <- 0 until nDimensions) {
+        assertNotEquals(MathUtils.isAlmostZero(model.coefficients.means(i)), s"${params.normalizationType.toString} i")
       }
+
+      answer
+        .toArray
+        .zip(model.coefficients.means.toArray)
+        .foreach {
+          case (exp, act) => assertEquals(act, exp, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+        }
     }
   }
 
@@ -278,10 +281,10 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
           val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
           assertEquals(featureStats.count, 33110)
-          assertEquals(featureStats.mean, 24.12999, tol)
-          assertEquals(featureStats.stdev, 0.611194, tol)
-          assertEquals(featureStats.max, 40.0, tol)
-          assertEquals(featureStats.min, 24.0, tol)
+          assertEquals(featureStats.mean, 24.12999093, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.stdev, 0.61119425, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.max, 40.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.min, 24.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
 
         case _ => fail("Wrong dataset type.")
       }
@@ -293,10 +296,10 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
           val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
           assertEquals(featureStats.count, 23167)
-          assertEquals(featureStats.mean, 21.0, tol)
-          assertEquals(featureStats.stdev, 0.0, tol)
-          assertEquals(featureStats.max, 21.0, tol)
-          assertEquals(featureStats.min, 21.0, tol)
+          assertEquals(featureStats.mean, 21.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.stdev, 0.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.max, 21.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.min, 21.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
 
         case _ => fail("Wrong dataset type.")
       }
@@ -308,10 +311,10 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
           val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
           assertEquals(featureStats.count, 4471)
-          assertEquals(featureStats.mean, 3.0, tol)
-          assertEquals(featureStats.stdev, 0.0, tol)
-          assertEquals(featureStats.max, 3.0, tol)
-          assertEquals(featureStats.min, 3.0, tol)
+          assertEquals(featureStats.mean, 3.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.stdev, 0.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.max, 3.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+          assertEquals(featureStats.min, 3.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
 
         case _ => fail("Wrong dataset type.")
       }
@@ -450,7 +453,6 @@ object GameEstimatorTest {
   private val trainPath = inputPath + "/train"
   private val testPath = inputPath + "/test"
   private val featurePath = inputPath + "/feature-lists"
-  private val tol = 1e-5
   private val idTypeSet = Set("userId", "artistId", "songId")
 
   /**

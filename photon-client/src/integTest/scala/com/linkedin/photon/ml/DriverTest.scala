@@ -27,7 +27,6 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.deprecated.{FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.model.Coefficients
@@ -151,7 +150,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(bestModel(0)._1, 10, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -332,7 +331,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(bestModel(0)._1, 10, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test
@@ -371,7 +370,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
       assertEquals(bestModel.length, 1)
       // Verify lambda
-      assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+      assertEquals(bestModel(0)._1, 10, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     }
 
   @Test
@@ -727,7 +726,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(bestModel(0)._1, 10, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @Test
@@ -764,7 +763,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val bestModel = loadAllModels(new Path(outputDir, Driver.BEST_MODEL_TEXT).toString)
     assertEquals(bestModel.length, 1)
     // Verify lambda
-    assertEquals(bestModel(0)._1, 10, MathConst.HIGH_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(bestModel(0)._1, 10, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   @DataProvider
