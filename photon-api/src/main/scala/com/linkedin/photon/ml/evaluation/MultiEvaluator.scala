@@ -21,6 +21,14 @@ import com.linkedin.photon.ml.Types.UniqueSampleId
 /**
  * Evaluator applied to a collection of samples grouped by some ID.
  *
+ * Ex.  A [[MultiEvaluator]] X is created from a [[MultiEvaluatorType]] with [[MultiEvaluatorType.idTag]] "songId". The
+ *      [[MultiEvaluator.ids]] of X will be (unique sample identifier, "songId" for that sample) pairs (e.g. (1, song1),
+ *      (2, song2), (3, song1), ...). The unique sample identifier is used to join the "songId" to a
+ *      (score, label, weight) tuple. The tuples are then grouped by "songId", creating a partial data set for each ID
+ *      (e.g. (song1, {...}), (song2, {...}), ...). The evaluation metric is computed for each songId using the partial
+ *      data set collected for it, and then averaged across all songIds. This average is the final evaluation metric
+ *      returned by [[MultiEvaluator]] X.
+ *
  * @param localEvaluator The underlying evaluator type
  * @param ids A [[RDD]] of (unique sample identifier, ID) pairs. The IDs are used to group samples, then the evaluation
  *            metric is computed on the groups per-ID and averaged. Such IDs can be thought of as a recommendation

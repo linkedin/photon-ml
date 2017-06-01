@@ -30,7 +30,7 @@ import org.apache.spark.sql.SparkSession
  */
 trait SparkTestUtils {
 
-  var spark: SparkSession = _
+  var sparkSession: SparkSession = _
   var sc: SparkContext = _
 
   /**
@@ -61,14 +61,14 @@ trait SparkTestUtils {
   def sparkTest(name: String)(body: => Unit): Unit = {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
 
-      spark = SparkSession.builder().master(SparkTestUtils.SPARK_LOCAL_CONFIG).appName(name).getOrCreate()
-      sc = spark.sparkContext
+      sparkSession = SparkSession.builder().master(SparkTestUtils.SPARK_LOCAL_CONFIG).appName(name).getOrCreate()
+      sc = sparkSession.sparkContext
 
       try {
         body
       } finally {
         sc.stop()
-        spark.stop()
+        sparkSession.stop()
         System.clearProperty("spark.driver.port")
         System.clearProperty("spark.hostPort")
       }

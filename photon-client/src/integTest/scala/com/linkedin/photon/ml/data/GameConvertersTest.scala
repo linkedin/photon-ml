@@ -33,7 +33,7 @@ class GameConvertersTest extends SparkTestUtils {
   def testGetGameDatumFromRowWithUID(): Unit = sparkTest("testGetGameDatumFromRowWithUID") {
 
     val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
-    val dataFrame = spark.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
     val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
     val gameDatumWithoutResponse =
@@ -53,7 +53,7 @@ class GameConvertersTest extends SparkTestUtils {
     sparkTest("testGetGameDatumFromGenericRecordWithNoResponse") {
 
       val schema = StructType(Seq(StructField(InputColumnsNames.UID.toString, StringType)))
-      val dataFrame = spark.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
+      val dataFrame = sparkSession.createDataFrame(sc.parallelize(Seq(Row(uid))), schema)
       val inputColumnsNamesBroadcast = sc.broadcast(InputColumnsNames())
 
       GameConverters
@@ -77,7 +77,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(USER_ID_NAME, StringType),
       StructField(JOB_ID_NAME, LongType)))
 
-    val dataFrame = spark.createDataFrame(sc.parallelize(
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
       Seq(Row(uid, userIdStr, jobIdVal))
     ), schema)
     val row = dataFrame.head
@@ -102,7 +102,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = spark.createDataFrame(sc.parallelize(
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr)))
     ), schema)
     val row = dataFrame.head
@@ -133,7 +133,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(JOB_ID_NAME, LongType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = spark.createDataFrame(sc.parallelize(
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
       Seq(Row(uid, userId1Str, jobId1Val, Map(USER_ID_NAME -> userId2Str, JOB_ID_NAME -> jobId2Str)))
     ), schema)
     val row = dataFrame.head
@@ -157,7 +157,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = spark.createDataFrame(sc.parallelize(
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
     ), schema)
     val row = dataFrame.head
@@ -173,7 +173,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = spark.createDataFrame(sc.parallelize(
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
       Seq(Row(uid, Map()))
     ), schema)
     val row = dataFrame.head

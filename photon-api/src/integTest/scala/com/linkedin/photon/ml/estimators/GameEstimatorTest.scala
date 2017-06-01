@@ -169,9 +169,9 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       val model = models._1.getModel(coordinateId).get.asInstanceOf[FixedEffectModel].model
 
       // Reference values from scikit-learn
-      assertEquals(model.coefficients.means(0), 0.34945501725815586, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-      assertEquals(model.coefficients.means(1), 0.26339479490270173, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-      assertEquals(model.coefficients.means(2), 0.4366125400310442, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(model.coefficients.means(0), 0.34945501725815586, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+      assertEquals(model.coefficients.means(1), 0.26339479490270173, CommonTestUtils.LOW_PRECISION_TOLERANCE)
+      assertEquals(model.coefficients.means(2), 0.4366125400310442, CommonTestUtils.LOW_PRECISION_TOLERANCE)
     }
 
   /**
@@ -182,7 +182,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   def testPrepareTrainingDataSetsAndEvaluator(): Unit = sparkTest("testPrepareTrainingDataSetsAndEvaluator") {
 
     // Load DataFrame
-    val data = getData(spark)
+    val data = getData(sparkSession)
 
     // Create GameTrainingDriver
     val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingDataSetsAndEvaluator"))

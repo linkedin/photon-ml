@@ -178,6 +178,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
       optimizationConfigurations: Seq[GameModelOptimizationConfiguration])
     : Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
 
+    // Verify valid GameEstimator settings
+    checkSettings
+
     // Group additional columns to include in GameDatum
     val randomEffectIdCols: Set[String] = randomEffectDataConfigurations.values.map(_.randomEffectType).toSet
     val evaluatorCols = evaluatorTypes.map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Set())
@@ -215,16 +218,42 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
   }
 
   /**
+   * Verify that the [[GameEstimator]] can fit models using the current settings.
+   *
+   * @throws IllegalArgumentException
+   */
+  private def checkSettings(): Unit = {
+
+    if (taskType == TaskType.NONE) {
+      throw new IllegalArgumentException(s"Invalid training task $taskType; please set valid training task")
+    }
+    if (featureShardColumnNames.isEmpty) {
+      throw new IllegalArgumentException(
+        "No feature shard columns specified; cannot fit models without at least one feature shard")
+    }
+    if (updatingSequence.isEmpty) {
+      throw new IllegalArgumentException(
+        "Empty coordinate update sequence; update sequence must contain an ordered sequence of coordinates to update " +
+          "during model training")
+    }
+    if (fixedEffectDataConfigurations.isEmpty && randomEffectDataConfigurations.isEmpty) {
+      throw new IllegalArgumentException(
+        "No coordinate data configurations; data configurations for at least one fixed or random effect coordinate " +
+          "must be defined")
+    }
+  }
+
+  /**
    * Construct one or more training [[DataSet]]s using a [[DataFrame]] of training data and an [[Evaluator]] for
    * computing training loss.
    *
    * @param data The training data [[DataFrame]]
-   * @param additionalCols A set of additional columns whose values should be maintained for training
+   * @param idTagSet A set of additional columns whose values should be maintained for training
    * @return A (map of training [[DataSet]]s (one per coordinate), training loss [[Evaluator]]) tuple
    */
   protected def prepareTrainingDataSetsAndEvaluator(
       data: DataFrame,
-      additionalCols: Set[String]): (Map[CoordinateId, DataSet[_]], Evaluator) = {
+      idTagSet: Set[String]): (Map[CoordinateId, DataSet[_]], Evaluator) = {
 
     val numPartitions = data.rdd.getNumPartitions
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
@@ -234,7 +263,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
         .getGameDataSetFromDataFrame(
           data,
           featureShardColumnNames,
-          additionalCols,
+          idTagSet,
           isResponseRequired = true,
           rowInputColumnNames)
         .partitionBy(gameDataPartitioner)

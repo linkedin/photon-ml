@@ -119,8 +119,7 @@ object AvroDataReaderTest {
   private val featureSectionMap = Map(
     "shard1" -> Set("userFeatures", "songFeatures"),
     "shard2" -> Set("userFeatures"),
-    "shard3" -> Set("songFeatures")
-  )
+    "shard3" -> Set("songFeatures"))
 
   /**
    * Verifies that the DataFrame has expected shape and statistics.
@@ -131,6 +130,7 @@ object AvroDataReaderTest {
    * @param expectedRows The number of rows the DataFrame should have
    */
   def verifyDataFrame(df: DataFrame, expectedRows: Int): Unit = {
+
     // Columns have the expected number of features and summary stats look right
     assertTrue(df.columns.contains("shard1"))
     val vector1 = df.select(col("shard1")).take(1)(0).getAs[SparseVector](0)

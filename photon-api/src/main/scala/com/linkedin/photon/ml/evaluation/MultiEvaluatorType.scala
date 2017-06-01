@@ -43,7 +43,7 @@ object MultiEvaluatorType {
       .toSet
 }
 
-case class MultiPrecisionAtK(k: Int, override val idTag: String) extends MultiEvaluatorType {
+case class MultiPrecisionAtK(k: Int, idTag: String) extends MultiEvaluatorType {
   val name = s"PRECISION@$k${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
 }
 
@@ -51,7 +51,7 @@ object MultiPrecisionAtK {
   val batchPrecisionAtKPattern = s"(?i:PRECISION)@(\\d+)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
 }
 
-case class MultiAUC(override val idTag: String) extends MultiEvaluatorType {
+case class MultiAUC(idTag: String) extends MultiEvaluatorType {
   val name = s"AUC${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
 }
 

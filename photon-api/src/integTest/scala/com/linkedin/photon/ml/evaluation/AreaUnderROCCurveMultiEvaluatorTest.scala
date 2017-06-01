@@ -108,7 +108,7 @@ class AreaUnderROCCurveMultiEvaluatorTest extends SparkTestUtils {
       (id, score)
     }))
 
-    assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
   /**
@@ -127,6 +127,6 @@ class AreaUnderROCCurveMultiEvaluatorTest extends SparkTestUtils {
       (id, score)
     }))
 
-    assertEquals(actualResult, expectedResult, MathConst.MEDIUM_PRECISION_TOLERANCE_THRESHOLD)
+    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }

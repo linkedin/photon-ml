@@ -118,7 +118,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
   /**
    * Clean up the directories in which we are going to output the models.
    */
-  protected[training] def cleanOutputDirs(): Unit = {
+  private def cleanOutputDirs(): Unit = {
 
     val configuration = sc.hadoopConfiguration
     IOUtils.processOutputDir(params.outputDir, params.deleteOutputDirIfExists, configuration)
@@ -134,7 +134,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param featureIndexMapLoaders The feature index map loaders
    * @return An Option containing the loaded data frame
    */
-  protected[training] def readTrainingData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] = {
+  private def readTrainingData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] = {
 
     val trainingRecordsPath =
       pathsForDateRange(params.trainDirs, params.trainDateRangeOpt, params.trainDateRangeDaysAgoOpt)
@@ -171,7 +171,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param featureIndexMapLoaders The feature index map loaders
    * @return The loaded data frame
    */
-  protected[training] def readValidationData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] =
+  private def readValidationData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] =
 
     params.validationDirsOpt.map {
       validationDirs =>
@@ -203,7 +203,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param data The data to check
    * @throws IllegalArgumentException if at least one sample with a strictly positive weight could not be found
    */
-  protected[training] def checkData(data: Option[DataFrame]): Unit = {
+  private def checkData(data: Option[DataFrame]): Unit = {
 
     val weightColumnName = params.inputColumnsNames(InputColumnsNames.WEIGHT)
 
@@ -225,7 +225,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @return An Option[DataFrame] containing the data set if the checks are successul (an IllegalArgumentException is
    *         thrown otherwise)
    */
-  protected[training] def readAndCheck(reader: => Option[DataFrame], dataName: String): Option[DataFrame] = {
+  private def readAndCheck(reader: => Option[DataFrame], dataName: String): Option[DataFrame] = {
 
     val dataframe = Timed(s"Read $dataName") { reader }
 
@@ -245,7 +245,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param featureIndexMapLoaders The index map loaders
    * @return Normalization contexts for each coordinate, or None if normalization is disabled
    */
-  protected def prepareNormalizationContexts(
+  private def prepareNormalizationContexts(
     trainingData: DataFrame,
     featureIndexMapLoaders: IndexMapLoaders,
     statistics: FeatureShardStatisticsOpt): Option[Map[CoordinateId, NormalizationContext]] =
@@ -293,7 +293,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param featureShards The feature shards for which to compute statistics
    * @return One BasicStatisticalSummary per feature shard
    */
-  protected def calculateStatistics(
+  private def calculateStatistics(
     data: DataFrame,
     featureShards: Iterable[FeatureShardId]): FeatureShardStatistics =
 
@@ -309,7 +309,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param models The models to evaluate (single evaluator, on the validation data set)
    * @return The best model
    */
-  protected[training] def selectBestModel(
+  private def selectBestModel(
       models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)])
     : Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)] =
 
@@ -343,7 +343,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
    * @param models All the models that were producing during training
    * @param bestModel The best model
    */
-  protected[training] def saveModelToHDFS(
+  private def saveModelToHDFS(
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       models: Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)],
       bestModel: Option[(GameModel, EvaluationResults, GameModelOptimizationConfiguration)]): Unit =
