@@ -270,13 +270,15 @@ object GameTrainingParams {
 
   val defaultParams = new GameTrainingParams()
 
+  def apply(args: Array[String]): GameTrainingParams = parseFromCommandLine(args)
+
   /**
    * Parse parameters for GAME from the arguments on the command line.
    *
    * @param args An array containing each command line argument
    * @return An instance of [[GameTrainingParams]] or an exception if the parameters cannot be parsed correctly
    */
-  protected[ml] def parseFromCommandLine(args: Array[String]): GameTrainingParams = {
+  def parseFromCommandLine(args: Array[String]): GameTrainingParams = {
 
     val params = new GameTrainingParams()
     val parser = new OptionParser[Unit]("Photon-Game") {
