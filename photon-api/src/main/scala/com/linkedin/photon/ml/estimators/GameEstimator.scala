@@ -175,8 +175,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
   def fit(
       data: DataFrame,
       validationData: Option[DataFrame],
-      optimizationConfigurations: Seq[GameModelOptimizationConfiguration])
-    : Seq[(GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)] = {
+      optimizationConfigurations: Seq[GameModelOptimizationConfiguration]): Seq[GameResult] = {
 
     // Verify valid GameEstimator settings
     checkSettings
@@ -662,4 +661,6 @@ object GameEstimator {
   val DEFAULT_TREE_AGGREGATE_DEPTH = 1
   val DEEP_TREE_AGGREGATE_DEPTH = 2
   val TRACK_STATE = true
+
+  type GameResult = (GameModel, Option[EvaluationResults], GameModelOptimizationConfiguration)
 }
