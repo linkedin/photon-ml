@@ -69,7 +69,8 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
         featureShardIdToFeatureSectionKeysMap.keys.toSet,
         idTagSet,
         isResponseRequired = false,
-        params.inputColumnsNames)
+        inputColumnsNames = params.inputColumnsNames,
+        preserveMetadataMap = true)
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
