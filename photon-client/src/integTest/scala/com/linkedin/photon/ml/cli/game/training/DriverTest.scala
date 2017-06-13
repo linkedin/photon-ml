@@ -581,7 +581,7 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
           featureSectionMap.keys.toSet,
           idTagSet,
           isResponseRequired = true,
-          driver.params.inputColumnsNames)
+          inputColumnsNames = driver.params.inputColumnsNames)
         .partitionBy(partitioner)
 
     val validatingLabelsAndOffsetsAndWeights =

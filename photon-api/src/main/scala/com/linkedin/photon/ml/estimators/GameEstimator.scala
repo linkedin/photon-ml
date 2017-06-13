@@ -264,7 +264,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
           featureShardColumnNames,
           idTagSet,
           isResponseRequired = true,
-          rowInputColumnNames)
+          inputColumnsNames = rowInputColumnNames)
         .partitionBy(gameDataPartitioner)
         .setName("GAME training data")
         .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -392,7 +392,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
             featureShardColumnNames,
             additionalCols,
             isResponseRequired = true,
-            rowInputColumnNames)
+            inputColumnsNames = rowInputColumnNames)
           .partitionBy(partitioner)
           .setName("Validating Game data set")
           .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
