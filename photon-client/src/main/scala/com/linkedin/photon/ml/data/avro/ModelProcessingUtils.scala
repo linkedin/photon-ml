@@ -68,7 +68,7 @@ object ModelProcessingUtils {
    * @param params The parameters that were setup to run this model
    * @param sc The Spark context
    */
-  protected[ml] def saveGameModelsToHDFS(
+  def saveGameModelsToHDFS(
       gameModel: GameModel,
       featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
       outputDir: String,
@@ -133,7 +133,7 @@ object ModelProcessingUtils {
    * @param sc The Spark context
    * @return The GAME model and feature index
    */
-  protected[ml] def loadGameModelFromHDFS(
+  def loadGameModelFromHDFS(
       sc: SparkContext,
       modelsDir: String,
       storageLevel: StorageLevel,
@@ -236,7 +236,7 @@ object ModelProcessingUtils {
    * @param featureIndex The feature index to decode this GLM
    * @return An array of pairs (name, value) for all the active (non-zero) features in the glm
    */
-  protected[ml] def extractGLMFeatures(glm: GeneralizedLinearModel, featureIndex: IndexMap): Array[(String, Double)] = {
+  def extractGLMFeatures(glm: GeneralizedLinearModel, featureIndex: IndexMap): Array[(String, Double)] = {
 
     val coefficients: Iterator[(Int, Double)] = glm.coefficients.means match { // (index, value)
       case (vector: DenseVector[Double]) => vector.iterator
@@ -279,7 +279,7 @@ object ModelProcessingUtils {
    *         "random effect id 123". Finally, each user has an element in the RDD element that contains
    *         an array of pairs (feature name, feature value)
    */
-  protected[ml] def extractGameModelFeatures(
+  def extractGameModelFeatures(
       sc: SparkContext,
       gameModel: GameModel,
     featureIndexLoaders: Map[String, IndexMapLoader]): Map[(String, String), RDD[(String, Array[(String, Double)])]] = {
@@ -447,7 +447,7 @@ object ModelProcessingUtils {
    *                       factorization model
    * @param sc The Spark context
    */
-  protected[ml] def saveMatrixFactorizationModelToHDFS(
+  def saveMatrixFactorizationModelToHDFS(
       matrixFactorizationModel: MatrixFactorizationModel,
       outputDir: String,
       numOutputFiles: Int,
@@ -485,7 +485,7 @@ object ModelProcessingUtils {
    * @param sc The Spark context
    * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
    */
-  protected[ml] def loadMatrixFactorizationModelFromHDFS(
+  def loadMatrixFactorizationModelFromHDFS(
       inputDir: String,
       rowEffectType: String,
       colEffectType: String,
