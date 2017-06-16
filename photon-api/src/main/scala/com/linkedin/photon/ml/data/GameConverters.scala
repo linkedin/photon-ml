@@ -43,7 +43,6 @@ object GameConverters {
    * @param isResponseRequired Whether a response column is mandatory. For example: [[GameDatum]] used for training
    *                           require a response for each [[Row]]; [[GameDatum]] used for scoring do not.
    * @param inputColumnsNames User-supplied input column names to read the input data
-   * @param preserveMetadataMap Whether the metadata map in the row, if it exists, should be copied into [[GameDatum]]
    * @return An [[RDD]] of type [[GameDatum]]
    */
   protected[ml] def getGameDataSetFromDataFrame(
@@ -51,8 +50,7 @@ object GameConverters {
       featureShards: Set[FeatureShardId],
       idTagSet: Set[String],
       isResponseRequired: Boolean,
-      inputColumnsNames: InputColumnsNames = InputColumnsNames(),
-      preserveMetadataMap: Boolean = false): RDD[(Long, GameDatum)] = {
+      inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(Long, GameDatum)] = {
 
     val recordsWithUniqueId = data.withColumn(UNIQUE_ID_COLUMN_NAME, monotonically_increasing_id())
     val inputColumnsNamesBroadcast = data.sqlContext.sparkContext.broadcast(inputColumnsNames)
@@ -61,7 +59,7 @@ object GameConverters {
       .rdd
       .map { row: Row =>
         (row.getAs[Long](UNIQUE_ID_COLUMN_NAME),
-          getGameDatumFromRow(row, featureShards, idTagSet, isResponseRequired, inputColumnsNamesBroadcast, preserveMetadataMap))
+          getGameDatumFromRow(row, featureShards, idTagSet, isResponseRequired, inputColumnsNamesBroadcast))
       }
   }
 
@@ -74,7 +72,6 @@ object GameConverters {
    * @param isResponseRequired Whether a response column is mandatory. For example: [[GameDatum]] used for training
    *                           require a response for the [[Row]]; [[GameDatum]] used for scoring do not.
    * @param columnsBroadcast The names of the columns to look for in the input rows, in order
-   * @param preserveMetadataMap Whether the metadata map in the row, if it exists, should be copied into [[GameDatum]]
    * @return A [[GameDatum]]
    */
   protected[data] def getGameDatumFromRow(
@@ -82,8 +79,7 @@ object GameConverters {
       featureShards: Set[String],
       idTagSet: Set[String],
       isResponseRequired: Boolean,
-      columnsBroadcast: Broadcast[InputColumnsNames],
-      preserveMetadataMap: Boolean = false): GameDatum = {
+      columnsBroadcast: Broadcast[InputColumnsNames]): GameDatum = {
 
     val columns = columnsBroadcast.value
 
@@ -118,10 +114,10 @@ object GameConverters {
       // TODO: find a better way to handle the field "uid", which is used in ScoringResult
       if (row.schema.fieldNames.contains(columns(InputColumnsNames.UID))
           && row.getAs[Any](columns(InputColumnsNames.UID)) != null) {
-        getIdTagToValueMapFromRow(row, idTagSet, columns, preserveMetadataMap) +
+        getIdTagToValueMapFromRow(row, idTagSet, columns) +
             (InputColumnsNames.UID.toString -> row.getAs[Any](columns(InputColumnsNames.UID)).toString)
       } else {
-        getIdTagToValueMapFromRow(row, idTagSet, columns, preserveMetadataMap)
+        getIdTagToValueMapFromRow(row, idTagSet, columns)
       }
 
     new GameDatum(
@@ -133,23 +129,16 @@ object GameConverters {
   }
 
   /**
-   * Given a [[DataFrame]] [[Row]], we return the ID tags mapped to their corresponding ID values. If the user intends
-   * to preserve the metadata map, preserveMetadataMap flag must be set to true
-   *
-   * Note that if the existing metadata map contains one of the ID tags as a key as well as contains that ID tag as a
-   * field within the [[Row]], the value of the field takes preference. So in such a case, the value in the id tag
-   * map in the output will be the value of the field in the [[Row]]
+   * Given a [[DataFrame]] [[Row]], build a map of ID tag to ID value.
    *
    * @param row The source DataFrame row
    * @param idTagSet The set of columns/metadata fields expected for the [[Row]]
-   * @param preserveMetadataMap Whether the metadata map in the row, if it exists, should be copied into [[GameDatum]]
-   * @return The map containing ID tag keys mapped to ID values along with metadata map, depending on user intent
+   * @return The map of ID tag to ID value map for the [[Row]]
    */
   protected[data] def getIdTagToValueMapFromRow(
     row: Row,
     idTagSet: Set[String],
-    columns: InputColumnsNames = InputColumnsNames(),
-    preserveMetadataMap: Boolean = false): Map[String, String] = {
+    columns: InputColumnsNames = InputColumnsNames()): Map[String, String] = {
 
     val metaMap: Option[Map[String, String]] = if (row.schema.fieldNames.contains(columns(InputColumnsNames.META_DATA_MAP))) {
       Some(row.getAs[Map[String, String]](columns(InputColumnsNames.META_DATA_MAP)))
@@ -157,7 +146,7 @@ object GameConverters {
       None
     }
 
-    val idMap = idTagSet
+    idTagSet
       .map { idTag =>
         val idFromRow: Option[String] = if (row.schema.fieldNames.contains(idTag)) {
           Some(row.getAs[Any](idTag).toString)
@@ -178,9 +167,5 @@ object GameConverters {
         (idTag, id)
       }
       .toMap
-    metaMap match {
-      case Some(x) => if (preserveMetadataMap) x ++ idMap else idMap
-      case None => idMap
-    }
   }
 }

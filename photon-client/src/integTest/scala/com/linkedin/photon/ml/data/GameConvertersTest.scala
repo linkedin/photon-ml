@@ -97,14 +97,13 @@ class GameConvertersTest extends SparkTestUtils {
 
     val userIdStr = "11A"
     val jobIdValStr = "112"
-    val extraneousKeyValues = Map("foo" -> "1", "bar" -> "2")
 
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
     val dataFrame = sparkSession.createDataFrame(sc.parallelize(
-      Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr) ++ extraneousKeyValues))
+      Seq(Row(uid, Map(USER_ID_NAME -> userIdStr, JOB_ID_NAME -> jobIdValStr)))
     ), schema)
     val row = dataFrame.head
 
@@ -116,17 +115,6 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(res2.size, 2)
     assertEquals(res2(USER_ID_NAME), userIdStr)
     assertEquals(res2(JOB_ID_NAME), jobIdValStr)
-
-    val res3 = GameConverters.getIdTagToValueMapFromRow(row, Set[String](USER_ID_NAME), preserveMetadataMap = true)
-    assertEquals(res3.size, 2 + extraneousKeyValues.size)
-    assertEquals(res3(USER_ID_NAME), userIdStr)
-    extraneousKeyValues.foreach{ case (k, v) => assertEquals(res3(k), v) }
-
-    val res4 = GameConverters.getIdTagToValueMapFromRow(row, Set[String](USER_ID_NAME, JOB_ID_NAME), preserveMetadataMap = true)
-    assertEquals(res4.size, 2 + extraneousKeyValues.size)
-    assertEquals(res4(USER_ID_NAME), userIdStr)
-    assertEquals(res4(JOB_ID_NAME), jobIdValStr)
-    extraneousKeyValues.foreach{ case (k, v) => assertEquals(res4(k), v) }
   }
 
   @Test
@@ -150,6 +138,7 @@ class GameConvertersTest extends SparkTestUtils {
     ), schema)
     val row = dataFrame.head
 
+    // Ids in metaDataMap will be ignored in this case
     val res = GameConverters.getIdTagToValueMapFromRow(row, Set[String](USER_ID_NAME))
     assertEquals(res.size, 1)
     assertEquals(res(USER_ID_NAME), userId1Str)
@@ -158,11 +147,6 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(res2.size, 2)
     assertEquals(res2(USER_ID_NAME), userId1Str)
     assertEquals(res2(JOB_ID_NAME), jobId1Str)
-
-    val res3 = GameConverters.getIdTagToValueMapFromRow(row, Set[String](USER_ID_NAME), preserveMetadataMap = true)
-    assertEquals(res3.size, 2)
-    assertEquals(res3(USER_ID_NAME), userId1Str)
-    assertEquals(res3(JOB_ID_NAME), jobId2Str)
   }
 
   @Test
