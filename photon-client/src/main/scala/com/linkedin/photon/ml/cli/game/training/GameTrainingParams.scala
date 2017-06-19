@@ -206,6 +206,22 @@ class GameTrainingParams extends FeatureParams with PalDBIndexMapParams with Eva
    */
   var regularizationWeightRange: (Double, Double) = (1e-4, 1e4)
 
+  /**
+   * Return all the model configs in one Array.
+   */
+  def getAllModelConfigs: Array[GameModelOptimizationConfiguration] = {
+    for (
+      fixedEffectOptimizationConfiguration <- fixedEffectOptimizationConfigurations;
+      randomEffectOptimizationConfiguration <- randomEffectOptimizationConfigurations;
+      factoredRandomEffectOptimizationConfiguration <- factoredRandomEffectOptimizationConfigurations) yield {
+
+      GameModelOptimizationConfiguration(
+        fixedEffectOptimizationConfiguration,
+        randomEffectOptimizationConfiguration,
+        factoredRandomEffectOptimizationConfiguration)
+    }
+  }
+
   override def toString: String = List(
     s"trainDirs: ${trainDirs.mkString(", ")}",
     s"trainDateRangeOpt: $trainDateRangeOpt",
@@ -302,7 +318,7 @@ object GameTrainingParams {
    * @param args An array containing each command line argument
    * @return An instance of [[GameTrainingParams]] or an exception if the parameters cannot be parsed correctly
    */
-  protected[ml] def parseFromCommandLine(args: Array[String]): GameTrainingParams = {
+  def parseFromCommandLine(args: Array[String]): GameTrainingParams = {
 
     val params = new GameTrainingParams()
     val parser = new OptionParser[Unit]("Photon-Game") {

@@ -69,11 +69,11 @@ object ModelProcessingUtils {
    * @param sc The Spark context
    */
   def saveGameModelsToHDFS(
-      gameModel: GameModel,
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
-      outputDir: String,
-      params: GameTrainingParams,
-      sc: SparkContext): Unit = {
+    sc: SparkContext,
+    params: GameTrainingParams,
+    outputDir: String,
+    gameModel: GameModel,
+    featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Unit = {
 
     val hadoopConfiguration = sc.hadoopConfiguration
 
