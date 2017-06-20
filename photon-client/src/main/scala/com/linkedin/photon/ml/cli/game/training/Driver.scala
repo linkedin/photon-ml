@@ -85,7 +85,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
 
     val estimator = new GameEstimator(sc, logger)
         .setDatumInputColumnNames(params.inputColumnsNames)
-        .setFeatureShardColumnNames(params.featureShardIdToFeatureSectionKeysMap.keys.toSet)
+        .setFeatureShardColumnNames(params.featureShardIdToFeatureSectionKeysMap.keySet)
         .setTaskType(params.taskType)
         .setUpdatingSequence(params.updatingSequence)
         .setFixedEffectDataConfigurations(params.fixedEffectDataConfigurations)
@@ -96,18 +96,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
         .setNormalizationContexts(normalizationContexts)
 
     val models = Timed("Fit models") {
-      val modelConfigs = for (
-        fixedEffectOptimizationConfiguration <- params.fixedEffectOptimizationConfigurations;
-        randomEffectOptimizationConfiguration <- params.randomEffectOptimizationConfigurations;
-        factoredRandomEffectOptimizationConfiguration <- params.factoredRandomEffectOptimizationConfigurations) yield {
-
-        GameModelOptimizationConfiguration(
-          fixedEffectOptimizationConfiguration,
-          randomEffectOptimizationConfiguration,
-          factoredRandomEffectOptimizationConfiguration)
-      }
-
-      estimator.fit(trainingData, validationData, modelConfigs)
+      estimator.fit(trainingData, validationData, params.getAllModelConfigs)
     }
 
     val tunedModels = Timed("hyperparameter tuning") {
@@ -416,8 +405,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
           IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString()), modelSpecDir, hadoopConfiguration,
             forceOverwrite = false)
 
-          ModelProcessingUtils.saveGameModelsToHDFS(model, featureShardIdToFeatureMapLoader, modelOutputDir,
-            params, sc)
+          ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelOutputDir, model, featureShardIdToFeatureMapLoader)
 
           logger.info("Saved model to HDFS")
 
@@ -437,12 +425,7 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
             Utils.createHDFSDir(modelOutputDir, hadoopConfiguration)
             IOUtils.writeStringsToHDFS(Iterator(modelConfig.toString()), modelSpecDir, hadoopConfiguration,
               forceOverwrite = false)
-            ModelProcessingUtils.saveGameModelsToHDFS(
-              model,
-              featureShardIdToFeatureMapLoader,
-              modelOutputDir,
-              params,
-              sc)
+            ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelOutputDir, model, featureShardIdToFeatureMapLoader)
 
             modelIndex + 1
         }

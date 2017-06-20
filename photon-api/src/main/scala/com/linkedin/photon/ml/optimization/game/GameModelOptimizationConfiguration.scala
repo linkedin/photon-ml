@@ -30,7 +30,7 @@ case class GameModelOptimizationConfiguration(
   /**
    * Build a custom string representation of the configuration
    */
-  override def toString = Seq(
+  override def toString: String = Seq(
     fixedEffectOptimizationConfiguration.mkString("\n"),
     randomEffectOptimizationConfiguration.mkString("\n"),
     factoredRandomEffectOptimizationConfiguration.mkString("\n")).mkString("\n")

@@ -142,12 +142,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val outputDir = getTmpDir
     val outputDirAsPath = new Path(outputDir)
 
-    ModelProcessingUtils.saveGameModelsToHDFS(
-      gameModel,
-      featureIndexLoaders,
-      outputDir,
-      params,
-      sc)
+    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, outputDir, gameModel, featureIndexLoaders)
 
     val fs = outputDirAsPath.getFileSystem(sc.hadoopConfiguration)
     assertTrue(fs.exists(outputDirAsPath))
@@ -181,7 +176,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val (params, modelDir) = (setupParams(), getTmpDir)
     val (gameModel, featureIndexLoaders, _) = makeGameModel()
 
-    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, params, sc)
+    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelDir, gameModel, featureIndexLoaders)
 
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
@@ -222,7 +217,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     val (params, modelDir) = (setupParams(), getTmpDir)
     val (gameModel, featureIndexLoaders, featureNames) = makeGameModel()
 
-    ModelProcessingUtils.saveGameModelsToHDFS(gameModel, featureIndexLoaders, modelDir, params, sc)
+    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelDir, gameModel, featureIndexLoaders)
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The first value returned is the feature index, which we don't need here
