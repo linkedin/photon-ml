@@ -30,7 +30,7 @@ buildscript {
     classpath 'com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0'
     classpath 'org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2'
     // shadow allows us to build fat/shadow jars. See doc at: http://imperceptiblethoughts.com/shadow/.
-    classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.0'
   }
 }
 
