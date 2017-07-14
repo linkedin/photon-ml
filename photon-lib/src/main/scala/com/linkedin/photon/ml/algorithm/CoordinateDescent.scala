@@ -159,7 +159,7 @@ class CoordinateDescent(
      * model could be one that doesn't contain some random effects.
      */
     var bestModel: Option[GameModel] = None
-    var bestEval: Option[EvaluationResults] = None
+    var bestEvals: Option[EvaluationResults] = None
 
     //
     // Optimization
@@ -167,146 +167,185 @@ class CoordinateDescent(
 
     for (iteration <- 0 until descentIterations) {
       Timed(s"Coordinate descent iteration $iteration") {
-        coordinates.map { case (coordinateId, coordinate) =>
-          Timed(s"Update coordinate $coordinateId") {
 
-            //
-            // Update the coordinate model
-            //
+        val oldGameModel = updatedGameModel
+        var unpersistOldGameModel = true
 
-            logger.debug(s"Update coordinate with ID $coordinateId (${coordinate.getClass})")
+        coordinates
+          .map { case (coordinateId, coordinate) =>
+            Timed(s"Update coordinate $coordinateId") {
 
-            val oldModel = updatedGameModel.getModel(coordinateId).get
-            val (updatedModel, optimizationTrackerOption) = Timed(s"Train coordinate $coordinateId") {
-              if (updatedScoresContainer.keys.size > 1) {
-                // If there are multiple coordinates, update using a partial score from the other coordinates.
-                val partialScore = fullTrainingScore - updatedScoresContainer(coordinateId)
-                coordinate.updateModel(oldModel, partialScore)
-              } else {
-                // Otherwise, just update the only coordinate
-                coordinate.updateModel(oldModel)
+              //
+              // Update the coordinate model
+              //
+
+              logger.debug(s"Update coordinate with ID $coordinateId (${coordinate.getClass})")
+
+              val oldModel = updatedGameModel.getModel(coordinateId).get
+              val (updatedModel, optimizationTrackerOption) = Timed(s"Train coordinate $coordinateId") {
+                if (updatedScoresContainer.keys.size > 1) {
+                  // If there are multiple coordinates, update using a partial score from the other coordinates.
+                  val partialScore = fullTrainingScore - updatedScoresContainer(coordinateId)
+                  coordinate.updateModel(oldModel, partialScore)
+                } else {
+                  // Otherwise, just update the only coordinate
+                  coordinate.updateModel(oldModel)
+                }
+              }
+
+              updatedModel match {
+                case rddLike: RDDLike =>
+                  rddLike
+                    .setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
+                    .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                    .materialize()
+
+                case _ =>
+              }
+              updatedGameModel = updatedGameModel.updateModel(coordinateId, updatedModel)
+
+              //
+              // Log coordinate update details
+              //
+
+              // Log a summary of the updated model. Do a check for debug first, to not waste time computing the summary.
+              if (logger.isDebugEnabled) {
+                // TODO: Computing model summary is slow, we should only do it if necessary
+                logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
+
+                // If optimization tracking is enabled, log the optimization summary
+                optimizationTrackerOption.foreach { optimizationTracker =>
+                  logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
+
+                  optimizationTracker match {
+                    case rddLike: RDDLike => rddLike.unpersistRDD()
+                    case _ =>
+                  }
+                }
+              }
+
+              // Log the objective value for the current GAME model
+              val updatedScores = coordinate.score(updatedModel)
+              updatedScores
+                .setName(s"Updated training scores with key $coordinateId at iteration $iteration")
+                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                .materialize()
+              val updatedRegularizationTermValue = coordinate.computeRegularizationTermValue(updatedModel)
+
+              val newTrainingScore = fullTrainingScore - updatedScoresContainer(coordinateId) + updatedScores
+              newTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+              fullTrainingScore.unpersistRDD()
+              fullTrainingScore = newTrainingScore
+
+              fullRegularizationTermValue = (fullRegularizationTermValue
+                - regularizationTermValueContainer(coordinateId)
+                + updatedRegularizationTermValue)
+              val objectiveValueString = formatObjectiveValue(
+                trainingLossFunctionEvaluator.evaluate(fullTrainingScore.scores),
+                fullRegularizationTermValue)
+
+              updatedScoresContainer(coordinateId).unpersistRDD()
+              updatedScoresContainer = updatedScoresContainer.updated(coordinateId, updatedScores)
+              regularizationTermValueContainer =
+                regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
+
+              // TODO: Move this logging to debug level?
+              logger.info(s"""Objective value after updating coordinate with id $coordinateId at iteration $iteration is:
+                |$objectiveValueString""".stripMargin)
+
+              //
+              // Validate the updated GAME model
+              //
+
+              // Update the validation score and evaluate the updated model on the validating data
+              validationDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
+                Timed("Validate GAME model") {
+                  val validatingScoresContainer = validationScoresContainerOption.get
+                  val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
+                  validatingScores
+                    .setName(s"Updated validating scores with coordinateId $coordinateId")
+                    .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                    .materialize()
+                  val fullValidationScore = (fullValidationScoreOption.get
+                    - validatingScoresContainer(coordinateId)
+                    + validatingScores)
+                  fullValidationScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+                  fullValidationScoreOption.get.unpersistRDD()
+                  fullValidationScoreOption = Some(fullValidationScore)
+                  validatingScoresContainer(coordinateId).unpersistRDD()
+                  val updatedValidatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
+                  validationScoresContainerOption = Some(updatedValidatingScoresContainer)
+
+                  evaluators.map { evaluator =>
+                    val evaluation = Timed(s"Evaluate with ${evaluator.getEvaluatorName}") {
+                      evaluator.evaluate(fullValidationScore.scores)
+                    }
+
+                    logger.info(s"Evaluation metric computed with ${evaluator.getEvaluatorName} after updating " +
+                      s"coordinateId $coordinateId at iteration $iteration is $evaluation")
+
+                    (evaluator, evaluation)
+                  }
+                }
               }
             }
+          } // End of coordinates update
+          .last
+          .foreach { evaluations =>
+            if (evaluations.nonEmpty) {
+              // The first evaluator is used for model selection
+              val (evaluator, evaluation) = evaluations.head
 
-            updatedModel match {
-              case rddLike: RDDLike =>
-                rddLike
-                  .setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
-                  .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-                  .materialize()
+              if (bestEvals.forall(e => evaluator.betterThan(evaluation, e.head._2))) {
 
-              case _ =>
+                // Unpersist the previous best models
+                bestModel.foreach { gameModel =>
+                  gameModel.toMap.foreach { case (_, model) =>
+                    // We need to split out the following 2 match expressions: [[FactoredRandomEffectModel]] matches both
+                    model match {
+                      case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
+                      case _ =>
+                    }
+                    model match {
+                      case rddLike: RDDLike => rddLike.unpersistRDD()
+                      case _ =>
+                    }
+                  }
+                }
+
+                bestEvals = Some(evaluations)
+                bestModel = Some(updatedGameModel)
+
+                logger.debug(s"Found better GAME model, with evaluation: $evaluation")
+
+              } else {
+
+                // We always want to unpersist the previous GAME model UNLESS the current best GAME model is the old
+                // model
+                unpersistOldGameModel = bestModel.forall(_ != oldGameModel)
+
+                logger.debug(
+                  s"Previous iterations GAME model is better. Ignoring GAME model with evaluation: $evaluation")
+              }
+
+            } else {
+
+              logger.debug("No evaulator specified to select best model")
             }
+          }
+
+        // Unpersist the previous GAME model
+        if (unpersistOldGameModel) {
+          oldGameModel.toMap.foreach { case (_, model) =>
             // We need to split out the following 2 match expressions: [[FactoredRandomEffectModel]] matches both
-            oldModel match {
+            model match {
               case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
               case _ =>
             }
-            oldModel match {
+            model match {
               case rddLike: RDDLike => rddLike.unpersistRDD()
               case _ =>
             }
-            updatedGameModel = updatedGameModel.updateModel(coordinateId, updatedModel)
-
-            //
-            // Log coordinate update details
-            //
-
-            // Log a summary of the updated model. Do a check for debug first, to not waste time computing the summary.
-            if (logger.isDebugEnabled) {
-              // TODO: Computing model summary is slow, we should only do it if necessary
-              logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
-
-              // If optimization tracking is enabled, log the optimization summary
-              optimizationTrackerOption.foreach { optimizationTracker =>
-                logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
-
-                optimizationTracker match {
-                  case rddLike: RDDLike => rddLike.unpersistRDD()
-                  case _ =>
-                }
-              }
-            }
-
-            // Log the objective value for the current GAME model
-            val updatedScores = coordinate.score(updatedModel)
-            updatedScores
-              .setName(s"Updated training scores with key $coordinateId at iteration $iteration")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-              .materialize()
-            val updatedRegularizationTermValue = coordinate.computeRegularizationTermValue(updatedModel)
-
-            val newTrainingScore = fullTrainingScore - updatedScoresContainer(coordinateId) + updatedScores
-            newTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
-            fullTrainingScore.unpersistRDD()
-            fullTrainingScore = newTrainingScore
-
-            fullRegularizationTermValue = (fullRegularizationTermValue
-              - regularizationTermValueContainer(coordinateId)
-              + updatedRegularizationTermValue)
-            val objectiveValueString = formatObjectiveValue(
-              trainingLossFunctionEvaluator.evaluate(fullTrainingScore.scores),
-              fullRegularizationTermValue)
-
-            updatedScoresContainer(coordinateId).unpersistRDD()
-            updatedScoresContainer = updatedScoresContainer.updated(coordinateId, updatedScores)
-            regularizationTermValueContainer =
-              regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
-
-            // TODO: Move this logging to debug level?
-            logger.info(s"""Objective value after updating coordinate with id $coordinateId at iteration $iteration is:
-              |$objectiveValueString""".stripMargin)
-
-            //
-            // Validate the updated GAME model
-            //
-
-            // Update the validation score and evaluate the updated model on the validating data
-            validationDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
-              Timed("Validate GAME model") {
-                val validatingScoresContainer = validationScoresContainerOption.get
-                val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
-                validatingScores
-                  .setName(s"Updated validating scores with coordinateId $coordinateId")
-                  .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-                  .materialize()
-                val fullValidationScore = (fullValidationScoreOption.get
-                  - validatingScoresContainer(coordinateId)
-                  + validatingScores)
-                fullValidationScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
-                fullValidationScoreOption.get.unpersistRDD()
-                fullValidationScoreOption = Some(fullValidationScore)
-                validatingScoresContainer(coordinateId).unpersistRDD()
-                val updatedValidatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
-                validationScoresContainerOption = Some(updatedValidatingScoresContainer)
-
-                evaluators.map { evaluator =>
-                  val evaluation = Timed(s"Evaluate with ${evaluator.getEvaluatorName}") {
-                    evaluator.evaluate(fullValidationScore.scores)
-                  }
-
-                  logger.info(s"Evaluation metric computed with ${evaluator.getEvaluatorName} after updating " +
-                    s"coordinateId $coordinateId at iteration $iteration is $evaluation")
-
-                  (evaluator, evaluation)
-                }
-              }
-            }
-          }
-        } // end coordinate update
-        .last
-        .foreach { evaluators =>
-          if (evaluators.nonEmpty) {
-            // The first evaluator is used for model selection
-            val (evaluator, eval) = evaluators.head
-
-            if (bestEval.map(e => evaluator.betterThan(eval, e.head._2)).getOrElse(true)) {
-              bestEval = Some(evaluators)
-              bestModel = Some(updatedGameModel)
-              logger.debug(s"Found better GAME model, with evaluation: $eval")
-            }
-          } else {
-            logger.debug("No evaulator specified to select best model")
           }
         }
       }
@@ -317,7 +356,7 @@ class CoordinateDescent(
     validationScoresContainerOption.map(_.mapValues(_.unpersistRDD()))
     fullValidationScoreOption.map(_.unpersistRDD())
 
-    (bestModel.getOrElse(updatedGameModel), bestEval)
+    (bestModel.getOrElse(updatedGameModel), bestEvals)
   }
 }
 

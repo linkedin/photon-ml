@@ -19,6 +19,7 @@ import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.Evaluator
@@ -79,6 +80,7 @@ class CoordinateDescentTest {
       doReturn((model, Some(tracker))).when(coordinate).updateModel(model, score)
 
       // GameModel mock setup
+      doReturn(Map[CoordinateId, DatumScoringModel]()).when(gameModel).toMap
       doReturn(gameModel).when(gameModel).updateModel(coordinateId, model)
       doReturn(Some(model)).when(gameModel).getModel(coordinateId)
     }
@@ -141,6 +143,7 @@ class CoordinateDescentTest {
     // and GAME model #1 will be the first one to go through best model selection
     val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GameModel]) }
     (0 until iterationCount).map { i =>
+      when(gameModels(i).toMap).thenReturn(Map[CoordinateId, DatumScoringModel]())
       when(gameModels(i).getModel(Matchers.any())).thenReturn(Some(coordinateModel))
       when(gameModels(i).updateModel(Matchers.any(), Matchers.any())).thenReturn(gameModels(i + 1))
     }
@@ -177,7 +180,7 @@ class CoordinateDescentTest {
     }
 
     // Verify the calls to the validation evaluator(s), if any
-    validationDataAndEvaluators.map { case (data, evaluators) =>
+    validationDataAndEvaluators.map { case (_, evaluators) =>
       evaluators.map { case (evaluator) =>
         verify(evaluator, times(iterationCount)).evaluate(modelScores)
       }
