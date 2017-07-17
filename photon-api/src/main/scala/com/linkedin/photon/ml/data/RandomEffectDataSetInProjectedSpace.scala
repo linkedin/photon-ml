@@ -69,10 +69,12 @@ class RandomEffectDataSetInProjectedSpace(
    * @return This object with all its RDDs unpersisted
    */
   override def unpersistRDD(): this.type = {
-    randomEffectProjector match {
-      case rddLike: RDDLike => rddLike.unpersistRDD()
-      case _ =>
-    }
+    // TODO: Projection needs to be refactored in general - the RandomEffectProjector gets passed around between classes
+    // and has no one owner
+//    randomEffectProjector match {
+//      case rddLike: RDDLike => rddLike.unpersistRDD()
+//      case _ =>
+//    }
     super.unpersistRDD()
     this
   }

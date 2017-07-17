@@ -107,6 +107,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    */
   override def persistRDD(storageLevel: StorageLevel): RandomEffectModelInProjectedSpace = {
 
+    super.persistRDD(storageLevel)
     if (!modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.persist(storageLevel)
 
     this
@@ -119,6 +120,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
   override def unpersistRDD(): RandomEffectModelInProjectedSpace = {
 
     if (modelsInProjectedSpaceRDD.getStorageLevel.isValid) modelsInProjectedSpaceRDD.unpersist()
+    super.unpersistRDD()
 
     this
   }
@@ -130,7 +132,8 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    */
   override def setName(name: String): RandomEffectModelInProjectedSpace = {
 
-    modelsInProjectedSpaceRDD.setName(name)
+    super.setName(name)
+    modelsInProjectedSpaceRDD.setName(name + " (projected)")
 
     this
   }
@@ -141,6 +144,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    */
   override def materialize(): RandomEffectModelInProjectedSpace = {
 
+    super.materialize()
     materializeOnce(modelsInProjectedSpaceRDD)
 
     this
