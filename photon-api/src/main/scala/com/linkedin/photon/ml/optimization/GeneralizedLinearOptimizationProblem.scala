@@ -43,7 +43,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     isComputingVariances: Boolean) extends Logging {
 
   protected val modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]] =
-    optimizer.getStateTracker.map(tracker => new mutable.ListBuffer[ModelTracker]())
+    if (optimizer.isTrackingState) Some(new mutable.ListBuffer[ModelTracker]()) else None
 
   /**
    * Get the optimization state trackers for the optimization problems solved

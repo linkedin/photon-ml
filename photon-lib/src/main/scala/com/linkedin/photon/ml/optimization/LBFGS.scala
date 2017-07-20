@@ -129,7 +129,11 @@ class LBFGS(
   /**
    * Just reset the whole BreezeOptimization instance.
    */
-  def clearOptimizerInnerState(): Unit = breezeOptimization = _ : BreezeOptimization
+  override def clearOptimizerInnerState(): Unit = {
+
+    super.clearOptimizerInnerState()
+    breezeOptimization = _ : BreezeOptimization
+  }
 
   /**
    * Run one iteration of the optimizer given the current state.
