@@ -60,7 +60,7 @@ object BasicStatisticalSummary extends Logging {
     calculateBasicStatistics(Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))))
 
   /**
-   * This function accepts a RDD[MVector]. Used in GAME.
+   * This function accepts a RDD[MLVector]. Used in GAME.
    *
    * @param inputData The input data (usually training data)
    * @return An instance of BasicStatisticalSummary
@@ -84,7 +84,7 @@ object BasicStatisticalSummary extends Logging {
    * @param summary An instance of spark-ml MultivariateStatisticalSummary
    * @return An instance of BasicStatisticalSummary
    */
-  private def calculateBasicStatistics(summary: MultivariateStatisticalSummary): BasicStatisticalSummary = {
+  protected[ml] def calculateBasicStatistics(summary: MultivariateStatisticalSummary): BasicStatisticalSummary = {
 
     val meanAbs = scale(summary.count, VectorUtils.mllibToBreeze(summary.normL1))
     val tMean = VectorUtils.mllibToBreeze(summary.mean)

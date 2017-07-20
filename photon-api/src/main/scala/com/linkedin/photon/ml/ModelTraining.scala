@@ -181,7 +181,7 @@ object ModelTraining extends Logging {
           } else {
             val maxLambda = warmStartModels.keys.max
             logger.info(s"Starting training using warm-start model with lambda = $maxLambda")
-            List((currentWeight, optimizationProblem.run(trainingData, warmStartModels.get(maxLambda).get)))
+            List((currentWeight, optimizationProblem.run(trainingData, warmStartModels(maxLambda))))
           }
 
         case (latestWeightsAndModels, currentWeight) =>
@@ -192,14 +192,14 @@ object ModelTraining extends Logging {
             val previousModel = latestWeightsAndModels.head._2
 
             optimizationProblem.updateRegularizationWeight(currentWeight)
-            logger.info(s"Training model with regularization weight $currentWeight finished (warm start)")
+            logger.info(s"Training model with regularization weight $currentWeight started (warm start)")
 
             (currentWeight, optimizationProblem.run(trainingData, previousModel)) +: latestWeightsAndModels
 
           } else {
 
             optimizationProblem.updateRegularizationWeight(currentWeight)
-            logger.info(s"Training model with regularization weight $currentWeight finished (no warm start)")
+            logger.info(s"Training model with regularization weight $currentWeight started (no warm start)")
 
             (currentWeight, optimizationProblem.run(trainingData)) +: latestWeightsAndModels
           }

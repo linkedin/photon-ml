@@ -73,7 +73,7 @@ object Evaluation extends Logging {
           (ROOT_MEAN_SQUARE_ERROR, regressionMetrics.rootMeanSquaredError))
 
       case _ =>
-      // Do nothing
+        // Do nothing
     }
 
     // Compute binary classifier metrics
@@ -85,7 +85,7 @@ object Evaluation extends Logging {
           (AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, binaryMetrics.areaUnderROC),
           (PEAK_F1_SCORE, binaryMetrics.fMeasureByThreshold().map(x => x._2).max))
       case _ =>
-      // Do nothing
+        // Do nothing
     }
 
     // Log loss
@@ -97,7 +97,7 @@ object Evaluation extends Logging {
         metrics += ((DATA_LOG_LIKELIHOOD, logisticRegressionLogLikelihood(scoreAndLabel)))
 
       case _ =>
-      // do nothing
+        // Do nothing
     }
 
     val akaikeInformationCriterion = metrics.get(DATA_LOG_LIKELIHOOD).map(x => {
@@ -111,7 +111,7 @@ object Evaluation extends Logging {
         }
       })
 
-      // see https://en.wikipedia.org/wiki/Akaike_information_criterion
+      // See https://en.wikipedia.org/wiki/Akaike_information_criterion
       val baseAic = 2.0 * (effectiveParameters.toDouble - logLikelihood)
       baseAic + 2.0 * effectiveParameters * (effectiveParameters + 1) / (n - effectiveParameters - 1.0)
     })

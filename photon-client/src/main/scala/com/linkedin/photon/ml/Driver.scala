@@ -380,17 +380,17 @@ protected[ml] class Driver(
         // Calculate metrics for all (models, iterations)
         lambdaModelTrackerTuples.foreach { case (lambda, modelTracker) =>
           val perIterationMetrics = modelTracker.models.map(Evaluation.evaluate(_, validationData))
-          val msg = perIterationMetrics.zipWithIndex
-            .map { case (metrics, index) =>
-              metrics.keys
+
+          logger.info(s"Model with lambda = $lambda:")
+          perIterationMetrics
+            .zipWithIndex
+            .foreach { case (metrics, index) =>
+              metrics
+                .keys
                 .toSeq
                 .sorted
-                .map(m => f"Iteration: [$index%6d] Metric: [$m] value: ${metrics(m)}")
-                .mkString("\n")
+                .foreach(m => logger.info(f"Iteration: [$index%6d] Metric: [$m] value: ${metrics(m)}"))
             }
-            .mkString("\n")
-
-          logger.info(s"Model with lambda = $lambda:\n$msg")
 
           val finalMetrics = perIterationMetrics.last
           sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, Some(perIterationMetrics), Some(finalMetrics)))

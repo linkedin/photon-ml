@@ -39,14 +39,14 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
     maxNumIterations: Int,
     normalizationContext: Broadcast[NormalizationContext],
     constraintMap: Option[Map[Int, (Double, Double)]],
-    isTrackingState: Boolean)
+    val isTrackingState: Boolean)
   extends Serializable
   with Logging {
 
   /**
    * OptimizationStatesTracker optionally tracks all the states of the optimizer and times the optimization.
    */
-  private var statesTracker: Option[OptimizationStatesTracker] = initStateTracker()
+  private var statesTracker: Option[OptimizationStatesTracker] = None
 
   /**
    * The absolute tolerances for the optimization problem.
@@ -76,11 +76,16 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * @param state The current state
    */
   private def updateCurrentState(state: OptimizerState) = {
-    (statesTracker, currentState) match {
-      case (Some(tracker), Some(currState)) =>
-        // Only tracks the state if it is different from the previous state (e.g., different objects)
-        if (state != currState) {
-          tracker.track(state)
+    statesTracker match {
+      case Some(tracker) =>
+        currentState match {
+          case Some(currState) =>
+            // Only tracks the state if it is different from the previous state (e.g., different objects)
+            if (state != currState) {
+              tracker.track(state)
+            }
+
+          case None => tracker.track(state)
         }
       case _ =>
     }
@@ -168,15 +173,16 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
     (objectiveFunction: Function, initialCoefficients: Vector[Double])
     (data: objectiveFunction.Data): (Vector[Double], Double) = {
 
-    // Reset Optimizer inner state and state tracker
+    val normalizedInitialCoefficients = normalizationContext.value.modelToTransformedSpace(initialCoefficients)
+
+    // Reset Optimizer inner state
     clearOptimizerInnerState()
-    statesTracker = initStateTracker()
 
     // We set the absolute tolerances from the magnitudes of the first loss and gradient
-    setAbsTolerances(calculateState(objectiveFunction, VectorUtils.zeroOfSameType(initialCoefficients))(data))
+    setAbsTolerances(calculateState(objectiveFunction, VectorUtils.zeroOfSameType(normalizedInitialCoefficients))(data))
 
     // TODO for cold start, we call calculateState with the same arguments twice
-    val initialState = calculateState(objectiveFunction, initialCoefficients)(data)
+    val initialState = calculateState(objectiveFunction, normalizedInitialCoefficients)(data)
     init(objectiveFunction, initialState)(data)
     updateCurrentState(initialState)
 
@@ -218,7 +224,12 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    *
    * @note This function should be protected and not exposed.
    */
-  protected def clearOptimizerInnerState(): Unit
+  protected def clearOptimizerInnerState(): Unit = {
+
+    currentState = None
+    previousState = None
+    statesTracker = initStateTracker()
+  }
 
   /**
    * Run one iteration of the optimizer given the current state.

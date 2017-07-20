@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils.generateDenseVector
 
 /**
  * Test that the [[SingleNodeOptimizationProblem]] runs properly and can correctly skip variance computation if it is
- * disabled. For additional variance computation tests, see the [[DistributedOptimizationProblemIntegTest]].
+ * disabled. For additional variance computation tests, see the [[DistributedOptimizationProblemTest]].
  */
 class SingleNodeOptimizationProblemTest {
 
@@ -67,6 +67,7 @@ class SingleNodeOptimizationProblemTest {
     val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
     val trainingData = mock(classOf[Iterable[LabeledPoint]])
 
+    doReturn(true).when(optimizer).isTrackingState
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
     val problem = new SingleNodeOptimizationProblem(
@@ -83,7 +84,7 @@ class SingleNodeOptimizationProblemTest {
       .optimize(objectiveFunction, coefficients.means)(trainingData)
     val state = OptimizerState(coefficients.means, 0, generateDenseVector(DIMENSIONS), 0)
     doReturn(Array(state)).when(statesTracker).getTrackedStates
-    doReturn(coefficients.means).when(normalizationContext).transformModelCoefficients(coefficients.means)
+    doReturn(coefficients.means).when(normalizationContext).modelToOriginalSpace(coefficients.means)
 
     val model = problem.run(trainingData, initialModel)
 

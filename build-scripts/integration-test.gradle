@@ -41,43 +41,12 @@ configurations {
 }
 
 task integTest(type: Test) {
+  testClassesDirs = sourceSets.integTest.output.classesDirs
   classpath = sourceSets.integTest.runtimeClasspath
   // force always rerunning tests
   outputs.upToDateWhen { false }
 
   systemProperty "log4j.configuration", "file:$rootProject.projectDir/log4j.properties"
 }
+
 check.dependsOn integTest
-
-plugins.withType(JavaPlugin) {
-  integTest {
-    useTestNG()
-
-    options {
-      parallel = 'methods'
-      threadCount = 4
-      listeners << 'com.linkedin.photon.ml.test.FailOnSkipListener'
-    }
-
-    afterSuite { desc, result ->
-      if (!desc.parent) {
-        println ":${project.name} -- Executed ${result.testCount} tests: ${result.successfulTestCount} succeeded, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped"
-      }
-    }
-    // Forward standard out from child JVMs to the console
-    testLogging {
-      showStackTraces = true
-      showStandardStreams = true
-      showExceptions = true
-      showCauses = true
-      displayGranularity = maxGranularity
-      exceptionFormat = 'full'
-    }
-
-    systemProperty "log4j.configuration", "file:${project.rootDir}/log4j.properties"
-  }
-
-  dependencies {
-    testCompile 'org.testng:testng:6.9.9'
-  }
-}

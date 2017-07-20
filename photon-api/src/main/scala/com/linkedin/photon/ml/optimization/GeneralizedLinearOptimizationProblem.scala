@@ -43,7 +43,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     isComputingVariances: Boolean) extends Logging {
 
   protected val modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]] =
-    optimizer.getStateTracker.map(tracker => new mutable.ListBuffer[ModelTracker]())
+    if (optimizer.isTrackingState) Some(new mutable.ListBuffer[ModelTracker]()) else None
 
   /**
    * Get the optimization state trackers for the optimization problems solved
@@ -91,8 +91,8 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
       coefficients: Vector[Double],
       variances: Option[Vector[Double]]): GeneralizedLinearModel =
     createModel(
-      normalizationContext.value.transformModelCoefficients(coefficients),
-      variances.map(normalizationContext.value.transformModelCoefficients))
+      normalizationContext.value.modelToOriginalSpace(coefficients),
+      variances.map(normalizationContext.value.modelToOriginalSpace))
 
   /**
    * Compute coefficient variances

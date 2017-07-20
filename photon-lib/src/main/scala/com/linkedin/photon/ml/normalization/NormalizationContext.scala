@@ -47,37 +47,66 @@ private[ml] case class NormalizationContext(
   }
 
   /**
-   * Transform the coefficients of the transformed space to the original space. This is typically used to
-   * transform models in the transformed space to the models in the original space for other usages.
-   *
-   * The key requirement for the transformation is to keep the margin consistent in both space, i.e.
+   * Transform the model coefficients of the transformed space to the original space for other usages. The key
+   * requirement for the transformation is to keep the margin consistent in both space, i.e:
    *
    * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
    *
-   * where b is the explicit intercept, and .* is a point wise multiplication.
-   *
-   * To make the equation work for all x, we have
+   * where b is the explicit intercept, and .* is a point wise multiplication. To make the equation work for all x, we
+   * have:
    *
    * w = w' .* factor
-   *
-   * and
-   *
    * b = - w'^T^ shift + b'
    *
    * @param inputCoef The coefficients + the intercept in the transformed space
    * @return The coefficients + the intercept in the original space
    */
-  def transformModelCoefficients(inputCoef: Vector[Double]): Vector[Double] = {
+  def modelToOriginalSpace(inputCoef: Vector[Double]): Vector[Double] = {
+
     val outputCoef = factors match {
       case Some(fs) =>
+        require(fs.size == inputCoef.size, "Vector size and the scaling factor size are different.")
         inputCoef :* fs
       case None =>
         inputCoef.copy
     }
     // All shifts go to intercept
-    shifts.foreach(ss => {
+    shifts.foreach { ss =>
+      require(ss.size == outputCoef.size, "Vector size and the translational shift size are different.")
       outputCoef(interceptId.get) -= outputCoef.dot(ss)
-    })
+    }
+
+    outputCoef
+  }
+
+  /**
+   * Transform the model coefficients of the original space to the transformed space for other usages. The key
+   * requirement for the transformation is to keep the margin consistent in both space, i.e:
+   *
+   * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
+   *
+   * where b is the explicit intercept, and .* is a point wise multiplication. To make the equation work for all x, we
+   * have:
+   *
+   * w' = w ./ factor
+   * b' = w^T^ shift + b
+   *
+   * @param inputCoef The coefficients + the intercept in the original space
+   * @return The coefficients + the intercept in the transformed space
+   */
+  def modelToTransformedSpace(inputCoef: Vector[Double]): Vector[Double] = {
+    val outputCoef = inputCoef.copy
+
+    // All shifts go to intercept
+    shifts.foreach { ss =>
+      require(ss.size == outputCoef.size, "Vector size and the translational shift size are different.")
+      outputCoef(interceptId.get) += outputCoef.dot(ss)
+    }
+    factors.foreach { fs =>
+      require(fs.size == outputCoef.size, "Vector size and the scaling factor size are different.")
+      outputCoef :/= fs
+    }
+
     outputCoef
   }
 }

@@ -133,9 +133,13 @@ class TRON(
   }
 
   /**
-   * Clear the [[OptimizationStatesTracker]].
+   * Reset the delta.
    */
-  def clearOptimizerInnerState(): Unit = delta = Double.MaxValue
+  override def clearOptimizerInnerState(): Unit = {
+
+    super.clearOptimizerInnerState()
+    delta = Double.MaxValue
+  }
 
   /**
    * Run one iteration of the optimizer given the current state.
