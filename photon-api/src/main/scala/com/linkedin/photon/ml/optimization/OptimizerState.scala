@@ -30,6 +30,6 @@ import breeze.linalg.Vector
  */
 protected[optimization] case class OptimizerState(
     coefficients: Vector[Double],
-    value: Double,
+    loss: Double,
     gradient: Vector[Double],
     iter: Int)
