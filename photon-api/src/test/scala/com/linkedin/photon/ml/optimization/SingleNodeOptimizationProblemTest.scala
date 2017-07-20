@@ -84,7 +84,7 @@ class SingleNodeOptimizationProblemTest {
       .optimize(objectiveFunction, coefficients.means)(trainingData)
     val state = OptimizerState(coefficients.means, 0, generateDenseVector(DIMENSIONS), 0)
     doReturn(Array(state)).when(statesTracker).getTrackedStates
-    doReturn(coefficients.means).when(normalizationContext).transformModelCoefficients(coefficients.means)
+    doReturn(coefficients.means).when(normalizationContext).modelToOriginalSpace(coefficients.means)
 
     val model = problem.run(trainingData, initialModel)
 

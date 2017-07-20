@@ -91,8 +91,8 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
       coefficients: Vector[Double],
       variances: Option[Vector[Double]]): GeneralizedLinearModel =
     createModel(
-      normalizationContext.value.transformModelCoefficients(coefficients),
-      variances.map(normalizationContext.value.transformModelCoefficients))
+      normalizationContext.value.modelToOriginalSpace(coefficients),
+      variances.map(normalizationContext.value.modelToOriginalSpace))
 
   /**
    * Compute coefficient variances

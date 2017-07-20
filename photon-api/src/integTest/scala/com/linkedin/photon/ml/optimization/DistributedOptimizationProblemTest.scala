@@ -355,6 +355,7 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
     val objectiveFunction = mock(classOf[DistributedGLMLossFunction])
     val initialModel = mock(classOf[GeneralizedLinearModel])
 
+    doReturn(true).when(optimizer).isTrackingState
     doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
     val problem = new DistributedOptimizationProblem(
