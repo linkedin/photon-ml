@@ -246,9 +246,7 @@ protected[ml] class Driver(
       s"total number of unique features found in training data including intercept (if any): $featureNum.")
     logger.info(s"Input RDD persisted in storage level $trainDataStorageLevel")
 
-    if (! DataValidators.sanityCheckData(trainingData, params.taskType, params.dataValidationType)) {
-      throw new IllegalArgumentException("Training data has issues")
-    }
+    DataValidators.sanityCheckData(trainingData, params.taskType, params.dataValidationType)
   }
 
   /**
@@ -268,9 +266,7 @@ protected[ml] class Driver(
       "No validation data found. Ensure that validation data exists and feature vectors are not empty, " +
         "and that at least one validation sample has a weight > 0.")
 
-    if (! DataValidators.sanityCheckData(validationData, params.taskType, params.dataValidationType)) {
-      throw new IllegalArgumentException("Validation data has issues")
-    }
+    DataValidators.sanityCheckData(validationData, params.taskType, params.dataValidationType)
   }
 
   /**
