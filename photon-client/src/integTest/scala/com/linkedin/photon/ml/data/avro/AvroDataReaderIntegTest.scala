@@ -28,9 +28,9 @@ import com.linkedin.photon.ml.util._
 /**
  * Unit tests for AvroDataReader
  */
-class AvroDataReaderTest extends SparkTestUtils {
+class AvroDataReaderIntegTest extends SparkTestUtils {
 
-  import AvroDataReaderTest._
+  import AvroDataReaderIntegTest._
 
   @Test
   def testRead(): Unit = sparkTest("testRead") {
@@ -108,7 +108,7 @@ class AvroDataReaderTest extends SparkTestUtils {
   }
 }
 
-object AvroDataReaderTest {
+object AvroDataReaderIntegTest {
 
   private val inputDir = "GameIntegTest/input"
   private val inputPath = getClass.getClassLoader.getResource(inputDir + "/train").getPath

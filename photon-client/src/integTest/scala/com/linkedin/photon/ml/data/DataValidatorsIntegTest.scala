@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.{DataValidationType, TaskType}
 /**
  * Integration tests for [[DataValidators]].
  */
-class DataValidatorsTest extends SparkTestUtils {
+class DataValidatorsIntegTest extends SparkTestUtils {
 
   @DataProvider
   def getSuccessArgumentsForSanityCheckData: Array[Array[Any]] = {
@@ -203,10 +203,9 @@ class DataValidatorsTest extends SparkTestUtils {
     )
   }
 
-  // TODO This test does not work because the spark context ends up being null in the data provider. Unlike other tests
-  // we have, this test requires the spark context in the data provider and not the test. I believe this test does not
-  // work because our sparkTest framework initializes the context after the data provider rather than before. I have
-  // temporarily implemented the test without using DataProvider annotation
+  // TODO: Unlike other tests, these tests require the Spark context in the data provider. These tests do not work as
+  // usual because our sparkTest framework initializes the context after the data provider rather than before. The tests
+  // have been temporarily implemented without using the DataProvider annotation.
 
   @Test
   def testSuccessSanityCheckData(): Unit = sparkTest("testSanityCheckData") {

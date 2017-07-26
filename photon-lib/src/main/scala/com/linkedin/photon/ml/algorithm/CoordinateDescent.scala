@@ -250,8 +250,8 @@ class CoordinateDescent(
                 regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
 
               // TODO: Move this logging to debug level?
-              logger.info(s"""Objective value after updating coordinate with id $coordinateId at iteration $iteration is:
-                |$objectiveValueString""".stripMargin)
+              logger.info(s"Objective value after updating coordinate $coordinateId, iteration $iteration:")
+              logger.info(s"$objectiveValueString")
 
               //
               // Validate the updated GAME model

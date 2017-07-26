@@ -16,13 +16,12 @@ apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
-
   compile(project(':photon-avro-schemas'))
   compile(project(":photon-core$scalaSuffix"))
   compile(project(":photon-diagnostics$scalaSuffix"))
   compile('joda-time:joda-time:2.7')
-  compile('org.joda:joda-convert:1.8.1') // stub warnings without this
-
+  // Stub warnings without this
+  compile('org.joda:joda-convert:1.8.1')
   // This is Scala's option parsing library
   compile("com.github.scopt:scopt$scalaSuffix:3.5.0")
 

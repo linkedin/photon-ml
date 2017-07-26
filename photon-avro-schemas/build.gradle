@@ -13,13 +13,20 @@
  * under the License.
  */
 apply plugin: 'java'
-apply plugin: 'com.commercehub.gradle.plugin.avro'
-
-avro {
-  // TODO: the current photon-ml codes, assumes we are using CharSequence.
-  stringType = "CharSequence"
-}
+apply plugin: 'com.commercehub.gradle.plugin.avro-base'
 
 dependencies {
   compile 'org.apache.avro:avro:1.7.7'
 }
+
+task generateAvro(type: com.commercehub.gradle.plugin.avro.GenerateAvroJavaTask) {
+  source("src/main/avro")
+  outputDir = file("src/main/java")
+}
+
+avro {
+  // TODO: The current code assumes we are using CharSequence
+  stringType = "CharSequence"
+}
+
+compileJava.source(generateAvro.outputs)

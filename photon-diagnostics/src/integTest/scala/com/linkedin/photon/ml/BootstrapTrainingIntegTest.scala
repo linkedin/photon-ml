@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Integration tests for bootstrapping. Most of the heavy lifting has already been done in the unit tests
  */
-class BootstrapTrainingTest extends SparkTestUtils {
+class BootstrapTrainingIntegTest extends SparkTestUtils {
 
   import org.testng.Assert._
 

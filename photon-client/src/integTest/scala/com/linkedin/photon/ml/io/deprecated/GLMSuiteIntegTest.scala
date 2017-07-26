@@ -42,8 +42,9 @@ import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
  * This class tests components of GLMSuite that requires integration with real RDD or other runtime environments.
  * Also see [[GLMSuiteTest]].
  */
-class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
-  import GLMSuiteTest._
+class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
+
+  import GLMSuiteIntegTest._
 
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testLoadFeatureMapWithIllegalFeatureList(): Unit = sparkTest("testLoadFeatureMapWithIllegalFeatureList") {
@@ -537,7 +538,7 @@ class GLMSuiteTest extends SparkTestUtils with TestTemplateWithTmpDir {
   }
 }
 
-private object GLMSuiteTest {
+private object GLMSuiteIntegTest {
 
   private val EPSILON = 1e-6
 

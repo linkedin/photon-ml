@@ -16,16 +16,13 @@ apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
-  compile("org.testng:testng:6.9.9")
-
+  compile('commons-io:commons-io:2.4')
+  compile('org.apache.commons:commons-math3:3.5')
   compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
   compile("org.apache.spark:spark-sql$scalaSuffix:$sparkVersion")
-
   compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
   compile("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
-
-  compile('commons-io:commons-io:2.4')
-  compile('org.apache.commons:commons-math3:3.5')
+  compile("org.testng:testng:6.9.9")
 }

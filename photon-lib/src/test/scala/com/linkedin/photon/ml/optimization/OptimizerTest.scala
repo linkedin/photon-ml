@@ -136,8 +136,9 @@ object OptimizerTest extends Logging {
     var lastValue: Double = Double.MaxValue
 
     history.getTrackedStates.foreach { state =>
-      assertTrue(lastValue >= state.loss, "Objective should be monotonically decreasing (current=[" + state.loss +
-        "], previous=[" + lastValue + "])")
+      assertTrue(
+        lastValue >= state.loss,
+        s"Objective should be monotonically decreasing (current=[${state.loss}], previous=[$lastValue])")
       lastValue = state.loss
     }
   }
