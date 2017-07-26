@@ -16,24 +16,19 @@ apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
-  // Compile
   compile(project(":photon-core$scalaSuffix"))
-
   compile('com.xeiam.xchart:xchart:2.5.1') {
     // Cannot find this jar from Maven central or jcenter, and supposedly xcharts should be usable
     // even without this.
     exclude group: 'de.erichseifert.vectorgraphics2d'
   }
-
   compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
   compile('org.apache.xmlgraphics:batik-svggen:1.7')
 
-  // TestCompile
   testCompile(project(":photon-test-utils$scalaSuffix"))
 
-  // TestRuntime
   testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
   testRuntime("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
 }

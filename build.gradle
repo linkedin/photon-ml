@@ -92,6 +92,7 @@ rat {
     'log4j.properties',
     'photon-api/src/integTest/resources/**',
     'photon-api/src/test/resources/**',
+    'photon-avro-schemas/src/main/java/**',
     'photon-client/src/integTest/resources/**',
     'travis/**'
   ]

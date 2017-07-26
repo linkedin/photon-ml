@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 /**
  * This class tests basic IO utilities.
  */
-class AvroUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class AvroUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @Test
   def testAvroReadWrite(): Unit = sparkTest("testAvroReadWrite") {
     val schemaString = FeatureAvro.getClassSchema.toString

@@ -16,19 +16,14 @@ apply plugin: 'scala'
 apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
-  // Compile
   compile(project(":photon-lib$scalaSuffix"))
   compile(project(":photon-test-utils$scalaSuffix"))
-
   compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
-
   compile('com.linkedin.paldb:paldb:1.1.0')
 
-  // TestCompile
   testCompile(project(":photon-test-utils$scalaSuffix"))
   testCompile("org.mockito:mockito-core:1.+")
 
-  // TestRuntime
   testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
   testRuntime("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
 }

@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 /**
  * This class tests [[IOUtils]].
  */
-class IOUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   private val baseDir = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
   private val path1 = s"$baseDir/daily/2016/01/01"

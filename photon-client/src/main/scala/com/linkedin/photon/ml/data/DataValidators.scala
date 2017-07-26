@@ -112,7 +112,7 @@ object DataValidators extends Logging {
 
         (result, msg)
       }
-      .filter(!_._1)
+      .filterNot(_._1)
       .map(_._2)
 
   /**

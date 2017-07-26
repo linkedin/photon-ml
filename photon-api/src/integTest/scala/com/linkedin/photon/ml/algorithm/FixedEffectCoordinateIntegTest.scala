@@ -23,8 +23,9 @@ import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 /**
  * Tests for the FixedEffectCoordinate implementation.
  */
-class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
-  import FixedEffectCoordinateTest._
+class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
+
+  import FixedEffectCoordinateIntegTest._
 
   private val featureShardId = "shard1"
 
@@ -61,7 +62,7 @@ class FixedEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   }
 }
 
-object FixedEffectCoordinateTest {
+object FixedEffectCoordinateIntegTest {
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }
