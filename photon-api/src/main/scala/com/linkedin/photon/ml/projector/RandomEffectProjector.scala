@@ -70,6 +70,7 @@ object RandomEffectProjector {
         ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
           randomEffectDataSet, projectedSpaceDimension, isKeepingInterceptTerm = true)
 
+      case IdentityProjection => new IdentityProjector
       case IndexMapProjection => IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
       case _ => throw new UnsupportedOperationException(s"Projector type $projectorType for random effect data set " +
           s"is not supported")

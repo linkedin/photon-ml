@@ -319,19 +319,17 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             .materialize()
         val projectorType = randomEffectDataConfiguration.projectorType
-        val randomEffectDataSet = projectorType match {
-          case IdentityProjection => rawRandomEffectDataSet
-          case _ =>
-            val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
-              .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
-              .setName(s"Random effect data set in projected space with coordinate id $id")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-              .materialize()
-            // Only un-persist the active data and passive data, because randomEffectDataSet and
-            // randomEffectDataSetInProjectedSpace share uniqueIdToRandomEffectIds and other RDDs/Broadcasts
-            rawRandomEffectDataSet.activeData.unpersist()
-            rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
-            randomEffectDataSetInProjectedSpace
+        val randomEffectDataSet = {
+          val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
+            .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
+            .setName(s"Random effect data set in projected space with coordinate id $id")
+            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .materialize()
+          // Only un-persist the active data and passive data, because randomEffectDataSet and
+          // randomEffectDataSetInProjectedSpace share uniqueIdToRandomEffectIds and other RDDs/Broadcasts
+          rawRandomEffectDataSet.activeData.unpersist()
+          rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
+          randomEffectDataSetInProjectedSpace
         }
         logger.debug(s"Random effect data set with id $id summary:\n${randomEffectDataSet.toSummaryString}\n")
         (id, randomEffectDataSet)
