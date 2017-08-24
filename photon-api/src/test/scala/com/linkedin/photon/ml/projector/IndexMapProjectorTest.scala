@@ -27,7 +27,7 @@ class IndexMapProjectorTest {
     List[Vector[Double]](
       new SparseVector[Double](Array(0, 4, 6, 7, 9), Array(1.0, 4.0, 6.0, 7.0, 9.0), 10),
       new SparseVector[Double](Array(0, 1), Array(1.0, 1.0), 10),
-      new SparseVector[Double](Array(4, 5, 7), Array(4.0, 5.0, 7.0), 10)))
+      new DenseVector[Double](Array(0.0, 0.0, 0.0, 0.0, 4.0, 5.0, 0.0, 7.0, 0.0, 0.0))))
 
   @Test
   def testBuilder(): Unit = {
