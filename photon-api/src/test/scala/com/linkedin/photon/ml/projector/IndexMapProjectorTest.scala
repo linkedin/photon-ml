@@ -18,12 +18,16 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.util.VectorUtils
+
 /**
  *
  */
 class IndexMapProjectorTest {
 
-  private val projector = IndexMapProjector.buildIndexMapProjector(
+  import IndexMapProjectorTest._
+
+  private val projector = buildIndexMapProjector(
     List[Vector[Double]](
       new SparseVector[Double](Array(0, 4, 6, 7, 9), Array(1.0, 4.0, 6.0, 7.0, 9.0), 10),
       new SparseVector[Double](Array(0, 1), Array(1.0, 1.0), 10),
@@ -71,4 +75,27 @@ class IndexMapProjectorTest {
       .filter(x => math.abs(x._2) > 0.0)
       .toSet, expectedActiveTuples)
   }
+}
+
+object IndexMapProjectorTest {
+
+  /**
+   * Generate the index map projector given an iterator of feature vectors.
+   *
+   * @param features An [[Iterable]] of feature vectors
+   * @return The generated projection map
+   */
+  private def buildIndexMapProjector(features: Iterable[Vector[Double]]): IndexMapProjector = {
+    val originalToProjectedSpaceMap = features
+      .flatMap(VectorUtils.getActiveIndices)
+      .toSet
+      .zipWithIndex
+      .toMap
+
+    val originalSpaceDimension = features.head.length
+    val projectedSpaceDimension = originalToProjectedSpaceMap.values.max + 1
+
+    new IndexMapProjector(originalToProjectedSpaceMap, originalSpaceDimension, projectedSpaceDimension)
+  }
+
 }

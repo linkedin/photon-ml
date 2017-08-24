@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * A class that holds the projectors for a sharded data set.
@@ -155,16 +156,53 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
 }
 
 object IndexMapProjectorRDD {
+
   /**
    * Generate index map based RDD projectors.
    *
    * @param randomEffectDataSet The input random effect data set
    * @return The generated index map based RDD projectors
    */
-  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
-    val indexMapProjectors = randomEffectDataSet.activeData.mapValues(localDataSet =>
-      IndexMapProjector.buildIndexMapProjector(localDataSet.dataPoints.map(_._2.features))
-    )
+  protected[ml] def buildIndexMapProjector(
+      randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
+
+    val originalSpaceDimension = randomEffectDataSet
+      .activeData
+      .map { case (_, ds) => ds.dataPoints.head._2.features.length }
+      .take(1)(0)
+
+    // Collect active indices for the active dataset
+    val activeIndices = randomEffectDataSet
+      .activeData
+      .mapValues(ds => ds
+        .dataPoints
+        .map(_._2.features)
+        .flatMap(VectorUtils.getActiveIndices)
+        .toSet)
+
+    // Collect active indices for the passive dataset
+    val passiveIndicesOption = randomEffectDataSet
+      .passiveDataOption
+      .map { passiveData =>
+        passiveData
+          .map {
+            case (_, (reId, labeledPoint)) => (reId, labeledPoint.features)
+          }
+          .mapValues(VectorUtils.getActiveIndices)
+      }
+
+    // Union them, and fold the results into (reId, indices) tuples
+    val indices = passiveIndicesOption
+      .map { passiveIndices =>
+        activeIndices
+          .union(passiveIndices)
+          .foldByKey(Set.empty[Int])(_ ++ _)
+      }
+      .getOrElse(activeIndices)
+
+    val indexMapProjectors = indices.mapValues(indexSet =>
+      new IndexMapProjector(indexSet.zipWithIndex.toMap, originalSpaceDimension, indexSet.size))
+
     new IndexMapProjectorRDD(indexMapProjectors)
   }
 }

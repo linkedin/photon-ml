@@ -206,4 +206,22 @@ object VectorUtils {
     v1.length == v2.length && v1.toArray.zip(v2.toArray).forall { case (m1, m2) =>
       MathUtils.isAlmostZero(m2 - m1)
     }
+
+  /**
+   * Returns the indices for non-zero elements of the vector
+   *
+   * @param vector the input vector
+   * @return the set of indices
+   */
+  def getActiveIndices(vector: Vector[Double]): Set[Int] = vector match {
+    case vector: DenseVector[Double] => vector
+        .valuesIterator
+        .zipWithIndex
+        .filter(x => !MathUtils.isAlmostZero(x._1))
+        .map(_._2)
+        .toSet
+
+    case _ => vector.activeKeysIterator.toSet
+  }
+
 }

@@ -165,6 +165,20 @@ class VectorUtilsTest {
     }
   }
 
+  @DataProvider
+  def activeIndicesProvider() = Array(
+    Array(DenseVector(1.0, 2.0, 3.0, 4.0, 5.0, 6.0), Set(0, 1, 2, 3, 4, 5)),
+    Array(DenseVector(0.0, 1.0, 0.0, 2.0, 3.0, 0.0), Set(1, 3, 4)),
+    Array(DenseVector(1e-18, 1.0, 0.0, 2.0, 3.0, 0.0), Set(1, 3, 4)),
+    Array(new SparseVector(Array(1, 3, 4), Array(1.0, 2.0, 3.0), 3), Set(1, 3, 4))
+  )
+
+  @Test(dataProvider = "activeIndicesProvider")
+  def testGetActiveIndices(vector: Vector[Double], expected: Set[Int]): Unit = {
+    val result = VectorUtils.getActiveIndices(vector)
+    assertEquals(result, expected)
+  }
+
   /**
    * Asserts that the breeze and spark vectors are equal.
    *
