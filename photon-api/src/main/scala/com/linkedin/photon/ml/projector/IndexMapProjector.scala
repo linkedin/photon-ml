@@ -16,9 +16,9 @@ package com.linkedin.photon.ml.projector
 
 import scala.collection.Map
 
-import breeze.linalg.Vector
+import breeze.linalg.{DenseVector, SparseVector, Vector}
 
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{MathUtils, VectorUtils}
 
 /**
  * A projection map that maintains the one-to-one mapping of indices between the original and projected space.
@@ -81,7 +81,15 @@ object IndexMapProjector {
    * @return The generated projection map
    */
   protected[ml] def buildIndexMapProjector(features: Iterable[Vector[Double]]): IndexMapProjector = {
-    val originalToProjectedSpaceMap = features.flatMap(_.activeKeysIterator).toSet[Int].zipWithIndex.toMap
+    val originalToProjectedSpaceMap = features.flatMap {
+      case vector: SparseVector[Double] => vector.activeKeysIterator
+      case vector: DenseVector[Double] => vector
+          .toArray
+          .zipWithIndex
+          .filter(x => !MathUtils.isAlmostZero(x._1))
+          .map(_._2)
+    }.toSet.zipWithIndex.toMap
+
     val originalSpaceDimension = features.head.length
     val projectedSpaceDimension = originalToProjectedSpaceMap.values.max + 1
 
