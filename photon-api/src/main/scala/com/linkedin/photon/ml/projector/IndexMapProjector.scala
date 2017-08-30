@@ -16,9 +16,9 @@ package com.linkedin.photon.ml.projector
 
 import scala.collection.Map
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.Vector
 
-import com.linkedin.photon.ml.util.{MathUtils, VectorUtils}
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * A projection map that maintains the one-to-one mapping of indices between the original and projected space.
@@ -39,12 +39,12 @@ import com.linkedin.photon.ml.util.{MathUtils, VectorUtils}
  * @param originalSpaceDimension Dimensionality of the original space
  * @param projectedSpaceDimension Dimensionality of the projected space
  */
-protected[ml] class IndexMapProjector private (
+protected[ml] class IndexMapProjector (
     val originalToProjectedSpaceMap: Map[Int, Int],
     override val originalSpaceDimension: Int,
     override val projectedSpaceDimension: Int) extends Projector {
 
-  val projectedToOriginalSpaceMap = originalToProjectedSpaceMap.map(_.swap)
+  val projectedToOriginalSpaceMap: Map[Int, Int] = originalToProjectedSpaceMap.map(_.swap)
 
   assert(originalToProjectedSpaceMap.size == projectedToOriginalSpaceMap.size, s"The size of " +
       s"originalToProjectedSpaceMap (${originalToProjectedSpaceMap.size}) and the size of " +
@@ -73,28 +73,6 @@ protected[ml] class IndexMapProjector private (
 }
 
 object IndexMapProjector {
-
-  /**
-   * Generate the index map projector given an iterator of feature vectors.
-   *
-   * @param features An [[Iterable]] of feature vectors
-   * @return The generated projection map
-   */
-  protected[ml] def buildIndexMapProjector(features: Iterable[Vector[Double]]): IndexMapProjector = {
-    val originalToProjectedSpaceMap = features.flatMap {
-      case vector: SparseVector[Double] => vector.activeKeysIterator
-      case vector: DenseVector[Double] => vector
-          .toArray
-          .zipWithIndex
-          .filter(x => !MathUtils.isAlmostZero(x._1))
-          .map(_._2)
-    }.toSet.zipWithIndex.toMap
-
-    val originalSpaceDimension = features.head.length
-    val projectedSpaceDimension = originalToProjectedSpaceMap.values.max + 1
-
-    new IndexMapProjector(originalToProjectedSpaceMap, originalSpaceDimension, projectedSpaceDimension)
-  }
 
   /**
    * Project the indices of the input vector with the given map.
