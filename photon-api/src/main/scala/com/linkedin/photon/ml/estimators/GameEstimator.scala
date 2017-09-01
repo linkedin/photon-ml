@@ -325,10 +325,19 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) {
             .setName(s"Random effect data set in projected space with coordinate id $id")
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             .materialize()
+
           // Only un-persist the active data and passive data, because randomEffectDataSet and
-          // randomEffectDataSetInProjectedSpace share uniqueIdToRandomEffectIds and other RDDs/Broadcasts
-          rawRandomEffectDataSet.activeData.unpersist()
-          rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
+          // randomEffectDataSetInProjectedSpace share uniqueIdToRandomEffectIds and other RDDs/Broadcasts.
+          //
+          // Do not un-persist for identity projection.
+          projectorType match {
+            case IdentityProjection =>
+
+            case _ =>
+              rawRandomEffectDataSet.activeData.unpersist()
+              rawRandomEffectDataSet.passiveDataOption.foreach(_.unpersist())
+          }
+
           randomEffectDataSetInProjectedSpace
         }
         logger.debug(s"Random effect data set with id $id summary:\n${randomEffectDataSet.toSummaryString}\n")
