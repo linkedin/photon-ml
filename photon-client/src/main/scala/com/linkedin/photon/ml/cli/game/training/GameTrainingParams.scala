@@ -16,9 +16,10 @@ package com.linkedin.photon.ml.cli.game.training
 
 import scopt.OptionParser
 
-import com.linkedin.photon.ml.HyperparameterTuningMode
+import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.{EvaluatorParams, FeatureParams}
 import com.linkedin.photon.ml.data.{InputColumnsNames, FixedEffectDataConfiguration, RandomEffectDataConfiguration}
@@ -27,7 +28,6 @@ import com.linkedin.photon.ml.io.deprecated.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
-import com.linkedin.photon.ml.TaskType
 
 /**
  * A bean class for GAME training parameters to replace the original case class for input parameters.
@@ -167,6 +167,11 @@ class GameTrainingParams extends FeatureParams with PalDBIndexMapParams with Eva
    * Training data normalization method
    */
   var normalizationType: NormalizationType = NormalizationType.NONE
+
+  /**
+   * Type of validation to be performed
+   */
+  var dataValidationType: DataValidationType = DataValidationType.VALIDATE_FULL
 
   /**
    * Name of this Spark application

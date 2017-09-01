@@ -17,6 +17,8 @@ package com.linkedin.photon.ml.data
 import scala.util.{Success, Try}
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{Row}
+import org.apache.spark.mllib.linalg.{VectorUDT, Vectors}
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
@@ -25,6 +27,7 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
+import org.apache.spark.sql.types._
 
 /**
  * Integration tests for [[DataValidators]].
@@ -229,6 +232,71 @@ class DataValidatorsIntegTest extends SparkTestUtils {
           x(0).asInstanceOf[RDD[LabeledPoint]],
           x(1).asInstanceOf[TaskType],
           x(2).asInstanceOf[DataValidationType]))
+
+      result match {
+        case Success(_) => throw new IllegalArgumentException("Unexpected success for bad data")
+        case _ =>
+      }
+    }
+  }
+
+  @Test
+  def testSuccessSanityCheckDataFrame(): Unit = sparkTest("testSanityCheckDataFrame") {
+
+    val schema = new StructType(Array(StructField(InputColumnsNames.RESPONSE.toString, DoubleType),
+      StructField(InputColumnsNames.WEIGHT.toString, DoubleType),
+      StructField(InputColumnsNames.OFFSET.toString, DoubleType),
+      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, new VectorUDT)))
+
+    val input = getSuccessArgumentsForSanityCheckData
+
+    for (x <- input) {
+      val labeledPoints = x(0).asInstanceOf[RDD[LabeledPoint]]
+
+      val rows = labeledPoints.map(lp => {
+        val features = Vectors.dense(lp.features.toArray).toSparse
+        Row(lp.label, lp.weight, lp.offset, features)
+      })
+
+      val inputColumnsNames = InputColumnsNames()
+      val featureNames = Set(InputColumnsNames.FEATURES_DEFAULT.toString)
+
+      DataValidators.sanityCheckDataFrame(
+        sparkSession.createDataFrame(rows, schema),
+        x(1).asInstanceOf[TaskType],
+        x(2).asInstanceOf[DataValidationType],
+        inputColumnsNames,
+        featureNames)
+    }
+  }
+
+  @Test
+  def testFailureSanityCheckDataFrame(): Unit = sparkTest("testSanityCheckDataFrame") {
+
+    val schema = new StructType(Array(StructField(InputColumnsNames.RESPONSE.toString, DoubleType),
+      StructField(InputColumnsNames.WEIGHT.toString, DoubleType),
+      StructField(InputColumnsNames.OFFSET.toString, DoubleType),
+      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, new VectorUDT)))
+
+    val input = getFailureArgumentsForSanityCheckData
+
+    for (x <- input) {
+      val labeledPoints = x(0).asInstanceOf[RDD[LabeledPoint]]
+
+      val rows = labeledPoints.map(lp => {
+        val features = Vectors.dense(lp.features.toArray).toSparse
+        Row(lp.label, lp.weight, lp.offset, features)
+      })
+
+      val inputColumnsNames = InputColumnsNames()
+      val featureNames = Set(InputColumnsNames.FEATURES_DEFAULT.toString)
+
+      val result = Try(DataValidators.sanityCheckDataFrame(
+        sparkSession.createDataFrame(rows, schema),
+        x(1).asInstanceOf[TaskType],
+        x(2).asInstanceOf[DataValidationType],
+        inputColumnsNames,
+        featureNames))
 
       result match {
         case Success(_) => throw new IllegalArgumentException("Unexpected success for bad data")

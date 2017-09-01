@@ -15,12 +15,17 @@
 package com.linkedin.photon.ml.data
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.mllib.linalg.SparseVector
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.util.Logging
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
+
+import scala.util.{Success, Try}
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
@@ -41,6 +46,20 @@ object DataValidators extends Logging {
       (nonNegativeLabels _, "Data contains row(s) with negative label(s)") ::
       baseValidators
 
+  // (Validator, Input Column Name, Error Message) triples
+  val dataFrameBaseValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] = List(
+    (rowHasFiniteFeatures, InputColumnsNames.FEATURES_DEFAULT, "Data contains row(s) with non-finite feature(s)"),
+    (rowHasFiniteWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-finite weight(s)"),
+    (rowHasFiniteOffset, InputColumnsNames.OFFSET, "Data contains row(s) with non-finite offset(s)"))
+  val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
+    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") :: dataFrameBaseValidators
+  val dataFrameLogisticRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
+    (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") :: dataFrameBaseValidators
+  val dataFramePoissonRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
+    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
+      (rowHasNonNegativeLabels _, InputColumnsNames.RESPONSE, "Data contains row(s) with negative label(s)") ::
+      dataFrameBaseValidators
+
   /**
    * Verify that a labeled data point has a finite label.
    *
@@ -48,6 +67,18 @@ object DataValidators extends Logging {
    * @return Whether the label of the input data point is finite
    */
   def finiteLabel(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.label.isNaN || labeledPoint.label.isInfinite)
+
+  /**
+   * Verify that a labeled data point has a finite label.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the label of the input data point is finite
+   */
+  def rowHasFiniteLabel(row: Row, inputColumnName: String): Boolean = {
+    val label = row.getAs[Double](inputColumnName)
+    !(label.isNaN || label.isInfinite)
+  }
 
   /**
    * Verify that a labeled data point has a binary label.
@@ -59,12 +90,36 @@ object DataValidators extends Logging {
     BinaryClassifier.positiveClassLabel == labeledPoint.label || BinaryClassifier.negativeClassLabel == labeledPoint.label
 
   /**
+   * Verify that a labeled data point has a binary label.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the label of the input data point is binary
+   */
+  def rowHasBinaryLabel(row: Row, inputColumnName: String): Boolean = {
+    val label = row.getAs[Double](inputColumnName)
+    BinaryClassifier.positiveClassLabel == label || BinaryClassifier.negativeClassLabel == label
+  }
+
+  /**
    * Verify that a labeled data point has a non-negative label.
    *
    * @param labeledPoint The input data point
    * @return Whether the label of the input data point is non-negative
    */
   def nonNegativeLabels(labeledPoint: LabeledPoint): Boolean = labeledPoint.label >= 0
+
+  /**
+   * Verify that a row has a non-negative label.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the label of the input data point is non-negative
+   */
+  def rowHasNonNegativeLabels(row: Row, inputColumnName: String): Boolean = {
+    val label = row.getAs[Double](inputColumnName)
+    label >= 0
+  }
 
   /**
    * Verify that the feature values of a data point are finite.
@@ -78,6 +133,20 @@ object DataValidators extends Logging {
     }
 
   /**
+   * Verify that the feature values of a data point are finite.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether all feature values for the input data point are finite
+   */
+  def rowHasFiniteFeatures(row: Row, inputColumnName: String): Boolean = {
+    val features = row.getAs[SparseVector](inputColumnName).values
+    features.iterator.forall { case (value) =>
+      !(value.isNaN || value.isInfinite)
+    }
+  }
+
+  /**
    * Verify that a data point has a finite offset.
    *
    * @param labeledPoint The input data point
@@ -86,12 +155,36 @@ object DataValidators extends Logging {
   def finiteOffset(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.offset.isNaN || labeledPoint.offset.isInfinite)
 
   /**
+   * Verify that a row has a finite offset.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the offset of the input data point is finite
+   */
+  def rowHasFiniteOffset(row: Row, inputColumnName: String): Boolean = {
+    val offset = row.getAs[Double](inputColumnName)
+    !(offset.isNaN || offset.isInfinite)
+  }
+
+  /**
    * Verify that a data point has a finite weight.
    *
    * @param labeledPoint The input data point
    * @return Whether the weight of the input data point is finite
    */
   def finiteWeight(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.weight.isNaN || labeledPoint.weight.isInfinite)
+
+  /**
+   * Verify that a row has a finite weight.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the weight of the input data point is finite
+   */
+  def rowHasFiniteWeight(row: Row, inputColumnName: String): Boolean = {
+    val weight = row.getAs[Double](inputColumnName)
+    !(weight.isNaN || weight.isInfinite)
+  }
 
   /**
    * Validate a data set using one or more data point validators.
@@ -142,6 +235,91 @@ object DataValidators extends Logging {
 
       case DataValidationType.VALIDATE_SAMPLE =>
         validateData(inputData.sample(withReplacement = false, fraction = 0.10), validators)
+
+      case DataValidationType.VALIDATE_DISABLED =>
+        Seq()
+    }
+
+    if (dataErrors.nonEmpty) {
+      throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
+    }
+  }
+
+  /**
+   * Validate a data frame using one or more data point validators.
+   *
+   * @param dataSet The input data frame
+   * @param perSampleValidators A list of (data validator, input column name, error message) triples
+   * @param inputColumnsNames Column names for the provided data frame
+   * @param featureSectionKeys Column names for the feature columns in the provided data frame
+   * @return The list of validation error messages for the input data frame
+   */
+  private def validateDataFrame(
+      dataSet: DataFrame,
+      perSampleValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)],
+      inputColumnsNames: InputColumnsNames,
+      featureSectionKeys: Set[FeatureShardId]): Seq[String] = {
+
+    perSampleValidators
+      .flatMap { case (validator, columnName, msg) =>
+        val rows = dataSet.collect()
+        rows.flatMap { r =>
+          if (columnName.equals(InputColumnsNames.FEATURES_DEFAULT)) {
+            featureSectionKeys.map(features => (validator(r, features), msg))
+          } else {
+            val result = if (dataSet.columns.contains(inputColumnsNames(columnName))) {
+              (validator(r, inputColumnsNames(columnName)), msg)
+            } else {
+              (true, "")
+            }
+            
+            Seq(result)
+          }
+        }
+      }
+      .filterNot(_._1)
+      .map(_._2)
+  }
+
+  /**
+   * Validate a full or sampled data frame using the set of data point validators relevant to the training problem.
+   *
+   * @param inputData The input data frame
+   * @param taskType The training task type
+   * @param dataValidationType The validation intensity
+   * @param inputColumnsNames Column names for the provided data frame
+   * @param featureSectionKeys Column names for the feature columns in the provided data frame
+   * @throws IllegalArgumentException if one or more of the data validations failed
+   */
+  def sanityCheckDataFrame(
+      inputData: DataFrame,
+      taskType: TaskType,
+      dataValidationType: DataValidationType,
+      inputColumnsNames: InputColumnsNames,
+      featureSectionKeys: Set[FeatureShardId]): Unit = {
+
+    val validators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] = taskType match {
+      case TaskType.LINEAR_REGRESSION => dataFrameLinearRegressionValidators
+      case TaskType.LOGISTIC_REGRESSION => dataFrameLogisticRegressionValidators
+      case TaskType.POISSON_REGRESSION => dataFramePoissonRegressionValidators
+      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => dataFrameLogisticRegressionValidators
+    }
+
+    // Check the data properties
+    val dataErrors = dataValidationType match {
+      case DataValidationType.VALIDATE_FULL =>
+        validateDataFrame(
+          inputData,
+          validators,
+          inputColumnsNames,
+          featureSectionKeys)
+
+      case DataValidationType.VALIDATE_SAMPLE =>
+        validateDataFrame(
+          inputData.sample(withReplacement = false, fraction = 0.10),
+          validators,
+          inputColumnsNames,
+          featureSectionKeys)
 
       case DataValidationType.VALIDATE_DISABLED =>
         Seq()
