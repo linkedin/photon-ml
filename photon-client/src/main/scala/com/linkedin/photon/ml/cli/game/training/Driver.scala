@@ -25,7 +25,7 @@ import org.slf4j.Logger
 import com.linkedin.photon.ml.HyperparameterTuningMode
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.data.InputColumnsNames
+import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameResult
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
@@ -73,6 +73,25 @@ final class Driver(val sc: SparkContext, val params: GameTrainingParams, implici
 
     val trainingData = readAndCheck(readTrainingData(featureIndexMapLoaders), "training data").get
     val validationData = readAndCheck(readValidationData(featureIndexMapLoaders), "validation data")
+
+    Timed("Validate data frame(s)") {
+      DataValidators.sanityCheckDataFrame(
+        trainingData,
+        params.taskType,
+        params.dataValidationType,
+        params.inputColumnsNames,
+        params.featureShardIdToFeatureSectionKeysMap.keySet)
+
+      validationData match {
+        case Some(x) => DataValidators.sanityCheckDataFrame(
+          x,
+          params.taskType,
+          params.dataValidationType,
+          params.inputColumnsNames,
+          params.featureShardIdToFeatureSectionKeysMap.keySet)
+        case None => None
+      }
+    }
 
     val featureShardStats = Timed("Calculate statistics for each feature shard") {
       calculateAndSaveFeatureShardStats(trainingData, featureIndexMapLoaders)
