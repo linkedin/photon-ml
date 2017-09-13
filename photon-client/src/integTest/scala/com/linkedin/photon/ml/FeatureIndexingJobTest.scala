@@ -19,275 +19,78 @@ import scala.collection.mutable
 import com.linkedin.paldb.api.PalDB
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.Path
-import org.apache.spark.{SparkConf, SparkContext, SparkException}
+import org.apache.spark.SparkException
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.avro.{AvroFieldNames, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.data.avro.ResponsePredictionFieldNames
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{IndexMap, PalDBIndexMap}
 
 /**
  * This class tests [[com.linkedin.photon.ml.FeatureIndexingJob]].
  */
-class FeatureIndexingJobTest {
+class FeatureIndexingJobTest extends SparkTestUtils {
 
-  @Test
-  def testIndexingJobWithPalDB(): Unit = {
+  import FeatureIndexingJobTest._
 
-    val tempFile = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job")
-    tempFile.mkdirs()
-
-    for (partitionNum <- 1 to 4) {
-      testOneJob(tempFile.toString, partitionNum, addIntercept = true, TrainingExampleFieldNames)
-      testOneJob(tempFile.toString, partitionNum, addIntercept = false, TrainingExampleFieldNames)
-      testOneJob(tempFile.toString, partitionNum, addIntercept = true, ResponsePredictionFieldNames)
-      testOneJob(tempFile.toString, partitionNum, addIntercept = false, ResponsePredictionFieldNames)
-    }
-
-    FileUtils.deleteQuietly(tempFile)
-  }
-
-  @Test
-  def testShardedIndexingJobWithPalDB(): Unit = {
-
-    val tempFile = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job-namespaced")
-    tempFile.mkdirs()
-
-    val featureShardIdToFeatureSectionKeysMap = Map(
-      "shard1" -> Set("features", "songFeatures"),
-      "shard2" -> Set("songFeatures")
-    )
-
-    val featureShardIdToInterceptMap = Map(
-      "shard1" -> true,
-      "shard2" -> false
-    )
-
-    val featureShardIdToExpectedDimension = Map(
-      "shard1" -> 15014,
-      "shard2" -> 30
-    )
-
-    for (partitionNum <- 1 to 2) {
-      testShardedJob(
-        tempFile.toString,
-        partitionNum,
-        addIntercept = true,
-        featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap,
-        featureShardIdToExpectedDimension)
-      testShardedJob(
-        tempFile.toString,
-        partitionNum,
-        addIntercept = false,
-        featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap,
-        featureShardIdToExpectedDimension)
-      testShardedJob(
-        tempFile.toString,
-        partitionNum,
-        addIntercept = true,
-        featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap,
-        featureShardIdToExpectedDimension)
-      testShardedJob(
-        tempFile.toString,
-        partitionNum,
-        addIntercept = false,
-        featureShardIdToFeatureSectionKeysMap,
-        featureShardIdToInterceptMap,
-        featureShardIdToExpectedDimension)
-
-      try {
-        testShardedJob(
-          tempFile.toString,
-          partitionNum,
-          addIntercept = false,
-          featureShardIdToFeatureSectionKeysMap ++ Map("shard3" -> Set("badsection")),
-          featureShardIdToInterceptMap,
-          featureShardIdToExpectedDimension)
-
-        fail("Expected failure didn't happen.")
-
-      } catch {
-        case se: SparkException => assertTrue(se.getMessage.contains("Feature section not found"))
-        case e: Exception => throw e
-      }
-    }
-
-    FileUtils.deleteQuietly(tempFile)
-  }
+  @DataProvider
+  def partitionsAndIntercept(): Array[Array[Any]] =
+    (for (partitions <- 1 to 4; intercept <- Seq(true, false)) yield {
+      Array[Any](partitions, intercept)
+    }).toArray
 
   /**
+   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a data set with a single feature shard,
+   * with or without intercept, using one or more partitions.
    *
-   * @param outputDir
-   * @param numPartitions
-   * @param addIntercept
-   * @param fieldNames
+   * @param partitionNum The number of partitions for the PalDB index
+   * @param addIntercept Whether to add a feature for the intercept
    */
-  private def testOneJob(
-      outputDir: String = "/tmp/index-output",
-      numPartitions: Int,
-      addIntercept: Boolean,
-      fieldNames: AvroFieldNames): Unit = {
+  @Test(dataProvider = "partitionsAndIntercept")
+  def testIndexingJobWithPalDB(partitionNum: Int, addIntercept: Boolean): Unit = sparkTest("testIndexingJobWithPalDB") {
 
-    SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
-      FileUtils.deleteDirectory(new java.io.File(outputDir))
+    val outputDir = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job")
+    val outputDirStr = outputDir.toString
 
-      val conf: SparkConf = new SparkConf()
-      conf.setAppName("test-index-job").setMaster("local[4]")
-      val sc = new SparkContext(conf)
+    outputDir.mkdirs()
 
-      try {
-        new FeatureIndexingJob(sc,
-          Seq("src/integTest/resources/DriverIntegTest/input/heart.avro"),
-          numPartitions,
-          outputDir,
-          addIntercept,
-          fieldNames
-        ).run()
+    new FeatureIndexingJob(
+      sc,
+      Seq(INPUT_PATH_BASIC),
+      partitionNum,
+      outputDirStr,
+      addIntercept,
+      ResponsePredictionFieldNames)
+      .run()
 
-        // Add all partitions to cache
-        (0 until numPartitions).foreach(i =>
-            sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i)).toString))
-
-        val expectedFeatureDimension = if (addIntercept) 14 else 13
-        val indexMap = checkPalDBReadable(
-          outputDir, numPartitions, IndexMap.GLOBAL_NS, addIntercept, expectedFeatureDimension)
-        checkHeartIndexMap(indexMap, addIntercept, expectedFeatureDimension)
-
-      } finally {
-        sc.stop()
-        System.clearProperty("spark.driver.port")
-        System.clearProperty("spark.hostPort")
-      }
+    // Add all partitions to cache
+    for (i <- 0 until partitionNum) {
+      sc.addFile(new Path(outputDirStr, PalDBIndexMap.partitionFilename(i)).toString)
     }
+
+    val expectedFeatureDimension = if (addIntercept) 14 else 13
+    val indexMap = checkPalDBReadable(
+      outputDirStr,
+      partitionNum,
+      IndexMap.GLOBAL_NS,
+      addIntercept,
+      expectedFeatureDimension)
+
+    checkHeartIndexMap(indexMap, addIntercept, expectedFeatureDimension)
+
+    FileUtils.deleteQuietly(outputDir)
   }
 
   /**
+   * Validate a [[PalDBIndexMap]] constructed for the heart data set.
    *
-   * @param outputDir
-   * @param numPartitions
-   * @param addIntercept
-   * @param featureShardIdToFeatureSectionKeysMap
-   * @param featureShardIdToInterceptMap
-   * @param featureShardIdToExpectedDimension
-   */
-  private def testShardedJob(
-      outputDir: String = "/tmp/index-output",
-      numPartitions: Int,
-      addIntercept: Boolean,
-      featureShardIdToFeatureSectionKeysMap: Map[String, Set[String]],
-      featureShardIdToInterceptMap: Map[String, Boolean],
-      featureShardIdToExpectedDimension: Map[String, Int]): Unit = {
-
-    SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
-      FileUtils.deleteDirectory(new java.io.File(outputDir))
-
-      val conf: SparkConf = new SparkConf()
-      conf.setAppName("test-index-job").setMaster("local[4]")
-      val sc = new SparkContext(conf)
-
-      try {
-        new FeatureIndexingJob(sc,
-          Seq("src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro"),
-          numPartitions,
-          outputDir,
-          addIntercept,
-          ResponsePredictionFieldNames,
-          Some(featureShardIdToFeatureSectionKeysMap),
-          Some(featureShardIdToInterceptMap)
-        ).run()
-
-        // Add all partitions to cache
-        (0 until numPartitions).foreach(i =>
-          featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, _) =>
-            sc.addFile(new Path(outputDir, PalDBIndexMap.partitionFilename(i, shardId)).toString)
-          })
-
-        // Check each feature shard map
-        featureShardIdToFeatureSectionKeysMap.foreach { case (shardId, _) =>
-          val addShardIntercept = featureShardIdToInterceptMap.getOrElse(shardId, true)
-          var expectedFeatureDimension = featureShardIdToExpectedDimension(shardId)
-          if (addShardIntercept) {
-            expectedFeatureDimension += 1
-          }
-
-          checkPalDBReadable(
-            outputDir, numPartitions, shardId, addShardIntercept, expectedFeatureDimension)
-        }
-
-      } finally {
-        sc.stop()
-        System.clearProperty("spark.driver.port")
-        System.clearProperty("spark.hostPort")
-      }
-    }
-  }
-
-  /**
-   *
-   * @param path
-   * @param numPartitions
-   * @param namespace
-   * @param addIntercept
-   * @param expectedFeatureDimension
-   * @return
-   */
-  private def checkPalDBReadable(
-      path: String,
-      numPartitions: Int,
-      namespace: String,
-      addIntercept: Boolean,
-      expectedFeatureDimension: Int): PalDBIndexMap = {
-
-    val indexMap = new PalDBIndexMap().load(path, numPartitions, namespace)
-
-    var offset = 0
-    for (i <- 0 until numPartitions) {
-      val reader = PalDB.createReader(new java.io.File(path, PalDBIndexMap.partitionFilename(i, namespace)))
-      val iter = reader.iterable().iterator()
-
-      while (iter.hasNext) {
-        val entry = iter.next()
-
-        val key = entry.getKey.asInstanceOf[Object]
-        val value = entry.getValue.asInstanceOf[Object]
-
-        key match {
-          case s: String if value.isInstanceOf[Int] =>
-            val result = reader.get(s).asInstanceOf[Int]
-            val idx = indexMap.getIndex(s)
-
-            // What IndexMap read and what the original data file reads are consistent
-            assertEquals(value, result)
-            assertEquals(idx, result + offset)
-          case _ =>
-            val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset).get
-            // The index map itself should be consistent
-            assertEquals(indexMap.getIndex(featureName), key.asInstanceOf[Int] + offset)
-        }
-      }
-
-      offset += reader.size().asInstanceOf[Number].intValue()/2
-      reader.close()
-    }
-
-    // Check IndexMap itself
-    println("Total record number: " + indexMap.size())
-    assertEquals(indexMap.size(), expectedFeatureDimension)
-
-    indexMap
-  }
-
-  /**
-   *
-   * @param indexMap
-   * @param addIntercept
-   * @param expectedFeatureDimension
+   * @param indexMap The [[PalDBIndexMap]]
+   * @param addIntercept Whether a feature was included for the intercept
+   * @param expectedFeatureDimension The expected feature dimension
    */
   private def checkHeartIndexMap(indexMap: PalDBIndexMap, addIntercept: Boolean, expectedFeatureDimension: Int) = {
+
     // Check full hits according to the ground truth of heart dataset
     val indicesSet = mutable.Set[Int]()
     val namesSet = mutable.Set[String]()
@@ -335,4 +138,154 @@ class FeatureIndexingJobTest {
     assertEquals(indicesSet.size, expectedFeatureDimension)
     assertEquals(namesSet.size, expectedFeatureDimension)
   }
+
+  /**
+   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a data set with a multiple feature
+   * shards, with or without intercept, using one or more partitions.
+   *
+   * @param partitionNum The number of partitions for the PalDB index
+   * @param addIntercept Whether to add a feature for the intercept
+   */
+  @Test(dataProvider = "partitionsAndIntercept")
+  def testShardedIndexingJobWithPalDB(partitionNum: Int, addIntercept: Boolean): Unit =
+    sparkTest("testShardedIndexingJobWithPalDB") {
+
+      val outputDir = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job-namespaced")
+      val outputDirStr = outputDir.toString
+
+      outputDir.mkdirs()
+
+      new FeatureIndexingJob(
+        sc,
+        Seq(INPUT_PATH_SHARDED),
+        partitionNum,
+        outputDirStr,
+        addIntercept,
+        ResponsePredictionFieldNames,
+        Some(FEATURE_SHARD_TO_SECTION_KEYS_MAP),
+        Some(FEATURE_SHARD_TO_INTERCEPT_MAP))
+        .run()
+
+      // Add all partitions to cache
+      (0 until partitionNum).foreach { i =>
+          FEATURE_SHARD_TO_SECTION_KEYS_MAP.foreach { case (shardId, _) =>
+            sc.addFile(new Path(outputDirStr, PalDBIndexMap.partitionFilename(i, shardId)).toString)
+          }
+        }
+
+      // Check each feature shard map
+      FEATURE_SHARD_TO_SECTION_KEYS_MAP.foreach { case (shardId, _) =>
+        val addShardIntercept = FEATURE_SHARD_TO_INTERCEPT_MAP.getOrElse(shardId, true)
+        var expectedFeatureDimension = FEATURE_SHARD_TO_EXPECTED_DIMENSION(shardId)
+        if (addShardIntercept) {
+          expectedFeatureDimension += 1
+        }
+
+        checkPalDBReadable(outputDirStr, partitionNum, shardId, addShardIntercept, expectedFeatureDimension)
+      }
+
+      FileUtils.deleteQuietly(outputDir)
+    }
+
+  /**
+   * Read and validate a [[PalDBIndexMap]].
+   *
+   * @param path The path to the root dir of [[PalDBIndexMap]] instances
+   * @param numPartitions The number of partitions per [[PalDBIndexMap]]
+   * @param namespace The name of the shard to validate
+   * @param addIntercept Whether a feature was added for the intercept
+   * @param expectedFeatureDimension The expected feature dimension
+   * @return A [[PalDBIndexMap]]
+   */
+  private def checkPalDBReadable(
+    path: String,
+    numPartitions: Int,
+    namespace: String,
+    addIntercept: Boolean,
+    expectedFeatureDimension: Int): PalDBIndexMap = {
+
+    val indexMap = new PalDBIndexMap().load(path, numPartitions, namespace)
+
+    var offset = 0
+    for (i <- 0 until numPartitions) {
+      val reader = PalDB.createReader(new java.io.File(path, PalDBIndexMap.partitionFilename(i, namespace)))
+      val iter = reader.iterable().iterator()
+
+      while (iter.hasNext) {
+        val entry = iter.next()
+
+        val key = entry.getKey.asInstanceOf[Object]
+        val value = entry.getValue.asInstanceOf[Object]
+
+        key match {
+          case s: String if value.isInstanceOf[Int] =>
+            val result = reader.get(s).asInstanceOf[Int]
+            val idx = indexMap.getIndex(s)
+
+            // What IndexMap read and what the original data file reads are consistent
+            assertEquals(value, result)
+            assertEquals(idx, result + offset)
+          case _ =>
+            val featureName = indexMap.getFeatureName(key.asInstanceOf[Int] + offset).get
+            // The index map itself should be consistent
+            assertEquals(indexMap.getIndex(featureName), key.asInstanceOf[Int] + offset)
+        }
+      }
+
+      offset += reader.size().asInstanceOf[Number].intValue()/2
+      reader.close()
+    }
+
+    // Check IndexMap itself
+    println("Total record number: " + indexMap.size())
+    assertEquals(indexMap.size(), expectedFeatureDimension)
+
+    indexMap
+  }
+
+  /**
+   * Test that attempts to generate a [[PalDBIndexMap]] for a non-existant or poorly defined feature shard will fail.
+   *
+   * @param partitionNum The number of partitions for the PalDB index
+   * @param addIntercept Whether to add a feature for the intercept
+   */
+  @Test(dataProvider = "partitionsAndIntercept", expectedExceptions = Array(classOf[SparkException]))
+  def testBadShardedIndexingJobWithPalDB(partitionNum: Int, addIntercept: Boolean): Unit =
+    sparkTest("testShardedIndexingJobWithPalDB") {
+
+      val outputDir = new java.io.File(FileUtils.getTempDirectory, "test-feature-indexing-job-namespaced")
+      val outputDirStr = outputDir.toString
+
+      outputDir.mkdirs()
+
+      new FeatureIndexingJob(
+        sc,
+        Seq(INPUT_PATH_SHARDED),
+        partitionNum,
+        outputDirStr,
+        addIntercept,
+        ResponsePredictionFieldNames,
+        Some(FEATURE_SHARD_TO_SECTION_KEYS_MAP ++ Map("shard3" -> Set("badsection"))),
+        Some(FEATURE_SHARD_TO_INTERCEPT_MAP))
+        .run()
+    }
+}
+
+object FeatureIndexingJobTest {
+
+  val INPUT_PATH_BASIC = new Path("src/integTest/resources/DriverIntegTest/input/heart.avro")
+  val INPUT_PATH_SHARDED = new Path("src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro")
+
+  val FEATURE_SHARD_TO_SECTION_KEYS_MAP = Map(
+    "shard1" -> Set("features", "songFeatures"),
+    "shard2" -> Set("songFeatures")
+  )
+  val FEATURE_SHARD_TO_INTERCEPT_MAP = Map(
+    "shard1" -> true,
+    "shard2" -> false
+  )
+  val FEATURE_SHARD_TO_EXPECTED_DIMENSION = Map(
+    "shard1" -> 15014,
+    "shard2" -> 30
+  )
 }

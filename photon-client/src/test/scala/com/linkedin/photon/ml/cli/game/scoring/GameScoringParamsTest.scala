@@ -19,24 +19,28 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.test.CommonTestUtils._
 
 /**
- * Simple test for GAME scoring's [[Params]].
+ * Unit tests for [[GameScoringParams]].
  */
-class ParamsTest {
+class GameScoringParamsTest {
 
-  import ParamsTest._
+  import GameScoringParamsTest._
 
   @DataProvider
   def requiredOptions(): Array[Array[Any]] = {
     REQUIRED_OPTIONS.map(optionName => Array[Any](optionName))
   }
 
+  /**
+   * Test that parameter parsing will fail if one of the required arguments is not present.
+   *
+   * @param optionName The required argument name
+   */
   @Test(dataProvider = "requiredOptions", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testMissingRequiredArg(optionName: String): Unit = {
-    Params.parseFromCommandLine(mapToArray(requiredArgsMissingOne(optionName)))
-  }
+  def testMissingRequiredArg(optionName: String): Unit =
+    GameScoringParams.parseFromCommandLine(mapToArray(requiredArgsMissingOne(optionName)))
 }
 
-object ParamsTest {
+object GameScoringParamsTest {
 
   // Required parameters
   private val INPUT_DATA_DIRS = "input-data-dirs"
@@ -49,8 +53,8 @@ object ParamsTest {
   /**
    * Get all required arguments except the one with name missingArgName.
    *
-   * @param missingOptionName
-   * @return
+   * @param missingOptionName The name of the argument to exclude
+   * @return A map of required arguments, except for one
    */
   def requiredArgsMissingOne(missingOptionName: String): Map[String, String] = {
     if (REQUIRED_OPTIONS.isEmpty) {

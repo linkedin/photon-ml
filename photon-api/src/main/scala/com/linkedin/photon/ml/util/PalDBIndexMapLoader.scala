@@ -51,10 +51,13 @@ object PalDBIndexMapLoader {
    * @return The path string
    */
   protected[util] def getPath(sc: SparkContext, path: Path): String = {
+
     val uri = path.toUri
 
     Option(uri.getScheme) match {
-      case Some(_) => uri.toString
+      case Some(_) =>
+        uri.toString
+
       case _ =>
         // If the path specifies no scheme, use the current default
         val default = new Path(sc.hadoopConfiguration.get("fs.default.name")).toUri
@@ -75,30 +78,34 @@ object PalDBIndexMapLoader {
    * Throws exception if any parameter is not suitable to build a PalDBIndexMapLoader.
    *
    * @param sc The SparkContext
-   * @param storeDir The directory where the PalDB store will live (on HDFS)
+   * @param offHeapIndexMapDir The directory where the PalDB store will live (on HDFS)
    * @param numPartitions The number of partitions for the PalDB store
    * @param namespace A feature namespace, optional, defaults to IndexMap.GLOBAL_NS
    * @return An instance of a PalDBIndexMapLoader.
    */
-  def apply(sc: SparkContext,
-      storeDir: String,
+  def apply(
+      sc: SparkContext,
+      offHeapIndexMapDir: Path,
       numPartitions: Int,
       namespace: String = IndexMap.GLOBAL_NS): PalDBIndexMapLoader = {
 
     val hadoopFS = FileSystem.get(sc.hadoopConfiguration)
-    val offHeapIndexMapDirPath = new Path(storeDir)
 
+    //
     // Pre-conditions
-    require(hadoopFS.exists(offHeapIndexMapDirPath), s"Off-heap index map dir does not exist: $storeDir")
-    require(hadoopFS.getContentSummary(offHeapIndexMapDirPath).getFileCount > 0,
-      s"Off-heap index map dir is empty: $storeDir")
+    //
+
+    require(hadoopFS.exists(offHeapIndexMapDir), s"Off-heap index map dir does not exist: $offHeapIndexMapDir")
+    require(
+      hadoopFS.getContentSummary(offHeapIndexMapDir).getFileCount > 0,
+      s"Off-heap index map dir is empty: $offHeapIndexMapDir")
     require(numPartitions > 0, s"Invalid # off-heap index map partitions: $numPartitions")
-    // End pre-conditions
 
     (0 until numPartitions).foreach { i =>
-      sc.addFile(PalDBIndexMapLoader.getPath(sc, new Path(storeDir, PalDBIndexMap.partitionFilename(i, namespace))))
+      sc.addFile(
+        PalDBIndexMapLoader.getPath(sc, new Path(offHeapIndexMapDir, PalDBIndexMap.partitionFilename(i, namespace))))
     }
 
-    new PalDBIndexMapLoader(storeDir, numPartitions, namespace)
+    new PalDBIndexMapLoader(offHeapIndexMapDir.toString, numPartitions, namespace)
   }
 }

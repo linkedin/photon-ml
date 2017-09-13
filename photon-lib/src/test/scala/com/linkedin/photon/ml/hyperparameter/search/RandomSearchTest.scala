@@ -19,6 +19,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Test cases for the RandomSearch class
@@ -30,13 +31,14 @@ class RandomSearchTest {
   val n = 25
   val lower = 1e-5
   val upper = 1e5
-  val ranges = Seq.fill(dim)((lower, upper))
+  val ranges: Seq[DoubleRange] = Seq.fill(dim)(DoubleRange(lower, upper))
 
   case class TestModel(params: DenseVector[Double], evaluation: Double)
 
   val evaluationFunction = new EvaluationFunction[TestModel] {
+
     def apply(hyperParameters: DenseVector[Double]): (Double, TestModel) = {
-      (0.0, new TestModel(hyperParameters, 0.0))
+      (0.0, TestModel(hyperParameters, 0.0))
     }
 
     def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
@@ -47,6 +49,7 @@ class RandomSearchTest {
 
   @Test
   def testFind(): Unit = {
+
     val candidates = searcher.find(n)
 
     assertEquals(candidates.length, n)

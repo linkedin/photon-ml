@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.util.{PalDBIndexMapParams, Utils}
 /**
  * Command line arguments for GAME scoring driver.
  */
-class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
+class GameScoringParams extends FeatureParams with PalDBIndexMapParams with EvaluatorParams {
 
   /**
    * Input directories of data to be scored. Multiple input directories are also accepted if they are separated by
@@ -136,7 +136,7 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
   }
 }
 
-object Params {
+object GameScoringParams {
 
   /**
    * Parse parameters an array of strings.
@@ -144,9 +144,9 @@ object Params {
    * @param args An array of arguments to parse
    * @return A well-formed instance of Params
    */
-  def parseFromCommandLine(args: Array[String]): Params = {
-    val defaultParams = new Params()
-    val params = new Params()
+  def parseFromCommandLine(args: Array[String]): GameScoringParams = {
+    val defaultParams = new GameScoringParams()
+    val params = new GameScoringParams()
 
     val parser = new OptionParser[Unit]("GLMix-Scoring-Params") {
       opt[String]("input-data-dirs")

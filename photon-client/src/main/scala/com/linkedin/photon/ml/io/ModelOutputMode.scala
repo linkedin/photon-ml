@@ -12,12 +12,36 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.deprecated
+package com.linkedin.photon.ml.io
 
 /**
  * Supported options for model output.
  */
 object ModelOutputMode extends Enumeration {
   type ModelOutputMode = Value
-  val ALL, BEST, NONE = Value
+
+  /**
+   * Output no trained models, only logs
+   */
+  val NONE = Value
+
+  /**
+   * Output only the model which performed best on the validation data
+   */
+  val BEST = Value
+
+  /**
+   * Output the best model and those trained from the regularization weights explicitly provided
+   */
+  val EXPLICIT = Value
+
+  /**
+   * Output the best model and those trained by the hyperparameter tuning algorithm
+   */
+  val TUNED = Value
+
+  /**
+   * Output all models
+   */
+  val ALL = Value
 }

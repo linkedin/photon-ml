@@ -27,18 +27,20 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.optimization.{L2RegularizationContext, LBFGS, OptimizerType, TRON}
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
+import com.linkedin.photon.ml.util.GameTestUtils
 
 /**
  * Integration tests for [[NormalizationContext]].
  */
-class NormalizationContextIntegTest extends SparkTestUtils {
+class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
 
   import NormalizationContextIntegTest._
 
@@ -141,7 +143,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
     val trainRDD = generateSampleRDD(sc, SEED, model)
     val testRDD = generateSampleRDD(sc, SEED + 1, model)
 
-    NormalizationType.values().foreach(checkTrainingOfNormalizationType(trainRDD, testRDD, _))
+    NormalizationType.values.foreach(checkTrainingOfNormalizationType(trainRDD, testRDD, _))
   }
 
   @DataProvider(name = "generateStandardizationTestData")
@@ -217,7 +219,7 @@ class NormalizationContextIntegTest extends SparkTestUtils {
       transformedRDD
     }
 
-    val configuration = GLMOptimizationConfiguration()
+    val configuration = FixedEffectOptimizationConfiguration(generateOptimizerConfig())
     val objectiveFunction = taskType match {
       case TaskType.LOGISTIC_REGRESSION =>
         DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(LogisticLossFunction)

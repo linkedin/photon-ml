@@ -59,12 +59,14 @@ object AvroUtils {
    * @return A [[RDD]] of Avro records of type [[GenericRecord]] read from the specified input paths
    */
   def readAvroFiles(
-    sc: SparkContext,
-    inputPaths: Seq[String],
-    minPartitions: Int): RDD[GenericRecord] = {
+      sc: SparkContext,
+      inputPaths: Seq[String],
+      minPartitions: Int): RDD[GenericRecord] = {
 
     require(inputPaths.nonEmpty, "No input path specified - need at least 1")
+
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
+
     sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) } )
   }
 
@@ -80,12 +82,11 @@ object AvroUtils {
    * @return A RDD of records
    */
   def readAvroFilesInDir[T <: GenericRecord : ClassTag](
-    sc: SparkContext,
-    inputDir: String,
-    minNumPartitions: Int): RDD[T] =
-
+      sc: SparkContext,
+      inputDir: String,
+      minNumPartitions: Int): RDD[T] =
     sc.hadoopFile[AvroWrapper[T], NullWritable, AvroInputFormat[T]](inputDir, minNumPartitions)
-      .map  { case (k, _) => k.datum() }
+      .map { case (k, _) => k.datum() }
 
   /**
    * Save an RDD of GenericRecord to HDFS using saveAsHadoopFile().
@@ -181,7 +182,7 @@ object AvroUtils {
   }
 
   /**
-   * Convert the vector of type [[Vector[Double]]] to an array of Avro records of type [[NameTermValueAvro]].
+   * Convert the vector of type [[Vector[Double]] to an array of Avro records of type [[NameTermValueAvro]].
    *
    * @param vector The input vector
    * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
@@ -198,7 +199,7 @@ object AvroUtils {
           .toArray
           .zipWithIndex
           .map(_.swap)
-          .filter { case (key, value) =>
+          .filter { case (_, value) =>
             math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
           }
           .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
@@ -218,7 +219,7 @@ object AvroUtils {
       case sparse: SparseVector[Double] =>
         sparse
           .activeIterator
-          .filter { case (key, value) =>
+          .filter { case (_, value) =>
             math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
           }
           .toArray
@@ -262,19 +263,29 @@ object AvroUtils {
       featureSectionKey: String,
       numPartitions: Int): Set[NameAndTerm] = {
 
-    genericRecords.flatMap(_.get(featureSectionKey) match {
-      case recordList: JList[_] => recordList.asScala.map {
-        case record: GenericRecord => AvroUtils.readNameAndTermFromGenericRecord(record)
-        case any =>
-          val msg = s"$any in features list is not a record. It needs to be an Avro record containg a name and term " +
-            s"for each feature."
-          throw new IllegalArgumentException()
+    genericRecords
+      .flatMap {
+        _.get(featureSectionKey) match {
+          case recordList: JList[_] =>
+            recordList.asScala.map {
+              case record: GenericRecord =>
+                AvroUtils.readNameAndTermFromGenericRecord(record)
+
+              case any =>
+                throw new IllegalArgumentException(
+                  s"$any in features list is not a record. It needs to be an Avro record containingg a name and term for " +
+                    s"each feature.")
+
+            }
+          case _ =>
+            throw new IllegalArgumentException(
+              s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records containing a " +
+                s"name and a term for each feature.")
+        }
       }
-      case _ =>
-        val msg = s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records " +
-          s"containing a name and a term for each feature."
-        throw new IllegalArgumentException(msg)
-    }).distinct(numPartitions).collect().toSet
+      .distinct(numPartitions)
+      .collect()
+      .toSet
   }
 
   /**
@@ -289,12 +300,16 @@ object AvroUtils {
       featureSectionKeys: Set[String],
       numPartitions: Int): NameAndTermFeatureSetContainer = {
 
-    val nameAndTermFeatureSets = featureSectionKeys.map { featureSectionKey =>
-      (featureSectionKey, AvroUtils.readNameAndTermSetFromGenericRecords(
-        genericRecords,
-        featureSectionKey,
-        numPartitions))
-    }.toMap
+    val nameAndTermFeatureSets = featureSectionKeys
+      .map { featureSectionKey =>
+        (featureSectionKey,
+          AvroUtils.readNameAndTermSetFromGenericRecords(
+            genericRecords,
+            featureSectionKey,
+            numPartitions))
+      }
+      .toMap
+
     new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
   }
 
@@ -326,6 +341,7 @@ object AvroUtils {
     if (variancesAvrosOption.isDefined) {
       avroFile.setVariances(variancesAvrosOption.get.toList)
     }
+
     avroFile.build()
   }
 

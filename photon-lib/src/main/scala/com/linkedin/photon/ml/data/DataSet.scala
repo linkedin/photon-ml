@@ -20,7 +20,7 @@ import com.linkedin.photon.ml.util.Summarizable
 /**
  * Interface for GAME dataset implementations.
  */
-protected[ml] trait DataSet[D <: DataSet[_]] extends Summarizable {
+protected[ml] trait DataSet[D <: DataSet[D]] extends Summarizable {
 
   /**
    * Add residual scores to the data offsets.

@@ -27,6 +27,8 @@ import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
 import scala.util.{Success, Try}
 
+import com.linkedin.photon.ml.constants.MathConst
+
 /**
  * A collection of methods used to validate data before applying ML algorithms.
  */
@@ -50,6 +52,7 @@ object DataValidators extends Logging {
   val dataFrameBaseValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] = List(
     (rowHasFiniteFeatures, InputColumnsNames.FEATURES_DEFAULT, "Data contains row(s) with non-finite feature(s)"),
     (rowHasFiniteWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-finite weight(s)"),
+    (rowHasPositiveWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-positive weight(s)"),
     (rowHasFiniteOffset, InputColumnsNames.OFFSET, "Data contains row(s) with non-finite offset(s)"))
   val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
     (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") :: dataFrameBaseValidators
@@ -184,6 +187,19 @@ object DataValidators extends Logging {
   def rowHasFiniteWeight(row: Row, inputColumnName: String): Boolean = {
     val weight = row.getAs[Double](inputColumnName)
     !(weight.isNaN || weight.isInfinite)
+  }
+
+  /**
+   * Verify that a row has a positive weight.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the weight of the input data point is positive
+   */
+  def rowHasPositiveWeight(row: Row, inputColumnName: String): Boolean = {
+    val weight = row.getAs[Double](inputColumnName)
+    // Weight should be significantly larger than 0
+    weight > MathConst.EPSILON
   }
 
   /**

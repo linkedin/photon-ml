@@ -14,57 +14,41 @@
  */
 package com.linkedin.photon.ml.data.avro
 
+import java.io.File
+
+import scala.collection.JavaConversions._
 import scala.collection.immutable.IndexedSeq
 import scala.util.Random
 
 import breeze.linalg.Vector
+import org.apache.avro.file.DataFileReader
+import org.apache.avro.specific.SpecificDatumReader
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.cli.game.training.GameTrainingParams
+import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
+import com.linkedin.photon.ml.{Constants, TaskType}
+import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
 
 /**
  * Unit tests for model processing utilities.
  */
 class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  /**
-   * Ancillary function to setup some params, as required by the unit tests.
-   *
-   * @param updates A sequence of pairs (Params field name, field value) to customize the Params returned
-   * @return An instance of Params
-   */
-  def setupParams(updates: (String, Any)*): GameTrainingParams = {
-
-    import GLMOptimizationConfiguration.{SPLITTER => S}
-
-    val params = new GameTrainingParams
-
-    // Some default optimization configurations
-    val feConfig1 = GLMOptimizationConfiguration(s"10${S}1e-2${S}1.0${S}0.3${S}TRON${S}L2")
-    val reConfig1 = GLMOptimizationConfiguration(s"20${S}1e-2${S}1.0${S}0.3${S}LBFGS${S}L1")
-    val reConfig2 = GLMOptimizationConfiguration(s"30${S}1e-2${S}1.0${S}0.2${S}TRON${S}L2")
-
-    params.fixedEffectOptimizationConfigurations = Array(Map("fixed" -> feConfig1))
-    params.randomEffectOptimizationConfigurations = Array(Map("random1" -> reConfig1, "random2" -> reConfig2))
-
-    // Now update the created Params with the updates specified in the call
-    updates.foreach {
-      case (name: String, value: Any) =>
-        params.getClass.getMethods.find(_.getName == name + "_$eq").get.invoke(params, value.asInstanceOf[AnyRef])
-    }
-
-    params
-  }
+  import ModelProcessingUtilsTest._
 
   /**
    * Generate a decent GAME model for subsequent tests.
@@ -134,24 +118,33 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   @Test
   def testLoadAndSaveGameModels(): Unit = sparkTest("testLoadAndSaveGameModels") {
 
-    val (gameModel, featureIndexLoaders, _) = makeGameModel()
-
     // Default number of output files
     val numberOfOutputFilesForRandomEffectModel = 2
-    val params = setupParams(("numberOfOutputFilesForRandomEffectModel", numberOfOutputFilesForRandomEffectModel))
-    val outputDir = getTmpDir
-    val outputDirAsPath = new Path(outputDir)
 
-    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, outputDir, gameModel, featureIndexLoaders)
+    val (gameModel, featureIndexLoaders, _) = makeGameModel()
+    val outputDir = new Path(getTmpDir)
 
-    val fs = outputDirAsPath.getFileSystem(sc.hadoopConfiguration)
-    assertTrue(fs.exists(outputDirAsPath))
+    ModelProcessingUtils.saveGameModelToHDFS(
+      sc,
+      outputDir,
+      gameModel,
+      TaskType.LOGISTIC_REGRESSION,
+      GAME_OPTIMIZATION_CONFIGURATION,
+      Some(numberOfOutputFilesForRandomEffectModel),
+      featureIndexLoaders)
+
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(outputDir))
 
     // Check if the numberOfOutputFilesForRandomEffectModel parameter is working or not
-    val randomEffectModelCoefficientsDir =
-      new Path(outputDirAsPath, s"${AvroConstants.RANDOM_EFFECT}/RE1/${AvroConstants.COEFFICIENTS}")
-    val numRandomEffectModelFiles = fs.listStatus(randomEffectModelCoefficientsDir)
+    val randomEffectModelCoefficientsDir = new Path(
+      outputDir,
+      s"${AvroConstants.RANDOM_EFFECT}/RE1/${AvroConstants.COEFFICIENTS}")
+    val numRandomEffectModelFiles = fs
+      .listStatus(randomEffectModelCoefficientsDir)
       .count(_.getPath.toString.contains("part"))
+
     assertEquals(numRandomEffectModelFiles, numberOfOutputFilesForRandomEffectModel,
       s"Expected number of random effect model files: $numberOfOutputFilesForRandomEffectModel, " +
         s"found: $numRandomEffectModelFiles")
@@ -173,14 +166,21 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   @Test
   def testLoadGameModelsWithoutFeatureIndex(): Unit = sparkTest("testLoadGameModelsWithoutFeatureIndex") {
 
-    val (params, modelDir) = (setupParams(), getTmpDir)
     val (gameModel, featureIndexLoaders, _) = makeGameModel()
+    val outputDir = new Path(getTmpDir)
 
-    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelDir, gameModel, featureIndexLoaders)
+    ModelProcessingUtils.saveGameModelToHDFS(
+      sc,
+      outputDir,
+      gameModel,
+      TaskType.LOGISTIC_REGRESSION,
+      GAME_OPTIMIZATION_CONFIGURATION,
+      randomEffectModelFileLimit = None,
+      featureIndexLoaders)
 
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
-      modelDir,
+      outputDir,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
       None)
 
@@ -214,16 +214,23 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   @Test
   def testExtractGameModelFeatures(): Unit = sparkTest("testExtractGameModelFeatures") {
 
-    val (params, modelDir) = (setupParams(), getTmpDir)
     val (gameModel, featureIndexLoaders, featureNames) = makeGameModel()
+    val outputDir = new Path(getTmpDir)
 
-    ModelProcessingUtils.saveGameModelsToHDFS(sc, params, modelDir, gameModel, featureIndexLoaders)
+    ModelProcessingUtils.saveGameModelToHDFS(
+      sc,
+      outputDir,
+      gameModel,
+      TaskType.LOGISTIC_REGRESSION,
+      GAME_OPTIMIZATION_CONFIGURATION,
+      randomEffectModelFileLimit = None,
+      featureIndexLoaders)
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The first value returned is the feature index, which we don't need here
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
-      modelDir,
+      outputDir,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
       None)
 
@@ -276,6 +283,13 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     )
   }
 
+  /**
+   * Test reading/writing [[MatrixFactorizationModel]].
+   *
+   * @param numLatentFactors Number of latent factors
+   * @param numRows Number of rows
+   * @param numCols Number of columns
+   */
   @Test(dataProvider = "matrixFactorizationConfigProvider")
   def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
     sparkTest("testLoadAndSaveMatrixFactorizationModels") {
@@ -330,9 +344,144 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   @Test
   def testSaveAndLoadGameModelMetadata(): Unit = sparkTest("testSaveAndLoadGameModelMetadata") {
 
-    val params = setupParams()
-    ModelProcessingUtils.saveGameModelMetadataToHDFS(sc, params, "/tmp")
-    val params2 = ModelProcessingUtils.loadGameModelMetadataFromHDFS(sc, "/tmp")
-    assertEquals(params.taskType, params2.taskType)
+    val outputDir = new Path(getTmpDir)
+
+    ModelProcessingUtils.saveGameModelMetadataToHDFS(sc, outputDir, TASK_TYPE, GAME_OPTIMIZATION_CONFIGURATION)
+
+    assertEquals(
+      TASK_TYPE,
+      ModelProcessingUtils
+        .loadGameModelMetadataFromHDFS(sc, outputDir)
+        .getOrElse(GameTrainingDriver.trainingTask, TaskType.NONE))
   }
+
+  /**
+   * Test computing and writing out [[BasicStatisticalSummary]].
+   */
+  @Test
+  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
+
+    val dim: Int = 5
+    val minVector = toSparseVector(Array((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d)), dim)
+    val maxVector = toSparseVector(Array((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+    val normL1Vector = toSparseVector(Array((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
+    val normL2Vector = toSparseVector(Array((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d)), dim)
+    val numNonzeros = toSparseVector(Array((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d)), dim)
+    val meanVector = toSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
+    val varVector = toSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
+
+    val summary = BasicStatisticalSummary(
+      mean = meanVector,
+      variance = varVector,
+      count = 101L,
+      numNonzeros = numNonzeros,
+      max = maxVector,
+      min = minVector,
+      normL1 = normL1Vector,
+      normL2 = normL2Vector,
+      meanAbs = meanVector)
+
+    val indexMap: IndexMap = new DefaultIndexMap(Map(
+      "f0" + Constants.DELIMITER -> 0,
+      "f1" + Constants.DELIMITER + "t1" -> 1,
+      "f2" + Constants.DELIMITER -> 2,
+      "f3" + Constants.DELIMITER + "t3" -> 3,
+      "f4" + Constants.DELIMITER -> 4))
+
+    val tempOut = new Path(getTmpDir, "summary-output")
+    ModelProcessingUtils.writeBasicStatistics(sc, summary, tempOut, indexMap)
+
+    val reader = DataFileReader.openReader[FeatureSummarizationResultAvro](
+      new File(tempOut.toString + "/part-00000.avro"),
+      new SpecificDatumReader[FeatureSummarizationResultAvro]())
+    var count = 0
+    while (reader.hasNext) {
+      val record = reader.next()
+      val feature = record.getFeatureName + Constants.DELIMITER + record.getFeatureTerm
+      val featureId = indexMap(feature)
+      val metrics = record.getMetrics.map {case (key, value) => (String.valueOf(key), value)}
+      var foundMatchedOne = true
+      featureId match {
+        case 0 =>
+          assertEquals(feature, "f0" + Constants.DELIMITER)
+          assertEquals(metrics("min"), 1.5d, EPSILON)
+          assertEquals(metrics("max"), 10d, EPSILON)
+          assertEquals(metrics("normL1"), 1d, EPSILON)
+          assertEquals(metrics("normL2"), 2d, EPSILON)
+          assertEquals(metrics("numNonzeros"), 6d, EPSILON)
+          assertEquals(metrics("mean"), 1.1d, EPSILON)
+          assertEquals(metrics("variance"), 1d, EPSILON)
+
+        case 1 =>
+          assertEquals(feature, "f1" + Constants.DELIMITER + "t1")
+          assertEquals(metrics("min"), 0d, EPSILON)
+          assertEquals(metrics("max"), 0d, EPSILON)
+          assertEquals(metrics("normL1"), 0d, EPSILON)
+          assertEquals(metrics("normL2"), 0d, EPSILON)
+          assertEquals(metrics("numNonzeros"), 0d, EPSILON)
+          assertEquals(metrics("mean"), 0d, EPSILON)
+          assertEquals(metrics("variance"), 0d, EPSILON)
+
+        case 2 =>
+          assertEquals(feature, "f2" + Constants.DELIMITER)
+          assertEquals(metrics("min"), 0d, EPSILON)
+          assertEquals(metrics("max"), 0d, EPSILON)
+          assertEquals(metrics("normL1"), 0d, EPSILON)
+          assertEquals(metrics("normL2"), 0d, EPSILON)
+          assertEquals(metrics("numNonzeros"), 0d, EPSILON)
+          assertEquals(metrics("mean"), 0d, EPSILON)
+          assertEquals(metrics("variance"), 0d, EPSILON)
+
+        case 3 =>
+          assertEquals(feature, "f3" + Constants.DELIMITER + "t3")
+          assertEquals(metrics("min"), 6.7d, EPSILON)
+          assertEquals(metrics("max"), 7d, EPSILON)
+          assertEquals(metrics("normL1"), 7d, EPSILON)
+          assertEquals(metrics("normL2"), 8d, EPSILON)
+          assertEquals(metrics("numNonzeros"), 3d, EPSILON)
+          assertEquals(metrics("mean"), 2.4d, EPSILON)
+          assertEquals(metrics("variance"), 7d, EPSILON)
+
+        case 4 =>
+          assertEquals(feature, "f4" + Constants.DELIMITER)
+          assertEquals(metrics("min"), 2.33d, EPSILON)
+          assertEquals(metrics("max"), 4d, EPSILON)
+          assertEquals(metrics("normL1"), 4d, EPSILON)
+          assertEquals(metrics("normL2"), 5d, EPSILON)
+          assertEquals(metrics("numNonzeros"), 89d, EPSILON)
+          assertEquals(metrics("mean"), 3.6d, EPSILON)
+          assertEquals(metrics("variance"), 0.5d, EPSILON)
+
+        case _ => foundMatchedOne = false
+      }
+
+      if (foundMatchedOne) {
+        count += 1
+      }
+    }
+
+    assertEquals(count, 5)
+  }
+}
+
+object ModelProcessingUtilsTest {
+
+  private val EPSILON = 1e-6
+
+  val TASK_TYPE = TaskType.LOGISTIC_REGRESSION
+  val GAME_OPTIMIZATION_CONFIGURATION: GameEstimator.GameOptimizationConfiguration = Map(
+    ("fixed",
+      FixedEffectOptimizationConfiguration(
+        OptimizerConfig(OptimizerType.TRON, 10, 1e-1, constraintMap = None),
+        NoRegularizationContext)),
+    ("random1",
+      RandomEffectOptimizationConfiguration(
+        OptimizerConfig(OptimizerType.LBFGS, 20, 1e-2, constraintMap = None),
+        L1RegularizationContext,
+        regularizationWeight = 1D)),
+    ("random2",
+      RandomEffectOptimizationConfiguration(
+        OptimizerConfig(OptimizerType.TRON, 30, 1e-3, constraintMap = None),
+        L2RegularizationContext,
+        regularizationWeight = 2D)))
 }

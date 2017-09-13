@@ -20,89 +20,175 @@ import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
 import org.mockito.Mockito._
 import org.testng.Assert._
-import org.testng.annotations.{BeforeMethod, DataProvider, Test}
+import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
-import com.linkedin.photon.ml.model.GameModel
-import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
+import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 
 /**
- * Unit tests for GameEstimatorEvaluationFunction
+ * Unit tests for [[GameEstimatorEvaluationFunction]].
  */
 class GameEstimatorEvaluationFunctionTest {
 
-  val gameModel = mock(classOf[GameModel])
-  val evaluationResults = mock(classOf[EvaluationResults])
-  val evaluator = mock(classOf[Evaluator])
-  val estimator = mock(classOf[GameEstimator])
-  val trainingData = mock(classOf[DataFrame])
-  val validationData = mock(classOf[DataFrame])
-  val optimizationConfiguration = mock(classOf[GameModelOptimizationConfiguration])
-  val evaluationFunction = new GameEstimatorEvaluationFunction(
-    estimator, optimizationConfiguration, trainingData, validationData)
-  val tol = 1e-7
-  val random = new Random(1)
-  val eval = random.nextDouble
-  val regWeights = Array.fill[Double](8) { random.nextDouble }
+  private val mockOptimizerConfig = mock(classOf[OptimizerConfig])
+  private val mockRegContext = mock(classOf[RegularizationContext])
+  private val mockMFOptConfig = mock(classOf[MFOptimizationConfiguration])
+  private val mockEstimator = mock(classOf[GameEstimator])
+  private val mockData = mock(classOf[DataFrame])
 
+  private val random = new Random(1)
+  private val regWeights = Array.fill[Double](8) { random.nextDouble }
+  private val tolerance = MathConst.EPSILON
+
+  /**
+   * Test that a [[GameOptimizationConfiguration]] can be correctly constructed from a hyperparameter vector.
+   */
   @Test
   def testVectorToConfiguration(): Unit = {
-    val configuration = GameModelOptimizationConfiguration(
-      Map("a" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(0))),
-      Map("b" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(1))),
-      Map("c" -> FactoredRandomEffectOptimizationConfiguration(
-        GLMOptimizationConfiguration(regularizationWeight = regWeights(2)),
-        GLMOptimizationConfiguration(regularizationWeight = regWeights(3)),
-        MFOptimizationConfiguration(1, 1))))
 
-    val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, configuration, trainingData, validationData)
+    val configuration: GameOptimizationConfiguration = Map(
+      ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
+      ("c", FactoredRandomEffectOptimizationConfiguration(
+        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
+        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
+        mockMFOptConfig)))
 
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, configuration, mockData, mockData)
     val hypers = DenseVector(regWeights(4), regWeights(5), regWeights(6), regWeights(7))
     val newConfiguration = evaluationFunction.vectorToConfiguration(hypers)
 
-    assertEquals(newConfiguration.fixedEffectOptimizationConfiguration("a").regularizationWeight, regWeights(4))
-    assertEquals(newConfiguration.randomEffectOptimizationConfiguration("b").regularizationWeight, regWeights(5))
-    assertEquals(newConfiguration.factoredRandomEffectOptimizationConfiguration("c")
-      .randomEffectOptimizationConfiguration.regularizationWeight, regWeights(6))
-    assertEquals(newConfiguration.factoredRandomEffectOptimizationConfiguration("c")
-      .latentFactorOptimizationConfiguration.regularizationWeight, regWeights(7))
+    assertEquals(
+      newConfiguration("a").asInstanceOf[FixedEffectOptimizationConfiguration].regularizationWeight,
+      regWeights(4))
+    assertEquals(
+      newConfiguration("b").asInstanceOf[RandomEffectOptimizationConfiguration].regularizationWeight,
+      regWeights(5))
+    assertEquals(
+      newConfiguration("c").asInstanceOf[FactoredRandomEffectOptimizationConfiguration].reOptConfig.regularizationWeight,
+      regWeights(6))
+    assertEquals(
+      newConfiguration("c").asInstanceOf[FactoredRandomEffectOptimizationConfiguration].lfOptConfig.regularizationWeight,
+      regWeights(7))
   }
 
   @DataProvider
-  def configurationProvider = {
+  def invalidVectorProvider(): Array[Array[Any]] = {
+
+    val configuration: GameOptimizationConfiguration = Map(
+      ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
+      ("c", FactoredRandomEffectOptimizationConfiguration(
+        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
+        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
+        mockMFOptConfig)))
+
     Array(
-      Array(GameModelOptimizationConfiguration(
-        Map("a" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(0))),
-        Map(),
-        Map()),
-        DenseVector(regWeights(0))),
-
-      Array(GameModelOptimizationConfiguration(
-        Map("a" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(0))),
-        Map("b" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(1))),
-        Map()),
-        DenseVector(regWeights(0), regWeights(1))),
-
-      Array(GameModelOptimizationConfiguration(
-        Map("a" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(0))),
-        Map("b" -> GLMOptimizationConfiguration(regularizationWeight = regWeights(1))),
-        Map("c" -> FactoredRandomEffectOptimizationConfiguration(
-          GLMOptimizationConfiguration(regularizationWeight = regWeights(2)),
-          GLMOptimizationConfiguration(regularizationWeight = regWeights(3)),
-          MFOptimizationConfiguration(1, 1)))),
-        DenseVector(regWeights(0), regWeights(1), regWeights(2), regWeights(3)))
-    )
+      Array(configuration, DenseVector(regWeights(0))),
+      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2))),
+      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2), regWeights(3), regWeights(4))))
   }
 
+  /**
+   * Test that errors caused by invalid vectors will be caught when attempting to construct a
+   * [[GameOptimizationConfiguration]].
+   *
+   * @param config The base configuration to use as a template
+   * @param hypers The hyperparameter vector
+   */
+  @Test(dataProvider = "invalidVectorProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidVectorToConfiguration(config: GameOptimizationConfiguration, hypers: DenseVector[Double]): Unit = {
+
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData)
+    evaluationFunction.vectorToConfiguration(hypers)
+  }
+
+  @DataProvider
+  def configurationProvider: Array[Array[Any]] =
+    Array(
+      Array(
+        Map(("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0)))),
+        DenseVector(regWeights(0))),
+      Array(
+        Map(("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1)))),
+        DenseVector(regWeights(1))),
+      Array(
+        Map((
+          "c",
+          FactoredRandomEffectOptimizationConfiguration(
+            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
+            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
+            mockMFOptConfig))),
+        DenseVector(regWeights(2), regWeights(3))),
+      Array(
+        Map(
+          ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+          ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
+          ("c", FactoredRandomEffectOptimizationConfiguration(
+            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
+            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
+            mockMFOptConfig))),
+        DenseVector(regWeights(0), regWeights(1), regWeights(2), regWeights(3))))
+
+  /**
+   * Test that a [[GameOptimizationConfiguration]] can be correctly converted to a hyperparameter vector.
+   *
+   * @param config The base configuration to use as a template
+   * @param expected The expected hyperparameter vector for the configuration
+   */
   @Test(dataProvider = "configurationProvider")
-  def testVectorizeParams(configuration: GameModelOptimizationConfiguration, expected: DenseVector[Double]): Unit = {
-    val gameResult = (gameModel, Some(evaluationResults), configuration)
-    val result = evaluationFunction.vectorizeParams(gameResult)
+  def testConfigurationToVector(config: GameOptimizationConfiguration, expected: DenseVector[Double]): Unit = {
+
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData)
+    val result = evaluationFunction.configurationToVector(config)
 
     assertEquals(result.length, expected.length)
-    assertIterableEqualsWithTolerance(result.toArray, expected.toArray, tol)
+    assertIterableEqualsWithTolerance(result.toArray, expected.toArray, tolerance)
+  }
+
+  @DataProvider
+  def invalidConfigurationProvider: Array[Array[Any]] = {
+
+    val configuration1: GameOptimizationConfiguration = Map(
+      ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))))
+    val configuration2: GameOptimizationConfiguration = Map(
+      ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
+    val configuration3: GameOptimizationConfiguration = Map(
+      ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+      ("c", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
+    val configuration4: GameOptimizationConfiguration = Map(
+      ("a", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
+      ("c", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
+
+    Array(
+      // Configuration dimension size mismatch
+      Array(configuration1, configuration2),
+      Array(configuration2, configuration1),
+
+      // Configuration coordinate mismatch
+      Array(configuration2, configuration3),
+
+      // Configuration coordinate type mismatch
+      Array(configuration3, configuration4))
+  }
+
+  /**
+   * Test that [[GameOptimizationConfiguration]] instances which do not match the template configuration will be caught
+   * and throw error when attempting to construct a hyperparameter vector.
+   *
+   * @param baseConfig The base configuration to use as a template
+   * @param vectorConfig A dissimilar configuration from which to attempt to construct a hyperparameter vector
+   */
+  @Test(dataProvider = "invalidConfigurationProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testConfigurationToVector(
+    baseConfig: GameOptimizationConfiguration,
+    vectorConfig: GameOptimizationConfiguration): Unit = {
+
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, baseConfig, mockData, mockData)
+    evaluationFunction.configurationToVector(vectorConfig)
   }
 }

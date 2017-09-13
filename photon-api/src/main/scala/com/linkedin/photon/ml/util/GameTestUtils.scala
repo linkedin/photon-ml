@@ -26,8 +26,9 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
 import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.normalization.NoNormalization
-import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -80,6 +81,20 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
 
   /**
+   * Generates an optimizer configuration.
+   *
+   * @param optimizer The optimizer type
+   * @param maxIterations The upper limit on the number of optimization iterations to perform
+   * @param tolerance The relative tolerance limit for optimization
+   * @return A newly generated [[OptimizerConfig]]
+   */
+  def generateOptimizerConfig(
+      optimizer: OptimizerType = OptimizerType.LBFGS,
+      maxIterations: Int = 80,
+      tolerance: Double = 1e-6): OptimizerConfig =
+    OptimizerConfig(optimizer, maxIterations, tolerance, constraintMap = None)
+
+  /**
    * Generates Photon ML labeled points.
    *
    * @param size The size of the set to of labeled points to generate
@@ -126,7 +141,8 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated fixed effect optimization problem
    */
   def generateFixedEffectOptimizationProblem: DistributedOptimizationProblem[DistributedGLMLossFunction] = {
-    val configuration = GLMOptimizationConfiguration()
+
+    val configuration = FixedEffectOptimizationConfiguration(generateOptimizerConfig())
 
     DistributedOptimizationProblem(
       configuration,
@@ -232,16 +248,14 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
   def generateRandomEffectOptimizationProblem(
     dataset: RandomEffectDataSet): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
 
-    val configuration = GLMOptimizationConfiguration()
+    val configuration = RandomEffectOptimizationConfiguration(generateOptimizerConfig())
 
     RandomEffectOptimizationProblem(
       dataset,
       configuration,
       SingleNodeGLMLossFunction(configuration)(LogisticLossFunction),
       LogisticRegressionModel.apply,
-      sc.broadcast(NoNormalization()),
-      isTrackingState = false,
-      isComputingVariance = false)
+      sc.broadcast(NoNormalization()))
   }
 
   /**
@@ -261,8 +275,8 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       numEntities: Int,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed):
-        (RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction], RandomEffectModelInProjectedSpace) = {
+      seed: Int = DefaultSeed)
+    : (RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction], RandomEffectModelInProjectedSpace) = {
 
     val randomEffectIds = (1 to numEntities).map("re" + _)
 

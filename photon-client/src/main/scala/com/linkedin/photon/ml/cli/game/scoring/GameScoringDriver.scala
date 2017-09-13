@@ -18,8 +18,8 @@ import scala.collection.Map
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.param.{ParamMap, Params}
 import org.apache.spark.rdd.RDD
-import org.slf4j.Logger
 
 import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.cli.game.GameDriver
@@ -27,21 +27,41 @@ import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum}
-import com.linkedin.photon.ml.evaluation.{MultiEvaluatorType, EvaluatorFactory, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
+import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
 
 /**
  * Driver for GAME full model scoring.
  */
-class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
-  extends GameDriver(sc, params, logger) {
+object GameScoringDriver extends GameDriver {
 
-  import params._
+  //
+  // Members
+  //
 
-  protected[game] val idTagSet: Set[String] = {
-    randomEffectTypeSet ++ evaluatorTypes.map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
-  }
+  protected[scoring] var sc: SparkContext = _
+  protected[scoring] var parameters: GameScoringParams = _
+  protected[scoring] implicit var logger: PhotonLogger = _
+
+  val SCORES_DIR = "scores"
+
+  //
+  // Params trait extensions
+  //
+
+  /**
+   * Dummy function until refactored.
+   *
+   * @param extra Additional parameters which should overwrite the values being copied
+   * @return This object
+   */
+  override def copy(extra: ParamMap): Params = this
+
+  //
+  // Scoring driver functions
+  //
 
   /**
    * Builds a GAME data set according to input data configuration.
@@ -52,31 +72,40 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
   protected def prepareGameDataSet(
     featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): RDD[(Long, GameDatum)] = {
 
-    val recordsPath = pathsForDateRange(inputDirs, dateRangeOpt, dateRangeDaysAgoOpt)
+    // Handle date range input
+    val dateRangeOpt = IOUtils.resolveRange(
+      parameters.dateRangeOpt.map(DateRange.fromDateString),
+      parameters.dateRangeDaysAgoOpt.map(DaysRange.fromDaysString))
+    val recordsPath = pathsForDateRange(parameters.inputDirs.toSet[String].map(new Path(_)), dateRangeOpt)
+
     logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
 
+    val featureShardIdToFeatureSectionKeysMap = parameters.featureShardIdToFeatureSectionKeysMap
+    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
     val dataReader = new AvroDataReader(sc)
     val data = dataReader.readMerged(
-      recordsPath,
+      recordsPath.map(_.toString),
       featureShardIdToFeatureMapLoader.toMap,
-      featureShardIdToFeatureSectionKeysMap,
+      parameters.featureShardIdToFeatureSectionKeysMap,
       parallelism)
-
     val partitioner = new LongHashPartitioner(parallelism)
+    val idTagSet: Set[String] = parameters.randomEffectTypeSet ++
+      parameters.evaluatorTypes.map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
     val gameDataSet = GameConverters
       .getGameDataSetFromDataFrame(
         data,
         featureShardIdToFeatureSectionKeysMap.keys.toSet,
         idTagSet,
         isResponseRequired = false,
-        params.inputColumnsNames)
+        parameters.inputColumnsNames)
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-    if (logDatasetAndModelStats) {
+    if (parameters.logDatasetAndModelStats) {
       logGameDataSet(gameDataSet)
     }
+
     gameDataSet
   }
 
@@ -90,7 +119,7 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     logger.debug(s"Summary for the GAME data set")
     val numSamples = gameDataSet.count()
     logger.debug(s"numSamples: $numSamples")
-    randomEffectTypeSet.foreach { idTag =>
+    parameters.randomEffectTypeSet.foreach { idTag =>
       val numSamplesStats = gameDataSet.map { case (_, gameData) =>
           val idValue = gameData.idTagToValueMap(idTag)
           (idValue, 1)
@@ -118,17 +147,17 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     // Load the model from HDFS, ignoring the feature index loader
     val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
-      gameModelInputDir,
+      new Path(parameters.gameModelInputDir),
       StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
       Some(featureShardIdToIndexMapLoader))
 
-    if (logDatasetAndModelStats) {
+    if (parameters.logDatasetAndModelStats) {
       logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
     }
 
     // Need to split these calls to keep correct return type
     val scores = gameModel.score(gameDataSet)
-    val storageLevel = if (params.spillScores) {
+    val storageLevel = if (parameters.spillScores) {
       StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL
     } else {
       StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL
@@ -161,7 +190,7 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
         scoredGameDatum.idTagToValueMap)
     }
 
-    if (logDatasetAndModelStats) {
+    if (parameters.logDatasetAndModelStats) {
       // Persist scored items here since we introduce multiple passes
       scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
@@ -170,26 +199,37 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     }
 
     val scoredItemsToBeSaved =
-      if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
-        scoredItems.repartition(numOutputFilesForScores)
+      if (parameters.numOutputFilesForScores > 0 && parameters.numOutputFilesForScores != scoredItems.partitions.length) {
+        scoredItems.repartition(parameters.numOutputFilesForScores)
       } else {
         scoredItems
       }
-    val scoresDir = Driver.getScoresDir(outputDir)
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = gameModelId, scoresDir)
+    val scoresDir = new Path(parameters.outputDir, SCORES_DIR)
+
+    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, modelId = parameters.gameModelId, scoresDir.toString)
     scoredItems.unpersist()
   }
 
   /**
    * Run the driver.
    */
-  def run(): Unit = {
+  protected[scoring] def run(): Unit = {
     val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
-    IOUtils.processOutputDir(outputDir, deleteOutputDirIfExists, sc.hadoopConfiguration)
+    IOUtils.processOutputDir(new Path(parameters.outputDir), parameters.deleteOutputDirIfExists, sc.hadoopConfiguration)
 
     timer.start()
+    // TODO: Remove after updated CLI
+    val featureShardConfigs = parameters.featureShardIdToFeatureSectionKeysMap.map { case (featureShardId, featureBags) =>
+      (featureShardId, FeatureShardConfiguration(featureBags, hasIntercept = true))
+    }
+    set(featureShardConfigurations, featureShardConfigs)
+    set(featureBagsDirectory, new Path(parameters.featureNameAndTermSetInputPath))
+    parameters.offHeapIndexMapDir.foreach { dir =>
+      set(offHeapIndexMapDirectory, new Path(dir))
+      set(offHeapIndexMapPartitions, parameters.offHeapIndexMapNumPartitions)
+    }
     val featureShardIdToFeatureMapMap = prepareFeatureMaps()
     timer.stop()
     logger.info(s"Time elapsed after preparing feature maps: ${timer.durationSeconds} (s)\n")
@@ -210,38 +250,12 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
     logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
 
     timer.start()
-    evaluatorTypes.foreach(_.foreach { evaluatorType =>
-      val evaluationMetricValue = Driver.evaluateScores(evaluatorType, scores, gameDataSet)
+    parameters.evaluatorTypes.foreach(_.foreach { evaluatorType =>
+      val evaluationMetricValue = evaluateScores(evaluatorType, scores, gameDataSet)
       logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
     })
     timer.stop()
     logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
-  }
-}
-
-object Driver {
-
-  private val SCORES = "scores"
-  private val LOGS = "logs"
-
-  /**
-   * Get scores directory
-   *
-   * @param outputDir Directory where the scores will be written
-   * @return The directory name for the scores
-   */
-  protected[scoring] def getScoresDir(outputDir: String): String = {
-    new Path(outputDir, SCORES).toString
-  }
-
-  /**
-   * Get logs directory
-   *
-   * @param outputDir Directory where the logs will be written
-   * @return The directory name for the logs
-   */
-  protected[scoring] def getLogsPath(outputDir: String): String = {
-    new Path(outputDir, LOGS).toString
   }
 
   /**
@@ -269,29 +283,24 @@ object Driver {
   }
 
   /**
-   * Main entry point.
+   * Entry point to the driver.
    *
-   * @param args The command line arguments to parse
+   * @param args The command line arguments for the job
    */
   def main(args: Array[String]): Unit = {
 
     val timer = Timer.start()
 
-    val params = Params.parseFromCommandLine(args)
-    import params._
-
-    val sc = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
-
-    val logsDir = getLogsPath(outputDir)
-    val logger = new PhotonLogger(logsDir, sc)
-    //TODO: This Photon log level should be made configurable
+    parameters = GameScoringParams.parseFromCommandLine(args)
+    sc = SparkContextConfiguration.asYarnClient(parameters.applicationName, useKryo = true)
+    logger = new PhotonLogger(new Path(parameters.outputDir), sc)
+    // TODO: This Photon log level should be made configurable
     logger.setLogLevel(PhotonLogger.LogLevelDebug)
 
     try {
       logger.debug(params.toString + "\n")
 
-      val job = new Driver(params, sc, logger)
-      job.run()
+      run()
 
       timer.stop()
       logger.info(s"Overall time elapsed ${timer.durationMinutes} minutes")

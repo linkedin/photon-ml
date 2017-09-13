@@ -14,35 +14,44 @@
  */
 package com.linkedin.photon.ml.estimators
 
-import scala.collection.SortedMap
-import scala.collection.mutable.Queue
+import scala.collection.mutable
 
 import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
 
-import com.linkedin.photon.ml.estimators.GameEstimator.GameResult
+import com.linkedin.photon.ml.estimators.GameEstimator.{GameOptimizationConfiguration, GameResult}
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
-import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.game.GameModelOptimizationConfiguration
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 
 /**
- * Evaluation function implementation for GAME
+ * Evaluation function implementation for GAME.
  *
  * An evaluation function is the integration point between the hyperparameter tuning module and an estimator, or any
  * system that can unpack a vector of values and produce a real evaluation.
  */
 class GameEstimatorEvaluationFunction(
     estimator: GameEstimator,
-    optimizationConfiguration: GameModelOptimizationConfiguration,
+    baseConfig: GameOptimizationConfiguration,
     data: DataFrame,
     validationData: DataFrame)
   extends EvaluationFunction[GameResult] {
 
+  // CoordinateOptimizationConfigurations sorted in order by coordinate ID name
+  private val baseConfigSeq = baseConfig.toSeq.sortBy(_._1)
+
+  // Number of parameters in the base configuration
+  val numParams: Int = baseConfigSeq.foldLeft(0) { case (sum, optConfig) =>
+    optConfig._2 match {
+      case _: FactoredRandomEffectOptimizationConfiguration => sum + 2
+      case _ => sum + 1
+    }
+  }
+
   /**
-   * Performs the evaluation
+   * Performs the evaluation.
    *
-   * @param hyperParameters the vector of hyperparameter values under which to evaluate the function
-   * @return a tuple of the evaluated value and the original output from the inner estimator
+   * @param hyperParameters The vector of hyperparameter values under which to evaluate the function
+   * @return A tuple of the evaluated value and the original output from the inner estimator
    */
   override def apply(hyperParameters: DenseVector[Double]): (Double, GameResult) = {
     val newConfiguration = vectorToConfiguration(hyperParameters)
@@ -55,19 +64,19 @@ class GameEstimatorEvaluationFunction(
   }
 
   /**
-   * Extracts a vector representation from the hyperparameters associated with the original estimator output
+   * Extracts a vector representation from the hyperparameters associated with the original estimator output.
    *
-   * @param gameResult the original estimator output
-   * @return vector representation
+   * @param gameResult The original estimator output
+   * @return A vector representation of hyperparameters for a [[GameResult]]
    */
   override def vectorizeParams(gameResult: GameResult): DenseVector[Double] =
     configurationToVector(gameResult._3)
 
   /**
-   * Extracts the evaluated value from the original estimator output
+   * Extracts the evaluated value from the original estimator output.
    *
-   * @param gameResult the original estimator output
-   * @return the evaluated value
+   * @param gameResult The original estimator output
+   * @return The evaluated value
    */
   override def getEvaluationValue(gameResult: GameResult): Double = gameResult match {
     case (_, Some(evaluations), _) =>
@@ -79,90 +88,81 @@ class GameEstimatorEvaluationFunction(
   }
 
   /**
-   * Computes the number of hyperparameters from the model optimization configuration
+   * Extracts a vector representation from the hyperparameters associated with the original estimator output.
    *
-   * @param configuration the optimization configuration from one iteration of GAME training
-   * @return the number of hyperparameters
+   * @param configuration The GAME optimization configuration containing parameters
+   * @return A vector representation of hyperparameters for a [[GameOptimizationConfiguration]]
    */
-  protected[ml] def numParams(configuration: GameModelOptimizationConfiguration): Int =
-    configurationToVector(configuration).length
+  protected[ml] def configurationToVector(configuration: GameOptimizationConfiguration): DenseVector[Double] = {
 
-  /**
-   * Extracts a vector representation from the hyperparameters associated with the original estimator output
-   *
-   * @param configuration the GAME optimization configuration containing parameters
-   * @return vector representation
-   */
-  protected[ml] def configurationToVector(
-      configuration: GameModelOptimizationConfiguration): DenseVector[Double] = {
+    // Input configurations must contain the exact same coordinates as the base configuration
+    require(
+      baseConfig.size == configuration.size,
+      s"Configuration dimension mismatch; ${baseConfig.size} != ${configuration.size}")
+    baseConfig.foreach { case (coordinateId, optConfig) =>
+      require(configuration.contains(coordinateId), s"Configuration missing initial coordinate $coordinateId")
+      require(
+        configuration(coordinateId).getClass == optConfig.getClass,
+        s"Configuration has mismatched types for coordinate $coordinateId; " +
+          s"${optConfig.getClass} != ${configuration(coordinateId).getClass}")
+    }
 
-    // Use sorted maps to ensure consistent vector layout
-    val fixedEffectOptimizationConfiguration = SortedMap(configuration.fixedEffectOptimizationConfiguration.toSeq: _*)
-    val randomEffectOptimizationConfiguration = SortedMap(configuration.randomEffectOptimizationConfiguration.toSeq: _*)
-    val factoredRandomEffectOptimizationConfiguration =
-      SortedMap(configuration.factoredRandomEffectOptimizationConfiguration.toSeq: _*)
+    val parameterArray = configuration
+      .toSeq
+      .sortBy(_._1)
+      .flatMap { case (_, optConfig) =>
+        optConfig match {
+          case fixed: FixedEffectOptimizationConfiguration => Seq(fixed.regularizationWeight)
 
-    // Pack the fixed-effect hyperparameters
-    val feVals = fixedEffectOptimizationConfiguration.values.map(_.regularizationWeight)
+          case random: RandomEffectOptimizationConfiguration => Seq(random.regularizationWeight)
 
-    // Pack the random effect hyperparameters
-    val reVals = randomEffectOptimizationConfiguration.values.map(_.regularizationWeight)
+          case factored: FactoredRandomEffectOptimizationConfiguration =>
+            Seq(
+              factored.reOptConfig.regularizationWeight,
+              factored.lfOptConfig.regularizationWeight)
 
-    // Pack the factored random effect hyperparameters
-    val factoredReVals = factoredRandomEffectOptimizationConfiguration.values.flatMap(config =>
-        List(config.randomEffectOptimizationConfiguration.regularizationWeight,
-          config.latentFactorOptimizationConfiguration.regularizationWeight))
+          case other =>
+            throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
+        }
+      }
+      .toArray
 
-    DenseVector((feVals ++ reVals ++ factoredReVals).toArray)
+    DenseVector(parameterArray)
   }
 
   /**
    * Unpacks the regularization weights from the hyperparameter vector, and returns an equivalent GAME optimization
-   * configuration
+   * configuration.
    *
-   * @param hyperParameters the hyperparameter vector
-   * @return the equivalent GAME optimization configuration
+   * @param hyperParameters The hyperparameter vector
+   * @return The equivalent GAME optimization configuration
    */
-  protected[ml] def vectorToConfiguration(
-      hyperParameters: DenseVector[Double]): GameModelOptimizationConfiguration = {
+  protected[ml] def vectorToConfiguration(hyperParameters: DenseVector[Double]): GameOptimizationConfiguration = {
 
-    val paramValues = Queue(hyperParameters.toArray: _*)
+    require(
+      hyperParameters.length == numParams,
+      s"Configuration dimension mismatch; $numParams != ${hyperParameters.length}")
 
-    // Use sorted maps to ensure that ordering of hyperparamters aligns with the input vector
-    val fixedEffectOptimizationConfiguration = SortedMap(
-      optimizationConfiguration.fixedEffectOptimizationConfiguration.toSeq: _*)
-    val randomEffectOptimizationConfiguration = SortedMap(
-      optimizationConfiguration.randomEffectOptimizationConfiguration.toSeq: _*)
-    val factoredRandomEffectOptimizationConfiguration = SortedMap(
-      optimizationConfiguration.factoredRandomEffectOptimizationConfiguration.toSeq: _*)
+    val paramValues = mutable.Queue(hyperParameters.toArray: _*)
 
-    val n = numParams(optimizationConfiguration)
+    baseConfigSeq
+      .map { case (coordinateId, coordinateConfig) =>
+        val newCoordinateConfig = coordinateConfig match {
+          case fixed: FixedEffectOptimizationConfiguration => fixed.copy(regularizationWeight = paramValues.dequeue())
 
-    require(paramValues.length == n,
-      "Dimension mismatch between the parameter vector and the actual parameters.")
+          case random: RandomEffectOptimizationConfiguration => random.copy(regularizationWeight = paramValues.dequeue())
 
-    optimizationConfiguration.copy(
-      // Unpack the fixed-effect hyperparameters
-      fixedEffectOptimizationConfiguration =
-        fixedEffectOptimizationConfiguration.mapValues { config =>
-          config.copy(regularizationWeight = paramValues.dequeue)
-        }.view.force.toMap,
+          case factored: FactoredRandomEffectOptimizationConfiguration =>
+            factored.copy(
+              factored.reOptConfig.copy(regularizationWeight = paramValues.dequeue()),
+              factored.lfOptConfig.copy(regularizationWeight = paramValues.dequeue()))
 
-      // Unpack the random effect hyperparameters
-      randomEffectOptimizationConfiguration =
-        randomEffectOptimizationConfiguration.mapValues { config =>
-          config.copy(regularizationWeight = paramValues.dequeue)
-        }.view.force.toMap,
+          case other =>
+            throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
+        }
 
-      // Unpack the factored random effect hyperparameters
-      factoredRandomEffectOptimizationConfiguration =
-       factoredRandomEffectOptimizationConfiguration.mapValues { config =>
-         config.copy(
-           randomEffectOptimizationConfiguration =
-             config.randomEffectOptimizationConfiguration.copy(regularizationWeight = paramValues.dequeue),
-           latentFactorOptimizationConfiguration =
-             config.latentFactorOptimizationConfiguration.copy(regularizationWeight = paramValues.dequeue))
-         }.view.force.toMap
-    )
+        (coordinateId, newCoordinateConfig)
+      }
+      .toMap
   }
 }

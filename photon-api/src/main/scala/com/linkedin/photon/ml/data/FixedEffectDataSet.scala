@@ -18,6 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
@@ -27,9 +28,7 @@ import com.linkedin.photon.ml.spark.RDDLike
  * @param labeledPoints The input data
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectDataSet(
-    val labeledPoints: RDD[(Long, LabeledPoint)],
-    val featureShardId: String)
+protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: FeatureShardId)
   extends DataSet[FixedEffectDataSet]
   with RDDLike {
 
@@ -63,7 +62,6 @@ protected[ml] class FixedEffectDataSet(
    * Assign a given name to [[labeledPoints]].
    *
    * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
-   *
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the name of [[labeledPoints]] assigned
    */
@@ -124,25 +122,29 @@ protected[ml] class FixedEffectDataSet(
     val responseSum = labeledPoints.values.map(_.label).sum()
     val featureStats = labeledPoints.values.map(_.features.activeSize).stats()
 
-    s"numSamples: $numSamples\nweightSum: $weightSum\nresponseSum: $responseSum" +
-        s"\nnumFeatures: $numFeatures\nfeatureStats: $featureStats"
+    s"numSamples: $numSamples\n" +
+      s"weightSum: $weightSum\n" +
+      s"responseSum: $responseSum\n" +
+      s"numFeatures: $numFeatures\n" +
+      s"featureStats: $featureStats"
   }
 }
 
 object FixedEffectDataSet {
+
   /**
-   * Build an instance of a fixed effect dataset with the given configuration.
+   * Build an instance of a fixed effect data set for the given feature shard.
    *
    * @param gameDataSet The input dataset
-   * @param fixedEffectDataConfiguration The data configuration object
-   * @return A new dataset with given configuration
+   * @param featureShardId The feature shard ID
+   * @return A new data set with given configuration
    */
-  protected[ml] def buildWithConfiguration(
+  protected[ml] def apply(
       gameDataSet: RDD[(Long, GameDatum)],
-      fixedEffectDataConfiguration: FixedEffectDataConfiguration): FixedEffectDataSet = {
+      featureShardId: FeatureShardId): FixedEffectDataSet = {
 
-    val featureShardId = fixedEffectDataConfiguration.featureShardId
     val labeledPoints = gameDataSet.mapValues(_.generateLabeledPointWithFeatureShardId(featureShardId))
+
     new FixedEffectDataSet(labeledPoints, featureShardId)
   }
 }

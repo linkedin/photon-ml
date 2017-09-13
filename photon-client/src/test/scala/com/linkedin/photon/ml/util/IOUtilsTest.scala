@@ -20,6 +20,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
@@ -39,10 +40,16 @@ class IOUtilsTest extends TestTemplateWithTmpDir {
     )
   }
 
+  /**
+   * Test that it's possible to read and write from HDFS.
+   *
+   * @param dir Test directory name
+   * @param testString Text to read/write
+   */
   @Test(dataProvider = "dataProvider")
   def testReadAndWrite(dir: String, testString: String): Unit = {
 
-    val tmpDir = getTmpDir + "/" + dir
+    val tmpDir = new Path(getTmpDir, dir)
     val conf = new Configuration()
 
     IOUtils.writeStringsToHDFS(List(testString).iterator, tmpDir, conf, forceOverwrite = true)
@@ -53,11 +60,15 @@ class IOUtilsTest extends TestTemplateWithTmpDir {
     new File("/tmp/test1").delete
   }
 
+  /**
+   * Test that writing to stream is handled correctly when no exceptions occur.
+   */
   @Test
   def testWriteToStreamSuccess(): Unit = {
 
-    val res = IOUtils.toStream(new FileOutputStream(new File("/tmp/test1")))
-      { writer => (1 to 3).foreach { i => writer.println(s"$i ") } }
+    val res = IOUtils.toStream(new FileOutputStream(new File("/tmp/test1"))) { writer =>
+      (1 to 3).foreach(i => writer.println(s"$i "))
+    }
 
     assert(res.isSuccess)
     assert(Source.fromFile("/tmp/test1").getLines.mkString == "1 2 3 ")
@@ -65,20 +76,27 @@ class IOUtilsTest extends TestTemplateWithTmpDir {
     new File("/tmp/test1").delete
   }
 
+  /**
+   * Test that writing to stream is handled correctly when an exception occurs during the opening of the stream.
+   */
   @Test
   def testWriteToStreamFailureInOpen(): Unit = {
 
-    val res = IOUtils.toStream(throw new RuntimeException("exception in open"))
-      { writer => (1 to 3).foreach{i => writer.println(s"$i ")}}
+    val res = IOUtils.toStream(throw new RuntimeException("exception in open")) { writer =>
+      (1 to 3).foreach(i => writer.println(s"$i "))
+    }
 
     assert(res.isFailure)
   }
 
+  /**
+   * Test that writing to stream is handled correctly when an exception occurs during writing.
+   */
   @Test
   def testWriteToStreamFailureInWrite(): Unit = {
 
-    val res = IOUtils.toStream(new FileOutputStream(new File("/tmp/test2")))
-      { _ => throw new RuntimeException("exception in write")}
+    val res = IOUtils
+      .toStream(new FileOutputStream(new File("/tmp/test2")))(_ => throw new RuntimeException("exception in write"))
 
     assert(res.isFailure)
 

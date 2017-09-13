@@ -19,37 +19,26 @@ import org.testng.Assert._
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 
 /**
- * This class tests [[DateRange]].
+ * Unit tests for [[DateRange]].
  */
 class DateRangeTest {
 
-  private val today = "2016-04-01"
-
-  @BeforeClass
-  def setup() {
-    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis)
-  }
-
-  @AfterClass
-  def teardown() {
-    DateTimeUtils.setCurrentMillisSystem()
-  }
-
   @DataProvider
-  def rangeDataProvider(): Array[Array[Any]] = {
-    Array(
-      Array(DateRange.fromDates("20150101-20150101"), "2015-01-01", "2015-01-01"),
-      Array(DateRange.fromDates("20150101-20150201"), "2015-01-01", "2015-02-01"),
-      Array(DateRange.fromDates("20140312-20150211"), "2014-03-12", "2015-02-11"),
-      Array(DateRange.fromDates("19950816-20011120"), "1995-08-16", "2001-11-20"),
-      Array(DateRange.fromDaysAgo("90-1"), "2016-01-02", "2016-03-31"),
-      Array(DateRange.fromDaysAgo("45-10"), "2016-02-16", "2016-03-22"),
-      Array(DateRange.fromDaysAgo("190-25"), "2015-09-24", "2016-03-07")
-    )
-  }
+  def rangeDataProvider(): Array[Array[Any]] = Array(
+    Array(DateRange.fromDateString("20150101-20150101"), "2015-01-01", "2015-01-01"),
+    Array(DateRange.fromDateString("20150101-20150201"), "2015-01-01", "2015-02-01"),
+    Array(DateRange.fromDateString("20140312-20150211"), "2014-03-12", "2015-02-11"),
+    Array(DateRange.fromDateString("19950816-20011120"), "1995-08-16", "2001-11-20"))
 
+  /**
+   * Test that a [[DateRange]] can be correctly parsed.
+   *
+   * @param range The parsed [[DateRange]]
+   * @param startDate The expected start of the range
+   * @param endDate The expected end of the range
+   */
   @Test(dataProvider = "rangeDataProvider")
-  def testFromRange(range: DateRange, startDate: String, endDate: String): Unit = {
+  def testFromDateString(range: DateRange, startDate: String, endDate: String): Unit = {
     val start = LocalDate.parse(startDate)
     val end = LocalDate.parse(endDate)
 
@@ -57,33 +46,89 @@ class DateRangeTest {
     assertEquals(end, range.endDate)
   }
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testStartDateAfterEndDate() {
-    DateRange.fromDates("20160101-19551105")
+  @DataProvider
+  def invalidRangeDataProvider(): Array[Array[Any]] = Array(
+    Array("20160101-19551105"),
+    Array("words-words"))
+
+  /**
+   * Test that invalid ranges are rejected during parsing.
+   *
+   * @param fakeRange An invalid range as a [[String]]
+   */
+  @Test(dataProvider = "invalidRangeDataProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidFromDateString(fakeRange: String): Unit = DateRange.fromDateString(fakeRange)
+
+  @DataProvider
+  def validSplitRangeData(): Array[Array[Any]] = Array(
+    Array("abc_-xdef", Some("_"), "abc", "-xdef"),
+    Array("abc_-xdef", Some("x"), "abc_-", "def"),
+    Array("abc_-xdef", Some("_-x"), "abc", "def"),
+    Array("abc_-xdef", None, "abc_", "xdef"))
+
+  /**
+   * Test that ranges can be split correctly, regardless of delimiter.
+   *
+   * @param fakeRange Some range
+   * @param delimiterOpt An optional delimiter to use
+   * @param start The expected start of the range
+   * @param end The expected end of the range
+   */
+  @Test(dataProvider = "validSplitRangeData")
+  def testValidSplitRange(fakeRange: String, delimiterOpt: Option[String], start: String, end: String): Unit = {
+    val rangePair = delimiterOpt match {
+      case Some(delimiter) => DateRange.splitRange(fakeRange, delimiter)
+      case None => DateRange.splitRange(fakeRange)
+    }
+
+    assertEquals(rangePair._1, start)
+    assertEquals(rangePair._2, end)
   }
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidRange() {
-    DateRange.fromDates("blahblah")
+  @DataProvider
+  def invalidSplitRangeData(): Array[Array[Any]] = Array(
+    Array("abc_def_ghi", "_"),
+    Array("abc", "_"))
+
+  /**
+   * Test that incorrectly delimited ranges will be rejected.
+   *
+   * @param fakeRange Some range
+   * @param delimiter The delimiter to use
+   */
+  @Test(dataProvider = "invalidSplitRangeData", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidSplitRange(fakeRange: String, delimiter: String): Unit = {
+    DateRange.splitRange(fakeRange, delimiter)
   }
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidRangeDates() {
-    DateRange.fromDates("blah-blah")
-  }
+  @DataProvider
+  def printRangeDataProvider(): Array[Array[Any]] = Array(
+    Array(DateRange.fromDateString("20150101-20150101"), None, None, "20150101-20150101"),
+    Array(DateRange.fromDateString("20150101-20150101"), Some("yyyy-MM-dd"), None, "2015-01-01-2015-01-01"),
+    Array(DateRange.fromDateString("20150101-20150101"), None, Some("~/~"), "20150101~/~20150101"),
+    Array(DateRange.fromDateString("20150101-20150101"), Some("yyyy-MM-dd"), Some("~/~"), "2015-01-01~/~2015-01-01"))
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidDaysAgo() {
-    DateRange.fromDaysAgo("blahblah")
-  }
+  /**
+   * Test that a [[DateRange]] can be correctly printed.
+   *
+   * @param dateRange The [[DateRange]]
+   * @param delimiterOpt The range delimiter
+   * @param patternOpt\
+   * @param expected The expected [[String]] representation of the range
+   *
+   */
+  @Test(dataProvider = "printRangeDataProvider")
+  def testPrintRange(
+      dateRange: DateRange,
+      patternOpt: Option[String],
+      delimiterOpt: Option[String],
+      expected: String): Unit = {
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInvalidDaysAgoDays() {
-    DateRange.fromDaysAgo("blah-blah")
-  }
+    val actual = DateRange.printRange(
+      dateRange,
+      patternOpt.getOrElse(DateRange.DEFAULT_PATTERN),
+      delimiterOpt.getOrElse(DateRange.DEFAULT_DELIMITER))
 
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testNegativeDaysAgoDays() {
-    DateRange.fromDaysAgo("-90-1")
+    assertEquals(actual, expected)
   }
 }

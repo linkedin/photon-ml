@@ -254,10 +254,9 @@ protected[ml] object Utils {
    * @param dir The directory path
    * @param hadoopConf The Hadoop Configuration object
    */
-  def deleteHDFSDir(dir: String, hadoopConf: Configuration): Unit = {
-    val path = new Path(dir)
-    val fs = path.getFileSystem(hadoopConf)
-    if (fs.exists(path)) fs.delete(path, true)
+  def deleteHDFSDir(dir: Path, hadoopConf: Configuration): Unit = {
+    val fs = dir.getFileSystem(hadoopConf)
+    if (fs.exists(dir)) fs.delete(dir, true)
   }
 
   /**
@@ -266,10 +265,9 @@ protected[ml] object Utils {
    * @param dir The directory path
    * @param hadoopConf The Hadoop Configuration object
    */
-  def createHDFSDir(dir: String, hadoopConf: Configuration): Unit = {
-    val path = new Path(dir)
-    val fs = path.getFileSystem(hadoopConf)
-    if (!fs.exists(path)) fs.mkdirs(path)
+  def createHDFSDir(dir: Path, hadoopConf: Configuration): Unit = {
+    val fs = dir.getFileSystem(hadoopConf)
+    if (!fs.exists(dir)) fs.mkdirs(dir)
   }
 
   /**

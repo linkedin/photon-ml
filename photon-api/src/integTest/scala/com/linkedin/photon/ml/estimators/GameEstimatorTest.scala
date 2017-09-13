@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.estimators
 
+import scala.language.existentials
+
 import breeze.linalg.{DenseVector, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -31,10 +33,11 @@ import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel}
+import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
-import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerType, OptimizerConfig}
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, GameModelOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.{RandomProjection, IndexMapProjection}
+import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
+import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerConfig, OptimizerType}
+import com.linkedin.photon.ml.projector.{IndexMapProjection, RandomProjection}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
@@ -68,12 +71,12 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       }
     val trainingDataRdd = sc.parallelize(trainingDataSeq)
     val fixedEffectDataSet = new FixedEffectDataSet(trainingDataRdd, featureShardId)
-    val trainingDataSets: Map[CoordinateId, DataSet[_ <: DataSet[_]]] = Map((coordinateId, fixedEffectDataSet))
+    val trainingDataSets = Map((coordinateId, fixedEffectDataSet))
 
     val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
     val trainingLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights)
 
-    val fixedEffectOptConfig = GLMOptimizationConfiguration(
+    val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
       OptimizerConfig(
         optimizerType = OptimizerType.LBFGS,
         maximumIterations = 100,
@@ -81,13 +84,13 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
         constraintMap = None),
       L2RegularizationContext,
       regularizationWeight = 0.3)
-    val modelConfig = GameModelOptimizationConfiguration(Map((coordinateId, fixedEffectOptConfig)), Map(), Map())
+    val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
     // Create GameEstimator and fit model
     val estimator = new MockGameEstimator(sc, createLogger("SimpleTest"))
-      .setTaskType(TaskType.LINEAR_REGRESSION)
-      .setUpdatingSequence(Seq(coordinateId))
-      .asInstanceOf[MockGameEstimator]
+    estimator
+      .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
+      .set(estimator.coordinateUpdateSequence, Seq(coordinateId))
     val models: (GameModel, Option[EvaluationResults]) = estimator.train(
       modelConfig,
       trainingDataSets,
@@ -110,9 +113,10 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   def normalizationParameters(): Array[Array[Object]] = {
     val labeledPoints = trivialLabeledPoints()(0)(0)
 
-    NormalizationType.values().map { normalization =>
-      Array(labeledPoints, normalization)
-    }
+    NormalizationType
+      .values
+      .map(normalization => Array(labeledPoints, normalization))
+      .toArray
   }
 
   /**
@@ -137,30 +141,30 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
         }
       val trainingDataRdd = sc.parallelize(trainingDataSeq)
       val fixedEffectDataSet = new FixedEffectDataSet(trainingDataRdd, featureShardId)
-      val trainingDataSets: Map[CoordinateId, DataSet[_ <: DataSet[_]]] = Map((coordinateId, fixedEffectDataSet))
+      val trainingDataSets = Map((coordinateId, fixedEffectDataSet))
 
       val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
       val trainingLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights)
 
-      val fixedEffectOptConfig = GLMOptimizationConfiguration(
+      val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
         OptimizerConfig(
           optimizerType = OptimizerType.LBFGS,
           maximumIterations = 100,
           tolerance = 1e-11,
           constraintMap = None))
-      val modelConfig = GameModelOptimizationConfiguration(Map((coordinateId, fixedEffectOptConfig)), Map(), Map())
+      val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
       val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values)
       val normalizationContextBroadcast = sc.broadcast(
         NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length)))
-      val normalizationContexts = Some(Map((coordinateId, normalizationContextBroadcast)))
+      val normalizationContexts = Map((coordinateId, normalizationContextBroadcast))
 
       // Create GameEstimator and fit model
       val estimator = new MockGameEstimator(sc, createLogger("NormalizationTest"))
-        .setTaskType(TaskType.LINEAR_REGRESSION)
-        .setUpdatingSequence(Seq(coordinateId))
-        .setNormalizationContexts(normalizationContexts)
-        .asInstanceOf[MockGameEstimator]
+      estimator
+        .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
+        .set(estimator.coordinateUpdateSequence, Seq(coordinateId))
+        .set(estimator.coordinateNormalizationContexts, normalizationContexts)
       val models: (GameModel, Option[EvaluationResults]) = estimator.train(
         modelConfig,
         trainingDataSets,
@@ -186,13 +190,11 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     // Create GameTrainingDriver
     val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingDataSetsAndEvaluator"))
-      .setFeatureShardColumnNames(featureShardMap.keys.toSet)
-      .setTaskType(TaskType.LINEAR_REGRESSION)
-      .setFixedEffectDataConfigurations(fixedEffectDataConfigurations)
-      .setRandomEffectDataConfigurations(randomEffectDataConfigurations)
-      .asInstanceOf[MockGameEstimator]
-    val (trainingDataSets, _) = estimator
-      .prepareTrainingDataSetsAndEvaluator(data, randomEffectDataConfigurations.map(_._2.randomEffectType).toSet)
+    estimator
+      .set(estimator.featureShardColumnNames, featureShardMap.keys.toSet)
+      .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
+      .set(estimator.coordinateDataConfigurations, coordinateDataConfigurations)
+    val (trainingDataSets, _) = estimator.prepareTrainingDataSetsAndEvaluator(data, idTagSet)
 
     assertEquals(trainingDataSets.size, 4)
 
@@ -279,8 +281,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val mockTrainingData = getMockDataRDD()
     val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingLossEvaluator"))
-        .setTaskType(taskType)
-      .asInstanceOf[MockGameEstimator]
+    estimator.set(estimator.trainingTask, taskType)
     val evaluator = estimator.prepareTrainingLossEvaluator(mockTrainingData)
 
     assertEquals(evaluator.getEvaluatorName, trainingEvaluatorType.name)
@@ -307,20 +308,18 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
    * @param evaluatorTypes The list of validation [[EvaluatorType]]s
    */
   @Test(dataProvider = "multipleEvaluatorTypeProvider")
-  def testMultipleEvaluators(
-      evaluatorTypes: Seq[EvaluatorType]): Unit = sparkTest("multipleEvaluatorsWithFullModel", useKryo = true) {
+  def testMultipleEvaluators(evaluatorTypes: Seq[EvaluatorType]): Unit =
+    sparkTest("multipleEvaluatorsWithFullModel", useKryo = true) {
+      val evaluatorCols = MultiEvaluatorType.getMultiEvaluatorIdTags(evaluatorTypes)
+      val mockValidationData = getMockDataRDD(evaluatorCols)
+      val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
+      estimator.set(estimator.validationEvaluators, evaluatorTypes)
+      val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
 
-    val evaluatorCols = MultiEvaluatorType.getMultiEvaluatorIdTags(evaluatorTypes)
-    val mockValidationData = getMockDataRDD(evaluatorCols)
-    val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
-      .setEvaluatorTypes(Some(evaluatorTypes))
-      .asInstanceOf[MockGameEstimator]
-    val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
-
-    evaluators
-      .zip(evaluatorTypes)
-      .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
-  }
+      evaluators
+        .zip(evaluatorTypes)
+        .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
+    }
 
   /**
    * Provide a combination of training task and default validation [[EvaluatorType]] for that task.
@@ -352,8 +351,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val mockValidationData = getMockDataRDD()
     val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
-      .setTaskType(taskType)
-      .asInstanceOf[MockGameEstimator]
+    estimator.set(estimator.trainingTask, taskType)
     val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
 
     assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
@@ -362,7 +360,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   /**
    * Create a mock [[GameDatum]] [[RDD]] containing only one point.
    *
-   * @param evaluatorCols
+   * @param evaluatorCols Custom evaluator columns
    * @return A mocked GAME data [[RDD]]
    */
   def getMockDataRDD(evaluatorCols: Set[String] = Set()): RDD[(UniqueSampleId, GameDatum)] = {
@@ -417,14 +415,12 @@ object GameEstimatorTest {
   /**
    * Data configurations for the above test data.
    */
-  private val fixedEffectDataConfigurations = Map("global" -> FixedEffectDataConfiguration("shard1", 2))
-  private val randomEffectDataConfigurations = Map(
-    "per-user" ->
-      RandomEffectDataConfiguration("userId", "shard2", 2, Int.MaxValue, 0, Double.MaxValue, IndexMapProjection),
-    "per-song" ->
-      RandomEffectDataConfiguration("songId", "shard3", 2, Int.MaxValue, 0, Double.MaxValue, IndexMapProjection),
-    "per-artist" ->
-      RandomEffectDataConfiguration("artistId", "shard3", 2, Int.MaxValue, 0, Double.MaxValue, RandomProjection(2)))
+  private val coordinateDataConfigurations = Map(
+    "global" -> FixedEffectDataConfiguration("shard1", 2),
+    "per-user" -> RandomEffectDataConfiguration("userId", "shard2", 2, None, None, None, IndexMapProjection),
+    "per-song" -> RandomEffectDataConfiguration("songId", "shard3", 2, None, None, None, IndexMapProjection),
+    "per-artist" -> RandomEffectDataConfiguration("artistId", "shard3", 2, None, None, None, RandomProjection(2)))
+  private val idTagSet = Set("userId", "songId", "artistId")
 
   /**
    * Mock [[GameEstimator]] for testing purposes - it exposes protected members so that they can be called by the test
@@ -434,7 +430,7 @@ object GameEstimatorTest {
 
     override def prepareTrainingDataSetsAndEvaluator(
         data: DataFrame,
-        additionalCols: Set[String]): (Map[String, DataSet[_]], Evaluator) =
+        additionalCols: Set[String]): (Map[CoordinateId, D forSome { type D <: DataSet[D] }], Evaluator) =
       super.prepareTrainingDataSetsAndEvaluator(data, additionalCols)
 
     override def prepareTrainingLossEvaluator(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
@@ -449,8 +445,8 @@ object GameEstimatorTest {
       super.prepareValidationEvaluators(gameDataSet)
 
     override def train(
-        configuration: GameModelOptimizationConfiguration,
-        trainingDataSets: Map[CoordinateId, DataSet[_]],
+        configuration: GameEstimator.GameOptimizationConfiguration,
+        trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
         trainingEvaluator: Evaluator,
         validationDataAndEvaluators: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])])
       : (GameModel, Option[EvaluationResults]) =

@@ -40,8 +40,7 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * @param idToPartitionMap Random effect type to partition map
  */
 protected[ml] class RandomEffectDataSetPartitioner(private val idToPartitionMap: Broadcast[Map[String, Int]])
-  extends Partitioner
-  with BroadcastLike {
+  extends Partitioner with BroadcastLike {
 
   val numPartitions: Int = idToPartitionMap.value.values.max + 1
 
@@ -84,12 +83,14 @@ protected[ml] class RandomEffectDataSetPartitioner(private val idToPartitionMap:
   def getPartition(key: Any): Int = key match {
     case string: String =>
       idToPartitionMap.value.getOrElse(string, new HashPartitioner(numPartitions).getPartition(string))
+
     case any =>
       throw new IllegalArgumentException(s"Expected key of ${this.getClass} is String, but ${any.getClass} found")
   }
 }
 
 object RandomEffectDataSetPartitioner {
+
   /**
    * Generate a partitioner for one random effect model.
    *
@@ -109,7 +110,7 @@ object RandomEffectDataSetPartitioner {
    * @param partitionerCapacity The partitioner capacity
    * @return A partitioner for one random effect model
    */
-  def generateRandomEffectDataSetPartitionerFromGameDataSet(
+  def fromGameDataSet(
       numPartitions: Int,
       randomEffectType: String,
       gameDataSet: RDD[(Long, GameDatum)],

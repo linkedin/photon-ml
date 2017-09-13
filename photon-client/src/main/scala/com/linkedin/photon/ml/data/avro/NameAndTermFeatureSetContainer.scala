@@ -28,12 +28,13 @@ import com.linkedin.photon.ml.SparkContextConfiguration
 import com.linkedin.photon.ml.util._
 
 /**
- * A class contain [[NameAndTerm]] features sets for each feature section keys
+ * A wrapper class for a map of feature section key to a set of [[NameAndTerm]] features
+ *
+ * TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functions are decoupled from the
+ * rest of code
  *
  * @param nameAndTermFeatureSets A [[Map]] of feature section key to [[NameAndTerm]] feature sets
  */
-// TODO: Change the scope to [[com.linkedin.photon.ml.avro]] after Avro related classes/functions are decoupled from the
-// rest of code
 protected[ml] class NameAndTermFeatureSetContainer(nameAndTermFeatureSets: Map[String, Set[NameAndTerm]]) {
 
   /**
@@ -87,7 +88,7 @@ object NameAndTermFeatureSetContainer {
    * @return This [[NameAndTermFeatureSetContainer]] parsed from text files on HDFS
    */
   protected[ml] def readNameAndTermFeatureSetContainerFromTextFiles(
-      nameAndTermFeatureSetContainerInputDir: String,
+      nameAndTermFeatureSetContainerInputDir: Path,
       featureSectionKeys: Set[String],
       configuration: Configuration): NameAndTermFeatureSetContainer = {
 
@@ -135,8 +136,9 @@ object NameAndTermFeatureSetContainer {
   }
 
   /**
+   * Entry point to the job.
    *
-   * @param args
+   * @param args The command line arguments for the job
    */
   def main(args: Array[String]): Unit = {
     val defaultParams = Params()
@@ -174,26 +176,27 @@ object NameAndTermFeatureSetContainer {
           .action((x, c) => c.copy(applicationName = x))
       help("help").text("prints usage text")
     }
-    val params = parser.parse(args, Params()) match {
+    val params: Params = parser.parse(args, Params()) match {
       case Some(parsedParams) => parsedParams
-      case None => throw new IllegalArgumentException(s"Parsing the command line arguments failed " +
-          s"(${args.mkString(", ")}),\n ${parser.usage}")
+      case None => throw new IllegalArgumentException(s"Parsing the command line arguments failed:\n ${parser.usage}")
     }
-    import params._
 
     println(params + "\n")
-    val sparkContext = SparkContextConfiguration.asYarnClient(applicationName, useKryo = true)
+    val sparkContext = SparkContextConfiguration.asYarnClient(params.applicationName, useKryo = true)
     val configuration = sparkContext.hadoopConfiguration
     // Process the output directory upfront and potentially fail the job early
-    IOUtils.processOutputDir(featureNameAndTermSetOutputPath, deleteOutputDirIfExists, configuration)
+    IOUtils.processOutputDir(
+      new Path(params.featureNameAndTermSetOutputPath),
+      params.deleteOutputDirIfExists,
+      configuration)
 
-    println(s"Application applicationName: $applicationName")
+    println(s"Application applicationName: $params.applicationName")
 
     // If date-range is specified, this parameter will be ignored.
-    val adjustedDateRangeOpt = dateRangeOpt match {
+    val adjustedDateRangeOpt = params.dateRangeOpt match {
       case Some(dateRange) => Some(dateRange)
       case None =>
-        if (numDaysDataForFeatureGeneration < Int.MaxValue) {
+        if (params.numDaysDataForFeatureGeneration < Int.MaxValue) {
           val dailyPlainFormat = new SimpleDateFormat("yyyyMMdd")
           dailyPlainFormat.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"))
           val calendar = Calendar.getInstance()
@@ -201,35 +204,30 @@ object NameAndTermFeatureSetContainer {
           calendar.add(Calendar.DATE, -1)
           val yesterdayDate = calendar.getTime
           // Backtracking to get the starting date of the training data
-          calendar.add(Calendar.DATE, -(1 + numDaysDataForFeatureGeneration))
+          calendar.add(Calendar.DATE, -(1 + params.numDaysDataForFeatureGeneration))
           Some(s"${dailyPlainFormat.format(calendar.getTime)}-${dailyPlainFormat.format(yesterdayDate)}")
         } else {
           None
         }
     }
 
-    val inputRecordsPath = (adjustedDateRangeOpt, dateRangeDaysAgoOpt) match {
-      // Specified as date range
-      case (Some(dateRange), None) =>
-        val range = DateRange.fromDates(dateRange)
-        IOUtils.getInputPathsWithinDateRange(inputDirs, range, sparkContext.hadoopConfiguration,
-          errorOnMissing = false)
+    // Handle date range input
+    val dateRangeOpt = IOUtils.resolveRange(
+      adjustedDateRangeOpt.map(DateRange.fromDateString),
+      params.dateRangeDaysAgoOpt.map(DaysRange.fromDaysString))
+    val inputPathsWithRanges = dateRangeOpt
+      .map { dateRange =>
+        IOUtils
+          .getInputPathsWithinDateRange(
+            params.inputDirs.toSet[String].map(new Path(_)),
+            dateRange,
+            sparkContext.hadoopConfiguration,
+            errorOnMissing = false)
+          .map(_.toString)
+      }
+      .getOrElse(params.inputDirs.toSeq)
 
-      // Specified as a range of start days ago - end days ago
-      case (None, Some(dateRangeDaysAgo)) =>
-        val range = DateRange.fromDaysAgo(dateRangeDaysAgo)
-        IOUtils.getInputPathsWithinDateRange(inputDirs, range, sparkContext.hadoopConfiguration,
-          errorOnMissing = false)
-
-      // Both types specified: illegal
-      case (Some(_), Some(_)) =>
-        throw new IllegalArgumentException(
-          "Both dateRangeOpt and dateRangeDaysAgoOpt given. You must specify date ranges using only one " +
-          "format.")
-
-      case (None, None) => inputDirs.toSeq
-    }
-    println(s"inputRecordsPath:\n${inputRecordsPath.mkString("\n")}")
+    println(s"inputRecordsPath:\n${inputPathsWithRanges.mkString("\n")}")
 
     val numExecutors = sparkContext.getExecutorStorageStatus.length
     val minPartitions =
@@ -238,11 +236,11 @@ object NameAndTermFeatureSetContainer {
       } else {
         numExecutors * 5
       }
-    val records = AvroUtils.readAvroFiles(sparkContext, inputRecordsPath, minPartitions)
+    val records = AvroUtils.readAvroFiles(sparkContext, inputPathsWithRanges, minPartitions)
     // numExecutors * 5 is too much for distinct operation when the data are huge. Use numExecutors instead.
     val nameAndTermFeatureSetContainer =
-      AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, featureSectionKeys, numExecutors)
-    nameAndTermFeatureSetContainer.saveAsTextFiles(featureNameAndTermSetOutputPath, sparkContext)
+      AvroUtils.readNameAndTermFeatureSetContainerFromGenericRecords(records, params.featureSectionKeys, numExecutors)
+    nameAndTermFeatureSetContainer.saveAsTextFiles(params.featureNameAndTermSetOutputPath, sparkContext)
 
     sparkContext.stop()
   }
@@ -257,10 +255,6 @@ object NameAndTermFeatureSetContainer {
       deleteOutputDirIfExists: Boolean = false,
       applicationName: String = "Generate-name-and-term-feature-set") {
 
-    /**
-     *
-     * @return
-     */
     override def toString: String = {
       s"Input parameters:\n" +
           s"inputDirs: ${inputDirs.mkString(", ")}\n" +

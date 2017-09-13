@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  * Trait for an objective function with L2 regularization.
  */
 trait L2Regularization extends ObjectiveFunction {
+
   protected var l2RegWeight: Double = 0D
 
   /**
@@ -73,6 +74,7 @@ trait L2Regularization extends ObjectiveFunction {
  * Trait for a DiffFunction with L2 regularization.
  */
 trait L2RegularizationDiff extends DiffFunction with L2Regularization {
+
   /**
    * Compute the value of the function with L2 regularization over the given data for the given model coefficients.
    *
@@ -135,6 +137,7 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
  * Trait for a TwiceDiffFunction with L2 regularization.
  */
 trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationDiff {
+
   /**
    * Compute the Hessian of the function with L2 regularization over the given data for the given model coefficients.
    *

@@ -22,10 +22,13 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 // TODO: Test [[VectorUtils.kroneckerProduct()]]
+
 /**
  * Simple tests for functions in [[VectorUtils]].
  */
 class VectorUtilsTest {
+
+  import VectorUtilsTest._
 
   private val seed = 7
   private val random = new Random(seed)
@@ -191,5 +194,82 @@ class VectorUtilsTest {
     for (i <- 0 until breezeVector.length) {
       assertEquals(breezeVector(i), sparkVector(i))
     }
+  }
+
+  /**
+   * Test generation of Breeze zero vectors.
+   */
+  @Test
+  def testInitializeZerosVectorOfSameType(): Unit = {
+
+    val r: Random = new Random(RANDOM_SEED)
+
+    //
+    // Dense prototype vector
+    //
+
+    val prototypeDenseVector = DenseVector.fill(VECTOR_DIMENSION)(r.nextDouble())
+    val initializedDenseVector = VectorUtils.zeroOfSameType(prototypeDenseVector)
+
+    assertEquals(prototypeDenseVector.length, initializedDenseVector.length,
+      s"Length of the initialized vector (${initializedDenseVector.length}) " +
+        s"is different from the prototype vector (${initializedDenseVector.length}})")
+    assertTrue(initializedDenseVector.isInstanceOf[DenseVector[Double]],
+      s"The initialized dense vector (${initializedDenseVector.getClass}), " +
+        s"is not an instance of the prototype vectors' class (${prototypeDenseVector.getClass})")
+
+    //
+    // Sparse prototype vector
+    //
+
+    val indices = Array.tabulate[Int](VECTOR_DIMENSION)(i => i).filter(_ => r.nextBoolean())
+    val values = indices.map(_ => r.nextDouble())
+    val prototypeSparseVector = new SparseVector[Double](indices, values, VECTOR_DIMENSION)
+    val initializedSparseVector = VectorUtils.zeroOfSameType(prototypeSparseVector)
+
+    assertEquals(prototypeSparseVector.length, initializedSparseVector.length,
+      s"Length of the initialized vector (${initializedSparseVector.length}) " +
+        s"is different from the prototype vector (${prototypeSparseVector.length}})")
+    assertTrue(initializedSparseVector.isInstanceOf[SparseVector[Double]],
+      s"The initialized sparse vector (${initializedSparseVector.getClass}) " +
+        s"is not an instance of the prototype vectors' class (${prototypeSparseVector.getClass})")
+  }
+
+  /**
+   * Test that zero vector generation will fail for unsupported vector types.
+   */
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInitializeZerosVectorOfSameTypeOfUnsupportedVectorType(): Unit =
+    VectorUtils.zeroOfSameType(new MockVector[Double]())
+}
+
+object VectorUtilsTest {
+
+  private val VECTOR_DIMENSION: Int = 10
+  private val RANDOM_SEED: Long = 1234567890L
+
+  /**
+   * This is a Vector that mocks a different implementation of breeze Vector, it does nothing meaningful.
+   *
+   * @tparam V Some data type (irrelevant for this mock)
+   */
+  private class MockVector[V] extends Vector[V] {
+    override def length: Int = 0
+
+    override def copy: Vector[V] = null
+
+    override def update(i: Int, v: V): Unit = {}
+
+    override def activeSize: Int = 0
+
+    override def apply(i: Int): V = 0d.asInstanceOf[V]
+
+    override def activeIterator: Iterator[(Int, V)] = null
+
+    override def activeKeysIterator: Iterator[Int] = null
+
+    override def activeValuesIterator: Iterator[V] = null
+
+    override def repr: Vector[V] = null
   }
 }

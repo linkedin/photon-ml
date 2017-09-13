@@ -14,10 +14,13 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import scala.util.matching.Regex
+
 /**
  * Trait for an evaluator applied to a collection of samples grouped by some ID.
  */
 trait MultiEvaluatorType extends EvaluatorType {
+
   /**
    * Name of the column or metadata field containing IDs used to group records for evaluation (e.g. documentId, queryId,
    * etc.)
@@ -26,6 +29,7 @@ trait MultiEvaluatorType extends EvaluatorType {
 }
 
 object MultiEvaluatorType {
+
   val shardedEvaluatorIdNameSplitter = ":"
 
   /**
@@ -44,17 +48,24 @@ object MultiEvaluatorType {
 }
 
 case class MultiPrecisionAtK(k: Int, idTag: String) extends MultiEvaluatorType {
+
+  require(k > 0, s"Position k must be greater than 0: $k")
+
   val name = s"PRECISION@$k${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
 }
 
 object MultiPrecisionAtK {
-  val batchPrecisionAtKPattern = s"(?i:PRECISION)@(\\d+)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
+
+  val batchPrecisionAtKPattern: Regex =
+    s"(?i:PRECISION)@(\\d+)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
 }
 
 case class MultiAUC(idTag: String) extends MultiEvaluatorType {
+
   val name = s"AUC${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
 }
 
 object MultiAUC {
-  val batchAUCPattern = s"(?i:AUC)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
+
+  val batchAUCPattern: Regex = s"(?i:AUC)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
 }

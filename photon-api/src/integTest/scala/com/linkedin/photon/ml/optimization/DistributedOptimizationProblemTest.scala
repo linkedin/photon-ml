@@ -31,19 +31,25 @@ import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- *
+ * Integration tests for [[DistributedOptimizationProblem]]
  */
 class DistributedOptimizationProblemTest extends SparkTestUtils {
 
   import CommonTestUtils._
   import DistributedOptimizationProblemTest._
 
+  /**
+   * Function to generate a mock [[GeneralizedLinearModel]].
+   *
+   * @param coefficients Model coefficients (unused)
+   * @return A mocked [[GeneralizedLinearModel]]
+   */
   def glmConstructorMock(coefficients: Coefficients): GeneralizedLinearModel = mock(classOf[GeneralizedLinearModel])
 
   /**
@@ -187,6 +193,9 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
     }
   }
 
+  /**
+   * Test that regularization weights can be updated.
+   */
   @Test
   def testUpdateRegularizationWeight(): Unit = sparkTest("checkEasyTestFunctionSparkNoInitialValue") {
     val initL1Weight = 1D
@@ -260,22 +269,32 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
     assertEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 
+  /**
+   * Test coefficient variance computation for unweighted data points, without regularization.
+   *
+   * @param dataGenerationFunction Function to generate test data
+   * @param lossFunction Loss function for optimization
+   * @param resultDirectDerivationFunction Function to compute coefficient variance directly
+   */
   @Test(dataProvider = "variancesSimpleInput")
   def testComputeVariancesSimple(
-    dataGenerationFunction: () => Seq[LabeledPoint],
-    lossFunction: PointwiseLossFunction,
-    resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
+      dataGenerationFunction: () => Seq[LabeledPoint],
+      lossFunction: PointwiseLossFunction,
+      resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
     sparkTest("testComputeVariancesSimple") {
       val input = sc.parallelize(dataGenerationFunction())
       val coefficients = generateDenseVector(DIMENSIONS)
 
       val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
       val statesTracker = mock(classOf[OptimizationStatesTracker])
+      val regContext = mock(classOf[RegularizationContext])
+      val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
       doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+      doReturn(regContext).when(optConfig).regularizationContext
+      doReturn(RegularizationType.NONE).when(regContext).regularizationType
 
-      val configuration = GLMOptimizationConfiguration()
-      val objective = DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(lossFunction)
+      val objective = DistributedGLMLossFunction(sc, optConfig, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,
@@ -300,26 +319,36 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
       }
     }
 
+  /**
+   * Test coefficient variance computation for weighted data points, with regularization.
+   *
+   * @param regularizationWeight The regularization weight
+   * @param dataGenerationFunction Function to generate test data
+   * @param lossFunction Loss function for optimization
+   * @param resultDirectDerivationFunction Function to compute coefficient variance directly
+   */
   @Test(dataProvider = "variancesComplexInput")
   def testComputeVariancesComplex(
-    regularizationWeight: Double,
-    dataGenerationFunction: () => Seq[LabeledPoint],
-    lossFunction: PointwiseLossFunction,
-    resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
+      regularizationWeight: Double,
+      dataGenerationFunction: () => Seq[LabeledPoint],
+      lossFunction: PointwiseLossFunction,
+      resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
     sparkTest("testComputeVariancesComplex") {
       val input = sc.parallelize(dataGenerationFunction())
       val coefficients = generateDenseVector(DIMENSIONS)
 
       val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
       val statesTracker = mock(classOf[OptimizationStatesTracker])
+      val regContext = mock(classOf[RegularizationContext])
+      val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
       doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+      doReturn(regContext).when(optConfig).regularizationContext
+      doReturn(regularizationWeight).when(optConfig).regularizationWeight
+      doReturn(RegularizationType.L2).when(regContext).regularizationType
+      doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-
-      val configuration = GLMOptimizationConfiguration(
-        regularizationContext = L2RegularizationContext,
-        regularizationWeight = regularizationWeight)
-      val objective = DistributedGLMLossFunction(sc, configuration, treeAggregateDepth = 1)(lossFunction)
+      val objective = DistributedGLMLossFunction(sc, optConfig, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,
@@ -345,6 +374,9 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
       }
     }
 
+  /**
+   * Test a mock run-through of the optimization problem.
+   */
   @Test
   def testRun(): Unit = {
     val coefficients = new Coefficients(generateDenseVector(DIMENSIONS))
@@ -393,11 +425,12 @@ object DistributedOptimizationProblemTest {
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 
   /**
+   * Point-wise Hessian diagonal computation function for linear regression.
    *
-   * @param coefficients
-   * @param diagonal
-   * @param datum
-   * @return
+   * @param coefficients Coefficient means vector
+   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param datum The next data point to process
+   * @return The updated Hessian diagonal
    */
   def linearHessianSum
     (coefficients: Vector[Double])
@@ -411,11 +444,12 @@ object DistributedOptimizationProblemTest {
   }
 
   /**
+   * Point-wise Hessian diagonal computation function for logistic regression.
    *
-   * @param coefficients
-   * @param diagonal
-   * @param datum
-   * @return
+   * @param coefficients Coefficient means vector
+   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param datum The next data point to process
+   * @return The updated Hessian diagonal
    */
   def logisticHessianSum
     (coefficients: Vector[Double])
@@ -435,11 +469,12 @@ object DistributedOptimizationProblemTest {
   }
 
   /**
+   * Point-wise Hessian diagonal computation function for Poisson regression.
    *
-   * @param coefficients
-   * @param diagonal
-   * @param datum
-   * @return
+   * @param coefficients Coefficient means vector
+   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param datum The next data point to process
+   * @return The updated Hessian diagonal
    */
   def poissonHessianSum
     (coefficients: Vector[Double])

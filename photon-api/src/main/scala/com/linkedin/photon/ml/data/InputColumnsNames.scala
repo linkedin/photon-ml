@@ -43,13 +43,6 @@ class InputColumnsNames extends Serializable {
    * @return The column name for that key
    */
   def apply(key: InputColumnsNames.Value): String = array(key.id)
-
-  /**
-   * Return a human-readable representation of an InputColumnsNames instance.
-   *
-   * @return A human-readable string
-   */
-  override def toString: String = InputColumnsNames.all.map(icn => s"${icn.toString}: ${array(icn.id)}").mkString(", ")
 }
 
 /**

@@ -15,9 +15,7 @@
 package com.linkedin.photon.ml.util
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Integer => JInteger, Long => JLong, String => JString}
-import java.util.Random
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -31,77 +29,53 @@ import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK}
 import com.linkedin.photon.ml.test.TestTemplateWithTmpDir
 
 /**
- * Test the functions in [[Utils]].
+ * Unit tests for [[Utils]].
  */
 class UtilsTest extends TestTemplateWithTmpDir {
 
   import UtilsTest._
 
+  /**
+   * Test directory creation.
+   */
   @Test
   def testCreateHDFSDir(): Unit = {
     val conf = new JobConf()
     val fs = FileSystem.get(conf)
-    val dir = getTmpDir + "/testCreateHDFSDir"
-    val dirPath = new Path(dir)
+    val dir = new Path(getTmpDir, "testCreateHDFSDir")
+
     Utils.createHDFSDir(dir, conf)
-    assertTrue(fs.exists(dirPath))
-    assertTrue(fs.isDirectory(dirPath))
+    assertTrue(fs.exists(dir))
+    assertTrue(fs.isDirectory(dir))
 
     // Try to create an already created dir, no change or exception should happen
     Utils.createHDFSDir(dir, conf)
-    assertTrue(fs.exists(dirPath))
-    assertTrue(fs.isDirectory(dirPath))
+    assertTrue(fs.exists(dir))
+    assertTrue(fs.isDirectory(dir))
   }
 
+  /**
+   * Test directory deletion.
+   */
   @Test
   def testDeleteHDFSDir(): Unit = {
     val conf = new JobConf()
     val fs = FileSystem.get(conf)
-    val createdDir = new Path(getTmpDir + "/testDeleteHDFSDir")
+    val createdDir = new Path(getTmpDir, "testDeleteHDFSDir")
 
     // Directory not existing, nothing should happen
-    Utils.deleteHDFSDir(createdDir.toString, conf)
+    Utils.deleteHDFSDir(createdDir, conf)
     assertFalse(fs.exists(createdDir))
 
     fs.mkdirs(createdDir)
     assertTrue(fs.exists(createdDir))
-    Utils.deleteHDFSDir(createdDir.toString, conf)
+    Utils.deleteHDFSDir(createdDir, conf)
     assertFalse(fs.exists(createdDir))
   }
 
-  @Test
-  def testInitializeZerosVectorOfSameType(): Unit = {
-    val r: Random = new Random(RANDOM_SEED)
-
-    //when the prototype vector is dense
-    val prototypeDenseVector = DenseVector.fill(VECTOR_DIMENSION)(r.nextDouble())
-    val initializedDenseVector = VectorUtils.zeroOfSameType(prototypeDenseVector)
-    assertEquals(prototypeDenseVector.length, initializedDenseVector.length,
-      s"Length of the initialized vector (${initializedDenseVector.length}) " +
-        s"is different from the prototype vector (${initializedDenseVector.length}})")
-    assertTrue(initializedDenseVector.isInstanceOf[DenseVector[Double]],
-      s"The initialized dense vector (${initializedDenseVector.getClass}), " +
-        s"is not an instance of the prototype vectors' class (${prototypeDenseVector.getClass})")
-
-    //when the prototype vector is sparse
-    val indices = Array.tabulate[Int](VECTOR_DIMENSION)(i => i).filter(_ => r.nextBoolean())
-    val values = indices.map(_ => r.nextDouble())
-    val prototypeSparseVector = new SparseVector[Double](indices, values, VECTOR_DIMENSION)
-    val initializedSparseVector = VectorUtils.zeroOfSameType(prototypeSparseVector)
-    assertEquals(prototypeSparseVector.length, initializedSparseVector.length,
-      s"Length of the initialized vector (${initializedSparseVector.length}) " +
-        s"is different from the prototype vector (${prototypeSparseVector.length}})")
-    assertTrue(initializedSparseVector.isInstanceOf[SparseVector[Double]],
-      s"The initialized sparse vector (${initializedSparseVector.getClass}) " +
-        s"is not an instance of the prototype vectors' class (${prototypeSparseVector.getClass})")
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testInitializeZerosVectorOfSameTypeOfUnsupportedVectorType(): Unit = {
-    VectorUtils.zeroOfSameType(new MockVector[Double]())
-  }
-
-
+  /**
+   * Test that a unique feature key can be correctly constructed from a (name, term) pair.
+   */
   @Test
   def testGetFeatureKey(): Unit = {
     assertEquals(Utils.getFeatureKey("foo", "bar"), s"foo${Constants.DELIMITER}bar")
@@ -109,6 +83,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getFeatureKey("foo", "bar", " "), "foo bar")
   }
 
+  /**
+   * Test that a unique feature key can be correctly extracted from a [[GenericRecord]].
+   */
   @Test
   def testGetFeatureKeyFromRecord(): Unit = {
     val record = new TestRecordBuilder()
@@ -119,20 +96,24 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getFeatureKey(record, "stringField", "utf8StringField", " "), "name_value term_value")
   }
 
+  /**
+   * Test that a unique feature key can be decomposed into the underlying (name, term) pair.
+   */
   @Test
-  def testGetFeatureNameFromKey(): Unit = {
+  def testGetFeatureNameAndTermFromKey(): Unit = {
+
     assertEquals(Utils.getFeatureNameFromKey(Utils.getFeatureKey("foo", "bar")), "foo")
     assertEquals(Utils.getFeatureNameFromKey(Utils.getFeatureKey("foo", "bar", "\t"), "\t"), "foo")
     assertEquals(Utils.getFeatureNameFromKey(Utils.getFeatureKey("foo", "bar", " "), " "), "foo")
-  }
 
-  @Test
-  def testGetFeatureTermFromKey(): Unit = {
     assertEquals(Utils.getFeatureTermFromKey(Utils.getFeatureKey("foo", "bar")), "bar")
     assertEquals(Utils.getFeatureTermFromKey(Utils.getFeatureKey("foo", "bar", "\t"), "\t"), "bar")
     assertEquals(Utils.getFeatureTermFromKey(Utils.getFeatureKey("foo", "bar", " "), " "), "bar")
   }
 
+  /**
+   * Test that string fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetStringAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -154,6 +135,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getStringAvro(EMPTY_RECORD, "stringField", isNullOK = true), "")
   }
 
+  /**
+   * Test that boolean fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetBooleanAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -175,6 +159,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertTrue(Utils.getBooleanAvro(record2, "utf8StringField"))
   }
 
+  /**
+   * Test that double fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetDoubleAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -193,6 +180,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getDoubleAvro(record, "doubleField"), -4.4, EPSILON)
   }
 
+  /**
+   * Test that float fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetFloatAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -211,6 +201,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getFloatAvro(record, "doubleField"), -4.4f, EPSILON)
   }
 
+  /**
+   * Test that int fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetIntAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -229,6 +222,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getIntAvro(record, "doubleField"), -4)
   }
 
+  /**
+   * Test that long fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetLongAvro(): Unit = {
     val record = new TestRecordBuilder()
@@ -247,6 +243,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     assertEquals(Utils.getLongAvro(record, "doubleField"), -4L)
   }
 
+  /**
+   * Test that map fields can be read from a [[GenericRecord]].
+   */
   @Test
   def testGetMapAvro(): Unit = {
     val map = new java.util.HashMap[String, Long]()
@@ -284,7 +283,7 @@ class UtilsTest extends TestTemplateWithTmpDir {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetNonNullableMapAvro(): Unit = {
     val emptyRecord = new TestRecordBuilder().build()
-    Utils.getMapAvro(emptyRecord, "stringValMap", isNullOK = false)
+    Utils.getMapAvro(emptyRecord, "stringValMap")
   }
 
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -396,16 +395,9 @@ class UtilsTest extends TestTemplateWithTmpDir {
     Utils.getFloatAvro(record, "stringField")
   }
 
-  @Test
-  def testLog1pExp(): Unit = {
-    assertEquals(MathUtils.log1pExp(-1), 0.31326168751, EPSILON)
-    assertEquals(MathUtils.log1pExp(0), 0.69314718056, EPSILON)
-    assertEquals(MathUtils.log1pExp(1), 1.31326168752, EPSILON)
-    assertEquals(MathUtils.log1pExp(10.5), 10.5000275361, EPSILON)
-    assertEquals(MathUtils.log1pExp(100.5), 100.5, EPSILON)
-    assertEquals(MathUtils.log1pExp(10000), 10000, EPSILON)
-  }
-
+  /**
+   * Test that evaluators can be correctly parsed.
+   */
   @Test
   def testEvaluatorWithName(): Unit = {
     // Test regular evaluators
@@ -470,16 +462,18 @@ class UtilsTest extends TestTemplateWithTmpDir {
     )
   }
 
+  /**
+   * Test that unrecognized evaluators are correctly rejected.
+   *
+   * @param name An invalid evaluator name
+   */
   @Test(dataProvider = "generateUnrecognizedEvaluators", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testUnrecognizedEvaluatorsWithName(name: String): Unit = {
+  def testUnrecognizedEvaluatorsWithName(name: String): Unit =
     Utils.evaluatorWithName(name)
-  }
 }
 
 object UtilsTest {
 
-  private val VECTOR_DIMENSION: Int = 10
-  private val RANDOM_SEED: Long = 1234567890L
   private val EPSILON: Double = 1e-7
   private val TEST_SCHEMA_STRING =
     """
@@ -509,32 +503,7 @@ object UtilsTest {
   private val FIXED_TYPE_RECORD = new TestRecordBuilder().setFixedValue(Array[Byte]('a'.toByte, 'b'.toByte)).build()
 
   /**
-   * This is a Vector that mocks a different implementation of breeze Vector, it does nothing meaningful.
-   *
-   * @tparam V
-   */
-  private class MockVector[V] extends Vector[V] {
-    override def length: Int = 0
-
-    override def copy: Vector[V] = null
-
-    override def update(i: Int, v: V): Unit = {}
-
-    override def activeSize: Int = 0
-
-    override def apply(i: Int): V = 0d.asInstanceOf[V]
-
-    override def activeIterator: Iterator[(Int, V)] = null
-
-    override def activeKeysIterator: Iterator[Int] = null
-
-    override def activeValuesIterator: Iterator[V] = null
-
-    override def repr: Vector[V] = null
-  }
-
-  /**
-   *
+   * Record builder for the test record.
    */
   private class TestRecordBuilder {
     private val _record = new GenericData.Record(TEST_SCHEMA)

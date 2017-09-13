@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.data.avro
 
 import breeze.stats._
+import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkException
 import org.apache.spark.mllib.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.DataFrame
@@ -32,74 +33,82 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
 
   import AvroDataReaderIntegTest._
 
+  /**
+   * Test reading a [[DataFrame]].
+   */
   @Test
   def testRead(): Unit = sparkTest("testRead") {
     val dr = new AvroDataReader(sc)
-    val (df, _) = dr.readMerged(inputPath, featureSectionMap, numPartitions)
+    val (df, _) = dr.readMerged(inputPath.toString, featureSectionMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
 
+  /**
+   * Test reading a [[DataFrame]], using an existing [[IndexMap]].
+   */
   @Test
   def testReadWithFeatureIndex(): Unit = sparkTest("testReadWithIndex") {
-    val indexMapParams = new PalDBIndexMapParams {
-      offHeapIndexMapDir = Some(indexMapPath)
-    }
-
     val indexMapLoaders = featureSectionMap.map { case (shardId, _) =>
       val indexMapLoader = PalDBIndexMapLoader(
         sc,
-        indexMapParams.offHeapIndexMapDir.get,
-        indexMapParams.offHeapIndexMapNumPartitions,
+        indexMapPath,
+        numPartitions = 1,
         shardId)
 
       (shardId, indexMapLoader)
     }
 
     val dr = new AvroDataReader(sc)
-    val df = dr.readMerged(inputPath, indexMapLoaders, featureSectionMap, numPartitions)
+    val df = dr.readMerged(inputPath.toString, indexMapLoaders, featureSectionMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
 
+  /**
+   * Test reading a [[DataFrame]] from multiple paths.
+   */
   @Test
   def testReadMultipleFiles(): Unit = sparkTest("testReadMultipleFiles") {
     val dr = new AvroDataReader(sc)
-    val (df, _) = dr.readMerged(Seq(inputPath, inputPath2), featureSectionMap, numPartitions)
+    val (df, _) = dr.readMerged(Seq(inputPath, inputPath2).map(_.toString), featureSectionMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 44005)
   }
 
-  @Test
+  /**
+   * Test that reading a [[DataFrame]] with duplicate features will throw an error.
+   */
+  @Test(expectedExceptions = Array(classOf[SparkException]))
   def testReadDuplicateFeatures(): Unit = sparkTest("testReadDuplicateFeatures") {
     val dr = new AvroDataReader(sc)
+    val (df, _) = dr.read(duplicateFeaturesPath.toString, numPartitions)
 
-    try {
-      val (df, _) = dr.read(duplicateFeaturesPath, numPartitions)
-
-      // Force evaluation
-      df.head
-
-      fail("Expected failure didn't happen.")
-
-    } catch {
-      case se: SparkException => assertTrue(se.getMessage.contains("Duplicate features found"))
-      case e: Exception => throw e
-    }
+    // Force evaluation
+    df.head
   }
 
+  /**
+   * Test that reading a [[DataFrame]] from an invalid path will throw an error.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPaths(): Unit = sparkTest("testReadInvalidPaths") {
     val dr = new AvroDataReader(sc)
     dr.read(Seq.empty[String], numPartitions)
   }
 
+  /**
+   * Test that attempting to create a [[DataFrame]] with an invalid number of partitions will throw an error.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPartitions(): Unit = sparkTest("testReadInvalidPartitions") {
     val dr = new AvroDataReader(sc)
-    dr.read(inputPath, -1)
+    dr.read(inputPath.toString, -1)
   }
 
+  /**
+   * Test that reading a [[DataFrame]] from files without data will throw an error.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidInputPath(): Unit = sparkTest("testInvalidInputPath") {
     val emptyInputPath = getClass.getClassLoader.getResource("GameIntegTest/empty-input").getPath
@@ -110,11 +119,11 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
 
 object AvroDataReaderIntegTest {
 
-  private val inputDir = "GameIntegTest/input"
-  private val inputPath = getClass.getClassLoader.getResource(inputDir + "/train").getPath
-  private val inputPath2 = getClass.getClassLoader.getResource(inputDir + "/test").getPath
-  private val duplicateFeaturesPath = getClass.getClassLoader.getResource(inputDir + "/duplicateFeatures").getPath
-  private val indexMapPath = getClass.getClassLoader.getResource(inputDir + "/feature-indexes").getPath
+  private val inputDir = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
+  private val inputPath = new Path(inputDir, "train")
+  private val inputPath2 = new Path(inputDir, "test")
+  private val duplicateFeaturesPath = new Path(inputDir, "duplicateFeatures")
+  private val indexMapPath = new Path(inputDir, "feature-indexes")
   private val numPartitions = 4
   private val featureSectionMap = Map(
     "shard1" -> Set("userFeatures", "songFeatures"),

@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 
+import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.Evaluator
@@ -28,19 +29,15 @@ import com.linkedin.photon.ml.util.Timed
 /**
  * Coordinate descent implementation.
  *
- * @param coordinates The individual optimization problem coordinates. The coordinates are a [[Seq]] of
- *                    (coordinateName, [[Coordinate]] object) pairs.
+ * @param coordinates The individual optimization problem coordinates
  * @param trainingLossFunctionEvaluator Training loss function evaluator
- * @param validationDataAndEvaluatorsOption Optional validation data and evaluator. The validating data are a [[RDD]]
- *                                          of (uniqueId, [[GameDatum]] object pairs), where uniqueId is a unique
- *                                          identifier for each [[GameDatum]] object. The evaluators are
- *                                          a [[Seq]] of evaluators
+ * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
  * @param logger A logger instance
  */
 class CoordinateDescent(
-    coordinates: Seq[(String, Coordinate[_])],
+    coordinates: Seq[(CoordinateId, Coordinate[_])],
     trainingLossFunctionEvaluator: Evaluator,
-    validationDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+    validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
     implicit private val logger: Logger) {
 
   import CoordinateDescent._
@@ -96,6 +93,12 @@ class CoordinateDescent(
    */
   def optimize(descentIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
 
+    //
+    // Input verification
+    //
+
+    // Verify valid number of descent iterations
+    require(descentIterations > 0, s"Number of coordinate descent iterations must be greater than 0: $descentIterations")
     // Verify that the model being optimized has entries for each coordinate
     coordinates.foreach { case (coordinateId, _) =>
       require(
@@ -154,9 +157,9 @@ class CoordinateDescent(
      * This will track the "best" model according to the first evaluation function chosen by the user.
      * If the user did not specify any evaluation function, this var will be None.
      *
-     * NOTE these two variables are updated by comparing *FULL* models, including random effects, i.e. outside the loop
-     * on coordinates. If we allowed the "best" model to be selected inside the loop over coordinates, the "best"
-     * model could be one that doesn't contain some random effects.
+     * NOTE: These two variables are updated by comparing *FULL* models, i.e. models after a full update sequence.
+     * If we allowed the "best" model to be selected inside the loop over coordinates, the "best" model could be one
+     * that doesn't contain some fixed/random effects.
      */
     var bestModel: Option[GameModel] = None
     var bestEvals: Option[EvaluationResults] = None
@@ -208,9 +211,23 @@ class CoordinateDescent(
               // Log coordinate update details
               //
 
-              // Log a summary of the updated model. Do a check for debug first, to not waste time computing the summary.
+              // Log the objective value for the current GAME model
+              val updatedScores = coordinate.score(updatedModel)
+              updatedScores
+                .setName(s"Updated training scores with key $coordinateId at iteration $iteration")
+                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                .materialize()
+              val newTrainingScore = fullTrainingScore - updatedScoresContainer(coordinateId) + updatedScores
+
+              updatedScoresContainer(coordinateId).unpersistRDD()
+              updatedScoresContainer = updatedScoresContainer.updated(coordinateId, updatedScores)
+              newTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+              fullTrainingScore.unpersistRDD()
+              fullTrainingScore = newTrainingScore
+
+              // Log a summary of the updated model and its objective value. Do a check for debug first, to not waste
+              // time computing the summary.
               if (logger.isDebugEnabled) {
-                // TODO: Computing model summary is slow, we should only do it if necessary
                 logger.debug(s"Summary of the learned model:\n${updatedModel.toSummaryString}")
 
                 // If optimization tracking is enabled, log the optimization summary
@@ -222,36 +239,20 @@ class CoordinateDescent(
                     case _ =>
                   }
                 }
+
+                val updatedRegularizationTermValue = coordinate.computeRegularizationTermValue(updatedModel)
+                fullRegularizationTermValue = (fullRegularizationTermValue
+                  - regularizationTermValueContainer(coordinateId)
+                  + updatedRegularizationTermValue)
+                regularizationTermValueContainer =
+                  regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
+
+                logger.debug(s"Objective value after updating coordinate $coordinateId, iteration $iteration:")
+                logger.debug(
+                  formatObjectiveValue(
+                    trainingLossFunctionEvaluator.evaluate(fullTrainingScore.scores),
+                    fullRegularizationTermValue))
               }
-
-              // Log the objective value for the current GAME model
-              val updatedScores = coordinate.score(updatedModel)
-              updatedScores
-                .setName(s"Updated training scores with key $coordinateId at iteration $iteration")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-                .materialize()
-              val updatedRegularizationTermValue = coordinate.computeRegularizationTermValue(updatedModel)
-
-              val newTrainingScore = fullTrainingScore - updatedScoresContainer(coordinateId) + updatedScores
-              newTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
-              fullTrainingScore.unpersistRDD()
-              fullTrainingScore = newTrainingScore
-
-              fullRegularizationTermValue = (fullRegularizationTermValue
-                - regularizationTermValueContainer(coordinateId)
-                + updatedRegularizationTermValue)
-              val objectiveValueString = formatObjectiveValue(
-                trainingLossFunctionEvaluator.evaluate(fullTrainingScore.scores),
-                fullRegularizationTermValue)
-
-              updatedScoresContainer(coordinateId).unpersistRDD()
-              updatedScoresContainer = updatedScoresContainer.updated(coordinateId, updatedScores)
-              regularizationTermValueContainer =
-                regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
-
-              // TODO: Move this logging to debug level?
-              logger.info(s"Objective value after updating coordinate $coordinateId, iteration $iteration:")
-              logger.info(s"$objectiveValueString")
 
               //
               // Validate the updated GAME model
@@ -376,10 +377,19 @@ object CoordinateDescent {
       s"objectiveFunctionValue: $objectiveFunctionValue"
   }
 
+  /**
+   * Helper function to create a new [[CoordinateDescent]] instance.
+   *
+   * @param coordinates The individual optimization problem coordinates
+   * @param trainingLossFunctionEvaluator Training loss function evaluator
+   * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
+   * @param logger A logger instance
+   * @return A new [[CoordinateDescent]] instance
+   */
   def apply(
-      coordinates: Seq[(String, Coordinate[_])],
+      coordinates: Seq[(CoordinateId, Coordinate[_])],
       trainingLossFunctionEvaluator: Evaluator,
-      validatingDataAndEvaluatorsOption: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+      validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
       logger: Logger) =
-    new CoordinateDescent(coordinates, trainingLossFunctionEvaluator, validatingDataAndEvaluatorsOption, logger)
+    new CoordinateDescent(coordinates, trainingLossFunctionEvaluator, validationDataAndEvaluatorsOption, logger)
 }

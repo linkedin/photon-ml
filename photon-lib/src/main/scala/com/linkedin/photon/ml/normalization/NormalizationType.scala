@@ -12,30 +12,31 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.normalization;
+package com.linkedin.photon.ml.normalization
 
 /**
  * The enum of different normalization types used for feature normalization.
  */
-public enum NormalizationType {
+object NormalizationType extends Enumeration {
+  type NormalizationType = Value
 
   /**
    * Scale each feature to have unit variance
    */
-  SCALE_WITH_STANDARD_DEVIATION,
+  val SCALE_WITH_STANDARD_DEVIATION = Value
 
   /**
    * Scale each feature to lie in the range [-1, 1]
    */
-  SCALE_WITH_MAX_MAGNITUDE,
+  val SCALE_WITH_MAX_MAGNITUDE = Value
 
   /**
    * Zero-mean unit variance distributions x -> (x - \mu)/\sigma. Intercept must be included to enable this feature.
    */
-  STANDARDIZATION,
+  val STANDARDIZATION = Value
 
   /**
    * Skip normalization
    */
-  NONE
+  val NONE = Value
 }

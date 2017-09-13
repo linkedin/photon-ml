@@ -23,7 +23,10 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
-class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
+/**
+ * Integration tests for [[PhotonLogger]]
+ */
+class PhotonLoggerIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   class TestException extends Exception
 
@@ -34,6 +37,9 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
   private val TRACE_MESSAGE = "test message 4"
   private val WARN_MESSAGE = "test message 5"
 
+  /**
+   * Test that a single log message can be correctly logged.
+   */
   @Test
   def testSingleLogMessage(): Unit = sparkTest("singleLogMessage") {
     val logFile = s"$getTmpDir/singleLogMessage"
@@ -53,6 +59,9 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
   }
 
+  /**
+   * Test that multiple log messages can be correctly logged.
+   */
   @Test
   def testMultipleLogMessages(): Unit = sparkTest("multipleLogMessages") {
     val logFile = s"$getTmpDir/multipleLogMessages"
@@ -93,6 +102,12 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
       Array(PhotonLogger.LogLevelError, 1))
   }
 
+  /**
+   * Test that log messages of the correct granularity are filtered.
+   *
+   * @param level The level of log messages to capture
+   * @param expectedMessages The expected number of log messages to capture
+   */
   @Test(dataProvider = "logLevelTestDataProvider")
   def testLogLevels(level: Int, expectedMessages: Int): Unit = sparkTest("logLevels") {
     val logFile = s"$getTmpDir/logLevels"
@@ -117,6 +132,9 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     assertEquals(lines.length, expectedMessages)
   }
 
+  /**
+   * Test that a stack trace is correctly logged.
+   */
   @Test
   def testLogMessageWithStackTrace(): Unit = sparkTest("logMessageWithStackTrace") {
     val logFile = s"$getTmpDir/multipleLogMessages"
@@ -139,6 +157,6 @@ class PhotonLoggerTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val lines = Source.fromFile(logFile).getLines().toArray
     assertEquals(lines.length, 19) // NOTE in IDEA, this is 34, depending on how you run the test (via gradle or not)
     assertTrue(lines(0).matches(LOG_REGEX_BASE.format("ERROR", ERROR_MESSAGE)))
-    assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerTest$TestException")
+    assertEquals(lines(1), "com.linkedin.photon.ml.util.PhotonLoggerIntegTest$TestException")
   }
 }

@@ -24,7 +24,7 @@ import org.testng.annotations.Test
 class PalDBIndexMapTest {
   import PalDBIndexMapTest._
 
-  // Two tests running in parallel could also detech if the readers are thread-safe.
+  // Two tests running in parallel could also detach if the readers are thread-safe.
   @Test
   def testNoInterceptMap(): Unit = {
     val map = new PalDBIndexMap().load(
@@ -86,18 +86,20 @@ object PalDBIndexMapTest {
   private val OFFHEAP_HEART_STORE_PARTITION_NUM = "2"
 
   /**
+   * Construct a feature key from a name and term.
    *
-   * @param name
-   * @param term
-   * @return
+   * @param name The feature name
+   * @param term The feature term
+   * @return The unique feature key
    */
   private def getFeatureKey(name: String, term: Option[String] = None): String = name + DELIMITER + term.getOrElse("")
 
   /**
+   * Assert that a [[PalDBIndexMap]] correctly maps between a feature name and its index.
    *
-   * @param palDBIndexMap
-   * @param expectedName
-   * @param expectedIdx
+   * @param palDBIndexMap The index map
+   * @param expectedName The expected feature name
+   * @param expectedIdx The expected feature index
    */
   private def assertFeatureIndexMapping(palDBIndexMap: PalDBIndexMap, expectedName: String, expectedIdx: Int): Unit = {
     assertEquals(palDBIndexMap.getIndex(expectedName), expectedIdx)

@@ -55,7 +55,7 @@ import com.linkedin.photon.ml.util._
  */
 class FeatureIndexingJob(
     val sc: SparkContext,
-    val inputPaths: Seq[String],
+    val inputPaths: Seq[Path],
     val partitionNum: Int,
     val outputPath: String,
     val addIntercept: Boolean,
@@ -68,8 +68,8 @@ class FeatureIndexingJob(
   /**
    * Ensures that the output path exists.
    *
-   * @param outputPath
-   * @return
+   * @param outputPath A path to the output dir as a [[String]]
+   * @return A Hadoop [[Path]] object to the given path, which is guaranteed to exist
    */
   private def ensureOutputPath(outputPath: String): Path = {
     val path = new Path(outputPath)
@@ -82,11 +82,11 @@ class FeatureIndexingJob(
   }
 
   /**
-   * Given a raw input data RDD, generate the partitioned unique features names grouped by hash code
+   * Given a raw input data [[RDD]], generate the partitioned unique features names grouped by hash code
    *
-   * @param inputRdd
-   * @param addIntercept
-   * @param featureSections
+   * @param inputRdd An [[RDD]] of raw input [[GenericRecord]]
+   * @param addIntercept Whether to add an intercept feature to the list of unique features
+   * @param featureSections An optional set of feature bags to combine into one index
    * @return RDD[(hash key, Iterable[unique feature name])]
    */
   private def partitionedUniqueFeatures(
@@ -176,10 +176,10 @@ class FeatureIndexingJob(
   }
 
   /**
-   *
+   * Run the configured [[FeatureIndexingJob]].
    */
   def run(): Unit = {
-    val inputRdd = AvroUtils.readAvroFiles(sc, inputPaths, 10)
+    val inputRdd = AvroUtils.readAvroFiles(sc, inputPaths.map(_.toString), 10)
 
     ensureOutputPath(outputPath)
 
@@ -196,11 +196,10 @@ class FeatureIndexingJob(
           buildIndexMap(featuresRdd, outputPath, shardId)
         }
 
-      case _ => {
+      case _ =>
         // Otherwise, build a global index
         val featuresRdd = partitionedUniqueFeatures(inputRdd, addIntercept)
         buildIndexMap(featuresRdd, outputPath)
-      }
     }
   }
 }
@@ -208,49 +207,48 @@ class FeatureIndexingJob(
 object FeatureIndexingJob {
 
   /**
+   * Entry point to the job.
    *
-   * @param args
+   * @param args The command line arguments for the job
    */
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
 
     val sc: SparkContext = SparkContextConfiguration.asYarnClient(
-      new SparkConf(), "build-feature-index-map", true)
+      new SparkConf(),
+      "build-feature-index-map",
+      useKryo = true)
 
     // Handle date range input
-    val inputPathsWithRanges = (params.dateRangeOpt, params.dateRangeDaysAgoOpt) match {
-      // Specified as date range
-      case (Some(dateRange), None) =>
-        val range = DateRange.fromDates(dateRange)
+    val dateRangeOpt = IOUtils.resolveRange(
+      params.dateRangeOpt.map(DateRange.fromDateString),
+      params.dateRangeDaysAgoOpt.map(DaysRange.fromDaysString))
+    val inputPathsWithRanges = dateRangeOpt
+      .map { dateRange =>
         IOUtils.getInputPathsWithinDateRange(
-          params.inputPaths, range, sc.hadoopConfiguration, errorOnMissing = false)
-
-      // Specified as a range of start days ago - end days ago
-      case (None, Some(dateRangeDaysAgo)) =>
-        val range = DateRange.fromDaysAgo(dateRangeDaysAgo)
-        IOUtils.getInputPathsWithinDateRange(
-          params.inputPaths, range, sc.hadoopConfiguration, errorOnMissing = false)
-
-      // Both types specified: illegal
-      case (Some(_), Some(_)) =>
-        throw new IllegalArgumentException(
-          "Both dateRangeOpt and dateRangeDaysAgoOpt given. You must specify date ranges using only one " +
-          "format.")
-
-      case (None, None) => params.inputPaths.toSeq
-    }
+          params.inputPaths,
+          dateRange,
+          sc.hadoopConfiguration,
+          errorOnMissing = false)
+      }
+      .getOrElse(params.inputPaths.toSeq)
 
     new FeatureIndexingJob(
-      sc, inputPathsWithRanges, params.partitionNum, params.outputPath, params.addIntercept, params.fieldNames,
+      sc,
+      inputPathsWithRanges,
+      params.partitionNum,
+      params.outputPath,
+      params.addIntercept,
+      params.fieldNames,
       params.featureShardIdToFeatureSectionKeysMap)
       .run()
   }
 
   /**
-    * Configuration parameters for the job
-    */
+   * Configuration parameters for the job.
+   */
   private case class Params(
-    inputPaths: Seq[String] = Seq.empty,
+    inputPaths: Set[Path] = Set.empty,
     partitionNum: Int = 1,
     outputPath: String = "",
     dateRangeOpt: Option[String] = None,
@@ -275,11 +273,11 @@ object FeatureIndexingJob {
   }
 
   /**
-    * Parses command line arguments into a Params object.
-    *
-    * @param args array of command line arguments
-    * @return parsed Params object
-    */
+   * Parse command line arguments into a Params object.
+   *
+   * @param args Command line arguments in Scopt format
+   * @return A parsed [[Params]] object
+   */
   private def parseArgs(args: Array[String]): Params = {
     val defaultParams = Params()
 
@@ -287,7 +285,7 @@ object FeatureIndexingJob {
       opt[String]("input-paths")
         .required()
         .text("The input path of the data.")
-        .action((x, c) => c.copy(inputPaths = x.split(",").toSeq))
+        .action((x, c) => c.copy(inputPaths = x.split(",").map(new Path(_)).toSet))
 
       opt[Int]("partition-num")
         .required()
@@ -322,7 +320,7 @@ object FeatureIndexingJob {
             case FieldNamesType.RESPONSE_PREDICTION => ResponsePredictionFieldNames
             case FieldNamesType.TRAINING_EXAMPLE => TrainingExampleFieldNames
             case _ => throw new IllegalArgumentException(
-              s"Input training file's field name type cannot be ${fieldNamesType}")
+              s"Input training file's field name type cannot be $fieldNamesType")
           })
         })
 

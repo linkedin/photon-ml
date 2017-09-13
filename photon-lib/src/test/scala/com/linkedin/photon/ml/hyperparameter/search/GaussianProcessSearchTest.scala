@@ -22,6 +22,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Test cases for the GaussianProcessSearch class
@@ -33,13 +34,14 @@ class GaussianProcessSearchTest {
   val n = 5
   val lower = 1e-5
   val upper = 1e5
-  val ranges = Seq.fill(dim)((lower, upper))
+  val ranges: Seq[DoubleRange] = Seq.fill(dim)(DoubleRange(lower, upper))
 
   case class TestModel(params: DenseVector[Double], evaluation: Double)
 
   val evaluationFunction = new EvaluationFunction[TestModel] {
+
     def apply(hyperParameters: DenseVector[Double]): (Double, TestModel) = {
-      (0.0, new TestModel(hyperParameters, 0.0))
+      (0.0, TestModel(hyperParameters, 0.0))
     }
 
     def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
@@ -47,7 +49,9 @@ class GaussianProcessSearchTest {
   }
 
   val evaluator = new Evaluator {
-    override protected[ml] val labelAndOffsetAndWeights = mock(classOf[RDD[(Long, (Double, Double, Double))]])
+
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
+      mock(classOf[RDD[(Long, (Double, Double, Double))]])
     override val evaluatorType = EvaluatorType.AUC
     override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
         scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
@@ -67,7 +71,7 @@ class GaussianProcessSearchTest {
   }
 
   @DataProvider
-  def bestCandidateDataProvider = {
+  def bestCandidateDataProvider: Array[Array[Any]] = {
     val candidate1 = DenseVector(1.0)
     val candidate2 = DenseVector(2.0)
     val candidate3 = DenseVector(3.0)
