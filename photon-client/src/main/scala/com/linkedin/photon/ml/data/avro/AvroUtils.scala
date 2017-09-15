@@ -169,8 +169,8 @@ object AvroUtils {
     schemaString: String,
     forceOverwrite: Boolean = false): Unit = {
 
-    val fs = FileSystem.get(sc.hadoopConfiguration)
     val outputPath = new Path(path)
+    val fs = outputPath.getFileSystem(sc.hadoopConfiguration)
     val outputStream = fs.create(outputPath, forceOverwrite)
     val schema = new Parser().parse(schemaString)
     val writer = new SpecificDatumWriter[T](schema)
