@@ -128,7 +128,13 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
 
     // Need to split these calls to keep correct return type
     val scores = gameModel.score(gameDataSet)
-    scores.persistRDD(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+    val storageLevel = if (params.spillScores) {
+      StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL
+    } else {
+      StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL
+    }
+
+    scores.persistRDD(storageLevel).materialize()
 
     gameDataSet.unpersist()
     gameModel.toMap.foreach {
@@ -154,11 +160,15 @@ class Driver(val params: Params, val sc: SparkContext, val logger: Logger)
         Some(scoredGameDatum.weight),
         scoredGameDatum.idTagToValueMap)
     }
-    scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
     if (logDatasetAndModelStats) {
+      // Persist scored items here since we introduce multiple passes
+      scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
       val numScoredItems = scoredItems.count()
       logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")
     }
+
     val scoredItemsToBeSaved =
       if (numOutputFilesForScores > 0 && numOutputFilesForScores != scoredItems.partitions.length) {
         scoredItems.repartition(numOutputFilesForScores)
