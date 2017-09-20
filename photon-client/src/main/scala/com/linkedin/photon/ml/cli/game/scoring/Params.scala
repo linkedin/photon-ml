@@ -101,6 +101,12 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
   var inputColumnsNames: InputColumnsNames = InputColumnsNames()
 
   /**
+   * Whether to spill persisted scores to disk. This is more CPU intensive, but prevents recomputation of scores when
+   * memory-persisted blocks are evicted. Useful for very large scoring tasks.
+   */
+  var spillScores: Boolean = false
+
+  /**
    * Construct a human-readable string for an instance of Params.
    *
    * @return A human-readable string representing this Params
@@ -124,8 +130,9 @@ class Params extends FeatureParams with PalDBIndexMapParams with EvaluatorParams
       s"evaluatorTypes: ${evaluatorTypes.getOrElse(Seq()).map(_.name).mkString("\t")}\n" +
       s"applicationName: $applicationName\n" +
       s"offHeapIndexMapDir: $offHeapIndexMapDir\n" +
-      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions"+
-      s"inputColumnsNames: $inputColumnsNames"
+      s"offHeapIndexMapNumPartitions: $offHeapIndexMapNumPartitions\n" +
+      s"inputColumnsNames: $inputColumnsNames\n" +
+      s"spillScores: $spillScores"
   }
 }
 
@@ -259,6 +266,12 @@ object Params {
               params.inputColumnsNames.updated(InputColumnsNames.withName(key), value)
             }
         )
+
+      opt[Boolean]("spill-scores")
+        .text(s"Whether to spill persisted scores to disk. This is more CPU intensive, but prevents recomputation " +
+          "of scores when memory-persisted blocks are evicted. Useful for very large scoring tasks. " +
+          "Default: ${defaultParams.spillScores}")
+        .foreach(x => params.spillScores = x)
 
       help("help").text("Prints usage text")
     }
