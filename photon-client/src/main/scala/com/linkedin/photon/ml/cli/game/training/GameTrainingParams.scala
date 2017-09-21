@@ -171,7 +171,7 @@ class GameTrainingParams extends FeatureParams with PalDBIndexMapParams with Eva
   /**
    * Type of validation to be performed
    */
-  var dataValidationType: DataValidationType = DataValidationType.VALIDATE_FULL
+  var dataValidationType: DataValidationType = DataValidationType.VALIDATE_DISABLED
 
   /**
    * Name of this Spark application
