@@ -260,25 +260,25 @@ object DataValidators extends Logging {
       inputColumnsNames: InputColumnsNames,
       featureSectionKeys: Set[FeatureShardId]): Seq[String] = {
 
-    perSampleValidators
-      .flatMap { case (validator, columnName, msg) =>
-        val rows = dataSet.collect()
-        rows.flatMap { r =>
-          if (columnName.equals(InputColumnsNames.FEATURES_DEFAULT)) {
-            featureSectionKeys.map(features => (validator(r, features), msg))
+    val columns = dataSet.columns
+    dataSet.rdd.flatMap { r =>
+      perSampleValidators.flatMap { case (validator, columnName, msg) =>
+        if (columnName == InputColumnsNames.FEATURES_DEFAULT) {
+          featureSectionKeys.map(features => (validator(r, features), msg))
+        } else {
+          val result = if (columns.contains(inputColumnsNames(columnName))) {
+            (validator(r, inputColumnsNames(columnName)), msg)
           } else {
-            val result = if (dataSet.columns.contains(inputColumnsNames(columnName))) {
-              (validator(r, inputColumnsNames(columnName)), msg)
-            } else {
-              (true, "")
-            }
-            
-            Seq(result)
+            (true, "")
           }
+
+          Seq(result)
         }
       }
       .filterNot(_._1)
       .map(_._2)
+    }
+    .collect()
   }
 
   /**
