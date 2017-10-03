@@ -26,8 +26,8 @@ import com.linkedin.photon.ml.supervised.regression.{PoissonRegressionModel, Reg
 import com.linkedin.photon.ml.util.Logging
 
 /**
-  * A collection of evaluation metrics and functions
-  */
+ * A collection of evaluation metrics and functions
+ */
 object Evaluation extends Logging {
 
   val MEAN_ABSOLUTE_ERROR = "Mean absolute error"
@@ -44,14 +44,14 @@ object Evaluation extends Logging {
   private def MetricsMap() = Map[String, Double]()
 
   /**
-    * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
-    * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
-    * all metrics.
-    *
-    * @param model The GLM model to be evaluated
-    * @param dataSet The data set used to evaluate the GLM model
-    * @return Map of (metricName &rarr; value)
-    */
+   * Assumption: model.computeMeanFunctionWithOffset is what is used to do predictions in the case of both binary
+   * classification and regression; hence, it is safe to do scoring once, using this method, and then re-use to get
+   * all metrics.
+   *
+   * @param model The GLM model to be evaluated
+   * @param dataSet The data set used to evaluate the GLM model
+   * @return Map of (metricName &rarr; value)
+   */
   def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): MetricsMap = {
     val broadcastModel = dataSet.sparkContext.broadcast(model)
     val scoreAndLabel = dataSet
@@ -84,6 +84,7 @@ object Evaluation extends Logging {
           (AREA_UNDER_PRECISION_RECALL, binaryMetrics.areaUnderPR),
           (AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS, binaryMetrics.areaUnderROC),
           (PEAK_F1_SCORE, binaryMetrics.fMeasureByThreshold().map(x => x._2).max))
+
       case _ =>
         // Do nothing
     }
@@ -129,49 +130,46 @@ object Evaluation extends Logging {
 
   // See https://en.wikipedia.org/wiki/Poisson_regression
   private def poissonRegressionLogLikelihood(labeled: RDD[LabeledPoint], model: PoissonRegressionModel): Double = {
-    val logLikelihoods = labeled.map(sample => {
+
+    val logLikelihoods = labeled.map { sample =>
       // Compute the log likelihoods
       val y = sample.label
       val wTx = sample.computeMargin(model.coefficients.means)
       val numeratorLog = y * wTx - math.exp(wTx)
       val denominatorLog = Gamma.logGamma(1.0 + y) // y! = Gamma(y + 1)
-      numeratorLog - denominatorLog
-    })
 
-    averageRDD(logLikelihoods)
+      (numeratorLog - denominatorLog, 1)
+    }
+
+    averageLogLikelihoodRDD(logLikelihoods)
   }
 
   // See https://en.wikipedia.org/wiki/Logistic_regression
   private def logisticRegressionLogLikelihood(scoreAndLabel: RDD[(Double, Double)]): Double = {
-    val logLikelihood = scoreAndLabel.map{ case (score, label) =>
+
+    val logLikelihoods = scoreAndLabel.map { case (score, label) =>
       val logP = if (score > EPSILON) math.log(score) else math.log(EPSILON)
-      val log1mP = if (score > 1 - EPSILON) math.log1p(1 - EPSILON) else math.log1p(-score)
-      val result =  label * logP + (1.0 - label) * log1mP
+      val log1mP = if (score > 1 - EPSILON) math.log(EPSILON) else math.log1p(-score)
+      val result = label * logP + (1.0 - label) * log1mP
+
       assert(!result.isInfinite && !result.isNaN, s"label = $label, score = $score, result is not finite")
-      result
+
+      (result, 1)
     }
 
-    averageRDD(logLikelihood)
+    averageLogLikelihoodRDD(logLikelihoods)
   }
 
-  private def averageRDD(toAverage: RDD[Double]): Double = {
-    toAverage.mapPartitions(toAverage => {
-      // Compute per-partition partial mean
-      var count = 0
-      var mean = 0.0
-      toAverage.foreach(x => {
-        count += 1
-        mean += (x - mean) / count
-      })
-      Seq((count, mean)).iterator
-    }).reduce((a, b) => {
-      // Aggregate per-partition means
-      val (countA, meanA) = a
-      val (countB, meanB) = b
-      val newCount = countA + countB
-      val newMean = meanA + (meanB * countB) / newCount
-      (newCount, newMean)
-    })._2
+  private def averageLogLikelihoodRDD(logLikelihoods: RDD[(Double, Int)]): Double = {
+
+    val (logLikelihood, count) = logLikelihoods.reduce { (a, b) =>
+      val (logLikelihoodA, countA) = a
+      val (logLikelihoodB, countB) = b
+
+      (logLikelihoodA + logLikelihoodB, countA + countB)
+    }
+
+    logLikelihood / count.toDouble
   }
 
   val sortDecreasing = new Ordering[Double]() {

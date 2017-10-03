@@ -99,7 +99,7 @@ protected[ml] class Driver(
   private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
   private[this] var diagnostic: DiagnosticReport = _
 
-  protected var perModelMetrics: Map[Double, Map[String, Double]] = Map[Double, Map[String, Double]]()
+  protected var perModelMetrics: Map[Double, Evaluation.MetricsMap] = Map()
 
   protected val stageHistory: mutable.ArrayBuffer[DriverStage] = new ArrayBuffer[DriverStage]()
   protected var stage: DriverStage = DriverStage.INIT
@@ -389,6 +389,7 @@ protected[ml] class Driver(
             }
 
           val finalMetrics = perIterationMetrics.last
+          perModelMetrics += (lambda -> finalMetrics)
           sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, Some(perIterationMetrics), Some(finalMetrics)))
         }
 
@@ -426,16 +427,16 @@ protected[ml] class Driver(
     val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
       case TaskType.LINEAR_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
-        ModelSelection.selectBestLinearRegressionModel(models, validationData)
+        ModelSelection.selectBestLinearRegressionModel(models, perModelMetrics)
       case TaskType.POISSON_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
-        ModelSelection.selectBestPoissonRegressionModel(models, validationData)
+        ModelSelection.selectBestPoissonRegressionModel(models, perModelMetrics)
       case TaskType.LOGISTIC_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
-        ModelSelection.selectBestLinearClassifier(models, validationData)
+        ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
-        ModelSelection.selectBestLinearClassifier(models, validationData)
+        ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
     }
 
     logger.info(s"Regularization weight of the best model is: $bestModelWeight")
