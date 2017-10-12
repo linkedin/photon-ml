@@ -38,7 +38,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
   import ScoptParserReads._
 
-  protected val scoptGameTrainingParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
+  val scoptGameTrainingParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
     createScoptGameParams(GameTrainingDriver) ++ Seq(
 
       // Task Type
@@ -52,22 +52,22 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       ScoptParameter[Seq[Path], Set[Path]](
         GameTrainingDriver.validationDataDirectories,
         parse = ScoptParserHelpers.parseSetFromSeq,
-        print = ScoptParserHelpers.setToString,
+        print = ScoptParserHelpers.iterableToString,
         usageText = "<path1>,<path2>,..."),
 
       // Validation Data Date Range
       ScoptParameter[DateRange, DateRange](
-        GameTrainingDriver.inputDataDateRange,
+        GameTrainingDriver.validationDataDateRange,
         usageText = s"${DateRange.DEFAULT_PATTERN}${DateRange.DEFAULT_DELIMITER}${DateRange.DEFAULT_PATTERN}"),
 
       // Validation Data Days Range
       ScoptParameter[DaysRange, DaysRange](
-        GameTrainingDriver.inputDataDaysRange,
+        GameTrainingDriver.validationDataDaysRange,
         usageText = s"xx${DaysRange.DEFAULT_DELIMITER}xx"),
 
       // Minimum Validation Partitions
       ScoptParameter[Int, Int](
-        GameTrainingDriver.offHeapIndexMapPartitions,
+        GameTrainingDriver.minValidationPartitions,
         usageText = "<value>"),
 
       // Output Mode
@@ -84,8 +84,8 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       // Coordinate Configurations
       ScoptParameter[Map[String, String], Map[CoordinateId, CoordinateConfiguration]](
         GameTrainingDriver.coordinateConfigurations,
-        ScoptParserHelpers.parseCoordinateConfiguration,
-        Some(ScoptParserHelpers.updateCoordinateConfigurations),
+        parse = ScoptParserHelpers.parseCoordinateConfiguration,
+        updateOpt = Some(ScoptParserHelpers.updateCoordinateConfigurations),
         printSeq = ScoptParserHelpers.coordinateConfigsToStrings,
         usageText = "<arg>=<value>",
         additionalDocs = Seq(
@@ -96,7 +96,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       // Coordinate Update Sequence
       ScoptParameter[Seq[CoordinateId], Seq[CoordinateId]](
         GameTrainingDriver.coordinateUpdateSequence,
-        print = ScoptParserHelpers.seqToString,
+        print = ScoptParserHelpers.iterableToString,
         usageText = "<coordinate1>,<coordinate2>,...",
         isRequired = true),
 
@@ -153,14 +153,14 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
     val parser = new OptionParser[ParamMap]("Photon-Game") {
 
-      private def optHelper[In](scoptParameter: ScoptParameter[In, _]): OptionDef[In, ParamMap] = {
+      private def optHelper[In, Out](scoptParameter: ScoptParameter[In, Out]): OptionDef[In, ParamMap] = {
 
         implicit val read: Read[In] = scoptParameter.read
 
         scoptParameter.toOptionDef(opt[In])
       }
 
-      scoptGameTrainingParams.foreach { optHelper(_) }
+      scoptGameTrainingParams.foreach(optHelper(_))
     }
 
     parser.parse(args, ParamMap.empty) match {
@@ -175,5 +175,19 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
         throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString()}")
     }
+  }
+
+  /**
+   * Given a [[ParamMap]] of valid parameters, convert them into a [[Seq]] of [[String]] representations which can be
+   * parsed by Scopt.
+   *
+   * @param paramMap Valid GAME training parameters
+   * @return A [[Seq]] of [[String]] representations of the parameters, in a format that can be parsed by Scopt
+   */
+  def printForCommandLine(paramMap: ParamMap): Seq[String] = {
+
+    GameTrainingDriver.validateParams(paramMap)
+
+    scoptGameTrainingParams.flatMap(_.generateCmdLineArgs(paramMap))
   }
 }

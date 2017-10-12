@@ -21,22 +21,22 @@ import com.linkedin.photon.ml.optimization._
 /**
  * Trait for any class which defines a coordinate for coordinate descent.
  */
-protected[ml] sealed trait CoordinateConfiguration {
+sealed trait CoordinateConfiguration {
 
   /**
    * Coordinate data set definition
    */
-  val dataConfiguration: CoordinateDataConfiguration
+  protected[ml] val dataConfiguration: CoordinateDataConfiguration
 
   /**
    * Coordinate optimization problem definition
    */
-  val optimizationConfiguration: CoordinateOptimizationConfiguration
+  protected[ml] val optimizationConfiguration: CoordinateOptimizationConfiguration
 
   /**
    * Regularization weights
    */
-  val regularizationWeights: Set[Double]
+  protected[ml] val regularizationWeights: Set[Double]
 
   /**
    * Create a list of [[CoordinateOptimizationConfiguration]], one for each regularization weight, sorted in decreasing
@@ -54,11 +54,13 @@ protected[ml] sealed trait CoordinateConfiguration {
  * @param optimizationConfiguration Coordinate optimization problem definition
  * @param regularizationWeights Regularization weights
  */
-protected[ml] class FixedEffectCoordinateConfiguration private (
-    override val dataConfiguration: FixedEffectDataConfiguration,
-    override val optimizationConfiguration: FixedEffectOptimizationConfiguration,
-    override val regularizationWeights: Set[Double])
+class FixedEffectCoordinateConfiguration private (
+    override protected[ml] val dataConfiguration: FixedEffectDataConfiguration,
+    override protected[ml] val optimizationConfiguration: FixedEffectOptimizationConfiguration,
+    override protected[ml] val regularizationWeights: Set[Double])
   extends CoordinateConfiguration {
+
+  require(regularizationWeights.nonEmpty, "At least one regularization weight required.")
 
   /**
    * Create a list of [[CoordinateOptimizationConfiguration]], one for each regularization weight, sorted in decreasing
@@ -66,23 +68,19 @@ protected[ml] class FixedEffectCoordinateConfiguration private (
    *
    * @return A list of [[CoordinateOptimizationConfiguration]]
    */
-  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] = {
-
-    if (regularizationWeights.isEmpty) {
-      Seq(optimizationConfiguration)
-    } else {
-      regularizationWeights
-        .toSeq
-        .sortBy(identity)
-        .reverse
-        .map { regWeight =>
-          optimizationConfiguration.copy(regularizationWeight = regWeight)
-        }
-    }
-  }
+  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] =
+    regularizationWeights
+      .toSeq
+      .sorted
+      .reverse
+      .map { regWeight =>
+        optimizationConfiguration.copy(regularizationWeight = regWeight)
+      }
 }
 
 object FixedEffectCoordinateConfiguration {
+
+  private val EMPTY_REG_WEIGHTS = Set(0D)
 
   /**
    * Helper function to generate a [[FixedEffectCoordinateConfiguration]].
@@ -95,10 +93,12 @@ object FixedEffectCoordinateConfiguration {
   def apply(
       dataConfiguration: FixedEffectDataConfiguration,
       optimizationConfiguration: FixedEffectOptimizationConfiguration,
-      regularizationWeights: Set[Double] = Set()): FixedEffectCoordinateConfiguration = {
+      regularizationWeights: Set[Double] = EMPTY_REG_WEIGHTS): FixedEffectCoordinateConfiguration = {
 
     if (optimizationConfiguration.regularizationContext.regularizationType == RegularizationType.NONE) {
-      new FixedEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, Set())
+      new FixedEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, EMPTY_REG_WEIGHTS)
+    } else if (regularizationWeights == EMPTY_REG_WEIGHTS) {
+      throw new IllegalArgumentException("Must provide regularization weight(s) if regularization enabled.")
     } else {
       new FixedEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, regularizationWeights)
     }
@@ -112,11 +112,13 @@ object FixedEffectCoordinateConfiguration {
  * @param optimizationConfiguration Coordinate optimization problem definition
  * @param regularizationWeights Regularization weights
  */
-protected[ml] class RandomEffectCoordinateConfiguration private (
-    override val dataConfiguration: RandomEffectDataConfiguration,
-    override val optimizationConfiguration: RandomEffectOptimizationConfiguration,
-    override val regularizationWeights: Set[Double])
+class RandomEffectCoordinateConfiguration private (
+    override protected[ml] val dataConfiguration: RandomEffectDataConfiguration,
+    override protected[ml] val optimizationConfiguration: RandomEffectOptimizationConfiguration,
+    override protected[ml] val regularizationWeights: Set[Double])
   extends CoordinateConfiguration {
+
+  require(regularizationWeights.nonEmpty, "At least one regularization weight required.")
 
   /**
    * Create a list of [[CoordinateOptimizationConfiguration]], one for each regularization weight, sorted in decreasing
@@ -124,23 +126,19 @@ protected[ml] class RandomEffectCoordinateConfiguration private (
    *
    * @return A list of [[CoordinateOptimizationConfiguration]]
    */
-  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] = {
-
-    if (regularizationWeights.isEmpty) {
-      Seq(optimizationConfiguration)
-    } else {
-      regularizationWeights
-        .toSeq
-        .sortBy(identity)
-        .reverse
-        .map { regWeight =>
-          optimizationConfiguration.copy(regularizationWeight = regWeight)
-        }
-    }
-  }
+  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] =
+    regularizationWeights
+      .toSeq
+      .sortBy(identity)
+      .reverse
+      .map { regWeight =>
+        optimizationConfiguration.copy(regularizationWeight = regWeight)
+      }
 }
 
 object RandomEffectCoordinateConfiguration {
+
+  private val EMPTY_REG_WEIGHTS = Set(0D)
 
   /**
    * Helper function to generate a [[RandomEffectCoordinateConfiguration]].
@@ -153,10 +151,12 @@ object RandomEffectCoordinateConfiguration {
   def apply(
       dataConfiguration: RandomEffectDataConfiguration,
       optimizationConfiguration: RandomEffectOptimizationConfiguration,
-      regularizationWeights: Set[Double] = Set()): RandomEffectCoordinateConfiguration = {
+      regularizationWeights: Set[Double] = EMPTY_REG_WEIGHTS): RandomEffectCoordinateConfiguration = {
 
     if (optimizationConfiguration.regularizationContext.regularizationType == RegularizationType.NONE) {
-      new RandomEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, Set())
+      new RandomEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, EMPTY_REG_WEIGHTS)
+    } else if (regularizationWeights == EMPTY_REG_WEIGHTS) {
+      throw new IllegalArgumentException("Must provide regularization weight(s) if regularization enabled.")
     } else {
       new RandomEffectCoordinateConfiguration(dataConfiguration, optimizationConfiguration, regularizationWeights)
     }
@@ -171,14 +171,17 @@ object RandomEffectCoordinateConfiguration {
  * @param randomEffectRegularizationWeights Random effect regularization weights
  * @param latentEffectRegularizationWeights Latent factor regularization weights
  */
-protected[ml] class FactoredRandomEffectCoordinateConfiguration private (
-    override val dataConfiguration: RandomEffectDataConfiguration,
-    override val optimizationConfiguration: FactoredRandomEffectOptimizationConfiguration,
-    randomEffectRegularizationWeights: Set[Double] = Set(),
-    latentEffectRegularizationWeights: Set[Double] = Set())
+class FactoredRandomEffectCoordinateConfiguration private (
+    override protected[ml] val dataConfiguration: RandomEffectDataConfiguration,
+    override protected[ml] val optimizationConfiguration: FactoredRandomEffectOptimizationConfiguration,
+    randomEffectRegularizationWeights: Set[Double],
+    latentEffectRegularizationWeights: Set[Double])
   extends CoordinateConfiguration {
 
-  override val regularizationWeights: Set[Double] = Set()
+  require(randomEffectRegularizationWeights.nonEmpty, "At least one random effect regularization weight required.")
+  require(latentEffectRegularizationWeights.nonEmpty, "At least one latent factor regularization weight required.")
+
+  override protected[ml] val regularizationWeights: Set[Double] = Set()
 
   /**
    * Create a list of [[CoordinateOptimizationConfiguration]], one for each regularization weight, sorted in decreasing
@@ -186,45 +189,22 @@ protected[ml] class FactoredRandomEffectCoordinateConfiguration private (
    *
    * @return A list of [[CoordinateOptimizationConfiguration]]
    */
-  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] =
+  def expandOptimizationConfigurations: Seq[CoordinateOptimizationConfiguration] = {
 
-    if (randomEffectRegularizationWeights.isEmpty && latentEffectRegularizationWeights.isEmpty) {
-      Seq(optimizationConfiguration)
+    val sortedREWeights = randomEffectRegularizationWeights.toSeq.sorted.reverse
+    val sortedLFWeights = latentEffectRegularizationWeights.toSeq.sorted.reverse
 
-    } else if(latentEffectRegularizationWeights.isEmpty) {
-      randomEffectRegularizationWeights
-        .toSeq
-        .sortBy(identity)
-        .reverse
-        .map { regWeight =>
-          optimizationConfiguration.copy(
-            reOptConfig = optimizationConfiguration.reOptConfig.copy(regularizationWeight = regWeight))
-        }
-
-    } else if(randomEffectRegularizationWeights.isEmpty) {
-      latentEffectRegularizationWeights
-        .toSeq
-        .sortBy(identity)
-        .reverse
-        .map { regWeight =>
-          optimizationConfiguration.copy(
-            lfOptConfig = optimizationConfiguration.lfOptConfig.copy(regularizationWeight = regWeight))
-        }
-
-    } else {
-
-      val sortedREWeights = randomEffectRegularizationWeights.toSeq.sortBy(identity).reverse
-      val sortedLFWeights = randomEffectRegularizationWeights.toSeq.sortBy(identity).reverse
-
-      for(reRegWeight <- sortedREWeights; lfRegWeight <- sortedLFWeights) yield {
-        optimizationConfiguration.copy(
-          reOptConfig = optimizationConfiguration.reOptConfig.copy(regularizationWeight = reRegWeight),
-          lfOptConfig = optimizationConfiguration.lfOptConfig.copy(regularizationWeight = lfRegWeight))
-      }
+    for(reRegWeight <- sortedREWeights; lfRegWeight <- sortedLFWeights) yield {
+      optimizationConfiguration.copy(
+        reOptConfig = optimizationConfiguration.reOptConfig.copy(regularizationWeight = reRegWeight),
+        lfOptConfig = optimizationConfiguration.lfOptConfig.copy(regularizationWeight = lfRegWeight))
     }
+  }
 }
 
 object FactoredRandomEffectCoordinateConfiguration {
+
+  private val EMPTY_REG_WEIGHTS = Set(0D)
 
   /**
    * Helper function to generate a [[FactoredRandomEffectCoordinateConfiguration]].
@@ -238,16 +218,16 @@ object FactoredRandomEffectCoordinateConfiguration {
   def apply(
       dataConfiguration: RandomEffectDataConfiguration,
       optimizationConfiguration: FactoredRandomEffectOptimizationConfiguration,
-      randomEffectRegularizationWeights: Set[Double] = Set(),
-      latentEffectRegularizationWeights: Set[Double] = Set()): FactoredRandomEffectCoordinateConfiguration = {
+      randomEffectRegularizationWeights: Set[Double] = EMPTY_REG_WEIGHTS,
+      latentEffectRegularizationWeights: Set[Double] = EMPTY_REG_WEIGHTS): FactoredRandomEffectCoordinateConfiguration = {
 
     val reRegType = optimizationConfiguration.reOptConfig.regularizationContext.regularizationType
     val lfRegType = optimizationConfiguration.lfOptConfig.regularizationContext.regularizationType
 
     val (reWeights, lfWeights) = (reRegType, lfRegType) match {
-      case (RegularizationType.NONE, RegularizationType.NONE) => (Set[Double](), Set[Double]())
-      case (RegularizationType.NONE, _) => (Set[Double](), latentEffectRegularizationWeights)
-      case (_, RegularizationType.NONE) => (randomEffectRegularizationWeights, Set[Double]())
+      case (RegularizationType.NONE, RegularizationType.NONE) => (EMPTY_REG_WEIGHTS, EMPTY_REG_WEIGHTS)
+      case (RegularizationType.NONE, _) => (EMPTY_REG_WEIGHTS, latentEffectRegularizationWeights)
+      case (_, RegularizationType.NONE) => (randomEffectRegularizationWeights, EMPTY_REG_WEIGHTS)
       case (_, _) => (randomEffectRegularizationWeights, latentEffectRegularizationWeights)
     }
 

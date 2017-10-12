@@ -99,7 +99,7 @@ class ScoptParserHelpersTest {
     val regularization1 = NoRegularizationContext
     val regularizationType = RegularizationType.ELASTIC_NET
     val regularization2 = RegularizationContext(regularizationType, Some(alpha))
-    val regWeights1 = Set()
+    val regWeights1 = Set(0D)
     val regWeights2Str = Seq("1", "10", "100", "100", "10").mkString(s"${ScoptParserHelpers.SECONDARY_LIST_DELIMITER}")
     val regWeights2 = Set(1, 10, 100)
     val activeDataUpperBound1 = None
@@ -293,31 +293,21 @@ class ScoptParserHelpersTest {
     ScoptParserHelpers.updateCoordinateConfigurations(newMap, existingMap)
 
   /**
-   * Test that a [[Set]] of values can be correctly printed into a Scopt-parseable [[String]].
+   * Test that an [[Iterable]] object of values can be correctly printed into a Scopt-parseable [[String]].
    */
   @Test
-  def testSetToString(): Unit = {
+  def testIterableToString(): Unit = {
 
+    val seqOfInt = Seq[Int](1, 2, 3)
+    val seqOfString = seqOfInt.map(_.toString)
     val setOfInt = SortedSet[Int](1, 2, 3)
     val setOfString = setOfInt.map(_.toString)
     val expectedString = setOfString.mkString(ScoptParserHelpers.LIST_DELIMITER)
 
-    assertEquals(ScoptParserHelpers.setToString(setOfString.asInstanceOf[Set[String]]), expectedString)
-    assertEquals(ScoptParserHelpers.setToString(setOfInt.asInstanceOf[Set[Int]]), expectedString)
-  }
-
-  /**
-   * Test that a [[Seq]] of values can be correctly printed into a Scopt-parseable [[String]].
-   */
-  @Test
-  def testSeqToString(): Unit = {
-
-    val seqOfInt = Seq[Int](1, 2, 3)
-    val seqOfString = seqOfInt.map(_.toString)
-    val expectedString = seqOfString.mkString(ScoptParserHelpers.LIST_DELIMITER)
-
-    assertEquals(ScoptParserHelpers.seqToString(seqOfString), expectedString)
-    assertEquals(ScoptParserHelpers.seqToString(seqOfInt), expectedString)
+    assertEquals(ScoptParserHelpers.iterableToString(seqOfString), expectedString)
+    assertEquals(ScoptParserHelpers.iterableToString(seqOfInt), expectedString)
+    assertEquals(ScoptParserHelpers.iterableToString(setOfString.asInstanceOf[Set[String]]), expectedString)
+    assertEquals(ScoptParserHelpers.iterableToString(setOfInt.asInstanceOf[Set[Int]]), expectedString)
   }
 
   /**

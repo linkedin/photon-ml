@@ -514,6 +514,11 @@ object PhotonLogger {
     ("TRACE", LogLevelTrace))
 
   /**
+   * Map of log level constants to log level names
+   */
+  protected[ml] val logLevelConstants: Map[Int, String] = logLevelNames.map { case (key, value) => (value, key) }
+
+  /**
    * Default log level: INFO
    */
   protected val DefaultLogLevel = LogLevelInfo
@@ -536,4 +541,13 @@ object PhotonLogger {
    */
   def parseLogLevelString(str: String): Int =
     logLevelNames.getOrElse(str.toUpperCase, throw new NoSuchElementException(s"Invalid logging level '$str'"))
+
+  /**
+   * Print a log level constant as a string.
+   *
+   * @param level The log level constant
+   * @return The log level string corresponding to that constant
+   */
+  def printLogLevelString(level: Int): String =
+    logLevelConstants.getOrElse(level, throw new NoSuchElementException(s"Invalid logging level '$level'"))
 }

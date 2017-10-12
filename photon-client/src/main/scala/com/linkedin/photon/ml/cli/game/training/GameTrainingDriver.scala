@@ -183,19 +183,19 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Check that all required parameters have been set and validate interactions between parameters.
    */
-  override def validateParams(): Unit = {
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
-    super.validateParams()
+    super.validateParams(paramMap)
 
     // Just need to check that these parameters are explicitly set
-    getRequiredParam(trainingTask)
-    getRequiredParam(coordinateDescentIterations)
+    paramMap(trainingTask)
+    paramMap(coordinateDescentIterations)
 
-    val coordinateConfigs = getRequiredParam(coordinateConfigurations)
-    val updateSequence = getRequiredParam(coordinateUpdateSequence)
-    val featureShards = getRequiredParam(featureShardConfigurations)
-    val normalizationType = getOrDefault(normalization)
-    val hyperparameterTuningMode = getOrDefault(hyperParameterTuning)
+    val coordinateConfigs = paramMap(coordinateConfigurations)
+    val updateSequence = paramMap(coordinateUpdateSequence)
+    val featureShards = paramMap(featureShardConfigurations)
+    val normalizationType = paramMap.getOrElse(normalization, getOrDefault(normalization))
+    val hyperparameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getOrDefault(hyperParameterTuning))
 
     // Each coordinate in the update sequence must have a configuration
     updateSequence.foreach { coordinate =>
@@ -228,7 +228,7 @@ object GameTrainingDriver extends GameDriver {
     hyperparameterTuningMode match {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(
-          get(hyperParameterTuningIter).isDefined,
+          paramMap.get(hyperParameterTuningIter).isDefined,
           "Hyperparameter tuning enabled, but number of iterations unspecified.")
       case _ =>
     }

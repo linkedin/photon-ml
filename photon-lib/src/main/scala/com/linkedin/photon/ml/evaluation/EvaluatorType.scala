@@ -18,12 +18,15 @@ package com.linkedin.photon.ml.evaluation
  * Evaluator type
  */
 trait EvaluatorType {
+
   /**
    * Name of the evaluator.
    *
    * @note It is currently also used as the cli input argument for evaluator types in integTests.
    */
   val name: String
+
+  override def toString: String = name
 }
 
 object EvaluatorType {

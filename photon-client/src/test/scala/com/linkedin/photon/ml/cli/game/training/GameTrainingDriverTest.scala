@@ -15,20 +15,20 @@
 package com.linkedin.photon.ml.cli.game.training
 
 import org.apache.hadoop.fs.Path
-import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.param.ParamMap
 import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.{HyperparameterTuningMode, TaskType}
-import com.linkedin.photon.ml.data.CoordinateDataConfiguration
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames}
 import com.linkedin.photon.ml.estimators.GameEstimator
-import com.linkedin.photon.ml.evaluation.Evaluator
+import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.util.PhotonLogger
+import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
 
 /**
  * Unit tests for [[GameTrainingDriver]].
@@ -138,6 +138,93 @@ class GameTrainingDriverTest {
     GameTrainingDriver.getOrDefault(GameTrainingDriver.applicationName)
   }
 
+  @Test
+  def testMinValidParamMap(): Unit = {
+
+    val coordinateId = "id"
+    val featureShardId = "id"
+
+    val mockPath = mock(classOf[Path])
+    val mockFeatureShardConfig = mock(classOf[FeatureShardConfiguration])
+    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
+    val mockCoordinateConfig = mock(classOf[CoordinateConfiguration])
+
+    doReturn(false).when(mockFeatureShardConfig).hasIntercept
+    doReturn(mockDataConfig).when(mockCoordinateConfig).dataConfiguration
+    doReturn(featureShardId).when(mockDataConfig).featureShardId
+
+    val validParamMap = ParamMap
+      .empty
+      .put(GameTrainingDriver.inputDataDirectories, Set[Path](mockPath))
+      .put(GameTrainingDriver.rootOutputDirectory, mockPath)
+      .put(GameTrainingDriver.featureBagsDirectory, mockPath)
+      .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
+      .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
+      .put(GameTrainingDriver.coordinateDescentIterations, 1)
+      .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockCoordinateConfig)))
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId))
+
+    GameTrainingDriver.validateParams(validParamMap)
+  }
+
+  @Test
+  def testMaxValidParamMap(): Unit = {
+
+    val coordinateId = "id"
+    val featureShardId = "id"
+
+    val mockBoolean = true
+    val mockInt = 10
+    val mockString = "text"
+    val mockDoubleRange = DoubleRange(1, 2)
+
+    val mockPath = mock(classOf[Path])
+    val mockDateRange = mock(classOf[DateRange])
+    val mockInputColumnNames = mock(classOf[InputColumnsNames])
+    val mockEvaluatorType = mock(classOf[EvaluatorType])
+    val mockFeatureShardConfig = mock(classOf[FeatureShardConfiguration])
+    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
+    val mockCoordinateConfig = mock(classOf[CoordinateConfiguration])
+
+    doReturn(true).when(mockFeatureShardConfig).hasIntercept
+    doReturn(mockDataConfig).when(mockCoordinateConfig).dataConfiguration
+    doReturn(featureShardId).when(mockDataConfig).featureShardId
+
+    val validParamMap = ParamMap
+      .empty
+      .put(GameTrainingDriver.inputDataDirectories, Set[Path](mockPath))
+      .put(GameTrainingDriver.inputDataDateRange, mockDateRange)
+      .put(GameTrainingDriver.offHeapIndexMapDirectory, mockPath)
+      .put(GameTrainingDriver.offHeapIndexMapPartitions, mockInt)
+      .put(GameTrainingDriver.inputColumnNames, mockInputColumnNames)
+      .put(GameTrainingDriver.evaluators, Seq[EvaluatorType](mockEvaluatorType))
+      .put(GameTrainingDriver.rootOutputDirectory, mockPath)
+      .put(GameTrainingDriver.overrideOutputDirectory, mockBoolean)
+      .put(GameTrainingDriver.featureBagsDirectory, mockPath)
+      .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
+      .put(GameTrainingDriver.dataValidation, DataValidationType.VALIDATE_FULL)
+      .put(GameTrainingDriver.logLevel, mockInt)
+      .put(GameTrainingDriver.applicationName, mockString)
+      .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
+      .put(GameTrainingDriver.validationDataDirectories, Set[Path](mockPath))
+      .put(GameTrainingDriver.validationDataDateRange, mockDateRange)
+      .put(GameTrainingDriver.minValidationPartitions, mockInt)
+      .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
+      .put(GameTrainingDriver.randomEffectOutputFilesPerModelLimit, mockInt)
+      .put(GameTrainingDriver.coordinateDescentIterations, mockInt)
+      .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockCoordinateConfig)))
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId))
+      .put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)
+      .put(GameTrainingDriver.dataSummaryDirectory, mockPath)
+      .put(GameTrainingDriver.treeAggregateDepth, mockInt)
+      .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
+      .put(GameTrainingDriver.hyperParameterTuningIter, mockInt)
+      .put(GameTrainingDriver.hyperParameterTuningRange, mockDoubleRange)
+      .put(GameTrainingDriver.computeVariance, mockBoolean)
+
+    GameTrainingDriver.validateParams(validParamMap)
+  }
+
   @DataProvider
   def invalidParamMaps(): Array[Array[Any]] = {
 
@@ -207,11 +294,5 @@ class GameTrainingDriverTest {
    * @param params A [[ParamMap]] with one or more flaws
    */
   @Test(dataProvider = "invalidParamMaps", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testValidateParams(params: ParamMap): Unit = {
-
-    GameTrainingDriver.clear()
-
-    params.toSeq.foreach(pair => GameTrainingDriver.set(pair.param.asInstanceOf[Param[Any]], pair.value))
-    GameTrainingDriver.validateParams()
-  }
+  def testValidateParams(params: ParamMap): Unit = GameTrainingDriver.validateParams(params)
 }

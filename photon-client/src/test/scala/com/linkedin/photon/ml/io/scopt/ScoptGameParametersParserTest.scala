@@ -48,6 +48,8 @@ object ScoptGameParametersParserTest {
 
     def parseFromCommandLine(args: Array[String]): ParamMap = ParamMap.empty
 
+    def printForCommandLine(paramMap: ParamMap): Seq[String] = Seq()
+
     override def formatArgs(args: Map[String, String]): String = super.formatArgs(args)
   }
 }

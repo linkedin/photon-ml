@@ -562,8 +562,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           new RandomEffectCoordinateInProjectedSpace(
             reDataSet,
             RandomEffectOptimizationProblem(
-              reDataSet,
-              reOptConfig,
+                reDataSet,
+                reOptConfig,
                 selectSingleNodeLossFunction(reOptConfig),
                 glmConstructor,
                 normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),

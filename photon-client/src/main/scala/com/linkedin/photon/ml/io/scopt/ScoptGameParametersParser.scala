@@ -46,7 +46,7 @@ trait ScoptGameParametersParser extends ScoptParser {
       ScoptParameter[Seq[Path], Set[Path]](
         driver.inputDataDirectories,
         parse = ScoptParserHelpers.parseSetFromSeq,
-        print = ScoptParserHelpers.setToString,
+        print = ScoptParserHelpers.iterableToString,
         usageText = "<path1>,<path2>,...",
         isRequired = true),
 
@@ -81,7 +81,7 @@ trait ScoptGameParametersParser extends ScoptParser {
       // Evaluators
       ScoptParameter[Seq[EvaluatorType], Seq[EvaluatorType]](
         driver.evaluators,
-        print = ScoptParserHelpers.seqToString,
+        print = ScoptParserHelpers.iterableToString,
         usageText = "<eval1>,<eval2>,...",
         additionalDocs = Seq(s"evaluator types: ${EvaluatorType.all.map(_.name).mkString(", ")}")),
 
@@ -121,7 +121,8 @@ trait ScoptGameParametersParser extends ScoptParser {
       // Log Level
       ScoptParameter[String, Int](
         driver.logLevel,
-        parse = ScoptParserHelpers.parseLogLevel,
+        parse = PhotonLogger.parseLogLevelString,
+        print = PhotonLogger.printLogLevelString,
         usageText = "<level>",
         additionalDocs = Seq(s"log levels: ${PhotonLogger.logLevelNames.keys.map(_.toString).mkString(", ")}")),
 

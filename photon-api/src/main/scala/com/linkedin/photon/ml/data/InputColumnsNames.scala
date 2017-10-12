@@ -43,6 +43,29 @@ class InputColumnsNames extends Serializable {
    * @return The column name for that key
    */
   def apply(key: InputColumnsNames.Value): String = array(key.id)
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = array.hashCode()
+
+  /**
+   * Compare equality between this and some other object.
+   *
+   * @param obj Some other object
+   * @return True if the other object is a [[InputColumnsNames]] with identical column names, otherwise false
+   */
+  override def equals(obj: Any): Boolean = obj match {
+    case that: InputColumnsNames =>
+      InputColumnsNames.all.forall { column =>
+        this(column).equals(that(column))
+      }
+
+    case _ =>
+      false
+  }
 }
 
 /**

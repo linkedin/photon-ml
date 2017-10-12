@@ -54,4 +54,38 @@ class PhotonLoggerTest {
    */
   @Test(dataProvider = "invalidLogLevelStrings", expectedExceptions = Array(classOf[NoSuchElementException]))
   def testInvalidLogLevelString(logLevelString: String): Unit = PhotonLogger.parseLogLevelString(logLevelString)
+
+  @DataProvider
+  def validLogLevelConstants(): Array[Array[Any]] = Array(
+    Array(PhotonLogger.LogLevelError, "ERROR"),
+    Array(PhotonLogger.LogLevelWarn, "WARN"),
+    Array(PhotonLogger.LogLevelDebug, "DEBUG"),
+    Array(PhotonLogger.LogLevelInfo, "INFO"),
+    Array(PhotonLogger.LogLevelTrace, "TRACE"))
+
+  /**
+   * Test that a log level constant maps to the correct log level string.
+   *
+   * @param logLevel The log level constant
+   * @param logLevelString The log level name
+   */
+  @Test(dataProvider = "validLogLevelConstants")
+  def testParseLogLevelString(logLevel: Int, logLevelString: String): Unit =
+    assertEquals(PhotonLogger.printLogLevelString(logLevel), logLevelString)
+
+  @DataProvider
+  def invalidLogLevels(): Array[Array[Any]] = Array(
+    Array(-1),
+    Array(1),
+    Array(9),
+    Array(11),
+    Array(50))
+
+  /**
+   * Test that an invalid log level constant will cause an error.
+   *
+   * @param logLevel The invalid log level
+   */
+  @Test(dataProvider = "invalidLogLevels", expectedExceptions = Array(classOf[NoSuchElementException]))
+  def testInvalidLogLevel(logLevel: Int): Unit = PhotonLogger.printLogLevelString(logLevel)
 }

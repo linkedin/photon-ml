@@ -25,8 +25,6 @@ import org.testng.annotations.Test
  */
 class ParamUtilsTest {
 
-  import ParamUtilsTest._
-
   /**
    * Test that [[Param]] objects are correctly created.
    */
@@ -42,21 +40,10 @@ class ParamUtilsTest {
     doReturn(mockUid).when(mockIdentifiable).uid
 
     val param1: Param[Any] = ParamUtils.createParam(mockName, mockDoc)
-    val param2: Param[Any] = ParamUtils.createParam(mockName, mockDoc, alwaysFalse)
+    val param2: Param[Any] = ParamUtils.createParam(mockName, mockDoc, Function.const(false))
 
     assertTrue(param1.isValid(mockValue))
     assertFalse(param2.isValid(mockValue))
     assertEquals(param1.parent, param2.parent)
   }
-}
-
-object ParamUtilsTest {
-
-  /**
-   * Validator function that returns false for all input.
-   *
-   * @param x Some input
-   * @return False
-   */
-  private def alwaysFalse(x: Any): Boolean = false
 }

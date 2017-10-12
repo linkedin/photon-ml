@@ -20,7 +20,7 @@ import com.linkedin.photon.ml.projector.ProjectorType
 /**
  * Generic trait for a configuration to define a coordinate data set.
  */
-protected[ml] sealed trait CoordinateDataConfiguration {
+sealed trait CoordinateDataConfiguration {
 
   def featureShardId: FeatureShardId
   def minNumPartitions: Int

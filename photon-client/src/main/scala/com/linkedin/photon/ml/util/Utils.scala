@@ -32,7 +32,7 @@ import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, Evaluator
 /**
  * Some useful functions
  */
-protected[ml] object Utils {
+object Utils {
 
   /**
    * Get the feature key from an Avro generic record as key = name + delimiter + term.

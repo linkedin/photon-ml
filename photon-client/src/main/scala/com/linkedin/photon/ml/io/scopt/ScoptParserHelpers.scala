@@ -25,8 +25,8 @@ import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfigura
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, GLMOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.IdentityProjection
-import com.linkedin.photon.ml.util.{DoubleRange, Logging, PhotonLogger}
+import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjection}
+import com.linkedin.photon.ml.util.{DoubleRange, Logging}
 
 /**
  * Helper values/functions for parsing Scopt parameters.
@@ -119,14 +119,6 @@ object ScoptParserHelpers extends Logging {
     }
 
   /**
-   * Convert a log level [[String]] to a log level constant.
-   *
-   * @param input A log level [[String]]
-   * @return The log level constant corresponding to the input
-   */
-  def parseLogLevel(input: String): Int = PhotonLogger.parseLogLevelString(input)
-
-  /**
    * Create a single [[FeatureShardConfiguration]] from a [[Map]] of (feature shard arg -> feature shard value), and
    * stash it inside of a [[Map]].
    *
@@ -209,7 +201,7 @@ object ScoptParserHelpers extends Logging {
           input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO).map(_.toDouble),
-          IdentityProjection)
+          IndexMapProjection)
         val optConfig = RandomEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
 
         //
@@ -299,22 +291,13 @@ object ScoptParserHelpers extends Logging {
   //
 
   /**
-   * Convert a [[Set]] of values to a [[String]] parseable by Scopt.
+   * Convert any [[Iterable]] (e.g. a [[Seq]] or [[Set]]) to a [[String]] parseable by Scopt.
    *
-   * @tparam T The type of the values in the [[Set]]
-   * @param output A [[Set]] of values
-   * @return A [[String]] of the [[Set]] values joined by the Scopt list delimiter
+   * @tparam T The type of the values in the [[Iterable]]
+   * @param output An [[Iterable]] of values
+   * @return A [[String]] of the [[Iterable]] values joined by the Scopt list delimiter
    */
-  def setToString[T](output: Set[T]): String = output.map(_.toString).mkString(LIST_DELIMITER)
-
-  /**
-   * Convert a [[Seq]] of values to a [[String]] parseable by Scopt.
-   *
-   * @tparam T The type of the values in the [[Seq]]
-   * @param output A [[Seq]] of values
-   * @return A [[String]] of the [[Seq]] values joined by the Scopt list delimiter
-   */
-  def seqToString[T](output: Seq[T]): String = output.map(_.toString).mkString(LIST_DELIMITER)
+  def iterableToString[T](output: Iterable[T]): String = output.map(_.toString).mkString(LIST_DELIMITER)
 
   /**
    * Convert an [[InputColumnsNames]] instance to a [[String]] parseable by Scopt.
@@ -406,6 +389,7 @@ object ScoptParserHelpers extends Logging {
 
       dataConfig match {
         case reDataConfig: RandomEffectDataConfiguration =>
+          argsMap += (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reDataConfig.randomEffectType)
           argsMap += (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reDataConfig.randomEffectType)
 
           reDataConfig.numActiveDataPointsUpperBound.foreach { bound =>

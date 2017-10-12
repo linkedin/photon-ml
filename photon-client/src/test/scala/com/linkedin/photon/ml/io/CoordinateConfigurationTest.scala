@@ -38,24 +38,14 @@ class CoordinateConfigurationTest {
     val mockOptimizerConfig = mock(classOf[OptimizerConfig])
     val mockRegularizationContext = mock(classOf[RegularizationContext])
 
-    val baseRegWeight = 1D
     val listRegWeights = Seq(9D, 8D, 7D, 6D, 5D, 4D, 3D, 2D, 1D)
 
-    val baseOptConfig = FixedEffectOptimizationConfiguration(
-      mockOptimizerConfig,
-      mockRegularizationContext,
-      baseRegWeight)
+    val baseOptConfig = FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegularizationContext)
+    val config = FixedEffectCoordinateConfiguration(mockDataConfig, baseOptConfig, listRegWeights.toSet)
+    val configsList = config.expandOptimizationConfigurations
 
-    val config1 = FixedEffectCoordinateConfiguration(mockDataConfig, baseOptConfig)
-    val config2 = FixedEffectCoordinateConfiguration(mockDataConfig, baseOptConfig, listRegWeights.toSet)
-    val configsList1 = config1.expandOptimizationConfigurations
-    val configsList2 = config2.expandOptimizationConfigurations
-
-    assertEquals(configsList1.size, 1)
-    assertTrue(configsList1.head.eq(baseOptConfig))
-
-    assertEquals(configsList2.size, listRegWeights.size)
-    configsList2
+    assertEquals(configsList.size, listRegWeights.size)
+    configsList
       .map(_.asInstanceOf[FixedEffectOptimizationConfiguration].regularizationWeight)
       .zip(listRegWeights)
       .foreach { case (configWeight, origWeight) =>
@@ -81,7 +71,7 @@ class CoordinateConfigurationTest {
     val config1 = FixedEffectCoordinateConfiguration(mockDataConfig, optConfig1, regWeights.toSet)
     val config2 = FixedEffectCoordinateConfiguration(mockDataConfig, optConfig2, regWeights.toSet)
 
-    assertTrue(config1.expandOptimizationConfigurations.head.eq(optConfig1))
+    assertTrue(config1.expandOptimizationConfigurations.head.equals(optConfig1))
     config2
       .expandOptimizationConfigurations
       .map(_.asInstanceOf[FixedEffectOptimizationConfiguration].regularizationWeight)
@@ -102,24 +92,14 @@ class CoordinateConfigurationTest {
     val mockOptimizerConfig = mock(classOf[OptimizerConfig])
     val mockRegularizationContext = mock(classOf[RegularizationContext])
 
-    val baseRegWeight = 1D
     val listRegWeights = Seq(9D, 8D, 7D, 6D, 5D, 4D, 3D, 2D, 1D)
 
-    val baseOptConfig = RandomEffectOptimizationConfiguration(
-      mockOptimizerConfig,
-      mockRegularizationContext,
-      baseRegWeight)
+    val baseOptConfig = RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegularizationContext)
+    val config = RandomEffectCoordinateConfiguration(mockDataConfig, baseOptConfig, listRegWeights.toSet)
+    val configsList = config.expandOptimizationConfigurations
 
-    val config1 = RandomEffectCoordinateConfiguration(mockDataConfig, baseOptConfig)
-    val config2 = RandomEffectCoordinateConfiguration(mockDataConfig, baseOptConfig, listRegWeights.toSet)
-    val configsList1 = config1.expandOptimizationConfigurations
-    val configsList2 = config2.expandOptimizationConfigurations
-
-    assertEquals(configsList1.size, 1)
-    assertTrue(configsList1.head.eq(baseOptConfig))
-
-    assertEquals(configsList2.size, listRegWeights.size)
-    configsList2
+    assertEquals(configsList.size, listRegWeights.size)
+    configsList
       .map(_.asInstanceOf[RandomEffectOptimizationConfiguration].regularizationWeight)
       .zip(listRegWeights)
       .foreach { case (configWeight, origWeight) =>
@@ -145,7 +125,7 @@ class CoordinateConfigurationTest {
     val config1 = RandomEffectCoordinateConfiguration(mockDataConfig, optConfig1, regWeights.toSet)
     val config2 = RandomEffectCoordinateConfiguration(mockDataConfig, optConfig2, regWeights.toSet)
 
-    assertTrue(config1.expandOptimizationConfigurations.head.eq(optConfig1))
+    assertTrue(config1.expandOptimizationConfigurations.head.equals(optConfig1))
     config2
       .expandOptimizationConfigurations
       .map(_.asInstanceOf[RandomEffectOptimizationConfiguration].regularizationWeight)
@@ -167,20 +147,12 @@ class CoordinateConfigurationTest {
     val mockOptimizerConfig = mock(classOf[OptimizerConfig])
     val mockRegularizationContext = mock(classOf[RegularizationContext])
 
-    val baseRERegWeight = 1D
-    val baseLFRegWeight = 1D
     val listRERegWeights = Seq(2D, 1D)
     val listLFRegWeights = Seq(2D, 1D)
     val listRegWeightPairs = Seq((2D, 2D), (2D, 1D), (1D, 2D), (1D, 1D))
 
-    val baseREOptConfig = RandomEffectOptimizationConfiguration(
-      mockOptimizerConfig,
-      mockRegularizationContext,
-      baseRERegWeight)
-    val baseLFOptConfig = RandomEffectOptimizationConfiguration(
-      mockOptimizerConfig,
-      mockRegularizationContext,
-      baseLFRegWeight)
+    val baseREOptConfig = RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegularizationContext)
+    val baseLFOptConfig = RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegularizationContext)
     val baseOptConfig = FactoredRandomEffectOptimizationConfiguration(baseREOptConfig, baseLFOptConfig, mockMFOptConfig)
 
     val config1 = FactoredRandomEffectCoordinateConfiguration(mockDataConfig, baseOptConfig)
@@ -193,7 +165,7 @@ class CoordinateConfigurationTest {
     val configsList2 = config2.expandOptimizationConfigurations
 
     assertEquals(configsList1.size, 1)
-    assertTrue(configsList1.head.eq(baseOptConfig))
+    assertTrue(configsList1.head.equals(baseOptConfig))
 
     assertEquals(configsList2.size, listRegWeightPairs.size)
     configsList2
@@ -220,27 +192,21 @@ class CoordinateConfigurationTest {
     val mockMFOptConfig = mock(classOf[MFOptimizationConfiguration])
     val mockOptimizerConfig = mock(classOf[OptimizerConfig])
 
-    val baseRERegWeight = 1D
-    val baseLFRegWeight = 1D
     val listRERegWeights = Set(2D)
     val listLFRegWeights = Set(2D)
 
     val noRegREOptConfig = RandomEffectOptimizationConfiguration(
       mockOptimizerConfig,
-      NoRegularizationContext,
-      baseRERegWeight)
+      NoRegularizationContext)
     val l2RegREOptConfig = RandomEffectOptimizationConfiguration(
       mockOptimizerConfig,
-      L2RegularizationContext,
-      baseRERegWeight)
+      L2RegularizationContext)
     val noRegLFOptConfig = RandomEffectOptimizationConfiguration(
       mockOptimizerConfig,
-      NoRegularizationContext,
-      baseLFRegWeight)
+      NoRegularizationContext)
     val l2RegLFOptConfig = RandomEffectOptimizationConfiguration(
       mockOptimizerConfig,
-      L2RegularizationContext,
-      baseLFRegWeight)
+      L2RegularizationContext)
 
     val noRegOptConfig = FactoredRandomEffectOptimizationConfiguration(
       noRegREOptConfig,
@@ -259,9 +225,9 @@ class CoordinateConfigurationTest {
       l2RegLFOptConfig,
       mockMFOptConfig)
 
-    val noRegWeightPair = (1D, 1D)
-    val rERegWeightPair = (2D, 1D)
-    val lFRegWeightPair = (1D, 2D)
+    val noRegWeightPair = (0D, 0D)
+    val rERegWeightPair = (2D, 0D)
+    val lFRegWeightPair = (0D, 2D)
     val bothRegWeightPair = (2D, 2D)
 
     val noRegConfigList =

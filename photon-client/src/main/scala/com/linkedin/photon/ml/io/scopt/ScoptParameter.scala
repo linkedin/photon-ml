@@ -33,17 +33,21 @@ import scopt.{OptionDef, Read}
  * @param read An implicit [[scopt.Read]] to parse the command line argument
  */
 class ScoptParameter[In, Out] private (
-    param: Param[Out],
+    val param: Param[Out],
     parse: (In) => Out,
     update: (Out, Out) => Out,
     print: (Out) => Seq[String],
     usageText: String,
     additionalDocs: Seq[String],
-    isRequired: Boolean,
+    val isRequired: Boolean,
     isUnbounded: Boolean)
     (implicit val read: Read[In]) {
 
   import ScoptParameter._
+
+  val scoptName: String = param.name.replace(" ", "-")
+  val documentationText: String =
+    param.doc.concat("\n" + additionalDocs.map(doc => s"$EXAMPLE_BUFFER$doc").mkString("\n"))
 
   /**
    * Create a new [[OptionDef]] to parse this parameter from the command line using Scopt.
@@ -57,19 +61,32 @@ class ScoptParameter[In, Out] private (
     val minOccurrences = if (isRequired) 1 else 0
     // Alternative way to specify unbound parameter limit
     val maxOccurrences = if (isUnbounded) Int.MaxValue else 1
-    val text = param.doc.concat("\n" + additionalDocs.map(doc => s"$EXAMPLE_BUFFER$doc").mkString("\n"))
 
-    f(param.name.replace(" ", "-"))
-      .text(text)
+    f(scoptName)
+      .text(documentationText)
       .valueName(usageText)
       .minOccurs(minOccurrences)
       .maxOccurs(maxOccurrences)
-      .action { (x, c) =>
-        c.get(param) match {
-          case Some(existing) => c.put(param, update(parse(x), existing))
-          case None => c.put(param, parse(x))
+      .action { (rawVal, paramMap) =>
+        paramMap.get(param) match {
+          case Some(existing) => paramMap.put(param, update(parse(rawVal), existing))
+          case None => paramMap.put(param, parse(rawVal))
         }
       }
+  }
+
+  /**
+   * Convert a value for this parameter into a [[String]] representation which can be parsed by Scopt. Note that a
+   * parameter may have multiple components, each of which require their own Scopt argument. If a value is not present
+   * for the parameter in the given [[ParamMap]], produce nothing.
+   *
+   * @param paramMap A [[ParamMap]] which may or may not contain a value for this parameter
+   * @return A [[String]] representation of the parameter value (if one is present) that is able to be parsed by Scopt,
+   *         potentially split across several components
+   */
+  def generateCmdLineArgs(paramMap: ParamMap): Seq[String] = paramMap.get(param) match {
+    case Some(value) => print(value).map(s"$OPTION_PREFIX$scoptName " + _)
+    case None => Seq()
   }
 }
 
@@ -77,6 +94,7 @@ object ScoptParameter {
 
   // 27 blank spaces: the buffer for multiline documentation in 2-column Scopt rendering
   private val EXAMPLE_BUFFER: String = " " * 27
+  private val OPTION_PREFIX: String = "--"
 
   /**
    * Helper function to generate a [[ScoptParameter]].
@@ -99,7 +117,7 @@ object ScoptParameter {
    */
   def apply[In, Out](
       param: Param[Out],
-      parse: (In) => Out = identity _,
+      parse: (In) => Out = { in: In => in.asInstanceOf[Out] },
       updateOpt: Option[(Out, Out) => Out] = None,
       print: (Out) => String = anyToString _,
       printSeq: (Out) => Seq[String] = seqWrapper(anyToString),
@@ -116,17 +134,6 @@ object ScoptParameter {
       additionalDocs,
       isRequired,
       updateOpt.isDefined)
-
-  /**
-   * Identity function, as a convenience for [[ScoptParameter.parse]]. If the [[ScoptParameter]] In and Out types are
-   * identical, no parsing is necessary.
-   *
-   * @tparam T Some input type (in practice, assumed to be the same as V)
-   * @tparam V Some input type (in practice, assumed to be the same as T)
-   * @param input Some input
-   * @return The given input
-   */
-  private def identity[T, V](input: T): V = input.asInstanceOf[V]
 
   /**
    * Erroneous update function, as a convenience for [[ScoptParameter.update]]. If the [[ScoptParameter]] does not have

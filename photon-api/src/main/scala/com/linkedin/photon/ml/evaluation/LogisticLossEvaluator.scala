@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.function.glm.LogisticLossFunction
 
 /**
@@ -24,7 +25,8 @@ import com.linkedin.photon.ml.function.glm.LogisticLossFunction
  * @param labelAndOffsetAndWeights An [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class LogisticLossEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))])
+  extends Evaluator {
 
   val evaluatorType = EvaluatorType.LogisticLoss
 
@@ -35,10 +37,11 @@ protected[ml] class LogisticLossEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+      scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
-    scoresAndLabelsAndWeights
-      .map { case (_, (score, label, weight)) => weight * LogisticLossFunction.lossAndDzLoss(score, label)._1 }
+    scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
+        weight * LogisticLossFunction.lossAndDzLoss(score, label)._1
+      }
       .reduce(_ + _)
   }
 

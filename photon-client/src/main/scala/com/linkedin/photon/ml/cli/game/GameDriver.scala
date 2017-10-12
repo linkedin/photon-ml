@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.cli.game
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamValidators, Params}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.slf4j.Logger
 
@@ -135,19 +135,19 @@ trait GameDriver extends Params {
   /**
    * Check that all required parameters have been set and validate interactions between parameters.
    */
-  def validateParams(): Unit = {
+  def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that these parameters are explicitly set
-    getRequiredParam(inputDataDirectories)
-    getRequiredParam(rootOutputDirectory)
-    getRequiredParam(featureBagsDirectory)
-    getRequiredParam(featureShardConfigurations)
+    paramMap(inputDataDirectories)
+    paramMap(rootOutputDirectory)
+    paramMap(featureBagsDirectory)
+    paramMap(featureShardConfigurations)
 
-    (get(offHeapIndexMapDirectory), get(offHeapIndexMapPartitions)) match {
-      case (Some(_), _) =>
+    (paramMap.get(offHeapIndexMapDirectory), paramMap.get(offHeapIndexMapPartitions)) match {
+      case (Some(_), None) =>
         throw new IllegalArgumentException("Off-heap index map directory provided without off-heap index map partitions.")
 
-      case (_, Some(_)) =>
+      case (None, Some(_)) =>
         throw new IllegalArgumentException("Off-heap index map partitions provided without off-heap index map directory.")
 
       case _ =>

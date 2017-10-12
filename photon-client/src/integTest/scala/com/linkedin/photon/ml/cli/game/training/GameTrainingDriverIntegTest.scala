@@ -463,11 +463,12 @@ object GameTrainingDriverIntegTest {
     constraintMap = None)
   private val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
     fixedEffectOptimizerConfig,
-    L2RegularizationContext,
-    regularizationWeight = 10D)
+    L2RegularizationContext)
+  private val fixedEffectRegularizationWeights = Set(10D)
   private val fixedEffectCoordinateConfig = FixedEffectCoordinateConfiguration(
     fixedEffectDataConfig,
-    fixedEffectOptConfig)
+    fixedEffectOptConfig,
+    fixedEffectRegularizationWeights)
 
   private val randomEffectCoordinateIds = Seq("per-user", "per-song", "per-artist")
   private val randomEffectTypes = Seq("userId", "songId", "artistId")
@@ -490,10 +491,10 @@ object GameTrainingDriverIntegTest {
     constraintMap = None)
   private val randomEffectOptConfig = RandomEffectOptimizationConfiguration(
     randomEffectOptimizerConfig,
-    L2RegularizationContext,
-    regularizationWeight = 1D)
+    L2RegularizationContext)
+  private val randomEffectRegularizationWeights = Set(1D)
   private val randomEffectCoordinateConfigs = randomEffectDataConfigs.map { dataConfig =>
-    RandomEffectCoordinateConfiguration(dataConfig, randomEffectOptConfig)
+    RandomEffectCoordinateConfiguration(dataConfig, randomEffectOptConfig, randomEffectRegularizationWeights)
   }
 
   private val mixedEffectFeatureShardConfigs = Map(
@@ -506,13 +507,15 @@ object GameTrainingDriverIntegTest {
     (fixedEffectCoordinateId,
       FixedEffectCoordinateConfiguration(
         fixedEffectDataConfig,
-        fixedEffectOptConfig.copy(optimizerConfig = fixedEffectOptimizerConfig.copy(maximumIterations = 1)))))
+        fixedEffectOptConfig.copy(optimizerConfig = fixedEffectOptimizerConfig.copy(maximumIterations = 1)),
+        fixedEffectRegularizationWeights)))
   private val randomEffectOnlySeriousGameConfig = Map(randomEffectCoordinateIds.zip(randomEffectCoordinateConfigs): _*)
   private val randomEffectOnlyToyGameConfig = randomEffectOnlySeriousGameConfig.mapValues { reCoordinateConfig =>
     RandomEffectCoordinateConfiguration(
       reCoordinateConfig.dataConfiguration,
       reCoordinateConfig.optimizationConfiguration.copy(
-        optimizerConfig = reCoordinateConfig.optimizationConfiguration.optimizerConfig.copy(maximumIterations = 1)))
+        optimizerConfig = reCoordinateConfig.optimizationConfiguration.optimizerConfig.copy(maximumIterations = 1)),
+      reCoordinateConfig.regularizationWeights)
   }
   private val mixedEffectSeriousGameConfig = fixedEffectOnlySeriousGameConfig ++ randomEffectOnlySeriousGameConfig
   private val mixedEffectToyGameConfig = fixedEffectOnlyToyGameConfig ++ randomEffectOnlyToyGameConfig

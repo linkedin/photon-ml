@@ -25,7 +25,6 @@ import org.apache.spark.SparkContext
 import org.joda.time.Days
 
 import com.linkedin.photon.ml.Constants
-import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -360,18 +359,5 @@ protected[ml] object IOUtils {
       }
 
     builder.mkString
-  }
-
-  /**
-   * A helper comparator for sorting [[GameEstimator.GameOptimizationConfiguration]] into a consistent order.
-   */
-  private implicit object CoordinateOrdering extends Ordering[(Int, CoordinateId)] {
-    def compare(a: (Int, CoordinateId), b: (Int, CoordinateId)): Int = {
-      if (a._1 != b._1) {
-        a._2.compare(b._2)
-      } else {
-        a._1.compare(b._1)
-      }
-    }
   }
 }

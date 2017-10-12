@@ -28,4 +28,13 @@ trait ScoptParser {
    * @return An initialized [[ParamMap]]
    */
   def parseFromCommandLine(args: Array[String]): ParamMap
+
+  /**
+   * Given a [[ParamMap]] of valid parameters, convert them into a [[Seq]] of [[String]] representations which can be
+   * parsed by Scopt.
+   *
+   * @param paramMap Valid parameters
+   * @return A [[Seq]] of [[String]] representations of the parameters, in a format that can be parsed by Scopt
+   */
+  def printForCommandLine(paramMap: ParamMap): Seq[String]
 }
