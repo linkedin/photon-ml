@@ -76,11 +76,6 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         usageText = "<mode>",
         additionalDocs = Seq(s"output modes: ${ModelOutputMode.values.map(_.toString).mkString(", ")}")),
 
-      // Random Effect Output Files Per Model Limit
-      ScoptParameter[Int, Int](
-        GameTrainingDriver.randomEffectOutputFilesPerModelLimit,
-        usageText = "<value>"),
-
       // Coordinate Configurations
       ScoptParameter[Map[String, String], Map[CoordinateId, CoordinateConfiguration]](
         GameTrainingDriver.coordinateConfigurations,
@@ -141,7 +136,8 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         usageText = "<start>-<end>"),
 
       // Compute Variance
-      ScoptParameter[Boolean, Boolean](GameTrainingDriver.computeVariance))
+      ScoptParameter[Boolean, Boolean](
+        GameTrainingDriver.computeVariance))
 
   /**
    * Parse command line arguments for GAME training into a [[ParamMap]].
@@ -151,7 +147,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
    */
   def parseFromCommandLine(args: Array[String]): ParamMap = {
 
-    val parser = new OptionParser[ParamMap]("Photon-Game") {
+    val parser = new OptionParser[ParamMap]("GAME-Training") {
 
       private def optHelper[In, Out](scoptParameter: ScoptParameter[In, Out]): OptionDef[In, ParamMap] = {
 

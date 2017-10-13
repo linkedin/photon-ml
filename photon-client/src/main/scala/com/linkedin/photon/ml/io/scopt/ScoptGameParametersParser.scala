@@ -92,7 +92,13 @@ trait ScoptGameParametersParser extends ScoptParser {
         isRequired = true),
 
       // Override Output Directory
-      ScoptParameter[Boolean, Boolean](driver.overrideOutputDirectory),
+      ScoptParameter[Boolean, Boolean](
+        driver.overrideOutputDirectory),
+
+      // Output Files Limit
+      ScoptParameter[Int, Int](
+        driver.outputFilesLimit,
+        usageText = "<value>"),
 
       // Feature Bags Directory
       ScoptParameter[Path, Path](

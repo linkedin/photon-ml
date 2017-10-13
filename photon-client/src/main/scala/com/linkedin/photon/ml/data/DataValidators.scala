@@ -25,8 +25,6 @@ import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.util.Logging
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
-import scala.util.{Success, Try}
-
 import com.linkedin.photon.ml.constants.MathConst
 
 /**
@@ -55,9 +53,11 @@ object DataValidators extends Logging {
     (rowHasPositiveWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-positive weight(s)"),
     (rowHasFiniteOffset, InputColumnsNames.OFFSET, "Data contains row(s) with non-finite offset(s)"))
   val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") :: dataFrameBaseValidators
+    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
+      dataFrameBaseValidators
   val dataFrameLogisticRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") :: dataFrameBaseValidators
+    (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") ::
+      dataFrameBaseValidators
   val dataFramePoissonRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
     (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
       (rowHasNonNegativeLabels _, InputColumnsNames.RESPONSE, "Data contains row(s) with negative label(s)") ::
@@ -307,7 +307,7 @@ object DataValidators extends Logging {
    * @param featureSectionKeys Column names for the feature columns in the provided data frame
    * @throws IllegalArgumentException if one or more of the data validations failed
    */
-  def sanityCheckDataFrame(
+  def sanityCheckDataFrameForTraining(
       inputData: DataFrame,
       taskType: TaskType,
       dataValidationType: DataValidationType,
@@ -344,5 +344,50 @@ object DataValidators extends Logging {
     if (dataErrors.nonEmpty) {
       throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
     }
+  }
+
+  /**
+   * Validate a full or sampled data frame using the set of data point validators relevant to the scoring problem.
+   *
+   * @param inputData The input data frame
+   * @param dataValidationType The validation intensity
+   * @param inputColumnsNames Column names for the provided data frame
+   * @param featureSectionKeys Column names for the feature columns in the provided data frame
+   * @param taskTypeOpt The training task type (no task type represents no response data)
+   * @throws IllegalArgumentException if one or more of the data validations failed
+   */
+  def sanityCheckDataFrameForScoring(
+      inputData: DataFrame,
+      dataValidationType: DataValidationType,
+      inputColumnsNames: InputColumnsNames,
+      featureSectionKeys: Set[FeatureShardId],
+      taskTypeOpt: Option[TaskType] = None): Unit = taskTypeOpt match {
+    case Some(taskType) =>
+      sanityCheckDataFrameForTraining(inputData, taskType, dataValidationType, inputColumnsNames, featureSectionKeys)
+
+    case None =>
+      // Check the data properties
+      val dataErrors = dataValidationType match {
+        case DataValidationType.VALIDATE_FULL =>
+          validateDataFrame(
+            inputData,
+            dataFrameBaseValidators,
+            inputColumnsNames,
+            featureSectionKeys)
+
+        case DataValidationType.VALIDATE_SAMPLE =>
+          validateDataFrame(
+            inputData.sample(withReplacement = false, fraction = 0.10),
+            dataFrameBaseValidators,
+            inputColumnsNames,
+            featureSectionKeys)
+
+        case DataValidationType.VALIDATE_DISABLED =>
+          Seq()
+      }
+
+      if (dataErrors.nonEmpty) {
+        throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
+      }
   }
 }

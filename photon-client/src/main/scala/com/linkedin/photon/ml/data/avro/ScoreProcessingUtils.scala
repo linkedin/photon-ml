@@ -28,6 +28,8 @@ import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
  */
 object ScoreProcessingUtils {
 
+  val DEFAULT_MODEL_ID = "N/A"
+
   /**
    * Load the scored items of type [[ScoredItem]] from the given input directory on HDFS.
    *
@@ -64,18 +66,23 @@ object ScoreProcessingUtils {
    * @param modelId The model's id that used to compute the scores
    * @param outputDir The given output directory
    */
-  protected[ml] def saveScoredItemsToHDFS(scoredItems: RDD[ScoredItem], modelId: String, outputDir: String): Unit = {
+  protected[ml] def saveScoredItemsToHDFS(
+      scoredItems: RDD[ScoredItem],
+      outputDir: String,
+      modelId: Option[String]): Unit = {
+
     val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, weightOpt, ids) =>
       val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
       val builder = ScoringResultAvro.newBuilder()
       builder.setPredictionScore(predictionScore)
-      builder.setModelId(modelId)
+      builder.setModelId(modelId.getOrElse(DEFAULT_MODEL_ID))
       ids.get(ResponsePredictionFieldNames.UID).foreach(builder.setUid(_))
       labelOpt.foreach(builder.setLabel(_))
       weightOpt.foreach(builder.setWeight(_))
       builder.setMetadataMap(metaDataMap)
       builder.build()
     }
+
     AvroUtils.saveAsAvro(scoringResultAvros, outputDir, ScoringResultAvro.getClassSchema.toString)
   }
 }

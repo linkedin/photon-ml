@@ -100,11 +100,6 @@ object GameTrainingDriver extends GameDriver {
     "output mode",
     "Granularity of model output to HDFS (best, some, all).")
 
-  val randomEffectOutputFilesPerModelLimit: Param[Int] = ParamUtils.createParam[Int](
-    "random effect output files per model limit",
-    "The maximum number of files to write for a single random effect model.",
-    ParamValidators.gt[Int](0.0))
-
   val coordinateConfigurations: Param[Map[CoordinateId, CoordinateConfiguration]] =
     ParamUtils.createParam[Map[CoordinateId, CoordinateConfiguration]](
       "coordinate configurations",
@@ -255,7 +250,7 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Clear all set parameters.
    */
-  def clear(): Unit = params.foreach(GameTrainingDriver.clear)
+  def clear(): Unit = params.foreach(clear)
 
   //
   // Training driver functions
@@ -283,8 +278,8 @@ object GameTrainingDriver extends GameDriver {
       readValidationData(featureIndexMapLoaders)
     }
 
-    Timed("Validate data frame(s)") {
-      DataValidators.sanityCheckDataFrame(
+    Timed("Validate data") {
+      DataValidators.sanityCheckDataFrameForTraining(
         trainingData,
         getRequiredParam(trainingTask),
         getOrDefault(dataValidation),
@@ -292,7 +287,7 @@ object GameTrainingDriver extends GameDriver {
         getRequiredParam(featureShardConfigurations).keySet)
 
       validationData match {
-        case Some(x) => DataValidators.sanityCheckDataFrame(
+        case Some(x) => DataValidators.sanityCheckDataFrameForTraining(
           x,
           getRequiredParam(trainingTask),
           getOrDefault(dataValidation),
@@ -622,7 +617,7 @@ object GameTrainingDriver extends GameDriver {
       val rootOutputDir = getRequiredParam(rootOutputDirectory)
       val allOutputDir = new Path(rootOutputDir, MODELS_DIR)
       val task = getRequiredParam(trainingTask)
-      val REMFileLimit = get(randomEffectOutputFilesPerModelLimit)
+      val REMFileLimit = get(outputFilesLimit)
 
       // Write the best model to HDFS
       bestModel match {
@@ -697,7 +692,7 @@ object GameTrainingDriver extends GameDriver {
 
       Timed("Total time in training Driver")(run())
 
-    } catch { case e: Throwable =>
+    } catch { case e: Exception =>
 
       logger.error("Failure while running the driver", e)
       throw e

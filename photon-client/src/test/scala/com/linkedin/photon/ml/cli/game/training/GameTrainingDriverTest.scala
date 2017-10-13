@@ -35,109 +35,9 @@ import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
  */
 class GameTrainingDriverTest {
 
-  @DataProvider
-  def modelOutputModes(): Array[Array[Any]] = {
-
-    val mockGameModel = mock(classOf[GameModel])
-    val mockEvaluationResults = mock(classOf[Evaluator.EvaluationResults])
-    val mockGameOptConfig = mock(classOf[GameEstimator.GameOptimizationConfiguration])
-
-    val mockEvaluator = mock(classOf[Evaluator])
-    val mockScore = 1D
-
-    val explicitModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
-    val tunedModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
-    val allModels = explicitModels ++ tunedModels
-
-    doReturn((mockEvaluator, mockScore)).when(mockEvaluationResults).head
-    doReturn(true).when(mockEvaluator).eq(_)
-    doReturn(true).when(mockEvaluator).betterThan(_, _)
-    doReturn("").when(mockEvaluator).getEvaluatorName
-    doReturn("").when(mockGameModel).toSummaryString
-    doReturn(Seq()).when(mockGameOptConfig).toSeq
-
-    Array(
-      Array(
-        ModelOutputMode.ALL,
-        explicitModels,
-        tunedModels,
-        allModels,
-        true),
-      Array(
-        ModelOutputMode.TUNED,
-        explicitModels,
-        tunedModels,
-        tunedModels,
-        true),
-      Array(
-        ModelOutputMode.EXPLICIT,
-        explicitModels,
-        tunedModels,
-        explicitModels,
-        true),
-      Array(
-        ModelOutputMode.BEST,
-        explicitModels,
-        tunedModels,
-        Seq(),
-        true),
-      Array(
-        ModelOutputMode.NONE,
-        explicitModels,
-        tunedModels,
-        Seq(),
-        false))
-  }
-
   /**
-   * Test that the correct group of trained models is selected for output to HDFS.
-   *
-   * @param outputMode The model output specifier
-   * @param explicitModels The models trained for explicit regularization values
-   * @param tunedModels The models trained during hyperparameter tuning
-   * @param resultOutputModels The expected models to output to HDFS
-   * @param resultBestModel Whether the best model has been selected
+   * Test that a [[ParamMap]] with only required parameters set can be valid input.
    */
-  @Test(dataProvider = "modelOutputModes")
-  def testSelectModels(
-      outputMode: ModelOutputMode,
-      explicitModels: Seq[GameEstimator.GameResult],
-      tunedModels: Seq[GameEstimator.GameResult],
-      resultOutputModels: Seq[GameEstimator.GameResult],
-      resultBestModel: Boolean): Unit = {
-
-    val mockLogger = mock(classOf[PhotonLogger])
-
-    GameTrainingDriver.logger = mockLogger
-    GameTrainingDriver.set(GameTrainingDriver.outputMode, outputMode)
-
-    val (outputModels, bestModel) = GameTrainingDriver.selectModels(explicitModels, tunedModels)
-
-    assertEquals(outputModels, resultOutputModels)
-    assertEquals(bestModel.isDefined, resultBestModel)
-  }
-
-  /**
-   * Test that default values are set for all parameters that require them.
-   */
-  @Test
-  def testDefaultParams(): Unit = {
-
-    GameTrainingDriver.clear()
-
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.minValidationPartitions)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.outputMode)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuningRange)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.computeVariance)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.logLevel)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.applicationName)
-  }
-
   @Test
   def testMinValidParamMap(): Unit = {
 
@@ -167,6 +67,9 @@ class GameTrainingDriverTest {
     GameTrainingDriver.validateParams(validParamMap)
   }
 
+  /**
+   * Test that a [[ParamMap]] with all parameters set can be valid input.
+   */
   @Test
   def testMaxValidParamMap(): Unit = {
 
@@ -200,6 +103,7 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.evaluators, Seq[EvaluatorType](mockEvaluatorType))
       .put(GameTrainingDriver.rootOutputDirectory, mockPath)
       .put(GameTrainingDriver.overrideOutputDirectory, mockBoolean)
+      .put(GameTrainingDriver.outputFilesLimit, mockInt)
       .put(GameTrainingDriver.featureBagsDirectory, mockPath)
       .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameTrainingDriver.dataValidation, DataValidationType.VALIDATE_FULL)
@@ -210,7 +114,6 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.validationDataDateRange, mockDateRange)
       .put(GameTrainingDriver.minValidationPartitions, mockInt)
       .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
-      .put(GameTrainingDriver.randomEffectOutputFilesPerModelLimit, mockInt)
       .put(GameTrainingDriver.coordinateDescentIterations, mockInt)
       .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockCoordinateConfig)))
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId))
@@ -295,4 +198,124 @@ class GameTrainingDriverTest {
    */
   @Test(dataProvider = "invalidParamMaps", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testValidateParams(params: ParamMap): Unit = GameTrainingDriver.validateParams(params)
+
+  /**
+   * Test that default values are set for all parameters that require them.
+   */
+  @Test
+  def testDefaultParams(): Unit = {
+
+    GameTrainingDriver.clear()
+
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.minValidationPartitions)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.outputMode)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuningRange)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.computeVariance)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.logLevel)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.applicationName)
+  }
+
+  /**
+   * Test that set parameters can be cleared correctly.
+   */
+  @Test
+  def testClear(): Unit = {
+
+    val mockPath = mock(classOf[Path])
+
+    GameTrainingDriver.set(GameTrainingDriver.rootOutputDirectory, mockPath)
+
+    assertEquals(GameTrainingDriver.get(GameTrainingDriver.rootOutputDirectory), Some(mockPath))
+
+    GameTrainingDriver.clear()
+
+    assertEquals(GameTrainingDriver.get(GameTrainingDriver.rootOutputDirectory), None)
+  }
+
+  @DataProvider
+  def modelOutputModes(): Array[Array[Any]] = {
+
+    val mockGameModel = mock(classOf[GameModel])
+    val mockEvaluationResults = mock(classOf[Evaluator.EvaluationResults])
+    val mockGameOptConfig = mock(classOf[GameEstimator.GameOptimizationConfiguration])
+
+    val mockEvaluator = mock(classOf[Evaluator])
+    val mockScore = 1D
+
+    val explicitModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
+    val tunedModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
+    val allModels = explicitModels ++ tunedModels
+
+    doReturn((mockEvaluator, mockScore)).when(mockEvaluationResults).head
+    doReturn(true).when(mockEvaluator).eq(_)
+    doReturn(true).when(mockEvaluator).betterThan(_, _)
+    doReturn("").when(mockEvaluator).getEvaluatorName
+    doReturn("").when(mockGameModel).toSummaryString
+    doReturn(Seq()).when(mockGameOptConfig).toSeq
+
+    Array(
+      Array(
+        ModelOutputMode.ALL,
+        explicitModels,
+        tunedModels,
+        allModels,
+        true),
+      Array(
+        ModelOutputMode.TUNED,
+        explicitModels,
+        tunedModels,
+        tunedModels,
+        true),
+      Array(
+        ModelOutputMode.EXPLICIT,
+        explicitModels,
+        tunedModels,
+        explicitModels,
+        true),
+      Array(
+        ModelOutputMode.BEST,
+        explicitModels,
+        tunedModels,
+        Seq(),
+        true),
+      Array(
+        ModelOutputMode.NONE,
+        explicitModels,
+        tunedModels,
+        Seq(),
+        false))
+  }
+
+  /**
+   * Test that the correct group of trained models is selected for output to HDFS.
+   *
+   * @param outputMode The model output specifier
+   * @param explicitModels The models trained for explicit regularization values
+   * @param tunedModels The models trained during hyperparameter tuning
+   * @param resultOutputModels The expected models to output to HDFS
+   * @param resultBestModel Whether the best model has been selected
+   */
+  @Test(dataProvider = "modelOutputModes")
+  def testSelectModels(
+    outputMode: ModelOutputMode,
+    explicitModels: Seq[GameEstimator.GameResult],
+    tunedModels: Seq[GameEstimator.GameResult],
+    resultOutputModels: Seq[GameEstimator.GameResult],
+    resultBestModel: Boolean): Unit = {
+
+    val mockLogger = mock(classOf[PhotonLogger])
+
+    GameTrainingDriver.logger = mockLogger
+    GameTrainingDriver.set(GameTrainingDriver.outputMode, outputMode)
+
+    val (outputModels, bestModel) = GameTrainingDriver.selectModels(explicitModels, tunedModels)
+
+    assertEquals(outputModels, resultOutputModels)
+    assertEquals(bestModel.isDefined, resultBestModel)
+  }
 }

@@ -425,8 +425,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    */
   def runDriver(params: ParamMap): Unit = {
 
-    // Reset Driver Params
-    GameTrainingDriver.params.foreach(GameTrainingDriver.clear)
+    // Reset Driver parameters
+    GameTrainingDriver.clear()
 
     params.toSeq.foreach(paramPair => GameTrainingDriver.set(paramPair.param.asInstanceOf[Param[Any]], paramPair.value))
     GameTrainingDriver.sc = sc
@@ -521,11 +521,11 @@ object GameTrainingDriverIntegTest {
   private val mixedEffectToyGameConfig = fixedEffectOnlyToyGameConfig ++ randomEffectOnlyToyGameConfig
 
   /**
-   * Default arguments to the GAME driver.
+   * Default arguments to the GAME training driver.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
-  def defaultArgs: ParamMap =
+  private def defaultArgs: ParamMap =
     ParamMap
       .empty
       .put(GameTrainingDriver.inputDataDirectories, Set(trainPath))
@@ -538,7 +538,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Fixed effect arguments with serious optimization. It's useful when we care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def fixedEffectSeriousRunArgs: ParamMap =
     defaultArgs
@@ -549,7 +549,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Fixed effect arguments with "toy" optimization. It's useful when we don't care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def fixedEffectToyRunArgs: ParamMap =
     defaultArgs
@@ -560,7 +560,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Random effect arguments with "serious" optimization. It's useful when we care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def randomEffectSeriousRunArgs: ParamMap =
     defaultArgs
@@ -571,7 +571,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Random effect arguments with "toy" optimization. It's useful when we don't care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def randomEffectToyRunArgs: ParamMap =
     defaultArgs
@@ -582,7 +582,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Fixed and random effect arguments. It's useful when we care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def mixedEffectSeriousRunArgs: ParamMap =
     defaultArgs
@@ -593,7 +593,7 @@ object GameTrainingDriverIntegTest {
   /**
    * Fixed and random effect arguments. It's useful when we don't care about the model performance.
    *
-   * @return Arguments to run a model
+   * @return Arguments to train a model
    */
   def mixedEffectToyRunArgs: ParamMap =
     defaultArgs

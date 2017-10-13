@@ -93,6 +93,11 @@ trait GameDriver extends Params {
     "override output directory",
     "Whether to override the contents of the output directory, if it already exists.")
 
+  val outputFilesLimit: Param[Int] = ParamUtils.createParam[Int](
+    "output files limit",
+    "The maximum number of output files to write. Tuning parameter to prevent hitting HDFS file limit quota.",
+    ParamValidators.gt[Int](0.0))
+
   val featureBagsDirectory: Param[Path] = ParamUtils.createParam[Path](
     "feature bags directory",
     "Path to the directory containing whitelists of features to use from each feature bag.")
@@ -153,6 +158,11 @@ trait GameDriver extends Params {
       case _ =>
     }
   }
+
+  /**
+   * Clear all set parameters.
+   */
+  def clear(): Unit
 
   //
   // Common driver functions

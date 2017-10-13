@@ -18,7 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
@@ -28,7 +28,9 @@ import com.linkedin.photon.ml.spark.RDDLike
  * @param labeledPoints The input data
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectDataSet(val labeledPoints: RDD[(Long, LabeledPoint)], val featureShardId: FeatureShardId)
+protected[ml] class FixedEffectDataSet(
+    val labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
+    val featureShardId: FeatureShardId)
   extends DataSet[FixedEffectDataSet]
   with RDDLike {
 
@@ -140,7 +142,7 @@ object FixedEffectDataSet {
    * @return A new data set with given configuration
    */
   protected[ml] def apply(
-      gameDataSet: RDD[(Long, GameDatum)],
+      gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       featureShardId: FeatureShardId): FixedEffectDataSet = {
 
     val labeledPoints = gameDataSet.mapValues(_.generateLabeledPointWithFeatureShardId(featureShardId))
