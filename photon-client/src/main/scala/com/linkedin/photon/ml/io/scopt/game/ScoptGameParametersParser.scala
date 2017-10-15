@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.scopt
+package com.linkedin.photon.ml.io.scopt.game
 
 import scala.language.existentials
 
@@ -25,6 +25,7 @@ import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
+import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParser, ScoptParserHelpers, ScoptParserReads}
 import com.linkedin.photon.ml.util.{DateRange, DaysRange, PhotonLogger}
 
 /**
@@ -83,7 +84,7 @@ trait ScoptGameParametersParser extends ScoptParser {
         driver.evaluators,
         print = ScoptParserHelpers.iterableToString,
         usageText = "<eval1>,<eval2>,...",
-        additionalDocs = Seq(s"evaluator types: ${EvaluatorType.all.map(_.name).mkString(", ")}")),
+        additionalDocs = Seq(s"example evaluator types: ${EvaluatorType.all.map(_.name).mkString(", ")}, etc.")),
 
       // Root Output Directory
       ScoptParameter[Path, Path](
@@ -114,8 +115,8 @@ trait ScoptGameParametersParser extends ScoptParser {
         printSeq = ScoptParserHelpers.featureShardConfigsToStrings,
         usageText = "<arg>=<value>",
         additionalDocs = Seq(
-          s"required args: ${formatArgs(ScoptParserHelpers.FEATURE_SHARD_CONFIG_REQUIRED_ARGS)}",
-          s"optional args: ${formatArgs(ScoptParserHelpers.FEATURE_SHARD_CONFIG_OPTIONAL_ARGS)}"),
+          s"required args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.FEATURE_SHARD_CONFIG_REQUIRED_ARGS)}",
+          s"optional args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.FEATURE_SHARD_CONFIG_OPTIONAL_ARGS)}"),
         isRequired = true),
 
       // Data Validation
@@ -136,17 +137,4 @@ trait ScoptGameParametersParser extends ScoptParser {
       ScoptParameter[String, String](
         driver.applicationName,
         usageText = "<name>"))
-
-  /**
-   * Format a [[Map]] of (argument name -> argument value) pairs for usage text or additional documentation.
-   *
-   * @param args A [[Map]] of (argument name -> argument value)
-   * @return The input [[Map]] as a formatted [[String]]
-   */
-  protected def formatArgs(args: Map[String, String]): String =
-    args
-      .map { case (argName, argVal) =>
-        s"$argName=$argVal"
-      }
-      .mkString(", ")
 }

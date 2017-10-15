@@ -30,7 +30,8 @@ import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{DataValidators, GameConverters, GameDatum, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
-import com.linkedin.photon.ml.io.scopt.ScoptGameScoringParametersParser
+import com.linkedin.photon.ml.index.IndexMapLoader
+import com.linkedin.photon.ml.io.scopt.game.ScoptGameScoringParametersParser
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.util._
 
@@ -60,8 +61,7 @@ object GameScoringDriver extends GameDriver {
 
   val randomEffectTypes: Param[Set[String]] = ParamUtils.createParam(
     "random effect types",
-    "The set of random effect types used by the random effect models.",
-    PhotonParamValidators.nonEmpty)
+    "The set of random effect types used by the random effect models.")
 
   val modelId: Param[String] = ParamUtils.createParam(
     "model id",

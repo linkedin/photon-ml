@@ -35,6 +35,19 @@ import com.linkedin.photon.ml.util.DoubleRange
 class ScoptParserHelpersTest {
 
   /**
+   * Test that (argument, value) pairs are formatted correctly for documentation.
+   */
+  @Test
+  def testFormatArgs(): Unit = {
+
+    val args = Seq("one", "two", "three")
+    val vals = Seq(1, 2, 3)
+    val expected = "one=1, two=2, three=3"
+
+    assertEquals(ScoptParserHelpers.formatArgs(args.zip(vals.map(_.toString)).toMap), expected)
+  }
+
+  /**
    * Test that an [[InputColumnsNames]] instance can be correctly parsed.
    */
   @Test
@@ -63,7 +76,8 @@ class ScoptParserHelpersTest {
       ScoptParserHelpers.FEATURE_SHARD_CONFIG_FEATURE_BAGS -> featureBagsStr1)
 
     val featureShardId2 = "shard2"
-    val featureBagsStr2 = Seq("unique", "repeat", "repeat").mkString(s"${ScoptParserHelpers.SECONDARY_LIST_DELIMITER}")
+    val featureBagsStr2 =
+      Seq("unique", "repeat", "repeat").mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)
     val featureBags2 = Set("unique", "repeat")
     val featureShardIntercept2 = false
     val inputMap2 = Map[String, String](
@@ -100,7 +114,8 @@ class ScoptParserHelpersTest {
     val regularizationType = RegularizationType.ELASTIC_NET
     val regularization2 = RegularizationContext(regularizationType, Some(alpha))
     val regWeights1 = Set(0D)
-    val regWeights2Str = Seq("1", "10", "100", "100", "10").mkString(s"${ScoptParserHelpers.SECONDARY_LIST_DELIMITER}")
+    val regWeights2Str =
+      Seq("1", "10", "100", "100", "10").mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)
     val regWeights2 = Set(1, 10, 100)
     val activeDataUpperBound1 = None
     val activeDataUpperBound2 = Some(5)
@@ -363,7 +378,7 @@ class ScoptParserHelpersTest {
     val expected2 = Seq[(String, String)](
         ScoptParserHelpers.FEATURE_SHARD_CONFIG_NAME -> featureShardId2,
         ScoptParserHelpers.FEATURE_SHARD_CONFIG_FEATURE_BAGS ->
-          featureBags2.mkString(s"${ScoptParserHelpers.SECONDARY_LIST_DELIMITER}"))
+          featureBags2.mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString))
       .map { case (arg, value) =>
         s"$arg${ScoptParserHelpers.KV_DELIMITER}$value"
       }
@@ -486,7 +501,7 @@ class ScoptParserHelpersTest {
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REGULARIZATION -> regularizationType.toString,
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_ALPHA -> regularizationAlpha.toString,
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_WEIGHTS ->
-          regularizationWeights.mkString(s"${ScoptParserHelpers.SECONDARY_LIST_DELIMITER}")))
+          regularizationWeights.mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)))
       .map { case (arg, value) =>
         s"$arg${ScoptParserHelpers.KV_DELIMITER}$value"
       }

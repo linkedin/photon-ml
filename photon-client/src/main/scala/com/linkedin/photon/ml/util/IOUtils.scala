@@ -26,6 +26,7 @@ import org.joda.time.Days
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 

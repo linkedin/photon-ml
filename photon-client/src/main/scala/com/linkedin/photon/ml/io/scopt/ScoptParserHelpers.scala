@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfigura
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, GLMOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjection}
+import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DoubleRange, Logging}
 
 /**
@@ -49,8 +49,7 @@ object ScoptParserHelpers extends Logging {
 
   val FEATURE_SHARD_CONFIG_REQUIRED_ARGS = Map(
     (FEATURE_SHARD_CONFIG_NAME, "<name>"),
-    (FEATURE_SHARD_CONFIG_FEATURE_BAGS,
-      Seq("<featureBag1>", "<featureBag2>", "...").mkString(s"$SECONDARY_LIST_DELIMITER")))
+    (FEATURE_SHARD_CONFIG_FEATURE_BAGS, "<list of bags>"))
   val FEATURE_SHARD_CONFIG_OPTIONAL_ARGS = Map((FEATURE_SHARD_CONFIG_INTERCEPT, "<bool>"))
 
   // Coordinate configuration parameters
@@ -73,26 +72,46 @@ object ScoptParserHelpers extends Logging {
 
   val COORDINATE_CONFIG_REQUIRED_ARGS = Map(
     (COORDINATE_CONFIG_NAME, "<name>"),
-    (COORDINATE_DATA_CONFIG_FEATURE_SHARD, "<shard>"),
+    (COORDINATE_DATA_CONFIG_FEATURE_SHARD, "<shard name>"),
     (COORDINATE_DATA_CONFIG_MIN_PARTITIONS, "<value>"),
     (COORDINATE_OPT_CONFIG_OPTIMIZER, s"[${OptimizerType.values.mkString(", ")}]"),
     (COORDINATE_OPT_CONFIG_MAX_ITER, "<value>"),
     (COORDINATE_OPT_CONFIG_TOLERANCE, "<value>"))
+  val COORDINATE_CONFIG_RANDOM_EFFECT_REQUIRED_ARGS = Map(
+    (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE, "<type>"))
   val COORDINATE_CONFIG_OPTIONAL_ARGS = Map(
-    (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE, "<type>"),
-    (COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND, "<value>"),
-    (COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND, "<value>"),
-    (COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO, "<value>"),
     (COORDINATE_OPT_CONFIG_REGULARIZATION, s"[${RegularizationType.values.mkString(", ")}]"),
     (COORDINATE_OPT_CONFIG_REG_ALPHA, "<value>"),
-    (COORDINATE_OPT_CONFIG_REG_WEIGHTS, Seq("<value1>", "<value2>", "...").mkString(s"$SECONDARY_LIST_DELIMITER")),
+    (COORDINATE_OPT_CONFIG_REG_WEIGHTS, "<list of values>"))
+  val COORDINATE_CONFIG_FIXED_EFFECT_OPTIONAL_ARGS = Map(
     (COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE, "<value>"))
+  val COORDINATE_CONFIG_RANDOM_EFFECT_OPTIONAL_ARGS = Map(
+    (COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND, "<value>"),
+    (COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND, "<value>"),
+    (COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO, "<value>"))
 
   val COORDINATE_CONFIG_FIXED_ONLY_ARGS = Seq(COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE)
   val COORDINATE_CONFIG_RANDOM_ONLY_ARGS = Seq(
     COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND,
     COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND,
     COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO)
+
+  //
+  // General functions
+  //
+
+  /**
+   * Format a [[Map]] of (argument name -> argument value) pairs for usage text or additional documentation.
+   *
+   * @param args A [[Map]] of (argument name -> argument value)
+   * @return The input [[Map]] as a formatted [[String]]
+   */
+  def formatArgs(args: Map[String, String]): String =
+    args
+      .map { case (argName, argVal) =>
+        s"$argName=$argVal"
+      }
+      .mkString(", ")
 
   //
   // Parsing functions
@@ -327,7 +346,7 @@ object ScoptParserHelpers extends Logging {
 
       argsMap += (FEATURE_SHARD_CONFIG_NAME -> featureShardName)
       argsMap +=
-        (FEATURE_SHARD_CONFIG_FEATURE_BAGS -> featureShardConfig.featureBags.mkString(s"$SECONDARY_LIST_DELIMITER"))
+        (FEATURE_SHARD_CONFIG_FEATURE_BAGS -> featureShardConfig.featureBags.mkString(SECONDARY_LIST_DELIMITER.toString))
 
       //
       // Append optional args
@@ -422,7 +441,7 @@ object ScoptParserHelpers extends Logging {
           }
           argsMap +=
             (COORDINATE_OPT_CONFIG_REG_WEIGHTS ->
-              coordinateConfig.regularizationWeights.mkString(s"$SECONDARY_LIST_DELIMITER"))
+              coordinateConfig.regularizationWeights.mkString(SECONDARY_LIST_DELIMITER.toString))
       }
 
       //

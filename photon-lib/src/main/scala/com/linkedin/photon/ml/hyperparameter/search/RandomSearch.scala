@@ -123,10 +123,9 @@ class RandomSearch[T](
     }
 
     // Adjust candidates according to specified ranges
-    ranges.zipWithIndex.foreach { case ((lower, upper), j) =>
-      val range = upper - lower
-      candidates(::,j) *= range
-      candidates(::,j) += lower
+    ranges.zipWithIndex.foreach { case (range, j) =>
+      candidates(::,j) *= (range.end - range.start)
+      candidates(::,j) += range.start
     }
 
     candidates

@@ -19,7 +19,7 @@ import java.util.{List => JList}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
-import scala.collection.{Set, mutable}
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
@@ -36,6 +36,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
+import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._

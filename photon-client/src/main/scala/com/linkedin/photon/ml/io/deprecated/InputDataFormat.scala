@@ -18,7 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.util.IndexMapLoader
+import com.linkedin.photon.ml.index.IndexMapLoader
 
 /**
  * This trait defines a general way of loading an input path into RDDs for training.

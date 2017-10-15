@@ -419,7 +419,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
-   * Run the GAME driver with the specified arguments.
+   * Run the GAME training driver with the specified arguments.
    *
    * @param params Arguments for GAME training
    */

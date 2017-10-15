@@ -23,8 +23,8 @@ import org.apache.spark.sql.functions._
 import org.testng.Assert._
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.index.{IndexMap, PalDBIndexMapLoader}
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
-import com.linkedin.photon.ml.util._
 
 /**
  * Unit tests for AvroDataReader

@@ -12,15 +12,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.scopt
+package com.linkedin.photon.ml.io.scopt.game
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.cli.game.scoring.GameScoringDriver
 import com.linkedin.photon.ml.DataValidationType
+import com.linkedin.photon.ml.cli.game.scoring.GameScoringDriver
 import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
 import com.linkedin.photon.ml.io.FeatureShardConfiguration

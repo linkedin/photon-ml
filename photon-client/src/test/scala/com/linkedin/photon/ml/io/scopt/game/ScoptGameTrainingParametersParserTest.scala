@@ -12,23 +12,23 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.scopt
+package com.linkedin.photon.ml.io.scopt.game
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
 import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.optimization.{L1RegularizationContext, NoRegularizationContext, OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.{L1RegularizationContext, NoRegularizationContext, OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 
 /**
  * Unit tests for the [[ScoptGameTrainingParametersParser]].

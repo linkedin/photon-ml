@@ -29,9 +29,10 @@ import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
 import com.linkedin.photon.ml.hyperparameter.search.{GaussianProcessSearch, RandomSearch}
+import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
-import com.linkedin.photon.ml.io.scopt.ScoptGameTrainingParametersParser
+import com.linkedin.photon.ml.io.scopt.game.ScoptGameTrainingParametersParser
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
@@ -86,7 +87,7 @@ object GameTrainingDriver extends GameDriver {
       "daily format structure (i.e. trainDir/2017/01/20/[input data files]).")
 
   val validationDataDaysRange: Param[DaysRange] = ParamUtils.createParam[DaysRange](
-    "input data days range",
+    "validation data days range",
     "Inclusive date range for validation data, computed from a range of days prior to today. If specified, the " +
       "validation directories are expected to be in the daily format structure (i.e. " +
       "trainDir/2017/01/20/[input data files]).")
@@ -98,7 +99,7 @@ object GameTrainingDriver extends GameDriver {
 
   val outputMode: Param[ModelOutputMode] = ParamUtils.createParam[ModelOutputMode](
     "output mode",
-    "Granularity of model output to HDFS (best, some, all).")
+    "Granularity of model output to HDFS.")
 
   val coordinateConfigurations: Param[Map[CoordinateId, CoordinateConfiguration]] =
     ParamUtils.createParam[Map[CoordinateId, CoordinateConfiguration]](

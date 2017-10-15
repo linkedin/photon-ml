@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.util
+package com.linkedin.photon.ml.index
 
 import java.io.{File => JFile}
 import java.util.{Arrays => JArrays, Map => JMap}

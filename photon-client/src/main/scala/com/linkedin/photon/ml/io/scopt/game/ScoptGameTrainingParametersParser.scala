@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.scopt
+package com.linkedin.photon.ml.io.scopt.game
 
 import scala.language.existentials
 
@@ -21,15 +21,16 @@ import org.apache.spark.ml.param.ParamMap
 import scopt.{OptionDef, OptionParser, Read}
 
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
-import com.linkedin.photon.ml.{HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
-import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
+import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserHelpers, ScoptParserReads}
+import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.util.{DateRange, DaysRange, DoubleRange}
+import com.linkedin.photon.ml.{HyperparameterTuningMode, TaskType}
 
 /**
  * Scopt command line argument parser for GAME training parameters.
@@ -45,7 +46,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       ScoptParameter[TaskType, TaskType](
         GameTrainingDriver.trainingTask,
         usageText = s"<task>",
-        additionalDocs = Seq(s"training tasks: ${TaskType.values.mkString(", ")}"),
+        additionalDocs = Seq(s"training tasks: ${TaskType.values.filterNot(_ == TaskType.NONE).mkString(", ")}"),
         isRequired = true),
 
       // Validation Data Directories
@@ -84,8 +85,11 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         printSeq = ScoptParserHelpers.coordinateConfigsToStrings,
         usageText = "<arg>=<value>",
         additionalDocs = Seq(
-          s"required args: ${formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_REQUIRED_ARGS)}",
-          s"optional args: ${formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_OPTIONAL_ARGS)}"),
+          s"required args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_REQUIRED_ARGS)}",
+          s"random effect required args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_RANDOM_EFFECT_REQUIRED_ARGS)}",
+          s"optional args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_OPTIONAL_ARGS)}",
+          s"fixed effect optional args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_FIXED_EFFECT_OPTIONAL_ARGS)}",
+          s"random effect optional args: ${ScoptParserHelpers.formatArgs(ScoptParserHelpers.COORDINATE_CONFIG_RANDOM_EFFECT_OPTIONAL_ARGS)}"),
         isRequired = true),
 
       // Coordinate Update Sequence
@@ -163,11 +167,10 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       case Some(params) => params
 
       case None =>
-        val errMsg = new StringBuilder()
-
-        for (i <- args.indices by 2) {
-          errMsg.append(s"${args(i)} ${args(i + 1)}\n")
-        }
+        val errMsg = args
+          .grouped(2)
+          .map(_.mkString(" "))
+          .mkString("\n")
 
         throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString()}")
     }

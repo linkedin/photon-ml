@@ -35,6 +35,7 @@ import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
+import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game._

@@ -26,6 +26,7 @@ import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.data.avro.NameAndTermFeatureSetContainer
 import com.linkedin.photon.ml.evaluation.EvaluatorType
+import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMapLoader, PalDBIndexMapLoader}
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util._

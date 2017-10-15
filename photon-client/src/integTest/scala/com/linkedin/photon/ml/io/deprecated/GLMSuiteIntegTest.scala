@@ -30,8 +30,9 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.avro.generated.TrainingExampleAvro
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.index.DefaultIndexMap
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
+import com.linkedin.photon.ml.util.Utils
 import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
 
 /**

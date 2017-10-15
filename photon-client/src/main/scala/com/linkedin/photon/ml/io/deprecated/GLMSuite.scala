@@ -28,6 +28,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.data.avro.{AvroUtils, ResponsePredictionFieldNames, TrainingExampleFieldNames}
+import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.io.deprecated.FieldNamesType._
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._

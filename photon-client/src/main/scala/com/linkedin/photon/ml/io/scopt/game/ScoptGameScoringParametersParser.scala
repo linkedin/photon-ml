@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.io.scopt
+package com.linkedin.photon.ml.io.scopt.game
 
 import scala.language.existentials
 
@@ -22,6 +22,7 @@ import scopt.{OptionDef, OptionParser, Read}
 
 import com.linkedin.photon.ml.Types.REType
 import com.linkedin.photon.ml.cli.game.scoring.GameScoringDriver
+import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserHelpers, ScoptParserReads}
 
 /**
  * Scopt command line argument parser for GAME scoring parameters.
@@ -33,19 +34,18 @@ object ScoptGameScoringParametersParser extends ScoptGameParametersParser {
   val scoptGameScoringParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
     createScoptGameParams(GameScoringDriver) ++ Seq(
 
-      // Random effect types
-      ScoptParameter[Seq[REType], Set[REType]](
-        GameScoringDriver.randomEffectTypes,
-        parse = ScoptParserHelpers.parseSetFromSeq,
-        print = ScoptParserHelpers.iterableToString,
-        usageText = "<path1>,<path2>,...",
-        isRequired = true),
-
       // Model Input Dir
       ScoptParameter[Path, Path](
         GameScoringDriver.modelInputDirectory,
         usageText = "<path>",
         isRequired = true),
+
+      // Random effect types
+      ScoptParameter[Seq[REType], Set[REType]](
+        GameScoringDriver.randomEffectTypes,
+        parse = ScoptParserHelpers.parseSetFromSeq,
+        print = ScoptParserHelpers.iterableToString,
+        usageText = "<path1>,<path2>,..."),
 
       // Model ID
       ScoptParameter[String, String](
@@ -84,11 +84,10 @@ object ScoptGameScoringParametersParser extends ScoptGameParametersParser {
       case Some(params) => params
 
       case None =>
-        val errMsg = new StringBuilder()
-
-        for (i <- args.indices by 2) {
-          errMsg.append(s"${args(i)} ${args(i + 1)}\n")
-        }
+        val errMsg = args
+          .grouped(2)
+          .map(_.mkString(" "))
+          .mkString("\n")
 
         throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString()}")
     }

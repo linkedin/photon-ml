@@ -19,7 +19,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.util.{IdentityIndexMapLoader, IndexMapLoader}
+import com.linkedin.photon.ml.index.{IdentityIndexMapLoader, IndexMapLoader}
 
 /**
  * An input format supporting reading LibSVM txt, the assumed format is:
