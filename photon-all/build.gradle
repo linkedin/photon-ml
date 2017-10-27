@@ -73,6 +73,7 @@ shadowJar {
   mergeServiceFiles()
 
   // Relocate the packages in the shadow jar that we want shaded
+  relocate 'com.google', 'photonml.shaded.com.google'
   relocate 'com.thoughtworks.paranamer', 'photonml.shaded.com.thoughtworks.paranamer'
   relocate 'com.xeiam.xchart', 'photonml.shaded.com.xeiam.xchart'
   relocate 'de.erichseifert', 'photonml.shaded.de.erichseifert'
@@ -84,6 +85,7 @@ shadowJar {
   relocate 'org.apache.velocity', 'photonml.shaded.org.apache.velocity'
   relocate 'org.apache.xmlcommons', 'photonml.shaded.org.apache.xmlcommons'
   relocate 'org.codehaus.jackson', 'photonml.shaded.org.codehaus.jackson'
+  relocate 'org.hamcrest', 'photonml.shaded.org.hamcrest'
   relocate 'org.tukaani', 'photonml.shaded.org.tukaani'
   relocate 'scopt', 'photonml.shaded.scopt'
   relocate 'org.joda.time', 'photonml.shaded.org.joda.time'
