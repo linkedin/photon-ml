@@ -521,6 +521,31 @@ class DriverTest extends SparkTestUtils with GameTestUtils with TestTemplateWith
   }
 
   /**
+   * Check that it's possible to train an intercept-only model
+   */
+  @Test
+  def testFixedEffectInterceptOnly(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
+    val outputDir = s"$getTmpDir/fixedEffectsInterceptOnly"
+
+    val args = fixedEffectSeriousRunArgs() ++ Map(
+      "output-dir" -> outputDir,
+      "feature-shard-id-to-feature-section-keys-map" -> "shard1:",
+      "feature-shard-id-to-intercept-map" -> "shard1:true")
+
+    val driver = runDriver(CommonTestUtils.argArray(args))
+
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", "global")
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+
+    assertTrue(Files.exists(allFixedEffectModelPath))
+    assertTrue(Files.exists(bestFixedEffectModelPath))
+    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 1)
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 1)
+    assertTrue(modelContainsIntercept(allFixedEffectModelPath))
+    assertTrue(modelContainsIntercept(bestFixedEffectModelPath))
+  }
+
+  /**
     * Perform a very basic sanity check on the model.
     *
     * @param path Path to the model coefficients file
