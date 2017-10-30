@@ -256,7 +256,6 @@ object AvroDataReader {
       fieldNames: Set[String]): Array[(String, Double)] = {
 
     require(Option(record).nonEmpty, "Can't read features from an empty record.")
-    require(fieldNames.nonEmpty, "No feature fields specified.")
 
     fieldNames
       .toSeq
@@ -290,7 +289,6 @@ object AvroDataReader {
       featureMap: IndexMap): Vector = {
 
     require(Option(record).nonEmpty, "Can't read features from an empty record.")
-    require(fieldNames.nonEmpty, "No feature fields specified.")
 
     // Retrieve the features
     val features = readFeaturesFromRecord(record, fieldNames)
