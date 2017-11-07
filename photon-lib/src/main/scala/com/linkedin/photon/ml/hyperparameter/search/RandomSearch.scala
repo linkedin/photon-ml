@@ -15,8 +15,7 @@
 package com.linkedin.photon.ml.hyperparameter.search
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.stats.distributions.{RandBasis, ThreadLocalRandomGenerator, Uniform}
-import org.apache.commons.math3.random.MersenneTwister
+import org.apache.commons.math3.random.SobolSequenceGenerator
 
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 
@@ -36,16 +35,13 @@ class RandomSearch[T](
   protected val numParams = ranges.length
 
   /**
-   * Provides an implicit random number basis for breeze that incorporates the given random seed.
+   * Sobol generator for uniformly choosing rougly equidistant points
    */
-  private implicit val randBasis: RandBasis = new RandBasis(
-    new ThreadLocalRandomGenerator(new MersenneTwister(seed)))
+  private val paramDistributions = {
+    val sobol = new SobolSequenceGenerator(numParams)
+    sobol.skipTo((seed % (Int.MaxValue.toLong + 1)).toInt)
 
-  /**
-   * Uniform distributions over parameters using the given ranges
-   */
-  private val paramDistributions = ranges.map { case (lower, upper) =>
-    new Uniform(lower, upper)
+    sobol
   }
 
   /**
@@ -119,8 +115,19 @@ class RandomSearch[T](
    *
    * @param n the number of candidates to draw
    */
-  protected[search] def drawCandidates(n: Int): DenseMatrix[Double] =
-    DenseMatrix.tabulate(n, numParams) { case (_, j) =>
-      paramDistributions(j).draw
+  protected[search] def drawCandidates(n: Int): DenseMatrix[Double] = {
+    // Draw candidates from a Sobol generator, which produces values in the range [0, 1]
+    val candidates = (1 until n).foldLeft(DenseMatrix(paramDistributions.nextVector)) { case (acc, _) =>
+      DenseMatrix.vertcat(acc, DenseMatrix(paramDistributions.nextVector))
     }
+
+    // Adjust candidates according to specified ranges
+    ranges.zipWithIndex.foreach { case ((lower, upper), j) =>
+      val range = upper - lower
+      candidates(::,j) *= range
+      candidates(::,j) += lower
+    }
+
+    candidates
+  }
 }
