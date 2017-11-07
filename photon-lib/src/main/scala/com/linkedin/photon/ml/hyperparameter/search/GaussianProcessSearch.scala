@@ -22,7 +22,7 @@ import breeze.stats.variance
 
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
-import com.linkedin.photon.ml.hyperparameter.criteria.ConfidenceBound
+import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
 import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel}
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
 
@@ -87,10 +87,8 @@ class GaussianProcessSearch[T](
         // hyperparameter spaces.
         val kernel = new Matern52
 
-        // The confidence bound criteria produced the best results on our synthesized data sets and real world
-        // tests. Here we derive the exploration factor from the sample variance of previous observations.
-        val obsStd = sqrt(max(1.0, variance(evals)))
-        val transformation = new ConfidenceBound(evaluator, 2*obsStd)
+        // Expected improvement transformation
+        val transformation = new ExpectedImprovement(evaluator, bestEval)
 
         val estimator = new GaussianProcessEstimator(
           kernel = kernel,
