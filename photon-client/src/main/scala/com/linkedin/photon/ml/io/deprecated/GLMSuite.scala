@@ -329,7 +329,7 @@ class GLMSuite(
           val duplicateFeatures = sortedPairsArray
             .groupBy(_._1)
             .filter(_._2.length > 1)
-            .map { case (k, v) => (k, v.map(_._2).toList) }
+            .map { case (k, v) => (indexMap.getFeatureName(k), v.map(_._2).toList) }
           require(duplicateFeatures.isEmpty, s"Duplicate features found: ${duplicateFeatures.toString}")
 
           val index = sortedPairsArray.map(_._1)
