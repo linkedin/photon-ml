@@ -20,6 +20,7 @@ import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 
 object EvaluatorFactory {
+
   /**
    * Factory for different types of [[Evaluator]].
    *

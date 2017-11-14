@@ -50,7 +50,6 @@ class ScoptGameTrainingParametersParserTest {
     val evaluators = Seq(AUC, RMSE)
     val outputPath = new Path("/some/output/path")
     val overrideOutputDir = true
-    val featureBagsPath = new Path("/some/feature/bags/path")
     val dataValidation = DataValidationType.VALIDATE_SAMPLE
     val logLevel = PhotonLogger.parseLogLevelString("WARN")
     val applicationName = "myApplication_name"
@@ -144,7 +143,6 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.rootOutputDirectory, outputPath)
       .put(GameTrainingDriver.overrideOutputDirectory, overrideOutputDir)
       .put(GameTrainingDriver.outputFilesLimit, outputFilesLimit)
-      .put(GameTrainingDriver.featureBagsDirectory, featureBagsPath)
       .put(GameTrainingDriver.featureShardConfigurations, featureShardConfigs)
       .put(GameTrainingDriver.dataValidation, dataValidation)
       .put(GameTrainingDriver.logLevel, logLevel)

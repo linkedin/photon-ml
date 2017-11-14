@@ -101,12 +101,6 @@ trait ScoptGameParametersParser extends ScoptParser {
         driver.outputFilesLimit,
         usageText = "<value>"),
 
-      // Feature Bags Directory
-      ScoptParameter[Path, Path](
-        driver.featureBagsDirectory,
-        usageText = "<path>",
-        isRequired = true),
-
       // Feature Shard Configurations
       ScoptParameter[Map[String, String], Map[FeatureShardId, FeatureShardConfiguration]](
         driver.featureShardConfigurations,

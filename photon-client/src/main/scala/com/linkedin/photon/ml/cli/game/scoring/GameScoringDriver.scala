@@ -14,25 +14,22 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
-import scala.collection.Map
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.{DataValidationType, SparkContextConfiguration, TaskType}
-import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
-import com.linkedin.photon.ml.data.{DataValidators, GameConverters, GameDatum, InputColumnsNames}
-import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
+import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameScoringParametersParser
 import com.linkedin.photon.ml.model.RandomEffectModel
+import com.linkedin.photon.ml.transformers.GameTransformer
 import com.linkedin.photon.ml.util._
 
 /**
@@ -58,10 +55,6 @@ object GameScoringDriver extends GameDriver {
   val modelInputDirectory: Param[Path] = ParamUtils.createParam(
     "model input directory",
     "Path to directory containing model to use for scoring.")
-
-  val randomEffectTypes: Param[Set[String]] = ParamUtils.createParam(
-    "random effect types",
-    "The set of random effect types used by the random effect models.")
 
   val modelId: Param[String] = ParamUtils.createParam(
     "model id",
@@ -141,7 +134,6 @@ object GameScoringDriver extends GameDriver {
    * Run the driver.
    */
   protected[scoring] def run(): Unit = {
-    val timer = new Timer
 
     // Process the output directory upfront and potentially fail the job early
     IOUtils.processOutputDir(
@@ -149,13 +141,12 @@ object GameScoringDriver extends GameDriver {
       getOrDefault(overrideOutputDirectory),
       sc.hadoopConfiguration)
 
-    timer.start()
-    val featureShardIdToFeatureMapMap = prepareFeatureMaps()
-    timer.stop()
-    logger.info(s"Time elapsed after preparing feature maps: ${timer.durationSeconds} (s)\n")
+    val featureShardIdToIndexMapLoaderMapOpt = Timed("Prepare features") {
+      prepareFeatureMaps()
+    }
 
-    val dataFrame = Timed("Read data") {
-      readDataFrame(featureShardIdToFeatureMapMap)
+    val (dataFrame, featureShardIdToIndexMapLoaderMap)  = Timed("Read data") {
+      readDataFrame(featureShardIdToIndexMapLoaderMapOpt)
     }
 
     // TODO: The model training task should be read from the metadata. For now, hardcode to LINEAR_REGRESSION, since
@@ -169,148 +160,64 @@ object GameScoringDriver extends GameDriver {
         get(evaluators).map(_ => TaskType.LINEAR_REGRESSION))
     }
 
-    timer.start()
-    val gameDataSet = prepareGameDataSet(dataFrame)
-    timer.stop()
-    logger.info(s"Time elapsed after game data set preparation: ${timer.durationSeconds} (s)\n")
-
-    timer.start()
-    val scores = scoreGameDataSet(featureShardIdToFeatureMapMap, gameDataSet)
-    timer.stop()
-    logger.info(s"Time elapsed after computing scores: ${timer.durationSeconds} (s)\n")
-
-    timer.start()
-    saveScoresToHDFS(scores)
-    timer.stop()
-    logger.info(s"Time elapsed saving scores to HDFS: ${timer.durationSeconds} (s)\n")
-
-    timer.start()
-    get(evaluators).foreach(_.foreach { evaluatorType =>
-      val evaluationMetricValue = evaluateScores(evaluatorType, scores, gameDataSet)
-      logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
-    })
-    timer.stop()
-    logger.info(s"Time elapsed after evaluating scores: ${timer.durationSeconds} (s)\n")
-  }
-
-  /**
-   * Reads AVRO input data into a [[DataFrame]].
-   *
-   * @param featureShardIdToFeatureMapLoader A map of shard id to feature map loader
-   * @return A [[DataFrame]] of input data
-   */
-  protected def readDataFrame(featureShardIdToFeatureMapLoader: Map[FeatureShardId, IndexMapLoader]): DataFrame = {
-
-    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
-
-    // Handle date range input
-    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
-    val recordsPath = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
-
-    logger.debug(s"Input records paths:\n${recordsPath.mkString("\n")}")
-
-    new AvroDataReader(sc).readMerged(
-      recordsPath.map(_.toString),
-      featureShardIdToFeatureMapLoader.toMap,
-      getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
-      parallelism)
-  }
-
-  /**
-   * Builds a GAME data set according to input data configuration.
-   *
-   * @param dataFrame A [[DataFrame]] of raw input data
-   * @return The prepared GAME data set
-   */
-  protected def prepareGameDataSet(dataFrame: DataFrame): RDD[(UniqueSampleId, GameDatum)] = {
-
-    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
-    val partitioner = new LongHashPartitioner(parallelism)
-    val idTagSet: Set[String] = get(randomEffectTypes).getOrElse(Set()) ++
-      get(evaluators).map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
-    val gameDataSet = GameConverters
-      .getGameDataSetFromDataFrame(
-        dataFrame,
-        getRequiredParam(featureShardConfigurations).keys.toSet,
-        idTagSet,
-        isResponseRequired = false,
-        getOrDefault(inputColumnNames))
-      .partitionBy(partitioner)
-      .setName("Game data set with UIDs for scoring")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-
-    if (getOrDefault(logDataAndModelStats)) {
-      logGameDataSet(gameDataSet)
+    val (gameModel, _) = Timed("Load model") {
+      ModelProcessingUtils.loadGameModelFromHDFS(
+        sc,
+        getRequiredParam(modelInputDirectory),
+        StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+        Some(featureShardIdToIndexMapLoaderMap))
     }
 
-    gameDataSet
-  }
+    val gameTransformer = Timed("Setup transformer") {
+      val transformer = new GameTransformer(sc, logger)
+        .setModel(gameModel)
+        .setLogDataAndModelStats(getOrDefault(logDataAndModelStats))
+        .setSpillScoresToDisk(getOrDefault(spillScoresToDisk))
 
-  /**
-   * Log some simple summary statistics for the GAME data set.
-   *
-   * @param gameDataSet The GAME data set
-   */
-  private def logGameDataSet(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Unit = {
+      get(inputColumnNames).foreach(transformer.setInputColumnNames)
+      get(evaluators).foreach(transformer.setValidationEvaluators)
 
-    val numSamples = gameDataSet.count()
-
-    logger.debug(s"Summary for the GAME data set")
-    logger.debug(s"numSamples: $numSamples")
-
-    get(randomEffectTypes).foreach(_.foreach { idTag =>
-      val numSamplesStats = gameDataSet
-        .map { case (_, gameData) =>
-          val idValue = gameData.idTagToValueMap(idTag)
-          (idValue, 1)
-        }
-        .reduceByKey(_ + _)
-        .values
-        .stats()
-
-      logger.debug(s"numSamples for $idTag: $numSamplesStats")
-    })
-  }
-
-  /**
-   * Load the GAME model and score the GAME data set.
-   *
-   * @param featureShardIdToIndexMapLoader A map of feature shard id to feature map loader
-   * @param gameDataSet The GAME data set
-   * @return The scores
-   */
-  protected def scoreGameDataSet(
-      featureShardIdToIndexMapLoader: Map[FeatureShardId, IndexMapLoader],
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
-
-    // Load the model from HDFS, ignoring the feature index loader
-    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
-      sc,
-      getRequiredParam(modelInputDirectory),
-      StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-      Some(featureShardIdToIndexMapLoader))
-
-    if (getOrDefault(logDataAndModelStats)) {
-      logger.debug(s"Loaded game model summary:\n${gameModel.toSummaryString}")
+      transformer
     }
 
-    // Need to split these calls to keep correct return type
-    val scores = gameModel.score(gameDataSet)
-    val storageLevel = if (getOrDefault(spillScoresToDisk)) {
-      StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL
-    } else {
-      StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL
+    val scores = Timed("Score data") {
+      gameTransformer.transform(dataFrame)
     }
 
-    scores.persistRDD(storageLevel).materialize()
-
-    gameDataSet.unpersist()
     gameModel.toMap.foreach {
       case (_, model: RandomEffectModel) => model.unpersistRDD()
       case _ =>
     }
 
-    scores
+    Timed("Save scores") {
+      saveScoresToHDFS(scores)
+    }
+  }
+
+  /**
+   * Reads AVRO input data into a [[DataFrame]].
+   *
+   * @param featureShardIdToIndexMapLoaderMapOpt An optional map of shard id to feature map loader
+   * @return A ([[DataFrame]] of input data, map of shard id to feature map loader) pair
+   */
+  protected def readDataFrame(
+      featureShardIdToIndexMapLoaderMapOpt: Option[Map[FeatureShardId, IndexMapLoader]])
+    : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
+
+    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
+
+    // Handle date range input
+    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
+    val recordsPaths = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
+
+    logger.debug(s"Input records paths:\n${recordsPaths.mkString("\n")}")
+
+    new AvroDataReader(sc)
+      .readMerged(
+        recordsPaths.map(_.toString),
+        featureShardIdToIndexMapLoaderMapOpt,
+        getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
+        parallelism)
   }
 
   /**
@@ -348,30 +255,11 @@ object GameScoringDriver extends GameDriver {
   }
 
   /**
-   * Evaluate the computed scores with the given evaluator type
-   *
-   * @param evaluatorType The evaluator type
-   * @param scores The computed scores
-   * @param gameDataSet The GAME data set
-   * @return The evaluation metric
-   */
-  protected[scoring] def evaluateScores(
-      evaluatorType: EvaluatorType,
-      scores: ModelDataScores,
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Double = {
-
-    val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
-    evaluator.evaluate(scores.scores.mapValues(_.score))
-  }
-
-  /**
    * Entry point to the driver.
    *
    * @param args The command line arguments for the job
    */
   def main(args: Array[String]): Unit = {
-
-    val timer = Timer.start()
 
     val params: ParamMap = ScoptGameScoringParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
@@ -381,19 +269,13 @@ object GameScoringDriver extends GameDriver {
     logger.setLogLevel(getOrDefault(logLevel))
 
     try {
-
-      run()
-
-      timer.stop()
-      logger.info(s"Overall time elapsed ${timer.durationMinutes} minutes")
+      Timed("Total time in scoring Driver")(run())
 
     } catch { case e: Exception =>
-
       logger.error("Failure while running the driver", e)
       throw e
 
     } finally {
-
       logger.close()
       sc.stop()
     }

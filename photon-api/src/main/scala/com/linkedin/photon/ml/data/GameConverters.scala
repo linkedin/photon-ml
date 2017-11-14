@@ -17,19 +17,15 @@ package com.linkedin.photon.ml.data
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Row}
 
-import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * A collection of utility functions for converting to and from GAME datasets.
  */
 object GameConverters {
-
-  // Column name for the synthesized unique id column
-  private val UNIQUE_ID_COLUMN_NAME = "___photon:uniqueId___"
 
   /**
    * Converts a [[DataFrame]] into an [[RDD]] of type [[GameDatum]].
@@ -50,15 +46,15 @@ object GameConverters {
       featureShards: Set[FeatureShardId],
       idTagSet: Set[String],
       isResponseRequired: Boolean,
-      inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(Long, GameDatum)] = {
+      inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(UniqueSampleId, GameDatum)] = {
 
-    val recordsWithUniqueId = data.withColumn(UNIQUE_ID_COLUMN_NAME, monotonically_increasing_id())
     val inputColumnsNamesBroadcast = data.sqlContext.sparkContext.broadcast(inputColumnsNames)
 
-    recordsWithUniqueId
+    data
       .rdd
-      .map { row: Row =>
-        (row.getAs[Long](UNIQUE_ID_COLUMN_NAME),
+      .zipWithIndex()
+      .map { case (row, index) =>
+        (index,
           getGameDatumFromRow(row, featureShards, idTagSet, isResponseRequired, inputColumnsNamesBroadcast))
       }
   }

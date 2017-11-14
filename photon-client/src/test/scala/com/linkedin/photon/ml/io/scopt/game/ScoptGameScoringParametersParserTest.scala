@@ -46,13 +46,11 @@ class ScoptGameScoringParametersParserTest {
     val evaluators = Seq(AUC, RMSE)
     val outputPath = new Path("/some/output/path")
     val overrideOutputDir = true
-    val featureBagsPath = new Path("/some/feature/bags/path")
     val dataValidation = DataValidationType.VALIDATE_SAMPLE
     val logLevel = PhotonLogger.parseLogLevelString("WARN")
     val applicationName = "myApplication_name"
     val outputFilesLimit = 3
     val modelInputDirectory = new Path("/some/model/path")
-    val randomEffectTypes = Set("type1", "type2")
     val modelId = "someId"
     val logDataAndModelStats = true
     val spillScoresToDisk = true
@@ -80,13 +78,11 @@ class ScoptGameScoringParametersParserTest {
       .put(GameScoringDriver.rootOutputDirectory, outputPath)
       .put(GameScoringDriver.overrideOutputDirectory, overrideOutputDir)
       .put(GameScoringDriver.outputFilesLimit, outputFilesLimit)
-      .put(GameScoringDriver.featureBagsDirectory, featureBagsPath)
       .put(GameScoringDriver.featureShardConfigurations, featureShardConfigs)
       .put(GameScoringDriver.dataValidation, dataValidation)
       .put(GameScoringDriver.logLevel, logLevel)
       .put(GameScoringDriver.applicationName, applicationName)
       .put(GameScoringDriver.modelInputDirectory, modelInputDirectory)
-      .put(GameScoringDriver.randomEffectTypes, randomEffectTypes)
       .put(GameScoringDriver.modelId, modelId)
       .put(GameScoringDriver.logDataAndModelStats, logDataAndModelStats)
       .put(GameScoringDriver.spillScoresToDisk, spillScoresToDisk)

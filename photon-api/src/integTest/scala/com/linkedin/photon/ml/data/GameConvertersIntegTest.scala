@@ -14,18 +14,19 @@
  */
 package com.linkedin.photon.ml.data
 
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.types._
 import org.testng.Assert._
 import org.testng.annotations.Test
+
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Unit tests for GameConverters.
+ * Integration tests for [[GameConverters]].
  */
-class GameConvertersTest extends SparkTestUtils {
+class GameConvertersIntegTest extends SparkTestUtils {
 
-  import GameConvertersTest._
+  import GameConvertersIntegTest._
 
   private val uid = "foo"
 
@@ -200,7 +201,7 @@ class GameConvertersTest extends SparkTestUtils {
   }
 }
 
-object GameConvertersTest {
+object GameConvertersIntegTest {
   private val JOB_ID_NAME = "jobId"
   private val USER_ID_NAME = "userId"
 }

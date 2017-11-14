@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.data
 
 import com.linkedin.photon.ml.Types._
-import com.linkedin.photon.ml.projector.ProjectorType
+import com.linkedin.photon.ml.projector.{IndexMapProjection, ProjectorType}
 
 /**
  * Generic trait for a configuration to define a coordinate data set.
@@ -34,7 +34,9 @@ sealed trait CoordinateDataConfiguration {
  * @param featureShardId Key of the feature shard used to generate the data set
  * @param minNumPartitions Minimum number of data partitions
  */
-case class FixedEffectDataConfiguration(featureShardId: FeatureShardId, minNumPartitions: Int)
+case class FixedEffectDataConfiguration(
+    featureShardId: FeatureShardId,
+    minNumPartitions: Int = 1)
   extends CoordinateDataConfiguration
 
 /**
@@ -64,11 +66,11 @@ case class FixedEffectDataConfiguration(featureShardId: FeatureShardId, minNumPa
 case class RandomEffectDataConfiguration(
     randomEffectType: REType,
     featureShardId: FeatureShardId,
-    minNumPartitions: Int,
-    numActiveDataPointsUpperBound: Option[Int],
-    numPassiveDataPointsLowerBound: Option[Int],
-    numFeaturesToSamplesRatioUpperBound: Option[Double],
-    projectorType: ProjectorType)
+    minNumPartitions: Int = 1,
+    numActiveDataPointsUpperBound: Option[Int] = None,
+    numPassiveDataPointsLowerBound: Option[Int] = None,
+    numFeaturesToSamplesRatioUpperBound: Option[Double] = None,
+    projectorType: ProjectorType = IndexMapProjection)
   extends CoordinateDataConfiguration {
 
   require(

@@ -191,10 +191,14 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     // Create GameTrainingDriver
     val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingDataSetsAndEvaluator"))
     estimator
-      .set(estimator.featureShardColumnNames, featureShardMap.keys.toSet)
       .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
       .set(estimator.coordinateDataConfigurations, coordinateDataConfigurations)
-    val (trainingDataSets, _) = estimator.prepareTrainingDataSetsAndEvaluator(data, idTagSet)
+    val featureShards = coordinateDataConfigurations
+      .map { case (_, coordinateDataConfig) =>
+        coordinateDataConfig.featureShardId
+      }
+      .toSet
+    val (trainingDataSets, _) = estimator.prepareTrainingDataSetsAndEvaluator(data, featureShards, idTagSet)
 
     assertEquals(trainingDataSets.size, 4)
 
@@ -280,8 +284,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
     trainingEvaluatorType: EvaluatorType): Unit = sparkTest("testPrepareTrainingLossEvaluator") {
 
     val mockTrainingData = getMockDataRDD()
-    val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingLossEvaluator"))
-    estimator.set(estimator.trainingTask, taskType)
+    val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingLossEvaluator")).setTrainingTask(taskType)
     val evaluator = estimator.prepareTrainingLossEvaluator(mockTrainingData)
 
     assertEquals(evaluator.getEvaluatorName, trainingEvaluatorType.name)
@@ -313,7 +316,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
       val evaluatorCols = MultiEvaluatorType.getMultiEvaluatorIdTags(evaluatorTypes)
       val mockValidationData = getMockDataRDD(evaluatorCols)
       val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
-      estimator.set(estimator.validationEvaluators, evaluatorTypes)
+        .setValidationEvaluators(evaluatorTypes)
       val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
 
       evaluators
@@ -351,7 +354,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
 
     val mockValidationData = getMockDataRDD()
     val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
-    estimator.set(estimator.trainingTask, taskType)
+      .setTrainingTask(taskType)
     val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
 
     assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
@@ -405,14 +408,6 @@ object GameEstimatorTest {
     .getPath
 
   /**
-   * Feature shard definition map for the above test data.
-   */
-  private val featureShardMap = Map(
-    "shard1" -> Set("features", "userFeatures", "songFeatures"),
-    "shard2" -> Set("features", "userFeatures"),
-    "shard3" -> Set("songFeatures"))
-
-  /**
    * Data configurations for the above test data.
    */
   private val coordinateDataConfigurations = Map(
@@ -430,16 +425,18 @@ object GameEstimatorTest {
 
     override def prepareTrainingDataSetsAndEvaluator(
         data: DataFrame,
+        featureShards: Set[FeatureShardId],
         additionalCols: Set[String]): (Map[CoordinateId, D forSome { type D <: DataSet[D] }], Evaluator) =
-      super.prepareTrainingDataSetsAndEvaluator(data, additionalCols)
+      super.prepareTrainingDataSetsAndEvaluator(data, featureShards, additionalCols)
 
     override def prepareTrainingLossEvaluator(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
       super.prepareTrainingLossEvaluator(gameDataSet)
 
     override def prepareValidationDataSetAndEvaluators(
         dataOpt: Option[DataFrame],
+        featureShards: Set[FeatureShardId],
         additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])] =
-      super.prepareValidationDataSetAndEvaluators(dataOpt, additionalCols)
+      super.prepareValidationDataSetAndEvaluators(dataOpt, featureShards, additionalCols)
 
     override def prepareValidationEvaluators(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Seq[Evaluator] =
       super.prepareValidationEvaluators(gameDataSet)

@@ -57,7 +57,6 @@ class GameTrainingDriverTest {
       .empty
       .put(GameTrainingDriver.inputDataDirectories, Set[Path](mockPath))
       .put(GameTrainingDriver.rootOutputDirectory, mockPath)
-      .put(GameTrainingDriver.featureBagsDirectory, mockPath)
       .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
       .put(GameTrainingDriver.coordinateDescentIterations, 1)
@@ -104,7 +103,6 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.rootOutputDirectory, mockPath)
       .put(GameTrainingDriver.overrideOutputDirectory, mockBoolean)
       .put(GameTrainingDriver.outputFilesLimit, mockInt)
-      .put(GameTrainingDriver.featureBagsDirectory, mockPath)
       .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameTrainingDriver.dataValidation, DataValidationType.VALIDATE_FULL)
       .put(GameTrainingDriver.logLevel, mockInt)
@@ -153,7 +151,6 @@ class GameTrainingDriverTest {
       .empty
       .put(GameTrainingDriver.inputDataDirectories, Set[Path](mockPath))
       .put(GameTrainingDriver.rootOutputDirectory, mockPath)
-      .put(GameTrainingDriver.featureBagsDirectory, mockPath)
       .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
       .put(GameTrainingDriver.coordinateDescentIterations, 1)
@@ -173,6 +170,12 @@ class GameTrainingDriverTest {
       Array(validParamMap.copy.put(GameTrainingDriver.offHeapIndexMapDirectory, mockPath)),
       // Off-heap map partitions without dir
       Array(validParamMap.copy.put(GameTrainingDriver.offHeapIndexMapPartitions, 1)),
+      // Both off-heap map and features directory
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.offHeapIndexMapDirectory, mockPath)
+          .put(GameTrainingDriver.featureBagsDirectory, mockPath)),
       // No training task
       Array(validParamMap.copy.remove(GameTrainingDriver.trainingTask)),
       // No coordinate descent iterations
