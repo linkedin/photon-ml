@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.normalization
 
 import breeze.linalg.{DenseVector, Vector}
 
+import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
@@ -40,7 +41,6 @@ private[ml] case class NormalizationContext(
     shifts: Option[_ <: Vector[Double]],
     interceptId: Option[Int]) {
 
-  // TODO: can we test that earlier (in GameParams)?
   require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
   if (factors.isDefined && shifts.isDefined) {
     require(factors.get.size == shifts.get.size, "Factors and shifts vectors should have the same size")

@@ -14,29 +14,31 @@
  */
 package com.linkedin.photon.ml.io.deprecated
 
+import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 
 import com.linkedin.photon.ml.Params
-import com.linkedin.photon.ml.util.PalDBIndexMapLoader
+import com.linkedin.photon.ml.index.PalDBIndexMapLoader
 
 /**
- * This is a factory that produces different input format object accordingly.
+ * This is a factory for [[InputDataFormat]].
  */
 object InputFormatFactory {
 
   /**
+   * Generate an appropriate [[InputDataFormat]] based on the input parameters.
    *
-   * @param sc
-   * @param params
-   * @return
+   * @param sc The Spark context
+   * @param params The input parameters
+   * @return An appropriate [[InputDataFormat]] for the input parameters
    */
   def createInputFormat(sc: SparkContext, params: Params): InputDataFormat = {
     params.inputFormatType match {
-      case InputFormatType.AVRO => {
+      case InputFormatType.AVRO =>
         // Prepare offHeapIndexMap loader if provided
         val offHeapIndexMapLoader = params.offHeapIndexMapDir match {
           case Some(offHeapDir) =>
-            Some(PalDBIndexMapLoader(sc, offHeapDir, params.offHeapIndexMapNumPartitions))
+            Some(PalDBIndexMapLoader(sc, new Path(offHeapDir), params.offHeapIndexMapNumPartitions))
           case None => None
         }
 
@@ -47,7 +49,7 @@ object InputFormatFactory {
           offHeapIndexMapLoader)
 
         new AvroInputDataFormat(suite)
-      }
+
       case InputFormatType.LIBSVM =>
         if (params.featureDimension <= 0) {
           throw new IllegalArgumentException(
@@ -57,6 +59,7 @@ object InputFormatFactory {
         new LibSVMInputDataFormat(params.featureDimension,
           params.addIntercept
         )
+
       case _ =>
         throw new IllegalArgumentException("InputFormat unsupported.")
     }

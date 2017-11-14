@@ -25,6 +25,7 @@ import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
 import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel}
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Performs a guided random search of the given ranges, where the search is guided by a Gaussian Process estimated from
@@ -52,7 +53,7 @@ import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
  * @param seed the random seed value
  */
 class GaussianProcessSearch[T](
-    ranges: Seq[(Double, Double)],
+    ranges: Seq[DoubleRange],
     evaluationFunction: EvaluationFunction[T],
     evaluator: Evaluator,
     candidatePoolSize: Int = 250,

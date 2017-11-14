@@ -14,44 +14,27 @@
  */
 package com.linkedin.photon.ml.optimization.game
 
-import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 /**
- * Some simple tests for [[MFOptimizationConfiguration]].
+ * Tests for [[MFOptimizationConfiguration]].
  */
 class MFOptimizationConfigurationTest {
 
-  import MFOptimizationConfiguration.{SPLITTER => S}
-
   @DataProvider
-  def invalidStringConfigs(): Array[Array[Any]] = {
-    Array(
-      Array(s"NotANumber${S}10"),
-      Array(s"5d${S}10"),
-      Array(s"5${S}NotANumber"),
-      Array(s"5")
-    )
-  }
+  def invalidInput(): Array[Array[Any]] = Array(
+    Array(-1, 1D),
+    Array(0, 1D),
+    Array(1, -1D),
+    Array(1, 0D))
 
-  @Test(dataProvider = "invalidStringConfigs", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testParseAndBuild(configStr: String): Unit = {
-    println(GLMOptimizationConfiguration.parseAndBuildFromString(configStr))
-  }
-
-  @DataProvider
-  def validStringConfigs(): Array[Array[Any]] = {
-    Array(
-      Array(s"10${S}20"),
-      // With space before/after the splitters
-      Array(s" 10   $S  20  ")
-    )
-  }
-
-  @Test(dataProvider = "validStringConfigs")
-  def testParseAndBuildWithValidString(configStr: String): Unit = {
-    val config = MFOptimizationConfiguration.parseAndBuildFromString(configStr)
-    assertEquals(config.maxNumberIterations, 10)
-    assertEquals(config.numFactors, 20)
-  }
+  /**
+   * Test that [[MFOptimizationConfiguration]] will reject invalid input
+   *
+   * @param maxNumberIterations An invalid number of maximum iterations
+   * @param numFactors An invalid number of latent factors
+   */
+  @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testFixedEffectOptConfigSetupWithInvalidInput(maxNumberIterations: Int, numFactors: Int): Unit =
+    MFOptimizationConfiguration(maxNumberIterations, numFactors)
 }

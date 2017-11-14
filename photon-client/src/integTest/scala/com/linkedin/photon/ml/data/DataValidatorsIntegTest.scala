@@ -261,7 +261,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       val inputColumnsNames = InputColumnsNames()
       val featureNames = Set(InputColumnsNames.FEATURES_DEFAULT.toString)
 
-      DataValidators.sanityCheckDataFrame(
+      DataValidators.sanityCheckDataFrameForTraining(
         sparkSession.createDataFrame(rows, schema),
         x(1).asInstanceOf[TaskType],
         x(2).asInstanceOf[DataValidationType],
@@ -291,7 +291,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       val inputColumnsNames = InputColumnsNames()
       val featureNames = Set(InputColumnsNames.FEATURES_DEFAULT.toString)
 
-      val result = Try(DataValidators.sanityCheckDataFrame(
+      val result = Try(DataValidators.sanityCheckDataFrameForTraining(
         sparkSession.createDataFrame(rows, schema),
         x(1).asInstanceOf[TaskType],
         x(2).asInstanceOf[DataValidationType],

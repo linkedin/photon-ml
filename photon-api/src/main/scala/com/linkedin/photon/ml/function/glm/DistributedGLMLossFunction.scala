@@ -151,16 +151,18 @@ object DistributedGLMLossFunction {
   def apply(
       sc: SparkContext,
       configuration: GLMOptimizationConfiguration,
-      treeAggregateDepth: Int)(singleLossFunction: PointwiseLossFunction): DistributedGLMLossFunction = {
+      treeAggregateDepth: Int)
+      (singleLossFunction: PointwiseLossFunction): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
+    val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
         new DistributedGLMLossFunction(singleLossFunction, sc, treeAggregateDepth)
           with L2RegularizationTwiceDiff {
 
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         }
 
       case _ => new DistributedGLMLossFunction(singleLossFunction, sc, treeAggregateDepth)

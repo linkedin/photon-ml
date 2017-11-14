@@ -157,7 +157,7 @@ class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
     sparkTest("testLoadAndSaveScoredItems") {
       val scoredItemsAsRDD = sc.parallelize(scoredItems, 1)
       val dir = new Path(getTmpDir, "scores").toString
-      ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsAsRDD, modelId = modelId, dir)
+      ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsAsRDD, dir, Some(modelId))
       val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtils.loadScoredItemsFromHDFS(dir, sc)
       val loadedModelIds = loadedModelIdWithScoredItemAsRDD.map(_._1)
 

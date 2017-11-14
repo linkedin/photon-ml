@@ -99,7 +99,7 @@ class MockDriver(
    * @param outputDir
    * @return
    */
-  override def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
+  override def summarizeFeatures(outputDir: Option[Path]): BasicStatisticalSummary = {
     isSummarized = true
     super.summarizeFeatures(outputDir)
   }

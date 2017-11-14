@@ -18,15 +18,22 @@ package com.linkedin.photon.ml.evaluation
  * Evaluator type
  */
 trait EvaluatorType {
+
   /**
    * Name of the evaluator.
    *
    * @note It is currently also used as the cli input argument for evaluator types in integTests.
    */
   val name: String
+
+  override def toString: String = name
 }
 
 object EvaluatorType {
+
+  // Comparable to the valueSet, if this were an enumeration
+  val all: Seq[EvaluatorType] = Seq(AUC, RMSE, LogisticLoss, PoissonLoss, SmoothedHingeLoss, SquaredLoss)
+
   case object AUC extends EvaluatorType { val name = "AUC" }
   case object RMSE extends EvaluatorType { val name = "RMSE" }
   case object LogisticLoss extends EvaluatorType { val name = "LOGISTIC_LOSS" }

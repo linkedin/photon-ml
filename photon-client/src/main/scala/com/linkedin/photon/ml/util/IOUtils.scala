@@ -15,8 +15,6 @@
 package com.linkedin.photon.ml.util
 
 import java.io._
-import java.lang.{Double => JDouble}
-import java.util.{Map => JMap}
 
 import scala.collection.mutable
 import scala.util.Try
@@ -27,6 +25,9 @@ import org.apache.spark.SparkContext
 import org.joda.time.Days
 
 import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.index.IndexMapLoader
+import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -35,16 +36,41 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 protected[ml] object IOUtils {
 
   /**
+   * Resolve between multiple date range specification options.
+   *
+   * @param dateRangeOpt Optional date range specified using a [[DateRange]]
+   * @param daysRangeOpt Optional date range specified using a [[DaysRange]]
+   * @return A single [[DateRange]] to use, if either of the date range options are specified
+   * @throws IllegalArgumentException If both date ranges are specified
+   */
+  def resolveRange(dateRangeOpt: Option[DateRange], daysRangeOpt: Option[DaysRange]): Option[DateRange] =
+    (dateRangeOpt, daysRangeOpt) match {
+
+      // Specified as date range
+      case (Some(dateRange), None) => Some(dateRange)
+
+      // Specified as a range of start days ago - end days ago
+      case (None, Some(daysRange)) => Some(daysRange.toDateRange)
+
+      // Both types specified: illegal
+      case (Some(_), Some(_)) =>
+        throw new IllegalArgumentException(
+          "Both date range and days ago given. You must specify date ranges using only one format.")
+
+      // No range specified, just use the train dir
+      case (None, None) => None
+    }
+
+  /**
    * Check if the given directory already exists or not.
    *
    * @param dir The directory path
    * @param hadoopConf The Hadoop Configuration object
    * @return Whether the given directory already exists
    */
-  def isDirExisting(dir: String, hadoopConf: Configuration): Boolean = {
-    val path = new Path(dir)
-    val fs = path.getFileSystem(hadoopConf)
-    fs.exists(path)
+  def isDirExisting(dir: Path, hadoopConf: Configuration): Boolean = {
+    val fs = dir.getFileSystem(hadoopConf)
+    fs.exists(dir)
   }
 
   /**
@@ -56,7 +82,7 @@ protected[ml] object IOUtils {
    * @param configuration The Hadoop Configuration object
    */
   protected[ml] def processOutputDir(
-      outputDir: String,
+      outputDir: Path,
       deleteOutputDirIfExists: Boolean,
       configuration: Configuration): Unit = {
 
@@ -80,10 +106,10 @@ protected[ml] object IOUtils {
     * @return A sequence of matching file paths
     */
   def getInputPathsWithinDateRange(
-      inputDirs: Seq[String],
+      inputDirs: Set[Path],
       dateRange: DateRange,
       configuration: Configuration,
-      errorOnMissing: Boolean): Seq[String] =
+      errorOnMissing: Boolean): Seq[Path] =
     inputDirs
       .map(inputDir => getInputPathsWithinDateRange(inputDir, dateRange, configuration, errorOnMissing))
       .reduce(_ ++ _)
@@ -92,22 +118,21 @@ protected[ml] object IOUtils {
    * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
    * behavior can be changed with the "errorOnMissing" parameter.
    *
-   * @param inputDirs The base path for input files
+   * @param baseDir The base path for input files
    * @param dateRange Date range for finding input files
    * @param configuration Hadoop configuration
    * @param errorOnMissing If true, the method will throw when a date has no corresponding input file
    * @return A sequence of matching file paths
    */
   protected def getInputPathsWithinDateRange(
-      inputDirs: String,
+      baseDir: Path,
       dateRange: DateRange,
       configuration: Configuration,
-      errorOnMissing: Boolean): Seq[String] = {
+      errorOnMissing: Boolean): Seq[Path] = {
 
-    val dailyDir = new Path(inputDirs, "daily")
     val numberOfDays = Days.daysBetween(dateRange.startDate, dateRange.endDate).getDays
     val paths = (0 to numberOfDays).map { day =>
-      new Path(dailyDir, dateRange.startDate.plusDays(day).toString("yyyy/MM/dd"))
+      new Path(baseDir, dateRange.startDate.plusDays(day).toString("yyyy/MM/dd"))
     }
 
     if (errorOnMissing) {
@@ -115,10 +140,12 @@ protected[ml] object IOUtils {
     }
 
     val existingPaths = paths.filter(path => path.getFileSystem(configuration).exists(path))
-    require(existingPaths.nonEmpty,
-      s"No data folder found between ${dateRange.startDate} and ${dateRange.endDate} in $dailyDir")
 
-    existingPaths.map(_.toString)
+    require(
+      existingPaths.nonEmpty,
+      s"No data folder found between ${dateRange.startDate} and ${dateRange.endDate} in $baseDir")
+
+    existingPaths
   }
 
   /**
@@ -153,19 +180,23 @@ protected[ml] object IOUtils {
   }
 
   /**
-   * Write an iterator of strings to HDFS
+   * Write an [[GameEstimator.GameOptimizationConfiguration]] to HDFS.
    *
-   * @param stringMsgs The strings to be written to HDFS
-   * @param outputPath The HDFS path to write the strings
-   * @param configuration Hadoop configuration
+   * @param optimizationConfig The GAME model optimization configuration to write to HDFS
+   * @param outputPath The output HDFS directory to which to write
+   * @param configuration The HDFS configuration
    * @param forceOverwrite Whether to force overwrite the output path if already exists
    */
-  def writeStringsToHDFS(
-      stringMsgs: Iterator[String],
-      outputPath: String,
+  def writeOptimizationConfigToHDFS(
+      optimizationConfig: GameEstimator.GameOptimizationConfiguration,
+      outputPath: Path,
       configuration: Configuration,
       forceOverwrite: Boolean): Unit =
-    writeStringsToHDFS(stringMsgs, new Path(outputPath), configuration, forceOverwrite)
+    writeStringsToHDFS(
+      Iterator(optimizationConfigToString(optimizationConfig)),
+      outputPath,
+      configuration,
+      forceOverwrite)
 
   /**
    * Write an iterator of strings to HDFS
@@ -298,5 +329,36 @@ protected[ml] object IOUtils {
     toStream(fs.create(tmpFile))(writeOp)
       .map(_ => if (fs.exists(file)) fc.rename(file, bkpFile, Options.Rename.OVERWRITE))
       .map(_ => fc.rename(tmpFile, file, Options.Rename.OVERWRITE))
+  }
+
+  /**
+   * Summarize a [[GameEstimator.GameOptimizationConfiguration]] into a human-readable [[String]].
+   *
+   * @param config A [[GameEstimator.GameOptimizationConfiguration]]
+   * @return The summarized config in human-readable text
+   */
+  def optimizationConfigToString(config: GameEstimator.GameOptimizationConfiguration): String = {
+
+    val builder = new StringBuilder
+
+    config
+      .toSeq
+      .sortBy { case (coordinateId, coordinateConfig) =>
+        val priority = coordinateConfig match {
+          case _: FixedEffectOptimizationConfiguration => 1
+          case _: RandomEffectOptimizationConfiguration => 2
+          case _: FactoredRandomEffectOptimizationConfiguration => 3
+          case _ =>
+            throw new IllegalArgumentException(
+              s"Unknown optimization configuration for coordinate $coordinateId with type ${coordinateConfig.getClass}")
+        }
+
+        (priority, coordinateId)
+      }
+      .foreach { case (coordinateId, coordinateConfig) =>
+        builder.append(s"$coordinateId:\n$coordinateConfig\n")
+      }
+
+    builder.mkString
   }
 }

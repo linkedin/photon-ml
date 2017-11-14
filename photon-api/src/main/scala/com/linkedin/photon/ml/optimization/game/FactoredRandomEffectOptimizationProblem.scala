@@ -25,7 +25,6 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.projector.ProjectionMatrix
-import com.linkedin.photon.ml.sampler.DownSampler
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -134,6 +133,8 @@ object FactoredRandomEffectOptimizationProblem {
   /**
    * Factory method to create new RandomEffectOptimizationProblems.
    *
+   * @tparam RandomEffectObjective The objective function type of the random effects
+   * @tparam LatentEffectObjective The objective function type of the latent effects matrix
    * @param randomEffectDataSet The training data
    * @param randomEffectOptimizationConfiguration The optimizer configuration for the random effect optimization
    *                                              problems
@@ -142,8 +143,6 @@ object FactoredRandomEffectOptimizationProblem {
    *                                    effects
    * @param randomObjectiveFunction The objective function to optimize for the random effects
    * @param latentObjectiveFunction The objective function to optimize for the latent effects matrix
-   * @param latentSamplerOption (Optional) A sampler to use for down-sampling the training data prior to optimization of
-   *                            the latent effects matrix
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param isTrackingState Should the optimization problems record the internal optimizer states?
@@ -159,7 +158,6 @@ object FactoredRandomEffectOptimizationProblem {
       mfOptimizationConfiguration: MFOptimizationConfiguration,
       randomObjectiveFunction: RandomEffectObjective,
       latentObjectiveFunction: LatentEffectObjective,
-      latentSamplerOption: Option[DownSampler],
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: Broadcast[NormalizationContext],
       isTrackingState: Boolean = false,
@@ -178,7 +176,7 @@ object FactoredRandomEffectOptimizationProblem {
     val latentFactorOptimizationProblem = DistributedOptimizationProblem(
       latentFactorOptimizationConfiguration,
       latentObjectiveFunction,
-      latentSamplerOption,
+      samplerOption = None,
       glmConstructor,
       normalizationContext,
       isTrackingState,

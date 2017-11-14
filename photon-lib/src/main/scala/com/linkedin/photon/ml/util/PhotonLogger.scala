@@ -18,8 +18,6 @@ import java.io.{BufferedWriter, PrintWriter, _}
 import java.text.SimpleDateFormat
 import java.util.{Date, UUID}
 
-import scala.Predef.{println => sprintln}
-
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -61,7 +59,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
   /**
    * Initialize the writer
    */
-  val writer = createWriter
+  val writer: PrintWriter = createWriter
 
   /**
    * Closes the log writer. The logger instance maintains an open writer, and clients are expected to call this to
@@ -446,7 +444,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
 
     this.synchronized {
       writer.println(content)
-      sprintln(content)
+      Predef.println(content)
 
       throwable match {
         case Some(t) =>
@@ -495,6 +493,7 @@ protected[ml] class PhotonLogger(logPath: Path, sc: SparkContext) extends Marker
 }
 
 object PhotonLogger {
+
   /**
    * Log level constants, inherited from SLF4J
    */
@@ -503,6 +502,21 @@ object PhotonLogger {
   protected[ml] val LogLevelInfo = LocationAwareLogger.INFO_INT
   protected[ml] val LogLevelTrace = LocationAwareLogger.TRACE_INT
   protected[ml] val LogLevelWarn = LocationAwareLogger.WARN_INT
+
+  /**
+   * Map of log level names to log level constants
+   */
+  protected[ml] val logLevelNames: Map[String, Int] = Map(
+    ("ERROR", LogLevelError),
+    ("WARN", LogLevelWarn),
+    ("DEBUG", LogLevelDebug),
+    ("INFO", LogLevelInfo),
+    ("TRACE", LogLevelTrace))
+
+  /**
+   * Map of log level constants to log level names
+   */
+  protected[ml] val logLevelConstants: Map[Int, String] = logLevelNames.map { case (key, value) => (value, key) }
 
   /**
    * Default log level: INFO
@@ -518,4 +532,22 @@ object PhotonLogger {
    * Default log message format
    */
   protected val DefaultMessageFormat = "%s [%s] %s"
+
+  /**
+   * Parse a log level constant from an input string.
+   *
+   * @param str The input string
+   * @return The log level constant corresponding to that string
+   */
+  def parseLogLevelString(str: String): Int =
+    logLevelNames.getOrElse(str.toUpperCase, throw new NoSuchElementException(s"Invalid logging level '$str'"))
+
+  /**
+   * Print a log level constant as a string.
+   *
+   * @param level The log level constant
+   * @return The log level string corresponding to that constant
+   */
+  def printLogLevelString(level: Int): String =
+    logLevelConstants.getOrElse(level, throw new NoSuchElementException(s"Invalid logging level '$level'"))
 }

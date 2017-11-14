@@ -18,6 +18,7 @@ import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
 
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Performs a random search of the space whose bounds are specified by the given ranges
@@ -27,12 +28,12 @@ import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
  * @param seed the random seed value
  */
 class RandomSearch[T](
-    ranges: Seq[(Double, Double)],
+    ranges: Seq[DoubleRange],
     evaluationFunction: EvaluationFunction[T],
     seed: Long = System.currentTimeMillis) {
 
   // The length of the ranges sequence corresponds to the dimensionality of the hyperparameter tuning problem
-  protected val numParams = ranges.length
+  protected val numParams: Int = ranges.length
 
   /**
    * Sobol generator for uniformly choosing rougly equidistant points
@@ -87,7 +88,7 @@ class RandomSearch[T](
     require(n > 0, "The number of results must be greater than zero.")
 
     val candidate = drawCandidates(1)(0,::).t
-    val (observation, model) = evaluationFunction(candidate)
+    val (_, model) = evaluationFunction(candidate)
 
     Seq(model) ++ (if (n == 1) Seq() else find(n - 1, Seq(model)))
   }
@@ -122,10 +123,9 @@ class RandomSearch[T](
     }
 
     // Adjust candidates according to specified ranges
-    ranges.zipWithIndex.foreach { case ((lower, upper), j) =>
-      val range = upper - lower
-      candidates(::,j) *= range
-      candidates(::,j) += lower
+    ranges.zipWithIndex.foreach { case (range, j) =>
+      candidates(::,j) *= (range.end - range.start)
+      candidates(::,j) += range.start
     }
 
     candidates

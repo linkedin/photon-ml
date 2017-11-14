@@ -274,7 +274,7 @@ protected[ml] class Driver(
    * @param outputDir
    * @return
    */
-  protected def summarizeFeatures(outputDir: Option[String]): BasicStatisticalSummary = {
+  protected def summarizeFeatures(outputDir: Option[Path]): BasicStatisticalSummary = {
 
     val beforeSummarization = System.currentTimeMillis()
     val summary = BasicStatisticalSummary(trainingData)
@@ -716,14 +716,14 @@ object Driver {
    * @param file
    * @param diagReport
    */
-  protected def writeDiagnostics(outputDir: String, file: String, diagReport: DiagnosticReport): Unit = {
+  protected def writeDiagnostics(outputDir: Path, file: String, diagReport: DiagnosticReport): Unit = {
     val xform = new DiagnosticToPhysicalReportTransformer()
     val doc = xform.transform(diagReport)
     val rs = new HTMLRenderStrategy()
     val rendered = rs.locateRenderer(doc).render(doc)
 
     val hdfs = FileSystem.get(new Configuration())
-    val fileStream = hdfs.create(new Path(s"$outputDir/$file"), true)
+    val fileStream = hdfs.create(new Path(outputDir, file), true)
     val writer = new PrintWriter(new OutputStreamWriter(fileStream))
 
     try {

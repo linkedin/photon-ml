@@ -29,6 +29,9 @@ class GameConvertersTest extends SparkTestUtils {
 
   private val uid = "foo"
 
+  /**
+   * Test that a [[GameDatum]] will correctly read a uid from a [[Row]].
+   */
   @Test
   def testGetGameDatumFromRowWithUID(): Unit = sparkTest("testGetGameDatumFromRowWithUID") {
 
@@ -48,6 +51,9 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(gameDatumWithoutResponse.idTagToValueMap.get(InputColumnsNames.UID.toString), Some(uid))
   }
 
+  /**
+   * Test that a [[GameDatum]] will not load correctly if a [[Row]] is missing the response column.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetGameDatumFromRowWithNoResponse(): Unit =
     sparkTest("testGetGameDatumFromGenericRecordWithNoResponse") {
@@ -65,6 +71,9 @@ class GameConvertersTest extends SparkTestUtils {
           columnsBroadcast = inputColumnsNamesBroadcast)
     }
 
+  /**
+   * Test that the random effect type can be correctly read from a first class field of a record.
+   */
   @Test
   def testMakeRandomEffectTypeMapWithIdField(): Unit = sparkTest("testMakeRandomEffectTypeMapWithIdField") {
 
@@ -92,6 +101,9 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(map2(JOB_ID_NAME), jobIdValStr)
   }
 
+  /**
+   * Test that the random effect type can be correctly read from the metadata of a record.
+   */
   @Test
   def testMakeRandomEffectTypeMapWithMetadataMap(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMetadataMap") {
 
@@ -117,6 +129,10 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(res2(JOB_ID_NAME), jobIdValStr)
   }
 
+  /**
+   * Test that the random effect type stored in a first class field will take priority over the metadata in the event
+   * of a conflict.
+   */
   @Test
   def testMakeRandomEffectTypeMapWithBothFields(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMetadataMap") {
 
@@ -149,22 +165,24 @@ class GameConvertersTest extends SparkTestUtils {
     assertEquals(res2(JOB_ID_NAME), jobId1Str)
   }
 
+  /**
+   * Test that reading a random effect type is not mandatory.
+   */
   @Test
   def testNoRandomEffectTypeAtAll(): Unit = sparkTest("testNoRandomEffectTypeAtAll") {
 
-    // Excepting the method to still proceed but return an empty map
     val schema = StructType(Seq(
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
-
-    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
-      Seq(Row(uid, Map()))
-    ), schema)
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(Seq(Row(uid, Map()))), schema)
     val row = dataFrame.head
 
     assertTrue(GameConverters.getIdTagToValueMapFromRow(row, Set[String]()).isEmpty)
   }
 
+  /**
+   * Test that reading a non-existent random effect type will cause an error.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testMakeRandomEffectTypeMapWithMissingField(): Unit = sparkTest("testMakeRandomEffectTypeMapWithMissingField") {
 
@@ -173,9 +191,7 @@ class GameConvertersTest extends SparkTestUtils {
       StructField(InputColumnsNames.UID.toString, StringType),
       StructField(InputColumnsNames.META_DATA_MAP.toString, MapType(StringType, StringType, valueContainsNull = false))))
 
-    val dataFrame = sparkSession.createDataFrame(sc.parallelize(
-      Seq(Row(uid, Map()))
-    ), schema)
+    val dataFrame = sparkSession.createDataFrame(sc.parallelize(Seq(Row(uid, Map()))), schema)
     val row = dataFrame.head
 
     assertTrue(GameConverters.getIdTagToValueMapFromRow(row, Set[String]()).isEmpty)

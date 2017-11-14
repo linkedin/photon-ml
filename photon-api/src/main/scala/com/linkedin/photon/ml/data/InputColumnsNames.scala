@@ -45,11 +45,27 @@ class InputColumnsNames extends Serializable {
   def apply(key: InputColumnsNames.Value): String = array(key.id)
 
   /**
-   * Return a human-readable representation of an InputColumnsNames instance.
+   * Returns a hash code value for the object.
    *
-   * @return A human-readable string
+   * @return An [[Int]] hash code
    */
-  override def toString: String = InputColumnsNames.all.map(icn => s"${icn.toString}: ${array(icn.id)}").mkString(", ")
+  override def hashCode: Int = array.hashCode()
+
+  /**
+   * Compare equality between this and some other object.
+   *
+   * @param obj Some other object
+   * @return True if the other object is a [[InputColumnsNames]] with identical column names, otherwise false
+   */
+  override def equals(obj: Any): Boolean = obj match {
+    case that: InputColumnsNames =>
+      InputColumnsNames.all.forall { column =>
+        this(column).equals(that(column))
+      }
+
+    case _ =>
+      false
+  }
 }
 
 /**

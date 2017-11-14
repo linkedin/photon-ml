@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.function.glm.PoissonLossFunction
 
 /**
@@ -24,7 +25,8 @@ import com.linkedin.photon.ml.function.glm.PoissonLossFunction
  * @param labelAndOffsetAndWeights An [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class PoissonLossEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))])
+  extends Evaluator {
 
   val evaluatorType = EvaluatorType.PoissonLoss
 
@@ -35,7 +37,7 @@ protected[ml] class PoissonLossEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-      scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+      scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
         weight * PoissonLossFunction.lossAndDzLoss(score, label)._1

@@ -18,8 +18,9 @@ import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.index.DefaultIndexMap
 import com.linkedin.photon.ml.test.CommonTestUtils
-import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
+import com.linkedin.photon.ml.util.Utils
 
 /**
  * This class tests some basic util methods in Constants.

@@ -161,7 +161,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
     appendCommonJobArgs(args, outputDir)
 
-    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+    Utils.createHDFSDir(new Path(outputDir), sc.hadoopConfiguration)
 
     MockDriver.runLocally(
       args.toArray,
@@ -185,7 +185,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
     args += CommonTestUtils.fromOptionNameToArg(MAX_NUM_ITERATIONS_OPTION)
     args += LIGHT_MAX_NUM_ITERATIONS.toString
 
-    Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
+    Utils.createHDFSDir(new Path(outputDir), sc.hadoopConfiguration)
 
     MockDriver.runLocally(
       args.toArray,
@@ -645,7 +645,7 @@ class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
       args += CommonTestUtils.fromOptionNameToArg(SUMMARIZATION_OUTPUT_DIR)
       args += summarizationOutputDir
 
-      Utils.createHDFSDir(summarizationOutputDir, sc.hadoopConfiguration)
+      Utils.createHDFSDir(new Path(summarizationOutputDir), sc.hadoopConfiguration)
 
       MockDriver.runLocally(
         args.toArray,

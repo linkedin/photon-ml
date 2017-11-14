@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils
 import com.linkedin.photon.ml.test.CommonTestUtils.getScoreLabelAndWeights
 
 /**
- *
+ * Tests for [[PrecisionAtKLocalEvaluator]].
  */
 class PrecisionAtKLocalEvaluatorTest {
 
@@ -77,6 +77,13 @@ class PrecisionAtKLocalEvaluatorTest {
     trivialCase1 ++ trivialCase2 ++ trivialCase3 ++ trivialCase4 ++ metronomeCase1 ++ metronomeCase2
   }
 
+  /**
+   * Test that [[PrecisionAtKLocalEvaluator]] can correctly compute precision @ k for various k.
+   *
+   * @param k The index at which to compute precision
+   * @param scoreLabelAndWeights An array of (score, response label, weight) triplets (one per data point)
+   * @param expectedResult Expected precision @ k
+   */
   @Test(dataProvider = "getEvaluateTestCases")
   def testEvaluate(
     k: Int,
@@ -87,4 +94,15 @@ class PrecisionAtKLocalEvaluatorTest {
     val actualResult = evaluator.evaluate(scoreLabelAndWeights)
     assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
+
+  @DataProvider
+  def invalidKValues: Array[Array[Any]] = Array(Array(0), Array(-5))
+
+  /**
+   * Test that [[PrecisionAtKLocalEvaluator]] will reject input for invalid k indices.
+   *
+   * @param k The index at which to compute precision
+   */
+  @Test(dataProvider = "invalidKValues", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInitWithBadK(k: Int): Unit = new PrecisionAtKLocalEvaluator(k)
 }

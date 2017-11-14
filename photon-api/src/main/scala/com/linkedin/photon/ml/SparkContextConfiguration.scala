@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.{ProjectionMatrix, IndexMapProjector, Projector}
+import com.linkedin.photon.ml.projector.{IndexMapProjector, ProjectionMatrix, Projector}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -40,7 +40,7 @@ object SparkContextConfiguration {
   val CONF_SPARK_APP_NAME = "spark.app.name"
   val CONF_SPARK_SERIALIZER = "spark.serializer"
   val CONF_SPARK_KRYO_CLASSES_TO_REGISTER = "spark.kryo.classesToRegister"
-  val KRYO_CLASSES_TO_REGISTER = Array[Class[_]](
+  val KRYO_CLASSES_TO_REGISTER: Array[Class[_]] = Array(
     classOf[mutable.BitSet],
     classOf[mutable.ListBuffer[_]],
     classOf[Coefficients],

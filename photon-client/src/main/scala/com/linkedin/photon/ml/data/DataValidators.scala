@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.util.Logging
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
-import scala.util.{Success, Try}
+import com.linkedin.photon.ml.constants.MathConst
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
@@ -50,11 +50,14 @@ object DataValidators extends Logging {
   val dataFrameBaseValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] = List(
     (rowHasFiniteFeatures, InputColumnsNames.FEATURES_DEFAULT, "Data contains row(s) with non-finite feature(s)"),
     (rowHasFiniteWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-finite weight(s)"),
+    (rowHasPositiveWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-positive weight(s)"),
     (rowHasFiniteOffset, InputColumnsNames.OFFSET, "Data contains row(s) with non-finite offset(s)"))
   val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") :: dataFrameBaseValidators
+    (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
+      dataFrameBaseValidators
   val dataFrameLogisticRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") :: dataFrameBaseValidators
+    (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") ::
+      dataFrameBaseValidators
   val dataFramePoissonRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
     (rowHasFiniteLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
       (rowHasNonNegativeLabels _, InputColumnsNames.RESPONSE, "Data contains row(s) with negative label(s)") ::
@@ -187,6 +190,19 @@ object DataValidators extends Logging {
   }
 
   /**
+   * Verify that a row has a positive weight.
+   *
+   * @param row The input row from a data frame
+   * @param inputColumnName The column name we want to validate
+   * @return Whether the weight of the input data point is positive
+   */
+  def rowHasPositiveWeight(row: Row, inputColumnName: String): Boolean = {
+    val weight = row.getAs[Double](inputColumnName)
+    // Weight should be significantly larger than 0
+    weight > MathConst.EPSILON
+  }
+
+  /**
    * Validate a data set using one or more data point validators.
    *
    * @param dataSet The input data set
@@ -291,7 +307,7 @@ object DataValidators extends Logging {
    * @param featureSectionKeys Column names for the feature columns in the provided data frame
    * @throws IllegalArgumentException if one or more of the data validations failed
    */
-  def sanityCheckDataFrame(
+  def sanityCheckDataFrameForTraining(
       inputData: DataFrame,
       taskType: TaskType,
       dataValidationType: DataValidationType,
@@ -328,5 +344,50 @@ object DataValidators extends Logging {
     if (dataErrors.nonEmpty) {
       throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
     }
+  }
+
+  /**
+   * Validate a full or sampled data frame using the set of data point validators relevant to the scoring problem.
+   *
+   * @param inputData The input data frame
+   * @param dataValidationType The validation intensity
+   * @param inputColumnsNames Column names for the provided data frame
+   * @param featureSectionKeys Column names for the feature columns in the provided data frame
+   * @param taskTypeOpt The training task type (no task type represents no response data)
+   * @throws IllegalArgumentException if one or more of the data validations failed
+   */
+  def sanityCheckDataFrameForScoring(
+      inputData: DataFrame,
+      dataValidationType: DataValidationType,
+      inputColumnsNames: InputColumnsNames,
+      featureSectionKeys: Set[FeatureShardId],
+      taskTypeOpt: Option[TaskType] = None): Unit = taskTypeOpt match {
+    case Some(taskType) =>
+      sanityCheckDataFrameForTraining(inputData, taskType, dataValidationType, inputColumnsNames, featureSectionKeys)
+
+    case None =>
+      // Check the data properties
+      val dataErrors = dataValidationType match {
+        case DataValidationType.VALIDATE_FULL =>
+          validateDataFrame(
+            inputData,
+            dataFrameBaseValidators,
+            inputColumnsNames,
+            featureSectionKeys)
+
+        case DataValidationType.VALIDATE_SAMPLE =>
+          validateDataFrame(
+            inputData.sample(withReplacement = false, fraction = 0.10),
+            dataFrameBaseValidators,
+            inputColumnsNames,
+            featureSectionKeys)
+
+        case DataValidationType.VALIDATE_DISABLED =>
+          Seq()
+      }
+
+      if (dataErrors.nonEmpty) {
+        throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
+      }
   }
 }

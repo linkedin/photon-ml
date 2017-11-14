@@ -26,13 +26,19 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro, LatentFactorAvro}
-import com.linkedin.photon.ml.cli.game.training.GameTrainingParams
+import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
+import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
+import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
@@ -50,7 +56,7 @@ import com.linkedin.photon.ml.{Constants, TaskType}
  * TODO: we might want to extract the various Path we setup to a method called by both save and load,
  * (to avoid bugs where save would use different Paths from load)
  *
- * TODO: Change the scope of all functions to [[com.linkedin.photon.ml.avro]] after Avro related
+ * TODO: Change the scope of all functions to com.linkedin.photon.ml.avro after Avro related
  * classes/functions are decoupled from the rest of code
  *
  * TODO: separate what's Avro and what's not, and locate appropriately: most of this should go into photon.ml.models
@@ -65,25 +71,26 @@ object ModelProcessingUtils {
    * @param gameModel The GAME model to save
    * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
    * @param outputDir The directory in HDFS where to save the model
-   * @param params The parameters that were setup to run this model
    * @param sc The Spark context
    */
-  def saveGameModelsToHDFS(
-    sc: SparkContext,
-    params: GameTrainingParams,
-    outputDir: String,
-    gameModel: GameModel,
-    featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Unit = {
+  def saveGameModelToHDFS(
+      sc: SparkContext,
+      outputDir: Path,
+      gameModel: GameModel,
+      optimizationTask: TaskType,
+      optimizationConfigurations: GameEstimator.GameOptimizationConfiguration,
+      randomEffectModelFileLimit: Option[Int],
+      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Unit = {
 
     val hadoopConfiguration = sc.hadoopConfiguration
 
-    saveGameModelMetadataToHDFS(sc, params, outputDir)
+    saveGameModelMetadataToHDFS(sc, outputDir, optimizationTask, optimizationConfigurations)
 
     gameModel.toMap.foreach { case (name, model) =>
       model match {
         case fixedEffectModel: FixedEffectModel =>
           val featureShardId = fixedEffectModel.featureShardId
-          val fixedEffectModelOutputDir = new Path(outputDir, s"${AvroConstants.FIXED_EFFECT}/$name").toString
+          val fixedEffectModelOutputDir = new Path(outputDir, s"${AvroConstants.FIXED_EFFECT}/$name")
           Utils.createHDFSDir(fixedEffectModelOutputDir, hadoopConfiguration)
 
           //Write the model ID info
@@ -92,7 +99,7 @@ object ModelProcessingUtils {
           IOUtils.writeStringsToHDFS(id.iterator, modelIdInfoPath, hadoopConfiguration, forceOverwrite = false)
 
           //Write the coefficients
-          val coefficientsOutputDir = new Path(fixedEffectModelOutputDir, AvroConstants.COEFFICIENTS).toString
+          val coefficientsOutputDir = new Path(fixedEffectModelOutputDir, AvroConstants.COEFFICIENTS)
           Utils.createHDFSDir(coefficientsOutputDir, hadoopConfiguration)
           val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
           val model = fixedEffectModel.model
@@ -113,7 +120,7 @@ object ModelProcessingUtils {
             randomEffectModel,
             indexMapLoader,
             randomEffectModelOutputDir,
-            params.numberOfOutputFilesForRandomEffectModel,
+            randomEffectModelFileLimit,
             hadoopConfiguration)
       }
     }
@@ -135,14 +142,14 @@ object ModelProcessingUtils {
    */
   def loadGameModelFromHDFS(
       sc: SparkContext,
-      modelsDir: String,
+      modelsDir: Path,
       storageLevel: StorageLevel,
       featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]]): (GameModel, Map[String, IndexMapLoader]) = {
 
     val configuration = sc.hadoopConfiguration
-    val inputDirAsPath = new Path(modelsDir)
-    val fs = inputDirAsPath.getFileSystem(configuration)
-    val modelType = loadGameModelMetadataFromHDFS(sc, modelsDir).taskType
+    val fs = modelsDir.getFileSystem(configuration)
+    val modelType = loadGameModelMetadataFromHDFS(sc, modelsDir)
+      .getOrElse(GameTrainingDriver.trainingTask, TaskType.NONE)
 
     // Load the fixed effect model(s)
     val fixedEffectModelInputDir = new Path(modelsDir, AvroConstants.FIXED_EFFECT)
@@ -304,45 +311,51 @@ object ModelProcessingUtils {
   }
 
   /**
+   * Save a random effect model to HDFS.
    *
-   * @param randomEffectModel
-   * @param indexMapLoader
-   * @param randomEffectModelOutputDir
-   * @param numberOfOutputFilesForRandomEffectModel
-   * @param configuration
+   * @param randomEffectModel The random effect model to save
+   * @param indexMapLoader The loader for the feature to index map
+   * @param randomEffectModelOutputDir The directory to save the model to
+   * @param randomEffectModelFileLimit The limit on the number of files to write when saving the random effect model
+   * @param configuration The HDFS configuration to use for saving the model
    */
   private def saveRandomEffectModelToHDFS(
       randomEffectModel: RandomEffectModel,
       indexMapLoader: IndexMapLoader,
       randomEffectModelOutputDir: Path,
-      numberOfOutputFilesForRandomEffectModel: Int,
+      randomEffectModelFileLimit: Option[Int],
       configuration: Configuration): Unit = {
 
-    Utils.createHDFSDir(randomEffectModelOutputDir.toString, configuration)
+    Utils.createHDFSDir(randomEffectModelOutputDir, configuration)
 
     //Write the coefficientsRDD
     val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, AvroConstants.COEFFICIENTS).toString
-    val modelsRDD = if (numberOfOutputFilesForRandomEffectModel > 0){
+    val modelsRDD = randomEffectModelFileLimit match {
+      case Some(fileLimit) =>
+        require(fileLimit > 0, "Attempt to coalesce random effect model RDD into fewer than 1 partitions")
+
         // Control the number of output files by re-partitioning the RDD.
-        randomEffectModel.modelsRDD.coalesce(numberOfOutputFilesForRandomEffectModel)
-      } else {
+        randomEffectModel.modelsRDD.coalesce(fileLimit)
+
+      case None =>
         randomEffectModel.modelsRDD
-      }
+    }
 
     saveModelsRDDToHDFS(modelsRDD, indexMapLoader, coefficientsRDDOutputDir)
   }
 
   /**
+   * Save a single GLM to HDFS.
    *
-   * @param model
-   * @param featureMap
-   * @param outputDir
-   * @param sc
+   * @param model The model to save
+   * @param featureMap The feature to index map
+   * @param outputDir The output directory to save the model to
+   * @param sc The Spark context
    */
   private def saveModelToHDFS(
       model: GeneralizedLinearModel,
       featureMap: IndexMap,
-      outputDir: String,
+      outputDir: Path,
       sc: SparkContext): Unit = {
 
     val bayesianLinearModelAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(
@@ -359,13 +372,14 @@ object ModelProcessingUtils {
   }
 
   /**
+   * Load a single GLM from HDFS.
    *
    * TODO: Currently only the means of the coefficients are loaded, the variances are discarded
    *
-   * @param inputDir
-   * @param featureMap
-   * @param sc
-   * @return
+   * @param inputDir The directory from which to load the model
+   * @param featureMap An optional feature to index map (if not provided, one will be built)
+   * @param sc The Spark Context
+   * @return A GLM loaded from HDFS and a loader for the feature to index map it uses
    */
   private def loadGLMFromHDFS(
       inputDir: String,
@@ -387,10 +401,11 @@ object ModelProcessingUtils {
   }
 
   /**
+   * Save an [[RDD]] of GLM to HDFS.
    *
-   * @param modelsRDD
-   * @param featureMapLoader
-   * @param outputDir
+   * @param modelsRDD The models to save
+   * @param featureMapLoader A loader for the feature to index map
+   * @param outputDir The directory to which to save the models
    */
   private def saveModelsRDDToHDFS(
       modelsRDD: RDD[(String, GeneralizedLinearModel)],
@@ -408,12 +423,14 @@ object ModelProcessingUtils {
   }
 
   /**
+   * Load multiple GLM into a [[RDD]].
+   *
    * TODO: Currently only the means of the coefficients are loaded, the variances are discarded
    *
-   * @param coefficientsRDDInputDir
-   * @param featureMapLoader
-   * @param sc
-   * @return
+   * @param coefficientsRDDInputDir The input directory from which to read models
+   * @param featureMapLoader An optional loader for the feature to index map (if not provided, one will be constructed)
+   * @param sc The Spark context
+   * @return A [[RDD]] of GLMs loaded from HDFS and a loader for the feature to index map it uses
    */
   private def loadModelsRDDFromHDFS(
       coefficientsRDDInputDir: String,
@@ -428,14 +445,16 @@ object ModelProcessingUtils {
     val loader = featureMapLoader.getOrElse(AvroUtils.makeFeatureIndexForModel(sc, modelAvros))
 
     (modelAvros.mapPartitions { iter =>
-      val featureMap = loader.indexMapForRDD()
-      iter.map { modelAvro =>
-        val modelId = modelAvro.getModelId.toString
-        val glm = AvroUtils.convertBayesianLinearModelAvroToGLM(modelAvro, featureMap)
+        val featureMap = loader.indexMapForRDD()
 
-        (modelId, glm)
-      }
-    }, loader)
+        iter.map { modelAvro =>
+          val modelId = modelAvro.getModelId.toString
+          val glm = AvroUtils.convertBayesianLinearModelAvroToGLM(modelAvro, featureMap)
+
+          (modelId, glm)
+        }
+      },
+      loader)
   }
 
   /**
@@ -508,43 +527,128 @@ object ModelProcessingUtils {
   }
 
   /**
+   * Convert a [[GameOptimizationConfiguration]] to JSON representation.
+   *
+   * @param gameOptConfig The [[GameOptimizationConfiguration]] to convert
+   * @return The converted JSON representation
+   */
+  private def gameOptConfigToJson(gameOptConfig: GameEstimator.GameOptimizationConfiguration): String =
+    s"""
+       |{
+       |  "values": [
+       |    ${gameOptConfig
+              .map { case (coordinateId, optConfig) =>
+                s"""
+                   |{
+                   |  "name": "$coordinateId",
+                   |  "configuration": ${optimizationConfigToJson(optConfig)}
+                   |}""".stripMargin
+              }
+              .mkString(",\n")}
+       |  ]
+       |}""".stripMargin
+
+  /**
+   * Convert a [[CoordinateOptimizationConfiguration]] to JSON representation.
+   *
+   * @param optimizationConfig The [[CoordinateOptimizationConfiguration]] to convert
+   * @return The converted JSON representation
+   */
+  private def optimizationConfigToJson(optimizationConfig: CoordinateOptimizationConfiguration): String =
+    optimizationConfig match {
+      case feOptConfig: FixedEffectOptimizationConfiguration =>
+        s"""
+           |{
+           |  "optimizerConfig": ${optimizerConfigToJson(feOptConfig.optimizerConfig)},
+           |  "regularizationContext": ${regularizationContextToJson(feOptConfig.regularizationContext)},
+           |  "regularizationWeight": ${feOptConfig.regularizationWeight},
+           |  "downSamplingRate": ${feOptConfig.downSamplingRate}
+           |}""".stripMargin
+
+      case reOptConfig: RandomEffectOptimizationConfiguration =>
+        s"""
+           |{
+           |  "optimizerConfig": ${optimizerConfigToJson(reOptConfig.optimizerConfig)} ,
+           |  "regularizationContext": ${regularizationContextToJson(reOptConfig.regularizationContext)},
+           |  "regularizationWeight": ${reOptConfig.regularizationWeight}
+           |}""".stripMargin
+
+      case freOptConfig: FactoredRandomEffectOptimizationConfiguration =>
+        s"""
+           |{
+           |  "random effect configuration": ${optimizationConfigToJson(freOptConfig.reOptConfig)}
+           |  "latent factor configuration": ${optimizationConfigToJson(freOptConfig.lfOptConfig)}
+           |  "matrix factorization configuration": ${mfConfigToJson(freOptConfig.mfOptConfig)}
+           |}""".stripMargin
+
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Unknown coordinate optimization configuration encountered: ${optimizationConfig.getClass}")
+    }
+
+  /**
+   * Convert an [[OptimizerConfig]] to JSON representation.
+   *
+   * @param optimizerConfig The [[OptimizerConfig]] to convert
+   * @return The converted JSON representation
+   */
+  private def optimizerConfigToJson(optimizerConfig: OptimizerConfig): String =
+    // Ignore box constraints for now
+    s"""{
+       |  "optimizerType": "${optimizerConfig.optimizerType}",
+       |  "maximumIterations": ${optimizerConfig.maximumIterations},
+       |  "tolerance": ${optimizerConfig.tolerance}
+       |}""".stripMargin
+
+  /**
+   * Convert a [[RegularizationContext]] to JSON representation.
+   *
+   * @param regularizationContext The [[RegularizationContext]] to convert
+   * @return The converted JSON representation
+   */
+  private def regularizationContextToJson(regularizationContext: RegularizationContext): String =
+    s"""{
+       |  "regularizationType": "${regularizationContext.regularizationType}",
+       |  "elasticNetParam": ${regularizationContext.elasticNetParam.getOrElse("null")}
+       |}""".stripMargin
+
+  /**
+   * Convert a [[MFOptimizationConfiguration]] to JSON representation.
+   *
+   * @param mfOptConfig The [[MFOptimizationConfiguration]] to convert
+   * @return The converted JSON representation
+   */
+  private def mfConfigToJson(mfOptConfig: MFOptimizationConfiguration): String =
+    s"""{
+       |  "maxNumberIterations": ${mfOptConfig.maxNumberIterations},
+       |  "numFactors": ${mfOptConfig.numFactors}
+       |}""".stripMargin
+
+
+  /**
    * Save model metadata to a JSON file.
    *
-   * @param outputDir The HDFS directory that will contain the metadata file
-   * @param params The model parameters, from which metadata is extracted
    * @param sc The Spark context
+   * @param outputDir The HDFS directory that will contain the metadata file
+   * @param optimizationTask The type of optimization used to train the model
+   * @param optimizationConfiguration The optimization configuration for the model
+   * @param metadataFilename Output file name
    */
   def saveGameModelMetadataToHDFS(
       sc: SparkContext,
-      params: GameTrainingParams,
-      outputDir: String,
+      outputDir: Path,
+      optimizationTask: TaskType,
+      optimizationConfiguration: GameEstimator.GameOptimizationConfiguration,
       metadataFilename: String = "model-metadata.json"): Unit = {
 
-    // 2 ancillaries that decompose the problem into more manageable tasks
-    def writeConfigToJson(configs: Map[String, GLMOptimizationConfiguration]) =
-      configs
-        .map { case (cfgName, cfg) => s"""{ "name": "$cfgName", "configuration": ${cfg.toJson} }""" }
-        .mkString(",")
-
-    def writeConfigsArrayToJson(which: String, configsArray: Array[Predef.Map[String, GLMOptimizationConfiguration]]) =
-      s"""
-         |{ "configurations": "$which",
-         |  "values": [
-         |    ${configsArray.map(cfgs => writeConfigToJson(cfgs)).mkString(",")}
-         |  ]
-         |}
-       """.stripMargin
-
-    val feConfigurations = writeConfigsArrayToJson("fixed-effect", params.fixedEffectOptimizationConfigurations)
-    val reConfigurations = writeConfigsArrayToJson("random-effect", params.randomEffectOptimizationConfigurations)
+    val optConfigurations = gameOptConfigToJson(optimizationConfiguration)
 
     IOUtils.toHDFSFile(sc, outputDir + "/" + metadataFilename) {
       writer => writer.println(
         s"""
-           |{ "modelType": "${params.taskType}",
-           |  "modelName": "${params.applicationName}",
-           |  "fixedEffectOptimizationConfigurations": $feConfigurations,
-           |  "randomEffectOptimizationConfigurations": $reConfigurations
+           |{
+           |  "modelType": "$optimizationTask",
+           |  "optimizationConfigurations": $optConfigurations
            |}
          """.stripMargin)
     }
@@ -558,9 +662,10 @@ object ModelProcessingUtils {
    * @param outputDir Output directory
    */
   def writeBasicStatistics(
-    sc: SparkContext,
-    summary: BasicStatisticalSummary, outputDir: String,
-    keyToIdMap: IndexMap): Unit = {
+      sc: SparkContext,
+      summary: BasicStatisticalSummary,
+      outputDir: Path,
+      keyToIdMap: IndexMap): Unit = {
 
     case class BasicSummaryItems(
       max: Double,
@@ -644,11 +749,11 @@ object ModelProcessingUtils {
    */
   def loadGameModelMetadataFromHDFS(
       sc: SparkContext,
-      inputDir: String,
-      metadataFileName: String = "model-metadata.json"): GameTrainingParams = {
+      inputDir: Path,
+      metadataFileName: String = "model-metadata.json"): ParamMap = {
 
     val inputPath = new Path(inputDir, metadataFileName)
-    val params = new GameTrainingParams
+    val paramMap = ParamMap.empty
     val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
 
     val fs = Try(inputPath.getFileSystem(sc.hadoopConfiguration))
@@ -657,13 +762,14 @@ object ModelProcessingUtils {
 
     // TODO: Log if we are in a legacy case and don't have metadata
 
-    params.taskType = fileContents.map {
-      fc => modelTypeRegularExpression.findFirstMatchIn(fc) match {
-        case Some(modelType) => TaskType.withName(modelType.group(1))
-        case _ => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
-      }
-    }.getOrElse(TaskType.NONE)
+    fileContents
+      .map { fc =>
+        modelTypeRegularExpression.findFirstMatchIn(fc) match {
+          case Some(modelType) => paramMap.put(GameTrainingDriver.trainingTask, TaskType.withName(modelType.group(1)))
+          case None => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
+        }
+      }.getOrElse(TaskType.NONE)
 
-    params
+    paramMap
   }
 }

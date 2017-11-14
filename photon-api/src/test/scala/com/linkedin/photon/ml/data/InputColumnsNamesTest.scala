@@ -18,20 +18,23 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 /**
- * Unit tests for InputColumnsNames
+ * Unit tests for [[InputColumnsNames]]
  */
 class InputColumnsNamesTest {
 
+  /**
+   * Test that the default column names match the enum values.
+   */
   @Test
   def testDefaultConstructor(): Unit = {
 
     val columnsNames = InputColumnsNames()
     InputColumnsNames.all.foreach(n => assertEquals(columnsNames(n), n.toString))
-
-    val defaultStr = "uid: uid, response: response, offset: offset, weight: weight, metadataMap: metadataMap"
-    assertEquals(columnsNames.toString, defaultStr)
   }
 
+  /**
+   * Test that column names can be updated and accessed.
+   */
   @Test
   def testAccessors(): Unit = {
 

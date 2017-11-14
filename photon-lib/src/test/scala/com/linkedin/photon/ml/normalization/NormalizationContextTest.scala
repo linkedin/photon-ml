@@ -21,6 +21,7 @@ import org.apache.spark.mllib.stat.MultivariateOnlineSummarizer
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.CommonTestUtils

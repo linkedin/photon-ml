@@ -29,7 +29,8 @@ import org.apache.spark.sql.types.{MapType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
 import com.linkedin.photon.ml.Constants
-import com.linkedin.photon.ml.data.{InputColumnsNames, DataReader}
+import com.linkedin.photon.ml.data.{DataReader, InputColumnsNames}
+import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.util._
 
 /**

@@ -15,13 +15,14 @@
 package com.linkedin.photon.ml.util
 
 /**
- * A class is "summarizable" if it implements "toSummaryString", which is meant to be human-readable.
+ * A class is "summarizable" if it can output a human-readable [[String]] summary.
  */
 protected[ml] trait Summarizable {
+
   /**
-    * Build a human-readable summary for the object.
-    *
-    * @return A summary of the object in string representation
-    */
+   * Build a human-readable summary for the object.
+   *
+   * @return A summary of the object in string representation
+   */
   def toSummaryString: String
 }

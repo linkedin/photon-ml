@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.evaluation
 
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.EvaluatorType.{RMSE, AUC}
+import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
 
 /**
  * Integration test cases for the [[MultiEvaluatorType]]
@@ -39,4 +39,15 @@ class MultiEvaluatorTypeTest {
 
     assertEquals(MultiEvaluatorType.getMultiEvaluatorIdTags(allEvaluators), expectedIdTagSet)
   }
+
+  @DataProvider
+  def invalidInput(): Array[Array[Any]] = Array(Array(-1), Array(0))
+
+  /**
+   * Test that the [[MultiPrecisionAtK]] evluator will reject input with an invalid k value.
+   *
+   * @param k The index at which to compute precision.
+   */
+  @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testMultiPrecisionAtKInvalidSetup(k: Int): Unit = MultiPrecisionAtK(k, "mockIdTag")
 }

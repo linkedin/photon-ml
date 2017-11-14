@@ -30,10 +30,11 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
  */
 class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  private val baseDir = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
-  private val path1 = s"$baseDir/daily/2016/01/01"
-  private val path2 = s"$baseDir/daily/2016/02/01"
-  private val path3 = s"$baseDir/daily/2016/03/01"
+  private val input = getClass.getClassLoader.getResource("IOUtilsTest/input").getPath
+  private val baseDir: Path = new Path(input, "daily")
+  private val path1: Path = new Path(baseDir, "2016/01/01")
+  private val path2: Path = new Path(baseDir, "2016/02/01")
+  private val path3: Path = new Path(baseDir, "2016/03/01")
   private val today = "2016-04-01"
 
   @BeforeClass
@@ -49,78 +50,99 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
   @DataProvider
   def inputPathDataStringProvider(): Array[Array[Any]] = {
     Array(
-      Array(baseDir.toString, DateRange.fromDates("20160101-20160401"), Seq(path1, path2, path3)),
-      Array(baseDir.toString, DateRange.fromDates("20160101-20160301"), Seq(path1, path2, path3)),
-      Array(baseDir.toString, DateRange.fromDates("20160101-20160201"), Seq(path1, path2)),
-      Array(baseDir.toString, DateRange.fromDates("20160101-20160102"), Seq(path1)),
-      Array(baseDir.toString, DateRange.fromDates("20160101-20160101"), Seq(path1)),
-      Array(baseDir.toString, DateRange.fromDaysAgo(95, 1), Seq(path1, path2, path3)),
-      Array(baseDir.toString, DateRange.fromDaysAgo(60, 1), Seq(path2, path3)),
-      Array(baseDir.toString, DateRange.fromDaysAgo(45, 1), Seq(path3)))
+      Array(DateRange.fromDateString("20160101-20160401"), Seq(path1, path2, path3)),
+      Array(DateRange.fromDateString("20160101-20160301"), Seq(path1, path2, path3)),
+      Array(DateRange.fromDateString("20160101-20160201"), Seq(path1, path2)),
+      Array(DateRange.fromDateString("20160101-20160102"), Seq(path1)),
+      Array(DateRange.fromDateString("20160101-20160101"), Seq(path1)),
+      Array(DaysRange.fromDaysString("95-1").toDateRange, Seq(path1, path2, path3)),
+      Array(DaysRange.fromDaysString("60-1").toDateRange, Seq(path2, path3)),
+      Array(DaysRange.fromDaysString("45-1").toDateRange, Seq(path3)))
   }
 
+  /**
+   * Test filtering input paths that are within a given date range.
+   *
+   * @param dateRange The date range to restrict data to
+   * @param expectedPaths The expected files
+   */
   @Test(dataProvider = "inputPathDataStringProvider")
   def testGetInputPathsWithinDateRange(
-      dir: String,
       dateRange: DateRange,
-      expectedPaths: Seq[String]): Unit = sparkTest("testGetInputPathsWithinDateRange") {
+      expectedPaths: Seq[Path]): Unit = sparkTest("testGetInputPathsWithinDateRange") {
 
-    val paths = IOUtils.getInputPathsWithinDateRange(
-      Seq(dir), dateRange, sc.hadoopConfiguration, errorOnMissing = false)
-    assertEquals(paths, expectedPaths)
+    assertEquals(
+      IOUtils.getInputPathsWithinDateRange(Set(baseDir), dateRange, sc.hadoopConfiguration, errorOnMissing = false),
+      expectedPaths)
   }
 
+  /**
+   * Test that an empty set of input paths resulting from date range filtering will throw an error.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testGetInputPathsWithinDateRangeEmpty(): Unit = sparkTest("testGetInputPathsWithinDateRangeEmpty") {
+
     IOUtils.getInputPathsWithinDateRange(
-      Seq(baseDir), DateRange.fromDates("19551105-19551106"), sc.hadoopConfiguration, errorOnMissing = true)
+      Set(baseDir),
+      DateRange.fromDateString("19551105-19551106"),
+      sc.hadoopConfiguration,
+      errorOnMissing = true)
   }
 
+  /**
+   * Test whether an directory existing can be correctly determined.
+   */
   @Test
   def testIsDirExisting(): Unit = sparkTest("testIsDirExisting") {
-    val dir = getTmpDir
-    val configuration = sc.hadoopConfiguration
 
-    Utils.deleteHDFSDir(dir, configuration)
-    assertFalse(IOUtils.isDirExisting(dir, configuration))
-    Utils.createHDFSDir(dir, configuration)
-    assertTrue(IOUtils.isDirExisting(dir, configuration))
+    val dir = new Path(getTmpDir)
+    val hadoopConfiguration = sc.hadoopConfiguration
+
+    Utils.deleteHDFSDir(dir, hadoopConfiguration)
+    assertFalse(IOUtils.isDirExisting(dir, hadoopConfiguration))
+    Utils.createHDFSDir(dir, hadoopConfiguration)
+    assertTrue(IOUtils.isDirExisting(dir, hadoopConfiguration))
   }
 
+  /**
+   * Test preparing an output directory to receive files.
+   */
   @Test
   def testProcessOutputDir(): Unit = sparkTest("testProcessOutputDir") {
 
-    val configuration = sc.hadoopConfiguration
+    val hadoopConfiguration = sc.hadoopConfiguration
 
     // Case 1: When the output directory already exists and deleteOutputDirIfExists is true
-    val dir1 = getTmpDir
-    IOUtils.processOutputDir(dir1, deleteOutputDirIfExists = true, configuration)
-    assertFalse(IOUtils.isDirExisting(dir1, configuration))
+    val dir1 = new Path(getTmpDir)
+    IOUtils.processOutputDir(dir1, deleteOutputDirIfExists = true, hadoopConfiguration)
+    assertFalse(IOUtils.isDirExisting(dir1, hadoopConfiguration))
 
     // Case 2: When the output directory already exists and deleteOutputDirIfExists is false
-    val dir2 = getTmpDir
+    val dir2 = new Path(getTmpDir)
     try {
-      IOUtils.processOutputDir(dir2, deleteOutputDirIfExists = false, configuration)
+      IOUtils.processOutputDir(dir2, deleteOutputDirIfExists = false, hadoopConfiguration)
     } catch {
       case e: Exception => assertTrue(e.isInstanceOf[IllegalArgumentException])
     } finally {
-      assertTrue(IOUtils.isDirExisting(dir2, configuration))
+      assertTrue(IOUtils.isDirExisting(dir2, hadoopConfiguration))
     }
 
     // Case 3: When the output directory does not exist and deleteOutputDirIfExists is true
-    val dir3 = getTmpDir
-    Utils.deleteHDFSDir(dir3, configuration)
-    IOUtils.processOutputDir(dir3, deleteOutputDirIfExists = true, configuration)
-    assertFalse(IOUtils.isDirExisting(dir3, configuration))
+    val dir3 = new Path(getTmpDir)
+    Utils.deleteHDFSDir(dir3, hadoopConfiguration)
+    IOUtils.processOutputDir(dir3, deleteOutputDirIfExists = true, hadoopConfiguration)
+    assertFalse(IOUtils.isDirExisting(dir3, hadoopConfiguration))
 
     // Case 4: When the output directory does not exist and deleteOutputDirIfExists is false
-    val dir4 = getTmpDir
-    Utils.deleteHDFSDir(dir4, configuration)
-    IOUtils.processOutputDir(dir4, deleteOutputDirIfExists = false, configuration)
-    assertFalse(IOUtils.isDirExisting(dir4, configuration))
+    val dir4 = new Path(getTmpDir)
+    Utils.deleteHDFSDir(dir4, hadoopConfiguration)
+    IOUtils.processOutputDir(dir4, deleteOutputDirIfExists = false, hadoopConfiguration)
+    assertFalse(IOUtils.isDirExisting(dir4, hadoopConfiguration))
   }
 
-
+  /**
+   * Test writing to an HDFS file once.
+   */
   @Test
   def testToHDFSFileOnce(): Unit = sparkTest("testToHDFSFileOnce") {
 
@@ -138,14 +160,16 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     new File("/tmp/test4.prev").delete
   }
 
+  /**
+   * Test writing to an HDFS file repeatedly.
+   */
   @Test
   def testToHDFSFileRepeated(): Unit = sparkTest("testToHDFSFileRepeated") {
 
     val fs = FileSystem.get(sc.hadoopConfiguration)
 
     for (n <- 1 to 3) {
-      val res = IOUtils.toHDFSFile(sc, "/tmp/test5")
-      { writer => (1 to 3).foreach { i => writer.println(s"${n + i} ") } }
+      val res = IOUtils.toHDFSFile(sc, "/tmp/test5") { writer => (1 to 3).foreach(i => writer.println(s"${n + i} ")) }
       assert(res.isSuccess)
     }
 

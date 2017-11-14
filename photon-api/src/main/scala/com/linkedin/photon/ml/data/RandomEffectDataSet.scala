@@ -98,7 +98,6 @@ protected[ml] class RandomEffectDataSet(
    * Assign a given name to [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]].
    *
    * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
-   *
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the names [[activeData]], [[uniqueIdToRandomEffectIds]], and [[passiveDataOption]]
    *         assigned
@@ -258,20 +257,23 @@ object RandomEffectDataSet {
       }
       .partitionBy(gameDataPartitioner)
 
-    val (passiveDataOption, passiveDataRandomEffectIdsOption) =
-      if (randomEffectDataConfiguration.isDownSamplingNeeded) {
-        val (passiveData, passiveDataRandomEffectIds) =
-          generatePassiveData(gameDataSet, activeData, gameDataPartitioner, randomEffectDataConfiguration)
-        (Option(passiveData), Option(passiveDataRandomEffectIds))
-      } else {
-        (None, None)
+    val passiveDataOption = randomEffectDataConfiguration
+      .numPassiveDataPointsLowerBound
+      .map { passiveDataLowerBound =>
+        generatePassiveData(
+          gameDataSet,
+          activeData,
+          gameDataPartitioner,
+          randomEffectType,
+          featureShardId,
+          passiveDataLowerBound)
       }
 
     new RandomEffectDataSet(
       activeData,
       globalIdToIndividualIds,
-      passiveDataOption,
-      passiveDataRandomEffectIdsOption,
+      passiveDataOption.map(_._1),
+      passiveDataOption.map(_._2),
       randomEffectType,
       featureShardId)
   }
@@ -291,7 +293,6 @@ object RandomEffectDataSet {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
-    val numActiveDataPointsToKeepUpperBound = randomEffectDataConfiguration.numActiveDataPointsToKeepUpperBound
 
     val keyedRandomEffectDataSet = gameDataSet.map { case (uniqueId, gameData) =>
       val randomEffectId = gameData.idTagToValueMap(randomEffectType)
@@ -299,16 +300,16 @@ object RandomEffectDataSet {
       (randomEffectId, (uniqueId, labeledPoint))
     }
 
-    val groupedRandomEffectDataSet =
-      if (randomEffectDataConfiguration.isDownSamplingNeeded) {
+    val groupedRandomEffectDataSet = randomEffectDataConfiguration
+      .numActiveDataPointsUpperBound
+      .map { activeDataUpperBound =>
         groupKeyedDataSetViaReservoirSampling(
           keyedRandomEffectDataSet,
           randomEffectPartitioner,
-          numActiveDataPointsToKeepUpperBound,
+          activeDataUpperBound,
           randomEffectType)
-      } else {
-        keyedRandomEffectDataSet.groupByKey(randomEffectPartitioner)
       }
+      .getOrElse(keyedRandomEffectDataSet.groupByKey(randomEffectPartitioner))
 
     groupedRandomEffectDataSet.mapValues(iterable => LocalDataSet(iterable.toArray, isSortedByFirstIndex = false))
   }
@@ -390,22 +391,22 @@ object RandomEffectDataSet {
   /**
    * Generate passive dataset.
    *
-   * @param gameDataSet The input dataset
-   * @param activeData The active dataset
+   * @param gameDataSet The raw input data set
+   * @param activeData The active data set
    * @param gameDataPartitioner A global partitioner
-   * @param randomEffectDataConfiguration The random effect data configuration
-   * @return The passive dataset
+   * @param randomEffectType The corresponding random effect type of the data set
+   * @param featureShardId Key of the feature shard used to generate the data set
+   * @param passiveDataLowerBound The lower bound on the number of data points required to create a passive data set
+   * @return The passive data set
    */
   private def generatePassiveData(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       activeData: RDD[(REId, LocalDataSet)],
       gameDataPartitioner: Partitioner,
-      randomEffectDataConfiguration: RandomEffectDataConfiguration):
+      randomEffectType: REType,
+      featureShardId: FeatureShardId,
+      passiveDataLowerBound: Int):
     (RDD[(UniqueSampleId, (REId, LabeledPoint))], Broadcast[Set[REId]]) = {
-
-    val randomEffectType = randomEffectDataConfiguration.randomEffectType
-    val featureShardId = randomEffectDataConfiguration.featureShardId
-    val numPassiveDataPointsToKeepLowerBound = randomEffectDataConfiguration.numPassiveDataPointsToKeepLowerBound
 
     // The remaining data not included in the active data will be kept as passive data
     val activeDataUniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
@@ -428,7 +429,7 @@ object RandomEffectDataSet {
 
     // Only keep the passive data whose total number of data points is larger than the given lower bound
     val passiveDataRandomEffectIds = passiveDataRandomEffectIdCountsMap
-      .filter(_._2 > numPassiveDataPointsToKeepLowerBound)
+      .filter(_._2 > passiveDataLowerBound)
       .keySet
     val sparkContext = gameDataSet.sparkContext
     val passiveDataRandomEffectIdsBroadcast = sparkContext.broadcast(passiveDataRandomEffectIds)
@@ -458,15 +459,19 @@ object RandomEffectDataSet {
       activeData: RDD[(REId, LocalDataSet)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration): RDD[(REId, LocalDataSet)] = {
 
-    val numFeaturesToSamplesRatioUpperBound = randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound
-    activeData.mapValues { localDataSet =>
-      var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataSet.numDataPoints).toInt
+    randomEffectDataConfiguration
+      .numFeaturesToSamplesRatioUpperBound
+      .map { numFeaturesToSamplesRatioUpperBound =>
+        activeData.mapValues { localDataSet =>
+          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataSet.numDataPoints).toInt
 
-      // In case the above product overflows
-      if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
-      val filteredLocalDataSet = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
+          // In case the above product overflows
+          if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
+          val filteredLocalDataSet = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
 
-      filteredLocalDataSet
-    }
+          filteredLocalDataSet
+        }
+      }
+      .getOrElse(activeData)
   }
 }

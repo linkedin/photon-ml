@@ -20,6 +20,7 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.index.DefaultIndexMap
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel

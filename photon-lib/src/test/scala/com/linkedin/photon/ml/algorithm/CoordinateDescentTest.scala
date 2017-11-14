@@ -36,6 +36,30 @@ class CoordinateDescentTest {
   type CoordinateType = Coordinate[MockDataSet]
 
   @DataProvider
+  def invalidIterations: Array[Array[Any]] = Array(Array(0), Array(-5))
+
+  /**
+   * Test for CoordinateDescent optimize calls given an invalid number of iterations
+   *
+   * @param iter
+   */
+  @Test(dataProvider = "invalidIterations", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testOptimizeWithBadIter(iter: Int): Unit = {
+
+    val coordinates = Seq[(CoordinateId, CoordinateType)]()
+    val evaluator = mock(classOf[Evaluator])
+    val logger = mock(classOf[PhotonLogger])
+    val gameModel = mock(classOf[GameModel])
+    val coordinateDescent = new CoordinateDescent(
+      coordinates,
+      evaluator,
+      validationDataAndEvaluatorsOption = None,
+      logger)
+
+    coordinateDescent.optimize(iter, gameModel)
+  }
+
+  @DataProvider
   def coordinateCountProvider(): Array[Array[Integer]] = {
     (1 to 5).map(x => Array(Int.box(x))).toArray
   }
@@ -43,7 +67,7 @@ class CoordinateDescentTest {
   /**
    * Tests for CoordinateDescent without validation.
    *
-   * @param coordinateCount
+   * @param coordinateCount Number of coordinates to generate for test
    */
   @Test(dataProvider = "coordinateCountProvider")
   def testRun(coordinateCount: Int): Unit = {
@@ -52,7 +76,7 @@ class CoordinateDescentTest {
 
     // Create Coordinate mocks
     val coordinateIds = (0 until coordinateCount).map("coordinate" + _)
-    val coordinates: Seq[(String, CoordinateType)] =
+    val coordinates: Seq[(CoordinateId, CoordinateType)] =
       coordinateIds.map { coordinateId => (coordinateId, mock(classOf[CoordinateType])) }
 
     // Other mocks
@@ -86,8 +110,11 @@ class CoordinateDescentTest {
     }
 
     // Run coordinate descent - None = no validation
-    val coordinateDescent =
-      new CoordinateDescent(coordinates, evaluator, validationDataAndEvaluatorsOption = None, logger)
+    val coordinateDescent = new CoordinateDescent(
+      coordinates,
+      evaluator,
+      validationDataAndEvaluatorsOption = None,
+      logger)
     coordinateDescent.optimize(numIterations, gameModel)
 
     // Verify the calls to updateModel
@@ -95,7 +122,7 @@ class CoordinateDescentTest {
       verify(coordinates.head._2, times(numIterations)).updateModel(models.head)
 
     } else {
-      (coordinates zip models).map { case ((coordinateId, coordinate), model) =>
+      (coordinates zip models).map { case ((_, coordinate), model) =>
         verify(coordinate, times(numIterations)).updateModel(model, score)
       }
     }

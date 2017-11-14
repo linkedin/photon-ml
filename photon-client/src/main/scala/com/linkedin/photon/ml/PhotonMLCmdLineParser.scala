@@ -16,6 +16,7 @@ package com.linkedin.photon.ml
 
 import scala.util.parsing.json.JSON
 
+import org.apache.hadoop.fs.Path
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.PhotonOptionNames._
@@ -80,7 +81,7 @@ object PhotonMLCmdLineParser {
       opt[String](OUTPUT_DIR_OPTION)
         .required()
         .text("Photon-ML's output directory.")
-        .foreach(x => params.outputDir = x)
+        .foreach(x => params.outputDir = new Path(x))
 
       opt[String](TASK_TYPE_OPTION)
         .required()
@@ -168,12 +169,12 @@ object PhotonMLCmdLineParser {
 
       opt[String](SUMMARIZATION_OUTPUT_DIR)
         .text("An optional directory for summarization output")
-        .foreach(x => params.summarizationOutputDirOpt = Some(x))
+        .foreach(x => params.summarizationOutputDirOpt = Some(new Path(x)))
 
       opt[String](NORMALIZATION_TYPE)
         .text("The normalization type to use in the training. Options: " +
-            s"[${NormalizationType.values().mkString("|")}]. Default: ${defaultParams.normalizationType}")
-        .foreach(x => params.normalizationType = NormalizationType.valueOf(x.toUpperCase))
+            s"[${NormalizationType.values.mkString("|")}]. Default: ${defaultParams.normalizationType}")
+        .foreach(x => params.normalizationType = NormalizationType.withName(x.toUpperCase))
 
       opt[String](DATA_VALIDATION_TYPE)
         .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. " +

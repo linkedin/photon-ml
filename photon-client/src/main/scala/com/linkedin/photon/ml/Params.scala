@@ -16,6 +16,8 @@ package com.linkedin.photon.ml
 
 import scala.collection.mutable.ArrayBuffer
 
+import org.apache.hadoop.fs.Path
+
 import com.linkedin.photon.ml.DataValidationType._
 import com.linkedin.photon.ml.PhotonOptionNames._
 import com.linkedin.photon.ml.diagnostics.DiagnosticMode
@@ -24,6 +26,7 @@ import com.linkedin.photon.ml.io.deprecated.FieldNamesType.FieldNamesType
 import com.linkedin.photon.ml.io.deprecated.InputFormatType.InputFormatType
 import com.linkedin.photon.ml.io.deprecated.{FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
+import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.optimization.OptimizerType._
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -53,7 +56,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * Photon-ML's output directory
    */
-  var outputDir: String = _
+  var outputDir: Path = _
 
   /**
    * Learning task type, e.g., LINEAR_REGRESSION, POISSON_REGRESSION or LOGISTIC_REGRESSION
@@ -130,7 +133,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * If summarization output dir is provided, basic statistics of features will be written to the given directory.
    */
-  var summarizationOutputDirOpt: Option[String] = None
+  var summarizationOutputDirOpt: Option[Path] = None
 
   /**
    * Feature normalization method
@@ -186,14 +189,14 @@ class Params extends PalDBIndexMapParams {
   var eventListeners: List[String] = List()
 
   /**
-    * Input file format for training, e.g. AVRO, LIBSVM or others (if implemented).
-    */
+   * Input file format for training, e.g. AVRO, LIBSVM or others (if implemented).
+   */
   var inputFormatType: InputFormatType = InputFormatType.AVRO
 
   /**
-    * An suggestive indicator of how many features our input data is looking at. Roughly just an
-    * upper bound is okay, currently only used by the LIBSVM input format.
-    */
+   * An suggestive indicator of how many features our input data is looking at. Roughly just an
+   * upper bound is okay, currently only used by the LIBSVM input format.
+   */
   var featureDimension: Int = -1
 
   /**

@@ -33,6 +33,7 @@ import com.linkedin.photon.ml.util.VectorUtils
  *      of creating a new gradient vector.
  */
 protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObjectiveFunction with DiffFunction {
+
   /**
    * Compute the value of the function over the given data for the given model coefficients.
    *
@@ -101,11 +102,12 @@ object SingleNodeSmoothedHingeLossFunction {
   def apply(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
+    val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
         new SingleNodeSmoothedHingeLossFunction with L2RegularizationDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         }
 
       case _ => new SingleNodeSmoothedHingeLossFunction

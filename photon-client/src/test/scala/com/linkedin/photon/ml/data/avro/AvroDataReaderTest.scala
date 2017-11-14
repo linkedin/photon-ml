@@ -25,6 +25,7 @@ import org.apache.spark.sql.types.{DataType, MapType}
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.index.DefaultIndexMap
 import com.linkedin.photon.ml.util._
 
 class AvroDataReaderTest {

@@ -15,7 +15,8 @@
 package com.linkedin.photon.ml.data
 
 import org.apache.spark.sql.DataFrame
-import com.linkedin.photon.ml.util.IndexMapLoader
+
+import com.linkedin.photon.ml.index.IndexMapLoader
 
 /**
  * The DataReader interface. This interface should be implemented by readers for specific data formats.

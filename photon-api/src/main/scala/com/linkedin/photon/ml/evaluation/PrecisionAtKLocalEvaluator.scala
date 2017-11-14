@@ -28,6 +28,8 @@ import com.linkedin.photon.ml.constants.MathConst
  */
 protected[ml] class PrecisionAtKLocalEvaluator(k: Int) extends LocalEvaluator {
 
+  require(k > 0, s"Position k must be greater than 0: $k")
+
   /**
    * Evaluate the scores of the model.
    *
@@ -42,7 +44,9 @@ protected[ml] class PrecisionAtKLocalEvaluator(k: Int) extends LocalEvaluator {
       }
     }
     JArrays.sort(scoreLabelAndWeights, comparator.reversed())
+
     val hits = scoreLabelAndWeights.take(k).count(_._2 > MathConst.POSITIVE_RESPONSE_THRESHOLD)
+
     1.0 * hits / k
   }
 }

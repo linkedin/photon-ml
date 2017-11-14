@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml
 
+import org.apache.hadoop.fs.Path
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
@@ -59,7 +60,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.jobName, s"Photon-ML-Training")
     // Verify required parameters values
     assertEquals(params.trainDir, "value")
-    assertEquals(params.outputDir, "value")
+    assertEquals(params.outputDir, new Path("value"))
     assertEquals(params.taskType, TaskType.LINEAR_REGRESSION)
 
     // Verify optional parameters values, should be default values
@@ -89,7 +90,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.jobName, "Job Foo")
     // Verify required parameters values
     assertEquals(params.trainDir, "value")
-    assertEquals(params.outputDir, "value")
+    assertEquals(params.outputDir, new Path("value"))
     assertEquals(params.taskType, TaskType.LINEAR_REGRESSION)
 
     // Verify optional parameters values
@@ -106,7 +107,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params.minNumPartitions, 888)
     assertTrue(params.kryo)
     assertEquals(params.fieldsNameType, FieldNamesType.TRAINING_EXAMPLE)
-    assertEquals(params.summarizationOutputDirOpt, Some("summarization_output_dir"))
+    assertEquals(params.summarizationOutputDirOpt, Some(new Path("summarization_output_dir")))
     assertEquals(params.normalizationType, NormalizationType.NONE)
     assertEquals(params.constraintString, Some(constraintString))
     assertEquals(params.treeAggregateDepth, 2)
@@ -116,7 +117,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params2.jobName, "Job Foo")
     // Verify required parameters values
     assertEquals(params2.trainDir, "value")
-    assertEquals(params2.outputDir, "value")
+    assertEquals(params2.outputDir, new Path("value"))
     assertEquals(params2.taskType, TaskType.LINEAR_REGRESSION)
 
     // Verify optional parameters values
@@ -132,7 +133,7 @@ class PhotonMLCmdLineParserTest {
     assertEquals(params2.minNumPartitions, 888)
     assertFalse(params2.kryo)
     assertEquals(params2.fieldsNameType, FieldNamesType.TRAINING_EXAMPLE)
-    assertEquals(params2.summarizationOutputDirOpt, Some("summarization_output_dir"))
+    assertEquals(params2.summarizationOutputDirOpt, Some(new Path("summarization_output_dir")))
     assertEquals(params2.normalizationType, NormalizationType.NONE)
     assertEquals(params2.constraintString, Some(constraintString))
     assertEquals(params2.treeAggregateDepth, 2)
@@ -269,7 +270,8 @@ object PhotonMLCmdLineParserTest {
   private val REQUIRED_OPTIONS = Array(TRAIN_DIR_OPTION, OUTPUT_DIR_OPTION, TASK_TYPE_OPTION)
 
   // Optional options other than boolean options
-  private val OPTIONAL_OPTIONS = Array(VALIDATE_DIR_OPTION,
+  private val OPTIONAL_OPTIONS = Array(
+    VALIDATE_DIR_OPTION,
     REGULARIZATION_WEIGHTS_OPTION,
     REGULARIZATION_TYPE_OPTION,
     ELASTIC_NET_ALPHA_OPTION,
@@ -283,16 +285,14 @@ object PhotonMLCmdLineParserTest {
     NORMALIZATION_TYPE,
     COEFFICIENT_BOX_CONSTRAINTS,
     TREE_AGGREGATE_DEPTH,
-    DIAGNOSTIC_MODE
-  )
+    DIAGNOSTIC_MODE)
 
   // Boolean options are unary instead of binary options
   private val BOOLEAN_OPTIONAL_OPTIONS = Array(
     INTERCEPT_OPTION,
     KRYO_OPTION,
     VALIDATE_PER_ITERATION,
-    OPTIMIZATION_STATE_TRACKER_OPTION
-  )
+    OPTIMIZATION_STATE_TRACKER_OPTION)
 
   private val constraintString =
     """[

@@ -31,11 +31,12 @@ import com.linkedin.photon.ml.data.LabeledPoint
  *                           aggregation. It is experimental currently because treeAggregate is unstable in Spark
  *                           versions 1.4 and 1.5.
  */
-abstract class DistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int)
-  extends ObjectiveFunction {
+abstract class DistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int) extends ObjectiveFunction {
 
   type Data = RDD[LabeledPoint]
   type Coefficients = Broadcast[Vector[Double]]
+
+  require(treeAggregateDepth > 0, s"Tree aggregate depth must be greater than 0: $treeAggregateDepth")
 
   /**
    * Compute the size of the domain for the given input data (i.e. the number of features, including the intercept if

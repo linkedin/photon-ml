@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -71,9 +71,10 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class BaseGLMTest extends SparkTestUtils {
 
   /**
+   * Generate a [[Seq]] of [[LabeledPoint]] from a collection of (label, feature vector) pairs.
    *
-   * @param data
-   * @return
+   * @param data A sequence of (label, feature vector) pairs
+   * @return The data from the given sequence, converted to [[LabeledPoint]] instances
    */
   def generateDataSetIterable(data: Iterator[(Double, Vector[Double])]): Seq[LabeledPoint] =
     data.map( x => new LabeledPoint(label = x._1, features = x._2)).toList
@@ -83,7 +84,7 @@ class BaseGLMTest extends SparkTestUtils {
    */
   @DataProvider
   def getGeneralizedLinearOptimizationProblems: Array[Array[Object]] = {
-    val lbfgsConfig = GLMOptimizationConfiguration(
+    val lbfgsConfig = FixedEffectOptimizationConfiguration(
       OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
       L2RegularizationContext)
 //    val tronConfig = GLMOptimizationConfiguration(
@@ -228,17 +229,16 @@ object BaseGLMTest {
   private val COMPUTE_VARIANCES = false
 
   /**
+   * Check that the loss value of the states in the [[OptimizationStatesTracker]] is monotonically decreasing.
    *
-   * @param history
+   * @param history The optimization state history
    */
-  def checkConvergence(history: OptimizationStatesTracker) {
-    var lastValue: Double = Double.MaxValue
-
-    history.getTrackedStates.foreach { state =>
+  def checkConvergence(history: OptimizationStatesTracker): Unit =
+    history.getTrackedStates.foldLeft(Double.MaxValue) { case (prevValue, state) =>
       assertTrue(
-        lastValue >= state.loss,
-        s"Objective should be monotonically decreasing (current=[${state.loss}], previous=[$lastValue])")
-      lastValue = state.loss
+        prevValue >= state.loss,
+        s"Objective should be monotonically decreasing (current=[${state.loss}], previous=[$prevValue])")
+
+      state.loss
     }
-  }
 }

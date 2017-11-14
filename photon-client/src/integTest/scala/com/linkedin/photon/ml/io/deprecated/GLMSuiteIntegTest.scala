@@ -17,26 +17,23 @@ package com.linkedin.photon.ml.io.deprecated
 import java.io.File
 import java.util.{ArrayList => JArrayList}
 
-import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.avro.Schema
-import org.apache.avro.file.{DataFileReader, DataFileWriter}
+import org.apache.avro.file.DataFileWriter
 import org.apache.avro.generic.{GenericDatumWriter, GenericRecord, GenericRecordBuilder}
-import org.apache.avro.specific.SpecificDatumReader
 import org.apache.spark.SparkException
 import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.avro.generated.{FeatureSummarizationResultAvro, TrainingExampleAvro}
+import com.linkedin.photon.avro.generated.TrainingExampleAvro
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.data.avro.ModelProcessingUtils
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.index.DefaultIndexMap
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.util.Utils
 import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
-import com.linkedin.photon.ml.util.{DefaultIndexMap, Utils}
 
 /**
  * This class tests components of GLMSuite that requires integration with real RDD or other runtime environments.
@@ -252,7 +249,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     }
 
     val actualIndexAndData = selectedFeaturesFile match {
-      case Some(x: String) =>
+      case Some(_) =>
         // Recall that this data point doesn't contain any features in the selected feature list, thus the feature
         // size is 0
         if (addIntercept) {
@@ -260,7 +257,8 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         } else {
           Array[(Int, Double)]()
         }
-      case _ =>
+
+      case None =>
         if (addIntercept) {
           Array((interceptId, 1d), (featureMap(f2t1Id), 12d), (featureMap(f3t2Id), 13d))
         } else {
@@ -292,12 +290,13 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     if (addIntercept) {
       // selected feature file contains two features, ("f1", "t1") and ("f4", "t2")
       selectedFeaturesFile match {
-        case Some(x: String) =>
+        case Some(_) =>
           assertEquals(featureMap.size, 3)
           assertTrue(featureMap.contains(iId))
           assertTrue(featureMap.contains(f1t1Id))
           assertTrue(featureMap.contains(f4t2Id))
-        case _ =>
+
+        case None =>
           assertEquals(featureMap.size, 6)
           assertTrue(featureMap.contains(iId))
           assertTrue(featureMap.contains(f1t1Id))
@@ -306,13 +305,15 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
           assertTrue(featureMap.contains(f3t2Id))
           assertTrue(featureMap.contains(f4t2Id))
       }
+
     } else {
       selectedFeaturesFile match {
-        case Some(x: String) =>
+        case Some(_) =>
           assertEquals(featureMap.size, 2)
           assertTrue(featureMap.contains(f1t1Id))
           assertTrue(featureMap.contains(f4t2Id))
-        case _ =>
+
+        case None =>
           assertEquals(featureMap.size, 5)
           assertTrue(featureMap.contains(f1t1Id))
           assertTrue(featureMap.contains(f2t1Id))
@@ -346,8 +347,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
     val f4t2Id = Utils.getFeatureKey("f4", "t2")
 
     selectedFeaturesFile match {
-      case Some(x: String) =>
-        assertEquals(points.partitions.length, 3)
+      case Some(_) =>
         if (addIntercept) {
           // With intercept added, the number of data points with only intercept-like dummy variable is 1
           assertEquals(points.filter(_.features.activeSize == 1).count(), 1)
@@ -355,10 +355,11 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
           // Without intercept, the number of data points with empty feature vector is 1
           assertEquals(points.filter(_.features.activeSize == 0).count(), 1)
         }
+        assertEquals(points.partitions.length, 3)
         assertEquals(points.count(), 3)
         assertEquals(points.filter(point => Set[Double](1.1d, 1.2d, 0d).contains(point.offset)).count(), 3)
-      case _ =>
-        assertEquals(points.partitions.length, 3)
+
+      case None =>
         if (addIntercept) {
           // With intercept added, all data points should have 3 features
           assertEquals(points.filter(_.features.activeSize == 3).count(), 3)
@@ -366,6 +367,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
           // Without intercept, all data points should have 2 features
           assertEquals(points.filter(_.features.activeSize == 2).count(), 3)
         }
+        assertEquals(points.partitions.length, 3)
         assertEquals(points.count(), 3)
         assertEquals(points.filter(point => Set[Double](1.1d, 1.2d, 0d).contains(point.offset)).count(), 3)
     }
@@ -376,6 +378,7 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       // Dummy id
       Integer.MAX_VALUE
     }
+
     points.foreach { point =>
       val numFeatures = point.features.length
       val actualIndexAndData =
@@ -383,25 +386,29 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
           case 1.1d =>
             assertEquals(point.label, 1d, EPSILON)
             assertEquals(point.weight, 1d, EPSILON)
+
             selectedFeaturesFile match {
-              case Some(x: String) =>
+              case Some(_) =>
                 if (addIntercept) {
                   Array((interceptId, 1d), (featureMap(f1t1Id), 1d))
                 } else {
                   Array((featureMap(f1t1Id), 1d))
                 }
-              case _ =>
+
+              case None =>
                 if (addIntercept) {
                   Array((interceptId, 1d), (featureMap(f1t1Id), 1d), (featureMap(f2t2Id), 2d))
                 } else {
                   Array((featureMap(f1t1Id), 1d), (featureMap(f2t2Id), 2d))
                 }
             }
+
           case 1.2d =>
             assertEquals(point.label, 0d, EPSILON)
             assertEquals(point.weight, 1d, EPSILON)
+
             selectedFeaturesFile match {
-              case Some(x: String) =>
+              case Some(_) =>
                 // Recall that this data point doesn't contain any features in the selected feature list, thus the
                 // feature size is 0
               if (addIntercept) {
@@ -409,13 +416,15 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
                 } else {
                   Array[(Int, Double)]()
                 }
-              case _ =>
+
+              case None =>
                 if (addIntercept) {
                   Array((interceptId, 1d), (featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d))
                 } else {
                   Array((featureMap(f2t1Id), 2d), (featureMap(f3t2Id), 3d))
                 }
             }
+
           case 0d =>
             assertEquals(point.label, 1d, EPSILON)
             assertEquals(point.weight, 2d, EPSILON)
@@ -425,116 +434,12 @@ class GLMSuiteIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
             } else {
               Array((featureMap(f1t1Id), 3d), (featureMap(f4t2Id), 4d))
             }
+
           case _ => throw new RuntimeException(s"Observed an unexpected labeled point: $point")
         }
       val actualFeatures = toSparseVector(actualIndexAndData, numFeatures)
       assertEquals(point.features, actualFeatures)
     }
-  }
-
-  // TODO: this integTest should be relocated to integTests for IOUtils
-  @Test
-  def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
-    val dim: Int = 5
-    val minVector =
-      toSparseVector(Array((0, 1.5d), (1, 0d), (2, 0d), (3, 6.7d), (4, 2.33d)), dim)
-    val maxVector =
-      toSparseVector(Array((0, 10d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
-    val normL1Vector =
-      toSparseVector(Array((0, 1d), (1, 0d), (2, 0d), (3, 7d), (4, 4d)), dim)
-    val normL2Vector =
-      toSparseVector(Array((0, 2d), (1, 0d), (2, 0d), (3, 8d), (4, 5d)), dim)
-    val numNonzeros =
-      toSparseVector(Array((0, 6d), (1, 0d), (2, 0d), (3, 3d), (4, 89d)), dim)
-    val meanVector = toSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
-    val varVector = toSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
-
-
-    val summary = BasicStatisticalSummary(
-      mean = meanVector,
-      variance = varVector,
-      count = 101L,
-      numNonzeros = numNonzeros,
-      max = maxVector,
-      min = minVector,
-      normL1 = normL1Vector,
-      normL2 = normL2Vector,
-      meanAbs = meanVector)
-
-    val suite = new GLMSuite(fieldNamesType = FieldNamesType.TRAINING_EXAMPLE, addIntercept = true,
-        constraintString = None, offHeapIndexMapLoader = None)
-    suite.featureKeyToIdMap = new DefaultIndexMap(Map(
-        "f0" + Constants.DELIMITER -> 0,
-        "f1" + Constants.DELIMITER + "t1" -> 1,
-        "f2" + Constants.DELIMITER -> 2,
-        "f3" + Constants.DELIMITER + "t3" -> 3,
-        "f4" + Constants.DELIMITER -> 4))
-
-    val tempOut = getTmpDir + "/summary-output"
-    ModelProcessingUtils.writeBasicStatistics(sc, summary, tempOut, suite.featureKeyToIdMap)
-
-    val reader = DataFileReader.openReader[FeatureSummarizationResultAvro](new File(tempOut + "/part-00000.avro"),
-        new SpecificDatumReader[FeatureSummarizationResultAvro]())
-    var count = 0
-    while (reader.hasNext) {
-      val record = reader.next()
-      val feature = record.getFeatureName + Constants.DELIMITER + record.getFeatureTerm
-      val featureId = suite.featureKeyToIdMap(feature)
-      val metrics = record.getMetrics.map {case (key, value) => (String.valueOf(key), value)}
-      var foundMatchedOne = true
-      featureId match {
-        case 0 =>
-          assertEquals(feature, "f0" + Constants.DELIMITER)
-          assertEquals(metrics("min"), 1.5d, EPSILON)
-          assertEquals(metrics("max"), 10d, EPSILON)
-          assertEquals(metrics("normL1"), 1d, EPSILON)
-          assertEquals(metrics("normL2"), 2d, EPSILON)
-          assertEquals(metrics("numNonzeros"), 6d, EPSILON)
-          assertEquals(metrics("mean"), 1.1d, EPSILON)
-          assertEquals(metrics("variance"), 1d, EPSILON)
-        case 1 =>
-          assertEquals(feature, "f1" + Constants.DELIMITER + "t1")
-          assertEquals(metrics("min"), 0d, EPSILON)
-          assertEquals(metrics("max"), 0d, EPSILON)
-          assertEquals(metrics("normL1"), 0d, EPSILON)
-          assertEquals(metrics("normL2"), 0d, EPSILON)
-          assertEquals(metrics("numNonzeros"), 0d, EPSILON)
-          assertEquals(metrics("mean"), 0d, EPSILON)
-          assertEquals(metrics("variance"), 0d, EPSILON)
-        case 2 =>
-          assertEquals(feature, "f2" + Constants.DELIMITER)
-          assertEquals(metrics("min"), 0d, EPSILON)
-          assertEquals(metrics("max"), 0d, EPSILON)
-          assertEquals(metrics("normL1"), 0d, EPSILON)
-          assertEquals(metrics("normL2"), 0d, EPSILON)
-          assertEquals(metrics("numNonzeros"), 0d, EPSILON)
-          assertEquals(metrics("mean"), 0d, EPSILON)
-          assertEquals(metrics("variance"), 0d, EPSILON)
-        case 3 =>
-          assertEquals(feature, "f3" + Constants.DELIMITER + "t3")
-          assertEquals(metrics("min"), 6.7d, EPSILON)
-          assertEquals(metrics("max"), 7d, EPSILON)
-          assertEquals(metrics("normL1"), 7d, EPSILON)
-          assertEquals(metrics("normL2"), 8d, EPSILON)
-          assertEquals(metrics("numNonzeros"), 3d, EPSILON)
-          assertEquals(metrics("mean"), 2.4d, EPSILON)
-          assertEquals(metrics("variance"), 7d, EPSILON)
-        case 4 =>
-          assertEquals(feature, "f4" + Constants.DELIMITER)
-          assertEquals(metrics("min"), 2.33d, EPSILON)
-          assertEquals(metrics("max"), 4d, EPSILON)
-          assertEquals(metrics("normL1"), 4d, EPSILON)
-          assertEquals(metrics("normL2"), 5d, EPSILON)
-          assertEquals(metrics("numNonzeros"), 89d, EPSILON)
-          assertEquals(metrics("mean"), 3.6d, EPSILON)
-          assertEquals(metrics("variance"), 0.5d, EPSILON)
-        case other => foundMatchedOne = false
-      }
-      if (foundMatchedOne) {
-        count += 1
-      }
-    }
-    assertEquals(count, 5)
   }
 }
 
