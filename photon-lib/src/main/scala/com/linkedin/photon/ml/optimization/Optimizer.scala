@@ -170,8 +170,8 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * @return Optimized model coefficients and corresponding objective function's value
    */
   protected[ml] def optimize
-    (objectiveFunction: Function, initialCoefficients: Vector[Double])
-    (data: objectiveFunction.Data): (Vector[Double], Double) = {
+      (objectiveFunction: Function, initialCoefficients: Vector[Double])
+      (data: objectiveFunction.Data): (Vector[Double], Double) = {
 
     val normalizedInitialCoefficients = normalizationContext.value.modelToTransformedSpace(initialCoefficients)
 
@@ -181,7 +181,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
     // We set the absolute tolerances from the magnitudes of the first loss and gradient
     setAbsTolerances(calculateState(objectiveFunction, VectorUtils.zeroOfSameType(normalizedInitialCoefficients))(data))
 
-    // TODO for cold start, we call calculateState with the same arguments twice
+    // TODO: For cold start, we call calculateState with the same arguments twice
     val initialState = calculateState(objectiveFunction, normalizedInitialCoefficients)(data)
     init(objectiveFunction, initialState)(data)
     updateCurrentState(initialState)
@@ -240,8 +240,8 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * @return The updated state of the optimizer
    */
   protected def runOneIteration
-    (objectiveFunction: Function, currState: OptimizerState)
-    (data: objectiveFunction.Data): OptimizerState
+      (objectiveFunction: Function, currState: OptimizerState)
+      (data: objectiveFunction.Data): OptimizerState
 }
 
 object Optimizer {

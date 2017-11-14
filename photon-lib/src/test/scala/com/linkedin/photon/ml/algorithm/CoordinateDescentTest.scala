@@ -56,7 +56,7 @@ class CoordinateDescentTest {
       validationDataAndEvaluatorsOption = None,
       logger)
 
-    coordinateDescent.optimize(iter, gameModel)
+    coordinateDescent.run(iter, gameModel)
   }
 
   @DataProvider
@@ -115,7 +115,7 @@ class CoordinateDescentTest {
       evaluator,
       validationDataAndEvaluatorsOption = None,
       logger)
-    coordinateDescent.optimize(numIterations, gameModel)
+    coordinateDescent.run(numIterations, gameModel)
 
     // Verify the calls to updateModel
     if (coordinates.length == 1) {
@@ -195,7 +195,7 @@ class CoordinateDescentTest {
     val validationDataAndEvaluators
       = if (validationEvaluators.isEmpty) None else Option(validationData, validationEvaluators)
     val coordinateDescent = new CoordinateDescent(coordinates, lossEvaluator, validationDataAndEvaluators, logger)
-    val (returnedModel, _) = coordinateDescent.optimize(iterationCount, gameModels.head)
+    val (returnedModel, _) = coordinateDescent.run(iterationCount, gameModels.head)
 
     assert(returnedModel.hashCode == gameModels(2).hashCode())
 
