@@ -315,6 +315,20 @@ object AvroUtils {
   }
 
   /**
+   * Check whether a model contains an intercept term or not.
+   *
+   * @param path The path to read the model from
+   * @return Whether the model contains an intercept or not
+   */
+  protected[ml] def modelContainsIntercept(sc: SparkContext, path: Path): Boolean =
+    readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
+      .head
+      .getMeans
+      .map(nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString))
+      .toSet
+      .contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
+
+  /**
    * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]].
    *
    * @param modelId The model's id
