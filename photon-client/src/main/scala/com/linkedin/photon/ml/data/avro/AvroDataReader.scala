@@ -70,6 +70,36 @@ class AvroDataReader(
    * that can be independently distributed.
    *
    * @param paths The paths to the avro files or folders
+   * @param indexMapLoadersOpt An optional map of index map loaders, containing one loader for each merged feature
+   *                           column
+   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
+   *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
+   *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
+   *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
+   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
+   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
+   *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
+   *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
+   *   Photon (especially GAME), so this caused a lot of shuffling when repartitioning from the auto-partitioned data
+   *   to the GAME data. We expose this setting here to avoid the shuffling.
+   * @return The loaded and transformed DataFrame
+   */
+  def readMerged(
+      paths: Seq[String],
+      indexMapLoadersOpt: Option[Map[MergedColumnName, IndexMapLoader]],
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = indexMapLoadersOpt match {
+    case Some(indexMapLoaders) => (readMerged(paths, indexMapLoaders, featureColumnMap, numPartitions), indexMapLoaders)
+    case None => readMerged(paths, featureColumnMap, numPartitions)
+  }
+
+  /**
+   * Reads the avro file at the given path into a DataFrame, generating a default index map for feature names. Merges
+   * source columns into combined feature vectors as specified by the featureColumnMap argument. Often features are
+   * joined from different sources, and it can be more scalable to combine them into problem-specific feature vectors
+   * that can be independently distributed.
+   *
+   * @param paths The paths to the avro files or folders
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
@@ -388,7 +418,7 @@ object AvroDataReader {
 
         } else avroSchema.getTypes.asScala.map(_.getType) match {
           // When there are cases of multiple non-null types, resolve to a single sql type
-          case Seq(t1) =>
+          case Seq(_) =>
             avroTypeToSql(name, avroSchema.getTypes.get(0))
 
           case numericTypes if allNumericTypes(numericTypes) =>

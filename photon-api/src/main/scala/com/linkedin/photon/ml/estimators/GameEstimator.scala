@@ -79,11 +79,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "input column names",
     "A map of custom column names which replace the default column names of expected fields in the Avro input.")
 
-  val featureShardColumnNames: Param[Set[FeatureShardId]] = ParamUtils.createParam(
-    "feature shard column names",
-    "A set of column names for the feature shards used.",
-    PhotonParamValidators.nonEmpty[Set, FeatureShardId])
-
   val coordinateDataConfigurations: Param[Map[CoordinateId, CoordinateDataConfiguration]] =
     ParamUtils.createParam[Map[CoordinateId, CoordinateDataConfiguration]](
       "coordinate data configurations",
@@ -131,6 +126,30 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   setDefaultParams()
 
   //
+  // Parameter setters
+  //
+
+  def setTrainingTask(value: TaskType): this.type = set(trainingTask, value)
+
+  def setInputColumnNames(value: InputColumnsNames): this.type = set(inputColumnNames, value)
+
+  def setCoordinateDataConfigurations(value: Map[CoordinateId, CoordinateDataConfiguration]): this.type =
+    set(coordinateDataConfigurations, value)
+
+  def setCoordinateUpdateSequence(value: Seq[CoordinateId]): this.type = set(coordinateUpdateSequence, value)
+
+  def setCoordinateDescentIterations(value: Int): this.type = set(coordinateDescentIterations, value)
+
+  def setCoordinateNormalizationContexts(value: Map[CoordinateId, Broadcast[NormalizationContext]]): this.type =
+    set(coordinateNormalizationContexts, value)
+
+  def setComputeVariance(value: Boolean): this.type = set(computeVariance, value)
+
+  def setTreeAggregateDepth(value: Int): this.type = set(treeAggregateDepth, value)
+
+  def setValidationEvaluators(value: Seq[EvaluatorType]): this.type = set(validationEvaluators, value)
+
+  //
   // Params trait extensions
   //
 
@@ -168,7 +187,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     // Just need to check that the training task has been explicitly set
     getRequiredParam(trainingTask)
 
-    val featureShards = getRequiredParam(featureShardColumnNames)
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val dataConfigs = getRequiredParam(coordinateDataConfigurations)
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
@@ -183,12 +201,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       require(
         normalizationContextsOpt.forall(normalizationContexts => normalizationContexts.contains(coordinate)),
         s"Coordinate $coordinate in the update sequence is missing normalization context")
-    }
-
-    dataConfigs.foreach { case(coordinate, config) =>
-      require(
-        featureShards.contains(config.featureShardId),
-        s"Feature shard ${config.featureShardId} used by coordinate $coordinate is missing from the set of column names")
     }
   }
 
@@ -226,7 +238,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     validateParams()
 
     // Group additional columns to include in GameDatum
-    val randomEffectIdCols: Set[String] = getOrDefault(coordinateDataConfigurations)
+    val randomEffectIdCols: Set[String] = getRequiredParam(coordinateDataConfigurations)
       .flatMap { case (_, config) =>
         config match {
           case reConfig: RandomEffectDataConfiguration => Some(reConfig.randomEffectType)
@@ -238,8 +250,19 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val additionalCols = randomEffectIdCols ++ evaluatorCols
 
     // Transform the GAME dataset into fixed and random effect specific datasets
-    val (trainingDataSets, trainingLossFunctionEvaluator) = prepareTrainingDataSetsAndEvaluator(data, additionalCols)
-    val validationDataSetAndEvaluators = prepareValidationDataSetAndEvaluators(validationData, additionalCols)
+    val featureShards = getRequiredParam(coordinateDataConfigurations)
+      .map { case (_, coordinateDataConfig) =>
+        coordinateDataConfig.featureShardId
+      }
+      .toSet
+    val (trainingDataSets, trainingLossFunctionEvaluator) = prepareTrainingDataSetsAndEvaluator(
+      data,
+      featureShards,
+      additionalCols)
+    val validationDataSetAndEvaluators = prepareValidationDataSetAndEvaluators(
+      validationData,
+      featureShards,
+      additionalCols)
 
     val results = Timed(s"Training models:") {
 
@@ -279,6 +302,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   protected def prepareTrainingDataSetsAndEvaluator(
       data: DataFrame,
+      featureShards: Set[FeatureShardId],
       idTagSet: Set[String]): (Map[CoordinateId, D forSome { type D <: DataSet[D] }], Evaluator) = {
 
     val numPartitions = data.rdd.getNumPartitions
@@ -288,7 +312,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       GameConverters
         .getGameDataSetFromDataFrame(
           data,
-          getOrDefault(featureShardColumnNames),
+          featureShards,
           idTagSet,
           isResponseRequired = true,
           getOrDefault(inputColumnNames))
@@ -319,7 +343,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   protected def prepareTrainingDataSets(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: DataSet[D] }] = {
 
-    getOrDefault(coordinateDataConfigurations).map { case (coordinateId, config) =>
+    getRequiredParam(coordinateDataConfigurations).map { case (coordinateId, config) =>
 
       val result = config match {
 
@@ -394,7 +418,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   protected def prepareTrainingLossEvaluator(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Evaluator = {
 
-    val taskType = getOrDefault(trainingTask)
+    val taskType = getRequiredParam(trainingTask)
     val labelAndOffsetAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
       .setName("Training labels, offsets and weights")
@@ -426,6 +450,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   protected def prepareValidationDataSetAndEvaluators(
       dataOpt: Option[DataFrame],
+      featureShards: Set[FeatureShardId],
       additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])] =
 
     dataOpt.map { data =>
@@ -434,7 +459,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         val result = GameConverters
           .getGameDataSetFromDataFrame(
             data,
-            getOrDefault(featureShardColumnNames),
+            featureShards,
             additionalCols,
             isResponseRequired = true,
             getOrDefault(inputColumnNames))
@@ -527,7 +552,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val normalizationContexts = get(coordinateNormalizationContexts)
     val variance = getOrDefault(computeVariance)
-    val glmConstructor = getOrDefault(trainingTask) match {
+    val glmConstructor = getRequiredParam(trainingTask) match {
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
       case TaskType.LINEAR_REGRESSION => LinearRegressionModel.apply _
       case TaskType.POISSON_REGRESSION => PoissonRegressionModel.apply _
@@ -536,7 +561,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     }
 
     // For each model, create the optimization coordinates
-    val coordinates = getOrDefault(coordinateUpdateSequence).map { coordinateId =>
+    val coordinates = getRequiredParam(coordinateUpdateSequence).map { coordinateId =>
       val coordinate: Coordinate[_] = (configuration(coordinateId), trainingDataSets(coordinateId)) match {
 
         case (feOptConfig: FixedEffectOptimizationConfiguration, feDataSet: FixedEffectDataSet) =>
@@ -617,7 +642,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   protected[estimators] def setupDownSampler(downSamplingRate: Double): Option[DownSampler] =
 
     if (downSamplingRate > 0D && downSamplingRate < 1D) {
-      getOrDefault(trainingTask) match {
+      getRequiredParam(trainingTask) match {
         case TaskType.LOGISTIC_REGRESSION | TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
           Some(new BinaryClassificationDownSampler(downSamplingRate))
 
@@ -647,7 +672,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       latentFactorOptimizationConfiguration,
       getOrDefault(treeAggregateDepth))
 
-    getOrDefault(trainingTask) match {
+    getRequiredParam(trainingTask) match {
       case TaskType.LOGISTIC_REGRESSION => (lossFunction(LogisticLossFunction), distLossFunction(LogisticLossFunction))
       case TaskType.LINEAR_REGRESSION => (lossFunction(SquaredLossFunction), distLossFunction(SquaredLossFunction))
       case TaskType.POISSON_REGRESSION => (lossFunction(PoissonLossFunction), distLossFunction(PoissonLossFunction))
@@ -670,7 +695,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val lossFunction: SingleNodeLossFunctionConstructor = SingleNodeGLMLossFunction(configuration)
 
-    getOrDefault(trainingTask) match {
+    getRequiredParam(trainingTask) match {
       case TaskType.LOGISTIC_REGRESSION => lossFunction(LogisticLossFunction)
       case TaskType.LINEAR_REGRESSION => lossFunction(SquaredLossFunction)
       case TaskType.POISSON_REGRESSION => lossFunction(PoissonLossFunction)
@@ -694,7 +719,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       configuration,
       treeAggregateDepth)
 
-    getOrDefault(trainingTask) match {
+    getRequiredParam(trainingTask) match {
       case TaskType.LOGISTIC_REGRESSION => distLossFunction(LogisticLossFunction)
       case TaskType.LINEAR_REGRESSION => distLossFunction(SquaredLossFunction)
       case TaskType.POISSON_REGRESSION => distLossFunction(PoissonLossFunction)
@@ -705,6 +730,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 }
 
 object GameEstimator {
+
+  //
+  // Types
+  //
 
   type GameOptimizationConfiguration = Map[CoordinateId, CoordinateOptimizationConfiguration]
   type GameResult = (GameModel, Option[EvaluationResults], GameOptimizationConfiguration)

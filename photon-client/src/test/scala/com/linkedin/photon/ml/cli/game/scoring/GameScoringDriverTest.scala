@@ -21,7 +21,6 @@ import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.DataValidationType
-import com.linkedin.photon.ml.Types.REType
 import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
@@ -49,7 +48,6 @@ class GameScoringDriverTest {
       .empty
       .put(GameScoringDriver.inputDataDirectories, Set[Path](mockPath))
       .put(GameScoringDriver.rootOutputDirectory, mockPath)
-      .put(GameScoringDriver.featureBagsDirectory, mockPath)
       .put(GameScoringDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameScoringDriver.modelInputDirectory, mockPath)
 
@@ -63,7 +61,6 @@ class GameScoringDriverTest {
   def testMaxValidParamMap(): Unit = {
 
     val featureShardId = "id"
-    val randomEffectType = "type"
     val modelId = "someModel"
 
     val mockBoolean = true
@@ -89,13 +86,11 @@ class GameScoringDriverTest {
       .put(GameScoringDriver.rootOutputDirectory, mockPath)
       .put(GameScoringDriver.overrideOutputDirectory, mockBoolean)
       .put(GameScoringDriver.outputFilesLimit, mockInt)
-      .put(GameScoringDriver.featureBagsDirectory, mockPath)
       .put(GameScoringDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameScoringDriver.dataValidation, DataValidationType.VALIDATE_FULL)
       .put(GameScoringDriver.logLevel, mockInt)
       .put(GameScoringDriver.applicationName, mockString)
       .put(GameScoringDriver.modelInputDirectory, mockPath)
-      .put(GameScoringDriver.randomEffectTypes, Set[REType](randomEffectType))
       .put(GameScoringDriver.modelId, modelId)
       .put(GameScoringDriver.logDataAndModelStats, true)
       .put(GameScoringDriver.spillScoresToDisk, true)
@@ -117,7 +112,6 @@ class GameScoringDriverTest {
       .empty
       .put(GameScoringDriver.inputDataDirectories, Set[Path](mockPath))
       .put(GameScoringDriver.rootOutputDirectory, mockPath)
-      .put(GameScoringDriver.featureBagsDirectory, mockPath)
       .put(GameScoringDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameScoringDriver.modelInputDirectory, mockPath)
 
@@ -134,6 +128,12 @@ class GameScoringDriverTest {
       Array(validParamMap.copy.put(GameScoringDriver.offHeapIndexMapDirectory, mockPath)),
       // Off-heap map partitions without dir
       Array(validParamMap.copy.put(GameScoringDriver.offHeapIndexMapPartitions, 1)),
+      // Both off-heap map and features directory
+      Array(
+        validParamMap
+          .copy
+          .put(GameScoringDriver.offHeapIndexMapDirectory, mockPath)
+          .put(GameScoringDriver.featureBagsDirectory, mockPath)),
       // No model input directory
       Array(validParamMap.copy.remove(GameScoringDriver.modelInputDirectory)))
   }

@@ -168,7 +168,6 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
   @Test
   def testOffHeapIndexMap(): Unit = sparkTest("testOffHeapIndexMap") {
 
-
     val outputPath = new Path(getTmpDir)
     val scoresPath = new Path(outputPath, s"${GameScoringDriver.SCORES_DIR}")
     val indexMapPath = new Path(
@@ -227,7 +226,6 @@ object GameScoringDriverIntegTest {
 
   private val perUserRandomEffectFeatureShardId = "userShard"
   private val perSongRandomEffectFeatureShardId = "songShard"
-  private val randomEffectTypes = Set("userId", "songId")
   private val mixedEffectFeatureShardConfigs = fixedEffectFeatureShardConfigs ++
     Map(
       (perUserRandomEffectFeatureShardId,
@@ -266,5 +264,4 @@ object GameScoringDriverIntegTest {
     defaultArgs
       .put(GameScoringDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameScoringDriver.modelInputDirectory, mixedEffectModelPath)
-      .put(GameScoringDriver.randomEffectTypes, randomEffectTypes)
 }

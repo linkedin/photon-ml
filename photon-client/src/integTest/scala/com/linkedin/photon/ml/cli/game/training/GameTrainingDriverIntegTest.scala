@@ -385,13 +385,16 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    */
   def evaluateModel(modelPath: Path): Double = {
 
-    val indexMapLoaders = GameTrainingDriver.prepareFeatureMaps()
+    val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
     val featureSectionMap = GameTrainingDriver
       .getOrDefault(GameTrainingDriver.featureShardConfigurations)
       .mapValues(_.featureBags)
       .map(identity)
-    val testData = new AvroDataReader(sc)
-      .readMerged(testPath.toString, indexMapLoaders, featureSectionMap, numPartitions = 2)
+    val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
+      Seq(testPath.toString),
+      indexMapLoadersOpt,
+      featureSectionMap,
+      numPartitions = 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataSet = GameConverters

@@ -45,7 +45,7 @@ class GameDriverTest {
     val mockPath = mock(classOf[Path])
 
     MockGameDriver.set(MockGameDriver.rootOutputDirectory, mockPath)
-    MockGameDriver.mockSetDefault(MockGameDriver.featureBagsDirectory, mockPath)
+    MockGameDriver.mockSetDefault(MockGameDriver.inputDataDirectories, Set(mockPath))
 
     assertEquals(MockGameDriver.getDefault(MockGameDriver.rootOutputDirectory), None)
     assertEquals(MockGameDriver.get(MockGameDriver.rootOutputDirectory), Some(mockPath))
@@ -58,9 +58,9 @@ class GameDriverTest {
       case Failure(_) =>
     }
 
-    assertEquals(MockGameDriver.getDefault(MockGameDriver.featureBagsDirectory), Some(mockPath))
-    assertEquals(MockGameDriver.get(MockGameDriver.featureBagsDirectory), None)
-    Try(MockGameDriver.getRequiredParam(MockGameDriver.featureBagsDirectory)) match {
+    assertEquals(MockGameDriver.getDefault(MockGameDriver.inputDataDirectories), Some(Set(mockPath)))
+    assertEquals(MockGameDriver.get(MockGameDriver.inputDataDirectories), None)
+    Try(MockGameDriver.getRequiredParam(MockGameDriver.inputDataDirectories)) match {
       case Success(_) => assert(false)
       case Failure(_) =>
     }
@@ -83,7 +83,6 @@ class GameDriverTest {
       .empty
       .put(MockGameDriver.inputDataDirectories, Set[Path](mockPath))
       .put(MockGameDriver.rootOutputDirectory, mockPath)
-      .put(MockGameDriver.featureBagsDirectory, mockPath)
       .put(MockGameDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
 
     MockGameDriver.validateParams(validParamMap)
@@ -120,7 +119,6 @@ class GameDriverTest {
       .put(MockGameDriver.rootOutputDirectory, mockPath)
       .put(MockGameDriver.overrideOutputDirectory, mockBoolean)
       .put(MockGameDriver.outputFilesLimit, mockInt)
-      .put(MockGameDriver.featureBagsDirectory, mockPath)
       .put(MockGameDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(MockGameDriver.dataValidation, DataValidationType.VALIDATE_FULL)
       .put(MockGameDriver.logLevel, mockInt)
@@ -143,7 +141,6 @@ class GameDriverTest {
       .empty
       .put(MockGameDriver.inputDataDirectories, Set[Path](mockPath))
       .put(MockGameDriver.rootOutputDirectory, mockPath)
-      .put(MockGameDriver.featureBagsDirectory, mockPath)
       .put(MockGameDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
 
     Array(
@@ -151,14 +148,18 @@ class GameDriverTest {
       Array(validParamMap.copy.remove(MockGameDriver.inputDataDirectories)),
       // No root output directory
       Array(validParamMap.copy.remove(MockGameDriver.rootOutputDirectory)),
-      // No feature bags directory
-      Array(validParamMap.copy.remove(MockGameDriver.featureBagsDirectory)),
       // No feature shard configurations
       Array(validParamMap.copy.remove(MockGameDriver.featureShardConfigurations)),
       // Off-heap map dir without partitions
       Array(validParamMap.copy.put(MockGameDriver.offHeapIndexMapDirectory, mockPath)),
       // Off-heap map partitions without dir
-      Array(validParamMap.copy.put(MockGameDriver.offHeapIndexMapPartitions, 1)))
+      Array(validParamMap.copy.put(MockGameDriver.offHeapIndexMapPartitions, 1)),
+      // Both off-heap map and features directory
+      Array(
+        validParamMap
+          .copy
+          .put(MockGameDriver.offHeapIndexMapDirectory, mockPath)
+          .put(MockGameDriver.featureBagsDirectory, mockPath)))
   }
 
   /**

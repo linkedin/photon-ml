@@ -20,9 +20,8 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
 import scopt.{OptionDef, OptionParser, Read}
 
-import com.linkedin.photon.ml.Types.REType
 import com.linkedin.photon.ml.cli.game.scoring.GameScoringDriver
-import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserHelpers, ScoptParserReads}
+import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserReads}
 
 /**
  * Scopt command line argument parser for GAME scoring parameters.
@@ -39,13 +38,6 @@ object ScoptGameScoringParametersParser extends ScoptGameParametersParser {
         GameScoringDriver.modelInputDirectory,
         usageText = "<path>",
         isRequired = true),
-
-      // Random effect types
-      ScoptParameter[Seq[REType], Set[REType]](
-        GameScoringDriver.randomEffectTypes,
-        parse = ScoptParserHelpers.parseSetFromSeq,
-        print = ScoptParserHelpers.iterableToString,
-        usageText = "<path1>,<path2>,..."),
 
       // Model ID
       ScoptParameter[String, String](

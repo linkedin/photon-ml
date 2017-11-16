@@ -109,9 +109,9 @@ object GameTrainingDriver extends GameDriver {
 
   val coordinateUpdateSequence: Param[Seq[CoordinateId]] = ParamUtils.createParam(
     "coordinate update sequence",
-    "The order in which coordinates are updated by the descent algorithm. It is recommended to order the fixed/random" +
-      "effects by their stability (e.g., by looking at the variance of the feature distribution (or the correlation" +
-      "with labels for each of the effects).",
+    "The order in which coordinates are updated by the descent algorithm. It is recommended to order coordinates by " +
+      "their stability (i.e. by looking at the variance of the feature distribution [or correlation with labels] for " +
+      "each coordinate).",
     PhotonParamValidators.nonEmpty)
 
   val coordinateDescentIterations: Param[Int] = ParamUtils.createParam[Int](
@@ -269,11 +269,11 @@ object GameTrainingDriver extends GameDriver {
       cleanOutputDirs()
     }
 
-    val featureIndexMapLoaders = Timed("Prepare features") {
+    val featureIndexMapLoadersOpt = Timed("Prepare features") {
       prepareFeatureMaps()
     }
-    val trainingData = Timed(s"Read training data") {
-      readTrainingData(featureIndexMapLoaders)
+    val (trainingData, featureIndexMapLoaders) = Timed(s"Read training data") {
+      readTrainingData(featureIndexMapLoadersOpt)
     }
     val validationData  = Timed(s"Read validation data") {
       readValidationData(featureIndexMapLoaders)
@@ -312,22 +312,18 @@ object GameTrainingDriver extends GameDriver {
     }
 
     val gameEstimator = Timed("Setup estimator") {
-      val estimator = new GameEstimator(sc, logger)
-
       // Set estimator parameters
-      estimator.set(estimator.trainingTask, getRequiredParam(trainingTask))
-      estimator.set(estimator.featureShardColumnNames, getRequiredParam(featureShardConfigurations).keys.toSet)
-      estimator.set(
-        estimator.coordinateDataConfigurations,
-        getRequiredParam(coordinateConfigurations).mapValues(_.dataConfiguration))
-      estimator.set(estimator.coordinateUpdateSequence, getRequiredParam(coordinateUpdateSequence))
-      estimator.set(estimator.coordinateDescentIterations, getRequiredParam(coordinateDescentIterations))
-      estimator.set(estimator.computeVariance, getOrDefault(computeVariance))
+      val estimator = new GameEstimator(sc, logger)
+        .setTrainingTask(getRequiredParam(trainingTask))
+        .setCoordinateDataConfigurations(getRequiredParam(coordinateConfigurations).mapValues(_.dataConfiguration))
+        .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
+        .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
+        .setComputeVariance(getOrDefault(computeVariance))
 
-      get(inputColumnNames).foreach(estimator.set(estimator.inputColumnNames, _))
-      normalizationContexts.foreach(estimator.set(estimator.coordinateNormalizationContexts, _))
-      get(treeAggregateDepth).foreach(estimator.set(estimator.treeAggregateDepth, _))
-      get(evaluators).foreach(estimator.set(estimator.validationEvaluators, _))
+      get(inputColumnNames).foreach(estimator.setInputColumnNames)
+      normalizationContexts.foreach(estimator.setCoordinateNormalizationContexts)
+      get(treeAggregateDepth).foreach(estimator.setTreeAggregateDepth)
+      get(evaluators).foreach(estimator.setValidationEvaluators)
 
       estimator
     }
@@ -362,13 +358,15 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Reads the training dataset, handling specifics of input date ranges in the params.
    *
-   * @param featureIndexMapLoaders The feature index map loaders
-   * @return An Option containing the loaded data frame
+   * @param featureIndexMapLoadersOpt Optional feature index map loaders
+   * @return A ([[DataFrame]] of input data, feature index map loaders) pair
    */
-  private def readTrainingData(featureIndexMapLoaders: Map[String, IndexMapLoader]): DataFrame = {
+  private def readTrainingData(
+      featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
+    : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
 
-    val dateRange = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
-    val trainingRecordsPath = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRange)
+    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
+    val trainingRecordsPath = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
 
     logger.debug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
 
@@ -379,18 +377,18 @@ object GameTrainingDriver extends GameDriver {
     new AvroDataReader(sc)
       .readMerged(
         trainingRecordsPath.map(_.toString),
-        featureIndexMapLoaders,
+        featureIndexMapLoadersOpt,
         getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
         numPartitions)
   }
 
   /**
-   * Reads the validation dataset, handling specifics of input date ranges in the params.
+   * Reads the validation data set, handling specifics of input date ranges in the params.
    *
    * @param featureIndexMapLoaders The feature index map loaders
    * @return The loaded data frame
    */
-  private def readValidationData(featureIndexMapLoaders: Map[String, IndexMapLoader]): Option[DataFrame] =
+  private def readValidationData(featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Option[DataFrame] =
     get(validationDataDirectories).map { validationDirs =>
 
       val dateRange = IOUtils.resolveRange(get(validationDataDateRange), get(validationDataDaysRange))
@@ -690,16 +688,13 @@ object GameTrainingDriver extends GameDriver {
     logger.setLogLevel(getOrDefault(logLevel))
 
     try {
-
       Timed("Total time in training Driver")(run())
 
     } catch { case e: Exception =>
-
       logger.error("Failure while running the driver", e)
       throw e
 
     } finally {
-
       logger.close()
       sc.stop()
     }

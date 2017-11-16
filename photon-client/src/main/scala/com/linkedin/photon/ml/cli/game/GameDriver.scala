@@ -146,7 +146,6 @@ trait GameDriver extends Params {
     // Just need to check that these parameters are explicitly set
     paramMap(inputDataDirectories)
     paramMap(rootOutputDirectory)
-    paramMap(featureBagsDirectory)
     paramMap(featureShardConfigurations)
 
     (paramMap.get(offHeapIndexMapDirectory), paramMap.get(offHeapIndexMapPartitions)) match {
@@ -155,6 +154,14 @@ trait GameDriver extends Params {
 
       case (None, Some(_)) =>
         throw new IllegalArgumentException("Off-heap index map partitions provided without off-heap index map directory.")
+
+      case _ =>
+    }
+
+    (paramMap.get(offHeapIndexMapDirectory), paramMap.get(featureBagsDirectory)) match {
+      case (Some(_), Some(_)) =>
+        throw new IllegalArgumentException(
+          "Ambiguous index map input: both off-heap index map directory and feature bags directory provided")
 
       case _ =>
     }
@@ -176,7 +183,7 @@ trait GameDriver extends Params {
    * @return A map of shard id to feature map loader
    * @deprecated This function will be removed in the next major version.
    */
-  protected[game] def prepareFeatureMapsDefault(): Map[String, IndexMapLoader] = {
+  protected[game] def prepareFeatureMapsDefault(): Map[FeatureShardId, IndexMapLoader] = {
 
     val shardConfigs = getRequiredParam(featureShardConfigurations)
     val allFeatureSectionKeys = shardConfigs.values.map(_.featureBags).reduce(_ ++ _)
@@ -188,7 +195,6 @@ trait GameDriver extends Params {
       val featureMap = nameAndTermFeatureSetContainer
         .getFeatureNameAndTermToIndexMap(featureShardConfig.featureBags, featureShardConfig.hasIntercept)
         .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
-        .toMap
       val indexMapLoader = new DefaultIndexMapLoader(sc, featureMap)
 
       (shardId, indexMapLoader)
@@ -204,7 +210,7 @@ trait GameDriver extends Params {
    *
    * @return A map of shard id to feature map
    */
-  protected[game] def prepareFeatureMapsPalDB(): Map[String, IndexMapLoader] =
+  protected[game] def prepareFeatureMapsPalDB(): Map[FeatureShardId, IndexMapLoader] =
     getRequiredParam(featureShardConfigurations).map { case (shardId, _) =>
       (shardId, PalDBIndexMapLoader(sc, get(offHeapIndexMapDirectory).get, get(offHeapIndexMapPartitions).get, shardId))
     }
@@ -214,12 +220,14 @@ trait GameDriver extends Params {
    *
    * @return A map of shard id to feature map
    */
-  protected[game] def prepareFeatureMaps(): Map[String, IndexMapLoader] =
-    get(offHeapIndexMapDirectory) match {
+  protected[game] def prepareFeatureMaps(): Option[Map[FeatureShardId, IndexMapLoader]] =
+    (get(offHeapIndexMapDirectory), get(featureBagsDirectory)) match {
       // If an off-heap map path is specified, use the PalDB loader
-      case Some(_) => prepareFeatureMapsPalDB()
+      case (Some(_), None) => Some(prepareFeatureMapsPalDB())
       // Otherwise, fall back to the default loader
-      case _ => prepareFeatureMapsDefault()
+      case (None, Some(_)) => Some(prepareFeatureMapsDefault())
+
+      case _ => None
     }
 
   /**
