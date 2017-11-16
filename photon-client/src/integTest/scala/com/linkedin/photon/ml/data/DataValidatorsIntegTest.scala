@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.data
 import scala.util.{Success, Try}
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row}
+import org.apache.spark.sql.Row
 import org.apache.spark.mllib.linalg.{VectorUDT, Vectors}
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
