@@ -18,6 +18,7 @@ import breeze.linalg.Vector
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
@@ -112,6 +113,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
   override def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+
     val normalizationContext = optimizer.getNormalizationContext
     val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
@@ -140,7 +142,10 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param initialModel The initial model from which to begin optimization
    * @return The learned generalized linear models of each regularization weight and iteration.
    */
-  def runWithSampling(input: RDD[(Long, LabeledPoint)], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+  def runWithSampling(
+      input: RDD[(UniqueSampleId, LabeledPoint)],
+      initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+
     val data = (samplerOption match {
         case Some(sampler) => sampler.downSample(input).values
         case None => input.values

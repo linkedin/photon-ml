@@ -119,6 +119,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       "for model selection)",
     PhotonParamValidators.nonEmpty[Seq, EvaluatorType])
 
+  val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "use warm start",
+    "Whether to re-use trained GAME models as starting points.")
+
   //
   // Initialize object
   //
@@ -149,6 +153,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setValidationEvaluators(value: Seq[EvaluatorType]): this.type = set(validationEvaluators, value)
 
+  def setWarmStart(value: Boolean): this.type = set(useWarmStart, value)
+
   //
   // Params trait extensions
   //
@@ -157,7 +163,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val copy = new GameEstimator(sc, logger)
 
-    extractParamMap(extra).toSeq.foreach(copy.set)
+    extractParamMap(extra).toSeq.foreach { paramPair =>
+      copy.set(copy.getParam(paramPair.param.name), paramPair.value)
+    }
 
     copy
   }
@@ -171,6 +179,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(computeVariance, false)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
+    setDefault(useWarmStart, true)
   }
 
   /**
@@ -182,7 +191,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    *
    * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
    */
-  private def validateParams(): Unit = {
+  protected[estimators] def validateParams(): Unit = {
 
     // Just need to check that the training task has been explicitly set
     getRequiredParam(trainingTask)
@@ -192,7 +201,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val numUniqueCoordinates = updateSequence.toSet.size
 
-    require(numUniqueCoordinates == updateSequence.size, "One or more coordinates are repeated in the update sequence.")
+    require(
+      numUniqueCoordinates == updateSequence.size,
+      "Mismatch between coordinate configurations and update sequence.")
 
     updateSequence.foreach { coordinate =>
       require(
@@ -266,12 +277,19 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val results = Timed(s"Training models:") {
 
+      var prevGameModel: Option[GameModel] = None
+
       optimizationConfigurations.map { optimizationConfiguration =>
         val (gameModel, evaluation) = train(
           optimizationConfiguration,
           trainingDataSets,
           trainingLossFunctionEvaluator,
-          validationDataSetAndEvaluators)
+          validationDataSetAndEvaluators,
+          prevGameModel)
+
+        if (getOrDefault(useWarmStart)) {
+          prevGameModel = Some(gameModel)
+        }
 
         (gameModel, evaluation, optimizationConfiguration)
       }
@@ -542,7 +560,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       configuration: GameOptimizationConfiguration,
       trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
       trainingEvaluator: Evaluator,
-      validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])])
+      validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+      prevGameModelOpt: Option[GameModel] = None)
     : (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
 
     logger.info("Model configuration:")
@@ -629,8 +648,15 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       Pair[CoordinateId, Coordinate[_]](coordinateId, coordinate)
     }
 
-    CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
-      .run(getOrDefault(coordinateDescentIterations))
+    prevGameModelOpt match {
+      case Some(prevGameModel) =>
+        CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
+          .run(getOrDefault(coordinateDescentIterations), prevGameModel)
+
+      case None =>
+        CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
+          .run(getOrDefault(coordinateDescentIterations))
+    }
   }
 
   /**

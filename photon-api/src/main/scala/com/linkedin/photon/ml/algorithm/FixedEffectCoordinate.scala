@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
@@ -126,8 +127,6 @@ object FixedEffectCoordinate {
   /**
    * Update the model (i.e. run the coordinate optimizer).
    *
-   * TODO: Does this method need to be static?
-   *
    * @param input The training dataset
    * @param optimizationProblem The optimization problem
    * @param fixedEffectModel The current model, used as a starting point
@@ -135,11 +134,11 @@ object FixedEffectCoordinate {
    * @return A tuple of the optimized model and the updated optimization problem
    */
   private def updateModel[Function <: DistributedObjectiveFunction](
-      input: RDD[(Long, LabeledPoint)],
+      input: RDD[(UniqueSampleId, LabeledPoint)],
       optimizationProblem: DistributedOptimizationProblem[Function],
       fixedEffectModel: FixedEffectModel,
       sc: SparkContext): FixedEffectModel = {
-    // TODO: Allow normalization
+
     val model = fixedEffectModel.model
     val updatedModelBroadcast = sc.broadcast(optimizationProblem.runWithSampling(input, model))
     val updatedFixedEffectModel = fixedEffectModel.update(updatedModelBroadcast)

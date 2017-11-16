@@ -45,9 +45,9 @@ import com.linkedin.photon.ml.util._
 /**
  * Integration tests for [[GameEstimator]].
  */
-class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
+class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
-  import GameEstimatorTest._
+  import GameEstimatorIntegTest._
 
   /**
    * A very simple test that fits a toy data set using only the [[GameEstimator]] (not the full Driver).
@@ -396,7 +396,7 @@ class GameEstimatorTest extends SparkTestUtils with GameTestUtils {
   def createLogger(testName: String = "GenericTest"): PhotonLogger = new PhotonLogger(s"$getTmpDir/$testName", sc)
 }
 
-object GameEstimatorTest {
+object GameEstimatorIntegTest {
 
   /**
    * The test data set here is a subset of the Yahoo! music data set available on the internet, in [[DataFrame]] form,
@@ -423,6 +423,8 @@ object GameEstimatorTest {
    */
   private class MockGameEstimator(sc: SparkContext, logger: Logger) extends GameEstimator(sc, logger) {
 
+    set(useWarmStart, false)
+
     override def prepareTrainingDataSetsAndEvaluator(
         data: DataFrame,
         featureShards: Set[FeatureShardId],
@@ -445,7 +447,8 @@ object GameEstimatorTest {
         configuration: GameEstimator.GameOptimizationConfiguration,
         trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
         trainingEvaluator: Evaluator,
-        validationDataAndEvaluators: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])])
+        validationDataAndEvaluators: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
+        prevGameModelOpt: Option[GameModel] = None)
       : (GameModel, Option[EvaluationResults]) =
 
       super.train(configuration, trainingDataSets, trainingEvaluator, validationDataAndEvaluators)

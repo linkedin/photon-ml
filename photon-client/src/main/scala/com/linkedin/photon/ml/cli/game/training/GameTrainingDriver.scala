@@ -150,6 +150,10 @@ object GameTrainingDriver extends GameDriver {
     "compute variance",
     "Whether to compute the coefficient variances.")
 
+  val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "use warm start",
+    "Whether to re-use trained GAME models as starting points.")
+
   //
   // Initialize object
   //
@@ -243,6 +247,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
     setDefault(hyperParameterTuningRange, DoubleRange(1e-4, 1e4))
     setDefault(computeVariance, false)
+    setDefault(useWarmStart, true)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
@@ -319,6 +324,7 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setComputeVariance(getOrDefault(computeVariance))
+        .setWarmStart(getOrDefault(useWarmStart))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       normalizationContexts.foreach(estimator.setCoordinateNormalizationContexts)

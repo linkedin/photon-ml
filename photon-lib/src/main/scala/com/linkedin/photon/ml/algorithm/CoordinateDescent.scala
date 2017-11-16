@@ -42,8 +42,6 @@ class CoordinateDescent(
 
   import CoordinateDescent._
 
-  // TODO: Do we really need a separate run and optimize?
-
   /**
    * Run coordinate descent.
    *
@@ -78,7 +76,7 @@ class CoordinateDescent(
       .toMap
 
     val initialGameModel = new GameModel(initializedModelContainer)
-    optimize(descentIterations, initialGameModel)
+    run(descentIterations, initialGameModel)
   }
 
   /**
@@ -91,7 +89,7 @@ class CoordinateDescent(
    * @param gameModel The initial GAME model
    * @return The best GAME model (see above for exact meaning of "best")
    */
-  def optimize(descentIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
+  def run(descentIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
 
     //
     // Input verification

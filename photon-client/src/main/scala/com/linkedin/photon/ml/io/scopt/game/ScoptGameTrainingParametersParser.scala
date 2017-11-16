@@ -141,7 +141,11 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
       // Compute Variance
       ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.computeVariance))
+        GameTrainingDriver.computeVariance),
+
+      // Use Warm Start
+      ScoptParameter[Boolean, Boolean](
+        GameTrainingDriver.useWarmStart))
 
   /**
    * Parse command line arguments for GAME training into a [[ParamMap]].
