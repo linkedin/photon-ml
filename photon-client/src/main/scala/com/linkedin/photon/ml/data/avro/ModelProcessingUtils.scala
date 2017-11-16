@@ -22,7 +22,7 @@ import scala.collection.Map
 import scala.io.Source
 import scala.util.Try
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.{DenseVector, SparseVector}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
@@ -30,7 +30,7 @@ import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro, LatentFactorAvro}
+import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.estimators.GameEstimator
@@ -457,75 +457,6 @@ object ModelProcessingUtils {
   }
 
   /**
-   * Save the matrix factorization model of type [[MatrixFactorizationModel]] to HDFS as Avro files.
-   *
-   * @param matrixFactorizationModel The given matrix factorization model
-   * @param outputDir The HDFS output directory for the matrix factorization model
-   * @param numOutputFiles Number of output files to generate for row/column latent factors of the matrix
-   *                       factorization model
-   * @param sc The Spark context
-   */
-  def saveMatrixFactorizationModelToHDFS(
-      matrixFactorizationModel: MatrixFactorizationModel,
-      outputDir: String,
-      numOutputFiles: Int,
-      sc: SparkContext): Unit = {
-
-    val rowLatentFactors = matrixFactorizationModel.rowLatentFactors
-    val rowEffectType = matrixFactorizationModel.rowEffectType
-    val rowLatentFactorsOutputDir = new Path(outputDir, rowEffectType).toString
-    val rowLatentFactorsAvro = rowLatentFactors.coalesce(numOutputFiles).map { case (rowId, latentFactor) =>
-      AvroUtils.convertLatentFactorToLatentFactorAvro(rowId, latentFactor)
-    }
-    AvroUtils.saveAsAvro(rowLatentFactorsAvro, rowLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
-
-    val colLatentFactors = matrixFactorizationModel.colLatentFactors
-    val colEffectType = matrixFactorizationModel.colEffectType
-    val colLatentFactorsOutputDir = new Path(outputDir, colEffectType).toString
-    val colLatentFactorsAvro = colLatentFactors.coalesce(numOutputFiles).map { case (colId, latentFactor) =>
-      AvroUtils.convertLatentFactorToLatentFactorAvro(colId, latentFactor)
-    }
-    AvroUtils.saveAsAvro(colLatentFactorsAvro, colLatentFactorsOutputDir, LatentFactorAvro.getClassSchema.toString)
-  }
-
-  private def loadLatentFactorsFromHDFS(inputDir: String, sc: SparkContext): RDD[(String, Vector[Double])] = {
-    val minNumPartitions = sc.defaultParallelism
-    val modelAvros = AvroUtils.readAvroFilesInDir[LatentFactorAvro](sc, inputDir, minNumPartitions)
-    modelAvros.map(AvroUtils.convertLatentFactorAvroToLatentFactor)
-  }
-
-  /**
-   * Load the matrix factorization model of type [[MatrixFactorizationModel]] from the Avro files on HDFS.
-   *
-   * @param inputDir The input directory of the Avro files on HDFS
-   * @param rowEffectType What each row of the matrix corresponds to, e.g., memberId or itemId
-   * @param colEffectType What each column of the matrix corresponds to, e.g., memberId or itemId
-   * @param sc The Spark context
-   * @return The loaded matrix factorization model of type [[MatrixFactorizationModel]]
-   */
-  def loadMatrixFactorizationModelFromHDFS(
-      inputDir: String,
-      rowEffectType: String,
-      colEffectType: String,
-      sc: SparkContext): MatrixFactorizationModel = {
-
-    val configuration = sc.hadoopConfiguration
-    val inputDirAsPath = new Path(inputDir)
-    val fs = inputDirAsPath.getFileSystem(configuration)
-    assert(fs.exists(inputDirAsPath),
-      s"Specified input directory $inputDir for matrix factorization model is not found")
-    val rowLatentFactorsPath = new Path(inputDir, rowEffectType)
-    assert(fs.exists(rowLatentFactorsPath),
-      s"Specified input directory $rowLatentFactorsPath for row latent factors is not found")
-    val rowLatentFactors = loadLatentFactorsFromHDFS(rowLatentFactorsPath.toString, sc)
-    val colLatentFactorsPath = new Path(inputDir, colEffectType)
-    assert(fs.exists(colLatentFactorsPath),
-      s"Specified input directory $colLatentFactorsPath for column latent factors is not found")
-    val colLatentFactors = loadLatentFactorsFromHDFS(colLatentFactorsPath.toString, sc)
-    new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
-  }
-
-  /**
    * Convert a [[GameEstimator.GameOptimizationConfiguration]] to JSON representation.
    *
    * @param gameOptConfig The [[GameEstimator.GameOptimizationConfiguration]] to convert
@@ -572,14 +503,6 @@ object ModelProcessingUtils {
            |  "regularizationWeight": ${reOptConfig.regularizationWeight}
            |}""".stripMargin
 
-      case freOptConfig: FactoredRandomEffectOptimizationConfiguration =>
-        s"""
-           |{
-           |  "random effect configuration": ${optimizationConfigToJson(freOptConfig.reOptConfig)}
-           |  "latent factor configuration": ${optimizationConfigToJson(freOptConfig.lfOptConfig)}
-           |  "matrix factorization configuration": ${mfConfigToJson(freOptConfig.mfOptConfig)}
-           |}""".stripMargin
-
       case _ =>
         throw new IllegalArgumentException(
           s"Unknown coordinate optimization configuration encountered: ${optimizationConfig.getClass}")
@@ -610,19 +533,6 @@ object ModelProcessingUtils {
        |  "regularizationType": "${regularizationContext.regularizationType}",
        |  "elasticNetParam": ${regularizationContext.elasticNetParam.getOrElse("null")}
        |}""".stripMargin
-
-  /**
-   * Convert a [[MFOptimizationConfiguration]] to JSON representation.
-   *
-   * @param mfOptConfig The [[MFOptimizationConfiguration]] to convert
-   * @return The converted JSON representation
-   */
-  private def mfConfigToJson(mfOptConfig: MFOptimizationConfiguration): String =
-    s"""{
-       |  "maxNumberIterations": ${mfOptConfig.maxNumberIterations},
-       |  "numFactors": ${mfOptConfig.numFactors}
-       |}""".stripMargin
-
 
   /**
    * Save model metadata to a JSON file.

@@ -616,30 +616,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               .setName(s"Random effect optimization problem of coordinate $coordinateId")
               .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
 
-        case (freOptConfig: FactoredRandomEffectOptimizationConfiguration, reDataSet: RandomEffectDataSet) =>
-          val FactoredRandomEffectOptimizationConfiguration(
-            randomEffectOptimizationConfiguration,
-            latentFactorOptimizationConfiguration,
-            mfOptimizationConfiguration) = freOptConfig
-          val (randomObjectiveFunction, latentObjectiveFunction) =
-            selectRandomLatentObjectiveFunction(randomEffectOptimizationConfiguration,
-              latentFactorOptimizationConfiguration)
-          new FactoredRandomEffectCoordinate(
-            reDataSet,
-            FactoredRandomEffectOptimizationProblem(
-                reDataSet,
-                randomEffectOptimizationConfiguration,
-                latentFactorOptimizationConfiguration,
-                mfOptimizationConfiguration,
-                randomObjectiveFunction,
-                latentObjectiveFunction,
-                glmConstructor,
-                normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),
-                TRACK_STATE,
-                variance)
-              .setName(s"Factored random effect optimization problem of coordinate $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
-
         case (optimizationConfig, dataSet) =>
           throw new UnsupportedOperationException(
             s"Unsupported (configuration, data set) pair: (${optimizationConfig.getClass}, ${dataSet.getClass})")

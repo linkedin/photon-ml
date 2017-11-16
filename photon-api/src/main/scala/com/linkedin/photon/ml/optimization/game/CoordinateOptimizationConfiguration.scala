@@ -68,16 +68,3 @@ case class RandomEffectOptimizationConfiguration(
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
     override val regularizationWeight: Double = 0D)
   extends GLMOptimizationConfiguration(optimizerConfig, regularizationContext, regularizationWeight)
-
-/**
- * Configuration for a factored random effect GLM coordinate
- *
- * @param reOptConfig the random effect optimization configuration
- * @param lfOptConfig the latent factor optimization configuration
- * @param mfOptConfig the matrix factorization optimization configuration
- */
-case class FactoredRandomEffectOptimizationConfiguration(
-    reOptConfig: RandomEffectOptimizationConfiguration,
-    lfOptConfig: RandomEffectOptimizationConfiguration,
-    mfOptConfig: MFOptimizationConfiguration)
-  extends CoordinateOptimizationConfiguration

@@ -21,7 +21,7 @@ import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.estimators.GameEstimator.{GameOptimizationConfiguration, GameResult}
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
-import com.linkedin.photon.ml.optimization.game.{FactoredRandomEffectOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 
 /**
  * Evaluation function implementation for GAME.
@@ -40,12 +40,7 @@ class GameEstimatorEvaluationFunction(
   private val baseConfigSeq = baseConfig.toSeq.sortBy(_._1)
 
   // Number of parameters in the base configuration
-  val numParams: Int = baseConfigSeq.foldLeft(0) { case (sum, optConfig) =>
-    optConfig._2 match {
-      case _: FactoredRandomEffectOptimizationConfiguration => sum + 2
-      case _ => sum + 1
-    }
-  }
+  val numParams: Int = baseConfigSeq.length
 
   /**
    * Performs the evaluation.
@@ -110,16 +105,11 @@ class GameEstimatorEvaluationFunction(
     val parameterArray = configuration
       .toSeq
       .sortBy(_._1)
-      .flatMap { case (_, optConfig) =>
+      .map { case (_, optConfig) =>
         optConfig match {
-          case fixed: FixedEffectOptimizationConfiguration => Seq(fixed.regularizationWeight)
+          case fixed: FixedEffectOptimizationConfiguration => fixed.regularizationWeight
 
-          case random: RandomEffectOptimizationConfiguration => Seq(random.regularizationWeight)
-
-          case factored: FactoredRandomEffectOptimizationConfiguration =>
-            Seq(
-              factored.reOptConfig.regularizationWeight,
-              factored.lfOptConfig.regularizationWeight)
+          case random: RandomEffectOptimizationConfiguration => random.regularizationWeight
 
           case other =>
             throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
@@ -151,11 +141,6 @@ class GameEstimatorEvaluationFunction(
           case fixed: FixedEffectOptimizationConfiguration => fixed.copy(regularizationWeight = paramValues.dequeue())
 
           case random: RandomEffectOptimizationConfiguration => random.copy(regularizationWeight = paramValues.dequeue())
-
-          case factored: FactoredRandomEffectOptimizationConfiguration =>
-            factored.copy(
-              factored.reOptConfig.copy(regularizationWeight = paramValues.dequeue()),
-              factored.lfOptConfig.copy(regularizationWeight = paramValues.dequeue()))
 
           case other =>
             throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
