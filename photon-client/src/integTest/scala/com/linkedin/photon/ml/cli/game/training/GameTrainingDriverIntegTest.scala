@@ -91,8 +91,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
     assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
 
-    assertTrue(modelContainsIntercept(allFixedEffectModelPath))
-    assertTrue(modelContainsIntercept(bestFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
   }
 
   /**
@@ -125,7 +125,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
     assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
-    assertTrue(modelContainsIntercept(allFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
   }
 
   /**
@@ -161,8 +161,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
     assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
 
-    assertFalse(modelContainsIntercept(allFixedEffectModelPath))
-    assertFalse(modelContainsIntercept(bestFixedEffectModelPath))
+    assertFalse(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
+    assertFalse(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
   }
 
   /**
@@ -191,8 +191,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 1)
     assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 1)
 
-    assertTrue(modelContainsIntercept(allFixedEffectModelPath))
-    assertTrue(modelContainsIntercept(bestFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
   }
 
   /**
@@ -213,7 +213,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     modelPaths.foreach { path =>
       assertTrue(fs.exists(path))
       assertModelSane(path, expectedNumCoefficients = 21)
-      assertTrue(modelContainsIntercept(path))
+      assertTrue(AvroUtils.modelContainsIntercept(sc, path))
     }
 
     assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
@@ -243,7 +243,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     modelPaths.foreach { path =>
       assertTrue(fs.exists(path))
       assertModelSane(path, expectedNumCoefficients = 20)
-      assertFalse(modelContainsIntercept(path))
+      assertFalse(AvroUtils.modelContainsIntercept(sc, path))
     }
 
     assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
@@ -269,19 +269,19 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     assertTrue(fs.exists(globalModelPath))
     assertModelSane(globalModelPath, expectedNumCoefficients = 15019)
-    assertTrue(modelContainsIntercept(globalModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, globalModelPath))
 
     assertTrue(fs.exists(userModelPath))
     assertModelSane(userModelPath, expectedNumCoefficients = 29, modelId = Some("1436929"))
-    assertTrue(modelContainsIntercept(userModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, userModelPath))
 
     assertTrue(fs.exists(songModelPath))
     assertModelSane(songModelPath, expectedNumCoefficients = 21)
-    assertTrue(modelContainsIntercept(songModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, songModelPath))
 
     assertTrue(fs.exists(artistModelPath))
     assertModelSane(artistModelPath, expectedNumCoefficients = 21)
-    assertTrue(modelContainsIntercept(artistModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, artistModelPath))
 
     assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
   }
@@ -361,21 +361,6 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     assertEquals(model.getMeans.count(x => x.getValue != 0), expectedNumCoefficients)
   }
-
-  /**
-   * Check whether the model contains an intercept term or not.
-   *
-   * @param path The path to read the model from
-   * @return Whether the model contains an intercept or not
-   */
-  def modelContainsIntercept(path: Path): Boolean =
-    AvroUtils
-      .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
-      .head
-      .getMeans
-      .map(nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString))
-      .toSet
-      .contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
 
   /**
    * Evaluate the model by the specified evaluators with the validation data set.
