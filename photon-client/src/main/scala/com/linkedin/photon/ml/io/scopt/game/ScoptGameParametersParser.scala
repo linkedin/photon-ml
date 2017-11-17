@@ -71,6 +71,11 @@ trait ScoptGameParametersParser extends ScoptParser {
         driver.offHeapIndexMapPartitions,
         usageText = "<value>"),
 
+      // Feature Bags Directory
+      ScoptParameter[Path, Path](
+        driver.featureBagsDirectory,
+        usageText = "<path>"),
+
       // Input Column Names
       ScoptParameter[Map[String, String], InputColumnsNames](
         driver.inputColumnNames,
