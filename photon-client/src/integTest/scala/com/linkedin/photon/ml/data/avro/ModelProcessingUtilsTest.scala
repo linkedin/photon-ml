@@ -285,59 +285,6 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   /**
-   * Test reading/writing [[MatrixFactorizationModel]].
-   *
-   * @param numLatentFactors Number of latent factors
-   * @param numRows Number of rows
-   * @param numCols Number of columns
-   */
-  @Test(dataProvider = "matrixFactorizationConfigProvider")
-  def testLoadAndSaveMatrixFactorizationModels(numLatentFactors: Int, numRows: Int, numCols: Int): Unit =
-    sparkTest("testLoadAndSaveMatrixFactorizationModels") {
-
-      // Generate a latent factor with random numbers
-      def generateRandomLatentFactor(numLatentFactors: Int, random: Random): Vector[Double] =
-        Vector.fill(numLatentFactors)(random.nextDouble())
-
-      // Generate a matrix factorization model with the given specs
-      def generateMatrixFactorizationModel(
-          numRows: Int,
-          numCols: Int,
-          rowEffectType: String,
-          colEffectType: String,
-          rowFactorGenerator: => Vector[Double],
-          colFactorGenerator: => Vector[Double],
-          sc: SparkContext): MatrixFactorizationModel = {
-
-        val rowLatentFactors =
-          sc.parallelize(Seq.tabulate(numRows)(i => (i.toString, rowFactorGenerator)))
-        val colLatentFactors =
-          sc.parallelize(Seq.tabulate(numCols)(j => (j.toString, colFactorGenerator)))
-        new MatrixFactorizationModel(rowEffectType, colEffectType, rowLatentFactors, colLatentFactors)
-      }
-
-      // Meta data
-      val rowEffectType = "rowEffectType"
-      val colEffectType = "colEffectType"
-
-      // Generate the random matrix
-      val random = new Random(MathConst.RANDOM_SEED)
-      def randomRowLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-      def randomColLatentFactorGenerator = generateRandomLatentFactor(numLatentFactors, random)
-      val randomMFModel = generateMatrixFactorizationModel(numRows, numCols, rowEffectType, colEffectType,
-        randomRowLatentFactorGenerator, randomColLatentFactorGenerator, sc)
-
-      val tmpDir = getTmpDir
-      val numOutputFiles = 1
-      // Save the model to HDFS
-      ModelProcessingUtils.saveMatrixFactorizationModelToHDFS(randomMFModel, tmpDir, numOutputFiles, sc)
-      // Load the model from HDFS
-      val loadedRandomMFModel =
-        ModelProcessingUtils.loadMatrixFactorizationModelFromHDFS(tmpDir, rowEffectType, colEffectType, sc)
-      assertEquals(loadedRandomMFModel, randomMFModel)
-    }
-
-  /**
    * Test that we can save and load model metadata.
    *
    * TODO: this is incomplete - need to check that more parameters are loaded back correctly

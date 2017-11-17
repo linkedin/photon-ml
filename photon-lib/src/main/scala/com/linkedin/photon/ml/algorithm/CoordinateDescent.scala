@@ -300,12 +300,8 @@ class CoordinateDescent(
                 // Unpersist the previous best models
                 bestModel.foreach { gameModel =>
                   gameModel.toMap.foreach { case (_, model) =>
-                    // We need to split out the following 2 match expressions: [[FactoredRandomEffectModel]] matches both
                     model match {
                       case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
-                      case _ =>
-                    }
-                    model match {
                       case rddLike: RDDLike => rddLike.unpersistRDD()
                       case _ =>
                     }
@@ -336,12 +332,8 @@ class CoordinateDescent(
         // Unpersist the previous GAME model
         if (unpersistOldGameModel) {
           oldGameModel.toMap.foreach { case (_, model) =>
-            // We need to split out the following 2 match expressions: [[FactoredRandomEffectModel]] matches both
             model match {
               case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
-              case _ =>
-            }
-            model match {
               case rddLike: RDDLike => rddLike.unpersistRDD()
               case _ =>
             }

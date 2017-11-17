@@ -35,12 +35,11 @@ class GameEstimatorEvaluationFunctionTest {
 
   private val mockOptimizerConfig = mock(classOf[OptimizerConfig])
   private val mockRegContext = mock(classOf[RegularizationContext])
-  private val mockMFOptConfig = mock(classOf[MFOptimizationConfiguration])
   private val mockEstimator = mock(classOf[GameEstimator])
   private val mockData = mock(classOf[DataFrame])
 
   private val random = new Random(1)
-  private val regWeights = Array.fill[Double](8) { random.nextDouble }
+  private val regWeights = Array.fill[Double](4) { random.nextDouble }
   private val tolerance = MathConst.EPSILON
 
   /**
@@ -51,28 +50,18 @@ class GameEstimatorEvaluationFunctionTest {
 
     val configuration: GameOptimizationConfiguration = Map(
       ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
-      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
-      ("c", FactoredRandomEffectOptimizationConfiguration(
-        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
-        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
-        mockMFOptConfig)))
+      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
 
     val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, configuration, mockData, mockData)
-    val hypers = DenseVector(regWeights(4), regWeights(5), regWeights(6), regWeights(7))
+    val hypers = DenseVector(regWeights(2), regWeights(3))
     val newConfiguration = evaluationFunction.vectorToConfiguration(hypers)
 
     assertEquals(
       newConfiguration("a").asInstanceOf[FixedEffectOptimizationConfiguration].regularizationWeight,
-      regWeights(4))
+      regWeights(2))
     assertEquals(
       newConfiguration("b").asInstanceOf[RandomEffectOptimizationConfiguration].regularizationWeight,
-      regWeights(5))
-    assertEquals(
-      newConfiguration("c").asInstanceOf[FactoredRandomEffectOptimizationConfiguration].reOptConfig.regularizationWeight,
-      regWeights(6))
-    assertEquals(
-      newConfiguration("c").asInstanceOf[FactoredRandomEffectOptimizationConfiguration].lfOptConfig.regularizationWeight,
-      regWeights(7))
+      regWeights(3))
   }
 
   @DataProvider
@@ -80,16 +69,11 @@ class GameEstimatorEvaluationFunctionTest {
 
     val configuration: GameOptimizationConfiguration = Map(
       ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
-      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
-      ("c", FactoredRandomEffectOptimizationConfiguration(
-        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
-        RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
-        mockMFOptConfig)))
+      ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
 
     Array(
       Array(configuration, DenseVector(regWeights(0))),
-      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2))),
-      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2), regWeights(3), regWeights(4))))
+      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2))))
   }
 
   /**
@@ -116,22 +100,10 @@ class GameEstimatorEvaluationFunctionTest {
         Map(("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1)))),
         DenseVector(regWeights(1))),
       Array(
-        Map((
-          "c",
-          FactoredRandomEffectOptimizationConfiguration(
-            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
-            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
-            mockMFOptConfig))),
-        DenseVector(regWeights(2), regWeights(3))),
-      Array(
         Map(
           ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
-          ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))),
-          ("c", FactoredRandomEffectOptimizationConfiguration(
-            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(2)),
-            RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(3)),
-            mockMFOptConfig))),
-        DenseVector(regWeights(0), regWeights(1), regWeights(2), regWeights(3))))
+          ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1)))),
+        DenseVector(regWeights(0), regWeights(1))))
 
   /**
    * Test that a [[GameOptimizationConfiguration]] can be correctly converted to a hyperparameter vector.

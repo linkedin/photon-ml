@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.function.glm.{HessianVectorAggregator, ValueAndGra
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, MFOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.projector.{IndexMapProjector, ProjectionMatrix, Projector}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
@@ -58,7 +58,6 @@ object SparkContextConfiguration {
     classOf[LocalDataSet],
     classOf[LogisticRegressionModel],
     classOf[Matrix[Double]],
-    classOf[MFOptimizationConfiguration],
     classOf[ModelTracker],
     classOf[NormalizationContext],
     classOf[ObjectiveFunction],
