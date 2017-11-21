@@ -50,7 +50,6 @@ protected[ml] object OptimizerFactory {
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
           isTrackingState = isTrackingState)
 
       case (OptimizerType.LBFGS, RegularizationType.L2 | RegularizationType.NONE) =>
@@ -58,7 +57,6 @@ protected[ml] object OptimizerFactory {
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
           isTrackingState = isTrackingState)
 
       case (OptimizerType.TRON, RegularizationType.L2 | RegularizationType.NONE) =>
@@ -66,7 +64,6 @@ protected[ml] object OptimizerFactory {
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
           isTrackingState = isTrackingState)
 
       case (OptimizerType.TRON, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>

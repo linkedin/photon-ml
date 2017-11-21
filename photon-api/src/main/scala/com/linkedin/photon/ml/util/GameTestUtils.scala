@@ -92,7 +92,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       optimizer: OptimizerType = OptimizerType.LBFGS,
       maxIterations: Int = 80,
       tolerance: Double = 1e-6): OptimizerConfig =
-    OptimizerConfig(optimizer, maxIterations, tolerance, constraintMap = None)
+    OptimizerConfig(optimizer, maxIterations, tolerance)
 
   /**
    * Generates Photon ML labeled points.

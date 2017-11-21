@@ -46,10 +46,4 @@ class AvroInputDataFormat(val suite: GLMSuite) extends InputDataFormat {
    * @return IndexMapLoader
    */
   override def indexMapLoader(): IndexMapLoader = suite.indexMapLoader()
-
-  /**
-   *
-   * @return
-   */
-  override def constraintFeatureMap(): Option[Map[Int, (Double, Double)]] = suite.constraintFeatureMap
 }

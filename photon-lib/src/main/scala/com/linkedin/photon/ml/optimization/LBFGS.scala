@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import breeze.optimize.{DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS}
+import breeze.optimize.{FirstOrderMinimizer, DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS}
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.DiffFunction
@@ -33,7 +33,6 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  *                       time.
  *                       Recommended:  3 < numCorrections < 10
  *                       Restriction:  numCorrections > 0
- * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
  */
 class LBFGS(
@@ -41,13 +40,11 @@ class LBFGS(
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
-    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
     isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends Optimizer[DiffFunction](
     tolerance,
     maxNumIterations,
     normalizationContext,
-    constraintMap,
     isTrackingState) {
 
   /**
@@ -67,9 +64,8 @@ class LBFGS(
     def next(state: OptimizerState): OptimizerState = {
       if (breezeStates.hasNext) {
         val breezeState = breezeStates.next()
-        // Project coefficients into constrained space, if any, before updating the state
         OptimizerState(
-          OptimizationUtils.projectCoefficientsToSubspace(breezeState.x, constraintMap),
+          breezeState.x,
           breezeState.adjustedValue,
           breezeState.adjustedGradient,
           state.iter + 1)
@@ -80,8 +76,9 @@ class LBFGS(
       }
     }
   }
-
-  protected val breezeOptimizer = new BreezeLBFGS[Vector[Double]](maxNumIterations, numCorrections, tolerance)
+  // Cast into FirstOrderMinimizer as for child class LBFGSB
+  protected val breezeOptimizer = new BreezeLBFGS[Vector[Double]](maxNumIterations, numCorrections, tolerance).
+    asInstanceOf[FirstOrderMinimizer[Vector[Double], BreezeDiffFunction[Vector[Double]]]]
   @transient
   protected var breezeOptimization: BreezeOptimization = _
 

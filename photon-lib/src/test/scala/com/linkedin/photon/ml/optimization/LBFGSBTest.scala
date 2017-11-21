@@ -14,43 +14,33 @@
  */
 package com.linkedin.photon.ml.optimization
 
+import breeze.linalg.DenseVector
 import org.apache.spark.broadcast.Broadcast
-import org.mockito.Mockito._
-import org.testng.Assert
+import org.mockito.Mockito.{doReturn, mock}
+import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
 
-/**
- * Test that OWLQN can shrink the coefficients to zero.
- *
- * The objective function, prior to regularization, had known minimum when all coefficients are 4 (see TestObjective).
- * We are only interested in the behavior around the minimum, where:
- *
- *    x_i > 0 for all i
- *
- * Thus the function to be optimized becomes:
- *
- *    (x_1 - 4)^2 + (x_2 - 4)^2 + ... + L1Weight * Abs(Sum(x_i))
- *
- * which has obvious analytic solution. This test is based on the above function and verifies the shrinkage of x.
- */
-class OWLQNTest {
+class LBFGSBTest {
 
   @DataProvider(name = "dataProvider")
   def dataProvider(): Array[Array[Any]] = {
     Array(
-      Array(1.0, Array(3.5, 3.5), 7.5),
-      Array(2.0, Array(3.0, 3.0), 14.0),
-      Array(8.0, Array(0.0, 0.0), 32.0)
+      //Cannot use Double.PositiveInfinity or Double.NegativeInfinity because of mean used later
+      Array(Array(-10.0), Array(10.0), Array(4.0), 0.0),
+      Array(Array(-5.0), Array(5.0), Array(4.0), 0.0),
+      Array(Array(-10.0), Array(3.0), Array(3.0), 1.0),
+      Array(Array(5.0), Array(10.0), Array(5.0), 1.0)
     )
   }
 
   @Test(dataProvider = "dataProvider")
-  def testOWLQN(
-      l1Weight: Double,
+  def testLBFGSB(
+      lowerBounds: Array[Double],
+      upperBounds: Array[Double],
       expectedCoef: Array[Double],
       expectedValue: Double): Unit = {
 
@@ -58,20 +48,21 @@ class OWLQNTest {
     val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
     doReturn(normalizationContext).when(normalizationContextBroadcast).value
 
-
-    val owlqn = new OWLQN(
-      l1RegWeight = l1Weight,
-      normalizationContext = normalizationContextBroadcast)
+    val lbfgsb = new LBFGSB(DenseVector(lowerBounds), DenseVector(upperBounds), normalizationContext = normalizationContextBroadcast)
     val objective = new TestObjective
     val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(expectedCoef.length), 0.0, 0.0))
-    val initialCoefficients = CommonTestUtils.generateDenseVector(expectedCoef.length)
-    val (actualCoef, actualValue) = owlqn.optimize(objective, initialCoefficients)(trainingData)
+    // update each initial coefficient in the range [lowerBounds, upperBounds]
+    val initialCoefficients = DenseVector.zeros[Double](expectedCoef.length)
+    for(i <- 0 until initialCoefficients.length){
+      initialCoefficients(i) = CommonTestUtils.generateDenseVector(1, (lowerBounds(i) + upperBounds(i))/2)(0)
+    }
+    val (actualCoef, actualValue) = lbfgsb.optimize(objective, initialCoefficients)(trainingData)
 
-    Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, OWLQNTest.EPSILON)
-    Assert.assertEquals(actualValue, expectedValue, OWLQNTest.EPSILON)
+    Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, LBFGSBTest.EPSILON)
+    assertEquals(actualValue, expectedValue, LBFGSBTest.EPSILON)
   }
 }
 
-object OWLQNTest {
+object LBFGSBTest {
   private val EPSILON = 1.0E-6
 }

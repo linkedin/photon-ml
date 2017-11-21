@@ -348,7 +348,6 @@ protected[ml] class Driver(
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-      constraintMap = inputDataFormat.constraintFeatureMap(),
       treeAggregateDepth = params.treeAggregateDepth,
       useWarmStart = params.useWarmStart)
 
@@ -491,7 +490,6 @@ protected[ml] class Driver(
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
       enableOptimizationStateTracker = params.enableOptimizationStateTracker,
-      constraintMap = inputDataFormat.constraintFeatureMap(),
       warmStartModels = y,
       treeAggregateDepth = params.treeAggregateDepth,
       params.useWarmStart)._1

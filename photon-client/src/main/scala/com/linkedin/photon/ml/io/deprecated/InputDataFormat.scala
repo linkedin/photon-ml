@@ -46,10 +46,4 @@ trait InputDataFormat {
    * @return IndexMapLoader
    */
   def indexMapLoader(): IndexMapLoader
-
-  /**
-   *
-   * @return
-   */
-  def constraintFeatureMap(): Option[Map[Int, (Double, Double)]] = None
 }
