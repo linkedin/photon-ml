@@ -148,7 +148,7 @@ object ScoptParserHelpers extends Logging {
 
     val shardName = input(FEATURE_SHARD_CONFIG_NAME)
     val shardConfig = FeatureShardConfiguration(
-      input(FEATURE_SHARD_CONFIG_FEATURE_BAGS).split(SECONDARY_LIST_DELIMITER).toSet,
+      input.get(FEATURE_SHARD_CONFIG_FEATURE_BAGS).map(_.split(SECONDARY_LIST_DELIMITER).toSet).getOrElse(Set()),
       input.get(FEATURE_SHARD_CONFIG_INTERCEPT).map(_.toBoolean).getOrElse(true))
 
     Map((shardName, shardConfig))
