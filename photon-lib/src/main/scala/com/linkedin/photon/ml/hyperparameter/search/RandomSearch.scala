@@ -46,27 +46,21 @@ class RandomSearch[T](
   }
 
   /**
-   * Searches and returns n points in the space
+   * Searches and returns n points in the space with the given prior observations
    *
    * @param n the number of points to find
-   * @param observations observations made prior to searching
+   * @param observations observations made prior to searching, as (paramVector, evaluationValue) tuples
    * @return the found points
    */
-  def find(n: Int, observations: Seq[T]): Seq[T] = {
+  def findWithPrior(n: Int, observations: Seq[(DenseVector[Double], Double)]): Seq[T] = {
     require(n > 0, "The number of results must be greater than zero.")
 
-    // Vectorize and load the initial observations
-    val convertedObservations = observations.map { observation =>
-      val candidate = evaluationFunction.vectorizeParams(observation)
-      val value = evaluationFunction.getEvaluationValue(observation)
-      (candidate, value)
-    }
-
-    convertedObservations.init.foreach { case (candidate, value) =>
+    // Load the initial observations
+    observations.init.foreach { case (candidate, value) =>
       onObservation(candidate, value)
     }
 
-    val (results, _) = (0 until n).foldLeft((List.empty[T], convertedObservations.last)) {
+    val (results, _) = (0 until n).foldLeft((List.empty[T], observations.last)) {
       case ((models, (lastCandidate, lastObservation)), _) =>
 
       val candidate = next(lastCandidate, lastObservation)
@@ -76,6 +70,26 @@ class RandomSearch[T](
     }
 
     results
+  }
+
+  /**
+   * Searches and returns n points in the space
+   *
+   * @param n the number of points to find
+   * @param observations observations made prior to searching
+   * @return the found points
+   */
+  def find(n: Int, observations: Seq[T]): Seq[T] = {
+    require(n > 0, "The number of results must be greater than zero.")
+
+    // Vectorize the initial observations
+    val convertedObservations = observations.map { observation =>
+      val candidate = evaluationFunction.vectorizeParams(observation)
+      val value = evaluationFunction.getEvaluationValue(observation)
+      (candidate, value)
+    }
+
+    findWithPrior(n, convertedObservations)
   }
 
   /**
