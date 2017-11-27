@@ -14,13 +14,10 @@
  */
 package com.linkedin.photon.ml.io
 
-/**
- * Definition of a feature shard configuration.
- *
- * @param featureBags The feature bags this shard is composed of
- * @param hasIntercept Whether the shard contains a additional feature for the intercept
- */
-case class FeatureShardConfiguration(featureBags: Set[String], hasIntercept: Boolean) {
+import org.testng.annotations.Test
 
-  require(featureBags.nonEmpty || hasIntercept, "Feature shard must have either feature bags or an intercept.")
+class FeatureShardConfigurationTest {
+
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testNoBagsOrIntercept(): Unit = FeatureShardConfiguration(featureBags = Set(), hasIntercept = false)
 }

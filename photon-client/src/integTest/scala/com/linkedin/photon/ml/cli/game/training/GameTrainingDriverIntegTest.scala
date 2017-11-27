@@ -166,10 +166,41 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
-   * Check that it's possible to train an intercept-only model
+   * Check that it's possible to train an intercept-only model.
    */
   @Test
   def testFixedEffectInterceptOnly(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
+
+    val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnly")
+    val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
+      .mapValues(_.copy(featureBags = Set()))
+      .map(identity)
+    val params = fixedEffectSeriousRunArgs
+      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+      .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs)
+    params.remove(GameTrainingDriver.featureBagsDirectory)
+
+    runDriver(params)
+
+    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(allFixedEffectModelPath))
+    assertTrue(fs.exists(bestFixedEffectModelPath))
+
+    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 1)
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 1)
+
+    assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
+    assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
+  }
+
+  /**
+   * Check that it's possible to train an intercept-only model with feature whitelists.
+   */
+  @Test
+  def testFixedEffectInterceptOnlyFeatureBagsDir(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
 
     val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnly")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
