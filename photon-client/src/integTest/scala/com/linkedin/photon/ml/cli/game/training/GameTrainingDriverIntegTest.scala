@@ -96,7 +96,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
-   * Test GAME training with a fixed effect model only, and an intercept, and no validation.
+   * Test GAME training with a fixed effect model only, and an intercept, and no validation, and only the best model is
+   * output.
    *
    * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default. This
    *       happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
@@ -111,6 +112,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       .copy
       .put(GameTrainingDriver.rootOutputDirectory, outputDir)
       .put(GameTrainingDriver.overrideOutputDirectory, true)
+      .put(GameTrainingDriver.outputMode, ModelOutputMode.BEST)
     newArgs.remove(GameTrainingDriver.validationDataDirectories)
 
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
@@ -120,12 +122,12 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
-    assertTrue(fs.exists(allFixedEffectModelPath))
-    assertFalse(fs.exists(bestFixedEffectModelPath))
+    assertFalse(fs.exists(allFixedEffectModelPath))
+    assertTrue(fs.exists(bestFixedEffectModelPath))
 
-    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
-    assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
-    assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983)
+    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
   }
 
   /**
