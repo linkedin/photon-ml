@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.optimization
 import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert.assertEquals
-import org.testng.annotations.{DataProvider, Test}
+import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
@@ -35,34 +35,20 @@ import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
  */
 class LBFGSTest {
 
-  @DataProvider(name = "dataProvider")
-  def dataProvider(): Array[Array[Any]] = {
-    Array(
-      // Note that expected value here is the value of the function at the unconstrained optima since the
-      // projection happens after it
-      Array(Some(Map[Int, (Double, Double)]()), Array(4.0)),
-      Array(Some(Map[Int, (Double, Double)](0 -> (3.0, 5.0))), Array(4.0)),
-      Array(Some(Map[Int, (Double, Double)](0 -> (Double.NegativeInfinity, 3.0))), Array(3.0)),
-      Array(Some(Map[Int, (Double, Double)](0 -> (5.0, Double.PositiveInfinity))), Array(5.0))
-    )
-  }
-
-  @Test(dataProvider = "dataProvider")
-  def testLBFGS(
-      constraintMap: Option[Map[Int, (Double, Double)]],
-      expectedCoef: Array[Double]): Unit = {
+  @Test
+  def testLBFGS(): Unit = {
 
     val normalizationContext = NoNormalization()
     val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
     doReturn(normalizationContext).when(normalizationContextBroadcast).value
 
-    val lbfgs = new LBFGS(constraintMap = constraintMap, normalizationContext = normalizationContextBroadcast)
+    val lbfgs = new LBFGS(normalizationContext = normalizationContextBroadcast)
     val objective = new TestObjective
-    val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(expectedCoef.length), 0.0, 0.0))
-    val initialCoefficients = CommonTestUtils.generateDenseVector(expectedCoef.length)
+    val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(1), 0.0, 0.0))
+    val initialCoefficients = CommonTestUtils.generateDenseVector(1)
     val (actualCoef, actualValue) = lbfgs.optimize(objective, initialCoefficients)(trainingData)
 
-    Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, LBFGSTest.EPSILON)
+    Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, Array(TestObjective.CENTROID), LBFGSTest.EPSILON)
     assertEquals(actualValue, LBFGSTest.EXPECTED_LOSS, LBFGSTest.EPSILON)
   }
 }

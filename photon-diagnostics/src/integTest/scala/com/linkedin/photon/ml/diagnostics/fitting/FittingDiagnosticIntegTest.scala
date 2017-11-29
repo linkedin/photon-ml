@@ -53,7 +53,6 @@ class FittingDiagnosticIntegTest extends SparkTestUtils {
         NUM_ITERATIONS,
         TOLERANCE,
         enableOptimizationStateTracker = false,
-        None,
         warmStart,
         1,
         useWarmStart = false)._1

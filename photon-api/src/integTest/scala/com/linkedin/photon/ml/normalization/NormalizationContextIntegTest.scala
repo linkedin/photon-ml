@@ -103,7 +103,6 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
       NUM_ITER,
       CONVERGENCE_TOLERANCE,
       enableOptimizationStateTracker = true,
-      constraintMap = None,
       treeAggregateDepth = 1,
       useWarmStart = false)
 

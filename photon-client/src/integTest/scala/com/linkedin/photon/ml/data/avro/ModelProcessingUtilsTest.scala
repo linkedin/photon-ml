@@ -420,16 +420,16 @@ object ModelProcessingUtilsTest {
   val GAME_OPTIMIZATION_CONFIGURATION: GameEstimator.GameOptimizationConfiguration = Map(
     ("fixed",
       FixedEffectOptimizationConfiguration(
-        OptimizerConfig(OptimizerType.TRON, 10, 1e-1, constraintMap = None),
+        OptimizerConfig(OptimizerType.TRON, 10, 1e-1),
         NoRegularizationContext)),
     ("random1",
       RandomEffectOptimizationConfiguration(
-        OptimizerConfig(OptimizerType.LBFGS, 20, 1e-2, constraintMap = None),
+        OptimizerConfig(OptimizerType.LBFGS, 20, 1e-2),
         L1RegularizationContext,
         regularizationWeight = 1D)),
     ("random2",
       RandomEffectOptimizationConfiguration(
-        OptimizerConfig(OptimizerType.TRON, 30, 1e-3, constraintMap = None),
+        OptimizerConfig(OptimizerType.TRON, 30, 1e-3),
         L2RegularizationContext,
         regularizationWeight = 2D)))
 }

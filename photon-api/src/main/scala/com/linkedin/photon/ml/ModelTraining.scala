@@ -48,7 +48,6 @@ object ModelTraining extends Logging {
    *                  of more iterations
    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
    *                                       per-iteration log information of the running optimizer
-   * @param constraintMap An optional mapping of feature indices to box constraints
    * @param treeAggregateDepth The depth for tree aggregation
    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
    *         regularization weight used to train the model
@@ -63,7 +62,6 @@ object ModelTraining extends Logging {
       maxNumIter: Int,
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
-      constraintMap: Option[Map[Int, (Double, Double)]],
       treeAggregateDepth: Int,
       useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) =
     trainGeneralizedLinearModel(
@@ -76,7 +74,6 @@ object ModelTraining extends Logging {
       maxNumIter,
       tolerance,
       enableOptimizationStateTracker,
-      constraintMap,
       Map.empty,
       treeAggregateDepth,
       useWarmStart)
@@ -97,7 +94,6 @@ object ModelTraining extends Logging {
    *                  of more iterations
    * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
    *                                       per-iteration log information of the running optimizer
-   * @param constraintMap An optional mapping of feature indices to box constraints
    * @param warmStartModels Map of (lambda -> model) to use for warm start training
    * @param treeAggregateDepth The depth for tree aggregation
    * @param useWarmStart Whether to use warm start or not in hyper-parameter tuning
@@ -114,12 +110,11 @@ object ModelTraining extends Logging {
       maxNumIter: Int,
       tolerance: Double,
       enableOptimizationStateTracker: Boolean,
-      constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels: Map[Double, GeneralizedLinearModel],
       treeAggregateDepth: Int,
       useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
 
-    val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
+    val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance)
     val optimizationConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
     // Initialize the broadcast normalization context
     val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
