@@ -553,7 +553,7 @@ object GameTrainingDriver extends GameDriver {
     }
     val bestModel = modelOutputMode match {
       case ModelOutputMode.NONE => None
-      case _ => Timed("Select best model") { selectBestModel(allModels) }
+      case _ => Timed("Select best model") { Some(selectBestModel(allModels)) }
     }
 
     (outputModels, bestModel)
@@ -565,8 +565,7 @@ object GameTrainingDriver extends GameDriver {
    * @param models The models to evaluate (single evaluator, on the validation data set)
    * @return The best model
    */
-  protected[training] def selectBestModel(
-      models: Seq[GameEstimator.GameResult]): Option[GameEstimator.GameResult] = {
+  protected[training] def selectBestModel(models: Seq[GameEstimator.GameResult]): GameEstimator.GameResult = {
 
     val bestResult = models
       .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
@@ -594,11 +593,11 @@ object GameTrainingDriver extends GameDriver {
           logger.debug(s"Model summary:\n${model.toSummaryString}\n")
         }
 
-        Some(model, Some(eval), configs)
+        (model, Some(eval), configs)
 
       case None =>
-        logger.info("Could not select best model; missing evaluation results.")
-        None
+        logger.info("Could not select best model: missing evaluation results. Using most recently trained model.")
+        models.last
     }
   }
 
