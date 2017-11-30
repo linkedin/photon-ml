@@ -177,6 +177,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
       .put(GameScoringDriver.offHeapIndexMapDirectory, indexMapPath)
       .put(GameScoringDriver.offHeapIndexMapPartitions, 1)
       .put(GameScoringDriver.evaluators, Seq(RMSE))
+    params.remove(GameScoringDriver.featureBagsDirectory)
 
     runDriver(params)
 

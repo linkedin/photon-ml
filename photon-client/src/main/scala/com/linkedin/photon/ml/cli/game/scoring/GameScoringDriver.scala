@@ -135,6 +135,8 @@ object GameScoringDriver extends GameDriver {
    */
   protected[scoring] def run(): Unit = {
 
+    validateParams()
+
     // Process the output directory upfront and potentially fail the job early
     IOUtils.processOutputDir(
       getRequiredParam(rootOutputDirectory),

@@ -320,6 +320,36 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME training, loading an off-heap index map.
+   */
+  @Test
+  def testOffHeapIndexMap(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
+
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    val errorThreshold = 2.2
+    val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
+    val indexMapPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath)
+    val params = mixedEffectToyRunArgs
+      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+      .put(GameTrainingDriver.offHeapIndexMapDirectory, indexMapPath)
+      .put(GameTrainingDriver.offHeapIndexMapPartitions, 1)
+    params.remove(GameTrainingDriver.featureBagsDirectory)
+
+    runDriver(params)
+
+    val globalModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(globalModelPath))
+    assertTrue(fs.exists(userModelPath))
+    assertTrue(fs.exists(songModelPath))
+    assertTrue(fs.exists(artistModelPath))
+  }
+
+  /**
    * Test that we can calculate feature shard statistics correctly.
    */
   @Test
@@ -327,14 +357,11 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     val outputDir = new Path(getTmpDir, "output")
     val summarizationDir = new Path(outputDir, "summary")
-    val indexMapPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     runDriver(
       mixedEffectToyRunArgs
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
-        .put(GameTrainingDriver.offHeapIndexMapDirectory, indexMapPath)
-        .put(GameTrainingDriver.offHeapIndexMapPartitions, 1)
         .put(GameTrainingDriver.dataSummaryDirectory, summarizationDir))
 
     mixedEffectFeatureShardConfigs.keys.foreach { featureShardId =>

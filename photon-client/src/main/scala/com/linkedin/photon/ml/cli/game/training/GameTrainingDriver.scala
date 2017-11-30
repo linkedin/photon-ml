@@ -270,6 +270,8 @@ object GameTrainingDriver extends GameDriver {
    */
   protected[training] def run(): Unit = {
 
+    validateParams()
+
     Timed("Clean output directories") {
       cleanOutputDirs()
     }
