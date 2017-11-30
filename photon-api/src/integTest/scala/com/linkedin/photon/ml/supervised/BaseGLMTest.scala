@@ -85,7 +85,7 @@ class BaseGLMTest extends SparkTestUtils {
   @DataProvider
   def getGeneralizedLinearOptimizationProblems: Array[Array[Object]] = {
     val lbfgsConfig = FixedEffectOptimizationConfiguration(
-      OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE),
+      OptimizerConfig(OptimizerType.LBFGS, LBFGS.DEFAULT_MAX_ITER, LBFGS.DEFAULT_TOLERANCE, None),
       L2RegularizationContext)
 //    val tronConfig = GLMOptimizationConfiguration(
 //      OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),

@@ -80,7 +80,8 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       OptimizerConfig(
         optimizerType = OptimizerType.LBFGS,
         maximumIterations = 100,
-        tolerance = 1e-11),
+        tolerance = 1e-11,
+        constraintMap = None),
       L2RegularizationContext,
       regularizationWeight = 0.3)
     val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
@@ -149,7 +150,8 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
         OptimizerConfig(
           optimizerType = OptimizerType.LBFGS,
           maximumIterations = 100,
-          tolerance = 1e-11))
+          tolerance = 1e-11,
+          constraintMap = None))
       val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
       val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values)

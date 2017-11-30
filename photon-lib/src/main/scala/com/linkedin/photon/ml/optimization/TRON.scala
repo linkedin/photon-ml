@@ -74,6 +74,7 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  *                                  improvement failure is acceptable.
  * @param tolerance The tolerance threshold for improvement between iterations as a percentage of the initial loss
  * @param maxNumIterations The cut-off for number of optimization iterations to perform.
+ * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
  */
 class TRON(
@@ -81,11 +82,13 @@ class TRON(
     maxNumImprovementFailures: Int = TRON.DEFAULT_MAX_NUM_FAILURE,
     tolerance: Double = TRON.DEFAULT_TOLERANCE,
     maxNumIterations: Int = TRON.DEFAULT_MAX_ITER,
+    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
     isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends Optimizer[TwiceDiffFunction](
     tolerance,
     maxNumIterations,
     normalizationContext,
+    constraintMap,
     isTrackingState) {
 
   /**

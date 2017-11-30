@@ -23,11 +23,13 @@ import com.linkedin.photon.ml.util.Summarizable
  * @param optimizerType The type of optimizer to use during training
  * @param maximumIterations The upper limit on the number of optimization iterations to perform
  * @param tolerance The relative tolerance limit for optimization
+ * @param constraintMap An optional map of constraints for features, applied after training
  */
 case class OptimizerConfig(
     optimizerType: OptimizerType,
     maximumIterations: Int,
-    tolerance: Double)
+    tolerance: Double,
+    constraintMap: Option[Map[Int, (Double, Double)]] = None)
   extends Summarizable {
 
   require(0 < maximumIterations, s"Less than 1 specified for maximumIterations (specified: $maximumIterations")
