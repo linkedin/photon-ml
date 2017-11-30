@@ -50,6 +50,7 @@ class LBFGSB (
     numCorrections,
     tolerance,
     maxNumIterations,
+    Optimizer.DEFAULT_CONSTRAINT_MAP,
     isTrackingState) {
 
   /**

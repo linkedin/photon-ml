@@ -31,12 +31,14 @@ import com.linkedin.photon.ml.util._
  *                     tolerance.
  * @param maxNumIterations The max number of iterations to perform
  * @param normalizationContext The normalization context
+ * @param constraintMap (Optional) The map of constraints on the feature coefficients
  * @param isTrackingState Whether to track intermediate states during optimization
  */
 abstract class Optimizer[-Function <: ObjectiveFunction](
     relTolerance: Double,
     maxNumIterations: Int,
     normalizationContext: Broadcast[NormalizationContext],
+    constraintMap: Option[Map[Int, (Double, Double)]],
     val isTrackingState: Boolean)
   extends Serializable
   with Logging {
@@ -243,5 +245,6 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
 }
 
 object Optimizer {
+  val DEFAULT_CONSTRAINT_MAP = None
   val DEFAULT_TRACKING_STATE = true
 }

@@ -480,7 +480,8 @@ object GameTrainingDriverIntegTest {
   private val fixedEffectOptimizerConfig = OptimizerConfig(
     OptimizerType.TRON,
     maximumIterations = 10,
-    tolerance = 1e-5)
+    tolerance = 1e-5,
+    constraintMap = None)
   private val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
     fixedEffectOptimizerConfig,
     L2RegularizationContext)
@@ -507,7 +508,8 @@ object GameTrainingDriverIntegTest {
   private val randomEffectOptimizerConfig = OptimizerConfig(
     OptimizerType.TRON,
     maximumIterations = 10,
-    tolerance = 1e-5)
+    tolerance = 1e-5,
+    constraintMap = None)
   private val randomEffectOptConfig = RandomEffectOptimizationConfiguration(
     randomEffectOptimizerConfig,
     L2RegularizationContext)
