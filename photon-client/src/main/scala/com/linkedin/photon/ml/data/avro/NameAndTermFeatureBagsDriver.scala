@@ -25,14 +25,15 @@ import com.linkedin.photon.ml.io.scopt.avro.ScoptNameAndTermFeatureBagsParameter
 import com.linkedin.photon.ml.util._
 
 /**
- *
+ * A driver to build one or more feature bags from an input data set. These feature bags can be modified to act as
+ * feature whitelists for GAME input data.
  */
 object NameAndTermFeatureBagsDriver extends Params with Logging {
 
-  override val uid = "Feature_Indexing_Driver"
+  override val uid = "Name_And_Term_Feature_Bags_Driver"
   protected implicit val parent: Identifiable = this
 
-  private val DEFAULT_APPLICATION_NAME = "Feature-Indexing-Job"
+  private val DEFAULT_APPLICATION_NAME = "Name-And-Term-Feature-Bags-Job"
   private val PARALLELISM_MODIFIER = 5
 
   protected[avro] var sc: SparkContext = _
@@ -141,10 +142,11 @@ object NameAndTermFeatureBagsDriver extends Params with Logging {
   //
 
   /**
-   *
+   * Run the configured [[NameAndTermFeatureBagsDriver]].
    */
   def run(): Unit = {
 
+    validateParams()
     cleanOutputDir()
 
     // Handle date range input

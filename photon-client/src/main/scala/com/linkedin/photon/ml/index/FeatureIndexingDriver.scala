@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
 
 /**
- * A class that builds feature index maps as an independent Spark job. Recommended when the feature space is large,
+ * A driver to build feature index maps as an independent Spark job. Recommended when the feature space is large,
  * typically when there are more than 200k unique features.
  */
 object FeatureIndexingDriver extends Params with Logging {
@@ -170,6 +170,8 @@ object FeatureIndexingDriver extends Params with Logging {
    */
   def run(): Unit = {
 
+    validateParams()
+
     // Handle date range input
     val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
     val inputPaths = dateRangeOpt
@@ -263,13 +265,14 @@ object FeatureIndexingDriver extends Params with Logging {
       featuresRdd: RDD[(Int, Iterable[String])],
       featureShardId: FeatureShardId): Unit = {
 
+    val outputDir = getRequiredParam(rootOutputDirectory).toString
     val projectRdd = featuresRdd.mapPartitionsWithIndex{ case (idx, iter) =>
       var i: Int = 0
       // NOTE PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
       // lock the write. This will only block writing operations within the same JVM
       PalDBIndexMapBuilder.WRITER_LOCK.synchronized {
-        val mapBuilder = new PalDBIndexMapBuilder()
-          .init(getRequiredParam(rootOutputDirectory).toString, idx, featureShardId)
+        val mapBuilder =
+          new PalDBIndexMapBuilder().init(outputDir, idx, featureShardId)
 
         while (iter.hasNext) {
           val tuple = iter.next()
