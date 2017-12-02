@@ -577,7 +577,7 @@ object GameTrainingDriver extends GameDriver {
         val (evaluator2, score2) = eval2.head
 
         require(
-          evaluator1.eq(evaluator2),
+          evaluator1 == evaluator2,
           "Evaluator mismatch while selecting best model; some error has occurred during validation.")
 
         if (evaluator1.betterThan(score1, score2)) configModelEval1 else configModelEval2
