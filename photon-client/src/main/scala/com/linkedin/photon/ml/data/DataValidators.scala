@@ -34,33 +34,31 @@ object DataValidators extends Logging {
 
   // (Validator, Error Message) pairs
   val baseValidators: List[((LabeledPoint => Boolean), String)] = List(
-    (finiteFeatures, "Data contains row(s) with non-finite feature(s)"),
-    (finiteOffset, "Data contains row(s) with non-finite offset(s)"),
-    (finiteWeight, "Data contains row(s) with non-finite weight(s)"))
+    (finiteFeatures, "Data contains row(s) with invalid (+/- Inf or NaN) feature(s)"),
+    (finiteOffset, "Data contains row(s) with invalid (+/- Inf or NaN) offset(s)"),
+    (nonNegativeWeight, "Data contains row(s) with invalid (-, Inf, or NaN) weight(s)"))
   val linearRegressionValidators: List[((LabeledPoint => Boolean), String)] =
-    (finiteLabel _, "Data contains row(s) with non-finite label(s)") :: baseValidators
+    (finiteLabel _, "Data contains row(s) with invalid (+/- Inf or NaN) label(s)") :: baseValidators
   val logisticRegressionValidators: List[((LabeledPoint => Boolean), String)] =
     (binaryLabel _, "Data contains row(s) with non-binary label(s)") :: baseValidators
   val poissonRegressionValidators: List[((LabeledPoint => Boolean), String)] =
-    (finiteLabel _, "Data contains row(s) with non-finite label(s)") ::
-      (nonNegativeLabels _, "Data contains row(s) with negative label(s)") ::
-      baseValidators
+    (nonNegativeLabel _, "Data contains row(s) with invalid (-, Inf, or NaN) label(s)") :: baseValidators
 
   // (Validator, Input Column Name, Error Message) triples
   val dataFrameBaseValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] = List(
-    (rowHasFiniteFeatures, InputColumnsNames.FEATURES_DEFAULT, "Data contains row(s) with non-finite feature(s)"),
-    (rowHasFiniteColumn, InputColumnsNames.WEIGHT, "Data contains row(s) with non-finite weight(s)"),
-    (rowHasPositiveWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with non-positive weight(s)"),
-    (rowHasFiniteColumn, InputColumnsNames.OFFSET, "Data contains row(s) with non-finite offset(s)"))
+    (rowHasFiniteFeatures,
+      InputColumnsNames.FEATURES_DEFAULT,
+      "Data contains row(s) with invalid (+/- Inf or NaN) feature(s)"),
+    (rowHasFiniteColumn, InputColumnsNames.OFFSET, "Data contains row(s) with invalid (+/- Inf or NaN) offset(s)"),
+    (rowHasNonNegativeWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with invalid (-, Inf, or NaN) weight(s)"))
   val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasFiniteColumn _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
+    (rowHasFiniteColumn _, InputColumnsNames.RESPONSE, "Data contains row(s) with invalid (+/- Inf or NaN) label(s)") ::
       dataFrameBaseValidators
   val dataFrameLogisticRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
     (rowHasBinaryLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-binary label(s)") ::
       dataFrameBaseValidators
   val dataFramePoissonRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
-    (rowHasFiniteColumn _, InputColumnsNames.RESPONSE, "Data contains row(s) with non-finite label(s)") ::
-      (rowHasNonNegativeLabels _, InputColumnsNames.RESPONSE, "Data contains row(s) with negative label(s)") ::
+    (rowHasNonNegativeLabel _, InputColumnsNames.RESPONSE, "Data contains row(s) with invalid (-, Inf, or Nan) label(s)") ::
       dataFrameBaseValidators
 
   /**
@@ -82,7 +80,8 @@ object DataValidators extends Logging {
    * @param labeledPoint The input data point
    * @return Whether the label of the input data point is finite
    */
-  def finiteLabel(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.label.isNaN || labeledPoint.label.isInfinite)
+  def finiteLabel(labeledPoint: LabeledPoint): Boolean =
+    !(labeledPoint.label.isNaN || labeledPoint.label.isInfinite)
 
   /**
    * Verify that a labeled data point has a binary label.
@@ -91,7 +90,8 @@ object DataValidators extends Logging {
    * @return Whether the label of the input data point is binary
    */
   def binaryLabel(labeledPoint: LabeledPoint): Boolean =
-    BinaryClassifier.positiveClassLabel == labeledPoint.label || BinaryClassifier.negativeClassLabel == labeledPoint.label
+    (BinaryClassifier.positiveClassLabel == labeledPoint.label) ||
+      (BinaryClassifier.negativeClassLabel == labeledPoint.label)
 
   /**
    * Verify that a row has a binary label.
@@ -112,7 +112,8 @@ object DataValidators extends Logging {
    * @param labeledPoint The input data point
    * @return Whether the label of the input data point is non-negative
    */
-  def nonNegativeLabels(labeledPoint: LabeledPoint): Boolean = labeledPoint.label >= 0
+  def nonNegativeLabel(labeledPoint: LabeledPoint): Boolean =
+    finiteLabel(labeledPoint) && (labeledPoint.label >= 0)
 
   /**
    * Verify that a row has a non-negative label.
@@ -121,9 +122,9 @@ object DataValidators extends Logging {
    * @param inputColumnName The column name we want to validate
    * @return Whether the label column of the row is non-negative
    */
-  def rowHasNonNegativeLabels(row: Row, inputColumnName: String): Boolean =
+  def rowHasNonNegativeLabel(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case label: Double => label >= 0
+      case label: Double => !(label.isNaN || label.isInfinite) && (label >= 0)
       case _ => false
     }
 
@@ -157,7 +158,8 @@ object DataValidators extends Logging {
    * @param labeledPoint The input data point
    * @return Whether the offset of the input data point is finite
    */
-  def finiteOffset(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.offset.isNaN || labeledPoint.offset.isInfinite)
+  def finiteOffset(labeledPoint: LabeledPoint): Boolean =
+    !(labeledPoint.offset.isNaN || labeledPoint.offset.isInfinite)
 
   /**
    * Verify that a data point has a finite weight.
@@ -165,7 +167,8 @@ object DataValidators extends Logging {
    * @param labeledPoint The input data point
    * @return Whether the weight of the input data point is finite
    */
-  def finiteWeight(labeledPoint: LabeledPoint): Boolean = !(labeledPoint.weight.isNaN || labeledPoint.weight.isInfinite)
+  def nonNegativeWeight(labeledPoint: LabeledPoint): Boolean =
+    !(labeledPoint.weight.isNaN || labeledPoint.weight.isInfinite) && (labeledPoint.weight > MathConst.EPSILON)
 
   /**
    * Verify that a row has a positive weight.
@@ -174,10 +177,10 @@ object DataValidators extends Logging {
    * @param inputColumnName The column name we want to validate
    * @return Whether the weight column of the row is positive
    */
-  def rowHasPositiveWeight(row: Row, inputColumnName: String): Boolean =
+  def rowHasNonNegativeWeight(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
       // Weight should be significantly larger than 0
-      case weight: Double => weight > MathConst.EPSILON
+      case weight: Double =>  !(weight.isNaN || weight.isInfinite) && (weight > MathConst.EPSILON)
       case _ => false
     }
 
