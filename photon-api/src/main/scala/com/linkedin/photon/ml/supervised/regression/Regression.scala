@@ -23,7 +23,7 @@ import org.apache.spark.rdd.RDD
 trait Regression extends Serializable {
 
   /**
-   * Predict values for the given data set using the model trained.
+   * Predict values for the given data set.
    *
    * @param features RDD representing data points' features
    * @return RDD[Double] where each entry contains the corresponding prediction
@@ -33,7 +33,7 @@ trait Regression extends Serializable {
   }
 
   /**
-   * Predict values for the given data points with offsets of the form RDD[(feature, offset)] using the model trained.
+   * Predict values for the given data points with offsets of the form RDD[(feature, offset)].
    *
    * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
    * @return RDD[Double] where each entry contains the corresponding prediction
@@ -41,7 +41,7 @@ trait Regression extends Serializable {
   def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double]
 
   /**
-   * Predict values for a single data point using the model trained.
+   * Predict values for a single data point.
    *
    * @param features Vector representing a single data point's features
    * @return Double prediction from the trained model
@@ -49,7 +49,7 @@ trait Regression extends Serializable {
   def predict(features: Vector[Double]): Double = predictWithOffset(features, 0.0)
 
   /**
-   * Predict values for a single data point with offset using the model trained.
+   * Predict values for a single data point with offset.
    *
    * @param features Vector representing feature of a single data point's features
    * @param offset Offset of the data point

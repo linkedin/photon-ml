@@ -116,15 +116,6 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
   override def toString: String = s"coefficients: ${coefficients.means}"
 
   /**
-   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
-   * what circumstances this class can equal another class.
-   *
-   * @param other Some other object
-   * @return Whether this object can equal the other object
-   */
-  def canEqual(other: Any): Boolean = other.isInstanceOf[GeneralizedLinearModel]
-
-  /**
    * Compares two [[GeneralizedLinearModel]] objects.
    *
    * @param other Some other object
@@ -132,8 +123,7 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
    *         otherwise
    */
   override def equals(other: Any): Boolean = other match {
-    case that: GeneralizedLinearModel =>
-      that.canEqual(this) && (this.coefficients == that.coefficients)
+    case that: GeneralizedLinearModel => this.coefficients == that.coefficients
     case _ => false
   }
 

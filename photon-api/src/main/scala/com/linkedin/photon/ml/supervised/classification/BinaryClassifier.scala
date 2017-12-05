@@ -23,7 +23,7 @@ import org.apache.spark.rdd.RDD
 trait BinaryClassifier extends Serializable {
 
   /**
-   * Predict values for a single data point using the model trained.
+   * Predict values for a single data point.
    *
    * @param features Vector representing a single data point's features
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
@@ -35,7 +35,7 @@ trait BinaryClassifier extends Serializable {
     predictClassWithOffset(features, 0.0, threshold)
 
   /**
-   * Predict values for a single data point with offset using the model trained.
+   * Predict values for a single data point with offset.
    *
    * @param features Vector a single data point's features
    * @param offset Offset of the data point
@@ -47,7 +47,7 @@ trait BinaryClassifier extends Serializable {
   def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double): Double
 
   /**
-   * Predict values for the given data points of the form RDD[feature] using the model trained.
+   * Predict values for the given data points of the form RDD[feature].
    *
    * @param features RDD representing data points' features
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
@@ -55,14 +55,14 @@ trait BinaryClassifier extends Serializable {
    *                  otherwise.
    * @return An RDD[Double] where each entry contains the corresponding prediction
    */
-  def predictClassAllWithThreshold(features: RDD[Vector[Double]], threshold: Double): RDD[Double] = {
+  def predictClassAll(features: RDD[Vector[Double]], threshold: Double): RDD[Double] = {
     predictClassAllWithOffsets(features.map(feature => (feature, 0.0)), threshold)
   }
 
   /**
-   * Predict values for the given data points with offsets of the form RDD[(feature, offset)] using the model trained.
+   * Predict values for the given data points with offsets of the form RDD[(feature, offset)].
    *
-   * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
+   * @param featuresWithOffsets   Data points of the form RDD[(feature, offset)]
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
    *                  prediction score greater than or equal to this threshold is identified as positive, and negative
    *                  otherwise.
