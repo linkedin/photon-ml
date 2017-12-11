@@ -20,13 +20,17 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.test.CommonTestUtils
 
+/**
+ * Unit tests for [[DataValidators]].
+ */
 class DataValidatorsTest {
+
   @Test
   def testNonNegativeLabels(): Unit = {
     val vectors = CommonTestUtils.generateDenseFeatureVectors(1, 0, 10)
     val featVec = vectors.head
-    Assert.assertTrue(DataValidators.nonNegativeLabels(new LabeledPoint(2.0, featVec)))
-    Assert.assertFalse(DataValidators.nonNegativeLabels(new LabeledPoint(-5.0, featVec)))
+    Assert.assertTrue(DataValidators.nonNegativeLabel(new LabeledPoint(2.0, featVec)))
+    Assert.assertFalse(DataValidators.nonNegativeLabel(new LabeledPoint(-5.0, featVec)))
   }
 
   @Test
