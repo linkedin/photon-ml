@@ -36,7 +36,7 @@ class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassi
    * @param data The data used to validate the model
    */
   override def validateModelPredictions(model: GLM, data: RDD[LabeledPoint]): Unit = {
-    val predictions = model.predictClassAllWithThreshold(
+    val predictions = model.predictClassAll(
       data.map(x => x.features),
       MathConst.POSITIVE_RESPONSE_THRESHOLD)
     val invalidCount = predictions

@@ -14,7 +14,11 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import java.util.Objects
+
 import org.apache.spark.rdd.RDD
+
+import com.linkedin.photon.ml.Types.UniqueSampleId
 
 /**
  * An interface for evaluation implementations at the [[RDD]] level.
@@ -24,7 +28,7 @@ trait Evaluator {
   val defaultScore: Double = 0.0
   val evaluatorType: EvaluatorType
 
-  protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]
+  protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]
 
   /**
    * Evaluate the scores of the model.
@@ -32,7 +36,7 @@ trait Evaluator {
    * @param scores The scores to evaluate
    * @return An evaluation metric value
    */
-  protected[ml] def evaluate(scores: RDD[(Long, Double)]): Double = {
+  protected[ml] def evaluate(scores: RDD[(UniqueSampleId, Double)]): Double = {
     // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
     val defaultScore = this.defaultScore
     val scoreAndLabelAndWeights = scores
@@ -51,7 +55,7 @@ trait Evaluator {
    * @return An evaluation metric value
    */
   protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double
+    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double
 
   /**
    * Determine the better between two scores returned by this [[Evaluator]]. In some cases, the better score is higher
@@ -69,6 +73,27 @@ trait Evaluator {
    * @return The name of this [[Evaluator]].
    */
   def getEvaluatorName: String = evaluatorType.name
+
+  /**
+   * Compares two [[Evaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: Evaluator =>
+      (this.evaluatorType == that.evaluatorType) && (this.labelAndOffsetAndWeights == that.labelAndOffsetAndWeights)
+
+    case _ => false
+  }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = Objects.hash(evaluatorType, labelAndOffsetAndWeights)
 }
 
 object Evaluator {

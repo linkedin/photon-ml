@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import java.util.Objects
+
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
@@ -38,7 +40,7 @@ import com.linkedin.photon.ml.Types.UniqueSampleId
 abstract class MultiEvaluator(
   protected[ml] val localEvaluator: LocalEvaluator,
   protected[ml] val ids: RDD[(UniqueSampleId, String)],
-  protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
+  override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
 
   /**
    * Evaluate scores with labels and weights.
@@ -55,11 +57,32 @@ abstract class MultiEvaluator(
     // TODO: Log which IDs had invalid evaluation metric values
     scoresAndLabelsAndWeights
       .join(ids)
-      .map { case (uniqueId, (scoreLabelAndWeight, id)) => (id, scoreLabelAndWeight) }
+      .map { case (_, (scoreLabelAndWeight, id)) => (id, scoreLabelAndWeight) }
       .groupByKey()
       .values
       .map(scoreLabelAndWeights => localEvaluator.evaluate(scoreLabelAndWeights.toArray))
       .filter(result => !(result.isInfinite || result.isNaN))
       .mean()
   }
+
+  /**
+   * Compares two [[MultiEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: MultiEvaluator =>
+      (this.localEvaluator == that.localEvaluator) && (this.ids == that.ids) && super.equals(that)
+
+    case _ => false
+  }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = Objects.hash(evaluatorType, labelAndOffsetAndWeights, localEvaluator, ids)
 }

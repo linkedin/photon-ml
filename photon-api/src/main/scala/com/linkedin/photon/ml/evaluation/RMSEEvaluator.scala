@@ -16,13 +16,15 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
+
 /**
  * Evaluator for root mean squared error (RMSE).
  *
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class RMSEEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
 
   val evaluatorType = EvaluatorType.RMSE
 
@@ -35,7 +37,7 @@ protected[ml] class RMSEEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
     val squaredLoss = squaredLossEvaluator.evaluateWithScoresAndLabelsAndWeights(scoresAndLabelsAndWeights)
     math.sqrt( squaredLoss / labelAndOffsetAndWeights.count())
@@ -50,4 +52,16 @@ protected[ml] class RMSEEvaluator(
    * @return True if the first score is better than the second
    */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
+
+  /**
+   * Compares two [[RMSEEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: RMSEEvaluator => super.equals(that)
+    case _ => false
+  }
 }

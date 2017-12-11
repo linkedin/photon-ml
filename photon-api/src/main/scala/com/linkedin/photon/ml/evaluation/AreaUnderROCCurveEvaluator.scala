@@ -17,13 +17,15 @@ package com.linkedin.photon.ml.evaluation
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
+
 /**
  * Evaluator that computes area under the ROC curve.
  *
  * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
  */
 protected[ml] class AreaUnderROCCurveEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
 
   val evaluatorType = EvaluatorType.AUC
 
@@ -34,9 +36,10 @@ protected[ml] class AreaUnderROCCurveEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
-    val scoreAndLabels = scoresAndLabelsAndWeights.map { case (uniqueId, (score, label, weight)) => (score, label) }
+    val scoreAndLabels = scoresAndLabelsAndWeights.map { case (_, (score, label, _)) => (score, label) }
+
     new BinaryClassificationMetrics(scoreAndLabels).areaUnderROC()
   }
 
@@ -49,4 +52,16 @@ protected[ml] class AreaUnderROCCurveEvaluator(
    * @return True if the first score is better than the second
    */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
+
+  /**
+   * Compares two [[AreaUnderROCCurveEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: AreaUnderROCCurveEvaluator => super.equals(that)
+    case _ => false
+  }
 }

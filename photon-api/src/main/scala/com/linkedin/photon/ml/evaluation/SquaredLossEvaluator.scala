@@ -54,4 +54,16 @@ protected[ml] class SquaredLossEvaluator(
    * @return True if the first score is better than the second, otherwise false
    */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
+
+  /**
+   * Compares two [[SquaredLossEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: SquaredLossEvaluator => super.equals(that)
+    case _ => false
+  }
 }

@@ -34,8 +34,9 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   with Serializable {
 
   /**
+   * Check the model type.
    *
-   * @return The model type.
+   * @return The model type
    */
   override def modelType: TaskType = SMOOTHED_HINGE_LOSS_LINEAR_SVM
 
@@ -50,23 +51,28 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
     coefficients.computeScore(features) + offset
 
   /**
+   * Create a new model of the same type with updated coefficients.
    *
-   * @param updatedCoefficients
+   * @param updatedCoefficients The new coefficients
    * @return A new generalized linear model with the passed coefficients
    */
   override def updateCoefficients(updatedCoefficients: Coefficients): SmoothedHingeLossLinearSVMModel =
     new SmoothedHingeLossLinearSVMModel(updatedCoefficients)
 
   /**
-   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
-   * what circumstances this class can equal another class.
+   * Compares two [[SmoothedHingeLossLinearSVMModel]] objects.
    *
-   * @param other Some object
-   * @return Whether this object can equal the other object
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
    */
-  override def canEqual(other: Any): Boolean = other.isInstanceOf[SmoothedHingeLossLinearSVMModel]
+  override def equals(other: Any): Boolean = other match {
+    case that: SmoothedHingeLossLinearSVMModel => super.equals(that)
+    case _ => false
+  }
 
   /**
+   * Build a human-readable summary for the object.
    *
    * @return A summary of the object in string representation
    */
@@ -74,6 +80,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
     s"Smoothed Hinge Loss Linear SVM Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   /**
+   * Predict values for a single data point with offset.
    *
    * @param features Vector a single data point's features
    * @param offset Offset of the data point
@@ -83,9 +90,10 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
    * @return Predicted category from the trained model
    */
   override def predictClassWithOffset(features: Vector[Double], offset: Double, threshold: Double = 0.5): Double =
-    predictClass(predictWithOffset(features, offset), threshold)
+    classifyScore(predictWithOffset(features, offset), threshold)
 
   /**
+   * Predict values for the given data points with offsets of the form RDD[(feature, offset)].
    *
    * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
    * @param threshold Threshold that separates positive predictions from negative predictions. An example with
@@ -96,32 +104,35 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
   override def predictClassAllWithOffsets(
       featuresWithOffsets: RDD[(Vector[Double], Double)],
       threshold: Double = 0.5): RDD[Double] =
-    predictAllWithOffsets(featuresWithOffsets).map(predictClass(_, threshold))
+    predictAllWithOffsets(featuresWithOffsets).map(classifyScore(_, threshold))
 
   /**
+   * Predict values for a single data point with offset.
    *
-   * @param features vector representing feature of a single data point's features
-   * @param offset offset of the data point
+   * @param features Vector representing feature of a single data point's features
+   * @param offset Offset of the data point
    * @return Double prediction from the trained model
    */
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)
 
   /**
+   * Predict values for the given data points with offsets of the form RDD[(feature, offset)].
    *
-   * @param featuresWithOffsets data points of the form RDD[(feature, offset)]
+   * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
    * @return RDD[Double] where each entry contains the corresponding prediction
    */
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
     GeneralizedLinearModel.computeMeanFunctionsWithOffsets(this, featuresWithOffsets)
 
   /**
+   * Predict the binary class of a score, given a threshold.
    *
-   * @param score
-   * @param threshold
-   * @return
+   * @param score The score
+   * @param threshold The threshold for a positive class label
+   * @return A positive label if the score is greater than or equal to the threshold, a negative label otherwise
    */
-  private def predictClass(score: Double, threshold: Double): Double = {
+  private def classifyScore(score: Double, threshold: Double): Double = {
     if (score < threshold) {
       BinaryClassifier.negativeClassLabel
     } else {
@@ -131,6 +142,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
 }
 
 object SmoothedHingeLossLinearSVMModel {
+
   /**
    * Create a new smoothed hinge loss SVM model with the provided coefficients (means) and variances.
    *

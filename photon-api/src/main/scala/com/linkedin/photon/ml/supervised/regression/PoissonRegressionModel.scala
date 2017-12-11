@@ -32,6 +32,7 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
   with Serializable {
 
   /**
+   * Check the model type.
    *
    * @return The model type
    */
@@ -48,23 +49,28 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
     math.exp(coefficients.computeScore(features) + offset)
 
   /**
+   * Create a new model of the same type with updated coefficients.
    *
-   * @param updatedCoefficients
+   * @param updatedCoefficients The new coefficients
    * @return A new generalized linear model with the passed coefficients
    */
   override def updateCoefficients(updatedCoefficients: Coefficients): PoissonRegressionModel =
     new PoissonRegressionModel(updatedCoefficients)
 
   /**
-   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
-   * what circumstances this class can equal another class.
+   * Compares two [[PoissonRegressionModel]] objects.
    *
-   * @param other Some object
-   * @return Whether this object can equal the other object
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
    */
-  override def canEqual(other: Any): Boolean = other.isInstanceOf[PoissonRegressionModel]
+  override def equals(other: Any): Boolean = other match {
+    case that: PoissonRegressionModel => super.equals(that)
+    case _ => false
+  }
 
   /**
+   * Build a human-readable summary for the object.
    *
    * @return A summary of the object in string representation
    */
@@ -72,17 +78,19 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
     s"Poisson Regression Model with the following coefficients:\n${coefficients.toSummaryString}"
 
   /**
+   * Predict values for a single data point with offset.
    *
-   * @param features vector representing feature of a single data point's features
-   * @param offset offset of the data point
+   * @param features Vector representing feature of a single data point's features
+   * @param offset Offset of the data point
    * @return Double prediction from the trained model
    */
   override def predictWithOffset(features: Vector[Double], offset: Double): Double =
     computeMeanFunctionWithOffset(features, offset)
 
   /**
+   * Predict values for the given data points with offsets of the form RDD[(feature, offset)].
    *
-   * @param featuresWithOffsets data points of the form RDD[(feature, offset)]
+   * @param featuresWithOffsets Data points of the form RDD[(feature, offset)]
    * @return RDD[Double] where each entry contains the corresponding prediction
    */
   override def predictAllWithOffsets(featuresWithOffsets: RDD[(Vector[Double], Double)]): RDD[Double] =
@@ -90,6 +98,7 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
 }
 
 object PoissonRegressionModel {
+
   /**
    * Create a new Poisson regression model with the provided coefficients (means) and variances.
    *

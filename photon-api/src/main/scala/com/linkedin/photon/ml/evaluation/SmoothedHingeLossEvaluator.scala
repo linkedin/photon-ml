@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 
 /**
@@ -24,7 +25,7 @@ import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
  * @param labelAndOffsetAndWeights An [[RDD]] of (id, (labels, offsets, weights)) pairs
  */
 protected[ml] class SmoothedHingeLossEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))]) extends Evaluator {
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
 
   val evaluatorType = EvaluatorType.SmoothedHingeLoss
 
@@ -35,7 +36,7 @@ protected[ml] class SmoothedHingeLossEvaluator(
    * @return Evaluation metric value
    */
   override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = {
+    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
     scoresAndLabelsAndWeights.map { case (_, (score, label, weight)) =>
         weight * SmoothedHingeLossFunction.lossAndDzLoss(score, label)._1
@@ -52,4 +53,16 @@ protected[ml] class SmoothedHingeLossEvaluator(
    * @return True if the first score is better than the second, otherwise false
    */
   override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
+
+  /**
+   * Compares two [[SmoothedHingeLossEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: SmoothedHingeLossEvaluator => super.equals(that)
+    case _ => false
+  }
 }

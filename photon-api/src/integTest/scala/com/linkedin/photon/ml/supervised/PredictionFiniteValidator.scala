@@ -36,7 +36,7 @@ class PredictionFiniteValidator extends ModelValidator[GeneralizedLinearModel] {
     val features: RDD[Vector[Double]] = data.map(_.features)
     val predictions: RDD[Double] = model match {
       case r: Regression => r.predictAll(features)
-      case b: BinaryClassifier => b.predictClassAllWithThreshold(features, 0.5)
+      case b: BinaryClassifier => b.predictClassAll(features, 0.5)
       case _ =>
         throw new IllegalArgumentException("Don't know how to handle models of type [" + model.getClass.getName + "]")
     }
