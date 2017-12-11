@@ -22,7 +22,8 @@ import org.apache.avro.Schema
 import org.apache.avro.Schema.Type._
 import org.apache.avro.generic.GenericRecord
 import org.apache.spark.SparkContext
-import org.apache.spark.mllib.linalg.{Vector, VectorUDT}
+import org.apache.spark.ml.linalg.{SparseVector, Vector}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
@@ -214,7 +215,7 @@ class AvroDataReader(
 
     // Add schema fields for the feature vector columns
     val featureFields = featureColumnMap.map { case (destCol, _) =>
-      StructField(destCol, new VectorUDT())
+      StructField(destCol, VectorType)
     }
     val sqlSchema = new StructType((schemaFields ++ featureFields).toArray)
 
@@ -349,7 +350,8 @@ object AvroDataReader {
     }
 
     // Create feature vector
-    VectorUtils.breezeToMllib(VectorUtils.toSparseVector(featuresWithIntercept, featureMap.featureDimension))
+    val (indices, values) = featuresWithIntercept.sorted.unzip
+    new SparseVector(featureMap.featureDimension, indices.toArray, values.toArray)
   }
 
   /**

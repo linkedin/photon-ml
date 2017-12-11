@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.data.avro
 import breeze.stats._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkException
-import org.apache.spark.mllib.linalg.{SparseVector, Vectors}
+import org.apache.spark.ml.linalg.{SparseVector, Vectors}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.testng.Assert._

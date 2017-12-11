@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.data
 
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.mllib.linalg.SparseVector
+import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -81,7 +81,7 @@ object GameConverters {
 
     val featureShardContainer = featureShards.map { shardId =>
       val features = row.getAs[SparseVector](shardId)
-      (shardId, VectorUtils.mllibToBreeze(features))
+      (shardId, VectorUtils.mlToBreeze(features))
     }.toMap
 
     val response = if (isResponseRequired) {
