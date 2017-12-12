@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.hyperparameter.search
 
+import scala.math.floor
+
 import breeze.linalg.DenseVector
 import org.testng.Assert._
 import org.testng.annotations.Test
@@ -32,6 +34,7 @@ class RandomSearchTest {
   val lower = 1e-5
   val upper = 1e5
   val ranges: Seq[DoubleRange] = Seq.fill(dim)(DoubleRange(lower, upper))
+  val discreteParams = Seq(0)
 
   case class TestModel(params: DenseVector[Double], evaluation: Double)
 
@@ -45,7 +48,7 @@ class RandomSearchTest {
     def getEvaluationValue(result: TestModel): Double = result.evaluation
   }
 
-  val searcher = new RandomSearch[TestModel](ranges, evaluationFunction, seed)
+  val searcher = new RandomSearch[TestModel](ranges, evaluationFunction, discreteParams, seed)
 
   @Test
   def testFind(): Unit = {
@@ -54,6 +57,7 @@ class RandomSearchTest {
 
     assertEquals(candidates.length, n)
     assertTrue(candidates.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
+    assertTrue(candidates.forall(c => c.params(0) == floor(c.params(0))))
     assertEquals(candidates.toSet.size, n)
   }
 }

@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.hyperparameter.search
 
+import scala.math.round
+
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
 
@@ -25,11 +27,13 @@ import com.linkedin.photon.ml.util.DoubleRange
  *
  * @param ranges the ranges that define the boundaries of the search space
  * @param evaluationFunction the function that evaluates points in the space to real values
+ * @param discreteParams specifies the indices of parameters that should be treated as discrete values
  * @param seed the random seed value
  */
 class RandomSearch[T](
     ranges: Seq[DoubleRange],
     evaluationFunction: EvaluationFunction[T],
+    discreteParams: Seq[Int] = Seq(),
     seed: Long = System.currentTimeMillis) {
 
   // The length of the ranges sequence corresponds to the dimensionality of the hyperparameter tuning problem
@@ -63,10 +67,16 @@ class RandomSearch[T](
     val (results, _) = (0 until n).foldLeft((List.empty[T], observations.last)) {
       case ((models, (lastCandidate, lastObservation)), _) =>
 
-      val candidate = next(lastCandidate, lastObservation)
-      val (observation, model) = evaluationFunction(candidate)
+        val candidate = next(lastCandidate, lastObservation)
 
-      (models :+ model, (candidate, observation))
+        // Discretize values specified as discrete
+        discreteParams.foreach { index =>
+          candidate(index) = round(candidate(index))
+        }
+
+        val (observation, model) = evaluationFunction(candidate)
+
+        (models :+ model, (candidate, observation))
     }
 
     results
@@ -102,6 +112,12 @@ class RandomSearch[T](
     require(n > 0, "The number of results must be greater than zero.")
 
     val candidate = drawCandidates(1)(0,::).t
+
+    // Discretize values specified as discrete
+    discreteParams.foreach { index =>
+      candidate(index) = round(candidate(index))
+    }
+
     val (_, model) = evaluationFunction(candidate)
 
     Seq(model) ++ (if (n == 1) Seq() else find(n - 1, Seq(model)))
