@@ -15,7 +15,8 @@
 package com.linkedin.photon.ml.stat
 
 import breeze.linalg.{Vector => BreezeVector}
-import org.apache.spark.mllib.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
 
@@ -66,7 +67,7 @@ object BasicStatisticalSummary extends Logging {
    * @return An instance of BasicStatisticalSummary
    */
   def apply(inputData: RDD[MLVector]): BasicStatisticalSummary =
-    calculateBasicStatistics(Statistics.colStats(inputData))
+    calculateBasicStatistics(Statistics.colStats(inputData.map(Vectors.fromML(_))))
 
   /**
    * Auxiliary function to scale vectors.

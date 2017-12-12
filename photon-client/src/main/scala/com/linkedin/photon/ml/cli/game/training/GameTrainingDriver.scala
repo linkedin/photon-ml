@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.cli.game.training
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
+import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
@@ -473,7 +474,10 @@ object GameTrainingDriver extends GameDriver {
       featureShards: Iterable[FeatureShardId]): FeatureShardStatistics =
     featureShards.map { featureShardId =>
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      (featureShardId, BasicStatisticalSummary(data.select(featureShardId).rdd.map(_.getAs[SparkVector](0))))
+      (featureShardId, BasicStatisticalSummary(
+        data.select(featureShardId)
+          .rdd
+          .map(_.getAs[SparkMLVector](0))))
     }
 
   /**

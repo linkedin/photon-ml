@@ -17,7 +17,9 @@ package com.linkedin.photon.ml.util
 import scala.collection.mutable
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
+import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
+import org.apache.spark.mllib.linalg.{
+  DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector, Vectors}
 
 /**
  * A utility object that contains operations to create, copy, compare, and convert Breeze [[Vector]] objects.
@@ -190,6 +192,16 @@ object VectorUtils {
       case v =>
         throw new IllegalArgumentException("Unsupported mllib vector type: " + v.getClass.getName)
     }
+
+  /**
+   * Converts a spark.ml vector to a Breeze vector.
+   *
+   * @todo This is just a wrapper for now, but at some point this class should be rewritten in terms of spark.ml Vector
+   *
+   * @param mlVector The spark.ml vector
+   * @return The Breeze vector
+   */
+  def mlToBreeze(mlVector: SparkMLVector): Vector[Double] = mllibToBreeze(Vectors.fromML(mlVector))
 
   /**
    * Determines when two vectors are "equal" within a very small tolerance.

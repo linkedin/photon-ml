@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.stat
 
 import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
+import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.testng.Assert._
@@ -67,11 +68,11 @@ class BasicStatisticalSummaryTest extends SparkTestUtils {
 
     val trainingData: DataFrame = new SQLContext(sc)
       .createDataFrame(labeledPoints
-        .map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features)) })
+        .map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features).asML) })
       .toDF("response", featureShardId)
 
     // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkVector](0)))
+    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)))
 
     assertEquals(stats.count, 10)
     assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
