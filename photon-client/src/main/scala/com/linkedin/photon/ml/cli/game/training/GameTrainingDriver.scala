@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
+import scala.math.log
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -522,7 +524,8 @@ object GameTrainingDriver extends GameDriver {
         val baseConfig = models.head._3
         val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData)
 
-        val ranges = List.fill(evaluationFunction.numParams)(getOrDefault(hyperParameterTuningRange))
+        val range = getOrDefault(hyperParameterTuningRange)
+        val ranges = List.fill(evaluationFunction.numParams)(DoubleRange(log(range.start), log(range.end)))
 
         val searcher = getOrDefault(hyperParameterTuning) match {
           case HyperparameterTuningMode.BAYESIAN =>

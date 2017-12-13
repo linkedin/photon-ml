@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.estimators
 
 import scala.collection.mutable
+import scala.math.{exp, log}
 
 import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
@@ -107,9 +108,9 @@ class GameEstimatorEvaluationFunction(
       .sortBy(_._1)
       .map { case (_, optConfig) =>
         optConfig match {
-          case fixed: FixedEffectOptimizationConfiguration => fixed.regularizationWeight
+          case fixed: FixedEffectOptimizationConfiguration => log(fixed.regularizationWeight)
 
-          case random: RandomEffectOptimizationConfiguration => random.regularizationWeight
+          case random: RandomEffectOptimizationConfiguration => log(random.regularizationWeight)
 
           case other =>
             throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
@@ -138,9 +139,11 @@ class GameEstimatorEvaluationFunction(
     baseConfigSeq
       .map { case (coordinateId, coordinateConfig) =>
         val newCoordinateConfig = coordinateConfig match {
-          case fixed: FixedEffectOptimizationConfiguration => fixed.copy(regularizationWeight = paramValues.dequeue())
+          case fixed: FixedEffectOptimizationConfiguration =>
+            fixed.copy(regularizationWeight = exp(paramValues.dequeue()))
 
-          case random: RandomEffectOptimizationConfiguration => random.copy(regularizationWeight = paramValues.dequeue())
+          case random: RandomEffectOptimizationConfiguration =>
+            random.copy(regularizationWeight = exp(paramValues.dequeue()))
 
           case other =>
             throw new IllegalArgumentException(s"Unknown coordinate optimization configuration type: ${other.getClass}")
