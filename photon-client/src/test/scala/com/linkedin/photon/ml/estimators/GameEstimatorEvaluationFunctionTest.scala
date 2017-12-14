@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.estimators
 
+import scala.math.log
+
 import java.util.Random
 
 import breeze.linalg.DenseVector
@@ -53,15 +55,17 @@ class GameEstimatorEvaluationFunctionTest {
       ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
 
     val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, configuration, mockData, mockData)
-    val hypers = DenseVector(regWeights(2), regWeights(3))
+    val hypers = DenseVector(log(regWeights(2)), log(regWeights(3)))
     val newConfiguration = evaluationFunction.vectorToConfiguration(hypers)
 
     assertEquals(
       newConfiguration("a").asInstanceOf[FixedEffectOptimizationConfiguration].regularizationWeight,
-      regWeights(2))
+      regWeights(2),
+      tolerance)
     assertEquals(
       newConfiguration("b").asInstanceOf[RandomEffectOptimizationConfiguration].regularizationWeight,
-      regWeights(3))
+      regWeights(3),
+      tolerance)
   }
 
   @DataProvider
@@ -72,8 +76,8 @@ class GameEstimatorEvaluationFunctionTest {
       ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
 
     Array(
-      Array(configuration, DenseVector(regWeights(0))),
-      Array(configuration, DenseVector(regWeights(0), regWeights(1), regWeights(2))))
+      Array(configuration, DenseVector(log(regWeights(0)))),
+      Array(configuration, DenseVector(log(regWeights(0)), log(regWeights(1)), log(regWeights(2)))))
   }
 
   /**
@@ -95,15 +99,15 @@ class GameEstimatorEvaluationFunctionTest {
     Array(
       Array(
         Map(("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0)))),
-        DenseVector(regWeights(0))),
+        DenseVector(log(regWeights(0)))),
       Array(
         Map(("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1)))),
-        DenseVector(regWeights(1))),
+        DenseVector(log(regWeights(1)))),
       Array(
         Map(
           ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
           ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1)))),
-        DenseVector(regWeights(0), regWeights(1))))
+        DenseVector(log(regWeights(0)), log(regWeights(1)))))
 
   /**
    * Test that a [[GameOptimizationConfiguration]] can be correctly converted to a hyperparameter vector.
