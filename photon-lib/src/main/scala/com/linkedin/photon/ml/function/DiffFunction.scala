@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Trait for a differentiable function.
@@ -34,7 +34,7 @@ trait DiffFunction extends ObjectiveFunction {
   protected[ml] def gradient(
     input: Data,
     coefficients: Coefficients,
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double]
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
 
   /**
    * Compute both the value and the gradient of the function for the given model coefficients (computing value and
@@ -48,5 +48,5 @@ trait DiffFunction extends ObjectiveFunction {
   protected[ml] def calculate(
     input: Data,
     coefficients: Coefficients,
-    normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double])
+    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double])
 }

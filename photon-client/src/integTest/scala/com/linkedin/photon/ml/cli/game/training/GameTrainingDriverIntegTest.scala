@@ -33,6 +33,7 @@ import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.RMSEEvaluator
 import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
+import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.projector.{IndexMapProjection, RandomProjection}
@@ -283,6 +284,33 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME training with a random effect models with normalization and index-map projection
+   */
+  @Test
+  def testRandomEffectWithNormalization(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
+
+    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    // RMSE reported is 2.199
+    val errorThreshold = 2.34
+    val outputDir = new Path(getTmpDir, "randomEffects")
+    runDriver(
+      randomEffectSeriousRunArgs
+        .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+        .put(GameTrainingDriver.normalization, NormalizationType.SCALE_WITH_MAX_MAGNITUDE))
+
+    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, "random-effect", _))
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    modelPaths.foreach { path =>
+      assertTrue(fs.exists(path))
+      assertModelSane(path, expectedNumCoefficients = 21)
+      assertTrue(AvroUtils.modelContainsIntercept(sc, path))
+    }
+
+    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+  }
+
+  /**
    * Test GAME training with a both fixed and random effect models.
    */
   @Test
@@ -461,6 +489,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       modelPath,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
       Some(indexMapLoaders))
+
+    val temp = gameModel.score(gameDataSet)
     val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)
 
     new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores)

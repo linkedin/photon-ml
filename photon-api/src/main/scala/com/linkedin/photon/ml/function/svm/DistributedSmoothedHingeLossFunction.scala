@@ -17,14 +17,14 @@ package com.linkedin.photon.ml.function.svm
 import breeze.linalg.Vector
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
 
+import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DiffFunction, DistributedObjectiveFunction, L2RegularizationDiff}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
  * This class is used to calculate the value and gradient of Rennie's smoothed hinge loss function, as an approximation
@@ -55,7 +55,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
   override protected[ml] def value(
     input: RDD[LabeledPoint],
     coefficients: Broadcast[Vector[Double]],
-    normalizationContext: Broadcast[NormalizationContext]): Double =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -69,7 +69,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
   override protected[ml] def gradient(
     input: RDD[LabeledPoint],
     coefficients: Broadcast[Vector[Double]],
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -84,7 +84,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
   override protected[ml] def calculate(
     input: RDD[LabeledPoint],
     coefficients: Broadcast[Vector[Double]],
-    normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
+    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val initialCumGradient = VectorUtils.zeroOfSameType(coefficients.value)
     val result = input.treeAggregate((0.0, initialCumGradient))(

@@ -16,7 +16,6 @@ package com.linkedin.photon.ml
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
@@ -27,7 +26,7 @@ import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfigura
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.Logging
+import com.linkedin.photon.ml.util.{Logging, PhotonBroadcast}
 
 /**
  * Collection of functions for model training.
@@ -122,7 +121,7 @@ object ModelTraining extends Logging {
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
     // Initialize the broadcast normalization context
-    val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
+    val broadcastNormalizationContext = PhotonBroadcast(trainingData.sparkContext.broadcast(normalizationContext))
 
     // Construct the generalized linear optimization problem
     val (glmConstructor, objectiveFunction) = taskType match {

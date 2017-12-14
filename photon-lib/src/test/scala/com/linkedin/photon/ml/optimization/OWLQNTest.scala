@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
@@ -22,6 +21,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Test that OWLQN can shrink the coefficients to zero.
@@ -55,7 +55,7 @@ class OWLQNTest {
       expectedValue: Double): Unit = {
 
     val normalizationContext = NoNormalization()
-    val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
+    val normalizationContextBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
     doReturn(normalizationContext).when(normalizationContextBroadcast).value
 
 

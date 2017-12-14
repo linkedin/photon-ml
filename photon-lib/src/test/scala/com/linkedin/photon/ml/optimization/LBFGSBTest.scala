@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.DenseVector
-import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito.{doReturn, mock}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.{DataProvider, Test}
@@ -23,6 +22,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 class LBFGSBTest {
 
@@ -45,7 +45,7 @@ class LBFGSBTest {
       expectedValue: Double): Unit = {
 
     val normalizationContext = NoNormalization()
-    val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
+    val normalizationContextBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
     doReturn(normalizationContext).when(normalizationContextBroadcast).value
 
     val lbfgsb = new LBFGSB(DenseVector(lowerBounds), DenseVector(upperBounds), normalizationContext = normalizationContextBroadcast)

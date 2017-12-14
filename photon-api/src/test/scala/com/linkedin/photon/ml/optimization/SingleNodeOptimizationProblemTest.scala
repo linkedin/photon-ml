@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.Test
@@ -27,6 +26,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.CommonTestUtils.generateDenseVector
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Test that the [[SingleNodeOptimizationProblem]] runs properly and can correctly skip variance computation if it is
@@ -64,7 +64,7 @@ class SingleNodeOptimizationProblemTest {
     val objectiveFunction = mock(classOf[SingleNodeGLMLossFunction])
     val initialModel = mock(classOf[GeneralizedLinearModel])
     val normalizationContext = mock(classOf[NormalizationContext])
-    val normalizationContextBroadcast = mock(classOf[Broadcast[NormalizationContext]])
+    val normalizationContextBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
     val trainingData = mock(classOf[Iterable[LabeledPoint]])
 
     doReturn(true).when(optimizer).isTrackingState

@@ -17,9 +17,9 @@ package com.linkedin.photon.ml.optimization
 import breeze.linalg.Vector
 import breeze.optimize.{FirstOrderMinimizer, DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS}
 import org.apache.spark.broadcast.Broadcast
-
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Class used to solve an optimization problem using Limited-memory BFGS (LBFGS).
@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
  * @param isTrackingState Whether to track intermediate states during optimization
  */
 class LBFGS(
-    normalizationContext: Broadcast[NormalizationContext],
+    normalizationContext: BroadcastWrapper[NormalizationContext],
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,

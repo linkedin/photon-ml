@@ -25,6 +25,7 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 class GameEstimatorTest {
 
@@ -72,7 +73,7 @@ class GameEstimatorTest {
     val mockLogger = mock(classOf[Logger])
     val mockInputColumnNames = mock(classOf[InputColumnsNames])
     val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
-    val mockNormalizationBroadcast = mock(classOf[Broadcast[NormalizationContext]])
+    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
 
     doReturn(featureShardId).when(mockDataConfig).featureShardId
 
@@ -105,7 +106,7 @@ class GameEstimatorTest {
     val mockSparkContext = mock(classOf[SparkContext])
     val mockLogger = mock(classOf[Logger])
     val mockDataConfig1 = mock(classOf[CoordinateDataConfiguration])
-    val mockNormalizationBroadcast = mock(classOf[Broadcast[NormalizationContext]])
+    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
 
     val estimator = new GameEstimator(mockSparkContext, mockLogger)
 

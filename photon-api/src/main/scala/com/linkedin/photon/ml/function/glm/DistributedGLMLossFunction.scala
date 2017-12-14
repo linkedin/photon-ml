@@ -24,6 +24,7 @@ import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * This class is used to calculate the value, gradient, and Hessian of generalized linear models for distributed
@@ -64,7 +65,7 @@ protected[ml] class DistributedGLMLossFunction private (
   override protected[ml] def value(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
-      normalizationContext: Broadcast[NormalizationContext]): Double =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -78,7 +79,7 @@ protected[ml] class DistributedGLMLossFunction private (
   override protected[ml] def gradient(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
-      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -93,7 +94,7 @@ protected[ml] class DistributedGLMLossFunction private (
   override protected[ml] def calculate(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
-      normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) =
     ValueAndGradientAggregator.calculateValueAndGradient(
       input,
       coefficients,
@@ -115,7 +116,7 @@ protected[ml] class DistributedGLMLossFunction private (
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
       multiplyVector: Broadcast[Vector[Double]],
-      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     HessianVectorAggregator.calcHessianVector(
       input,
       coefficients,

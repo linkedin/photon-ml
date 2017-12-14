@@ -18,11 +18,13 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonNonBroadcast, VectorUtils}
 
 /**
  * A class that holds the projectors for a sharded data set.
@@ -93,6 +95,26 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
             projector.projectCoefficients(oldCoefficients.means),
             oldCoefficients.variancesOption.map(projector.projectCoefficients)))
       }
+
+  /**
+    *
+    * @param normalizationContext: broadcast global NormalizationContext
+    * @return The sharded NormalizationContext in the projected space
+    */
+  def projectNormalizationRDD(
+      normalizationContext: BroadcastWrapper[NormalizationContext]) : RDD[(REId, BroadcastWrapper[NormalizationContext])] = {
+    indexMapProjectorRDD.mapValues {
+      case projector => {
+        val originalNormalizationContext = normalizationContext.value
+        val factors = originalNormalizationContext.factors.map(factors => projector.projectFeatures(factors))
+        val shifts = originalNormalizationContext.shifts.map(shifts => projector.projectFeatures(shifts))
+        val interceptId = originalNormalizationContext.interceptId.map(interceptId =>
+          projector.originalToProjectedSpaceMap(interceptId))
+        val norm = new NormalizationContext(factors, shifts, interceptId)
+        PhotonNonBroadcast(norm)
+      }
+    }
+  }
 
   /**
    * Get the Spark context.

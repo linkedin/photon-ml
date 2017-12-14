@@ -149,7 +149,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       DistributedGLMLossFunction(sc, configuration, 1)(LogisticLossFunction) ,
       None,
       LogisticRegressionModel.apply,
-      sc.broadcast(NoNormalization()),
+      PhotonBroadcast(sc.broadcast(NoNormalization())),
       isTrackingState = false,
       isComputingVariance = false)
   }
@@ -255,7 +255,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       configuration,
       SingleNodeGLMLossFunction(configuration)(LogisticLossFunction),
       LogisticRegressionModel.apply,
-      sc.broadcast(NoNormalization()))
+      PhotonBroadcast(sc.broadcast(NoNormalization())))
   }
 
   /**

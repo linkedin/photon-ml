@@ -20,8 +20,10 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.data._
+import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils, VectorUtils}
+import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils, PhotonNonBroadcast, VectorUtils}
 
 /**
  * Integration tests for [[IndexMapProjectorRDD]].
@@ -88,5 +90,44 @@ class IndexMapProjectorRDDTest extends SparkTestUtils with GameTestUtils {
 
     new RandomEffectDataSet(
       activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
+  }
+
+  /**
+   * Integration tests for [[IndexMapProjectorRDD.projectNormalizationRDD]].
+   */
+  @Test
+  def testProjectionNormalizationContext(): Unit = sparkTest("testNormalizationContextProjector"){
+
+    val features = List(
+      DenseVector(0.0, 2.0, 3.0, 4.0, 0.0, 1.0),
+      DenseVector(1.0, 5.0, 6.0, 7.0, 0.0, 1.0))
+
+    val projectedSize = features(0).length - 1
+
+    val dataSet = generateRandomEffectDataSetWithFeatures(
+      randomEffectIds = Seq("1"),
+      randomEffectType = "per-item",
+      featureShardId = "itemShard",
+      features = features)
+
+    val dataPoints = dataSet.activeData.map{case(_, locals) => locals.dataPoints}
+    val localPoints = dataPoints.flatMap{e => e.map(_._2)}
+
+    val summary = BasicStatisticalSummary(localPoints)
+    val normalizationContext = PhotonNonBroadcast(NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(projectedSize)))
+
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
+    val projectedNormalization = projector.projectNormalizationRDD(normalizationContext)
+
+    val projectedShiftDimentions = projectedNormalization
+      .map { case (_, norm) => norm.value.shifts.get.length }
+      .take(1)(0)
+
+    val projectedFactorDimentions = projectedNormalization
+      .map { case (_, norm) => norm.value.factors.get.length }
+      .take(1)(0)
+
+    assertEquals(projectedShiftDimentions, projectedSize)
+    assertEquals(projectedFactorDimentions, projectedSize)
   }
 }

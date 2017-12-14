@@ -16,15 +16,13 @@ package com.linkedin.photon.ml.optimization
 
 import scala.collection.mutable
 import scala.math.abs
-
 import breeze.linalg.{Vector, sum}
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.{L2Regularization, ObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
-import com.linkedin.photon.ml.util.Logging
+import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging}
 
 /**
  * An abstract base for the convex optimization problem which produce trained generalized linear models (GLMs) when
@@ -87,7 +85,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @return A GLM with the provided feature coefficients
    */
   protected def createModel(
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       coefficients: Vector[Double],
       variances: Option[Vector[Double]]): GeneralizedLinearModel =
     createModel(

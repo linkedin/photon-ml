@@ -22,7 +22,6 @@ import org.apache.spark.SparkContext
 import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
-
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
@@ -31,6 +30,7 @@ import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, NoRegularizationContext}
 import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.util.PhotonBroadcast
 
 /**
  * Integration tests to verify that the loss functions compute gradients & Hessians accurately.
@@ -453,7 +453,7 @@ class DistributedObjectiveFunctionTest extends SparkTestUtils {
 
     val objective = objectiveBuilder(sc)
     val trainingData = sc.parallelize(dataGenerationFunction()).repartition(NUM_PARTITIONS)
-    val normalizationContextBroadcast = sc.broadcast(NORMALIZATION)
+    val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(NORMALIZATION))
     val r = new Random(PARAMETER_RANDOM_SEED)
 
     for (iter <- 0 until SPARK_CONSISTENCY_CHECK_SAMPLES) {
@@ -511,7 +511,7 @@ class DistributedObjectiveFunctionTest extends SparkTestUtils {
 
     val objective = objectiveBuilder(sc)
     val trainingData = sc.parallelize(dataGenerationFunction()).repartition(NUM_PARTITIONS)
-    val normalizationContextBroadcast = sc.broadcast(NORMALIZATION)
+    val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(NORMALIZATION))
     val r = new Random(PARAMETER_RANDOM_SEED)
 
     for (iter <- 0 until SPARK_CONSISTENCY_CHECK_SAMPLES) {

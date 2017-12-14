@@ -15,13 +15,12 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{Vector, sum}
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{ObjectiveFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
  * Test objective function used solely to exercise the optimizers.
@@ -45,7 +44,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
   override protected[ml] def value(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): Double =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -56,7 +55,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
    * @return The computed gradient of the function
    */
   override protected[ml] def gradient(input: Iterable[LabeledPoint], coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -69,7 +68,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
   override protected[ml] def calculate(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
+    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
 
@@ -98,7 +97,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
     multiplyVector: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]) : Vector[Double] = {
+    normalizationContext: BroadcastWrapper[NormalizationContext]) : Vector[Double] = {
 
     val initialCumHessianVector = VectorUtils.zeroOfSameType(coefficients)
 

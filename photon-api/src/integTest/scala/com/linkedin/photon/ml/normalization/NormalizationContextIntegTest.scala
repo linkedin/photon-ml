@@ -15,13 +15,11 @@
 package com.linkedin.photon.ml.normalization
 
 import scala.util.Random
-
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
-
 import com.linkedin.photon.ml.{ModelTraining, TaskType}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -35,7 +33,7 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
-import com.linkedin.photon.ml.util.GameTestUtils
+import com.linkedin.photon.ml.util.{GameTestUtils, PhotonBroadcast}
 
 /**
  * Integration tests for [[NormalizationContext]].
@@ -188,8 +186,8 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
       NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(dim - 1))
     }
 
-    val normalizationBroadcast = sc.broadcast(normalizationContext)
-    val noNormalizationBroadcast = sc.broadcast(NoNormalization())
+    val normalizationBroadcast = PhotonBroadcast(sc.broadcast(normalizationContext))
+    val noNormalizationBroadcast = PhotonBroadcast(sc.broadcast(NoNormalization()))
 
     // Build the transformed rdd for validation
     val transformedRDD: RDD[LabeledPoint] = {
