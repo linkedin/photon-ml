@@ -48,6 +48,7 @@ import com.linkedin.photon.ml.util.DoubleRange
  * @param ranges the value ranges within which to search. There should be one for every dimension in the space.
  * @param evaluationFunction the function that evaluates points in the space to real values
  * @param evaluator the original evaluator
+ * @param discreteParams specifies the indices of parameters that should be treated as discrete values
  * @param candidatePoolSize the number of candidate points to draw at each iteration. Larger numbers give more precise
  *   results, but also incur higher computational cost.
  * @param seed the random seed value
@@ -56,9 +57,10 @@ class GaussianProcessSearch[T](
     ranges: Seq[DoubleRange],
     evaluationFunction: EvaluationFunction[T],
     evaluator: Evaluator,
+    discreteParams: Seq[Int] = Seq(),
     candidatePoolSize: Int = 250,
     seed: Long = System.currentTimeMillis)
-  extends RandomSearch[T](ranges, evaluationFunction, seed){
+  extends RandomSearch[T](ranges, evaluationFunction, discreteParams, seed){
 
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None
