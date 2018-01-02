@@ -320,6 +320,38 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME training with a custom model sparsity threshold.
+   */
+  @Test
+  def testModelSparsityThreshold(): Unit = sparkTest("testModelSparsityThreshold", useKryo = true) {
+
+    val outputDir = new Path(getTmpDir, "testModelSparsityThreshold")
+
+    runDriver(
+      mixedEffectSeriousRunArgs
+        .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+        .put(GameTrainingDriver.modelSparsityThreshold, 100.0))
+
+    val globalModelPath = bestModelPath(outputDir, "fixed-effect", "global")
+    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
+    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
+    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(globalModelPath))
+    assertModelSane(globalModelPath, expectedNumCoefficients = 0)
+
+    assertTrue(fs.exists(userModelPath))
+    assertModelSane(userModelPath, expectedNumCoefficients = 0, modelId = Some("1436929"))
+
+    assertTrue(fs.exists(songModelPath))
+    assertModelSane(songModelPath, expectedNumCoefficients = 0)
+
+    assertTrue(fs.exists(artistModelPath))
+    assertModelSane(artistModelPath, expectedNumCoefficients = 0)
+  }
+
+  /**
    * Test GAME training, loading an off-heap index map.
    */
   @Test

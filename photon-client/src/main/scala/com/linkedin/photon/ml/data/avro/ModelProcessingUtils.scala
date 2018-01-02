@@ -71,6 +71,7 @@ object ModelProcessingUtils {
    * @param featureShardIdToFeatureMapLoader The maps of feature to shard ids
    * @param outputDir The directory in HDFS where to save the model
    * @param sc The Spark context
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    */
   def saveGameModelToHDFS(
       sc: SparkContext,
@@ -79,7 +80,8 @@ object ModelProcessingUtils {
       optimizationTask: TaskType,
       optimizationConfigurations: GameEstimator.GameOptimizationConfiguration,
       randomEffectModelFileLimit: Option[Int],
-      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader]): Unit = {
+      featureShardIdToFeatureMapLoader: Map[String, IndexMapLoader],
+      sparsityThreshold: Double): Unit = {
 
     val hadoopConfiguration = sc.hadoopConfiguration
 
@@ -102,7 +104,7 @@ object ModelProcessingUtils {
           Utils.createHDFSDir(coefficientsOutputDir, hadoopConfiguration)
           val indexMap = featureShardIdToFeatureMapLoader(featureShardId).indexMapForDriver()
           val model = fixedEffectModel.model
-          saveModelToHDFS(model, indexMap, coefficientsOutputDir, sc)
+          saveModelToHDFS(model, indexMap, coefficientsOutputDir, sc, sparsityThreshold)
 
         case randomEffectModel: RandomEffectModel =>
           val randomEffectType = randomEffectModel.randomEffectType
@@ -120,7 +122,8 @@ object ModelProcessingUtils {
             indexMapLoader,
             randomEffectModelOutputDir,
             randomEffectModelFileLimit,
-            hadoopConfiguration)
+            hadoopConfiguration,
+            sparsityThreshold)
       }
     }
   }
@@ -317,13 +320,15 @@ object ModelProcessingUtils {
    * @param randomEffectModelOutputDir The directory to save the model to
    * @param randomEffectModelFileLimit The limit on the number of files to write when saving the random effect model
    * @param configuration The HDFS configuration to use for saving the model
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    */
   private def saveRandomEffectModelToHDFS(
       randomEffectModel: RandomEffectModel,
       indexMapLoader: IndexMapLoader,
       randomEffectModelOutputDir: Path,
       randomEffectModelFileLimit: Option[Int],
-      configuration: Configuration): Unit = {
+      configuration: Configuration,
+      sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): Unit = {
 
     Utils.createHDFSDir(randomEffectModelOutputDir, configuration)
 
@@ -340,7 +345,7 @@ object ModelProcessingUtils {
         randomEffectModel.modelsRDD
     }
 
-    saveModelsRDDToHDFS(modelsRDD, indexMapLoader, coefficientsRDDOutputDir)
+    saveModelsRDDToHDFS(modelsRDD, indexMapLoader, coefficientsRDDOutputDir, sparsityThreshold)
   }
 
   /**
@@ -350,17 +355,20 @@ object ModelProcessingUtils {
    * @param featureMap The feature to index map
    * @param outputDir The output directory to save the model to
    * @param sc The Spark context
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    */
   private def saveModelToHDFS(
       model: GeneralizedLinearModel,
       featureMap: IndexMap,
       outputDir: Path,
-      sc: SparkContext): Unit = {
+      sc: SparkContext,
+      sparsityThreshold: Double): Unit = {
 
     val bayesianLinearModelAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(
       model,
       AvroConstants.FIXED_EFFECT,
-      featureMap)
+      featureMap,
+      sparsityThreshold)
     val modelOutputPath = new Path(outputDir, AvroConstants.DEFAULT_AVRO_FILE_NAME).toString
 
     AvroUtils.saveAsSingleAvro(
@@ -405,16 +413,18 @@ object ModelProcessingUtils {
    * @param modelsRDD The models to save
    * @param featureMapLoader A loader for the feature to index map
    * @param outputDir The directory to which to save the models
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    */
   private def saveModelsRDDToHDFS(
       modelsRDD: RDD[(String, GeneralizedLinearModel)],
       featureMapLoader: IndexMapLoader,
-      outputDir: String): Unit = {
+      outputDir: String,
+      sparsityThreshold: Double): Unit = {
 
     val linearModelAvro = modelsRDD.mapPartitions { iter =>
       val featureMap = featureMapLoader.indexMapForRDD()
       iter.map { case (modelId, model) =>
-        AvroUtils.convertGLMModelToBayesianLinearModelAvro(model, modelId, featureMap)
+        AvroUtils.convertGLMModelToBayesianLinearModelAvro(model, modelId, featureMap, sparsityThreshold)
       }
     }
 

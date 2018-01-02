@@ -145,7 +145,11 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
       // Use Warm Start
       ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.useWarmStart))
+        GameTrainingDriver.useWarmStart),
+
+      // Model Sparsity Threshold
+      ScoptParameter[Double, Double](
+        GameTrainingDriver.modelSparsityThreshold))
 
   /**
    * Parse command line arguments for GAME training into a [[ParamMap]].

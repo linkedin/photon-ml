@@ -27,8 +27,7 @@ import org.apache.spark.mllib.linalg.{
 object VectorUtils {
 
   protected[ml] val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
-  // TODO: Make this configurable
-  protected[ml] val SPARSITY_THRESHOLD: Double = 1e-4
+  protected[ml] val DEFAULT_SPARSITY_THRESHOLD: Double = 1e-4
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[Vector]].
@@ -120,7 +119,7 @@ object VectorUtils {
   protected[ml] def kroneckerProduct(
       vector1: Vector[Double],
       vector2: Vector[Double],
-      threshold: Double = SPARSITY_THRESHOLD): Vector[Double] = {
+      threshold: Double = DEFAULT_SPARSITY_THRESHOLD): Vector[Double] = {
 
     require(vector1.isInstanceOf[SparseVector[Double]] || vector2.isInstanceOf[SparseVector[Double]],
       "Kronecker product between two dense vectors is currently not supported")
