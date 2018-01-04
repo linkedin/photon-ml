@@ -132,7 +132,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
       TaskType.LOGISTIC_REGRESSION,
       GAME_OPTIMIZATION_CONFIGURATION,
       Some(numberOfOutputFilesForRandomEffectModel),
-      featureIndexLoaders)
+      featureIndexLoaders,
+      VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
 
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
@@ -161,6 +162,68 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 
   /**
+   * Test that we can save a GAME model with custom sparsity threshold
+   */
+  @Test
+  def testSparsityThreshold(): Unit = sparkTest("testSparsityThreshold") {
+
+    // Model sparsity threshold
+    val modelSparsityThreshold = 12.0
+
+    // Default number of output files
+    val numberOfOutputFilesForRandomEffectModel = 2
+
+    val (gameModel, featureIndexLoaders, _) = makeGameModel()
+    val outputDir = new Path(getTmpDir)
+
+    ModelProcessingUtils.saveGameModelToHDFS(
+      sc,
+      outputDir,
+      gameModel,
+      TaskType.LOGISTIC_REGRESSION,
+      GAME_OPTIMIZATION_CONFIGURATION,
+      Some(numberOfOutputFilesForRandomEffectModel),
+      featureIndexLoaders,
+      modelSparsityThreshold)
+
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(outputDir))
+
+    val randomEffectModelCoefficientsDir = new Path(
+      outputDir,
+      s"${AvroConstants.RANDOM_EFFECT}/RE1/${AvroConstants.COEFFICIENTS}")
+    val numRandomEffectModelFiles = fs
+      .listStatus(randomEffectModelCoefficientsDir)
+      .count(_.getPath.toString.contains("part"))
+
+    assertEquals(numRandomEffectModelFiles, numberOfOutputFilesForRandomEffectModel,
+      s"Expected number of random effect model files: $numberOfOutputFilesForRandomEffectModel, " +
+        s"found: $numRandomEffectModelFiles")
+
+    val (loadedGameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      outputDir,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(featureIndexLoaders))
+
+    loadedGameModel.getModel("fixed") match {
+      case Some(model: FixedEffectModel) =>
+        assertEquals(
+          model
+            .modelBroadcast
+            .value
+            .coefficients
+            .means
+            .activeValuesIterator
+            .toSet,
+          Set(21, 51))
+
+      case other => fail(s"Unexpected model: $other")
+    }
+  }
+
+  /**
    * Test that we can load a model even if we don't have a feature index. In that case, the feature index is
    * generated as part of loading the model, and it will not directly match the feature index before the save.
    */
@@ -177,7 +240,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
       TaskType.LOGISTIC_REGRESSION,
       GAME_OPTIMIZATION_CONFIGURATION,
       randomEffectModelFileLimit = None,
-      featureIndexLoaders)
+      featureIndexLoaders,
+      VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
 
     val (loadedGameModel, newFeatureIndexLoaders) = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
@@ -225,7 +289,8 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
       TaskType.LOGISTIC_REGRESSION,
       GAME_OPTIMIZATION_CONFIGURATION,
       randomEffectModelFileLimit = None,
-      featureIndexLoaders)
+      featureIndexLoaders,
+      VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
 
     // Check if the models loaded correctly and they are the same as the models saved previously
     // The first value returned is the feature index, which we don't need here

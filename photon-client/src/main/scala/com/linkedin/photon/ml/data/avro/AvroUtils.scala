@@ -187,11 +187,13 @@ object AvroUtils {
    *
    * @param vector The input vector
    * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    * @return An array of Avro records that contains the information of the input vector
    */
   protected[avro] def convertVectorAsArrayOfNameTermValueAvros(
       vector: Vector[Double],
-      featureMap: IndexMap): Array[NameTermValueAvro] =
+      featureMap: IndexMap,
+      sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): Array[NameTermValueAvro] =
 
     // TODO: Make vector sparsity configurable
     vector match {
@@ -201,7 +203,7 @@ object AvroUtils {
           .zipWithIndex
           .map(_.swap)
           .filter { case (_, value) =>
-            math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
+            math.abs(value) > sparsityThreshold
           }
           .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
           .map { case (index, value) =>
@@ -221,7 +223,7 @@ object AvroUtils {
         sparse
           .activeIterator
           .filter { case (_, value) =>
-            math.abs(value) > VectorUtils.SPARSITY_THRESHOLD
+            math.abs(value) > sparsityThreshold
           }
           .toArray
           .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
@@ -333,18 +335,20 @@ object AvroUtils {
    *
    * @param modelId The model's id
    * @param featureMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    * @return The Avro record that contains the information of the input coefficients
    */
   protected[avro] def convertGLMModelToBayesianLinearModelAvro(
       model: GeneralizedLinearModel,
       modelId: String,
-      featureMap: IndexMap): BayesianLinearModelAvro = {
+      featureMap: IndexMap,
+      sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): BayesianLinearModelAvro = {
 
     val modelCoefficients = model.coefficients
-    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, featureMap)
+    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, featureMap, sparsityThreshold)
     val variancesAvrosOption = modelCoefficients
       .variancesOption
-      .map(convertVectorAsArrayOfNameTermValueAvros(_, featureMap))
+      .map(convertVectorAsArrayOfNameTermValueAvros(_, featureMap, sparsityThreshold))
     // TODO: Output type of model.
     val avroFile = BayesianLinearModelAvro
       .newBuilder()

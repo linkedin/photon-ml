@@ -157,6 +157,11 @@ object GameTrainingDriver extends GameDriver {
     "use warm start",
     "Whether to re-use trained GAME models as starting points.")
 
+  val modelSparsityThreshold: Param[Double] = ParamUtils.createParam[Double](
+    "model sparsity threshold",
+    "The model sparsity threshold, or the minimum absolute value considered nonzero when persisting a model",
+    ParamValidators.gt[Double](0.0))
+
   //
   // Initialize object
   //
@@ -254,6 +259,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
+    setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
   }
 
   /**
@@ -652,7 +658,8 @@ object GameTrainingDriver extends GameDriver {
             task,
             modelConfig,
             REMFileLimit,
-            featureShardIdToFeatureMapLoader)
+            featureShardIdToFeatureMapLoader,
+            getOrDefault(modelSparsityThreshold))
 
           logger.info("Saved best model to HDFS")
 
@@ -680,7 +687,8 @@ object GameTrainingDriver extends GameDriver {
             task,
             modelConfig,
             REMFileLimit,
-            featureShardIdToFeatureMapLoader)
+            featureShardIdToFeatureMapLoader,
+            getOrDefault(modelSparsityThreshold))
 
           modelIndex + 1
       }
