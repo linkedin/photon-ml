@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{norm, Vector}
 import breeze.numerics.abs
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -37,7 +36,7 @@ import com.linkedin.photon.ml.util._
 abstract class Optimizer[-Function <: ObjectiveFunction](
     relTolerance: Double,
     maxNumIterations: Int,
-    normalizationContext: Broadcast[NormalizationContext],
+    normalizationContext: BroadcastWrapper[NormalizationContext],
     constraintMap: Option[Map[Int, (Double, Double)]],
     val isTrackingState: Boolean)
   extends Serializable
@@ -102,7 +101,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Get the normalization context.
    */
-  def getNormalizationContext: Broadcast[NormalizationContext] = normalizationContext
+  def getNormalizationContext: BroadcastWrapper[NormalizationContext] = normalizationContext
 
   /**
    * Get the state tracker.

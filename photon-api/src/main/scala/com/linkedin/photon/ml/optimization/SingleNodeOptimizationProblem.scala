@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -24,6 +23,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * An optimization problem solved by a single task on one executor. Used for solving the per-entity optimization
@@ -119,7 +119,7 @@ object SingleNodeOptimizationProblem {
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: Function,
       glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       isTrackingState: Boolean,
       isComputingVariance: Boolean): SingleNodeOptimizationProblem[Function] = {
 

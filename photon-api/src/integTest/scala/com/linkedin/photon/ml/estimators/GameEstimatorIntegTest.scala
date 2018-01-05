@@ -155,8 +155,8 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
       val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values)
-      val normalizationContextBroadcast = sc.broadcast(
-        NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length)))
+      val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(
+        NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length))))
       val normalizationContexts = Map((coordinateId, normalizationContextBroadcast))
 
       // Create GameEstimator and fit model

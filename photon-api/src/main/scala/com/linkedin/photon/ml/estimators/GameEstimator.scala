@@ -62,7 +62,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   type DistributedLossFunctionConstructor = (PointwiseLossFunction) => DistributedGLMLossFunction
 
   private implicit val parent: Identifiable = this
-  private val defaultNormalizationContext: Broadcast[NormalizationContext] = sc.broadcast(NoNormalization())
+  private val defaultNormalizationContext: BroadcastWrapper[NormalizationContext] = PhotonBroadcast(sc.broadcast(NoNormalization()))
 
   override val uid: String = Identifiable.randomUID(GAME_ESTIMATOR_PREFIX)
 
@@ -97,12 +97,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "The number of coordinate descent iterations (one iteration is one full traversal of the update sequence).",
     ParamValidators.gt[Int](0.0))
 
-  val coordinateNormalizationContexts: Param[Map[CoordinateId, Broadcast[NormalizationContext]]] =
-    ParamUtils.createParam[Map[CoordinateId, Broadcast[NormalizationContext]]](
+  val coordinateNormalizationContexts: Param[Map[CoordinateId, BroadcastWrapper[NormalizationContext]]] =
+    ParamUtils.createParam[Map[CoordinateId, BroadcastWrapper[NormalizationContext]]](
       "normalization contexts",
       "The normalization contexts for each coordinate. The type of normalization should be the same for each " +
         "coordinate, but the shifts and factors are different for each shard.",
-      PhotonParamValidators.nonEmpty[TraversableOnce, (CoordinateId, Broadcast[NormalizationContext])])
+      PhotonParamValidators.nonEmpty[TraversableOnce, (CoordinateId, BroadcastWrapper[NormalizationContext])])
 
   val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
     "compute variance",
@@ -144,7 +144,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setCoordinateDescentIterations(value: Int): this.type = set(coordinateDescentIterations, value)
 
-  def setCoordinateNormalizationContexts(value: Map[CoordinateId, Broadcast[NormalizationContext]]): this.type =
+  def setCoordinateNormalizationContexts(value: Map[CoordinateId, BroadcastWrapper[NormalizationContext]]): this.type =
     set(coordinateNormalizationContexts, value)
 
   def setComputeVariance(value: Boolean): this.type = set(computeVariance, value)

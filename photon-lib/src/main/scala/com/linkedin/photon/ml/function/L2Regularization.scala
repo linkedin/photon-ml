@@ -18,6 +18,7 @@ import breeze.linalg.Vector
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Trait for an objective function with L2 regularization.
@@ -57,7 +58,7 @@ trait L2Regularization extends ObjectiveFunction {
   abstract override protected[ml] def value(
       input: Data,
       coefficients: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): Double =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     super.value(input, coefficients, normalizationContext) + l2RegValue(convertToVector(coefficients))
 
   /**
@@ -86,7 +87,7 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
   abstract override protected[ml] def value(
       input: Data,
       coefficients: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): Double =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -100,7 +101,7 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
   abstract override protected[ml] def gradient(
       input: Data,
       coefficients: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -115,7 +116,7 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
   abstract override protected[ml] def calculate(
       input: Data,
       coefficients: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val (baseValue, baseGradient) = super.calculate(input, coefficients, normalizationContext)
     val valueWithRegularization = baseValue + l2RegValue(convertToVector(coefficients))
@@ -152,7 +153,7 @@ trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationD
       input: Data,
       coefficients: Coefficients,
       multiplyVector: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     super.hessianVector(input, coefficients, multiplyVector, normalizationContext) +
       l2RegHessianVector(convertToVector(multiplyVector))
 

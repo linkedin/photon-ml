@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.function
 import java.util.Random
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
@@ -30,6 +29,7 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, NoRegularizationContext}
 import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Unit tests to verify that the loss functions compute gradients & Hessians accurately.
@@ -516,7 +516,7 @@ object SingleNodeObjectiveFunctionTest {
   private val LOCAL_CONSISTENCY_CHECK_SAMPLES = 25
   private val PROBLEM_DIMENSION = 5
   private val NORMALIZATION = NoNormalization()
-  private val NORMALIZATION_MOCK = mock(classOf[Broadcast[NormalizationContext]])
+  private val NORMALIZATION_MOCK = mock(classOf[BroadcastWrapper[NormalizationContext]])
   private val L2_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
   private val NO_REG_CONFIGURATION_MOCK = mock(classOf[GLMOptimizationConfiguration])
   private val REGULARIZATION_WEIGHT = 100.0

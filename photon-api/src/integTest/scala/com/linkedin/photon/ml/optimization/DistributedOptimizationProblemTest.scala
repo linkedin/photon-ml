@@ -18,7 +18,6 @@ import java.util.Random
 
 import breeze.linalg.{DenseVector, Vector}
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -35,6 +34,7 @@ import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfigura
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Integration tests for [[DistributedOptimizationProblem]]
@@ -420,7 +420,7 @@ object DistributedOptimizationProblemTest {
   private val DIMENSIONS: Int = 5
   private val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
   private val NORMALIZATION = NoNormalization()
-  private val NORMALIZATION_MOCK: Broadcast[NormalizationContext] = mock(classOf[Broadcast[NormalizationContext]])
+  private val NORMALIZATION_MOCK: BroadcastWrapper[NormalizationContext] = mock(classOf[BroadcastWrapper[NormalizationContext]])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 

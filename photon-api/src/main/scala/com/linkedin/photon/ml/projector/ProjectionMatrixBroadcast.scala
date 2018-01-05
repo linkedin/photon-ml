@@ -20,8 +20,10 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
 import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast}
 
 /**
  * Represents a broadcast projection matrix.
@@ -70,6 +72,24 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
           projectionMatrixBroadcast.value.projectCoefficients(oldCoefficients.means),
           oldCoefficients.variancesOption))
     }
+  }
+
+  /**
+   *
+   * @param randomEffectDataSet The input sharded data set in the original space
+   * @param normalizationContext The original broadcast form of NormalizationContext
+   * @return The broadcast form of NormalizationContext in projected space
+   */
+  def projectNormalizationContext(
+      randomEffectDataSet: RandomEffectDataSet,
+      normalizationContext: BroadcastWrapper[NormalizationContext]): BroadcastWrapper[NormalizationContext] = {
+    val sc = randomEffectDataSet.sparkContext
+    val originalNormalizationContext = normalizationContext.value
+    val factors = originalNormalizationContext.factors.map(factors => projectionMatrix.projectFeatures(factors))
+    val shifts = originalNormalizationContext.shifts.map(shifts => projectionMatrix.projectFeatures(shifts))
+    val interceptId = originalNormalizationContext.interceptId.map(_ => projectionMatrix.projectedInterceptId)
+    val norm = new NormalizationContext(factors, shifts, interceptId)
+    PhotonBroadcast(sc.broadcast(norm))
   }
 
   /**

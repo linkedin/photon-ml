@@ -320,7 +320,7 @@ object GameTrainingDriver extends GameDriver {
 
     val normalizationContexts = Timed("Prepare normalization contexts") {
       prepareNormalizationContexts(trainingData, featureIndexMapLoaders, featureShardStats)
-        .map(_.mapValues(context => sc.broadcast(context)))
+        .map(_.mapValues(context => PhotonBroadcast(sc.broadcast(context))))
     }
 
     val gameOptimizationConfigs = Timed("Prepare optimization configuration(s)") {

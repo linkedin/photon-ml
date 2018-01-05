@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Trait for twice differentiable function.
@@ -39,7 +39,7 @@ trait TwiceDiffFunction extends DiffFunction {
     input: Data,
     coefficients: Coefficients,
     multiplyVector: Coefficients,
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double]
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
 
   /**
    * Compute the diagonal of Hessian matrix of the function over the given data for the given model coefficients.

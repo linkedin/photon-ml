@@ -20,6 +20,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 // TODO: Better document this algorithm, especially normalization.
 /**
@@ -138,7 +139,7 @@ object HessianVectorAggregator {
       coef: Broadcast[Vector[Double]],
       multiplyVector: Broadcast[Vector[Double]],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       treeAggregateDepth: Int): Vector[Double] = {
 
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.value.size)
@@ -166,7 +167,7 @@ object HessianVectorAggregator {
       coef: Vector[Double],
       multiplyVector: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: Broadcast[NormalizationContext]): Vector[Double] = {
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] = {
 
     val aggregator = new HessianVectorAggregator(singleLossFunction, coef.size)
     val resultAggregator = input.aggregate(aggregator)(

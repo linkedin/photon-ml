@@ -15,11 +15,11 @@
 package com.linkedin.photon.ml.function
 
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Tests for [[DistributedObjectiveFunction]]
@@ -53,6 +53,6 @@ object DistributedObjectiveFunctionTest {
     override protected[ml] def value(
         input: Data,
         coefficients: Coefficients,
-        normalizationContext: Broadcast[NormalizationContext]): Double = 0D
+        normalizationContext: BroadcastWrapper[NormalizationContext]): Double = 0D
   }
 }

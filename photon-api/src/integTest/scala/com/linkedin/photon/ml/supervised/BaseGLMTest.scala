@@ -20,7 +20,6 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.testng.Assert.assertTrue
 import org.testng.annotations.{DataProvider, Test}
-
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
@@ -30,6 +29,7 @@ import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.test.SparkTestUtils
+import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast}
 
 // TODO: Update test to match all possible test scenarios
 /**
@@ -115,7 +115,7 @@ class BaseGLMTest extends SparkTestUtils {
     Array(
       Array(
         "Linear regression, easy problem",
-        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(SquaredLossFunction) ,
@@ -131,7 +131,7 @@ class BaseGLMTest extends SparkTestUtils {
 
       Array(
         "Poisson regression, easy problem",
-        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(PoissonLossFunction) ,
@@ -149,7 +149,7 @@ class BaseGLMTest extends SparkTestUtils {
 
       Array(
         "Logistic regression, easy problem",
-        (sc: SparkContext, normalizationContext: Broadcast[NormalizationContext]) =>
+        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(LogisticLossFunction),
@@ -174,12 +174,12 @@ class BaseGLMTest extends SparkTestUtils {
   @Test(dataProvider = "getGeneralizedLinearOptimizationProblems")
   def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
-      optimizationProblemBuilder: (SparkContext, Broadcast[NormalizationContext]) =>
+      optimizationProblemBuilder: (SparkContext, BroadcastWrapper[NormalizationContext]) =>
         DistributedOptimizationProblem[DistributedGLMLossFunction],
       data: Seq[LabeledPoint],
       validator: ModelValidator[GeneralizedLinearModel]): Unit = sparkTest(desc) {
 
-    val normalizationContext = sc.broadcast(NoNormalization())
+    val normalizationContext = PhotonBroadcast(sc.broadcast(NoNormalization()))
 
     // Step 1: Generate input RDD
     val trainingSet: RDD[LabeledPoint] = sc.parallelize(data).repartition(BaseGLMTest.NUM_PARTITIONS)

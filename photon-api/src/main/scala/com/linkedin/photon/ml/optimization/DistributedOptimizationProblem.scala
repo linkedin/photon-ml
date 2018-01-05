@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
@@ -27,6 +26,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampler.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * An optimization problem solved by multiple tasks on one or more executors. Used for solving the global optimization
@@ -179,7 +179,7 @@ object DistributedOptimizationProblem {
       objectiveFunction: Function,
       samplerOption: Option[DownSampler],
       glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       isTrackingState: Boolean,
       isComputingVariance: Boolean): DistributedOptimizationProblem[Function] = {
 

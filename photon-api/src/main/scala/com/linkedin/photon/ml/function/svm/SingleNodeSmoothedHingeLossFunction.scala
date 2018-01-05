@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.function.{DiffFunction, L2RegularizationDiff, Sing
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
  * This class is used to calculate the value and gradient of Rennie's smoothed hinge loss function, as an approximation
@@ -45,7 +45,7 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
   override protected[ml] def value(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): Double =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -59,7 +59,7 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
   override protected[ml] def gradient(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): Vector[Double] =
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -74,7 +74,7 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
   override protected[ml] def calculate(
     input: Iterable[LabeledPoint],
     coefficients: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
+    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
     val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
 
     input.aggregate((0.0, initialCumGradient))(

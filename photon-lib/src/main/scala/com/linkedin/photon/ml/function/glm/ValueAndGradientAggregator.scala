@@ -20,6 +20,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 // TODO: Better document this algorithm, especially normalization.
 /**
@@ -236,7 +237,7 @@ object ValueAndGradientAggregator {
       input: RDD[LabeledPoint],
       coef: Broadcast[Vector[Double]],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       treeAggregateDepth: Int): (Double, Vector[Double]) = {
 
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.value.size)
@@ -262,7 +263,7 @@ object ValueAndGradientAggregator {
       input: Iterable[LabeledPoint],
       coef: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
-      normalizationContext: Broadcast[NormalizationContext]): (Double, Vector[Double]) = {
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val aggregator = new ValueAndGradientAggregator(singleLossFunction, coef.size)
     val resultAggregator = input.aggregate(aggregator)(

@@ -15,9 +15,9 @@
 package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * The base objective function class for an optimization problem.
@@ -37,7 +37,7 @@ abstract class ObjectiveFunction {
   protected[ml] def value(
       input: Data,
       coefficients: Coefficients,
-      normalizationContext: Broadcast[NormalizationContext]): Double
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double
 
   /**
    * Compute the size of the domain for the given input data (i.e. the number of features, including the intercept if

@@ -39,6 +39,8 @@ protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projec
   override val projectedSpaceDimension = matrix.rows
   override val originalSpaceDimension = matrix.cols
 
+  val projectedInterceptId = projectedSpaceDimension - 1
+
   /**
    * Project features into the new space.
    *

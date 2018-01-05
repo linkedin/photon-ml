@@ -56,7 +56,7 @@ import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.{Logging, VectorUtils}
+import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging, VectorUtils}
 
 /**
  * This class used to solve an optimization problem using trust region Newton method (TRON).
@@ -78,7 +78,7 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * @param isTrackingState Whether to track intermediate states during optimization
  */
 class TRON(
-    normalizationContext: Broadcast[NormalizationContext],
+    normalizationContext: BroadcastWrapper[NormalizationContext],
     maxNumImprovementFailures: Int = TRON.DEFAULT_MAX_NUM_FAILURE,
     tolerance: Double = TRON.DEFAULT_TOLERANCE,
     maxNumIterations: Int = TRON.DEFAULT_MAX_ITER,
@@ -278,7 +278,7 @@ object TRON extends Logging {
   private def truncatedConjugateGradientMethod(
     objectiveFunction: TwiceDiffFunction,
     gradient: Vector[Double],
-    normalizationContext: Broadcast[NormalizationContext],
+    normalizationContext: BroadcastWrapper[NormalizationContext],
     truncationBoundary: Double)
     (data: objectiveFunction.Data,
     coefficients: objectiveFunction.Coefficients): (Int, Vector[Double], Vector[Double]) = {

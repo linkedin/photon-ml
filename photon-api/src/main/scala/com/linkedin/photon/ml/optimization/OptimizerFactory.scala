@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import org.apache.spark.broadcast.Broadcast
-
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Creates instances of Optimizer according to the user-requested optimizer type and regularization. The factory
@@ -37,7 +36,7 @@ protected[ml] object OptimizerFactory {
    */
   def build(
       config: OptimizerConfig,
-      normalizationContext: Broadcast[NormalizationContext],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double = 0,
       isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)

@@ -16,10 +16,10 @@ package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{DenseVector, Vector}
 import breeze.optimize.{FirstOrderMinimizer, DiffFunction => BreezeDiffFunction, LBFGSB => BreezeLBFGSB}
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Class used to solve an optimization problem using Limited-memory BFGS-B (LBFGSB) with simple box constrains.
@@ -40,7 +40,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 class LBFGSB (
     lowerBounds: DenseVector[Double],
     upperBounds: DenseVector[Double],
-    normalizationContext: Broadcast[NormalizationContext],
+    normalizationContext: BroadcastWrapper[NormalizationContext],
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
