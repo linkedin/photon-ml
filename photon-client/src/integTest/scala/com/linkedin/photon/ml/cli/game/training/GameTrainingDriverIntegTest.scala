@@ -25,7 +25,7 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.{DataValidationType, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
@@ -73,14 +73,14 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 1.7
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
+    val errorThreshold = 1.2
     val outputDir = new Path(getTmpDir, "fixedEffects")
 
     runDriver(fixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(allFixedEffectModelPath))
@@ -89,8 +89,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
     assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983)
 
-    assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}/0")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
 
     assertTrue(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
     assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
@@ -106,8 +106,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedEffectsWithAdditionalOpts(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 1.7
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
+    val errorThreshold = 1.2
     val outputDir = new Path(getTmpDir, "fixedEffects")
     val newArgs = fixedEffectSeriousRunArgs
       .copy
@@ -119,15 +119,15 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     Utils.createHDFSDir(outputDir, sc.hadoopConfiguration)
     runDriver(newArgs)
 
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertFalse(fs.exists(allFixedEffectModelPath))
     assertTrue(fs.exists(bestFixedEffectModelPath))
 
     assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983)
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
     assertTrue(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
   }
 
@@ -139,8 +139,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedEffectsWithoutIntercept(): Unit = sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 1.7
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
+    val errorThreshold = 1.2
     val outputDir = new Path(getTmpDir, "fixedEffects")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
@@ -151,8 +151,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
         .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs))
 
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(allFixedEffectModelPath))
@@ -161,8 +161,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14980)
     assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14980)
 
-    assertTrue(evaluateModel(new Path(outputDir, "models/0")) < errorThreshold)
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}/0")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
 
     assertFalse(AvroUtils.modelContainsIntercept(sc, allFixedEffectModelPath))
     assertFalse(AvroUtils.modelContainsIntercept(sc, bestFixedEffectModelPath))
@@ -185,8 +185,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     runDriver(params)
 
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(allFixedEffectModelPath))
@@ -215,8 +215,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
         .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs))
 
-    val allFixedEffectModelPath = allModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
-    val bestFixedEffectModelPath = bestModelPath(outputDir, "fixed-effect", fixedEffectCoordinateId)
+    val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
+    val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(allFixedEffectModelPath))
@@ -235,13 +235,13 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
     val outputDir = new Path(getTmpDir, "randomEffects")
 
     runDriver(randomEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
-    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, "random-effect", _))
+    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, _))
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     modelPaths.foreach { path =>
@@ -250,7 +250,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       assertTrue(AvroUtils.modelContainsIntercept(sc, path))
     }
 
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
   }
 
   /**
@@ -259,7 +259,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testRandomEffectsWithoutAnyIntercept(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
     val outputDir = new Path(getTmpDir, "randomEffects")
     val modifiedFeatureShardConfigs = randomEffectFeatureShardConfigs
@@ -271,7 +271,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
         .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs))
 
-    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, "random-effect", _))
+    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, _))
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     modelPaths.foreach { path =>
@@ -280,7 +280,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       assertFalse(AvroUtils.modelContainsIntercept(sc, path))
     }
 
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
   }
 
   /**
@@ -289,8 +289,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testRandomEffectWithNormalization(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    // RMSE reported is 2.199
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
     val outputDir = new Path(getTmpDir, "randomEffects")
     runDriver(
@@ -298,7 +297,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
         .put(GameTrainingDriver.normalization, NormalizationType.SCALE_WITH_MAX_MAGNITUDE))
 
-    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, "random-effect", _))
+    val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, _))
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     modelPaths.foreach { path =>
@@ -307,7 +306,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       assertTrue(AvroUtils.modelContainsIntercept(sc, path))
     }
 
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
   }
 
   /**
@@ -316,16 +315,16 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 2.2
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
+    val errorThreshold = 0.95
     val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
 
     runDriver(mixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
-    val globalModelPath = bestModelPath(outputDir, "fixed-effect", "global")
-    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
-    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
-    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+    val globalModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, "global")
+    val userModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-user")
+    val songModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-song")
+    val artistModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-artist")
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(globalModelPath))
@@ -344,7 +343,52 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(artistModelPath, expectedNumCoefficients = 21)
     assertTrue(AvroUtils.modelContainsIntercept(sc, artistModelPath))
 
-    assertTrue(evaluateModel(new Path(outputDir, "best")) < errorThreshold)
+    assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
+  }
+
+  /**
+   * Test GAME training with a fixed effect model only and hyperparameter tuning. Note that the best model may not be
+   * one of the tuned models.
+   */
+  @Test
+  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
+
+    val hyperParameterTuningIter = 3
+    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
+    val newArgs = mixedEffectSeriousRunArgs
+      .copy
+      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+      .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
+      .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.RANDOM)
+      .put(GameTrainingDriver.hyperParameterTuningIter, hyperParameterTuningIter)
+
+    runDriver(newArgs)
+
+    val allModelsPath = new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}")
+    val bestModelPath = new Path(outputDir, s"${GameTrainingDriver.BEST_MODEL_DIR}")
+    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+
+    assertTrue(fs.exists(allModelsPath))
+    assertTrue(fs.exists(bestModelPath))
+
+    val allFixedEffectModelsPathContents = fs.listStatus(allModelsPath)
+    assertEquals(allFixedEffectModelsPathContents.length, hyperParameterTuningIter)
+    allFixedEffectModelsPathContents.forall(_.isDirectory)
+
+    val bestRMSE = evaluateModel(bestModelPath)
+
+    (0 until hyperParameterTuningIter).foreach { i =>
+      val modelPath = new Path(allModelsPath, s"$i")
+      val fixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId, i)
+      assertTrue(fs.exists(fixedEffectModelPath))
+
+      randomEffectCoordinateIds.foreach { randomEffectCoordinateId =>
+        val randomEffectModelPath = outputModelPath(outputDir, AvroConstants.RANDOM_EFFECT, randomEffectCoordinateId, i)
+        assertTrue(fs.exists(randomEffectModelPath))
+      }
+
+      assertTrue(evaluateModel(modelPath) >= bestRMSE)
+    }
   }
 
   /**
@@ -360,10 +404,10 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
         .put(GameTrainingDriver.modelSparsityThreshold, 100.0))
 
-    val globalModelPath = bestModelPath(outputDir, "fixed-effect", "global")
-    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
-    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
-    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+    val globalModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, "global")
+    val userModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-user")
+    val songModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-song")
+    val artistModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-artist")
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(globalModelPath))
@@ -385,8 +429,6 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testOffHeapIndexMap(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 4/14/2016
-    val errorThreshold = 2.2
     val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
     val indexMapPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath)
     val params = mixedEffectToyRunArgs
@@ -397,10 +439,10 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     runDriver(params)
 
-    val globalModelPath = bestModelPath(outputDir, "fixed-effect", "global")
-    val userModelPath = bestModelPath(outputDir, "random-effect", "per-user")
-    val songModelPath = bestModelPath(outputDir, "random-effect", "per-song")
-    val artistModelPath = bestModelPath(outputDir, "random-effect", "per-artist")
+    val globalModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, "global")
+    val userModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-user")
+    val songModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-song")
+    val artistModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-artist")
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(globalModelPath))
@@ -522,7 +564,6 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
       Some(indexMapLoaders))
 
-    val temp = gameModel.score(gameDataSet)
     val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)
 
     new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores)
@@ -731,8 +772,8 @@ object GameTrainingDriverIntegTest {
    * @param modelName The model name
    * @return Full path to model coefficients file
    */
-  def allModelPath(outputDir: Path, modelType: String, modelName: String): Path =
-    modelPath(outputDir, "models/0", modelType, modelName)
+  def outputModelPath(outputDir: Path, modelType: String, modelName: String, modelPos: Int = 0): Path =
+    modelPath(outputDir, s"${GameTrainingDriver.MODELS_DIR}/$modelPos", modelType, modelName)
 
   /**
    * Build the path to the best model coefficients file.
@@ -743,5 +784,5 @@ object GameTrainingDriverIntegTest {
    * @return Full path to model coefficients file
    */
   def bestModelPath(outputDir: Path, modelType: String, modelName: String): Path =
-    modelPath(outputDir, "best", modelType, modelName)
+    modelPath(outputDir, GameTrainingDriver.BEST_MODEL_DIR, modelType, modelName)
 }

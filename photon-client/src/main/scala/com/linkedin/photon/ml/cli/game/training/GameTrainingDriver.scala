@@ -589,8 +589,12 @@ object GameTrainingDriver extends GameDriver {
         val (evaluator1, score1) = eval1.head
         val (evaluator2, score2) = eval2.head
 
+        // TODO: Each iteration of the Bayesian hyper-parameter tuning recomputes the GAME data set. This causes the
+        // TODO: equality check to fail: not only are the evaluators not identical (ev1.eq(ev2)) but they're not equal
+        // TODO: either (they reference different RDDs, which are computed identically). The below check is a temporary
+        // TODO: solution.
         require(
-          evaluator1 == evaluator2,
+          evaluator1.evaluatorType == evaluator2.evaluatorType,
           "Evaluator mismatch while selecting best model; some error has occurred during validation.")
 
         if (evaluator1.betterThan(score1, score2)) configModelEval1 else configModelEval2
