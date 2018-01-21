@@ -392,6 +392,32 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME partial retraining using a pre-trained fixed effect model.
+   */
+  @Test
+  def testPartialRetrainWithFixedBase(): Unit = sparkTest("testPartialRetrainWithFixedBase", useKryo = true) {
+
+    val outputDir = new Path(getTmpDir, "testPartialRetrainWithFixedBase")
+
+    runDriver(partialRetrainWithFixedBaseArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, TOLERANCE)
+  }
+
+  /**
+   * Test GAME partial retraining using a pre-trained random effects model.
+   */
+  @Test
+  def testPartialRetrainWithRandomBase(): Unit = sparkTest("testPartialRetrainWithFixedBase", useKryo = true) {
+
+    val outputDir = new Path(getTmpDir, "testPartialRetrainWithRandomBase")
+
+    runDriver(partialRetrainWithFixedBaseArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, TOLERANCE)
+  }
+
+  /**
    * Test GAME training with a custom model sparsity threshold.
    */
   @Test
@@ -509,9 +535,10 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    */
   def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
 
-    val modelAvro =
-      AvroUtils
-        .readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
+    val modelAvro = AvroUtils.readFromSingleAvro[BayesianLinearModelAvro](
+      sc,
+      path.toString,
+      BayesianLinearModelAvro.getClassSchema.toString)
 
     val model = modelId match {
       case Some(id) =>
@@ -522,6 +549,62 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     }
 
     assertEquals(model.getMeans.count(x => x.getValue != 0), expectedNumCoefficients)
+  }
+
+  /**
+   * Compare the RMSE evaluation results of two models.
+   *
+   * @param modelPath1 Base path to the GAME model files of the first model
+   * @param modelPath2 Base path to the GAME model files of the second model
+   * @param tolerance The tolerance within the RMSE of the two models should match
+   */
+  def compareModelEvaluation(modelPath1: Path, modelPath2: Path, tolerance: Double): Unit = {
+
+    val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
+    val featureSectionMap = GameTrainingDriver
+      .getOrDefault(GameTrainingDriver.featureShardConfigurations)
+      .mapValues(_.featureBags)
+      .map(identity)
+    val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
+      Seq(testPath.toString),
+      indexMapLoadersOpt,
+      featureSectionMap,
+      numPartitions = 2)
+    val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
+
+    val gameDataSet = GameConverters
+      .getGameDataSetFromDataFrame(
+        testData,
+        featureSectionMap.keySet,
+        randomEffectTypes.toSet,
+        isResponseRequired = true,
+        GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames))
+      .partitionBy(partitioner)
+
+    val validatingLabelsAndOffsetsAndWeights = gameDataSet
+      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
+
+    validatingLabelsAndOffsetsAndWeights.count()
+
+    val (gameModel1, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      modelPath1,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(indexMapLoaders))
+    val (gameModel2, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      sc,
+      modelPath2,
+      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      Some(indexMapLoaders))
+
+    val scores1 = gameModel1.score(gameDataSet).scores.mapValues(_.score)
+    val scores2 = gameModel2.score(gameDataSet).scores.mapValues(_.score)
+
+    val rmseEval = new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
+    val rmse1 = rmseEval.evaluate(scores1)
+    val rmse2 = rmseEval.evaluate(scores2)
+
+    assertEquals(rmse1, rmse2, tolerance)
   }
 
   /**
@@ -592,12 +675,19 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
 object GameTrainingDriverIntegTest {
 
+  private val TOLERANCE = 1E-6
+
   // This is the Yahoo! Music dataset:
   // photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
-  private val inputPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input").getPath)
+  private val basePath = new Path(getClass.getClassLoader.getResource("GameIntegTest").getPath)
+  private val inputPath = new Path(basePath, "input")
   private val trainPath = new Path(inputPath, "train")
   private val testPath = new Path(inputPath, "test")
   private val featurePath = new Path(inputPath, "feature-lists")
+  private val trainedModelsPath = new Path(basePath, "retrainModels")
+  private val trainedFixedOnlyModelPath = new Path(trainedModelsPath, "fixedEffectsOnly")
+  private val trainedRandomOnlyModelPath = new Path(trainedModelsPath, "randomEffectsOnly")
+  private val trainedMixedModelPath = new Path(trainedModelsPath, "mixedEffects")
   private val numExecutors = 1
   private val numIterations = 1
 
@@ -751,6 +841,32 @@ object GameTrainingDriverIntegTest {
       .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
       .put(GameTrainingDriver.coordinateConfigurations, mixedEffectToyGameConfig)
+
+  /**
+   * Fixed and random effect arguments, but retraining using an existing fixed effect model.
+   *
+   * @return Arguments to train a model
+   */
+  def partialRetrainWithFixedBaseArgs: ParamMap =
+    defaultArgs
+      .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
+      .put(GameTrainingDriver.coordinateConfigurations, randomEffectOnlyToyGameConfig)
+      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedFixedOnlyModelPath)
+      .put(GameTrainingDriver.partialRetrainLockedCoordinates, Set(fixedEffectCoordinateId))
+
+  /**
+   * Fixed and random effect arguments, but retraining using an existing random effects model.
+   *
+   * @return Arguments to train a model
+   */
+  def partialRetrainWithRandomBaseArgs: ParamMap =
+    defaultArgs
+      .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
+      .put(GameTrainingDriver.coordinateConfigurations, fixedEffectOnlyToyGameConfig)
+      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedRandomOnlyModelPath)
+      .put(GameTrainingDriver.partialRetrainLockedCoordinates, randomEffectCoordinateIds.toSet)
 
   /**
    * Build the path to the model coefficients file, given some model properties.

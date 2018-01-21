@@ -1,0 +1,7 @@
+per-artist:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),com.linkedin.photon.ml.optimization.L2RegularizationContext$@76c51fd1,1.0)
+per-song:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),com.linkedin.photon.ml.optimization.L2RegularizationContext$@76c51fd1,1.0)
+per-user:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),com.linkedin.photon.ml.optimization.L2RegularizationContext$@76c51fd1,1.0)
+

@@ -1,0 +1,79 @@
+
+{
+  "modelType": "LINEAR_REGRESSION",
+  "optimizationConfigurations": 
+{
+  "values": [
+    
+{
+  "name": "global",
+  "configuration": 
+{
+  "optimizerConfig": {
+  "optimizerType": "TRON",
+  "maximumIterations": 10,
+  "tolerance": 1.0E-5
+},
+  "regularizationContext": {
+  "regularizationType": "L2",
+  "elasticNetParam": null
+},
+  "regularizationWeight": 10.0,
+  "downSamplingRate": 1.0
+}
+},
+
+{
+  "name": "per-user",
+  "configuration": 
+{
+  "optimizerConfig": {
+  "optimizerType": "TRON",
+  "maximumIterations": 10,
+  "tolerance": 1.0E-5
+} ,
+  "regularizationContext": {
+  "regularizationType": "L2",
+  "elasticNetParam": null
+},
+  "regularizationWeight": 1.0
+}
+},
+
+{
+  "name": "per-song",
+  "configuration": 
+{
+  "optimizerConfig": {
+  "optimizerType": "TRON",
+  "maximumIterations": 10,
+  "tolerance": 1.0E-5
+} ,
+  "regularizationContext": {
+  "regularizationType": "L2",
+  "elasticNetParam": null
+},
+  "regularizationWeight": 1.0
+}
+},
+
+{
+  "name": "per-artist",
+  "configuration": 
+{
+  "optimizerConfig": {
+  "optimizerType": "TRON",
+  "maximumIterations": 10,
+  "tolerance": 1.0E-5
+} ,
+  "regularizationContext": {
+  "regularizationType": "L2",
+  "elasticNetParam": null
+},
+  "regularizationWeight": 1.0
+}
+}
+  ]
+}
+}
+         

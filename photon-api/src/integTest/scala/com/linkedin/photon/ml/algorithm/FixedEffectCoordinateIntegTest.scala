@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
- * Tests for the FixedEffectCoordinate implementation.
+ * Integration tests for the [[FixedEffectCoordinate]] implementation.
  */
 class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
