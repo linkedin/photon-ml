@@ -94,6 +94,7 @@ rat {
     'photon-api/src/test/resources/**',
     'photon-avro-schemas/src/main/java/**',
     'photon-client/src/integTest/resources/**',
+    'Photon Style.xml',
     'travis/**'
   ]
 }
