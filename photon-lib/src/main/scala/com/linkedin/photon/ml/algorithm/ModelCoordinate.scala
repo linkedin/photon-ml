@@ -20,19 +20,20 @@ import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 
 /**
- * The optimization problem coordinate for each effect model.
+ * The optimization problem coordinate for a pre-trained model.
  *
  * @tparam D The training data set type
- * @param dataSet The training dataset
+ * @param dataSet The training data set
  */
-protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
+abstract class ModelCoordinate[D <: DataSet[D]](dataSet: D) extends Coordinate(dataSet) {
+
   /**
    * Score the effect-specific data set in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores
    */
-  protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
 
   /**
    * Initialize a basic model for scoring GAME data.
@@ -40,7 +41,8 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param seed A random seed
    * @return The basic model
    */
-  protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
+  override protected[algorithm] def initializeModel(seed: Long): DatumScoringModel =
+    throw new UnsupportedOperationException("Attempted to initialize model using pre-trained coordinate.")
 
   /**
    * Update the coordinate with a new dataset.
@@ -48,19 +50,8 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param dataSet The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  protected[algorithm] def updateCoordinateWithDataSet(dataSet: D): Coordinate[D]
-
-  /**
-   * Optimize an existing model for the new scores of the other coordinates.
-   *
-   * @param model The existing model
-   * @param score The combined scores of the other coordinates for each record
-   * @return A tuple of the updated model and the optimization states tracker
-   */
-  protected[algorithm] def updateModel(
-      model: DatumScoringModel,
-      score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
-    updateCoordinateWithDataSet(dataSet.addScoresToOffsets(score)).updateModel(model)
+  override protected[algorithm] def updateCoordinateWithDataSet(dataSet: D): Coordinate[D] =
+    throw new UnsupportedOperationException("Attempted to update model coordinate.")
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -69,7 +60,9 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param model The model to use as a starting point
    * @return A tuple of the updated model and the optimization states tracker
    */
-  protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
+  override protected[algorithm] def updateModel(
+      model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+    throw new UnsupportedOperationException("Attempted to update model coordinate.")
 
   /**
    * Compute the regularization term value of the coordinate for a given model.
@@ -77,5 +70,5 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param model The model
    * @return The regularization term value
    */
-  protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double
+  override protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double = 0D
 }

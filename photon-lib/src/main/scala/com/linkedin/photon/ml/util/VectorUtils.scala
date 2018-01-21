@@ -18,8 +18,7 @@ import scala.collection.mutable
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
-import org.apache.spark.mllib.linalg.{
-  DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector, Vectors}
+import org.apache.spark.mllib.linalg.{Vectors, DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
 /**
  * A utility object that contains operations to create, copy, compare, and convert Breeze [[Vector]] objects.

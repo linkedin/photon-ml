@@ -155,7 +155,7 @@ object FixedEffectCoordinate {
    * @param fixedEffectModel The model to score the dataset with
    * @return The computed scores
    */
-  private def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
+  protected[algorithm] def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
     val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
       modelBroadcast.value.computeScore(features)

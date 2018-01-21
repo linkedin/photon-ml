@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.estimators
 import scala.language.existentials
 
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
@@ -104,6 +103,15 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         "coordinate, but the shifts and factors are different for each shard.",
       PhotonParamValidators.nonEmpty[TraversableOnce, (CoordinateId, BroadcastWrapper[NormalizationContext])])
 
+  val partialRetrainModel: Param[GameModel] = ParamUtils.createParam(
+    "partial retrain model",
+    "Pre-trained model to use as a base for partial retraining.")
+
+  val partialRetrainLockedCoordinates: Param[Set[CoordinateId]] = ParamUtils.createParam(
+    "partial retrain locked coordinates",
+    "The set of coordinates present in the pre-trained model to reuse during partial retraining.",
+    PhotonParamValidators.nonEmpty)
+
   val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
     "compute variance",
     "Whether to compute (approximate) coefficient variance.")
@@ -147,6 +155,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   def setCoordinateNormalizationContexts(value: Map[CoordinateId, BroadcastWrapper[NormalizationContext]]): this.type =
     set(coordinateNormalizationContexts, value)
 
+  def setPartialRetrainModel(value: GameModel): this.type = set(partialRetrainModel, value)
+
+  def setPartialRetrainLockedCoordinates(value: Set[CoordinateId]): this.type =
+    set(partialRetrainLockedCoordinates, value)
+
   def setComputeVariance(value: Boolean): this.type = set(computeVariance, value)
 
   def setTreeAggregateDepth(value: Int): this.type = set(treeAggregateDepth, value)
@@ -179,7 +192,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(computeVariance, false)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
-    setDefault(useWarmStart, true)
+    setDefault(useWarmStart, false)
   }
 
   /**
@@ -198,17 +211,64 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val dataConfigs = getRequiredParam(coordinateDataConfigurations)
+    val retrainModelOpt = get(partialRetrainModel)
+    val retrainModelCoordsOpt = get(partialRetrainLockedCoordinates)
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val numUniqueCoordinates = updateSequence.toSet.size
 
+    // Cannot have coordinates repeat in the update sequence
     require(
       numUniqueCoordinates == updateSequence.size,
-      "Mismatch between coordinate configurations and update sequence.")
+      "One or more coordinates are repeated in the update sequence.")
 
+    // If partial retraining is enabled, both a pre-trained model and a list of coordinates to reuse must be provided
+    val coordinatesToTrain = (retrainModelOpt, retrainModelCoordsOpt) match {
+      case (Some(retrainModel), Some(retrainModelCoords)) =>
+
+        val newCoordinates = updateSequence.filterNot(retrainModelCoords.contains)
+
+        // Locked coordinates cannot be empty
+        require(
+          retrainModelCoords.nonEmpty,
+          "Set of locked coordinates is empty.")
+
+        // No point in training if every coordinate is being reused
+        require(
+          newCoordinates.nonEmpty,
+          "All coordinates in the update sequence are locked coordinates from the pre-trained model: no new " +
+            "coordinates to train.")
+
+        // All locked coordinates must be used by the update sequence
+        require(
+          retrainModelCoords.forall(updateSequence.contains),
+          "One or more locked coordinates for partial retraining are missing from the update sequence.")
+
+        // All locked coordinates must be used present in the pre-trained model
+        require(
+          retrainModelCoords.forall(retrainModel.toMap.contains),
+          "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
+
+        newCoordinates
+
+      case (None, None) =>
+        updateSequence
+
+      case (Some(_), None) =>
+        throw new IllegalArgumentException("Missing locked coordinates for partial retraining.")
+
+      case (None, Some(_)) =>
+        throw new IllegalArgumentException("Partial retraining coordinates provided without model.")
+    }
+
+    // All coordinates (including locked coordinates) should have a data configuration
     updateSequence.foreach { coordinate =>
       require(
         dataConfigs.contains(coordinate),
         s"Coordinate $coordinate in the update sequence is missing data configuration.")
+    }
+
+    // If normalization is enabled, all non-locked coordinates must have a NormalizationContext
+    coordinatesToTrain.foreach { coordinate =>
       require(
         normalizationContextsOpt.forall(normalizationContexts => normalizationContexts.contains(coordinate)),
         s"Coordinate $coordinate in the update sequence is missing normalization context")
@@ -248,6 +308,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     // Verify valid GameEstimator settings
     validateParams()
 
+    // Locked coordinates should not be present in the optimization configurations
+    get(partialRetrainLockedCoordinates).foreach { lockedCoordinates =>
+      require(
+        optimizationConfigurations.forall(_.keys.forall(coordinateId => !lockedCoordinates.contains(coordinateId))),
+        "One or more locked coordinates for partial retraining are present in the optimization configurations.")
+    }
+
     // Group additional columns to include in GameDatum
     val randomEffectIdCols: Set[String] = getRequiredParam(coordinateDataConfigurations)
       .flatMap { case (_, config) =>
@@ -274,6 +341,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       validationData,
       featureShards,
       additionalCols)
+    val coordinateDescent = CoordinateDescent(
+      getRequiredParam(coordinateUpdateSequence),
+      getOrDefault(coordinateDescentIterations),
+      trainingLossFunctionEvaluator,
+      logger,
+      validationDataSetAndEvaluators,
+      get(partialRetrainModel),
+      get(partialRetrainLockedCoordinates))
 
     val results = Timed(s"Training models:") {
 
@@ -283,8 +358,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         val (gameModel, evaluation) = train(
           optimizationConfiguration,
           trainingDataSets,
-          trainingLossFunctionEvaluator,
-          validationDataSetAndEvaluators,
+          coordinateDescent,
           prevGameModel)
 
         if (getOrDefault(useWarmStart)) {
@@ -552,15 +626,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    *
    * @param configuration The configuration for the GAME optimization problem
    * @param trainingDataSets The training data sets for each coordinate of the GAME optimization problem
-   * @param trainingEvaluator The evaluator for the training function loss
-   * @param validationDataAndEvaluators Optional validation data and evaluators
+   * @param coordinateDescent The coordinate descent driver
+   * @param prevGameModelOpt An optional existing GAME model to use as the starting point from which to optimize
    * @return A trained GAME model
    */
   protected def train(
       configuration: GameOptimizationConfiguration,
       trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
-      trainingEvaluator: Evaluator,
-      validationDataAndEvaluators: Option[(RDD[(Long, GameDatum)], Seq[Evaluator])],
+      coordinateDescent: CoordinateDescent,
       prevGameModelOpt: Option[GameModel] = None)
     : (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
 
@@ -580,58 +653,66 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     }
 
     // For each model, create the optimization coordinates
-    val coordinates = getRequiredParam(coordinateUpdateSequence).map { coordinateId =>
-      val coordinate: Coordinate[_] = (configuration(coordinateId), trainingDataSets(coordinateId)) match {
+    val coordinates = getRequiredParam(coordinateUpdateSequence)
+      .map { coordinateId =>
 
-        case (feOptConfig: FixedEffectOptimizationConfiguration, feDataSet: FixedEffectDataSet) =>
-          // If number of features is from moderate to large (>200000), then use a deeper tree aggregate
-          val treeAggDepth = if (feDataSet.numFeatures < FIXED_EFFECT_FEATURE_THRESHOLD) {
-            getOrDefault(treeAggregateDepth)
-          } else {
-            Math.max(getOrDefault(treeAggregateDepth), DEEP_TREE_AGGREGATE_DEPTH)
+        val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
+        val coordinate: Coordinate[_] = if (lockedCoordinates.contains(coordinateId)) {
+          trainingDataSets(coordinateId) match {
+            case feDataSet: FixedEffectDataSet => new FixedEffectModelCoordinate(feDataSet)
+            case reDataSet: RandomEffectDataSet => new RandomEffectModelCoordinate(reDataSet)
+            case dataSet => throw new UnsupportedOperationException(s"Unsupported data set type: ${dataSet.getClass}")
           }
 
-          new FixedEffectCoordinate(
-            feDataSet,
-            DistributedOptimizationProblem(
-              feOptConfig,
-              selectDistributedLossFunction(feOptConfig, treeAggDepth),
-              setupDownSampler(feOptConfig.downSamplingRate),
-              glmConstructor,
-              normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),
-              TRACK_STATE,
-              variance))
+        } else {
+          (configuration(coordinateId), trainingDataSets(coordinateId)) match {
 
-        case (reOptConfig: RandomEffectOptimizationConfiguration, reDataSet: RandomEffectDataSetInProjectedSpace) =>
-          new RandomEffectCoordinateInProjectedSpace(
-            reDataSet,
-            RandomEffectOptimizationProblem(
+            case (feOptConfig: FixedEffectOptimizationConfiguration, feDataSet: FixedEffectDataSet) =>
+              // If number of features is from moderate to large (>200000), then use a deeper tree aggregate
+              val treeAggDepth = if (feDataSet.numFeatures < FIXED_EFFECT_FEATURE_THRESHOLD) {
+                getOrDefault(treeAggregateDepth)
+              } else {
+                Math.max(getOrDefault(treeAggregateDepth), DEEP_TREE_AGGREGATE_DEPTH)
+              }
+
+              new FixedEffectCoordinate(
+                feDataSet,
+                DistributedOptimizationProblem(
+                  feOptConfig,
+                  selectDistributedLossFunction(feOptConfig, treeAggDepth),
+                  setupDownSampler(feOptConfig.downSamplingRate),
+                  glmConstructor,
+                  normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),
+                  TRACK_STATE,
+                  variance))
+
+            case (reOptConfig: RandomEffectOptimizationConfiguration, reDataSet: RandomEffectDataSetInProjectedSpace) =>
+              new RandomEffectCoordinateInProjectedSpace(
                 reDataSet,
-                reOptConfig,
-                selectSingleNodeLossFunction(reOptConfig),
-                glmConstructor,
-                normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),
-                TRACK_STATE,
-                variance)
-              .setName(s"Random effect optimization problem of coordinate $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+                RandomEffectOptimizationProblem(
+                    reDataSet,
+                    reOptConfig,
+                    selectSingleNodeLossFunction(reOptConfig),
+                    glmConstructor,
+                    normalizationContexts.extractOrElse(coordinateId)(defaultNormalizationContext),
+                    TRACK_STATE,
+                    variance)
+                  .setName(s"Random effect optimization problem of coordinate $coordinateId")
+                  .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
 
-        case (optimizationConfig, dataSet) =>
-          throw new UnsupportedOperationException(
-            s"Unsupported (configuration, data set) pair: (${optimizationConfig.getClass}, ${dataSet.getClass})")
+            case (optimizationConfig, dataSet) =>
+              throw new UnsupportedOperationException(
+                s"Unsupported (configuration, data set) pair: (${optimizationConfig.getClass}, ${dataSet.getClass})")
+          }
+        }
+
+        Pair[CoordinateId, Coordinate[_]](coordinateId, coordinate)
       }
-
-      Pair[CoordinateId, Coordinate[_]](coordinateId, coordinate)
-    }
+      .toMap
 
     prevGameModelOpt match {
-      case Some(prevGameModel) =>
-        CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
-          .run(getOrDefault(coordinateDescentIterations), prevGameModel)
-
-      case None =>
-        CoordinateDescent(coordinates, trainingEvaluator, validationDataAndEvaluators, logger)
-          .run(getOrDefault(coordinateDescentIterations))
+      case Some(prevGameModel) => coordinateDescent.run(coordinates, prevGameModel)
+      case None => coordinateDescent.run(coordinates)
     }
   }
 
@@ -654,38 +735,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     } else {
       None
     }
-
-  /**
-   * Construct the functions used for computing loss by a factored random effect optimization problem.
-   *
-   * @param randomEffectOptimizationConfiguration The random effect optimization problem configuration
-   * @param latentFactorOptimizationConfiguration The latent factor optimization problem configuration
-   * @return The loss functions used by factored random effect optimization
-   */
-  private def selectRandomLatentObjectiveFunction(
-      randomEffectOptimizationConfiguration: GLMOptimizationConfiguration,
-      latentFactorOptimizationConfiguration: GLMOptimizationConfiguration)
-    : (SingleNodeObjectiveFunction, DistributedObjectiveFunction) = {
-
-    val lossFunction: SingleNodeLossFunctionConstructor = SingleNodeGLMLossFunction(
-      randomEffectOptimizationConfiguration)
-    val distLossFunction: DistributedLossFunctionConstructor = DistributedGLMLossFunction(
-      sc,
-      latentFactorOptimizationConfiguration,
-      getOrDefault(treeAggregateDepth))
-
-    getRequiredParam(trainingTask) match {
-      case TaskType.LOGISTIC_REGRESSION => (lossFunction(LogisticLossFunction), distLossFunction(LogisticLossFunction))
-      case TaskType.LINEAR_REGRESSION => (lossFunction(SquaredLossFunction), distLossFunction(SquaredLossFunction))
-      case TaskType.POISSON_REGRESSION => (lossFunction(PoissonLossFunction), distLossFunction(PoissonLossFunction))
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        (SingleNodeSmoothedHingeLossFunction(randomEffectOptimizationConfiguration),
-          DistributedSmoothedHingeLossFunction(
-            sc,
-            latentFactorOptimizationConfiguration,
-            getOrDefault(treeAggregateDepth)))
-    }
-  }
 
   /**
    * Construct a function for computing loss on a single node (used by random effect optimization problems).

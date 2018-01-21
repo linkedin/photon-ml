@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.data.scoring
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data.GameDatum
 
 /**
@@ -25,7 +26,7 @@ import com.linkedin.photon.ml.data.GameDatum
  *
  * @param scores The scores consist of (unique ID, score) pairs as explained above.
  */
-protected[ml] class CoordinateDataScores(override val scores: RDD[(Long, Double)])
+protected[ml] class CoordinateDataScores(override val scores: RDD[(UniqueSampleId, Double)])
   extends DataScores[Double, CoordinateDataScores](scores) {
 
   /**
