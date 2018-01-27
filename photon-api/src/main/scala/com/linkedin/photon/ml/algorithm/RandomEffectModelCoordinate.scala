@@ -33,8 +33,8 @@ class RandomEffectModelCoordinate(dataSet: RandomEffectDataSet) extends ModelCoo
    */
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
-      case fixedEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.score(dataSet, fixedEffectModel)
+      case randomEffectModel: RandomEffectModel =>
+        RandomEffectCoordinate.score(dataSet, randomEffectModel)
 
       case _ =>
         throw new UnsupportedOperationException(

@@ -216,6 +216,9 @@ class CoordinateDescent(
     fullTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
 
     // Initialize the regularization term value
+    // TODO: Should read regularization term or regularization term value from metadata and add to the total. Otherwise,
+    // TODO: this results in misleading logs about objective function loss vs. regularization term loss, since the
+    // TODO: locked coordinates contribute to one but not the other.
     var regularizationTermValueContainer = coordinatesToTrain
       .map { coordinateId =>
         (coordinateId,
@@ -454,6 +457,7 @@ object CoordinateDescent {
    * @return The two input values and the total objective function value, formatted for output to logs
    */
   private def formatObjectiveValue(lossFunctionValue: Double, regularizationTermValue: Double): String = {
+
     val objectiveFunctionValue = lossFunctionValue + regularizationTermValue
 
     s"lossFunctionValue: $lossFunctionValue, regularizationTermValue: $regularizationTermValue, " +
