@@ -25,10 +25,14 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Test the fixed effect model.
+ * Integration tests for [[FixedEffectModel]].
  */
 class FixedEffectModelIntegTest extends SparkTestUtils {
 
+  /**
+   * Test that a [[FixedEffectModel]] must have both the same coefficients and be computed on the same feature shard to
+   * be equal.
+   */
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForFixedEffectModel") {
 
@@ -62,6 +66,13 @@ class FixedEffectModelIntegTest extends SparkTestUtils {
     assertNotEquals(fixedEffectModel, fixedEffectModelWithDiffCoefficientsRDD)
   }
 
+  /**
+   * Test that a [[FixedEffectModel]] must have both the same coefficients and be computed on the same feature shard to
+   * be equal.
+   *
+   * @note This test is more thorough than the one above: it uses randomized data and tests additional differences
+   *       between the coefficients of the models.
+   */
   @Test
   def testEquals2(): Unit = sparkTest("testEqualsForFixedEffectModel") {
 

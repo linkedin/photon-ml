@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- * Integration test cases for the [[PrecisionAtKMultiEvaluator]]
+ * Integration test cases for the [[PrecisionAtKMultiEvaluator]].
  */
 class PrecisionAtKMultiEvaluatorIntegTest extends SparkTestUtils {
 
@@ -70,6 +70,12 @@ class PrecisionAtKMultiEvaluatorIntegTest extends SparkTestUtils {
   /**
    * Test that the [[PrecisionAtKMultiEvaluator]] correctly computes precision @ K for trivial and non-trivial cases,
    * and that it correctly averages the results across IDs.
+   *
+   * @param k Value at which to compute precision
+   * @param labels Responses for records, assumed to be sorted by decreasing score
+   * @param ids Entity Ids of the records, used to group records for each unique entity
+   * @param scores Predicted scores for the records
+   * @param expectedResult The expected precision @ k value computed for the above inputs
    */
   @Test(dataProvider = "getEvaluateTestCases")
   def testEvaluate(

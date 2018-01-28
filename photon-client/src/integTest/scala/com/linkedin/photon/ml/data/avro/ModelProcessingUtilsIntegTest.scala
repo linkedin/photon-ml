@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, TaskType}
 
 /**
- * Unit tests for model processing utilities.
+ * Integration tests for [[ModelProcessingUtils]].
  */
 class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 

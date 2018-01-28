@@ -24,8 +24,8 @@ import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
-  * Verify that we are able to achieve some minimum AUROC as part of validating a binary classifier's predictions.
-  */
+ * Verify that we are able to achieve some minimum AUROC as part of validating a binary classifier's predictions.
+ */
 class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClassifier : ClassTag](minimumAUC: Double)
   extends ModelValidator[BC] {
 
@@ -33,6 +33,7 @@ class BinaryClassifierAUCValidator[-BC <: GeneralizedLinearModel with BinaryClas
   require(minimumAUC <= 1.0)
 
   /**
+   * Check that the model can achieve an AUROC above the provided threshold.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model

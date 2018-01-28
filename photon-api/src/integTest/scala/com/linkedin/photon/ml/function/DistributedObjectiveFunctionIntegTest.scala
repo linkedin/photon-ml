@@ -34,7 +34,8 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.PhotonBroadcast
 
 /**
- * Integration tests to verify that the loss functions compute gradients & Hessians accurately.
+ * Integration tests for [[DistributedObjectiveFunction]] to verify that the loss functions compute gradients & Hessians
+ * accurately.
  */
 class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
@@ -60,7 +61,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
   private val treeAggregateDepths = Array(1, 2)
 
   /**
-   * Generate loss functions objects for classes implementing DiffFunction
+   * Generate loss functions objects for classes implementing DiffFunction.
    *
    * @return Anonymous functions to generate the loss function and training data for the gradient tests
    */
@@ -118,7 +119,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
   .map(pair => Array[Object](pair._1, pair._2))
 
   /**
-   * Generate loss functions objects for classes implementing TwiceDiffFunction
+   * Generate loss functions objects for classes implementing TwiceDiffFunction.
    *
    * @return Anonymous functions to generate the loss function and training data for the Hessian tests
    */

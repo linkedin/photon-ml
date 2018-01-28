@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
- * Tests for the RandomEffectCoordinate implementation.
+ * Tests for the [[RandomEffectCoordinate]] implementation.
  */
 class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
   import RandomEffectCoordinateIntegTest._

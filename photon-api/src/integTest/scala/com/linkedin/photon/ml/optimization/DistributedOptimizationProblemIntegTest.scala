@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
- * Integration tests for [[DistributedOptimizationProblem]]
+ * Integration tests for [[DistributedOptimizationProblem]].
  */
 class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
 

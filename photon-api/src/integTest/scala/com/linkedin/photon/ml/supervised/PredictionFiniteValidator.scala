@@ -23,11 +23,12 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 
 /**
-  * Verify that on a particular data set, the model only produces finite predictions.
-  */
+ * Verify that on a particular data set, the model only produces finite predictions.
+ */
 class PredictionFiniteValidator extends ModelValidator[GeneralizedLinearModel] {
 
   /**
+   * Check that each prediction is finite.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model

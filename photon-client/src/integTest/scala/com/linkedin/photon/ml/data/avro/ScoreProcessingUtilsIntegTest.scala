@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 /**
- *
+ * Integration tests for [[ScoreProcessingUtils]].
  */
 class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 

@@ -24,13 +24,14 @@ import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
-  * Verify that on a particular data set, the model only produces finite predictions.
-  */
+ * Verify that on a particular data set, the model only produces finite predictions.
+ */
 class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassifier: ClassTag]
   extends ModelValidator[GLM] {
 
   // TODO: Think about adding support for other thresholds.
   /**
+   * Check that all predictions match one of the two binary classification labels.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model

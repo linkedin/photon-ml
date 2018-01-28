@@ -22,9 +22,8 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 
-// TODO: Documentation
 /**
- *
+ * Verify that all predictions are within some tolerance for a linear classifier.
  */
 class MaximumDifferenceValidator[-R <: GeneralizedLinearModel with Regression with Serializable: ClassTag](
     maximumDifference: Double) extends ModelValidator[R] {
@@ -32,6 +31,8 @@ class MaximumDifferenceValidator[-R <: GeneralizedLinearModel with Regression wi
   require(maximumDifference > 0.0)
 
   /**
+   * Check that each prediction has a difference from the response which is lesser than the allowable maximum
+   * difference.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model

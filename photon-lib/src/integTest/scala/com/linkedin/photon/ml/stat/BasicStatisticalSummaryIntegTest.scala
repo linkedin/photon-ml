@@ -28,17 +28,14 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Tests for BasicStatisticalSummary.
+ * Integration tests for [[BasicStatisticalSummary]].
  */
 class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
 
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.
    *
-   * @note I wanted to depend on GameTestUtils where this is already located, but apparently GameTestUtils is not in the
-   *       right place
-   *
-   * @return A single set of 10 vectors of 2 features and a label.
+   * @return A single set of 10 vectors of 2 features and a label
    */
   @DataProvider
   def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] =
@@ -56,9 +53,10 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
     LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
 
   /**
-   * This test is  useful to check what we do in our own wrapper around spark.ml MultivariateStatisticalSummary.
+   * Test the Photon ML wrapper against known results from
+   * [[org.apache.spark.mllib.stat.MultivariateStatisticalSummary]].
    *
-   * @param labeledPoints Some set labeled points for which we know the correct answer
+   * @param labeledPoints A set of labeled points for which we know the statistical summary
    */
   @Test(dataProvider = "trivialLabeledPoints")
   def testBasicStatisticsWithKnownResults(labeledPoints: Seq[LabeledPoint]): Unit = sparkTest("testBasicStatisticsWithKnownResults") {
@@ -93,7 +91,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
   }
 
   /**
-   * A more extensive test, where correct results are calculated rather than fixed.
+   * A more extensive test than the one above, where correct results are calculated rather than fixed.
    */
   @Test
   def testBasicStatistics(): Unit = sparkTest("testBasicStatistics") {
