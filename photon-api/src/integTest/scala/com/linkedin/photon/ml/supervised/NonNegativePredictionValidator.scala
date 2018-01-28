@@ -35,8 +35,10 @@ class NonNegativePredictionValidator[-GLM <: GeneralizedLinearModel with Regress
    * @param data The data used to validate the model
    */
   override def validateModelPredictions(model:GLM, data:RDD[LabeledPoint]): Unit = {
+
     val predictions = model.predictAll(data.map(x => x.features))
     val invalidCount = predictions.filter(x => x < 0).count()
+
     if (invalidCount > 0) {
       throw new IllegalStateException(s"Found [$invalidCount] samples with invalid predictions (expect " +
           s"non-negative labels only).")

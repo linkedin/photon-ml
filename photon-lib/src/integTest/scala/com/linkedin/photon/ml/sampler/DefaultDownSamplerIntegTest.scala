@@ -59,14 +59,12 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
     sc.parallelize((0 until numInstances).map(i => (i.toLong, generateRandomLabeledPoint(numFeatures))))
 
   @DataProvider
-  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def validDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(0.25), Array(0.5), Array(0.75))
-  }
 
   @DataProvider
-  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def invalidDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
-  }
 
   /**
    * Test that using the [[DefaultDownSampler]] generates a new [[RDD]] with an approximately correct number of
@@ -79,12 +77,13 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "validDownSamplingRatesProvider")
   def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
-    val dataset = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
+
+    val dataSet = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
 
     var numInstancesInSampled: Long = 0
     for (_ <- 0 until numTimesToRun) {
       numInstancesInSampled += new DefaultDownSampler(downSamplingRate)
-        .downSample(dataset)
+        .downSample(dataSet)
         .count()
     }
 
@@ -92,6 +91,7 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
     val variance = mean * (1 - downSamplingRate)
     // tolerance = standard deviation * 5
     val tolerance = math.sqrt(variance) * 5
+
     Assert.assertEquals(numInstancesInSampled, mean, tolerance)
   }
 

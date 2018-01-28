@@ -31,9 +31,8 @@ class CoordinateDataScoresIntegTest extends SparkTestUtils {
    * @return The [[CoordinateDataScores]] generated with the given scores
    */
   private def generateSimpleDataScores(scores: Array[Double]): CoordinateDataScores =
-    new CoordinateDataScores(sc.parallelize(scores.zipWithIndex.map { case (score, uniqueId) =>
-      (uniqueId.toLong, score)
-    }))
+    new CoordinateDataScores(
+      sc.parallelize(scores.zipWithIndex.map { case (score, uniqueId) => (uniqueId.toLong, score) }))
 
   /**
    * Generate a [[CoordinateDataScores]] instance with the given keys and values.
@@ -103,6 +102,7 @@ class CoordinateDataScoresIntegTest extends SparkTestUtils {
     val expectedKeys = Array[Long](0, 1, 2, 3, 4)
     val expectedValues = Array[Double](1, -1, 0, 0, 1)
     val expectedKeyValueScore = generateSimpleDataScores(expectedKeys, expectedValues)
+
     assertEquals(keyValueScore1 + keyValueScore2, expectedKeyValueScore)
   }
 
@@ -128,10 +128,11 @@ class CoordinateDataScoresIntegTest extends SparkTestUtils {
     val expectedKeys1 = Array[Long](0, 1, 2, 3, 4)
     val expectedValues1 = Array[Double](1, -1, 2, 0, -1)
     val expectedKeyValueScore1 = generateSimpleDataScores(expectedKeys1, expectedValues1)
-    assertEquals(keyValueScore1 - keyValueScore2, expectedKeyValueScore1)
     val expectedKeys2 = Array[Long](0, 1, 2, 3, 4)
     val expectedValues2 = Array[Double](-1, 1, -2, 0, 1)
     val expectedKeyValueScore2 = generateSimpleDataScores(expectedKeys2, expectedValues2)
+
+    assertEquals(keyValueScore1 - keyValueScore2, expectedKeyValueScore1)
     assertEquals(keyValueScore2 - keyValueScore1, expectedKeyValueScore2)
   }
 }
