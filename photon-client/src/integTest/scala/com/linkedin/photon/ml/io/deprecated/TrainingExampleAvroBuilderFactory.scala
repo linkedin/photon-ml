@@ -25,6 +25,7 @@ import com.linkedin.photon.avro.generated.{FeatureAvro, TrainingExampleAvro}
  *
  * It's intended to be used for test purposes.
  */
+// TODO: Remove along with legacy Driver
 class TrainingExampleAvroBuilderFactory extends TrainingAvroBuilderFactory {
   import TrainingExampleAvroBuilderFactory._
 

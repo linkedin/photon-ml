@@ -32,6 +32,7 @@ import com.linkedin.photon.ml.util.PhotonLogger
  * This is a mock Driver which extends from Photon-ML Driver. It's used to expose protected fields/methods for test
  * purpose.
  */
+// TODO: Remove along with legacy Driver
 class MockDriver(
     override val params: Params,
     override val sc: SparkContext,

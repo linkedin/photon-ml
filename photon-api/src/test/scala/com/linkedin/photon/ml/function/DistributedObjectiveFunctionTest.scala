@@ -45,7 +45,7 @@ class DistributedObjectiveFunctionTest {
   }
 }
 
-object DistributedObjectiveFunctionTest {
+object DistributedObjectiveFunctionIntegTest {
 
   class MockDistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int)
     extends DistributedObjectiveFunction(sc, treeAggregateDepth) {

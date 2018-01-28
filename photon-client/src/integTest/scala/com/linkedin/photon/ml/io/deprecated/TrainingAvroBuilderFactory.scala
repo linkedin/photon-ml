@@ -18,6 +18,7 @@ package com.linkedin.photon.ml.io.deprecated
  * A trait that defines the common methods for implementing a factory that provides builders for training inputs.
  * Different formats might implement it different. This is intended to be used in tests.
  */
+// TODO: Remove along with legacy Driver
 trait TrainingAvroBuilderFactory {
   /**
    *

@@ -28,6 +28,7 @@ import com.linkedin.photon.ml.data.avro.ResponsePredictionFieldNames
  *
  * It's intended to be used for test purposes.
  */
+// TODO: Remove along with legacy Driver
 class ResponsePredictionAvroBuilderFactory extends TrainingAvroBuilderFactory {
   import ResponsePredictionAvroBuilderFactory._
 
