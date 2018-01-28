@@ -22,7 +22,6 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.Types.SparkVector
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}

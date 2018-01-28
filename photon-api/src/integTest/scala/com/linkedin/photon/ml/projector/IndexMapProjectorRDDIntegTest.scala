@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils, PhotonNonBroadcast, VectorUtils}
+import com.linkedin.photon.ml.util.{GameTestUtils, PhotonNonBroadcast}
 
 /**
  * Integration tests for [[IndexMapProjectorRDD]].

@@ -16,10 +16,10 @@ package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.testng.Assert.assertTrue
 import org.testng.annotations.{DataProvider, Test}
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}

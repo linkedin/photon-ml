@@ -18,7 +18,6 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 

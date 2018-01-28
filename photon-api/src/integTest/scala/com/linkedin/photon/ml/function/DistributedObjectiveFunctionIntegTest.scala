@@ -22,6 +22,7 @@ import org.apache.spark.SparkContext
 import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
+
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}

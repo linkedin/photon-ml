@@ -18,20 +18,16 @@ import java.io.File
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.IndexedSeq
-import scala.util.Random
 
-import breeze.linalg.Vector
 import org.apache.avro.file.DataFileReader
 import org.apache.avro.specific.SpecificDatumReader
 import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
-import com.linkedin.photon.ml.{Constants, TaskType}
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
@@ -41,8 +37,9 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
-import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
+import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.{Constants, TaskType}
 
 /**
  * Unit tests for model processing utilities.
