@@ -30,9 +30,9 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in.
  */
-class BinaryClassificationDownSamplerTest extends SparkTestUtils {
+class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
 
-  import BinaryClassificationDownSamplerTest._
+  import BinaryClassificationDownSamplerIntegTest._
 
   @DataProvider
   def validDownSamplingRatesProvider(): Array[Array[Any]] = {
@@ -84,7 +84,7 @@ class BinaryClassificationDownSamplerTest extends SparkTestUtils {
   }
 }
 
-object BinaryClassificationDownSamplerTest {
+object BinaryClassificationDownSamplerIntegTest {
 
   private val NUM_TIMES_TO_RUN = 100
   private val NUM_POSITIVES_TO_GENERATE = 10

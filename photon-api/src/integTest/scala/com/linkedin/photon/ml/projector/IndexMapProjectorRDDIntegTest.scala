@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils, PhotonNonBroadcast
 /**
  * Integration tests for [[IndexMapProjectorRDD]].
  */
-class IndexMapProjectorRDDTest extends SparkTestUtils with GameTestUtils {
+class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
 
   @Test
   def testBuildIndexMapProjector(): Unit = sparkTest("testBuildIndexMapProjector") {

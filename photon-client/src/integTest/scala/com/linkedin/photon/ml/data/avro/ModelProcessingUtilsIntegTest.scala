@@ -47,9 +47,9 @@ import com.linkedin.photon.ml.util.VectorUtils.toSparseVector
 /**
  * Unit tests for model processing utilities.
  */
-class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
-  import ModelProcessingUtilsTest._
+  import ModelProcessingUtilsIntegTest._
 
   /**
    * Generate a decent GAME model for subsequent tests.
@@ -477,7 +477,7 @@ class ModelProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDi
   }
 }
 
-object ModelProcessingUtilsTest {
+object ModelProcessingUtilsIntegTest {
 
   private val EPSILON = 1e-6
 

@@ -31,7 +31,7 @@ import com.linkedin.photon.ml.util.VectorUtils
 /**
  * Tests for BasicStatisticalSummary.
  */
-class BasicStatisticalSummaryTest extends SparkTestUtils {
+class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
 
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.

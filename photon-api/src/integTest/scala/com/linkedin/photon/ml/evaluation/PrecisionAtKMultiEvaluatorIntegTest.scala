@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 /**
  * Integration test cases for the [[PrecisionAtKMultiEvaluator]]
  */
-class PrecisionAtKMultiEvaluatorTest extends SparkTestUtils {
+class PrecisionAtKMultiEvaluatorIntegTest extends SparkTestUtils {
 
   /**
    * Provide test K values, labels, IDs, scores, and expected results.

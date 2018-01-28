@@ -68,7 +68,7 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast}
  *   <li>The models themselves match expectations (per a provided ModelValidator)</li>
  * </ul>
  */
-class BaseGLMTest extends SparkTestUtils {
+class BaseGLMIntegTest extends SparkTestUtils {
 
   /**
    * Generate a [[Seq]] of [[LabeledPoint]] from a collection of (label, feature vector) pairs.
@@ -93,19 +93,19 @@ class BaseGLMTest extends SparkTestUtils {
 
     val linearRegressionData = generateDataSetIterable(
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
-        BaseGLMTest.RANDOM_SEED,
-        BaseGLMTest.NUMBER_OF_SAMPLES,
-        BaseGLMTest.NUMBER_OF_DIMENSIONS))
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
     val poissonRegressionData = generateDataSetIterable(
       drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
-        BaseGLMTest.RANDOM_SEED,
-        BaseGLMTest.NUMBER_OF_SAMPLES,
-        BaseGLMTest.NUMBER_OF_DIMENSIONS))
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
     val logisticRegressionData = generateDataSetIterable(
       drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
-        BaseGLMTest.RANDOM_SEED,
-        BaseGLMTest.NUMBER_OF_SAMPLES,
-        BaseGLMTest.NUMBER_OF_DIMENSIONS))
+        BaseGLMIntegTest.RANDOM_SEED,
+        BaseGLMIntegTest.NUMBER_OF_SAMPLES,
+        BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
 //    val smoothedHingeData = generateDataSetIterable(
 //      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
 //        BaseGLMIntegTest.RANDOM_SEED,
@@ -122,12 +122,12 @@ class BaseGLMTest extends SparkTestUtils {
             None,
             LinearRegressionModel.apply,
             normalizationContext,
-            BaseGLMTest.TRACK_STATES,
-            BaseGLMTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
         linearRegressionData,
         new CompositeModelValidator[LinearRegressionModel](
           new PredictionFiniteValidator(),
-          new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMTest.MAXIMUM_ERROR_MAGNITUDE))),
+          new MaximumDifferenceValidator[LinearRegressionModel](BaseGLMIntegTest.MAXIMUM_ERROR_MAGNITUDE))),
 
       Array(
         "Poisson regression, easy problem",
@@ -138,8 +138,8 @@ class BaseGLMTest extends SparkTestUtils {
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
-            BaseGLMTest.TRACK_STATES,
-            BaseGLMTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
         poissonRegressionData,
         new CompositeModelValidator[PoissonRegressionModel](
           new PredictionFiniteValidator,
@@ -156,13 +156,13 @@ class BaseGLMTest extends SparkTestUtils {
             None,
             LogisticRegressionModel.apply,
             normalizationContext,
-            BaseGLMTest.TRACK_STATES,
-            BaseGLMTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.TRACK_STATES,
+            BaseGLMIntegTest.COMPUTE_VARIANCES),
         logisticRegressionData,
         new CompositeModelValidator[LogisticRegressionModel](
           new PredictionFiniteValidator(),
           new BinaryPredictionValidator[LogisticRegressionModel](),
-          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMTest.MINIMUM_CLASSIFIER_AUCROC)))
+          new BinaryClassifierAUCValidator[LogisticRegressionModel](BaseGLMIntegTest.MINIMUM_CLASSIFIER_AUCROC)))
     )
   }
 
@@ -182,18 +182,18 @@ class BaseGLMTest extends SparkTestUtils {
     val normalizationContext = PhotonBroadcast(sc.broadcast(NoNormalization()))
 
     // Step 1: Generate input RDD
-    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data).repartition(BaseGLMTest.NUM_PARTITIONS)
+    val trainingSet: RDD[LabeledPoint] = sc.parallelize(data).repartition(BaseGLMIntegTest.NUM_PARTITIONS)
     val optimizationProblem = optimizationProblemBuilder(sc, normalizationContext)
 
     // Step 2: Run optimization
-    val models = BaseGLMTest.LAMBDAS.map { lambda =>
+    val models = BaseGLMIntegTest.LAMBDAS.map { lambda =>
       optimizationProblem.updateRegularizationWeight(lambda)
       val result = optimizationProblem.run(trainingSet)
       val statesTracker = optimizationProblem.getStatesTracker
 
       // Step 3: Check convergence
       assertTrue(statesTracker.isDefined, "State tracking was enabled")
-      BaseGLMTest.checkConvergence(statesTracker.get)
+      BaseGLMIntegTest.checkConvergence(statesTracker.get)
 
       result
     }
@@ -209,7 +209,7 @@ class BaseGLMTest extends SparkTestUtils {
 /**
  * Constants controlling this test
  */
-object BaseGLMTest {
+object BaseGLMIntegTest {
 
   private val LAMBDAS: Seq[Double] = List(1.0)
   // Failures for MaximumDifferenceValidator with all lambas enabled. Need to revisit settings.

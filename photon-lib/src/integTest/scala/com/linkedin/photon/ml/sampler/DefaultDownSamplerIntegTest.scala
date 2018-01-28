@@ -31,7 +31,7 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
  * numbers to kick in.
  */
-class DefaultDownSamplerTest extends SparkTestUtils {
+class DefaultDownSamplerIntegTest extends SparkTestUtils {
 
   private val numTimesToRun = 100
   private val numInstancesToGenerate = 100

@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Integration tests for GameModel.
  */
-class GameModelTest extends SparkTestUtils {
+class GameModelIntegTest extends SparkTestUtils {
 
   /**
    * Generate a toy fixed effect model.

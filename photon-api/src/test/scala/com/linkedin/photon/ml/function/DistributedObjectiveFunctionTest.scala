@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  */
 class DistributedObjectiveFunctionTest {
 
-  import DistributedObjectiveFunctionTest.MockDistributedObjectiveFunction
+  import DistributedObjectiveFunctionIntegTest.MockDistributedObjectiveFunction
 
   @DataProvider
   def invalidInput(): Array[Array[Any]] = Array(Array(-1), Array(0))

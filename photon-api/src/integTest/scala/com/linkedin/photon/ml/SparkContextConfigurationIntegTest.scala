@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * This class tests the SparkContextConfiguration object.
  */
-class SparkContextConfigurationTest extends SparkTestUtils {
+class SparkContextConfigurationIntegTest extends SparkTestUtils {
 
   import SparkContextConfiguration._
 

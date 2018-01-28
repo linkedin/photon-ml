@@ -39,10 +39,10 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
 /**
  * Integration tests for [[DistributedOptimizationProblem]]
  */
-class DistributedOptimizationProblemTest extends SparkTestUtils {
+class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
 
   import CommonTestUtils._
-  import DistributedOptimizationProblemTest._
+  import DistributedOptimizationProblemIntegTest._
 
   /**
    * Function to generate a mock [[GeneralizedLinearModel]].
@@ -413,7 +413,7 @@ class DistributedOptimizationProblemTest extends SparkTestUtils {
   }
 }
 
-object DistributedOptimizationProblemTest {
+object DistributedOptimizationProblemIntegTest {
   private val DATA_RANDOM_SEED: Int = 7
   private val WEIGHT_RANDOM_SEED = 100
   private val WEIGHT_RANDOM_MAX = 10

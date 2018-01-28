@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Test the fixed effect model.
  */
-class FixedEffectModelTest extends SparkTestUtils {
+class FixedEffectModelIntegTest extends SparkTestUtils {
 
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForFixedEffectModel") {

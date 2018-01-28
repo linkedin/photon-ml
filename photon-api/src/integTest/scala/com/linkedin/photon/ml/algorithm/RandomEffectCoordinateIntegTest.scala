@@ -23,8 +23,8 @@ import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 /**
  * Tests for the RandomEffectCoordinate implementation.
  */
-class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
-  import RandomEffectCoordinateTest._
+class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
+  import RandomEffectCoordinateIntegTest._
 
   private val randomEffectType = "random-effect-1"
   private val featureShardId = "shard1"
@@ -72,7 +72,7 @@ class RandomEffectCoordinateTest extends SparkTestUtils with GameTestUtils {
   }
 }
 
-object RandomEffectCoordinateTest {
+object RandomEffectCoordinateIntegTest {
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }

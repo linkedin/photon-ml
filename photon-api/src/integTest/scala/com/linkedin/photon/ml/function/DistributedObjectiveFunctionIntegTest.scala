@@ -35,9 +35,9 @@ import com.linkedin.photon.ml.util.PhotonBroadcast
 /**
  * Integration tests to verify that the loss functions compute gradients & Hessians accurately.
  */
-class DistributedObjectiveFunctionTest extends SparkTestUtils {
+class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
-  import DistributedObjectiveFunctionTest._
+  import DistributedObjectiveFunctionIntegTest._
 
   private val twiceDiffTasks = Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
   private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
@@ -573,7 +573,7 @@ class DistributedObjectiveFunctionTest extends SparkTestUtils {
   }
 }
 
-object DistributedObjectiveFunctionTest {
+object DistributedObjectiveFunctionIntegTest {
   private val SPARK_CONSISTENCY_CHECK_SAMPLES = 5
   private val NUM_PARTITIONS = 4
   private val PROBLEM_DIMENSION = 5
@@ -589,7 +589,7 @@ object DistributedObjectiveFunctionTest {
   private val WEIGHT_RANDOM_SEED = 100
   private val WEIGHT_RANDOM_MAX = 10
   private val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
-  private val LOGGER: Logger = LogManager.getLogger(classOf[DistributedObjectiveFunctionTest])
+  private val LOGGER: Logger = LogManager.getLogger(classOf[DistributedObjectiveFunctionIntegTest])
 
   doReturn(L2RegularizationContext).when(L2_REG_CONFIGURATION_MOCK).regularizationContext
   doReturn(REGULARIZATION_WEIGHT).when(L2_REG_CONFIGURATION_MOCK).regularizationWeight

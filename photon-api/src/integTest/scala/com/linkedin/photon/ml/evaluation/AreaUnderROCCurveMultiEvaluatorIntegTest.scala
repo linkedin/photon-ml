@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 /**
  * Integration test cases for the [[AreaUnderROCCurveMultiEvaluator]]
  */
-class AreaUnderROCCurveMultiEvaluatorTest extends SparkTestUtils {
+class AreaUnderROCCurveMultiEvaluatorIntegTest extends SparkTestUtils {
 
   var startIndex = 0
 
