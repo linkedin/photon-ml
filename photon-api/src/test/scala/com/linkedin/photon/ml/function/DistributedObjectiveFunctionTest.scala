@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  */
 class DistributedObjectiveFunctionTest {
 
-  import DistributedObjectiveFunctionTest.MockDistributedObjectiveFunction
+  import DistributedObjectiveFunctionIntegTest.MockDistributedObjectiveFunction
 
   @DataProvider
   def invalidInput(): Array[Array[Any]] = Array(Array(-1), Array(0))
@@ -45,7 +45,7 @@ class DistributedObjectiveFunctionTest {
   }
 }
 
-object DistributedObjectiveFunctionTest {
+object DistributedObjectiveFunctionIntegTest {
 
   class MockDistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int)
     extends DistributedObjectiveFunction(sc, treeAggregateDepth) {

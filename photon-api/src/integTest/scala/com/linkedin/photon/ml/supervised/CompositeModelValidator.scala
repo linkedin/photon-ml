@@ -22,12 +22,13 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
-  * Chain several validators together.
-  */
+ * Chain several validators together.
+ */
 class CompositeModelValidator[-GLM <: GeneralizedLinearModel : ClassTag](validators: ModelValidator[GLM]*)
   extends ModelValidator[GLM] {
 
   /**
+   * Check that a model's predictions are valid according to multiple validators.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model

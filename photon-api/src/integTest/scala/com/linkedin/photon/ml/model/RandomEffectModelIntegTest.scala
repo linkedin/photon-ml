@@ -23,10 +23,14 @@ import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Test the random effect model.
+ * Integration tests for [[RandomEffectModel]].
  */
-class RandomEffectModelTest extends SparkTestUtils {
+class RandomEffectModelIntegTest extends SparkTestUtils {
 
+  /**
+   * Test that a [[RandomEffectModel]] must have the same coefficients, be computed on the same feature shard, and have
+   * the same random effect type to be equal.
+   */
   @Test
   def testEquals(): Unit = sparkTest("testEqualsForRandomEffectModel") {
     // Coefficients parameter
@@ -72,6 +76,9 @@ class RandomEffectModelTest extends SparkTestUtils {
     assertNotEquals(randomEffectModel, randomEffectModelWithDiffCoefficientsRDD)
   }
 
+  /**
+   * Test that a [[RandomEffectModel]] consisting of the same type of [[GeneralizedLinearModel]] will be accepted.
+   */
   @Test
   def testModelsConsistencyGood(): Unit = sparkTest("testModelsConsistencyGood") {
 
@@ -88,6 +95,9 @@ class RandomEffectModelTest extends SparkTestUtils {
     new RandomEffectModel(randomEffectRDD, "RandomEffectModel", "RandomEffectFeatures")
   }
 
+  /**
+   * Test that a [[RandomEffectModel]] consisting of different types of [[GeneralizedLinearModel]] will be rejected.
+   */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testModelsConsistencyBad(): Unit = sparkTest("testModelsConsistencyBad") {
 

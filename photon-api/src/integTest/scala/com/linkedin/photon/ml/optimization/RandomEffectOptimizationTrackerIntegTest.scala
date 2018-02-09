@@ -24,9 +24,9 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.FunctionValuesConverged
 
 /**
- * Some simple tests for random effect optimization tracker.
+ * Integration tests for [[RandomEffectOptimizationTracker]].
  */
-class RandomEffectOptimizationTrackerTest extends SparkTestUtils {
+class RandomEffectOptimizationTrackerIntegTest extends SparkTestUtils {
 
   @Test
   def testCountConvergenceReasons(): Unit = sparkTest("testCountConvergenceReasons") {
@@ -44,7 +44,7 @@ class RandomEffectOptimizationTrackerTest extends SparkTestUtils {
     val emptyOptimizationStatesTracker = new OptimizationStatesTracker()
     val normalOptimizationStatesTracker = new OptimizationStatesTracker()
     val numStates = 5
-    RandomEffectOptimizationTrackerTest.getDummyOptimizerStates(numStates)
+    RandomEffectOptimizationTrackerIntegTest.getDummyOptimizerStates(numStates)
         .foreach(normalOptimizationStatesTracker.track)
     val optimizationStatesTrackerAsRDD =
       sc.parallelize(Seq(emptyOptimizationStatesTracker, normalOptimizationStatesTracker))
@@ -67,12 +67,13 @@ class RandomEffectOptimizationTrackerTest extends SparkTestUtils {
   }
 }
 
-object RandomEffectOptimizationTrackerTest {
+object RandomEffectOptimizationTrackerIntegTest {
 
   /**
+   * Generate dummy [[OptimizerState]] objects.
    *
-   * @param numStates
-   * @return
+   * @param numStates Number of states to generate
+   * @return One or more dummy [[OptimizerState]] objects
    */
   def getDummyOptimizerStates(numStates: Int): Seq[OptimizerState] = {
     val coefficients = Vector.zeros[Double](0)

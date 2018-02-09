@@ -42,6 +42,7 @@ import com.linkedin.photon.ml.util.{VectorUtils, Utils}
 /**
  * This class tests the Photon (not GAME) Driver with a set of important configuration parameters
  */
+// TODO: Remove along with legacy Driver
 class DriverTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   import DriverTest._

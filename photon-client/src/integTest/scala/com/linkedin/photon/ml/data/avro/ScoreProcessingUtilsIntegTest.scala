@@ -22,9 +22,9 @@ import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 /**
- *
+ * Integration tests for [[ScoreProcessingUtils]].
  */
-class ScoreProcessingUtilsTest extends SparkTestUtils with TestTemplateWithTmpDir {
+class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
   private val completeScoreItems = Array(
     ScoredItem(

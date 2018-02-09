@@ -24,33 +24,38 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- * Tests that using the BinaryClassificationDownSampler generates a new RDD with an approximately correct number of
- * instances of each class as per the down-sampling rate. Also tests that the weights have been appropriately modified.
- *
- * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
- * numbers to kick in.
+ * Integration tests for [[BinaryClassificationDownSampler]].
  */
-class BinaryClassificationDownSamplerTest extends SparkTestUtils {
+class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
 
-  import BinaryClassificationDownSamplerTest._
+  import BinaryClassificationDownSamplerIntegTest._
 
   @DataProvider
-  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def validDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(0.25), Array(0.5), Array(0.75))
-  }
 
   @DataProvider
-  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def invalidDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
-  }
 
+  /**
+   * Test that using the [[BinaryClassificationDownSampler]] generates a new [[RDD]] with an approximately correct
+   * number of instances of each class as per the down-sampling rate. Also tests that the weights have been
+   * appropriately modified.
+   *
+   * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
+   * numbers to kick in.
+   *
+   * @param downSamplingRate The down-sampling rate
+   */
   @Test(dataProvider = "validDownSamplingRatesProvider")
   def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
-    val dataset = generateDummyDataset(sc, NUM_POSITIVES_TO_GENERATE, NUM_NEGATIVES_TO_GENERATE, NUM_FEATURES)
+
+    val dataSet = generateDummyDataset(sc, NUM_POSITIVES_TO_GENERATE, NUM_NEGATIVES_TO_GENERATE, NUM_FEATURES)
     var numNegativesInSampled: Long = 0
 
     for (_ <- 0 until NUM_TIMES_TO_RUN) {
-      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataset)
+      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataSet)
 
       // Need to burn seeds - the ones we get without this line cause failures in Travis CI
       DownSampler.getSeed
@@ -78,13 +83,20 @@ class BinaryClassificationDownSamplerTest extends SparkTestUtils {
       TOLERANCE)
   }
 
-  @Test(dataProvider = "invalidDownSamplingRatesProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  /**
+   * Test that bad down-sampling rates will be rejected.
+   *
+   * @param downSamplingRate The down-sampling rate
+   */
+  @Test(
+    dataProvider = "invalidDownSamplingRatesProvider",
+    expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testBadRates(downSamplingRate: Double): Unit = sparkTest("testBadRates") {
     new BinaryClassificationDownSampler(downSamplingRate)
   }
 }
 
-object BinaryClassificationDownSamplerTest {
+object BinaryClassificationDownSamplerIntegTest {
 
   private val NUM_TIMES_TO_RUN = 100
   private val NUM_POSITIVES_TO_GENERATE = 10
@@ -113,14 +125,15 @@ object BinaryClassificationDownSamplerTest {
    * @return An RDD of dummy training data
    */
   private def generateDummyDataset(
-    sc: SparkContext,
-    numPositives: Integer,
-    numNegatives: Integer,
-    numFeatures: Integer): RDD[(Long, LabeledPoint)] = {
+      sc: SparkContext,
+      numPositives: Integer,
+      numNegatives: Integer,
+      numFeatures: Integer): RDD[(Long, LabeledPoint)] = {
 
     val pos = (0 until numPositives).map(i => (i.toLong, generateRandomLabeledPoint(isPositive = true, numFeatures)))
     val neg = (0 until numNegatives).map(i => (i.toLong, generateRandomLabeledPoint(isPositive = false, numFeatures)))
     val points: Seq[(Long, LabeledPoint)] = pos ++ neg
+
     sc.parallelize(points)
   }
 }

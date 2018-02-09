@@ -25,13 +25,9 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
- * Tests that using the DefaultDownSampler generates a new RDD with an approximately correct number of instances as per
- * the down-sampling rate.
- *
- * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
- * numbers to kick in.
+ * Integration tests for [[DefaultDownSampler]].
  */
-class DefaultDownSamplerTest extends SparkTestUtils {
+class DefaultDownSamplerIntegTest extends SparkTestUtils {
 
   private val numTimesToRun = 100
   private val numInstancesToGenerate = 100
@@ -63,23 +59,31 @@ class DefaultDownSamplerTest extends SparkTestUtils {
     sc.parallelize((0 until numInstances).map(i => (i.toLong, generateRandomLabeledPoint(numFeatures))))
 
   @DataProvider
-  def validDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def validDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(0.25), Array(0.5), Array(0.75))
-  }
 
   @DataProvider
-  def invalidDownSamplingRatesProvider(): Array[Array[Any]] = {
+  def invalidDownSamplingRatesProvider(): Array[Array[Any]] =
     Array(Array(-0.5), Array(0.0), Array(1.0), Array(1.5))
-  }
 
+  /**
+   * Test that using the [[DefaultDownSampler]] generates a new [[RDD]] with an approximately correct number of
+   * instances as per the down-sampling rate.
+   *
+   * Down sampling is run multiple times and number of instances in each run is accumulated to allow law of large
+   * numbers to kick in.
+   *
+   * @param downSamplingRate The down-sampling rate
+   */
   @Test(dataProvider = "validDownSamplingRatesProvider")
   def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
-    val dataset = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
+
+    val dataSet = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
 
     var numInstancesInSampled: Long = 0
     for (_ <- 0 until numTimesToRun) {
       numInstancesInSampled += new DefaultDownSampler(downSamplingRate)
-        .downSample(dataset)
+        .downSample(dataSet)
         .count()
     }
 
@@ -87,9 +91,15 @@ class DefaultDownSamplerTest extends SparkTestUtils {
     val variance = mean * (1 - downSamplingRate)
     // tolerance = standard deviation * 5
     val tolerance = math.sqrt(variance) * 5
+
     Assert.assertEquals(numInstancesInSampled, mean, tolerance)
   }
 
+  /**
+   * Test that bad down-sampling rates will be rejected.
+   *
+   * @param downSamplingRate The down-sampling rate
+   */
   @Test(dataProvider = "invalidDownSamplingRatesProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testBadRates(downSamplingRate: Double): Unit = sparkTest("testBadRates") {
     new DefaultDownSampler(downSamplingRate)

@@ -23,12 +23,12 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils, PhotonNonBroadcast, VectorUtils}
+import com.linkedin.photon.ml.util.{GameTestUtils, PhotonNonBroadcast}
 
 /**
  * Integration tests for [[IndexMapProjectorRDD]].
  */
-class IndexMapProjectorRDDTest extends SparkTestUtils with GameTestUtils {
+class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
 
   @Test
   def testBuildIndexMapProjector(): Unit = sparkTest("testBuildIndexMapProjector") {
@@ -102,7 +102,7 @@ class IndexMapProjectorRDDTest extends SparkTestUtils with GameTestUtils {
       DenseVector(0.0, 2.0, 3.0, 4.0, 0.0, 1.0),
       DenseVector(1.0, 5.0, 6.0, 7.0, 0.0, 1.0))
 
-    val projectedSize = features(0).length - 1
+    val projectedSize = features.head.length - 1
 
     val dataSet = generateRandomEffectDataSetWithFeatures(
       randomEffectIds = Seq("1"),

@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Integration test cases for the [[MultiEvaluator]]
  */
-class MultiEvaluatorTest extends SparkTestUtils {
+class MultiEvaluatorIntegTest extends SparkTestUtils {
 
   /**
    * Test that the [[MultiEvaluator]] will correctly group records by ID and pass them to a [[LocalEvaluator]] for

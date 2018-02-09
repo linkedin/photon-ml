@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.diagnostics.DiagnosticMode.DiagnosticMode
  * @param trainDiagnosed Whether model training is diagnosed
  * @param validateDiagnosed Whether model  with validation data
  */
+// TODO: Remove along with legacy Driver
 protected[ml] case class DiagnosticStatus(var trainDiagnosed: Boolean, var validateDiagnosed: Boolean) {
 
   /**

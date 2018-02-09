@@ -23,19 +23,22 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 
 /**
- * Verify that on a particular data set, the model only produces nonnegative predictions.
+ * Verify that on a particular data set, the model only produces non-negative predictions.
  */
 class NonNegativePredictionValidator[-GLM <: GeneralizedLinearModel with Regression: ClassTag]
   extends ModelValidator[GLM] {
 
   /**
+   * Check that each prediction is non-negative.
    *
    * @param model The GLM model to be validated
    * @param data The data used to validate the model
    */
   override def validateModelPredictions(model:GLM, data:RDD[LabeledPoint]): Unit = {
+
     val predictions = model.predictAll(data.map(x => x.features))
     val invalidCount = predictions.filter(x => x < 0).count()
+
     if (invalidCount > 0) {
       throw new IllegalStateException(s"Found [$invalidCount] samples with invalid predictions (expect " +
           s"non-negative labels only).")

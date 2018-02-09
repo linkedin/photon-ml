@@ -24,9 +24,9 @@ import com.linkedin.photon.ml.supervised.regression.PoissonRegressionModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration tests for GameModel.
+ * Integration tests for [[GameModel]].
  */
-class GameModelTest extends SparkTestUtils {
+class GameModelIntegTest extends SparkTestUtils {
 
   /**
    * Generate a toy fixed effect model.
@@ -185,7 +185,7 @@ class GameModelTest extends SparkTestUtils {
   @Test
   def testModelsConsistencyGood(): Unit = sparkTest("testModelsConsistencyGood") {
 
-    // Features: we have two feature spaces, one for the fix model, and one for the random model
+    // Features: we have two feature spaces, one for the fixed model, and one for the random model.
     // Each model has its own, separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
     val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))
@@ -223,7 +223,7 @@ class GameModelTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testModelsConsistencyBad(): Unit = sparkTest("testModelsConsistencyBad") {
 
-    // Features: we have two feature spaces, one for the fix model, and one for the random model
+    // Features: we have three feature spaces, one for the fixed model, and two for the random models.
     // Each model has its own, separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
     val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))

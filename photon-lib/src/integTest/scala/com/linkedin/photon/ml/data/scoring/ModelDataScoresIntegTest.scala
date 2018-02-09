@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Simple tests for [[ModelDataScores]].
  */
-class ModelDataScoresTest extends SparkTestUtils {
+class ModelDataScoresIntegTest extends SparkTestUtils {
 
   /**
    * Generate a [[ModelDataScores]] instance with the given scores.
@@ -31,9 +31,9 @@ class ModelDataScoresTest extends SparkTestUtils {
    * @return The [[ModelDataScores]] generated with the given scores
    */
   private def generateFullDataScores(scores: Array[Double]): ModelDataScores =
-    new ModelDataScores(sc.parallelize(scores.zipWithIndex.map { case (score, uniqueId) =>
-      (uniqueId.toLong, ScoredGameDatum(score = score))
-    }))
+    new ModelDataScores(
+      sc.parallelize(
+        scores.zipWithIndex.map { case (score, uniqueId) => (uniqueId.toLong, ScoredGameDatum(score = score))}))
 
   /**
    * Generate a [[ModelDataScores]] instance with the given keys and values.
@@ -103,6 +103,7 @@ class ModelDataScoresTest extends SparkTestUtils {
     val expectedKeys = Array[Long](0, 1, 2, 3, 4)
     val expectedValues = Array[Double](1, -1, 0, 0, 1)
     val expectedKeyValueScore = generateFullDataScores(expectedKeys, expectedValues)
+
     assertEquals(keyValueScore1 + keyValueScore2, expectedKeyValueScore)
   }
 
@@ -128,10 +129,11 @@ class ModelDataScoresTest extends SparkTestUtils {
     val expectedKeys1 = Array[Long](0, 1, 2, 3, 4)
     val expectedValues1 = Array[Double](1, -1, 2, 0, -1)
     val expectedKeyValueScore1 = generateFullDataScores(expectedKeys1, expectedValues1)
-    assertEquals(keyValueScore1 - keyValueScore2, expectedKeyValueScore1)
     val expectedKeys2 = Array[Long](0, 1, 2, 3, 4)
     val expectedValues2 = Array[Double](-1, 1, -2, 0, 1)
     val expectedKeyValueScore2 = generateFullDataScores(expectedKeys2, expectedValues2)
+
+    assertEquals(keyValueScore1 - keyValueScore2, expectedKeyValueScore1)
     assertEquals(keyValueScore2 - keyValueScore1, expectedKeyValueScore2)
   }
 }

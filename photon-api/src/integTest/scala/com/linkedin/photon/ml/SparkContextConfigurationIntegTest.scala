@@ -22,13 +22,15 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * This class tests the SparkContextConfiguration object.
+ * Integration tests for [[SparkContextConfiguration]].
  */
-class SparkContextConfigurationTest extends SparkTestUtils {
+class SparkContextConfigurationIntegTest extends SparkTestUtils {
 
   import SparkContextConfiguration._
 
-  // Synchronize across different potential SparkContext creators
+  /**
+   * Synchronize across different potential SparkContext creators.
+   */
   @Test
   def testAsYarnClient(): Unit = sparkTestSelfServeContext("testAsYarnClient") {
     val sc1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", useKryo = true)

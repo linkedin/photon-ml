@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Test that the [[SingleNodeOptimizationProblem]] runs properly and can correctly skip variance computation if it is
- * disabled. For additional variance computation tests, see the [[DistributedOptimizationProblemTest]].
+ * disabled. For additional variance computation tests, see the [[DistributedOptimizationProblemIntegTest]].
  */
 class SingleNodeOptimizationProblemTest {
 

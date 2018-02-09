@@ -24,9 +24,9 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 /**
  * Integration test cases for the [[EvaluatorFactory]]
  */
-class EvaluatorFactoryTest extends SparkTestUtils {
+class EvaluatorFactoryIntegTest extends SparkTestUtils {
 
-  import EvaluatorFactoryTest._
+  import EvaluatorFactoryIntegTest._
 
   /**
    * Provide [[EvaluatorType]]s.
@@ -63,6 +63,6 @@ class EvaluatorFactoryTest extends SparkTestUtils {
   }
 }
 
-object EvaluatorFactoryTest {
+object EvaluatorFactoryIntegTest {
   private val idTag = "idTag"
 }

@@ -20,6 +20,7 @@ import org.testng.annotations.Test
 /**
  * Simple tests for [[DiagnosticStatus]].
  */
+// TODO: Remove along with legacy Driver
 class DiagnosticStatusTest {
   @Test
   def testGetDiagnosticMode(): Unit = {

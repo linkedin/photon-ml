@@ -18,83 +18,80 @@ import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.sql.{DataFrame, SQLContext}
+import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.Types.SparkVector
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Tests for BasicStatisticalSummary.
+ * Integration tests for [[BasicStatisticalSummary]].
  */
-class BasicStatisticalSummaryTest extends SparkTestUtils {
+class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
 
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.
    *
-   * @note I wanted to depend on GameTestUtils where this is already located, but apparently GameTestUtils is not in the
-   *       right place
-   *
-   * @return A single set of 10 vectors of 2 features and a label.
+   * @return A single set of 10 vectors of 2 features and a label
    */
   @DataProvider
   def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] =
-
-  Array(Array(Seq(
-    LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
-    LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
-    LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
-    LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
-    LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
-    LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
-    LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
+    Array(Array(Seq(
+      LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
+      LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
+      LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
+      LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
+      LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
+      LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
+      LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
 
   /**
-   * This test is  useful to check what we do in our own wrapper around spark.ml MultivariateStatisticalSummary.
+   * Test the Photon ML wrapper against known results from
+   * [[org.apache.spark.mllib.stat.MultivariateStatisticalSummary]].
    *
-   * @param labeledPoints Some set labeled points for which we know the correct answer
+   * @param labeledPoints A set of labeled points for which we know the statistical summary
    */
   @Test(dataProvider = "trivialLabeledPoints")
-  def testBasicStatisticsWithKnownResults(labeledPoints: Seq[LabeledPoint]): Unit = sparkTest("testBasicStatisticsWithKnownResults") {
+  def testBasicStatisticsWithKnownResults(labeledPoints: Seq[LabeledPoint]): Unit =
+    sparkTest("testBasicStatisticsWithKnownResults") {
 
-    val featureShardId = "features"
+      val featureShardId = "features"
 
-    val trainingData: DataFrame = new SQLContext(sc)
-      .createDataFrame(labeledPoints
-        .map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features).asML) })
-      .toDF("response", featureShardId)
+      val trainingData: DataFrame = sparkSession
+        .createDataFrame(
+          labeledPoints.map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features).asML) })
+        .toDF("response", featureShardId)
 
-    // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-    val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)))
+      // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)))
 
-    assertEquals(stats.count, 10)
-    assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.mean(1), -0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.variance(0), 0.40303763661250336, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.variance(1), 0.13748971393448942, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.numNonzeros(0), 10.0)
-    assertEquals(stats.numNonzeros(1), 4.0)
-    assertEquals(stats.max(0), 0.9699938346531928, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.max(1), 0.0, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.min(0), -0.7306653538519616, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.min(1), -0.8972778242305388, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.normL1(0), 6.652510022278823, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.normL1(1), 2.6976712031174963, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.normL2(0), 2.2599650226741836, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.normL2(1), 1.401838227979015, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.meanAbs(0), 0.6652510022278822, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(stats.meanAbs(1), 0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-  }
+      assertEquals(stats.count, 10)
+      assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.mean(1), -0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.variance(0), 0.40303763661250336, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.variance(1), 0.13748971393448942, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.numNonzeros(0), 10.0)
+      assertEquals(stats.numNonzeros(1), 4.0)
+      assertEquals(stats.max(0), 0.9699938346531928, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.max(1), 0.0, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.min(0), -0.7306653538519616, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.min(1), -0.8972778242305388, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.normL1(0), 6.652510022278823, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.normL1(1), 2.6976712031174963, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.normL2(0), 2.2599650226741836, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.normL2(1), 1.401838227979015, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.meanAbs(0), 0.6652510022278822, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+      assertEquals(stats.meanAbs(1), 0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    }
 
   /**
-   * A more extensive test, where correct results are calculated rather than fixed.
+   * A more extensive test than the one above, where correct results are calculated rather than fixed.
    */
   @Test
   def testBasicStatistics(): Unit = sparkTest("testBasicStatistics") {
