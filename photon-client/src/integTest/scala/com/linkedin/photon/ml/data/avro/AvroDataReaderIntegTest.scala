@@ -23,7 +23,9 @@ import org.apache.spark.sql.functions._
 import org.testng.Assert._
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.index.{IndexMap, PalDBIndexMapLoader}
+import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
 /**
@@ -38,8 +40,9 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test
   def testRead(): Unit = sparkTest("testRead") {
+
     val dr = new AvroDataReader(sc)
-    val (df, _) = dr.readMerged(inputPath.toString, featureSectionMap, numPartitions)
+    val (df, _) = dr.readMerged(inputPath.toString, featureShardConfigurationsMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
@@ -49,7 +52,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test
   def testReadWithFeatureIndex(): Unit = sparkTest("testReadWithIndex") {
-    val indexMapLoaders = featureSectionMap.map { case (shardId, _) =>
+    val indexMapLoaders = featureShardConfigurationsMap.map { case (shardId, _) =>
       val indexMapLoader = PalDBIndexMapLoader(
         sc,
         indexMapPath,
@@ -60,7 +63,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     }
 
     val dr = new AvroDataReader(sc)
-    val df = dr.readMerged(inputPath.toString, indexMapLoaders, featureSectionMap, numPartitions)
+    val df = dr.readMerged(inputPath.toString, indexMapLoaders, featureShardConfigurationsMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
@@ -71,9 +74,38 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test
   def testReadMultipleFiles(): Unit = sparkTest("testReadMultipleFiles") {
     val dr = new AvroDataReader(sc)
-    val (df, _) = dr.readMerged(Seq(inputPath, inputPath2).map(_.toString), featureSectionMap, numPartitions)
+    val (df, _) = dr.readMerged(
+      Seq(inputPath, inputPath2).map(_.toString),
+      featureShardConfigurationsMap,
+      numPartitions)
 
     verifyDataFrame(df, expectedRows = 44005)
+  }
+
+  /**
+   * Test reading a [[DataFrame]] without intercepts.
+   */
+  @Test
+  def testNoIntercept(): Unit = sparkTest("testNoIntercept") {
+
+    val shardId = "shard2"
+    val dr = new AvroDataReader(sc)
+    val modifiedFeatureShardConfigsMap = Map(
+      shardId -> featureShardConfigurationsMap(shardId).copy(hasIntercept = false))
+    val (df, indexMapLoaders) = dr.readMerged(
+      inputPath.toString,
+      modifiedFeatureShardConfigsMap,
+      numPartitions)
+
+    // Assert that shard2 exists and has the correct # features
+    assertTrue(df.columns.contains(shardId))
+    assertEquals(df.select(col(shardId)).take(1)(0).getAs[SparseVector](0).numActives, 30)
+
+    // Assert that the intercept is not in the IndexMap
+    assertTrue(indexMapLoaders(shardId).indexMapForDriver().get(Constants.INTERCEPT_KEY).isEmpty)
+
+    // Assert that all rows have been read
+    assertEquals(df.count, 34810)
   }
 
   /**
@@ -125,10 +157,10 @@ object AvroDataReaderIntegTest {
   private val duplicateFeaturesPath = new Path(inputDir, "duplicateFeatures")
   private val indexMapPath = new Path(inputDir, "feature-indexes")
   private val numPartitions = 4
-  private val featureSectionMap = Map(
-    "shard1" -> Set("userFeatures", "songFeatures"),
-    "shard2" -> Set("userFeatures"),
-    "shard3" -> Set("songFeatures"))
+  private val featureShardConfigurationsMap = Map(
+    "shard1" -> FeatureShardConfiguration(Set("userFeatures", "songFeatures"), hasIntercept = true),
+    "shard2" -> FeatureShardConfiguration(Set("userFeatures"), hasIntercept = true),
+    "shard3" -> FeatureShardConfiguration(Set("songFeatures"), hasIntercept = true))
 
   /**
    * Verifies that the DataFrame has expected shape and statistics.

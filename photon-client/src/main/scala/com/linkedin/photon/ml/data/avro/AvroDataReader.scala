@@ -32,6 +32,7 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.data.{DataReader, InputColumnsNames}
 import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
+import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.util._
 
 /**
@@ -65,98 +66,79 @@ class AvroDataReader(
   private val sqlContext = new SQLContext(sc)
 
   /**
-   * Reads the avro file at the given path into a DataFrame, generating a default index map for feature names. Merges
+   * Reads the avro files at the given paths into a DataFrame, generating a default index map for feature names. Merges
    * source columns into combined feature vectors as specified by the featureColumnMap argument. Often features are
    * joined from different sources, and it can be more scalable to combine them into problem-specific feature vectors
    * that can be independently distributed.
    *
-   * @param paths The paths to the avro files or folders
-   * @param indexMapLoadersOpt An optional map of index map loaders, containing one loader for each merged feature
-   *                           column
-   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
-   *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
-   *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
-   *   Photon (especially GAME), so this caused a lot of shuffling when repartitioning from the auto-partitioned data
-   *   to the GAME data. We expose this setting here to avoid the shuffling.
-   * @return The loaded and transformed DataFrame
-   */
-  def readMerged(
-      paths: Seq[String],
-      indexMapLoadersOpt: Option[Map[MergedColumnName, IndexMapLoader]],
-      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = indexMapLoadersOpt match {
-    case Some(indexMapLoaders) => (readMerged(paths, indexMapLoaders, featureColumnMap, numPartitions), indexMapLoaders)
-    case None => readMerged(paths, featureColumnMap, numPartitions)
-  }
-
-  /**
-   * Reads the avro file at the given path into a DataFrame, generating a default index map for feature names. Merges
-   * source columns into combined feature vectors as specified by the featureColumnMap argument. Often features are
-   * joined from different sources, and it can be more scalable to combine them into problem-specific feature vectors
-   * that can be independently distributed.
+   * @param paths The path to the files or folders
+   * @param featureColumnConfigsMap A map that specifies how the feature columns should be merged. The keys specify the
+   *                                name of the merged destination column, and the values are configs containing sets of
+   *                                source columns to merge, e.g.:
    *
-   * @param paths The paths to the avro files or folders
-   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
-   *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
+   *   Map("userFeatures" -> FeatureShardConfiguration(Set("profileFeatures", "titleFeatures")))
+   *
+   *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
+   *                                single column named "userFeatures".
    * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
-   *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
-   *   Photon (especially GAME), so this caused a lot of shuffling when repartitioning from the auto-partitioned data
-   *   to the GAME data. We expose this setting here to avoid the shuffling.
+   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
+   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
+   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
+   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
+   *                      setting here to avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   override def readMerged(
       paths: Seq[String],
-      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
       numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
-    val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap)
+    val featureColumnMap = featureColumnConfigsMap.mapValues(_.featureBags).map(identity)
+    val interceptColumnMap = featureColumnConfigsMap.mapValues(_.hasIntercept).map(identity)
+    val indexMapLoaders = generateIndexMapLoaders(records, featureColumnMap, interceptColumnMap)
 
     (readMerged(records, indexMapLoaders, featureColumnMap), indexMapLoaders)
   }
 
   /**
-   * Reads the avro file at the given path into a DataFrame, using the given index map for feature names. Merges source
+   * Reads the files at the given paths into a DataFrame, using the given index map for feature names. Merges source
    * columns into combined feature vectors as specified by the featureColumnMap argument. Often features are joined from
    * different sources, and it can be more scalable to combine them into problem-specific feature vectors that can be
    * independently distributed.
    *
-   * @param paths The paths to the avro files or folders
+   * @param paths The path to the files or folders
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
-   * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
-   *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
-   *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
+   * @param featureColumnConfigsMap A map that specifies how the feature columns should be merged. The keys specify the
+   *                                name of the merged destination column, and the values are configs containing sets of
+   *                                source columns to merge, e.g.:
+   *
+   *   Map("userFeatures" -> FeatureShardConfiguration(Set("profileFeatures", "titleFeatures")))
+   *
+   *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
+   *                                single column named "userFeatures".
    * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *   partition counts like this, in favor of inferring it. However, Photon currently still exposes partition counts as
-   *   a means for tuning job performance. The auto-inferred counts are usually much lower than the necessary counts for
-   *   Photon (especially GAME), so this caused a lot of shuffling when repartitioning from the auto-partitioned data
-   *   to the GAME data. We expose this setting here to avoid the shuffling.
+   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
+   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
+   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
+   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
+   *                      setting here to avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   override def readMerged(
       paths: Seq[String],
       indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
-      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
       numPartitions: Int): DataFrame = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
 
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)
+    val featureColumnMap = featureColumnConfigsMap.mapValues(_.featureBags).map(identity)
 
     readMerged(records, indexMapLoaders, featureColumnMap)
   }
@@ -170,10 +152,13 @@ class AvroDataReader(
    * @param records The source avro records
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the name
-   *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
+   *                         of the merged destination column, and the values are sets of source columns to merge, e.g.:
+   *
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
-   *   This configuration merges the "profileFeatures" and "titleFeatures" columns into a single column named
-   *   "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures" here is a "feature bag".
+   *
+   *                         This configuration merges the "profileFeatures" and "titleFeatures" columns into a single
+   *                         column named "userFeatures". "userFeatures" here is a "feature shard". "profileFeatures"
+   *                         here is a "feature bag".
    * @return The loaded and transformed DataFrame
    */
   protected def readMerged(
@@ -226,6 +211,7 @@ class AvroDataReader(
    * Generates default index map loaders by scanning the data.
    *
    * @param records The avro records to scan for features
+   * @param interceptColumnMap A map of intercept settings, containing one setting for each merged feature column
    * @param featureColumnMap A map that specifies how the feature columns should be merged. The keys specify the names
    *   of the merged destination column, and the values are sets of source columns to merge, e.g.:
    *     Map("userFeatures" -> Set("profileFeatures", "titleFeatures"))
@@ -235,7 +221,8 @@ class AvroDataReader(
    */
   protected def generateIndexMapLoaders(
       records: RDD[GenericRecord],
-      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]]): Map[MergedColumnName, IndexMapLoader] = {
+      featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
+      interceptColumnMap: Map[MergedColumnName, Boolean]): Map[MergedColumnName, IndexMapLoader] = {
 
     // Read a flattened collection of tuples of (shardId, features)
     val featuresByShard = records.flatMap { record =>
@@ -248,10 +235,17 @@ class AvroDataReader(
       .reduceByKey { case (a, b) => (a ++ b).distinct }
       .collect
       .toMap
-      .mapValues { features => DefaultIndexMapLoader(sc, (features :+ Constants.INTERCEPT_KEY).toSeq) }
-      // have to map identity here because mapValues produces a non-serializable map
-      // https://issues.scala-lang.org/browse/SI-7005
-      .map(identity)
+      .map { case (shardId, features) =>
+
+        val addIntercept = interceptColumnMap(shardId)
+        val featureNames = if (addIntercept) {
+          (features :+ Constants.INTERCEPT_KEY).toSeq
+        } else {
+          features.toSeq
+        }
+
+        (shardId, DefaultIndexMapLoader(sc, featureNames))
+      }
   }
 }
 
@@ -268,11 +262,11 @@ object AvroDataReader {
   )
 
   /**
-   *  Establishes precedence among numeric types, for resolving unions where multiple types are specified. Appearing
-   *  earlier in the list means higher precedence.
+   * Establishes precedence among numeric types, for resolving unions where multiple types are specified. Appearing
+   * earlier in the list means higher precedence.
    *
-   *  @note This doesn't need to be exactly right -- its purpose is to allow us to do something basically sensible when
-   *  the data contains strange union types. Data specified with proper types are not affected.
+   * @note This doesn't need to be exactly right -- its purpose is to allow us to do something basically sensible when
+   *       the data contains strange union types. Data specified with proper types are not affected.
    */
   private val numericPrecedence = List(DOUBLE, FLOAT, LONG, INT)
 
@@ -291,11 +285,14 @@ object AvroDataReader {
 
     fieldNames
       .toSeq
-      .flatMap { fieldName => Option(record.get(fieldName)) match {
-        case Some(recordList: JList[_]) => recordList.asScala.toSeq
-        case other => throw new IllegalArgumentException(
-          s"Expected feature list $fieldName to be a Java List, found instead: ${other.getClass.getName}.")
-      }}
+      .flatMap { fieldName =>
+        Some(record.get(fieldName)) match {
+          // Must have conversion to Seq at the end (labelled redundant by IDEA) or else typing compiler errors
+          case Some(recordList: JList[_]) => recordList.asScala.toSeq
+          case other => throw new IllegalArgumentException(
+            s"Expected feature list $fieldName to be a Java List, found instead: ${other.getClass.getName}.")
+        }
+      }
       .map {
         case record: GenericRecord =>
           val nameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)

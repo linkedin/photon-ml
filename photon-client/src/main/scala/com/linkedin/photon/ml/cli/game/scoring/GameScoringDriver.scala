@@ -147,7 +147,7 @@ object GameScoringDriver extends GameDriver {
       prepareFeatureMaps()
     }
 
-    val (dataFrame, featureShardIdToIndexMapLoaderMap)  = Timed("Read data") {
+    val (dataFrame, featureShardIdToIndexMapLoaderMap) = Timed("Read data") {
       readDataFrame(featureShardIdToIndexMapLoaderMapOpt)
     }
 
@@ -218,7 +218,7 @@ object GameScoringDriver extends GameDriver {
       .readMerged(
         recordsPaths.map(_.toString),
         featureShardIdToIndexMapLoaderMapOpt,
-        getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
+        getRequiredParam(featureShardConfigurations),
         parallelism)
   }
 
