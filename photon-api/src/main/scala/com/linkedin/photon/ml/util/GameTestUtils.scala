@@ -20,7 +20,7 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.{HashPartitioner, SparkConf}
 import org.testng.annotations.DataProvider
 
-import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.SparkSessionConfiguration
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
@@ -146,7 +146,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
 
     DistributedOptimizationProblem(
       configuration,
-      DistributedGLMLossFunction(sc, configuration, 1)(LogisticLossFunction) ,
+      DistributedGLMLossFunction(configuration, 1)(LogisticLossFunction) ,
       None,
       LogisticRegressionModel.apply,
       PhotonBroadcast(sc.broadcast(NoNormalization())),
@@ -309,8 +309,9 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    */
   def sparkTest(name: String, useKryo: Boolean)(body: => Unit) {
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
-      sc = SparkContextConfiguration.asYarnClient(
-        new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo)
+      sc = SparkSessionConfiguration
+        .asYarnClient(new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo)
+        .sparkContext
 
       try {
         body

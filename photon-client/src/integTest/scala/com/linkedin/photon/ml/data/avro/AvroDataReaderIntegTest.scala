@@ -40,8 +40,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test
   def testRead(): Unit = sparkTest("testRead") {
-
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     val (df, _) = dr.readMerged(inputPath.toString, featureShardConfigurationsMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
@@ -62,7 +61,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
       (shardId, indexMapLoader)
     }
 
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     val df = dr.readMerged(inputPath.toString, indexMapLoaders, featureShardConfigurationsMap, numPartitions)
 
     verifyDataFrame(df, expectedRows = 34810)
@@ -73,7 +72,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test
   def testReadMultipleFiles(): Unit = sparkTest("testReadMultipleFiles") {
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     val (df, _) = dr.readMerged(
       Seq(inputPath, inputPath2).map(_.toString),
       featureShardConfigurationsMap,
@@ -113,7 +112,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testReadDuplicateFeatures(): Unit = sparkTest("testReadDuplicateFeatures") {
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     val (df, _) = dr.read(duplicateFeaturesPath.toString, numPartitions)
 
     // Force evaluation
@@ -125,7 +124,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPaths(): Unit = sparkTest("testReadInvalidPaths") {
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     dr.read(Seq.empty[String], numPartitions)
   }
 
@@ -134,7 +133,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPartitions(): Unit = sparkTest("testReadInvalidPartitions") {
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     dr.read(inputPath.toString, -1)
   }
 
@@ -144,7 +143,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidInputPath(): Unit = sparkTest("testInvalidInputPath") {
     val emptyInputPath = getClass.getClassLoader.getResource("GameIntegTest/empty-input").getPath
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     dr.read(emptyInputPath, numPartitions)
   }
 }

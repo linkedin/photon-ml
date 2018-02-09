@@ -64,8 +64,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
       val featureShardId = "features"
 
       val trainingData: DataFrame = sparkSession
-        .createDataFrame(
-          labeledPoints.map { point: LabeledPoint => (point.label, VectorUtils.breezeToMllib(point.features).asML) })
+        .createDataFrame(labeledPoints.map(point => (point.label, VectorUtils.breezeToMllib(point.features).asML)))
         .toDF("response", featureShardId)
 
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1

@@ -21,13 +21,12 @@ import scala.collection.JavaConverters._
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Type._
 import org.apache.avro.generic.GenericRecord
-import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.{SparseVector, Vector}
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{MapType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.data.{DataReader, InputColumnsNames}
@@ -50,20 +49,15 @@ import com.linkedin.photon.ml.util._
  *       of partitions needed, which causes a huge repartition/shuffle step during reading. Here we pass the partition
  *       count explicitly to the "read" function to get around this problem. Once we revisit Photon's sensitivity to
  *       choice of partition count, we can remove this parameter.
- * @param sc The Spark context
  * @param defaultFeatureColumn The default column to use for features
  */
-class AvroDataReader(
-    sc: SparkContext,
-    defaultFeatureColumn: String = InputColumnsNames.FEATURES_DEFAULT.toString)
+class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_DEFAULT.toString)
   extends DataReader(defaultFeatureColumn) {
 
   import AvroDataReader._
 
-  /**
-   * Internal sql context
-   */
-  private val sqlContext = new SQLContext(sc)
+  private val sparkSession = SparkSession.builder.getOrCreate()
+  private val sc = sparkSession.sparkContext
 
   /**
    * Reads the avro files at the given paths into a DataFrame, generating a default index map for feature names. Merges
@@ -204,7 +198,7 @@ class AvroDataReader(
     }
     val sqlSchema = new StructType((schemaFields ++ featureFields).toArray)
 
-    sqlContext.createDataFrame(rows, sqlSchema)
+    sparkSession.createDataFrame(rows, sqlSchema)
   }
 
   /**

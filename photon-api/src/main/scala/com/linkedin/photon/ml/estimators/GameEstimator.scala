@@ -766,7 +766,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       treeAggregateDepth: Int): DistributedObjectiveFunction = {
 
     val distLossFunction: DistributedLossFunctionConstructor = DistributedGLMLossFunction(
-      sc,
       configuration,
       treeAggregateDepth)
 
@@ -775,7 +774,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       case TaskType.LINEAR_REGRESSION => distLossFunction(SquaredLossFunction)
       case TaskType.POISSON_REGRESSION => distLossFunction(PoissonLossFunction)
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        DistributedSmoothedHingeLossFunction(sc, configuration, treeAggregateDepth)
+        DistributedSmoothedHingeLossFunction(configuration, treeAggregateDepth)
     }
   }
 }

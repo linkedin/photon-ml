@@ -18,6 +18,7 @@ import breeze.linalg.Vector
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
 
 import com.linkedin.photon.ml.data.LabeledPoint
 
@@ -25,18 +26,19 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * The base objective function used by DistributedOptimizationProblems. This function works with an RDD of data
  * distributed across the cluster.
  *
- * @param sc The Spark context
  * @param treeAggregateDepth The depth used by treeAggregate. Depth 1 indicates normal linear aggregate. Using
  *                           depth > 1 can reduce memory consumption in the Driver and may also speed up the
  *                           aggregation. It is experimental currently because treeAggregate is unstable in Spark
  *                           versions 1.4 and 1.5.
  */
-abstract class DistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int) extends ObjectiveFunction {
+abstract class DistributedObjectiveFunction(treeAggregateDepth: Int) extends ObjectiveFunction {
 
   type Data = RDD[LabeledPoint]
   type Coefficients = Broadcast[Vector[Double]]
 
   require(treeAggregateDepth > 0, s"Tree aggregate depth must be greater than 0: $treeAggregateDepth")
+
+  private lazy val sc: SparkContext = SparkSession.builder().getOrCreate().sparkContext
 
   /**
    * Compute the size of the domain for the given input data (i.e. the number of features, including the intercept if

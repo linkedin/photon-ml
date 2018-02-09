@@ -570,7 +570,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
     val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
-    val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
+    val (testData, indexMapLoaders) = new AvroDataReader().readMerged(
       Seq(testPath.toString),
       indexMapLoadersOpt,
       featureShardConfigs,
@@ -622,7 +622,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
     val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
-    val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
+    val (testData, indexMapLoaders) = new AvroDataReader().readMerged(
       Seq(testPath.toString),
       indexMapLoadersOpt,
       featureShardConfigs,

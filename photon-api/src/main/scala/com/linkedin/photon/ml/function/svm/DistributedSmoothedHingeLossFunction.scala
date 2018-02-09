@@ -15,10 +15,9 @@
 package com.linkedin.photon.ml.function.svm
 
 import breeze.linalg.Vector
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
-
 import org.apache.spark.rdd.RDD
+
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DiffFunction, DistributedObjectiveFunction, L2RegularizationDiff}
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -34,14 +33,13 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
  * A:   Using cumGradient allows the functions to avoid memory allocation by modifying and returning cumGradient instead
  *      of creating a new gradient vector.
  *
- * @param sc The Spark context
  * @param treeAggregateDepth The depth used by treeAggregate. Depth 1 indicates normal linear aggregate. Using
  *                           depth > 1 can reduce memory consumption in the Driver and may also speed up the
  *                           aggregation. It is experimental currently because treeAggregate is unstable in Spark
  *                           versions 1.4 and 1.5.
  */
-protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeAggregateDepth: Int)
-  extends DistributedObjectiveFunction(sc, treeAggregateDepth)
+protected[ml] class DistributedSmoothedHingeLossFunction(treeAggregateDepth: Int)
+  extends DistributedObjectiveFunction(treeAggregateDepth)
   with DiffFunction {
 
   /**
@@ -53,9 +51,9 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
    * @return The computed value of the function
    */
   override protected[ml] def value(
-    input: RDD[LabeledPoint],
-    coefficients: Broadcast[Vector[Double]],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
+      input: RDD[LabeledPoint],
+      coefficients: Broadcast[Vector[Double]],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -67,9 +65,9 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
    * @return The computed gradient of the function
    */
   override protected[ml] def gradient(
-    input: RDD[LabeledPoint],
-    coefficients: Broadcast[Vector[Double]],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
+      input: RDD[LabeledPoint],
+      coefficients: Broadcast[Vector[Double]],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -82,9 +80,9 @@ protected[ml] class DistributedSmoothedHingeLossFunction(sc: SparkContext, treeA
    * @return The computed value and gradient of the function
    */
   override protected[ml] def calculate(
-    input: RDD[LabeledPoint],
-    coefficients: Broadcast[Vector[Double]],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
+      input: RDD[LabeledPoint],
+      coefficients: Broadcast[Vector[Double]],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val initialCumGradient = VectorUtils.zeroOfSameType(coefficients.value)
     val result = input.treeAggregate((0.0, initialCumGradient))(
@@ -110,12 +108,10 @@ object DistributedSmoothedHingeLossFunction {
    * function.
    *
    * @param configuration The optimization problem configuration
-   * @param sc The current Spark context
    * @param treeAggregateDepth The tree aggregation depth
    * @return A new DistributedSmoothedHingeLossFunction
    */
   def apply(
-      sc: SparkContext,
       configuration: GLMOptimizationConfiguration,
       treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
 
@@ -123,11 +119,12 @@ object DistributedSmoothedHingeLossFunction {
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 =>
-        new DistributedSmoothedHingeLossFunction(sc, treeAggregateDepth) with L2RegularizationDiff {
+        new DistributedSmoothedHingeLossFunction(treeAggregateDepth) with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
         }
 
-      case _ => new DistributedSmoothedHingeLossFunction(sc, treeAggregateDepth)
+      case _ =>
+        new DistributedSmoothedHingeLossFunction(treeAggregateDepth)
     }
   }
 }

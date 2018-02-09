@@ -686,7 +686,7 @@ object Driver {
     // Parse the parameters from command line, should always be the 1st line in main
     val params = PhotonMLCmdLineParser.parseFromCommandLine(args)
     // Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application
-    val sc = SparkContextConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo)
+    val sc = SparkSessionConfiguration.asYarnClient(new SparkConf(), params.jobName, params.kryo).sparkContext
     // A temporary solution to save log into HDFS.
     val logPath = new Path(params.outputDir, "log-message.txt")
     val logger = new PhotonLogger(logPath, sc)
