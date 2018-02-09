@@ -29,31 +29,108 @@ import com.linkedin.photon.ml.util.Timed
 /**
  * Coordinate descent implementation.
  *
- * @param coordinates The individual optimization problem coordinates
+ * @param updateSequence The order in which to update coordinates
+ * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
  * @param trainingLossFunctionEvaluator Training loss function evaluator
  * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
+ * @param partialRetrainInputOpt Optional pre-trained model and list of locked coordinates within that model for
+ *                               performing partial retraining
  * @param logger A logger instance
  */
 class CoordinateDescent(
-    coordinates: Seq[(CoordinateId, Coordinate[_])],
+    updateSequence: Seq[CoordinateId],
+    descentIterations: Int,
     trainingLossFunctionEvaluator: Evaluator,
     validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
+    partialRetrainInputOpt: Option[(GameModel, Set[CoordinateId])],
     implicit private val logger: Logger) {
 
   import CoordinateDescent._
 
+  private val coordinatesToTrain: Seq[CoordinateId] = partialRetrainInputOpt match {
+    case Some((_, lockedCoordinates)) => updateSequence.filterNot(lockedCoordinates.contains)
+    case None => updateSequence
+  }
+
+  checkInvariants()
+
+  /**
+   * Invariants that hold for every instance of [[CoordinateDescent]].
+   */
+  private def checkInvariants(): Unit = {
+
+    // Must have strictly positive number of coordinate descent iterations
+    require(
+      descentIterations > 0,
+      s"Number of coordinate descent iterations must be greater than 0: $descentIterations")
+
+    // Coordinates in the update sequence must not repeat
+    require(
+      updateSequence.toSet.size == updateSequence.size,
+      "One or more coordinates in the update sequence is repeated.")
+
+    validationDataAndEvaluatorsOption.foreach { case (_, evaluators) =>
+
+      // Must have at least one validation evaluator if validation data is provided
+      require(evaluators.nonEmpty, "List of validation evaluators is empty.")
+    }
+
+    partialRetrainInputOpt.foreach { case (pretrainedModel, lockedCoordinates) =>
+
+      // Must reuse at least one coordinate for partial retraining
+      require(lockedCoordinates.nonEmpty, "Set of locked coordinates from pre-trained model is empty.")
+
+      // Locked coordinates must be present in the pretrained model
+      require(
+        lockedCoordinates.forall(pretrainedModel.toMap.contains),
+        "One or more locked coordinates is missing from the pre-trained model")
+    }
+  }
+
+  /**
+   * Helper function to make sure that input to coordinate descent is valid.
+   *
+   * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
+   */
+  private def checkInput(coordinates: Map[CoordinateId, Coordinate[_]]): Unit = {
+
+    // Coordinates in the update sequence must have a corresponding coordinate
+    updateSequence.foreach { coordinateId =>
+      require(
+        coordinates.contains(coordinateId),
+        s"Coordinate '$coordinateId' in update sequence is not found in either the coordinates map or the locked " +
+          "coordinates.")
+    }
+  }
+
   /**
    * Run coordinate descent.
    *
-   * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
+   * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
    * @param seed Random seed (default: MathConst.RANDOM_SEED)
-   * @return A trained GAME model
+   * @return The best GAME model (see [[CoordinateDescent.descend]] for exact meaning of "best") and its evaluation
+   *         results (if any)
    */
-  def run(descentIterations: Int, seed: Long = MathConst.RANDOM_SEED): (GameModel, Option[EvaluationResults]) = {
+  def run(
+      coordinates: Map[CoordinateId, Coordinate[_]],
+      seed: Long = MathConst.RANDOM_SEED): (GameModel, Option[EvaluationResults]) = {
 
-    val initializedModelContainer = coordinates
-      .map { case (coordinateId, coordinate) =>
-        val initializedModel = coordinate.initializeModel(seed)
+    checkInput(coordinates)
+
+    val initializedModelContainer = updateSequence
+      .map { coordinateId =>
+
+        val initializedModel = partialRetrainInputOpt match {
+          case Some((preTrainedModel, lockedCoordinates)) =>
+            if (lockedCoordinates.contains(coordinateId)) {
+              preTrainedModel.toMap(coordinateId)
+            } else {
+              coordinates(coordinateId).initializeModel(seed)
+            }
+
+          case _ =>
+            coordinates(coordinateId).initializeModel(seed)
+        }
 
         initializedModel match {
           case rddLike: RDDLike =>
@@ -74,9 +151,33 @@ class CoordinateDescent(
         (coordinateId, initializedModel)
       }
       .toMap
-
     val initialGameModel = new GameModel(initializedModelContainer)
-    run(descentIterations, initialGameModel)
+
+    descend(coordinates, initialGameModel)
+  }
+
+  /**
+   * Run coordinate descent.
+   *
+   * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
+   * @param gameModel The initial GAME model to use as a starting point
+   * @return The best GAME model (see [[CoordinateDescent.descend]] for exact meaning of "best") and its evaluation
+   *         results (if any)
+   */
+  def run(
+      coordinates: Map[CoordinateId, Coordinate[_]],
+      gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
+
+    checkInput(coordinates)
+
+    // Verify that the model being optimized has entries for each coordinate
+    updateSequence.foreach { coordinateId =>
+      require(
+        gameModel.getModel(coordinateId).isDefined,
+        s"Model with coordinateId $coordinateId is expected but not found from the initial GAME model.")
+    }
+
+    descend(coordinates, gameModel)
   }
 
   /**
@@ -85,24 +186,13 @@ class CoordinateDescent(
    * best evaluation on the validation data set w.r.t. the primary evaluation function. Otherwise, it's simply the
    * trained model.
    *
-   * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
-   * @param gameModel The initial GAME model
-   * @return The best GAME model (see above for exact meaning of "best")
+   * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
+   * @param gameModel The initial GAME model to use as a starting point
+   * @return The best GAME model (see above for exact meaning of "best") and its evaluation results (if any)
    */
-  def run(descentIterations: Int, gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
-
-    //
-    // Input verification
-    //
-
-    // Verify valid number of descent iterations
-    require(descentIterations > 0, s"Number of coordinate descent iterations must be greater than 0: $descentIterations")
-    // Verify that the model being optimized has entries for each coordinate
-    coordinates.foreach { case (coordinateId, _) =>
-      require(
-        gameModel.getModel(coordinateId).isDefined,
-        s"Model with coordinateId $coordinateId is expected but not found from the initial GAME model")
-    }
+  private def descend(
+      coordinates: Map[CoordinateId, Coordinate[_]],
+      gameModel: GameModel): (GameModel, Option[EvaluationResults]) = {
 
     //
     // Optimization setup
@@ -111,9 +201,9 @@ class CoordinateDescent(
     var updatedGameModel = gameModel
 
     // Initialize the training scores
-    var updatedScoresContainer = coordinates
-      .map { case (coordinateId, coordinate) =>
-        val updatedScores = coordinate.score(updatedGameModel.getModel(coordinateId).get)
+    var updatedScoresContainer = updateSequence
+      .map { coordinateId =>
+        val updatedScores = coordinates(coordinateId).score(updatedGameModel.getModel(coordinateId).get)
         updatedScores
           .setName(s"Initialized training scores with coordinateId $coordinateId")
           .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -126,17 +216,21 @@ class CoordinateDescent(
     fullTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
 
     // Initialize the regularization term value
-    var regularizationTermValueContainer = coordinates
-      .map { case (coordinateId, coordinate) =>
-        (coordinateId, coordinate.computeRegularizationTermValue(updatedGameModel.getModel(coordinateId).get))
+    // TODO: Should read regularization term or regularization term value from metadata and add to the total. Otherwise,
+    // TODO: this results in misleading logs about objective function loss vs. regularization term loss, since the
+    // TODO: locked coordinates contribute to one but not the other.
+    var regularizationTermValueContainer = coordinatesToTrain
+      .map { coordinateId =>
+        (coordinateId,
+          coordinates(coordinateId).computeRegularizationTermValue(updatedGameModel.getModel(coordinateId).get))
       }
       .toMap
     var fullRegularizationTermValue = regularizationTermValueContainer.values.sum
 
     // Initialize the validation scores
     var validationScoresContainerOption = validationDataAndEvaluatorsOption.map { case (validatingData, _) =>
-      coordinates
-        .map { case (coordinateId, _) =>
+      updateSequence
+        .map { coordinateId =>
           val updatedModel = updatedGameModel.getModel(coordinateId).get
           val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
           validatingScores
@@ -172,9 +266,11 @@ class CoordinateDescent(
         val oldGameModel = updatedGameModel
         var unpersistOldGameModel = true
 
-        coordinates
-          .map { case (coordinateId, coordinate) =>
+        coordinatesToTrain
+          .map { coordinateId =>
             Timed(s"Update coordinate $coordinateId") {
+
+              val coordinate = coordinates(coordinateId)
 
               //
               // Update the coordinate model
@@ -299,10 +395,10 @@ class CoordinateDescent(
 
                 // Unpersist the previous best models
                 bestModel.foreach { gameModel =>
-                  gameModel.toMap.foreach { case (_, model) =>
-                    model match {
-                      case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
-                      case rddLike: RDDLike => rddLike.unpersistRDD()
+                  coordinatesToTrain.foreach { coordinateId =>
+                    gameModel.getModel(coordinateId) match {
+                      case Some(broadcastLike: BroadcastLike) => broadcastLike.unpersistBroadcast()
+                      case Some(rddLike: RDDLike) => rddLike.unpersistRDD()
                       case _ =>
                     }
                   }
@@ -331,10 +427,10 @@ class CoordinateDescent(
 
         // Unpersist the previous GAME model
         if (unpersistOldGameModel) {
-          oldGameModel.toMap.foreach { case (_, model) =>
-            model match {
-              case broadcastLike: BroadcastLike => broadcastLike.unpersistBroadcast()
-              case rddLike: RDDLike => rddLike.unpersistRDD()
+          coordinatesToTrain.foreach { coordinateId =>
+            oldGameModel.getModel(coordinateId) match {
+              case Some(broadcastLike: BroadcastLike) => broadcastLike.unpersistBroadcast()
+              case Some(rddLike: RDDLike) => rddLike.unpersistRDD()
               case _ =>
             }
           }
@@ -361,6 +457,7 @@ object CoordinateDescent {
    * @return The two input values and the total objective function value, formatted for output to logs
    */
   private def formatObjectiveValue(lossFunctionValue: Double, regularizationTermValue: Double): String = {
+
     val objectiveFunctionValue = lossFunctionValue + regularizationTermValue
 
     s"lossFunctionValue: $lossFunctionValue, regularizationTermValue: $regularizationTermValue, " +
@@ -370,16 +467,42 @@ object CoordinateDescent {
   /**
    * Helper function to create a new [[CoordinateDescent]] instance.
    *
-   * @param coordinates The individual optimization problem coordinates
+   * @param updateSequence The order in which to update coordinates
+   * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
    * @param trainingLossFunctionEvaluator Training loss function evaluator
    * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
-   * @param logger A logger instance
+   * @param partialRetrainModelOpt Optional pre-trained model to use as a base for partial retraining
+   * @param partialRetrainLockedCoordinatesOpt Optional set of coordinates to reuse from the pre-trained model
    * @return A new [[CoordinateDescent]] instance
    */
   def apply(
-      coordinates: Seq[(CoordinateId, Coordinate[_])],
+      updateSequence: Seq[CoordinateId],
+      descentIterations: Int,
       trainingLossFunctionEvaluator: Evaluator,
-      validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
-      logger: Logger) =
-    new CoordinateDescent(coordinates, trainingLossFunctionEvaluator, validationDataAndEvaluatorsOption, logger)
+      logger: Logger,
+      validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])] = None,
+      partialRetrainModelOpt: Option[GameModel] = None,
+      partialRetrainLockedCoordinatesOpt: Option[Set[CoordinateId]] = None): CoordinateDescent = {
+
+    //
+    val partialRetrainInputOpt = (partialRetrainModelOpt, partialRetrainLockedCoordinatesOpt) match {
+      case (Some(partialRetrainModel), Some(partialRetrainLockedCoordinates)) =>
+        Some((partialRetrainModel, partialRetrainLockedCoordinates))
+
+      case (None, None) =>
+        None
+
+      case _ =>
+        throw new IllegalArgumentException(
+          "Only one of pre-trained model and set of locked coordinates provided: neither or both are required.")
+    }
+
+    new CoordinateDescent(
+      updateSequence,
+      descentIterations,
+      trainingLossFunctionEvaluator,
+      validationDataAndEvaluatorsOption,
+      partialRetrainInputOpt,
+      logger)
+  }
 }

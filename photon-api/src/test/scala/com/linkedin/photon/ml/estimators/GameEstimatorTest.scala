@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.estimators
 
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.sql.DataFrame
 import org.mockito.Mockito._
 import org.slf4j.Logger
 import org.testng.annotations.{DataProvider, Test}
@@ -24,9 +24,14 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
+import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
+/**
+ * Unit tests for [[GameEstimator]].
+ */
 class GameEstimatorTest {
 
   /**
@@ -46,10 +51,9 @@ class GameEstimatorTest {
     doReturn(featureShardId).when(mockDataConfig).featureShardId
 
     val estimator = new GameEstimator(mockSparkContext, mockLogger)
-
-    estimator.set(estimator.trainingTask, trainingTask)
-    estimator.set(estimator.coordinateUpdateSequence, Seq(coordinateId))
-    estimator.set(estimator.coordinateDataConfigurations, Map((coordinateId, mockDataConfig)))
+      .setTrainingTask(trainingTask)
+      .setCoordinateUpdateSequence(Seq(coordinateId))
+      .setCoordinateDataConfigurations(Map((coordinateId, mockDataConfig)))
 
     estimator.validateParams()
   }
@@ -60,7 +64,16 @@ class GameEstimatorTest {
   @Test
   def testMaxValidParamMap(): Unit = {
 
-    val coordinateId = "id"
+    val mockSparkContext = mock(classOf[SparkContext])
+    val mockLogger = mock(classOf[Logger])
+    val mockInputColumnNames = mock(classOf[InputColumnsNames])
+    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
+    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val mockDatumScoringModel = mock(classOf[DatumScoringModel])
+    val mockPretrainedModel = mock(classOf[GameModel])
+
+    val coordinateId1 = "id1"
+    val coordinateId2 = "id2"
     val featureShardId = "id"
     val trainingTask = TaskType.LINEAR_REGRESSION
     val coordinateDescentIter = 1
@@ -68,27 +81,28 @@ class GameEstimatorTest {
     val treeAggregateDepth = 2
     val validationEvaluators = Seq(AUC)
     val useWarmStart = false
-
-    val mockSparkContext = mock(classOf[SparkContext])
-    val mockLogger = mock(classOf[Logger])
-    val mockInputColumnNames = mock(classOf[InputColumnsNames])
-    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
-    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val updateSeq = Seq(coordinateId1, coordinateId2)
+    val dataConfigs = Map((coordinateId1, mockDataConfig), (coordinateId2, mockDataConfig))
+    val normalizationConfigs = Map((coordinateId1, mockNormalizationBroadcast))
+    val lockedCoordinates = Set(coordinateId2)
+    val preTrainedModelMap = Map(coordinateId2 -> mockDatumScoringModel)
 
     doReturn(featureShardId).when(mockDataConfig).featureShardId
+    doReturn(preTrainedModelMap).when(mockPretrainedModel).toMap
 
     val estimator = new GameEstimator(mockSparkContext, mockLogger)
-
-    estimator.set(estimator.trainingTask, trainingTask)
-    estimator.set(estimator.inputColumnNames, mockInputColumnNames)
-    estimator.set(estimator.coordinateUpdateSequence, Seq(coordinateId))
-    estimator.set(estimator.coordinateDataConfigurations, Map((coordinateId, mockDataConfig)))
-    estimator.set(estimator.coordinateDescentIterations, coordinateDescentIter)
-    estimator.set(estimator.coordinateNormalizationContexts, Map((coordinateId, mockNormalizationBroadcast)))
-    estimator.set(estimator.computeVariance, computeVariance)
-    estimator.set(estimator.treeAggregateDepth, treeAggregateDepth)
-    estimator.set(estimator.validationEvaluators, validationEvaluators)
-    estimator.set(estimator.useWarmStart, useWarmStart)
+      .setTrainingTask(trainingTask)
+      .setInputColumnNames(mockInputColumnNames)
+      .setCoordinateUpdateSequence(updateSeq)
+      .setCoordinateDataConfigurations(dataConfigs)
+      .setCoordinateDescentIterations(coordinateDescentIter)
+      .setCoordinateNormalizationContexts(normalizationConfigs)
+      .setPartialRetrainModel(mockPretrainedModel)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates)
+      .setComputeVariance(computeVariance)
+      .setTreeAggregateDepth(treeAggregateDepth)
+      .setValidationEvaluators(validationEvaluators)
+      .setWarmStart(useWarmStart)
 
     estimator.validateParams()
   }
@@ -96,23 +110,36 @@ class GameEstimatorTest {
   @DataProvider
   def invalidParamMaps(): Array[Array[Any]] = {
 
-    val coordinateId1 = "id1"
-    val coordinateId2 = "id2"
-    val trainingTask = TaskType.LINEAR_REGRESSION
-
-    val badUpdateSeq1 = Seq(coordinateId1, coordinateId1, coordinateId1)
-    val badUpdateSeq2 = Seq(coordinateId1, coordinateId2)
-
     val mockSparkContext = mock(classOf[SparkContext])
     val mockLogger = mock(classOf[Logger])
-    val mockDataConfig1 = mock(classOf[CoordinateDataConfiguration])
+    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
     val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val mockDatumScoringModel = mock(classOf[DatumScoringModel])
+    val mockPretrainedModel1 = mock(classOf[GameModel])
+    val mockPretrainedModel2 = mock(classOf[GameModel])
+
+    val coordinateId1 = "id1"
+    val coordinateId2 = "id2"
+    val coordinateId3 = "id3"
+    val trainingTask = TaskType.LINEAR_REGRESSION
+    val updateSeq1 = Seq(coordinateId1)
+    val updateSeq2 = Seq(coordinateId1, coordinateId2)
+    val updateSeq3 = Seq(coordinateId1, coordinateId2, coordinateId3)
+    val badUpdateSeq = Seq(coordinateId1, coordinateId1, coordinateId1)
+    val coordinateDataConfig1 = Map(coordinateId1 -> mockDataConfig)
+    val coordinateDataConfig2 = Map(coordinateId1 -> mockDataConfig, coordinateId2 -> mockDataConfig)
+    val lockedCoordinates1 = Set(coordinateId1)
+    val lockedCoordinates2 = Set(coordinateId2)
+    val preTrainedModelMap1 = Map(coordinateId1 -> mockDatumScoringModel)
+    val preTrainedModelMap2 = Map(coordinateId2 -> mockDatumScoringModel)
+
+    doReturn(preTrainedModelMap1).when(mockPretrainedModel1).toMap
+    doReturn(preTrainedModelMap2).when(mockPretrainedModel2).toMap
 
     val estimator = new GameEstimator(mockSparkContext, mockLogger)
-
-    estimator.set(estimator.trainingTask, trainingTask)
-    estimator.set(estimator.coordinateUpdateSequence, Seq(coordinateId1))
-    estimator.set(estimator.coordinateDataConfigurations, Map((coordinateId1, mockDataConfig1)))
+      .setTrainingTask(trainingTask)
+      .setCoordinateUpdateSequence(updateSeq1)
+      .setCoordinateDataConfigurations(coordinateDataConfig1)
 
     estimator.validateParams()
 
@@ -135,18 +162,56 @@ class GameEstimatorTest {
     result = result :+ Array[Any](badEstimator)
 
     // Update sequence repeats defined coordinate ID
-    badEstimator = estimator.copy(ParamMap.empty)
-    badEstimator.set(badEstimator.coordinateUpdateSequence, badUpdateSeq1)
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setCoordinateUpdateSequence(badUpdateSeq)
+    result = result :+ Array[Any](badEstimator)
+
+    // Pre-trained model without locked coordinates
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setPartialRetrainModel(mockPretrainedModel1)
+    result = result :+ Array[Any](badEstimator)
+
+    // Locked coordinates without pre-trained model
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates1)
+    result = result :+ Array[Any](badEstimator)
+
+    // All coordinates in the update sequence are locked
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setPartialRetrainModel(mockPretrainedModel1)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates1)
+    result = result :+ Array[Any](badEstimator)
+
+    // Locked coordinate missing from the update sequence
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setPartialRetrainModel(mockPretrainedModel2)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates2)
+    result = result :+ Array[Any](badEstimator)
+
+    // Locked coordinate missing from the pre-trained model
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setCoordinateUpdateSequence(updateSeq2)
+      .setCoordinateDataConfigurations(coordinateDataConfig2)
+      .setPartialRetrainModel(mockPretrainedModel2)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates1)
     result = result :+ Array[Any](badEstimator)
 
     // Update sequence has undefined coordinate ID
-    badEstimator = estimator.copy(ParamMap.empty)
-    badEstimator.set(badEstimator.coordinateUpdateSequence, badUpdateSeq2)
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setCoordinateUpdateSequence(updateSeq3)
     result = result :+ Array[Any](badEstimator)
 
     // Normalization context undefined for coordinate ID in update sequence
-    badEstimator = estimator.copy(ParamMap.empty)
-    badEstimator.set(badEstimator.coordinateNormalizationContexts, Map((coordinateId2, mockNormalizationBroadcast)))
+    badEstimator = estimator
+      .copy(ParamMap.empty)
+      .setCoordinateNormalizationContexts(Map((coordinateId2, mockNormalizationBroadcast)))
     result = result :+ Array[Any](badEstimator)
 
     result.toArray
@@ -176,5 +241,40 @@ class GameEstimatorTest {
     estimator.getOrDefault(estimator.computeVariance)
     estimator.getOrDefault(estimator.treeAggregateDepth)
     estimator.getOrDefault(estimator.useWarmStart)
+  }
+
+  /**
+   * Test that the [[GameEstimator]] will reject optimization configurations with locked coordinates.
+   */
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidFit(): Unit = {
+
+    val mockSparkContext = mock(classOf[SparkContext])
+    val mockLogger = mock(classOf[Logger])
+    val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
+    val mockOptConfig = mock(classOf[CoordinateOptimizationConfiguration])
+    val mockDatumScoringModel = mock(classOf[DatumScoringModel])
+    val mockPretrainedModel = mock(classOf[GameModel])
+    val mockDataFrame = mock(classOf[DataFrame])
+
+    val coordinateId1 = "id1"
+    val coordinateId2 = "id2"
+    val trainingTask = TaskType.LINEAR_REGRESSION
+    val updateSeq = Seq(coordinateId1, coordinateId2)
+    val coordinateDataConfiguration = Map(coordinateId2 -> mockDataConfig)
+    val coordinateOptConfiguration = Map(coordinateId1 -> mockOptConfig, coordinateId2 -> mockOptConfig)
+    val lockedCoordinates = Set(coordinateId1)
+    val preTrainedModelMap = Map(coordinateId1 -> mockDatumScoringModel)
+
+    doReturn(preTrainedModelMap).when(mockPretrainedModel).toMap
+
+    val estimator = new GameEstimator(mockSparkContext, mockLogger)
+      .setTrainingTask(trainingTask)
+      .setCoordinateUpdateSequence(updateSeq)
+      .setCoordinateDataConfigurations(coordinateDataConfiguration)
+      .setPartialRetrainModel(mockPretrainedModel)
+      .setPartialRetrainLockedCoordinates(lockedCoordinates)
+
+    estimator.fit(mockDataFrame, validationData = None, Seq(coordinateOptConfiguration))
   }
 }

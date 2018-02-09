@@ -57,6 +57,7 @@ class ScoptGameTrainingParametersParserTest {
     val validationPaths = Set(new Path("/some/validation/path"))
     val validationDateRange = DateRange.fromDateString("20160101-20171231")
     val validationPartitions = 2
+    val partialRetrainModelDir = new Path("/some/existing/model/path")
     val outputMode = ModelOutputMode.EXPLICIT
     val outputFilesLimit = 3
     val coordinateDescentIter = 4
@@ -131,7 +132,9 @@ class ScoptGameTrainingParametersParserTest {
     val coordinateConfigs = Map(
       (fixedEffectCoordinateId, fixedEffectCoordinateConfiguration),
       (randomEffectCoordinateId, randomEffectCoordinateConfiguration))
-    val coordinateUpdateSequence = Seq(fixedEffectCoordinateId, randomEffectCoordinateId)
+    val lockedCoordinateId = "lockedCoordinate"
+    val partialRetrainLockedCoordinates = Set(lockedCoordinateId)
+    val coordinateUpdateSequence = Seq(fixedEffectCoordinateId, randomEffectCoordinateId, lockedCoordinateId)
 
     val initialParamMap = ParamMap
       .empty
@@ -152,6 +155,8 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.validationDataDirectories, validationPaths)
       .put(GameTrainingDriver.validationDataDateRange, validationDateRange)
       .put(GameTrainingDriver.minValidationPartitions, validationPartitions)
+      .put(GameTrainingDriver.partialRetrainModelDirectory, partialRetrainModelDir)
+      .put(GameTrainingDriver.partialRetrainLockedCoordinates, partialRetrainLockedCoordinates)
       .put(GameTrainingDriver.outputMode, outputMode)
       .put(GameTrainingDriver.coordinateDescentIterations, coordinateDescentIter)
       .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs)
@@ -178,7 +183,7 @@ class ScoptGameTrainingParametersParserTest {
     //
     // Check coordinate configurations separately. This is done as an alternative to custom hashCode() and equals()
     // implementations for CoordinateConfiguration, CoordinateDataConfiguration, CoordinateOptimizationConfiguration,
-    // and OptimizerConfig classes (which are otherwise never be compared directly against each other).
+    // and OptimizerConfig classes (which are otherwise never compared directly against each other).
     //
 
     val finalCoordinateConfigs = finalParamMap.get(GameTrainingDriver.coordinateConfigurations).get

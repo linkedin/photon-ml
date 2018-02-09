@@ -1,0 +1,3 @@
+global:
+FixedEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),com.linkedin.photon.ml.optimization.L2RegularizationContext$@66c45436,10.0,1.0)
+

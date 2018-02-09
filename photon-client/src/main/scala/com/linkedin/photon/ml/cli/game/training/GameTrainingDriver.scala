@@ -27,7 +27,8 @@ import com.linkedin.photon.ml._
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
+import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.data.{DataValidators, FixedEffectDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
@@ -36,9 +37,11 @@ import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameTrainingParametersParser
+import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
+import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils
@@ -99,6 +102,15 @@ object GameTrainingDriver extends GameDriver {
     "minimum validation partitions",
     "Minimum number of partitions for the validation data (if any).",
     ParamValidators.gt[Int](0.0))
+
+  val partialRetrainModelDirectory: Param[Path] = ParamUtils.createParam(
+    "partial retrain model directory",
+    "Path to directory containing a model to use as a base for partial retraining.")
+
+  val partialRetrainLockedCoordinates: Param[Set[CoordinateId]] = ParamUtils.createParam(
+    "partial retrain locked coordinates",
+    "The set of coordinates present in the pre-trained model to reuse during partial retraining.",
+    PhotonParamValidators.nonEmpty)
 
   val outputMode: Param[ModelOutputMode] = ParamUtils.createParam[ModelOutputMode](
     "output mode",
@@ -202,11 +214,47 @@ object GameTrainingDriver extends GameDriver {
     val coordinateConfigs = paramMap(coordinateConfigurations)
     val updateSequence = paramMap(coordinateUpdateSequence)
     val featureShards = paramMap(featureShardConfigurations)
+    val retrainModelDirOpt = paramMap.get(partialRetrainModelDirectory)
+    val retrainModelCoordsOpt = paramMap.get(partialRetrainLockedCoordinates)
     val normalizationType = paramMap.getOrElse(normalization, getOrDefault(normalization))
     val hyperparameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getOrDefault(hyperParameterTuning))
 
-    // Each coordinate in the update sequence must have a configuration
-    updateSequence.foreach { coordinate =>
+    // If partial retraining is enabled, both a model to use and list of coordinates to reuse must be provided
+    val coordinatesToTrain = (retrainModelDirOpt, retrainModelCoordsOpt) match {
+      case (Some(_), Some(retrainModelCoords)) =>
+
+        // Locked coordinates should not be present in the coordinate configurations
+        require(
+          coordinateConfigs.keys.forall(coordinateId => !retrainModelCoords.contains(coordinateId)),
+          "One or more locked coordinates for partial retraining are present in the coordinate configurations.")
+
+        val newCoordinates = updateSequence.filterNot(retrainModelCoords.contains)
+
+        // No point in training if every coordinate is being reused
+        require(
+          newCoordinates.nonEmpty,
+          "All coordinates in the update sequence are locked coordinates from the pre-trained model: no new " +
+            "coordinates to train.")
+
+        // All locked coordinates must be used by the update sequence
+        require(
+          retrainModelCoords.forall(updateSequence.contains),
+          "One or more locked coordinates for partial retraining are missing from the update sequence.")
+
+        newCoordinates
+
+      case (None, None) =>
+        updateSequence
+
+      case (Some(_), None) =>
+        throw new IllegalArgumentException("Missing locked coordinates for partial retraining.")
+
+      case (None, Some(_)) =>
+        throw new IllegalArgumentException("Partial retraining coordinates provided without model.")
+    }
+
+    // Each (non-reused) coordinate in the update sequence must have a configuration
+    coordinatesToTrain.foreach { coordinate =>
       require(
         coordinateConfigs.contains(coordinate),
         s"Coordinate '$coordinate' in the update sequence is missing configuration.")
@@ -255,7 +303,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
     setDefault(hyperParameterTuningRange, DoubleRange(1e-4, 1e4))
     setDefault(computeVariance, false)
-    setDefault(useWarmStart, true)
+    setDefault(useWarmStart, false)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
@@ -294,6 +342,57 @@ object GameTrainingDriver extends GameDriver {
     val validationData  = Timed(s"Read validation data") {
       readValidationData(featureIndexMapLoaders)
     }
+    val (partialRetrainingModelOpt, partialRetrainingDataConfigsOpt) = Timed("Load model for partial retraining") {
+      (get(partialRetrainModelDirectory), get(partialRetrainLockedCoordinates)) match {
+        case (Some(preTrainedModelDir), Some(lockedCoordinates)) =>
+          val (gameModel, modelIndexMapLoaders) = ModelProcessingUtils
+            .loadGameModelFromHDFS(
+              sc,
+              preTrainedModelDir,
+              StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+              Some(featureIndexMapLoaders))
+
+          // All of the locked coordinates must be present in the pre-trained model
+          require(
+            lockedCoordinates.forall(gameModel.toMap.contains),
+            "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
+
+          // The feature shards for the locked coordinates must be defined
+          modelIndexMapLoaders
+            .keys
+            .filter(lockedCoordinates.contains)
+            .foreach { featureShard =>
+              require(
+                featureIndexMapLoaders.contains(featureShard),
+                s"Missing feature shard definition for shard '$featureShard' used by the pre-trained model.")
+            }
+
+          val dataConfigs = gameModel
+            .toMap
+            .filter { case (coordinateId, _) =>
+              lockedCoordinates.contains(coordinateId)
+            }
+            .mapValues {
+              case fEM: FixedEffectModel =>
+                FixedEffectDataConfiguration(fEM.featureShardId)
+
+              case rEM: RandomEffectModel =>
+                RandomEffectDataConfiguration(
+                  rEM.randomEffectType,
+                  rEM.featureShardId,
+                  projectorType = IdentityProjection)
+
+              case other: DatumScoringModel =>
+                throw new IllegalArgumentException(s"Encountered unknown model type '${other.getClass.getName}'")
+            }
+            .map(identity)
+
+          (Some(gameModel), Some(dataConfigs))
+
+        case _ =>
+          (None, None)
+      }
+    }
 
     Timed("Validate data") {
       DataValidators.sanityCheckDataFrameForTraining(
@@ -328,16 +427,22 @@ object GameTrainingDriver extends GameDriver {
     }
 
     val gameEstimator = Timed("Setup estimator") {
+
+      val coordinateDataConfigs = getRequiredParam(coordinateConfigurations).mapValues(_.dataConfiguration) ++
+        partialRetrainingDataConfigsOpt.getOrElse(Map())
+
       // Set estimator parameters
       val estimator = new GameEstimator(sc, logger)
         .setTrainingTask(getRequiredParam(trainingTask))
-        .setCoordinateDataConfigurations(getRequiredParam(coordinateConfigurations).mapValues(_.dataConfiguration))
+        .setCoordinateDataConfigurations(coordinateDataConfigs)
         .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setComputeVariance(getOrDefault(computeVariance))
         .setWarmStart(getOrDefault(useWarmStart))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
+      partialRetrainingModelOpt.foreach(estimator.setPartialRetrainModel)
+      get(partialRetrainLockedCoordinates).foreach(estimator.setPartialRetrainLockedCoordinates)
       normalizationContexts.foreach(estimator.setCoordinateNormalizationContexts)
       get(treeAggregateDepth).foreach(estimator.setTreeAggregateDepth)
       get(evaluators).foreach(estimator.setValidationEvaluators)

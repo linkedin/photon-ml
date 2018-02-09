@@ -41,7 +41,7 @@ class RegularizationContext(val regularizationType: RegularizationType, val elas
   checkInvariants()
 
   /**
-   * Invariants that hold for every instance of RegularizationContext
+   * Invariants that hold for every instance of [[RegularizationContext]].
    */
   def checkInvariants(): Unit = {
     require((regularizationType == RegularizationType.ELASTIC_NET) || elasticNetParam.isEmpty,

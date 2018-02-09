@@ -32,6 +32,7 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro}
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMap, IndexMapLoader}
@@ -51,14 +52,15 @@ import com.linkedin.photon.ml.{Constants, TaskType}
  * The main challenge in saving/loading GAME models is that the number of random effect submodels can be
  * arbitrarily large. That's why e.g. "numberOfOutputFilesForRandomEffectModel" is needed.
  *
- * TODO: this object needs additional documentation
- * TODO: we might want to extract the various Path we setup to a method called by both save and load,
- * (to avoid bugs where save would use different Paths from load)
+ * TODO: This object needs additional documentation
+ *
+ * TODO: We might want to extract the various Path we setup to a method called by both save and load,
+ * TODO:  (to avoid bugs where save would use different Paths from load)
  *
  * TODO: Change the scope of all functions to com.linkedin.photon.ml.avro after Avro related
- * classes/functions are decoupled from the rest of code
+ * TODO: classes/functions are decoupled from the rest of code
  *
- * TODO: separate what's Avro and what's not, and locate appropriately: most of this should go into photon.ml.models
+ * TODO: Separate what's Avro and what's not, and locate appropriately: most of this should go into photon.ml.models
  */
 object ModelProcessingUtils {
 
@@ -146,7 +148,8 @@ object ModelProcessingUtils {
       sc: SparkContext,
       modelsDir: Path,
       storageLevel: StorageLevel,
-      featureShardIdToIndexMapLoader: Option[Map[String, IndexMapLoader]]): (GameModel, Map[String, IndexMapLoader]) = {
+      featureShardIdToIndexMapLoader: Option[Map[FeatureShardId, IndexMapLoader]])
+    : (GameModel, Map[String, IndexMapLoader]) = {
 
     val configuration = sc.hadoopConfiguration
     val fs = modelsDir.getFileSystem(configuration)

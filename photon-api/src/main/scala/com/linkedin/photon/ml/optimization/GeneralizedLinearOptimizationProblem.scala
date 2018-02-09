@@ -149,12 +149,10 @@ object GeneralizedLinearOptimizationProblem {
    * @param regularizationWeight the weight of the regularization value
    * @return L1 regularization term value
    */
-  protected[ml] def getL1RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
-    : Double = {
-
-    val coefficients = model.coefficients.means
-    sum(coefficients.map(abs)) * regularizationWeight
-  }
+  protected[ml] def getL1RegularizationTermValue(
+      model: GeneralizedLinearModel,
+      regularizationWeight: Double): Double =
+    sum(model.coefficients.means.map(abs)) * regularizationWeight
 
   /**
    * Compute the L2 regularization term value
@@ -163,8 +161,9 @@ object GeneralizedLinearOptimizationProblem {
    * @param regularizationWeight the weight of the regularization value
    * @return L2 regularization term value
    */
-  protected[ml] def getL2RegularizationTermValue(model: GeneralizedLinearModel, regularizationWeight: Double)
-    : Double = {
+  protected[ml] def getL2RegularizationTermValue(
+      model: GeneralizedLinearModel,
+      regularizationWeight: Double): Double = {
 
     val coefficients = model.coefficients.means
     coefficients.dot(coefficients) * regularizationWeight / 2

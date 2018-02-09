@@ -71,6 +71,18 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         GameTrainingDriver.minValidationPartitions,
         usageText = "<value>"),
 
+      // Partial Retraining Base Model Directory
+      ScoptParameter[Path, Path](
+        GameTrainingDriver.partialRetrainModelDirectory,
+        usageText = "<path>"),
+
+      // Partial Retraining Locked Coordinates
+      ScoptParameter[Seq[CoordinateId], Set[CoordinateId]](
+        GameTrainingDriver.partialRetrainLockedCoordinates,
+        parse = ScoptParserHelpers.parseSetFromSeq,
+        print = ScoptParserHelpers.iterableToString,
+        usageText = "<coordinate1>,<coordinate2>,..."),
+
       // Output Mode
       ScoptParameter[ModelOutputMode, ModelOutputMode](
         GameTrainingDriver.outputMode,

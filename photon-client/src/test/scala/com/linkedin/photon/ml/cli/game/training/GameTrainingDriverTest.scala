@@ -72,7 +72,8 @@ class GameTrainingDriverTest {
   @Test
   def testMaxValidParamMap(): Unit = {
 
-    val coordinateId = "id"
+    val coordinateId1 = "id1"
+    val coordinateId2 = "id2"
     val featureShardId = "id"
 
     val mockBoolean = true
@@ -111,10 +112,12 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.validationDataDirectories, Set[Path](mockPath))
       .put(GameTrainingDriver.validationDataDateRange, mockDateRange)
       .put(GameTrainingDriver.minValidationPartitions, mockInt)
+      .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+      .put(GameTrainingDriver.partialRetrainLockedCoordinates, Set(coordinateId2))
       .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
       .put(GameTrainingDriver.coordinateDescentIterations, mockInt)
-      .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockCoordinateConfig)))
-      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId))
+      .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId1, mockCoordinateConfig)))
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId1, coordinateId2))
       .put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)
       .put(GameTrainingDriver.dataSummaryDirectory, mockPath)
       .put(GameTrainingDriver.treeAggregateDepth, mockInt)
@@ -129,17 +132,24 @@ class GameTrainingDriverTest {
   @DataProvider
   def invalidParamMaps(): Array[Array[Any]] = {
 
-    val coordinateId = "id"
-    val featureShardId = "id"
-    val missingCoordinateId = "missing"
-    val missingFeatureShardId = "missing"
-
     val mockPath = mock(classOf[Path])
     val mockFeatureShardConfig = mock(classOf[FeatureShardConfiguration])
     val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
     val mockCoordinateConfig = mock(classOf[CoordinateConfiguration])
     val mockBadDataConfig = mock(classOf[CoordinateDataConfiguration])
     val mockBadCoordinateConfig = mock(classOf[CoordinateConfiguration])
+
+    val coordinateId1 = "id1"
+    val coordinateId2 = "id2"
+    val featureShardId = "id"
+    val missingCoordinateId = "missing"
+    val missingFeatureShardId = "missing"
+    val updateSequence1 = Seq(coordinateId1, coordinateId2)
+    val updateSequence2 = Seq(coordinateId1)
+    val updateSequence3 = Seq(coordinateId2)
+    val coordinateConfigs1 = Map(coordinateId1 -> mockCoordinateConfig, coordinateId2 -> mockCoordinateConfig)
+    val coordinateConfigs2 = Map(coordinateId2 -> mockCoordinateConfig)
+    val lockedCoordinates = Set(coordinateId1)
 
     doReturn(false).when(mockFeatureShardConfig).hasIntercept
     doReturn(mockDataConfig).when(mockCoordinateConfig).dataConfiguration
@@ -154,8 +164,8 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.featureShardConfigurations, Map((featureShardId, mockFeatureShardConfig)))
       .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
       .put(GameTrainingDriver.coordinateDescentIterations, 1)
-      .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockCoordinateConfig)))
-      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(coordinateId))
+      .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs1)
+      .put(GameTrainingDriver.coordinateUpdateSequence, updateSequence1)
 
     Array(
       // No input data directories
@@ -184,10 +194,39 @@ class GameTrainingDriverTest {
       Array(validParamMap.copy.remove(GameTrainingDriver.coordinateConfigurations)),
       // No coordinate update sequence
       Array(validParamMap.copy.remove(GameTrainingDriver.coordinateUpdateSequence)),
+      // Pre-trained model path without locked coordinates
+      Array(validParamMap.copy.put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)),
+      // Locked coordinates without pre-trained model path
+      Array(validParamMap.copy.put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
+      // Locked coordinate present in the coordinate configurations
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
+      // All coordinates in the update sequence are locked
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.coordinateUpdateSequence, updateSequence2)
+          .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs2)
+          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
+      // Locked coordinate missing from the update sequence
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.coordinateUpdateSequence, updateSequence3)
+          .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs2)
+          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
       // Missing coordinate configuration
       Array(validParamMap.copy.put(GameTrainingDriver.coordinateUpdateSequence, Seq(missingCoordinateId))),
       // Missing feature shard configuration
-      Array(validParamMap.copy.put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId, mockBadCoordinateConfig)))),
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId1, mockBadCoordinateConfig)))),
       // No intercepts for standardization
       Array(validParamMap.copy.put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)),
       // No iterations for hyperparameter tuning

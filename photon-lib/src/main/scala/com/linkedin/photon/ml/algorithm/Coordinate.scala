@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
 /**
  * The optimization problem coordinate for each effect model.
  *
+ * @tparam D The training data set type
  * @param dataSet The training dataset
  */
 protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {

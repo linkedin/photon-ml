@@ -28,6 +28,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType._
 import com.linkedin.photon.ml.Types._
+import com.linkedin.photon.ml.algorithm.CoordinateDescent
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
@@ -85,17 +86,24 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       L2RegularizationContext,
       regularizationWeight = 0.3)
     val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
+    val logger = createLogger("SimpleTest")
 
     // Create GameEstimator and fit model
     val estimator = new MockGameEstimator(sc, createLogger("SimpleTest"))
     estimator
       .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
       .set(estimator.coordinateUpdateSequence, Seq(coordinateId))
+    val coordinateDescent = new CoordinateDescent(
+      estimator.getOrDefault(estimator.coordinateUpdateSequence),
+      estimator.getOrDefault(estimator.coordinateDescentIterations),
+      trainingLossEvaluator,
+      validationDataAndEvaluatorsOption = None,
+      partialRetrainInputOpt = None,
+      logger)
     val models: (GameModel, Option[EvaluationResults]) = estimator.train(
       modelConfig,
       trainingDataSets,
-      trainingLossEvaluator,
-      validationDataAndEvaluators = None)
+      coordinateDescent)
     val model = models._1.getModel(coordinateId).get.asInstanceOf[FixedEffectModel].model
 
     // Reference values from scikit-learn
@@ -158,18 +166,25 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(
         NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length))))
       val normalizationContexts = Map((coordinateId, normalizationContextBroadcast))
+      val logger = createLogger("NormalizationTest")
 
       // Create GameEstimator and fit model
-      val estimator = new MockGameEstimator(sc, createLogger("NormalizationTest"))
+      val estimator = new MockGameEstimator(sc, logger)
       estimator
         .set(estimator.trainingTask, TaskType.LINEAR_REGRESSION)
         .set(estimator.coordinateUpdateSequence, Seq(coordinateId))
         .set(estimator.coordinateNormalizationContexts, normalizationContexts)
+      val coordinateDescent = new CoordinateDescent(
+        estimator.getOrDefault(estimator.coordinateUpdateSequence),
+        estimator.getOrDefault(estimator.coordinateDescentIterations),
+        trainingLossEvaluator,
+        validationDataAndEvaluatorsOption = None,
+        partialRetrainInputOpt = None,
+        logger)
       val models: (GameModel, Option[EvaluationResults]) = estimator.train(
         modelConfig,
         trainingDataSets,
-        trainingLossEvaluator,
-        validationDataAndEvaluators = None)
+        coordinateDescent)
       val model = models._1.getModel(coordinateId).get.asInstanceOf[FixedEffectModel].model
 
       // Reference values from scikit-learn
@@ -241,7 +256,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       case _ => fail("Wrong dataset type.")
     }
 
-      // per-artist data
+    // per-artist data
     trainingDataSets("per-artist") match {
       case ds: RandomEffectDataSet =>
         assertEquals(ds.activeData.count(), 4471)
@@ -264,13 +279,11 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
    */
   @DataProvider
   def taskAndTrainingEvaluatorTypeProvider(): Array[Array[Any]] =
-
     Array(
       Array(TaskType.LINEAR_REGRESSION, EvaluatorType.SquaredLoss),
       Array(TaskType.LOGISTIC_REGRESSION, EvaluatorType.LogisticLoss),
       Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, EvaluatorType.SmoothedHingeLoss),
-      Array(TaskType.POISSON_REGRESSION, EvaluatorType.PoissonLoss)
-    )
+      Array(TaskType.POISSON_REGRESSION, EvaluatorType.PoissonLoss))
 
   /**
    * Test that the [[GameEstimator]] chooses the correct type of training loss evaluator for the given training task.
@@ -297,13 +310,11 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
    */
   @DataProvider
   def multipleEvaluatorTypeProvider(): Array[Array[Any]] =
-
     Array(
       Array(Seq(RMSE, SquaredLoss)),
       Array(Seq(LogisticLoss, AUC, MultiPrecisionAtK(1, "userId"), MultiPrecisionAtK(10, "songId"))),
       Array(Seq(AUC, MultiAUC("userId"), MultiAUC("songId"))),
-      Array(Seq(PoissonLoss))
-    )
+      Array(Seq(PoissonLoss)))
 
   /**
    * Test that the [[GameEstimator]] correctly instantiates validation [[Evaluator]]s from a list of [[EvaluatorType]]s.
@@ -331,13 +342,11 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
    */
   @DataProvider
   def taskAndDefaultEvaluatorTypeProvider(): Array[Array[Any]] =
-
     Array(
       Array(TaskType.LINEAR_REGRESSION, RMSE),
       Array(TaskType.LOGISTIC_REGRESSION, AUC),
       Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, AUC),
-      Array(TaskType.POISSON_REGRESSION, PoissonLoss)
-    )
+      Array(TaskType.POISSON_REGRESSION, PoissonLoss))
 
   /**
    * Test that the [[GameEstimator]] correctly instantiates a default validation [[Evaluator]] for the given training
@@ -446,11 +455,8 @@ object GameEstimatorIntegTest {
     override def train(
         configuration: GameEstimator.GameOptimizationConfiguration,
         trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
-        trainingEvaluator: Evaluator,
-        validationDataAndEvaluators: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
-        prevGameModelOpt: Option[GameModel] = None)
-      : (GameModel, Option[EvaluationResults]) =
-
-      super.train(configuration, trainingDataSets, trainingEvaluator, validationDataAndEvaluators)
+        coordinateDescent: CoordinateDescent,
+        prevGameModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) =
+      super.train(configuration, trainingDataSets, coordinateDescent, prevGameModelOpt)
   }
 }
