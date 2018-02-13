@@ -18,15 +18,14 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.data.{RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
+import com.linkedin.photon.ml.data.RandomEffectDataSet
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextRDD, NormalizationContextWrapper}
 import com.linkedin.photon.ml.optimization.SingleNodeOptimizationProblem
-import com.linkedin.photon.ml.projector.{IndexMapProjectorRDD, ProjectionMatrixBroadcast}
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
 
 /**
  * Representation for a random effect optimization problem.
@@ -129,6 +128,7 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
 }
 
 object RandomEffectOptimizationProblem {
+
   /**
    * Factory method to create new RandomEffectOptimizationProblems.
    *
@@ -136,7 +136,7 @@ object RandomEffectOptimizationProblem {
    * @param configuration The optimizer configuration
    * @param objectiveFunction The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
-   * @param normalizationContext The normalization context
+   * @param normalizationContextWrapper The normalization context
    * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new RandomEffectOptimizationProblem
    */
@@ -145,65 +145,34 @@ object RandomEffectOptimizationProblem {
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: BroadcastWrapper[NormalizationContext],
+      normalizationContextWrapper: NormalizationContextWrapper,
       isTrackingState: Boolean = false,
       isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
 
-    // RandomEffectDataSet
-    //  |--RandomEffectDataSetInProjectedSpace
-    //  |  |--IndexMapProjectorRDD ==> partition normalizationContext to each RDD
-    //  |  |--ProjectionMatrixBroadcast ==> Project broadcast normalizationContext
-    //  |  |--AnythingElse ==> use broadcast normalizationContext
-    //  |--AnythingElse ==> use broadcast normalizationContext
-    val optimizationProblems = randomEffectDataSet match {
-      case reInProjSpace: RandomEffectDataSetInProjectedSpace => {
-        val projector = reInProjSpace.randomEffectProjector
-        projector match {
-          case indexProj: IndexMapProjectorRDD =>
-            val normalizationRDD = indexProj.projectNormalizationRDD(normalizationContext)
-            reInProjSpace
-              .activeData
-              .join(normalizationRDD, reInProjSpace.activeData.partitioner.get)
-              .mapValues{case(localDataSet, norm) => SingleNodeOptimizationProblem(
-                configuration,
-                objectiveFunction,
-                glmConstructor,
-                norm,
-                isTrackingState,
-                isComputingVariance
-              )}
-          case randomProj: ProjectionMatrixBroadcast =>
-            val normalization = randomProj.projectNormalizationContext(randomEffectDataSet, normalizationContext)
-            reInProjSpace
-              .activeData
-              .mapValues(_ => SingleNodeOptimizationProblem(
-                configuration,
-                objectiveFunction,
-                glmConstructor,
-                normalization,
-                isTrackingState,
-                isComputingVariance))
-          case _ =>
-            reInProjSpace
-              .activeData
-              .mapValues(_ => SingleNodeOptimizationProblem(
-                configuration,
-                objectiveFunction,
-                glmConstructor,
-                normalizationContext,
-                isTrackingState,
-                isComputingVariance))
+    val optimizationProblems = normalizationContextWrapper match {
+      case nCB: NormalizationContextBroadcast =>
+        randomEffectDataSet
+          .activeData
+          .mapValues(_ =>
+            SingleNodeOptimizationProblem(
+              configuration,
+              objectiveFunction,
+              glmConstructor,
+              PhotonBroadcast(nCB.context),
+              isTrackingState,
+              isComputingVariance))
+
+      case nCR: NormalizationContextRDD =>
+        nCR.contexts
+          .mapValues { norm =>
+            SingleNodeOptimizationProblem(
+              configuration,
+              objectiveFunction,
+              glmConstructor,
+              PhotonNonBroadcast(norm),
+              isTrackingState,
+              isComputingVariance)
         }
-      }
-      case _ =>
-        randomEffectDataSet.activeData
-          .mapValues(_ => SingleNodeOptimizationProblem(
-            configuration,
-            objectiveFunction,
-            glmConstructor,
-            normalizationContext,
-            isTrackingState,
-            isComputingVariance))
     }
 
     new RandomEffectOptimizationProblem(optimizationProblems, isTrackingState)

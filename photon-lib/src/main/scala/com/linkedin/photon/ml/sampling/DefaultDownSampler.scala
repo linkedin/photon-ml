@@ -12,30 +12,30 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.sampler
+package com.linkedin.photon.ml.sampling
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * Default sampler implementation. This will act as a standard simple random sampler on the dataset.
- * This should be used when all instances in the dataset are equivalently important (e.g the labels are balanced).
+ * Default sampler implementation. This will act as a standard simple random sampler on the data set.
+ * This should be used when all instances in the data set are equivalently important (e.g the labels are balanced).
  *
  * @param downSamplingRate The down sampling rate
  */
-protected[ml] class DefaultDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
-  require((downSamplingRate > 0D) && (downSamplingRate < 1D), s"Invalid down-sampling rate: $downSamplingRate")
+protected[ml] class DefaultDownSampler(override val downSamplingRate: Double) extends DownSampler with Serializable {
 
   /**
-   * Samples from the given dataset.
+   * Down-sample the given data set.
    *
-   * @param labeledPoints The dataset
-   * @param seed Random seed
-   * @return Down-sampled dataset
+   * @param labeledPoints The full data set
+   * @param seed A random seed
+   * @return A down-sampled data set
    */
   override def downSample(
-      labeledPoints: RDD[(Long, LabeledPoint)],
-      seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)] =
+      labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
+      seed: Long = DownSampler.getSeed): RDD[(UniqueSampleId, LabeledPoint)] =
     labeledPoints.sample(withReplacement = false, fraction = downSamplingRate, seed = seed)
 }

@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.sampler
+package com.linkedin.photon.ml.sampling
 
 import java.util.Random
 
@@ -29,20 +29,20 @@ import com.linkedin.photon.ml.data.LabeledPoint
  *
  * @param downSamplingRate The down sampling rate
  */
-protected[ml] class BinaryClassificationDownSampler(downSamplingRate: Double) extends DownSampler with Serializable {
-
-  require((downSamplingRate > 0D) && (downSamplingRate < 1D), s"Invalid down-sampling rate: $downSamplingRate")
+protected[ml] class BinaryClassificationDownSampler(override val downSamplingRate: Double)
+  extends DownSampler
+  with Serializable {
 
   /**
-   * Down-sample the negatives in the dataset.
+   * Down-sample the negatives in the data set.
    *
    * @note The current down-sampling method does it in one pass, filtering negative data points and flat-scaling the
    *       weights of the remaining negative data points. The correct solution would perform weight-proportional
    *       sampling and weight-proportional scaling, though this would require multiple passes.
    *
-   * @param labeledPoints The dataset
+   * @param labeledPoints The data set
    * @param seed Random seed
-   * @return Down-sampled dataset
+   * @return Down-sampled data set
    */
   override def downSample(
       labeledPoints: RDD[(Long, LabeledPoint)],

@@ -20,6 +20,7 @@ import org.apache.spark.broadcast.Broadcast
  * A trait containing simple operations on [[Broadcast]] variables.
  */
 protected[ml] trait BroadcastLike {
+
   /**
    * Asynchronously delete cached copies of internal [[Broadcast]]s on the executors.
    *

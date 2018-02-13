@@ -88,7 +88,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   def testNoIntercept(): Unit = sparkTest("testNoIntercept") {
 
     val shardId = "shard2"
-    val dr = new AvroDataReader(sc)
+    val dr = new AvroDataReader()
     val modifiedFeatureShardConfigsMap = Map(
       shardId -> featureShardConfigurationsMap(shardId).copy(hasIntercept = false))
     val (df, indexMapLoaders) = dr.readMerged(

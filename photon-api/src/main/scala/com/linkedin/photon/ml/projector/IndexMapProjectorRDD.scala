@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonNonBroadcast, VectorUtils}
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * A class that holds the projectors for a sharded data set.
@@ -36,9 +36,10 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   with RDDLike {
 
   /**
+   * Project the data set from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input sharded data set in the original space
-   * @return The sharded data set in the projected space
+   * @param randomEffectDataSet The input data set in the original space
+   * @return The same data set in the projected space
    */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
 
@@ -79,13 +80,15 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   }
 
   /**
+   * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original
+   * space.
    *
-   * @param coefficientsRDD
-   * @return The [[RDD]] of [[Coefficients]] in the original space
+   * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
    */
   override def projectCoefficientsRDD(
-      coefficientsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
-    coefficientsRDD
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
+    modelsRDD
       .join(indexMapProjectorRDD)
       .mapValues { case (model, projector) =>
         val oldCoefficients = model.coefficients
@@ -97,24 +100,22 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
       }
 
   /**
-    *
-    * @param normalizationContext: broadcast global NormalizationContext
-    * @return The sharded NormalizationContext in the projected space
-    */
-  def projectNormalizationRDD(
-      normalizationContext: BroadcastWrapper[NormalizationContext]) : RDD[(REId, BroadcastWrapper[NormalizationContext])] = {
-    indexMapProjectorRDD.mapValues {
-      case projector => {
-        val originalNormalizationContext = normalizationContext.value
-        val factors = originalNormalizationContext.factors.map(factors => projector.projectFeatures(factors))
-        val shifts = originalNormalizationContext.shifts.map(shifts => projector.projectFeatures(shifts))
-        val interceptId = originalNormalizationContext.interceptId.map(interceptId =>
-          projector.originalToProjectedSpaceMap(interceptId))
-        val norm = new NormalizationContext(factors, shifts, interceptId)
-        PhotonNonBroadcast(norm)
-      }
+   * Project a [[NormalizationContext]] from the original space to the projected space.
+   *
+   * @param originalNormalizationContext The [[NormalizationContext]] in the original space
+   * @return The same [[NormalizationContext]] in projected space
+   */
+  def projectNormalizationRDD(originalNormalizationContext: NormalizationContext): RDD[(REId, NormalizationContext)] =
+
+    indexMapProjectorRDD.mapValues { projector =>
+      val factors = originalNormalizationContext.factors.map(factors => projector.projectFeatures(factors))
+      val shifts = originalNormalizationContext.shifts.map(shifts => projector.projectFeatures(shifts))
+      val interceptId = originalNormalizationContext
+        .interceptId
+        .map(interceptId => projector.originalToProjectedSpaceMap(interceptId))
+
+      new NormalizationContext(factors, shifts, interceptId)
     }
-  }
 
   /**
    * Get the Spark context.
@@ -185,8 +186,7 @@ object IndexMapProjectorRDD {
    * @param randomEffectDataSet The input random effect data set
    * @return The generated index map based RDD projectors
    */
-  protected[ml] def buildIndexMapProjector(
-      randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
+  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
 
     val originalSpaceDimension = randomEffectDataSet
       .activeData
@@ -196,11 +196,9 @@ object IndexMapProjectorRDD {
     // Collect active indices for the active dataset
     val activeIndices = randomEffectDataSet
       .activeData
-      .mapValues(ds => ds
-        .dataPoints
-        .map(_._2.features)
-        .flatMap(VectorUtils.getActiveIndices)
-        .toSet)
+      .mapValues { ds =>
+        ds.dataPoints.map(_._2.features).flatMap(VectorUtils.getActiveIndices).toSet
+      }
 
     // Collect active indices for the passive dataset
     val passiveIndicesOption = randomEffectDataSet
@@ -222,8 +220,9 @@ object IndexMapProjectorRDD {
       }
       .getOrElse(activeIndices)
 
-    val indexMapProjectors = indices.mapValues(indexSet =>
-      new IndexMapProjector(indexSet.zipWithIndex.toMap, originalSpaceDimension, indexSet.size))
+    val indexMapProjectors = indices.mapValues { indexSet =>
+      new IndexMapProjector(indexSet.zipWithIndex.toMap, originalSpaceDimension, indexSet.size)
+    }
 
     new IndexMapProjectorRDD(indexMapProjectors)
   }

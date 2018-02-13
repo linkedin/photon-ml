@@ -17,19 +17,23 @@ package com.linkedin.photon.ml.util
 import org.apache.spark.broadcast.Broadcast
 
 /**
-  * Broadcast wrapper to support both spark Broadcast[T] and non-broadcast variable T.
-  * First applied in NormalizationContext.
-  * Broadcast[NormalizationContext] in FixedEffect and certain RandomEffect Projection.
-  * NormalizationContext in IndexMapProjection RandomEffect.
-  */
+ * Wrapper to support both Spark [[Broadcast]] and non-broadcast objects.
+ */
 sealed trait BroadcastWrapper[T] {
+
   def value: T
+
+  def unpersist(): Unit
 }
 
-case class PhotonBroadcast[T](va: Broadcast[T]) extends BroadcastWrapper[T] {
-  def value = va.value
+case class PhotonBroadcast[T](bv: Broadcast[T]) extends BroadcastWrapper[T] {
 
-  def unpersist(): Unit = { va.unpersist() }
+  def value: T = bv.value
+
+  def unpersist(): Unit = bv.unpersist()
 }
 
-case class PhotonNonBroadcast[T](value: T) extends BroadcastWrapper[T]
+case class PhotonNonBroadcast[T](value: T) extends BroadcastWrapper[T] {
+
+  def unpersist(): Unit = {}
+}

@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoor
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
 import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModelInProjectedSpace}
-import com.linkedin.photon.ml.normalization.NoNormalization
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContextBroadcast}
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
@@ -146,7 +146,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
 
     DistributedOptimizationProblem(
       configuration,
-      DistributedGLMLossFunction(configuration, 1)(LogisticLossFunction) ,
+      DistributedGLMLossFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1),
       None,
       LogisticRegressionModel.apply,
       PhotonBroadcast(sc.broadcast(NoNormalization())),
@@ -253,9 +253,9 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
     RandomEffectOptimizationProblem(
       dataset,
       configuration,
-      SingleNodeGLMLossFunction(configuration)(LogisticLossFunction),
+      SingleNodeGLMLossFunction(configuration, LogisticLossFunction),
       LogisticRegressionModel.apply,
-      PhotonBroadcast(sc.broadcast(NoNormalization())))
+      NormalizationContextBroadcast(sc.broadcast(NoNormalization())))
   }
 
   /**

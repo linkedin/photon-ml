@@ -72,10 +72,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -85,10 +85,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -98,10 +98,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -137,10 +137,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -150,10 +150,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -163,10 +163,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))

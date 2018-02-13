@@ -30,16 +30,17 @@ import com.linkedin.photon.ml.util.Summarizable
  *               is thrown if any other type of matrix is passed
  */
 protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projector with Summarizable {
+
   matrix match {
-    case x: DenseMatrix[Double] =>
+    case _: DenseMatrix[Double] =>
     case _ => throw new UnsupportedOperationException(s"Projection matrix of class ${matrix.getClass} for features " +
       s"projection operation is not supported")
   }
 
-  override val projectedSpaceDimension = matrix.rows
-  override val originalSpaceDimension = matrix.cols
+  override val projectedSpaceDimension: Int = matrix.rows
+  override val originalSpaceDimension: Int = matrix.cols
 
-  val projectedInterceptId = projectedSpaceDimension - 1
+  val projectedInterceptId: Int = projectedSpaceDimension - 1
 
   /**
    * Project features into the new space.
@@ -65,6 +66,7 @@ protected[ml] case class ProjectionMatrix(matrix: Matrix[Double]) extends Projec
   }
 
   /**
+   * Build a human-readable summary for the object.
    *
    * @return A summary of the object in string representation
    */
@@ -117,9 +119,7 @@ object ProjectionMatrix {
         }
       }
     } else {
-      Matrix.tabulate[Double](projectedSpaceDimension, originalSpaceDimension)((row, col) =>
-        random.nextGaussian() / std
-      )
+      Matrix.tabulate[Double](projectedSpaceDimension, originalSpaceDimension)((_, _) => random.nextGaussian() / std)
     }
 
     new ProjectionMatrix(matrix)
