@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.function
 
-import org.apache.spark.SparkContext
-import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -26,7 +24,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  */
 class DistributedObjectiveFunctionTest {
 
-  import DistributedObjectiveFunctionIntegTest.MockDistributedObjectiveFunction
+  import DistributedObjectiveFunctionTest._
 
   @DataProvider
   def invalidInput(): Array[Array[Any]] = Array(Array(-1), Array(0))
@@ -37,18 +35,14 @@ class DistributedObjectiveFunctionTest {
    * @param treeAggregateDepth An invalid tree aggregate depth
    */
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testSetupWithInvalidInput(treeAggregateDepth: Int): Unit = {
-
-    val mockSparkContext = mock(classOf[SparkContext])
-
-    new MockDistributedObjectiveFunction(mockSparkContext, treeAggregateDepth)
-  }
+  def testSetupWithInvalidInput(treeAggregateDepth: Int): Unit =
+    new MockDistributedObjectiveFunction(treeAggregateDepth)
 }
 
-object DistributedObjectiveFunctionIntegTest {
+object DistributedObjectiveFunctionTest {
 
-  class MockDistributedObjectiveFunction(sc: SparkContext, treeAggregateDepth: Int)
-    extends DistributedObjectiveFunction(sc, treeAggregateDepth) {
+  class MockDistributedObjectiveFunction(treeAggregateDepth: Int)
+    extends DistributedObjectiveFunction(treeAggregateDepth) {
 
     override protected[ml] def value(
         input: Data,

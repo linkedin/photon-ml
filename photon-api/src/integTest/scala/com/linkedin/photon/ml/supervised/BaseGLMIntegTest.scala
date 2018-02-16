@@ -118,7 +118,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(SquaredLossFunction) ,
+            DistributedGLMLossFunction(lbfgsConfig, treeAggregateDepth = 1)(SquaredLossFunction) ,
             None,
             LinearRegressionModel.apply,
             normalizationContext,
@@ -134,7 +134,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(PoissonLossFunction) ,
+            DistributedGLMLossFunction(lbfgsConfig, treeAggregateDepth = 1)(PoissonLossFunction) ,
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
@@ -152,7 +152,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(sc, lbfgsConfig, treeAggregateDepth = 1)(LogisticLossFunction),
+            DistributedGLMLossFunction(lbfgsConfig, treeAggregateDepth = 1)(LogisticLossFunction),
             None,
             LogisticRegressionModel.apply,
             normalizationContext,

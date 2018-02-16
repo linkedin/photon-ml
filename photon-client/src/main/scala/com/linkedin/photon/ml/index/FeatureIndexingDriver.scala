@@ -31,7 +31,7 @@ import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.io.scopt.index.ScoptFeatureIndexingParametersParser
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.{Constants, SparkContextConfiguration}
+import com.linkedin.photon.ml.{Constants, SparkSessionConfiguration}
 
 /**
  * A driver to build feature index maps as an independent Spark job. Recommended when the feature space is large,
@@ -305,7 +305,7 @@ object FeatureIndexingDriver extends Params with Logging {
     params.toSeq.foreach(set)
 
     implicit val log = logger
-    sc = SparkContextConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
 
     try {
 

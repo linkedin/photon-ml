@@ -294,7 +294,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       doReturn(regContext).when(optConfig).regularizationContext
       doReturn(RegularizationType.NONE).when(regContext).regularizationType
 
-      val objective = DistributedGLMLossFunction(sc, optConfig, treeAggregateDepth = 1)(lossFunction)
+      val objective = DistributedGLMLossFunction(optConfig, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,
@@ -348,7 +348,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       doReturn(RegularizationType.L2).when(regContext).regularizationType
       doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-      val objective = DistributedGLMLossFunction(sc, optConfig, treeAggregateDepth = 1)(lossFunction)
+      val objective = DistributedGLMLossFunction(optConfig, treeAggregateDepth = 1)(lossFunction)
 
       val optimizationProblem = new DistributedOptimizationProblem(
         optimizer,
@@ -491,6 +491,6 @@ object DistributedOptimizationProblemIntegTest {
 
   // No way to pass Mixin class type to Mockito, need to define a concrete class
   private class L2LossFunction(sc: SparkContext)
-    extends DistributedSmoothedHingeLossFunction(sc, treeAggregateDepth = 1)
+    extends DistributedSmoothedHingeLossFunction(treeAggregateDepth = 1)
     with L2RegularizationDiff
 }

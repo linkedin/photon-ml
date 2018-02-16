@@ -22,29 +22,27 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration tests for [[SparkContextConfiguration]].
+ * This class tests the SparkContextConfiguration object.
  */
-class SparkContextConfigurationIntegTest extends SparkTestUtils {
+class SparkSessionConfigurationTest extends SparkTestUtils {
 
-  import SparkContextConfiguration._
+  import SparkSessionConfiguration._
 
-  /**
-   * Synchronize across different potential SparkContext creators.
-   */
+  // Synchronize across different potential SparkContext creators
   @Test
   def testAsYarnClient(): Unit = sparkTestSelfServeContext("testAsYarnClient") {
-    val sc1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", useKryo = true)
-    assertEquals(sc1.getConf.get(CONF_SPARK_APP_NAME), "foo")
-    assertEquals(sc1.getConf.get(CONF_SPARK_SERIALIZER), classOf[KryoSerializer].getName)
-    assertEquals(sc1.getConf.get(CONF_SPARK_KRYO_CLASSES_TO_REGISTER),
+    val session1 = asYarnClient(new SparkConf().setMaster("local[1]"), "foo", useKryo = true)
+    assertEquals(session1.sparkContext.getConf.get(CONF_SPARK_APP_NAME), "foo")
+    assertEquals(session1.sparkContext.getConf.get(CONF_SPARK_SERIALIZER), classOf[KryoSerializer].getName)
+    assertEquals(session1.sparkContext.getConf.get(CONF_SPARK_KRYO_CLASSES_TO_REGISTER),
       KRYO_CLASSES_TO_REGISTER.map(c => c.getName).mkString(",")
     )
-    sc1.stop()
+    session1.stop()
 
-    val sc2 = asYarnClient(new SparkConf().setMaster("local[1]"), "bar", useKryo = false)
-    assertEquals(sc2.getConf.get(CONF_SPARK_APP_NAME), "bar")
-    assertFalse(sc2.getConf.contains(CONF_SPARK_SERIALIZER))
-    assertFalse(sc2.getConf.contains(CONF_SPARK_KRYO_CLASSES_TO_REGISTER))
-    sc2.stop()
+    val session2 = asYarnClient(new SparkConf().setMaster("local[1]"), "bar", useKryo = false)
+    assertEquals(session2.sparkContext.getConf.get(CONF_SPARK_APP_NAME), "bar")
+    assertFalse(session2.sparkContext.getConf.contains(CONF_SPARK_SERIALIZER))
+    assertFalse(session2.sparkContext.getConf.contains(CONF_SPARK_KRYO_CLASSES_TO_REGISTER))
+    session2.stop()
   }
 }

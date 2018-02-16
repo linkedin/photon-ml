@@ -20,7 +20,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.ml.util.Identifiable
 
-import com.linkedin.photon.ml.SparkContextConfiguration
+import com.linkedin.photon.ml.SparkSessionConfiguration
 import com.linkedin.photon.ml.io.scopt.avro.ScoptNameAndTermFeatureBagsParametersParser
 import com.linkedin.photon.ml.util._
 
@@ -204,7 +204,7 @@ object NameAndTermFeatureBagsDriver extends Params with Logging {
     params.toSeq.foreach(set)
 
     implicit val log = logger
-    sc = SparkContextConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
 
     try {
 

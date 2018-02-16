@@ -128,7 +128,6 @@ object ModelTraining extends Logging {
       case TaskType.LOGISTIC_REGRESSION =>
         val constructor = LogisticRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
-          trainingData.sparkContext,
           optimizationConfig,
           treeAggregateDepth)(
           LogisticLossFunction)
@@ -138,7 +137,6 @@ object ModelTraining extends Logging {
       case TaskType.LINEAR_REGRESSION =>
         val constructor = LinearRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
-          trainingData.sparkContext,
           optimizationConfig,
           treeAggregateDepth)(
           SquaredLossFunction)
@@ -148,7 +146,6 @@ object ModelTraining extends Logging {
       case TaskType.POISSON_REGRESSION =>
         val constructor = PoissonRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
-          trainingData.sparkContext,
           optimizationConfig,
           treeAggregateDepth)(
           PoissonLossFunction)
@@ -158,7 +155,6 @@ object ModelTraining extends Logging {
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         val constructor = SmoothedHingeLossLinearSVMModel.apply _
         val objective = DistributedSmoothedHingeLossFunction(
-          trainingData.sparkContext,
           optimizationConfig,
           treeAggregateDepth)
 

@@ -495,12 +495,11 @@ object GameTrainingDriver extends GameDriver {
 
     // The 'map(identity)' call is required due to a long-standing Scala bug SI-7005: the result of a 'mapValues' call
     // is not serializable.
-    new AvroDataReader(sc)
-      .readMerged(
-        trainingRecordsPath.map(_.toString),
-        featureIndexMapLoadersOpt,
-        getRequiredParam(featureShardConfigurations),
-        numPartitions)
+    new AvroDataReader().readMerged(
+      trainingRecordsPath.map(_.toString),
+      featureIndexMapLoadersOpt,
+      getRequiredParam(featureShardConfigurations),
+      numPartitions)
   }
 
   /**
@@ -519,12 +518,11 @@ object GameTrainingDriver extends GameDriver {
 
       // The 'map(identity)' call is required due to a long-standing Scala bug SI-7005: the result of a 'mapValues' call
       // is not serializable.
-      new AvroDataReader(sc)
-        .readMerged(
-          validationRecordsPath.map(_.toString),
-          featureIndexMapLoaders,
-          getRequiredParam(featureShardConfigurations),
-          getOrDefault(minValidationPartitions))
+      new AvroDataReader().readMerged(
+        validationRecordsPath.map(_.toString),
+        featureIndexMapLoaders,
+        getRequiredParam(featureShardConfigurations),
+        getOrDefault(minValidationPartitions))
     }
 
   /**
@@ -813,7 +811,7 @@ object GameTrainingDriver extends GameDriver {
     val params: ParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
 
-    sc = SparkContextConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
     logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 

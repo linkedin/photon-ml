@@ -18,7 +18,8 @@ import scala.collection.mutable
 
 import breeze.linalg.{DenseMatrix, DenseVector, Matrix, SparseVector, Vector}
 import org.apache.spark.serializer.KryoSerializer
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkConf
 
 import com.linkedin.photon.ml.data.{GameDatum, LabeledPoint, LocalDataSet}
 import com.linkedin.photon.ml.function._
@@ -33,10 +34,11 @@ import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTra
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
 /**
- * Factory for creating SparkContext instances. This handles the tricky details of things like setting up serialization,
- * resource negotiation, logging, etc.
+ * Factory for creating [[SparkSession]] instances. This handles the tricky details of things like setting up
+ * serialization, resource negotiation, logging, etc.
  */
-object SparkContextConfiguration {
+object SparkSessionConfiguration {
+
   val CONF_SPARK_APP_NAME = "spark.app.name"
   val CONF_SPARK_SERIALIZER = "spark.serializer"
   val CONF_SPARK_KRYO_CLASSES_TO_REGISTER = "spark.kryo.classesToRegister"
@@ -85,14 +87,17 @@ object SparkContextConfiguration {
    * @param useKryo Whether to use kryo to serialize RDD and intermediate data
    * @return The configured Spark context
    */
-  def asYarnClient(sparkConf: SparkConf, jobName: String, useKryo: Boolean): SparkContext = {
-    /* Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application */
+  def asYarnClient(sparkConf: SparkConf, jobName: String, useKryo: Boolean): SparkSession = {
+
+    // Configure the Spark application and initialize SparkContext, which is the entry point of a Spark application
     sparkConf.setAppName(jobName)
+
     if (useKryo) {
       sparkConf.set(CONF_SPARK_SERIALIZER, classOf[KryoSerializer].getName)
       sparkConf.registerKryoClasses(KRYO_CLASSES_TO_REGISTER)
     }
-    new SparkContext(sparkConf)
+
+    SparkSession.builder.config(sparkConf).getOrCreate()
   }
 
   /**
@@ -102,8 +107,6 @@ object SparkContextConfiguration {
    * @param useKryo Whether to use kryo to serialize RDD and intermediate data
    * @return The configured Spark context
    */
-  def asYarnClient(jobName: String, useKryo: Boolean): SparkContext = {
-    val sparkConf = new SparkConf()
-    asYarnClient(sparkConf, jobName, useKryo)
-  }
+  def asYarnClient(jobName: String, useKryo: Boolean): SparkSession =
+    asYarnClient(new SparkConf(), jobName, useKryo)
 }

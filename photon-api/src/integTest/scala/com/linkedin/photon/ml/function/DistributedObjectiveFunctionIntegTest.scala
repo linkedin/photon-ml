@@ -17,8 +17,6 @@ package com.linkedin.photon.ml.function
 import java.util.Random
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.log4j.{LogManager, Logger}
-import org.apache.spark.SparkContext
 import org.mockito.Mockito._
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.{DataProvider, Test}
@@ -41,7 +39,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
   import DistributedObjectiveFunctionIntegTest._
 
-  private val twiceDiffTasks = Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
+  private val twiceDiffTasks = Array(
+    TaskType.LOGISTIC_REGRESSION,
+    TaskType.LINEAR_REGRESSION,
+    TaskType.POISSON_REGRESSION)
   private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
   private val binaryClassificationDataSetGenerationFuncs = Array(
     generateBenignDataSetBinaryClassification _,
@@ -70,10 +71,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
     .flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
 
           binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -82,10 +84,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
 
           linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -94,10 +97,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
 
           poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -106,8 +110,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)
-          def lossFuncWithL2Builder = (sc: SparkContext) => DistributedSmoothedHingeLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)
+          def lossFuncBuilder =
+            () => DistributedSmoothedHingeLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)
+
+          def lossFuncWithL2Builder =
+            () => DistributedSmoothedHingeLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)
 
           binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -129,10 +136,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
     .flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(LogisticLossFunction)
 
           binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -141,10 +149,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(SquaredLossFunction)
 
           linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -153,10 +162,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
-          def lossFuncWithL2Builder = (sc: SparkContext) =>
-            DistributedGLMLossFunction(sc, L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+          def lossFuncBuilder =
+            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
+
+          def lossFuncWithL2Builder =
+            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)(PoissonLossFunction)
 
           poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -194,6 +204,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedBenignDataSetBinaryClassification: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
@@ -218,10 +229,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         new LabeledPoint(label = obj._1, features = obj._2)
-      })
+      }
       .toList
 
   /**
@@ -230,17 +241,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedOutlierDataSetBinaryClassification: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
         new LabeledPoint(label = obj._1, features = obj._2, weight = weight)
-      })
+      }
       .toList
   }
 
@@ -258,10 +270,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         new LabeledPoint(label = obj._1, features = obj._2)
-      })
+      }
       .toList
 
   /**
@@ -270,17 +282,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedBenignDataSetLinearRegression: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
         new LabeledPoint(label = obj._1, features = obj._2, weight = weight)
-      })
+      }
       .toList
   }
 
@@ -294,10 +307,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         new LabeledPoint(label = obj._1, features = obj._2)
-      })
+      }
       .toList
 
   /**
@@ -306,17 +319,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedOutlierDataSetLinearRegression: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
         new LabeledPoint(label = obj._1, features = obj._2, weight = weight)
-      })
+      }
       .toList
   }
 
@@ -334,10 +348,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         new LabeledPoint(label = obj._1, features = obj._2)
-      })
+      }
       .toList
 
   /**
@@ -346,17 +360,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedBenignDataSetPoissonRegression: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
         new LabeledPoint(label = obj._1, features = obj._2, weight = weight)
-      })
+      }
       .toList
   }
 
@@ -370,10 +385,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         new LabeledPoint(label = obj._1, features = obj._2)
-      })
+      }
       .toList
 
   /**
@@ -382,17 +397,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return A Seq of [[LabeledPoint]]
    */
   def generateWeightedOutlierDataSetPoissonRegression: Seq[LabeledPoint] = {
+
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
       PROBLEM_DIMENSION)
-      .map({ obj =>
+      .map { obj =>
         assertEquals(obj._2.length, PROBLEM_DIMENSION, "Samples should have expected lengths")
         val weight = r.nextDouble() * WEIGHT_RANDOM_MAX
         new LabeledPoint(label = obj._1, features = obj._2, weight = weight)
-      })
+      }
       .toList
   }
 
@@ -408,12 +424,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @param tolerance The relative & absolute error tolerance
    */
   def checkDerivativeError(
-    prefix: String,
-    descriptor: String,
-    deltaBefore: Double,
-    deltaAfter: Double,
-    expected: Double,
-    tolerance: Double): Unit = {
+      prefix: String,
+      descriptor: String,
+      deltaBefore: Double,
+      deltaAfter: Double,
+      expected: Double,
+      tolerance: Double): Unit = {
 
     assertTrue(java.lang.Double.isFinite(deltaBefore), s"Value before step [$deltaBefore] should be finite")
     assertTrue(java.lang.Double.isFinite(deltaAfter), s"Value after step [$deltaAfter] should be finite")
@@ -433,11 +449,11 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
     assert(
       relativeError < tolerance || absoluteError < tolerance,
       s"""$prefix
-          |Computed and numerical differentiation estimates should be close.
-          |NUMERICAL ESTIMATE: $numericDerivative ($descriptor)
-          |COMPUTED: $expected
-          |ABSOLUTE ERROR: $absoluteError
-          |RELATIVE ERROR: $relativeError""".stripMargin)
+        |Computed and numerical differentiation estimates should be close.
+        |NUMERICAL ESTIMATE: $numericDerivative ($descriptor)
+        |COMPUTED: $expected
+        |ABSOLUTE ERROR: $absoluteError
+        |RELATIVE ERROR: $relativeError""".stripMargin)
   }
 
   /**
@@ -452,10 +468,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getDifferentiableFunctions", groups = Array[String]("ObjectiveFunctionTests", "testCore"))
   def checkGradientConsistentWithObjectiveSpark(
-    objectiveBuilder: (SparkContext) => DistributedObjectiveFunction with DiffFunction,
-    dataGenerationFunction: () => List[LabeledPoint]): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
+      objectiveBuilder: () => DistributedObjectiveFunction with DiffFunction,
+      dataGenerationFunction: () => List[LabeledPoint]): Unit = sparkTest("checkGradientConsistentWithObjectiveSpark") {
 
-    val objective = objectiveBuilder(sc)
+    val objective = objectiveBuilder()
     val trainingData = sc.parallelize(dataGenerationFunction()).repartition(NUM_PARTITIONS)
     val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(NORMALIZATION))
     val r = new Random(PARAMETER_RANDOM_SEED)
@@ -510,10 +526,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    */
   @Test(dataProvider = "getTwiceDifferentiableFunctions", groups = Array[String]("ObjectiveFunctionTests", "testCore"))
   def checkHessianConsistentWithObjectiveSpark(
-    objectiveBuilder: (SparkContext) => DistributedObjectiveFunction with TwiceDiffFunction,
-    dataGenerationFunction: () => List[LabeledPoint]): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
+      objectiveBuilder: () => DistributedObjectiveFunction with TwiceDiffFunction,
+      dataGenerationFunction: () => List[LabeledPoint]): Unit = sparkTest("checkHessianConsistentWithObjectiveSpark") {
 
-    val objective = objectiveBuilder(sc)
+    val objective = objectiveBuilder()
     val trainingData = sc.parallelize(dataGenerationFunction()).repartition(NUM_PARTITIONS)
     val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(NORMALIZATION))
     val r = new Random(PARAMETER_RANDOM_SEED)
@@ -560,7 +576,8 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
           checkDerivativeError(
             "Checking Hessian",
-            s"f=[$objective / ${objective.getClass.getName}], iter=[$iter], basis=[$basis], idx=[$idx], Hessian=[$hessianVector]",
+            s"f=[$objective / ${objective.getClass.getName}], iter=[$iter], basis=[$basis], idx=[$idx], " +
+              s"Hessian=[$hessianVector]",
             gradBefore(basis),
             gradAfter(basis),
             hessianVector(idx),
@@ -578,6 +595,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 }
 
 object DistributedObjectiveFunctionIntegTest {
+
   private val SPARK_CONSISTENCY_CHECK_SAMPLES = 5
   private val NUM_PARTITIONS = 4
   private val PROBLEM_DIMENSION = 5

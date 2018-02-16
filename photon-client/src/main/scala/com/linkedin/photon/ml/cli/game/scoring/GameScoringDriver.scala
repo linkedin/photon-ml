@@ -19,7 +19,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
 
-import com.linkedin.photon.ml.{DataValidationType, SparkContextConfiguration, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
@@ -214,12 +214,11 @@ object GameScoringDriver extends GameDriver {
 
     logger.debug(s"Input records paths:\n${recordsPaths.mkString("\n")}")
 
-    new AvroDataReader(sc)
-      .readMerged(
-        recordsPaths.map(_.toString),
-        featureShardIdToIndexMapLoaderMapOpt,
-        getRequiredParam(featureShardConfigurations),
-        parallelism)
+    new AvroDataReader().readMerged(
+      recordsPaths.map(_.toString),
+      featureShardIdToIndexMapLoaderMapOpt,
+      getRequiredParam(featureShardConfigurations),
+      parallelism)
   }
 
   /**
@@ -266,7 +265,7 @@ object GameScoringDriver extends GameDriver {
     val params: ParamMap = ScoptGameScoringParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
 
-    sc = SparkContextConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
     logger = new PhotonLogger(getRequiredParam(rootOutputDirectory), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 
