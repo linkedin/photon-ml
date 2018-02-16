@@ -145,11 +145,13 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
       .map(identity)
+    val newArgs = fixedEffectSeriousRunArgs
+      .copy
+      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+      .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs)
+    newArgs.remove(GameTrainingDriver.featureBagsDirectory)
 
-    runDriver(
-      fixedEffectSeriousRunArgs
-        .put(GameTrainingDriver.rootOutputDirectory, outputDir)
-        .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs))
+    runDriver(newArgs)
 
     val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
@@ -567,21 +569,18 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def compareModelEvaluation(modelPath1: Path, modelPath2: Path, tolerance: Double): Unit = {
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
-    val featureSectionMap = GameTrainingDriver
-      .getOrDefault(GameTrainingDriver.featureShardConfigurations)
-      .mapValues(_.featureBags)
-      .map(identity)
+    val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
     val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
       Seq(testPath.toString),
       indexMapLoadersOpt,
-      featureSectionMap,
+      featureShardConfigs,
       numPartitions = 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataSet = GameConverters
       .getGameDataSetFromDataFrame(
         testData,
-        featureSectionMap.keySet,
+        featureShardConfigs.keySet,
         randomEffectTypes.toSet,
         isResponseRequired = true,
         GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames))
@@ -622,21 +621,18 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def evaluateModel(modelPath: Path): Double = {
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
-    val featureSectionMap = GameTrainingDriver
-      .getOrDefault(GameTrainingDriver.featureShardConfigurations)
-      .mapValues(_.featureBags)
-      .map(identity)
+    val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
     val (testData, indexMapLoaders) = new AvroDataReader(sc).readMerged(
       Seq(testPath.toString),
       indexMapLoadersOpt,
-      featureSectionMap,
+      featureShardConfigs,
       numPartitions = 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataSet = GameConverters
       .getGameDataSetFromDataFrame(
         testData,
-        featureSectionMap.keySet,
+        featureShardConfigs.keySet,
         randomEffectTypes.toSet,
         isResponseRequired = true,
         GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames))

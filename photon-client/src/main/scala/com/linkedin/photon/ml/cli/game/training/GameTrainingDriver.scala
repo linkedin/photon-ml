@@ -339,7 +339,7 @@ object GameTrainingDriver extends GameDriver {
     val (trainingData, featureIndexMapLoaders) = Timed(s"Read training data") {
       readTrainingData(featureIndexMapLoadersOpt)
     }
-    val validationData  = Timed(s"Read validation data") {
+    val validationData = Timed(s"Read validation data") {
       readValidationData(featureIndexMapLoaders)
     }
     val (partialRetrainingModelOpt, partialRetrainingDataConfigsOpt) = Timed("Load model for partial retraining") {
@@ -483,8 +483,7 @@ object GameTrainingDriver extends GameDriver {
    * @param featureIndexMapLoadersOpt Optional feature index map loaders
    * @return A ([[DataFrame]] of input data, feature index map loaders) pair
    */
-  private def readTrainingData(
-      featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
+  private def readTrainingData(featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
     : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
 
     val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
@@ -500,7 +499,7 @@ object GameTrainingDriver extends GameDriver {
       .readMerged(
         trainingRecordsPath.map(_.toString),
         featureIndexMapLoadersOpt,
-        getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
+        getRequiredParam(featureShardConfigurations),
         numPartitions)
   }
 
@@ -524,7 +523,7 @@ object GameTrainingDriver extends GameDriver {
         .readMerged(
           validationRecordsPath.map(_.toString),
           featureIndexMapLoaders,
-          getRequiredParam(featureShardConfigurations).mapValues(_.featureBags).map(identity),
+          getRequiredParam(featureShardConfigurations),
           getOrDefault(minValidationPartitions))
     }
 
