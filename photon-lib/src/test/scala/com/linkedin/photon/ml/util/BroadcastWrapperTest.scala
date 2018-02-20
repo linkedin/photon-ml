@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 class BroadcastWrapperTest extends SparkTestUtils {
 
   @Test
-  def test(): Unit = sparkTest("simpleBroadcastTest") {
+  def testSimpleBroadcast(): Unit = sparkTest("testSimpleBroadcast") {
     val array = Array(1, 2, 3)
     val wrapperBroadcast: BroadcastWrapper[Array[Int]] = PhotonBroadcast(sc.broadcast(array))
     val wrapperNonBroadcast: BroadcastWrapper[Array[Int]] = PhotonNonBroadcast(array)

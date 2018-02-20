@@ -16,8 +16,11 @@ package com.linkedin.photon.ml.function.svm
 
 import breeze.linalg.Vector
 
+import com.linkedin.photon.ml.algorithm.Coordinate
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.ObjectiveFunction
+import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 
 /**
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
@@ -38,6 +41,7 @@ object SmoothedHingeLossFunction {
    * @return The value and the 1st derivative
    */
   def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
+
     val modifiedLabel = if (label < MathConst.POSITIVE_RESPONSE_THRESHOLD) -1D else 1D
     val z = modifiedLabel * margin
 
@@ -53,7 +57,7 @@ object SmoothedHingeLossFunction {
     // Eq. 3, page 2
     val deriv = if (z < 0) {
       -1.0
-    } else if( z < 1) {
+    } else if (z < 1) {
       z - 1.0
     } else {
       0.0
@@ -82,4 +86,27 @@ object SmoothedHingeLossFunction {
     breeze.linalg.axpy(datum.weight * deriv, datum.features, cumGradient)
     datum.weight * loss
   }
+
+  /**
+   * Construct a factory function for building distributed and non-distributed smoothed hinge loss functions.
+   *
+   * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
+   *         optimization settings.
+   */
+  def buildFactory(treeAggregateDepth: Int): (CoordinateOptimizationConfiguration) => ObjectiveFunction =
+    (config: CoordinateOptimizationConfiguration) => {
+      config match {
+        case fEOptConfig: FixedEffectOptimizationConfiguration =>
+          DistributedSmoothedHingeLossFunction(fEOptConfig, treeAggregateDepth)
+
+        case rEOptConfig: RandomEffectOptimizationConfiguration =>
+          SingleNodeSmoothedHingeLossFunction(rEOptConfig)
+
+        case _ =>
+          throw new UnsupportedOperationException(
+            s"Cannot create a smoothed hinge loss linear SVM loss function from a coordinate configuration with class " +
+              s"'${config.getClass.getName}'")
+      }
+    }
 }

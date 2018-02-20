@@ -65,24 +65,24 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   @DataProvider(parallel = true)
   def getDifferentiableFunctions: Array[Array[Object]] = diffTasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(LogisticLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(LogisticLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
 
         binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(SquaredLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(SquaredLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
 
         linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(PoissonLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(PoissonLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
 
         poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
@@ -109,24 +109,24 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   @DataProvider(parallel = true)
   def getTwiceDifferentiableFunctions: Array[Array[Object]] = twiceDiffTasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(LogisticLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(LogisticLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
 
         binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(SquaredLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(SquaredLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
 
         linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK)(PoissonLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK)(PoissonLossFunction)
+        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
 
         poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))

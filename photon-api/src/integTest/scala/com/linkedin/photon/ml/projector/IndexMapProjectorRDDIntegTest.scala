@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.{GameTestUtils, PhotonNonBroadcast}
+import com.linkedin.photon.ml.util.GameTestUtils
 
 /**
  * Integration tests for [[IndexMapProjectorRDD]].
@@ -114,20 +114,15 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val localPoints = dataPoints.flatMap{e => e.map(_._2)}
 
     val summary = BasicStatisticalSummary(localPoints)
-    val normalizationContext = PhotonNonBroadcast(NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(projectedSize)))
+    val normalizationContext = NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(projectedSize))
 
     val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
     val projectedNormalization = projector.projectNormalizationRDD(normalizationContext)
 
-    val projectedShiftDimentions = projectedNormalization
-      .map { case (_, norm) => norm.value.shifts.get.length }
-      .take(1)(0)
+    val projectedShiftDimensions = projectedNormalization.mapValues(_.shifts.get.length).take(1)(0)._2
+    val projectedFactorDimensions = projectedNormalization.mapValues(_.factors.get.length).take(1)(0)._2
 
-    val projectedFactorDimentions = projectedNormalization
-      .map { case (_, norm) => norm.value.factors.get.length }
-      .take(1)(0)
-
-    assertEquals(projectedShiftDimentions, projectedSize)
-    assertEquals(projectedFactorDimentions, projectedSize)
+    assertEquals(projectedShiftDimensions, projectedSize)
+    assertEquals(projectedFactorDimensions, projectedSize)
   }
 }

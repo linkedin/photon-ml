@@ -147,8 +147,8 @@ object DistributedGLMLossFunction {
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
-      treeAggregateDepth: Int)
-      (singleLossFunction: PointwiseLossFunction): DistributedGLMLossFunction = {
+      singleLossFunction: PointwiseLossFunction,
+      treeAggregateDepth: Int): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight

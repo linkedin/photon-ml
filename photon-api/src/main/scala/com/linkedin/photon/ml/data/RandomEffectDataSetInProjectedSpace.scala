@@ -28,13 +28,13 @@ import com.linkedin.photon.ml.spark.RDDLike
 class RandomEffectDataSetInProjectedSpace(
     val randomEffectDataSetInProjectedSpace: RandomEffectDataSet,
     val randomEffectProjector: RandomEffectProjector)
-    extends RandomEffectDataSet(
-      randomEffectDataSetInProjectedSpace.activeData,
-      randomEffectDataSetInProjectedSpace.uniqueIdToRandomEffectIds,
-      randomEffectDataSetInProjectedSpace.passiveDataOption,
-      randomEffectDataSetInProjectedSpace.passiveDataRandomEffectIdsOption,
-      randomEffectDataSetInProjectedSpace.randomEffectType,
-      randomEffectDataSetInProjectedSpace.featureShardId) {
+  extends RandomEffectDataSet(
+    randomEffectDataSetInProjectedSpace.activeData,
+    randomEffectDataSetInProjectedSpace.uniqueIdToRandomEffectIds,
+    randomEffectDataSetInProjectedSpace.passiveDataOption,
+    randomEffectDataSetInProjectedSpace.passiveDataRandomEffectIdsOption,
+    randomEffectDataSetInProjectedSpace.randomEffectType,
+    randomEffectDataSetInProjectedSpace.featureShardId) {
 
   /**
    *
@@ -105,7 +105,7 @@ object RandomEffectDataSetInProjectedSpace {
       randomEffectDataSet: RandomEffectDataSet,
       projectorType: ProjectorType): RandomEffectDataSetInProjectedSpace = {
 
-    val randomEffectProjector = RandomEffectProjector.buildRandomEffectProjector(randomEffectDataSet, projectorType)
+    val randomEffectProjector = RandomEffectProjector.build(randomEffectDataSet, projectorType)
     val projectedRandomEffectDataSet = randomEffectProjector.projectRandomEffectDataSet(randomEffectDataSet)
     new RandomEffectDataSetInProjectedSpace(projectedRandomEffectDataSet, randomEffectProjector)
   }

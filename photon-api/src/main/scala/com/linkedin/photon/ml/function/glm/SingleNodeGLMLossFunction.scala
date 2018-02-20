@@ -134,9 +134,9 @@ object SingleNodeGLMLossFunction {
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
    * @return A new SingleNodeGLMLossFunction
    */
-  def apply
-      (configuration: GLMOptimizationConfiguration)
-      (singleLossFunction: PointwiseLossFunction): SingleNodeGLMLossFunction = {
+  def apply(
+      configuration: GLMOptimizationConfiguration,
+      singleLossFunction: PointwiseLossFunction): SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight

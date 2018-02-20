@@ -12,12 +12,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.sampler
+package com.linkedin.photon.ml.sampling
 
 import java.util.Random
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 
@@ -25,6 +26,15 @@ import com.linkedin.photon.ml.data.LabeledPoint
  * Interface for down-sampler implementations.
  */
 protected[ml] trait DownSampler {
+
+  import DownSampler._
+
+  // The down-sampling rate
+  val downSamplingRate: Double
+
+  // Reject invalid down-sampling rates
+  require(isValidDownSamplingRate(downSamplingRate), s"Invalid down-sampling rate: $downSamplingRate")
+
   /**
    * Down-sample a dataset.
    *
@@ -32,10 +42,13 @@ protected[ml] trait DownSampler {
    * @param seed A random seed for down-sampling
    * @return The down-sampled dataset
    */
-  def downSample(labeledPoints: RDD[(Long, LabeledPoint)], seed: Long = DownSampler.getSeed): RDD[(Long, LabeledPoint)]
+  def downSample(
+      labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
+      seed: Long = getSeed): RDD[(UniqueSampleId, LabeledPoint)]
 }
 
 object DownSampler {
+
   private val random = new Random(MathConst.RANDOM_SEED)
 
   /**
@@ -43,5 +56,13 @@ object DownSampler {
    *
    * @return A random Long
    */
-  protected[sampler] def getSeed: Long = random.nextLong()
+  protected[sampling] def getSeed: Long = random.nextLong()
+
+  /**
+   * Check if a given down-sampling rate is valid.
+   *
+   * @param downSamplingRate The down-sampling rate
+   * @return True if given a valid down-sampling rate, false otherwise
+   */
+  def isValidDownSamplingRate(downSamplingRate: Double): Boolean = (downSamplingRate < 1D) && (downSamplingRate > 0D)
 }

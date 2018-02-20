@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regulari
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.sampler.DownSampler
+import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.util.BroadcastWrapper
 

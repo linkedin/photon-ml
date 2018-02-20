@@ -220,13 +220,13 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
     val configuration = FixedEffectOptimizationConfiguration(generateOptimizerConfig())
     val objectiveFunction = taskType match {
       case TaskType.LOGISTIC_REGRESSION =>
-        DistributedGLMLossFunction(configuration, treeAggregateDepth = 1)(LogisticLossFunction)
+        DistributedGLMLossFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1)
 
       case TaskType.LINEAR_REGRESSION =>
-        DistributedGLMLossFunction(configuration, treeAggregateDepth = 1)(SquaredLossFunction)
+        DistributedGLMLossFunction(configuration, SquaredLossFunction, treeAggregateDepth = 1)
 
       case TaskType.POISSON_REGRESSION =>
-        DistributedGLMLossFunction(configuration, treeAggregateDepth = 1)(PoissonLossFunction)
+        DistributedGLMLossFunction(configuration, PoissonLossFunction, treeAggregateDepth = 1)
     }
     val optimizerNorm = optimizerType match {
       case OptimizerType.LBFGS =>

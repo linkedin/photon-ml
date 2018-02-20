@@ -24,21 +24,22 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * A trait that performs two types of projections:
  * <ul>
  * <li>
- *   Project the random effect data set from the original space to the projected space, usually at a pre-processing
+ *   Project the random effect data set from the original space to the projected space, usually as a pre-processing
  *   step before the model training phase.
  * </li>
  * <li>
- *   Project the model coefficients from the projected space back to the original space after training the model, and
+ *   Project the model coefficients from the projected space back to the original space after training the model,
  *   before scoring a data set in the original space.
  * </li>
  * </ul>
  */
 protected[ml] trait RandomEffectProjector {
+
   /**
-   * Project the sharded data set from the original space to the projected space.
+   * Project the data set from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input sharded data set in the original space
-   * @return The sharded data set in the projected space
+   * @param randomEffectDataSet The input data set in the original space
+   * @return The same data set in the projected space
    */
   def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet
 
@@ -47,7 +48,7 @@ protected[ml] trait RandomEffectProjector {
    * space.
    *
    * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
-   * @return The [[RDD]] of [[Coefficients]] in the original space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
    */
   def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)]
 }
@@ -57,23 +58,26 @@ object RandomEffectProjector {
   /**
    * Builds a random effect projector instance.
    *
-   * @param randomEffectDataSet The dataset
+   * @param randomEffectDataSet The data set to project
    * @param projectorType The type of the projector
-   * @return The projector
+   * @return A new [[RandomEffectProjector]]
    */
-  protected[ml] def buildRandomEffectProjector(
+  protected[ml] def build(
       randomEffectDataSet: RandomEffectDataSet,
-      projectorType: ProjectorType): RandomEffectProjector = {
+      projectorType: ProjectorType): RandomEffectProjector = projectorType match {
 
-    projectorType match {
-      case RandomProjection(projectedSpaceDimension) =>
-        ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
-          randomEffectDataSet, projectedSpaceDimension, isKeepingInterceptTerm = true)
+    case RandomProjection(projectedSpaceDimension) =>
+      ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
+        randomEffectDataSet, projectedSpaceDimension, isKeepingInterceptTerm = true)
 
-      case IdentityProjection => new IdentityProjector
-      case IndexMapProjection => IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
-      case _ => throw new UnsupportedOperationException(s"Projector type $projectorType for random effect data set " +
-          s"is not supported")
-    }
+    case IdentityProjection =>
+      new IdentityProjector
+
+    case IndexMapProjection =>
+      IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
+
+    case _ =>
+      throw new UnsupportedOperationException(
+        s"Projector type $projectorType for random effect data set is not supported")
   }
 }

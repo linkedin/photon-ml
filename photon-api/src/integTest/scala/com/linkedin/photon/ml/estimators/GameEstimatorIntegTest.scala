@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel}
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
-import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationContextWrapper, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.projector.{IndexMapProjection, RandomProjection}
@@ -163,9 +163,9 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
       val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values)
-      val normalizationContextBroadcast = PhotonBroadcast(sc.broadcast(
-        NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length))))
-      val normalizationContexts = Map((coordinateId, normalizationContextBroadcast))
+      val normalizationContext =
+        NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length))
+      val normalizationContexts = Map((coordinateId, normalizationContext))
       val logger = createLogger("NormalizationTest")
 
       // Create GameEstimator and fit model
@@ -452,11 +452,17 @@ object GameEstimatorIntegTest {
     override def prepareValidationEvaluators(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Seq[Evaluator] =
       super.prepareValidationEvaluators(gameDataSet)
 
+    override def prepareNormalizationContextWrappers(dataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] } ])
+      : Option[Map[CoordinateId, NormalizationContextWrapper]] =
+
+      super.prepareNormalizationContextWrappers(dataSets)
+
     override def train(
         configuration: GameEstimator.GameOptimizationConfiguration,
         trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
         coordinateDescent: CoordinateDescent,
+        normalizationContextWrappersOpt: Option[Map[CoordinateId, NormalizationContextWrapper]] = None,
         prevGameModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) =
-      super.train(configuration, trainingDataSets, coordinateDescent, prevGameModelOpt)
+      super.train(configuration, trainingDataSets, coordinateDescent, normalizationContextWrappersOpt, prevGameModelOpt)
   }
 }

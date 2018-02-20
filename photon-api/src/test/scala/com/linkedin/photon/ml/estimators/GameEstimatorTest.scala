@@ -27,7 +27,6 @@ import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
-import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Unit tests for [[GameEstimator]].
@@ -68,7 +67,7 @@ class GameEstimatorTest {
     val mockLogger = mock(classOf[Logger])
     val mockInputColumnNames = mock(classOf[InputColumnsNames])
     val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
-    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val mockNormalizationContext = mock(classOf[NormalizationContext])
     val mockDatumScoringModel = mock(classOf[DatumScoringModel])
     val mockPretrainedModel = mock(classOf[GameModel])
 
@@ -83,7 +82,7 @@ class GameEstimatorTest {
     val useWarmStart = false
     val updateSeq = Seq(coordinateId1, coordinateId2)
     val dataConfigs = Map((coordinateId1, mockDataConfig), (coordinateId2, mockDataConfig))
-    val normalizationConfigs = Map((coordinateId1, mockNormalizationBroadcast))
+    val normalizationConfigs = Map((coordinateId1, mockNormalizationContext))
     val lockedCoordinates = Set(coordinateId2)
     val preTrainedModelMap = Map(coordinateId2 -> mockDatumScoringModel)
 
@@ -113,7 +112,7 @@ class GameEstimatorTest {
     val mockSparkContext = mock(classOf[SparkContext])
     val mockLogger = mock(classOf[Logger])
     val mockDataConfig = mock(classOf[CoordinateDataConfiguration])
-    val mockNormalizationBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val mockNormalizationContext = mock(classOf[NormalizationContext])
     val mockDatumScoringModel = mock(classOf[DatumScoringModel])
     val mockPretrainedModel1 = mock(classOf[GameModel])
     val mockPretrainedModel2 = mock(classOf[GameModel])
@@ -211,7 +210,7 @@ class GameEstimatorTest {
     // Normalization context undefined for coordinate ID in update sequence
     badEstimator = estimator
       .copy(ParamMap.empty)
-      .setCoordinateNormalizationContexts(Map((coordinateId2, mockNormalizationBroadcast)))
+      .setCoordinateNormalizationContexts(Map((coordinateId2, mockNormalizationContext)))
     result = result :+ Array[Any](badEstimator)
 
     result.toArray

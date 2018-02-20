@@ -129,8 +129,8 @@ object ModelTraining extends Logging {
         val constructor = LogisticRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
           optimizationConfig,
-          treeAggregateDepth)(
-          LogisticLossFunction)
+          LogisticLossFunction,
+          treeAggregateDepth)
 
         (constructor, objective)
 
@@ -138,8 +138,8 @@ object ModelTraining extends Logging {
         val constructor = LinearRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
           optimizationConfig,
-          treeAggregateDepth)(
-          SquaredLossFunction)
+          SquaredLossFunction,
+          treeAggregateDepth)
 
         (constructor, objective)
 
@@ -147,8 +147,8 @@ object ModelTraining extends Logging {
         val constructor = PoissonRegressionModel.apply _
         val objective = DistributedGLMLossFunction(
           optimizationConfig,
-          treeAggregateDepth)(
-          PoissonLossFunction)
+          PoissonLossFunction,
+          treeAggregateDepth)
 
         (constructor, objective)
 

@@ -23,7 +23,6 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast}
 
 /**
  * Represents a broadcast projection matrix.
@@ -31,14 +30,17 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast}
  * @param projectionMatrixBroadcast The projection matrix
  */
 protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadcast[ProjectionMatrix])
-    extends RandomEffectProjector with BroadcastLike with Serializable {
+  extends RandomEffectProjector
+  with BroadcastLike
+  with Serializable {
 
-  val projectionMatrix = projectionMatrixBroadcast.value
+  val projectionMatrix: ProjectionMatrix = projectionMatrixBroadcast.value
 
   /**
+   * Project the data set from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input sharded data set in the original space
-   * @return The sharded data set in the projected space
+   * @param randomEffectDataSet The input data set in the original space
+   * @return The same data set in the projected space
    */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
     val activeData = randomEffectDataSet.activeData
@@ -58,13 +60,14 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
   }
 
   /**
+   * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original
+   * space.
    *
    * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
-   * @return The [[RDD]] of [[Coefficients]] in the original space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
    */
-  override def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)])
-    : RDD[(String, GeneralizedLinearModel)] = {
-
+  override def projectCoefficientsRDD(
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
     modelsRDD.mapValues { model =>
       val oldCoefficients = model.coefficients
       model.updateCoefficients(
@@ -72,29 +75,26 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
           projectionMatrixBroadcast.value.projectCoefficients(oldCoefficients.means),
           oldCoefficients.variancesOption))
     }
-  }
 
   /**
+   * Project a [[NormalizationContext]] from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input sharded data set in the original space
-   * @param normalizationContext The original broadcast form of NormalizationContext
-   * @return The broadcast form of NormalizationContext in projected space
+   * @param originalNormalizationContext The [[NormalizationContext]] in the original space
+   * @return The same [[NormalizationContext]] in projected space
    */
-  def projectNormalizationContext(
-      randomEffectDataSet: RandomEffectDataSet,
-      normalizationContext: BroadcastWrapper[NormalizationContext]): BroadcastWrapper[NormalizationContext] = {
-    val sc = randomEffectDataSet.sparkContext
-    val originalNormalizationContext = normalizationContext.value
+  def projectNormalizationContext(originalNormalizationContext: NormalizationContext): NormalizationContext = {
+
     val factors = originalNormalizationContext.factors.map(factors => projectionMatrix.projectFeatures(factors))
     val shifts = originalNormalizationContext.shifts.map(shifts => projectionMatrix.projectFeatures(shifts))
     val interceptId = originalNormalizationContext.interceptId.map(_ => projectionMatrix.projectedInterceptId)
-    val norm = new NormalizationContext(factors, shifts, interceptId)
-    PhotonBroadcast(sc.broadcast(norm))
+
+    new NormalizationContext(factors, shifts, interceptId)
   }
 
   /**
+   * Asynchronously delete cached copies of the [[ProjectionMatrix]] [[Broadcast]] on the executors.
    *
-   * @return This object with all its broadcasted variables unpersisted
+   * @return This [[ProjectionMatrixBroadcast]] with its [[ProjectionMatrix]] unpersisted
    */
   override def unpersistBroadcast(): this.type = {
     projectionMatrixBroadcast.unpersist()
