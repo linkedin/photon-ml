@@ -14,8 +14,11 @@
  */
 package com.linkedin.photon.ml.hyperparameter.estimators.kernels
 
-import breeze.linalg.{DenseMatrix, DenseVector, *, squaredDistance}
-import breeze.numerics.log
+import breeze.linalg._
+import breeze.numerics.constants.Pi
+import breeze.numerics.{log, pow, sqrt}
+
+import com.linkedin.photon.ml.hyperparameter.Linalg.choleskySolve
 
 /**
  * Base trait for stationary covariance kernel functions
@@ -23,15 +26,26 @@ import breeze.numerics.log
  * Stationary kernels depend on the relative positions of points (e.g. distance), rather than on their absolute
  * positions.
  *
+ * @param amplitude the covariance amplitude
+ * @param noise the observation noise
  * @param lengthScale the length scale of the kernel. This controls the complexity of the kernel, or the degree to which
  *   it can vary within a given region of the function's domain. Higher values allow less variation, and lower values
  *   allow more.
- * @param lengthScaleBounds the bounds within which the length scale must fall
  */
 abstract class StationaryKernel(
-    lengthScale: DenseVector[Double] = DenseVector(1.0),
-    lengthScaleBounds: (Double, Double) = (1e-5, 1e5))
+    amplitude: Double = 1.0,
+    noise: Double = 1e-4,
+    lengthScale: DenseVector[Double] = DenseVector(1.0))
   extends Kernel {
+
+  // Amplitude lognormal prior
+  val amplitudeScale = 1.0
+
+  // Noise horseshoe prior
+  val noiseScale = 0.1
+
+  // Length scale tophat prior
+  val lengthScaleMax = 2.0
 
   /**
    * Computes the kernel function from the pairwise distances between points. Implementing classes should override this
@@ -54,7 +68,8 @@ abstract class StationaryKernel(
     val ls = expandDimensions(lengthScale, x.cols)
     val dists = pairwiseDistances(x(*,::) / ls)
 
-    fromPairwiseDistances(dists)
+    (amplitude * fromPairwiseDistances(dists)) +
+      (noise * DenseMatrix.eye[Double](x.rows))
   }
 
   /**
@@ -71,7 +86,7 @@ abstract class StationaryKernel(
     val ls = expandDimensions(lengthScale, x1.cols)
     val dists = pairwiseDistances(x1(*,::) / ls, x2(*,::) / ls)
 
-    fromPairwiseDistances(dists)
+    amplitude * fromPairwiseDistances(dists)
   }
 
   /**
@@ -79,16 +94,56 @@ abstract class StationaryKernel(
    *
    * @return the kernel parameters
    */
-  override def getParams: DenseVector[Double] = log(lengthScale)
+  override def getParams: DenseVector[Double] = DenseVector.vertcat(DenseVector(amplitude, noise), lengthScale)
 
   /**
-   * Returns the kernel parameter bounds
+   * Computes the log likelihood of the kernel parameters
    *
-   * @return the kernel parameter bounds
+   * @param x the observed features
+   * @param y the observed labels
+   * @return the log likelihood
    */
-  override def getParamBounds: (Double, Double) = {
-    val (upperBound, lowerBound) = lengthScaleBounds
-    (log(upperBound), log(lowerBound))
+  override def logLikelihood(x: DenseMatrix[Double], y: DenseVector[Double]): Double = {
+    // Bounds checks
+    if (amplitude < 0.0 ||
+        noise < 0.0 ||
+        any(lengthScale :< 0.0)) {
+      return Double.NegativeInfinity
+    }
+
+    // Tophat prior for length scale
+    if (any(lengthScale :> lengthScaleMax)) {
+      return Double.NegativeInfinity
+    }
+
+    // Apply the kernel to the input
+    val k = apply(x)
+
+    // Compute log likelihood. See GPML Algorithm 2.1
+    try {
+      // Line 2
+      // Since we know the kernel function produces symmetric and positive definite matrices, we can use the Cholesky
+      // factorization to solve the system $kx = y$ faster than a general purpose solver (e.g. LU) could.
+      val l = cholesky(k)
+
+      // Line 3
+      val alpha = choleskySolve(l, y)
+
+      // GPML algorithm 2.1 Line 7, equation 2.30
+      val likelihood = -0.5 * (y.t * alpha) - sum(log(diag(l))) - k.rows/2.0 * log(2*Pi)
+
+      // Add in lognormal prior for amplitude and horseshoe prior for noise
+      likelihood +
+        -0.5 * pow(log(sqrt(amplitude / amplitudeScale)), 2) +
+        (if (noise > 0) {
+          log(log(1.0 + pow(noiseScale / noise, 2)))
+        } else {
+          0
+        })
+
+    } catch {
+      case e: Exception => Double.NegativeInfinity
+    }
   }
 
   /**
@@ -130,4 +185,5 @@ abstract class StationaryKernel(
 
     out
   }
+
 }

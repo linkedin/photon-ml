@@ -51,6 +51,7 @@ import com.linkedin.photon.ml.util.DoubleRange
  * @param discreteParams specifies the indices of parameters that should be treated as discrete values
  * @param candidatePoolSize the number of candidate points to draw at each iteration. Larger numbers give more precise
  *   results, but also incur higher computational cost.
+ * @param noisyTarget whether to include observation noise in the evaluation function model
  * @param seed the random seed value
  */
 class GaussianProcessSearch[T](
@@ -59,6 +60,7 @@ class GaussianProcessSearch[T](
     evaluator: Evaluator,
     discreteParams: Seq[Int] = Seq(),
     candidatePoolSize: Int = 250,
+    noisyTarget: Boolean = false,
     seed: Long = System.currentTimeMillis)
   extends RandomSearch[T](ranges, evaluationFunction, discreteParams, seed){
 
@@ -96,6 +98,7 @@ class GaussianProcessSearch[T](
         val estimator = new GaussianProcessEstimator(
           kernel = kernel,
           normalizeLabels = true,
+          noisyTarget = noisyTarget,
           predictionTransformation = Some(transformation),
           seed = seed)
 

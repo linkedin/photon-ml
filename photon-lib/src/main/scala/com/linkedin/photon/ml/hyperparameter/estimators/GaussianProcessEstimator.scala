@@ -14,12 +14,9 @@
  */
 package com.linkedin.photon.ml.hyperparameter.estimators
 
-import breeze.linalg.{DenseMatrix, DenseVector, cholesky, diag, sum}
-import breeze.numerics.constants.Pi
-import breeze.numerics.log
+import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.stats.mean
 
-import com.linkedin.photon.ml.hyperparameter.Linalg.choleskySolve
 import com.linkedin.photon.ml.hyperparameter.SliceSampler
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels._
 
@@ -30,6 +27,7 @@ import com.linkedin.photon.ml.hyperparameter.estimators.kernels._
  *
  * @param kernel the covariance kernel
  * @param normalizeLabels if true, the estimator normalizes labels to a mean of zero before fitting
+ * @param noisyTarget learn a target function with noise
  * @param predictionTransformation transformation function to apply for predictions
  * @param monteCarloNumBurnInSamples the number of samples to draw during the burn-in phase of kernel parameter
  *   estimation
@@ -38,10 +36,13 @@ import com.linkedin.photon.ml.hyperparameter.estimators.kernels._
 class GaussianProcessEstimator(
     kernel: Kernel = new RBF,
     normalizeLabels: Boolean = false,
+    noisyTarget: Boolean = false,
     predictionTransformation: Option[PredictionTransformation] = None,
     monteCarloNumBurnInSamples: Int = 100,
-    monteCarloNumSamples: Int = 100,
+    monteCarloNumSamples: Int = 10,
     seed: Long = System.currentTimeMillis) {
+
+  val defaultNoise = 1e-4
 
   /**
    * Produces a Gaussian Process regression model from the input features and labels
@@ -90,59 +91,82 @@ class GaussianProcessEstimator(
       x: DenseMatrix[Double],
       y: DenseVector[Double]): List[Kernel] = {
 
-    val logp = (theta: DenseVector[Double]) => logLikelihood(x, y, theta)
-    val sampler = new SliceSampler(logp, range = kernel.getParamBounds, seed = seed)
+    val initialTheta = kernel.getInitialKernel(x, y).getParams
 
     // Sampler burn-in. Since Markov chain samplers like slice sampler exhibit serial dependence between samples, the
     // first n samples are biased by the initial choice of parameter vector. Here we perform a "burn in" procedure to
     // mitigate this.
-    val init = (0 until monteCarloNumBurnInSamples)
-      .foldLeft(kernel.expandDimensions(kernel.getParams, x.cols)) { (currX, _) =>
-        sampler.draw(currX)
+    val thetaAfterBurnIn = (0 until monteCarloNumBurnInSamples)
+      .foldLeft(initialTheta) { (currTheta, _) =>
+        sampleNext(currTheta, x, y)
       }
 
-    // Now draw the real samples from the distribution
+    // Now draw the actual samples from the distribution
     val (_, samples) = (0 until monteCarloNumSamples)
-      .foldLeft((init, List.empty[DenseVector[Double]])) { case ((currX, ls), _) =>
-        val x = sampler.draw(currX)
-        (x, ls :+ x)
+      .foldLeft((thetaAfterBurnIn, List.empty[DenseVector[Double]])) { case ((currTheta, ls), _) =>
+        val nextTheta = sampleNext(currTheta, x, y)
+        (nextTheta, ls :+ nextTheta)
       }
 
     samples.map(kernel.withParams(_))
   }
 
   /**
-   * Computes the log likelihood of the given kernel parameters
+   * Samples the next theta, given the previous one
    *
+   * @param theta the previous sample
    * @param x the observed features
    * @param y the observed labels
-   * @param theta the kernel parameters
-   * @return the log likelihood
+   * @return the next theta sample
    */
-  protected[estimators] def logLikelihood(
+  protected[estimators] def sampleNext(
+      theta: DenseVector[Double],
       x: DenseMatrix[Double],
-      y: DenseVector[Double],
-      theta: DenseVector[Double]): Double = {
+      y: DenseVector[Double]): DenseVector[Double] = {
 
-    // Clone the kernel with given params, and apply it to the input
-    val kern = kernel.withParams(theta)
-    val k = kern(x)
+    // Log likelihood wrapper function for learning length scale (holds noise and amplitude constant)
+    def lengthScaleLogp(amplitudeNoise: DenseVector[Double]) =
+      (ls: DenseVector[Double]) =>
+        kernel
+          .withParams(DenseVector.vertcat(amplitudeNoise, ls))
+          .logLikelihood(x, y)
 
-    // Compute log likelihood. See GPML Algorithm 2.1
-    try {
-      // Line 2
-      // Since we know the kernel function produces symmetric and positive definite matrices, we can use the Cholesky
-      // factorization to solve the system $kx = y$ faster than a general purpose solver (e.g. LU) could.
-      val l = cholesky(k)
+    // Log likelihood wrapper function for learning amplitude (holds noise and length scale constant)
+    def amplitudeLogp(ls: DenseVector[Double]) =
+      (amplitude: DenseVector[Double]) =>
+        kernel
+          .withParams(DenseVector.vertcat(amplitude, DenseVector(defaultNoise), ls))
+          .logLikelihood(x, y)
 
-      // Line 3
-      val alpha = choleskySolve(l, y)
+    // Log likelihood wrapper function for learning amplitude and noise (holds length scale constant)
+    def amplitudeNoiseLogp(ls: DenseVector[Double]) =
+      (amplitudeNoise: DenseVector[Double]) =>
+        kernel
+          .withParams(DenseVector.vertcat(amplitudeNoise, ls))
+          .logLikelihood(x, y)
 
-      // GPML algorithm 2.1 Line 7, equation 2.30
-      -0.5 * (y.t * alpha) - sum(log(diag(l))) - k.rows/2.0 * log(2*Pi)
+    // Separate amplitude / noise, and length scale into separate vectors so that they can be sampled
+    // separately. There is some interplay between these parameters, so the algorithm is a bit more well behaved if
+    // they're sampled separately.
+    val currAmplitudeNoise = theta.slice(0, 2)
+    val currLengthScale = theta.slice(2, theta.length)
+    val sampler = new SliceSampler(seed = seed)
 
-    } catch {
-      case e: Exception => Double.NegativeInfinity
+    // Sample amplitude and noise
+    val amplitudeNoise = if (noisyTarget) {
+      sampler.draw(currAmplitudeNoise, amplitudeNoiseLogp(currLengthScale))
+
+    } else {
+      // If we're not sampling noise, just sample amplitude and concat on the default noise
+      DenseVector.vertcat(
+        sampler.draw(currAmplitudeNoise.slice(0, 1), amplitudeLogp(currLengthScale)),
+        DenseVector(defaultNoise))
     }
+
+    // Sample length scale
+    val lengthScale = sampler.drawDimensionWise(currLengthScale, lengthScaleLogp(amplitudeNoise))
+
+    DenseVector.vertcat(amplitudeNoise, lengthScale)
   }
+
 }
