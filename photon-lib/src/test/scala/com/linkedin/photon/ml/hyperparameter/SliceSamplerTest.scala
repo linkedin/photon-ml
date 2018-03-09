@@ -53,18 +53,18 @@ class SliceSamplerTest {
       testDistribution: RealDistribution): Unit = {
 
     def logp(x: DenseVector[Double]) = log(sourceDistribution.pdf(x(0)))
-    val sampler = new SliceSampler(logp, seed = seed)
+    val sampler = new SliceSampler(seed = seed)
 
     // Sampler burn-in
     val init = (0 until numBurnInSamples)
       .foldLeft(DenseVector(0.0)) { (currX, _) =>
-        sampler.draw(currX)
+        sampler.draw(currX, logp)
       }
 
     // Draw the real samples
     val (_, samples) = (0 until numSamples)
       .foldLeft((init, List.empty[Double])) { case ((currX, ls), _) =>
-        val x = sampler.draw(currX)
+        val x = sampler.draw(currX, logp)
         (x, ls :+ x(0))
       }
 

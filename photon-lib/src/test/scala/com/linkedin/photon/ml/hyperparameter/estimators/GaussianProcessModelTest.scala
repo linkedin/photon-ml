@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
  */
 class GaussianProcessModelTest {
   private val tol = 1e-7
-  private val kernel = new RBF(lengthScale = DenseVector(1.0))
+  private val kernel = new RBF(noise = 0.0, lengthScale = DenseVector(1.0))
 
   /**
    * Test data and results generated from reference implementation in scikit-learn

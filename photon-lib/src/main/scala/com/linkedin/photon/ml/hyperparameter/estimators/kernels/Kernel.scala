@@ -60,11 +60,22 @@ trait Kernel {
   def getParams: DenseVector[Double]
 
   /**
-   * Returns the kernel parameter bounds
+   * Builds a kernel with initial settings, based on the observations
    *
-   * @return the kernel parameter bounds
+   * @param x the observed features
+   * @param y the observed labels
+   * @return the initial kernel
    */
-  def getParamBounds: (Double, Double)
+  def getInitialKernel(x: DenseMatrix[Double], y: DenseVector[Double]): Kernel
+
+  /**
+   * Computes the log likelihood of the kernel parameters
+   *
+   * @param x the observed features
+   * @param y the observed labels
+   * @return the log likelihood
+   */
+  def logLikelihood(x: DenseMatrix[Double], y: DenseVector[Double]): Double
 
   /**
    * If only one parameter value has been specified, builds a new vector with the single value repeated to fill all

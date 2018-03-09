@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 class RBFTest {
 
   private val tol = 1e-7
-  private val kernel = new RBF
+  private val kernel = new RBF(noise = 0.0)
 
   /**
    * Test data and results generated from reference implementation in scikit-learn

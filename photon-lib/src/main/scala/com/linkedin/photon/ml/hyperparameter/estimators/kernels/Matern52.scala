@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.hyperparameter.estimators.kernels
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{exp, sqrt}
+import breeze.stats.stddev
 
 /**
  * Implements the Matérn 5/2 covariance kernel.
@@ -34,15 +35,17 @@ import breeze.numerics.{exp, sqrt}
  * @see "Practical Bayesian Optimization of Machine Learning Algorithms" (PBO),
  *   https://papers.nips.cc/paper/4522-practical-bayesian-optimization-of-machine-learning-algorithms.pdf
  *
+ * @param amplitude the covariance amplitude
+ * @param noise the observation noise
  * @param lengthScale the length scale of the kernel. This controls the complexity of the kernel, or the degree to which
  *   it can vary within a given region of the function's domain. Higher values allow less variation, and lower values
  *   allow more.
- * @param lengthScaleBounds the bounds within which the length scale must fall
  */
 class Matern52(
-    lengthScale: DenseVector[Double] = DenseVector(1.0),
-    lengthScaleBounds: (Double, Double) = (1e-5, 1e5))
-  extends StationaryKernel(lengthScale, lengthScaleBounds) {
+    amplitude: Double = 1.0,
+    noise: Double = 1e-4,
+    lengthScale: DenseVector[Double] = DenseVector(1.0))
+  extends StationaryKernel(amplitude, noise, lengthScale) {
 
   /**
    * Computes the Matern 5/2 kernel function from the pairwise distances between points.
@@ -62,6 +65,18 @@ class Matern52(
    * @return the new kernel function
    */
   override def withParams(theta: DenseVector[Double]): Kernel = new Matern52(
-    lengthScale = exp(theta),
-    lengthScaleBounds = lengthScaleBounds)
+    amplitude = theta(0),
+    noise = theta(1),
+    lengthScale = theta.slice(2, theta.length))
+
+  /**
+   * Builds a kernel with initial settings, based on the observations
+   *
+   * @param x the observed features
+   * @param y the observed labels
+   * @return the initial kernel
+   */
+  override def getInitialKernel(x: DenseMatrix[Double], y: DenseVector[Double]): Kernel =
+    new Matern52(amplitude = stddev(y))
+
 }
