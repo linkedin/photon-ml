@@ -23,15 +23,17 @@ import breeze.stats.mean
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.hyperparameter.estimators.kernels.RBF
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
 
 /**
  * Test cases for the GaussianProcessEstimator class
  */
 class GaussianProcessEstimatorTest {
 
-  private val seed = 0
-  private val estimator = new GaussianProcessEstimator(kernel = new RBF(noise = 0.0), seed = seed)
+  private val seed = 0L
+  private val estimator = new GaussianProcessEstimator(
+    kernel = new Matern52(noise = 0.0),
+    seed = seed)
   private val tol = 1e-7
 
   @Test
@@ -39,7 +41,7 @@ class GaussianProcessEstimatorTest {
     val x = linspace(0, 10, 100)
     val y = x.map(i => i * sin(i))
 
-    val obsPoints = List(5, 50, 35, 75, 78)
+    val obsPoints = List(5, 15, 35, 50, 75, 78, 90)
     val xTrain = DenseMatrix(obsPoints.map(i => x(i)):_*)
     val yTrain = DenseVector(obsPoints.map(i => y(i)):_*)
 
@@ -48,6 +50,6 @@ class GaussianProcessEstimatorTest {
     val (means, vars) = model.predict(x.toDenseMatrix.t)
 
     val mse = mean(pow(y - means, 2))
-    assertTrue(mse < 1.922)
+    assertTrue(mse < 2.0)
   }
 }
