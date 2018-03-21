@@ -29,7 +29,7 @@ case class DaysRange(startDays: Int, endDays: Int) {
   require(startDays >= 0, s"Invalid range: # days for start of range '$startDays' is less than 0.")
   require(endDays >= 0, s"Invalid range: # days for end of range '$endDays' is less than 0.")
   require(
-    startDays > endDays,
+    startDays >= endDays,
     s"Invalid range: start of range '$startDays' is fewer days ago than end of range '$endDays'.")
 
   /**
