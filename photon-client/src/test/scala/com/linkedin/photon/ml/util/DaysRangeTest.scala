@@ -65,9 +65,9 @@ class DaysRangeTest {
 
   @DataProvider
   def validRangeDataProvider(): Array[Array[Any]] = Array(
-    Array(DaysRange.fromDaysString("90-1"), 90, 1),
-    Array(DaysRange.fromDaysString("45-10"), 45, 10),
-    Array(DaysRange.fromDaysString("190-25"), 190, 25))
+    Array(DaysRange.fromDaysString("0-0"), 0, 0),
+    Array(DaysRange.fromDaysString("90-0"), 90, 0),
+    Array(DaysRange.fromDaysString("90-89"), 90, 89))
 
   /**
    * Test that a [[DaysRange]] can be correctly parsed.
