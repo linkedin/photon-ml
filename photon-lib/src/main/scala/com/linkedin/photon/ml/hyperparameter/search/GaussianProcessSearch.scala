@@ -14,11 +14,8 @@
  */
 package com.linkedin.photon.ml.hyperparameter.search
 
-import math.max
-
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.numerics.sqrt
-import breeze.stats.variance
+import breeze.stats.mean
 
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
@@ -67,6 +64,9 @@ class GaussianProcessSearch[T](
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None
   private var bestEval: Double = evaluator.defaultScore
+  private var priorObservedPoints: Option[DenseMatrix[Double]] = None
+  private var priorObservedEvals: Option[DenseVector[Double]] = None
+  private var priorBestEval: Double = evaluator.defaultScore
   private var lastModel: GaussianProcessModel = _
 
   /**
@@ -92,17 +92,33 @@ class GaussianProcessSearch[T](
         // hyperparameter spaces.
         val kernel = new Matern52
 
+        //Finding the overall bestEval
+        val currentMean =  mean(evals)
+        val overallBestEval = if(evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
+          priorBestEval
+        } else {
+          bestEval - currentMean
+        }
+
         // Expected improvement transformation
-        val transformation = new ExpectedImprovement(evaluator, bestEval)
+        val transformation = new ExpectedImprovement(evaluator, overallBestEval)
 
         val estimator = new GaussianProcessEstimator(
           kernel = kernel,
-          normalizeLabels = true,
+          normalizeLabels = false,
           noisyTarget = noisyTarget,
           predictionTransformation = Some(transformation),
           seed = seed)
 
-        val model = estimator.fit(points, evals)
+        //Union of points and evals with priorData
+        val (overallPoints, overallEvals) = if(priorObservedPoints.isDefined) {
+          (DenseMatrix.vertcat(points, priorObservedPoints.get),
+            DenseVector.vertcat(evals - currentMean, priorObservedEvals.get))
+        } else {
+          (points, evals - currentMean)
+        }
+
+        val model = estimator.fit(overallPoints, overallEvals)
         lastModel = model
 
         val predictions = model.predictTransformed(candidates)
@@ -116,22 +132,65 @@ class GaussianProcessSearch[T](
   }
 
   /**
+   * Handler for adding new points and evaluation values
+   *
+   * @param pastPoints the past set of points
+   * @param pastEvals the past current set of evaluation values
+   * @param pastBestEval the past best value
+   * @param point the new point to be added
+   * @param eval the new evaluation value
+   *
+   * @return the new set of points, evaluations and best evaluation
+   */
+  protected[search] def addObservation(
+      pastPoints: Option[DenseMatrix[Double]],
+      pastEvals: Option[DenseVector[Double]],
+      pastBestEval: Double,
+      point: DenseVector[Double],
+      eval: Double): (Option[DenseMatrix[Double]], Option[DenseVector[Double]], Double) = {
+
+    val newPoints = pastPoints
+      .map(DenseMatrix.vertcat(_, point.toDenseMatrix))
+      .orElse(Some(point.toDenseMatrix))
+
+    val newEvals = pastEvals
+      .map(DenseVector.vertcat(_, DenseVector(eval)))
+      .orElse(Some(DenseVector(eval)))
+
+    val newBest = if (evaluator.betterThan(eval, pastBestEval)) { eval } else { pastBestEval }
+
+    (newPoints, newEvals, newBest)
+  }
+
+  /**
    * Handler callback for each observation. In this case, we record the observed point and values.
    *
    * @param point the observed point in the space
    * @param eval the observed value
    */
-  protected[search] override def onObservation(point: DenseVector[Double], eval: Double): Unit = {
-    observedPoints = observedPoints
-      .map(DenseMatrix.vertcat(_, point.toDenseMatrix))
-      .orElse(Some(point.toDenseMatrix))
+  protected[search] override def onObservation(
+      point: DenseVector[Double],
+      eval: Double,
+      priorData: Boolean = false): Unit = {
 
-    observedEvals = observedEvals
-      .map(DenseVector.vertcat(_, DenseVector(eval)))
-      .orElse(Some(DenseVector(eval)))
-
-    if (evaluator.betterThan(eval, bestEval)) {
-      bestEval = eval
+    if(priorData) {
+      val (newPoints, newEvals, newBest) = addObservation(priorObservedPoints,
+        priorObservedEvals,
+        priorBestEval,
+        point,
+        eval)
+      priorObservedPoints = newPoints
+      priorObservedEvals = newEvals
+      priorBestEval = newBest
+    } else {
+      val (newPoints, newEvals, newBest) = addObservation(observedPoints,
+        observedEvals,
+        bestEval,
+        point,
+        eval)
+      observedPoints = newPoints
+      observedEvals = newEvals
+      bestEval = newBest
     }
   }
 

@@ -15,10 +15,8 @@
 package com.linkedin.photon.ml.hyperparameter.search
 
 import scala.math.round
-
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
-
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.util.DoubleRange
 
@@ -53,15 +51,27 @@ class RandomSearch[T](
    * Searches and returns n points in the space with the given prior observations
    *
    * @param n the number of points to find
-   * @param observations observations made prior to searching, as (paramVector, evaluationValue) tuples
+   * @param observations observations made prior to searching, as (paramVector, evaluationValue) tuples in the current
+   *                     dataset
+   * @param priorObservations observations from the past datasets. These are consider as mean centered.
    * @return the found points
    */
-  def findWithPrior(n: Int, observations: Seq[(DenseVector[Double], Double)]): Seq[T] = {
+  def findWithPrior(
+      n: Int,
+      observations: Seq[(DenseVector[Double], Double)],
+      priorObservations: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[T] = {
     require(n > 0, "The number of results must be greater than zero.")
 
     // Load the initial observations
     observations.init.foreach { case (candidate, value) =>
       onObservation(candidate, value)
+    }
+
+    if(priorObservations.isDefined) {
+      // Load the prior observations. We add all of them since we do not iterate over these.
+      priorObservations.get.foreach { case (candidate, value) =>
+        onObservation(candidate, value, priorObservations.isDefined)
+      }
     }
 
     val (results, _) = (0 until n).foldLeft((List.empty[T], observations.last)) {
@@ -138,8 +148,9 @@ class RandomSearch[T](
    *
    * @param point the observed point in the space
    * @param eval the observed value
+   * @param priorData the indicator to denote if this point and evaluation is coming from a past dataset
    */
-  protected[search] def onObservation(point: DenseVector[Double], eval: Double): Unit = {}
+  protected[search] def onObservation(point: DenseVector[Double], eval: Double, priorData: Boolean = false): Unit = {}
 
   /**
    * Draw candidates from the distributions along each dimension in the space

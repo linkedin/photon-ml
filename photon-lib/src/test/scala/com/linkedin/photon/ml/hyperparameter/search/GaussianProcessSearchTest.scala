@@ -61,6 +61,13 @@ class GaussianProcessSearchTest {
 
   val searcher = new GaussianProcessSearch[TestModel](ranges, evaluationFunction, evaluator, seed = seed)
 
+  var observedPoints: Option[DenseMatrix[Double]] = None
+  var observedEvals: Option[DenseVector[Double]] = None
+  var bestEval: Double = evaluator.defaultScore
+  var priorObservedPoints: Option[DenseMatrix[Double]] = None
+  var priorObservedEvals: Option[DenseVector[Double]] = None
+  var priorBestEval: Double = evaluator.defaultScore
+
   @Test
   def testFind(): Unit = {
     val candidates = searcher.find(n)
@@ -94,5 +101,85 @@ class GaussianProcessSearchTest {
 
     val selected = searcher.selectBestCandidate(candidates, predictions)
     assertEquals(selected, expected)
+  }
+
+  @DataProvider
+  def priorDataProvider: Array[Array[Any]] = {
+
+    val candidate1 = (DenseVector(1.0, 1.0, 1.0), 0.1)
+    val candidate2 = (DenseVector(2.0, 2.0, 2.0), 0.2)
+    val candidate3 = (DenseVector(3.0, 3.0, 3.0), 0.3)
+    val currentCandidates = Seq(candidate1, candidate2, candidate3)
+    val priorCandidates = Seq(candidate3, candidate1, candidate2)
+
+    Array(
+      Array(currentCandidates, None, 0),
+      Array(currentCandidates, Option(priorCandidates), 1))
+  }
+
+  @Test(dataProvider = "priorDataProvider")
+  def testOnObservation(
+                         currentCandidates: Seq[(DenseVector[Double], Double)],
+                         priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
+                         testSetIndex: Int): Unit = {
+
+    // Load the initial observations
+    currentCandidates.foreach { case (candidate, value) =>
+      val (newPoints, newEvals, newBest) = searcher.addObservation(observedPoints,
+        observedEvals,
+        bestEval,
+        candidate,
+        value)
+      observedPoints = newPoints
+      observedEvals = newEvals
+      bestEval = newBest
+    }
+
+    if(priorCandidates.isDefined) {
+      // Load the prior observations
+      priorCandidates.get.foreach { case (candidate, value) =>
+        val (newPoints, newEvals, newBest) = searcher.addObservation(priorObservedPoints,
+          priorObservedEvals,
+          priorBestEval,
+          candidate,
+          value)
+        priorObservedPoints = newPoints
+        priorObservedEvals = newEvals
+        priorBestEval = newBest
+      }
+    }
+
+    testSetIndex match {
+      case 0 =>
+        assertEquals(observedPoints.get.rows, 3)
+        assertEquals(observedPoints.get.cols, 3)
+        assertEquals(observedEvals.get.length, 3)
+        assertEquals(bestEval, 0.3)
+        assertFalse(priorObservedPoints.isDefined)
+        assertFalse(priorObservedEvals.isDefined)
+      case 1 =>
+        assertEquals(observedPoints.get.rows, 6)
+        assertEquals(observedPoints.get.cols, 3)
+        assertEquals(observedEvals.get.length, 6)
+        assertEquals(bestEval, 0.3)
+        assertEquals(priorObservedPoints.get.rows, 3)
+        assertEquals(priorObservedPoints.get.cols, 3)
+        assertEquals(priorObservedEvals.get.length, 3)
+        assertEquals(priorBestEval, 0.3)
+    }
+  }
+
+  @Test(dataProvider = "priorDataProvider")
+  def testFindWithPrior(
+                         currentCandidates: Seq[(DenseVector[Double], Double)],
+                         priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
+                         testSetIndex: Int): Unit = {
+
+    val candidates1 = searcher.findWithPrior(n, currentCandidates, priorCandidates)
+
+    assertEquals(candidates1.length, n)
+    assertTrue(candidates1.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
+    assertEquals(candidates1.toSet.size, n)
+
   }
 }
