@@ -118,35 +118,41 @@ class GaussianProcessSearchTest {
   }
 
   @Test(dataProvider = "priorDataProvider")
-  def testOnObservation(
-                         currentCandidates: Seq[(DenseVector[Double], Double)],
-                         priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
-                         testSetIndex: Int): Unit = {
+  def testOnPriorObservation(
+      currentCandidates: Seq[(DenseVector[Double], Double)],
+      priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
+      testSetIndex: Int): Unit = {
 
     // Load the initial observations
     currentCandidates.foreach { case (candidate, value) =>
-      val (newPoints, newEvals, newBest) = searcher.addObservation(observedPoints,
-        observedEvals,
-        bestEval,
-        candidate,
-        value)
-      observedPoints = newPoints
-      observedEvals = newEvals
-      bestEval = newBest
+      observedPoints = observedPoints
+        .map(DenseMatrix.vertcat(_, candidate.toDenseMatrix))
+        .orElse(Some(candidate.toDenseMatrix))
+
+      observedEvals = observedEvals
+        .map(DenseVector.vertcat(_, DenseVector(value)))
+        .orElse(Some(DenseVector(value)))
+
+      if (evaluator.betterThan(value, bestEval)) {
+        bestEval = value
+      }
     }
 
-    if(priorCandidates.isDefined) {
-      // Load the prior observations
-      priorCandidates.get.foreach { case (candidate, value) =>
-        val (newPoints, newEvals, newBest) = searcher.addObservation(priorObservedPoints,
-          priorObservedEvals,
-          priorBestEval,
-          candidate,
-          value)
-        priorObservedPoints = newPoints
-        priorObservedEvals = newEvals
-        priorBestEval = newBest
+    priorCandidates match {
+      case Some(priorObs) => priorObs.foreach { case (candidate, value) =>
+        priorObservedPoints = priorObservedPoints
+          .map(DenseMatrix.vertcat(_, candidate.toDenseMatrix))
+          .orElse(Some(candidate.toDenseMatrix))
+
+        priorObservedEvals = priorObservedEvals
+          .map(DenseVector.vertcat(_, DenseVector(value)))
+          .orElse(Some(DenseVector(value)))
+
+        if (evaluator.betterThan(value, priorBestEval)) {
+          priorBestEval = value
+        }
       }
+      case _ =>
     }
 
     testSetIndex match {
@@ -171,9 +177,9 @@ class GaussianProcessSearchTest {
 
   @Test(dataProvider = "priorDataProvider")
   def testFindWithPrior(
-                         currentCandidates: Seq[(DenseVector[Double], Double)],
-                         priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
-                         testSetIndex: Int): Unit = {
+      currentCandidates: Seq[(DenseVector[Double], Double)],
+      priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
+      testSetIndex: Int): Unit = {
 
     val candidates1 = searcher.findWithPrior(n, currentCandidates, priorCandidates)
 

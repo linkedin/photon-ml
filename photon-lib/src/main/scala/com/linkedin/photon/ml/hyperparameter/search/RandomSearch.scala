@@ -67,11 +67,12 @@ class RandomSearch[T](
       onObservation(candidate, value)
     }
 
-    if(priorObservations.isDefined) {
-      // Load the prior observations. We add all of them since we do not iterate over these.
-      priorObservations.get.foreach { case (candidate, value) =>
-        onObservation(candidate, value, priorObservations.isDefined)
+    // Load the prior data observations. If it is missing we do not do anything.
+    priorObservations match {
+      case Some(priorObs) => priorObs.foreach { case (candidate, value) =>
+        onPriorObservation(candidate, value)
       }
+      case _ =>
     }
 
     val (results, _) = (0 until n).foldLeft((List.empty[T], observations.last)) {
@@ -148,9 +149,16 @@ class RandomSearch[T](
    *
    * @param point the observed point in the space
    * @param eval the observed value
-   * @param priorData the indicator to denote if this point and evaluation is coming from a past dataset
    */
-  protected[search] def onObservation(point: DenseVector[Double], eval: Double, priorData: Boolean = false): Unit = {}
+  protected[search] def onObservation(point: DenseVector[Double], eval: Double): Unit = {}
+
+  /**
+    * Handler callback for each observation in the prior data. In this case, we do nothing.
+    *
+    * @param point the observed point in the space
+    * @param eval the observed value
+    */
+  protected[search] def onPriorObservation(point: DenseVector[Double], eval: Double): Unit = {}
 
   /**
    * Draw candidates from the distributions along each dimension in the space
