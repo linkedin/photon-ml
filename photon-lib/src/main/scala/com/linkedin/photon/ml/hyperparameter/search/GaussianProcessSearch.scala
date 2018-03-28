@@ -94,7 +94,7 @@ class GaussianProcessSearch[T](
 
         // Finding the overall bestEval
         val currentMean =  mean(evals)
-        val overallBestEval = if(evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
+        val overallBestEval = if (evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
           priorBestEval
         } else {
           bestEval - currentMean
