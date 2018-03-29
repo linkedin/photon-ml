@@ -14,11 +14,8 @@
  */
 package com.linkedin.photon.ml.hyperparameter.search
 
-import math.max
-
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.numerics.sqrt
-import breeze.stats.variance
+import breeze.stats.mean
 
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
@@ -67,6 +64,9 @@ class GaussianProcessSearch[T](
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None
   private var bestEval: Double = evaluator.defaultScore
+  private var priorObservedPoints: Option[DenseMatrix[Double]] = None
+  private var priorObservedEvals: Option[DenseVector[Double]] = None
+  private var priorBestEval: Double = evaluator.defaultScore
   private var lastModel: GaussianProcessModel = _
 
   /**
@@ -92,17 +92,34 @@ class GaussianProcessSearch[T](
         // hyperparameter spaces.
         val kernel = new Matern52
 
+        // Finding the overall bestEval
+        val currentMean =  mean(evals)
+        val overallBestEval = if (evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
+          priorBestEval
+        } else {
+          bestEval - currentMean
+        }
+
         // Expected improvement transformation
-        val transformation = new ExpectedImprovement(evaluator, bestEval)
+        val transformation = new ExpectedImprovement(evaluator, overallBestEval)
 
         val estimator = new GaussianProcessEstimator(
           kernel = kernel,
-          normalizeLabels = true,
+          normalizeLabels = false,
           noisyTarget = noisyTarget,
           predictionTransformation = Some(transformation),
           seed = seed)
 
-        val model = estimator.fit(points, evals)
+        // Union of points and evals with priorData
+        val (overallPoints, overallEvals) = (priorObservedPoints, priorObservedEvals) match {
+          case (Some(priorPoints), Some(priorEvals)) => (
+            DenseMatrix.vertcat(points, priorPoints),
+            DenseVector.vertcat(evals - currentMean, priorEvals))
+          case _ =>
+            (points, evals - currentMean)
+        }
+
+        val model = estimator.fit(overallPoints, overallEvals)
         lastModel = model
 
         val predictions = model.predictTransformed(candidates)
@@ -132,6 +149,26 @@ class GaussianProcessSearch[T](
 
     if (evaluator.betterThan(eval, bestEval)) {
       bestEval = eval
+    }
+  }
+
+  /**
+    * Handler callback for each observation in the prior data. In this case, we record the observed point and values.
+    *
+    * @param point the observed point in the space
+    * @param eval the observed value
+    */
+  protected[search] override def onPriorObservation(point: DenseVector[Double], eval: Double): Unit = {
+    priorObservedPoints = priorObservedPoints
+      .map(DenseMatrix.vertcat(_, point.toDenseMatrix))
+      .orElse(Some(point.toDenseMatrix))
+
+    priorObservedEvals = priorObservedEvals
+      .map(DenseVector.vertcat(_, DenseVector(eval)))
+      .orElse(Some(DenseVector(eval)))
+
+    if (evaluator.betterThan(eval, priorBestEval)) {
+      priorBestEval = eval
     }
   }
 
