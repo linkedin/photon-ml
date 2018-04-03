@@ -130,22 +130,20 @@ object ModelProcessingUtils {
   /**
    * Load a GAME model from HDFS.
    *
-   * This method can be called with or without a feature index. If a feature index is not provided, one is created
-   * by scanning the loaded models. In that case, the indexes ranges are [0..numNonZeroFeatures], even if the feature
-   * index used before saving the model was sparse. In other words, when no feature index is provided for the load,
-   * the feature index before the save might not be the same as after the load (it will be more "compact" after the
-   * load, using only contiguous indexes).
-   *
+   * @param sc The execution [[SparkContext]]
+   * @param modelsDir The path to the directory on HDFS where the models are stored
+   * @param storageLevel The level of Spark caching to perform on the loaded model
    * @param featureShardIdToIndexMapLoader A map of feature shard to index map loader
-   * @param modelsDir The directory on HDFS where the models are stored
-   * @param sc The Spark context
+   * @param coordinatesToLoadOpt An optional set of coordinates to load by name (if not provided, all coordinates are
+   *                             loaded)
    * @return The GAME model and feature index
    */
   def loadGameModelFromHDFS(
       sc: SparkContext,
       modelsDir: Path,
       storageLevel: StorageLevel,
-      featureShardIdToIndexMapLoader: Map[FeatureShardId, IndexMapLoader]): GameModel = {
+      featureShardIdToIndexMapLoader: Map[FeatureShardId, IndexMapLoader],
+      coordinatesToLoadOpt: Option[Set[CoordinateId]] = None): GameModel = {
 
     val configuration = sc.hadoopConfiguration
     val fs = modelsDir.getFileSystem(configuration)
@@ -155,31 +153,41 @@ object ModelProcessingUtils {
     // Load the fixed effect model(s)
     val fixedEffectModelInputDir = new Path(modelsDir, AvroConstants.FIXED_EFFECT)
     val fixedEffectModels = if (fs.exists(fixedEffectModelInputDir)) {
-      fs.listStatus(fixedEffectModelInputDir).map { fileStatus =>
 
-        val innerPath = fileStatus.getPath
-        val name = innerPath.getName
-
-        // Load the model ID info
-        val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
-        val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
-        require(featureShardId != null && !featureShardId.isEmpty)
-
-        // Load the coefficients
-        val indexMap = featureShardIdToIndexMapLoader.get(featureShardId) match {
-
-          case Some(indexMapLoader) =>
-            indexMapLoader.indexMapForDriver()
-
-          case None =>
-            throw new IllegalArgumentException(
-              s"Missing feature shard definition for '$featureShardId' required by coordinate '$name' in loaded model")
+      fs
+        .listStatus(fixedEffectModelInputDir)
+        .map(_.getPath)
+        .filter { innerPath =>
+          coordinatesToLoadOpt match {
+            case Some(coordinatesToLoad) => coordinatesToLoad.contains(innerPath.getName)
+            case None => true
+          }
         }
-        val modelPath = new Path(innerPath, AvroConstants.COEFFICIENTS)
-        val glm = loadGLMFromHDFS(modelPath.toString, indexMap, sc)
+        .map { innerPath =>
 
-        (name, new FixedEffectModel(sc.broadcast(glm), featureShardId))
-      }
+          val name = innerPath.getName
+
+          // Load the model ID info
+          val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
+          val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+
+          require(!featureShardId.isEmpty, s"Error reading feature shard ID for coordinate '$name' in loaded model")
+
+          // Load the coefficients
+          val indexMap = featureShardIdToIndexMapLoader.get(featureShardId) match {
+
+            case Some(indexMapLoader) =>
+              indexMapLoader.indexMapForDriver()
+
+            case None =>
+              throw new IllegalArgumentException(
+                s"Missing feature shard definition for '$featureShardId' required by coordinate '$name' in loaded model")
+          }
+          val modelPath = new Path(innerPath, AvroConstants.COEFFICIENTS)
+          val glm = loadGLMFromHDFS(modelPath.toString, indexMap, sc)
+
+          (name, new FixedEffectModel(sc.broadcast(glm), featureShardId))
+        }
 
     } else {
       Array[(CoordinateId, FixedEffectModel)]()
@@ -188,29 +196,41 @@ object ModelProcessingUtils {
     // Load the random effect models
     val randomEffectModelInputDir = new Path(modelsDir, AvroConstants.RANDOM_EFFECT)
     val randomEffectModels = if (fs.exists(randomEffectModelInputDir)) {
-      fs.listStatus(randomEffectModelInputDir).map { innerFileStatus =>
 
-        val innerPath = innerFileStatus.getPath
-        val name = innerPath.getName
-
-        // Load the model ID info
-        val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
-        val Array(randomEffectType, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
-
-        // Load the models
-        val indexMapLoader = featureShardIdToIndexMapLoader.get(featureShardId) match {
-
-          case Some(loader) => loader
-
-          case None =>
-            throw new IllegalArgumentException(
-              s"Missing feature shard definition for '$featureShardId' required by coordinate '$name' in loaded model")
+      fs
+        .listStatus(randomEffectModelInputDir)
+        .map(_.getPath)
+        .filter { innerPath =>
+          coordinatesToLoadOpt match {
+            case Some(coordinatesToLoad) => coordinatesToLoad.contains(innerPath.getName)
+            case None => true
+          }
         }
-        val modelsRDDInputPath = new Path(innerPath, AvroConstants.COEFFICIENTS)
-        val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, indexMapLoader, sc)
+        .map { innerPath =>
 
-        (name, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId))
-      }
+          val name = innerPath.getName
+
+          // Load the model ID info
+          val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
+          val Array(randomEffectType, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
+
+          require(!featureShardId.isEmpty, s"Error reading feature shard ID for coordinate '$name' in loaded model")
+
+          // Load the models
+          val indexMapLoader = featureShardIdToIndexMapLoader.get(featureShardId) match {
+
+            case Some(loader) => loader
+
+            case None =>
+              throw new IllegalArgumentException(
+                s"Missing feature shard definition for '$featureShardId' required by coordinate '$name' in loaded model")
+          }
+          val modelsRDDInputPath = new Path(innerPath, AvroConstants.COEFFICIENTS)
+          val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, indexMapLoader, sc)
+
+          (name, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId).persistRDD(storageLevel))
+        }
+
     } else {
       Array[(CoordinateId, RandomEffectModel)]()
     }

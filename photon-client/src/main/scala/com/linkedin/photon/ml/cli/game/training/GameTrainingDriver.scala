@@ -353,7 +353,8 @@ object GameTrainingDriver extends GameDriver {
             sc,
             preTrainedModelDir,
             StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-            featureIndexMapLoaders)
+            featureIndexMapLoaders,
+            Some(lockedCoordinates))
 
           // All of the locked coordinates must be present in the pre-trained model
           require(

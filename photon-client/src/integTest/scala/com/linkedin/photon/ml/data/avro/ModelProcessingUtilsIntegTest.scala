@@ -29,7 +29,6 @@ import org.testng.annotations.Test
 import com.linkedin.photon.avro.generated.FeatureSummarizationResultAvro
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, REId}
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
@@ -41,6 +40,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.constants.StorageLevel
 
 /**
  * Integration tests for [[ModelProcessingUtils]].
@@ -78,6 +78,48 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
 
     // Check that the model loaded correctly and that it is identical to the model saved
     assertTrue(gameModel == loadedGameModel)
+  }
+  import ModelProcessingUtilsIntegTest._
+
+  /**
+   * Test that we can load a subset of the GAME model coordinates.
+   */
+  @Test
+  def testLoadPartialModel(): Unit = sparkTest("testLoadPartialModel") {
+
+    val numCoordinatesToLoad = 2
+    val (gameModel, featureIndexLoaders) = makeGameModel(sc)
+    val outputDir = new Path(getTmpDir)
+
+    // Save the model to HDFS
+    ModelProcessingUtils.saveGameModelToHDFS(
+      sc,
+      outputDir,
+      gameModel,
+      TaskType.LOGISTIC_REGRESSION,
+      GAME_OPTIMIZATION_CONFIGURATION,
+      randomEffectModelFileLimit = None,
+      featureIndexLoaders,
+      VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
+
+    // Load the model from HDFS, but ignore the second random effect model
+    val loadedGameModelMap = ModelProcessingUtils
+      .loadGameModelFromHDFS(
+        sc,
+        outputDir,
+        StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+        featureIndexLoaders,
+        Some(SHARD_NAMES.take(numCoordinatesToLoad).toSet))
+      .toMap
+
+    // Check that only some of the coordinates were loaded
+    assertEquals(loadedGameModelMap.size, numCoordinatesToLoad)
+    for (i <- 0 until numCoordinatesToLoad) {
+      assertTrue(loadedGameModelMap.contains(SHARD_NAMES(i)))
+    }
+    for (i <- numCoordinatesToLoad until SHARD_NAMES.length) {
+      assertFalse(loadedGameModelMap.contains(SHARD_NAMES(i)))
+    }
   }
 
   /**
@@ -403,26 +445,26 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
 
 object ModelProcessingUtilsIntegTest {
 
+  private val FIXED_SHARD_NAME = "fixed"
+  private val RE1_SHARD_NAME = "RE1"
+  private val RE2_SHARD_NAME = "RE2"
+  private val SHARD_NAMES = Seq(FIXED_SHARD_NAME, RE1_SHARD_NAME, RE2_SHARD_NAME)
   private val GAME_OPTIMIZATION_CONFIGURATION: GameEstimator.GameOptimizationConfiguration = Map(
-    ("fixed",
+    (FIXED_SHARD_NAME,
       FixedEffectOptimizationConfiguration(
         OptimizerConfig(OptimizerType.TRON, 10, 1e-1, constraintMap = None),
         NoRegularizationContext)),
-    ("random1",
+    (RE1_SHARD_NAME,
       RandomEffectOptimizationConfiguration(
         OptimizerConfig(OptimizerType.LBFGS, 20, 1e-2, constraintMap = None),
         L1RegularizationContext,
         regularizationWeight = 1D)),
-    ("random2",
+    (RE2_SHARD_NAME,
       RandomEffectOptimizationConfiguration(
         OptimizerConfig(OptimizerType.TRON, 30, 1e-3, constraintMap = None),
         L2RegularizationContext,
         regularizationWeight = 2D)))
 
-  private val FIXED_SHARD_NAME = "fixed"
-  private val RE1_SHARD_NAME = "RE1"
-  private val RE2_SHARD_NAME = "RE2"
-  private val SHARD_NAMES = Seq(FIXED_SHARD_NAME, RE1_SHARD_NAME, RE2_SHARD_NAME)
   private val NUM_FEATURES = 7
   private val FEATURE_NAMES = (0 until NUM_FEATURES).map(getFeatureName)
 
