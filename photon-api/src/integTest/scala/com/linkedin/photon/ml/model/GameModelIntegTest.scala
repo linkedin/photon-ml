@@ -185,8 +185,8 @@ class GameModelIntegTest extends SparkTestUtils {
   @Test
   def testModelsConsistencyGood(): Unit = sparkTest("testModelsConsistencyGood") {
 
-    // Features: we have two feature spaces, one for the fixed model, and one for the random model.
-    // Each model has its own, separate feature space, but feature values can be shared between spaces.
+    // Features: we have three feature spaces: one for the fixed model, and one for each random model.
+    // Each model has its own separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
     val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))
 
@@ -224,8 +224,8 @@ class GameModelIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testModelsConsistencyBad(): Unit = sparkTest("testModelsConsistencyBad") {
 
-    // Features: we have three feature spaces, one for the fixed model, and two for the random models.
-    // Each model has its own, separate feature space, but feature values can be shared between spaces.
+    // Features: we have three feature spaces: one for the fixed model, and one for each random model.
+    // Each model has its own separate feature space, but feature values can be shared between spaces.
     // Features shared between spaces have a unique name, but possibly different indices.
     val numFeaturesPerModel = Map(("fixedFeatures", 10), ("RE1Features", 10), ("RE2Features", 10))
 
@@ -244,7 +244,7 @@ class GameModelIntegTest extends SparkTestUtils {
     val glmRE1RDD = sc.parallelize(List(("RE1Item1", glmRE11), ("RE1Item2", glmRE12)))
     val RE1Model = new RandomEffectModel(glmRE1RDD, "REModel1", "RE1Features")
 
-    // Random effect 2 has 3 items (of a different kind)
+    // Random effect 2 has 3 items (of a different kind of model)
     val numFeaturesRE2 = numFeaturesPerModel("RE2Features")
     val RE2Item1 = CoefficientsTest.sparseCoefficients(numFeaturesRE2)(3,4,6)(321,421,621)
     val glmRE21: GeneralizedLinearModel = new PoissonRegressionModel(RE2Item1)

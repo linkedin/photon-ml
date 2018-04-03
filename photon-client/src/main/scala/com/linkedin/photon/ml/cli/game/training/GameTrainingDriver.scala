@@ -263,7 +263,7 @@ object GameTrainingDriver extends GameDriver {
     }
 
     // Each feature shard used by a coordinate must have a configuration
-    coordinateConfigs.foreach { case(coordinate, config) =>
+    coordinateConfigs.foreach { case (coordinate, config) =>
 
       val featureShardId = config.dataConfiguration.featureShardId
 
@@ -287,7 +287,7 @@ object GameTrainingDriver extends GameDriver {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(
           paramMap.get(hyperParameterTuningIter).isDefined,
-          "Hyperparameter tuning enabled, but number of iterations unspecified.")
+          "Hyper-parameter tuning enabled, but number of iterations unspecified.")
       case _ =>
     }
   }
@@ -345,29 +345,20 @@ object GameTrainingDriver extends GameDriver {
       readValidationData(featureIndexMapLoaders)
     }
     val (partialRetrainingModelOpt, partialRetrainingDataConfigsOpt) = Timed("Load model for partial retraining") {
+
       (get(partialRetrainModelDirectory), get(partialRetrainLockedCoordinates)) match {
+
         case (Some(preTrainedModelDir), Some(lockedCoordinates)) =>
-          val (gameModel, modelIndexMapLoaders) = ModelProcessingUtils
-            .loadGameModelFromHDFS(
-              sc,
-              preTrainedModelDir,
-              StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-              Some(featureIndexMapLoaders))
+          val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+            sc,
+            preTrainedModelDir,
+            StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+            featureIndexMapLoaders)
 
           // All of the locked coordinates must be present in the pre-trained model
           require(
             lockedCoordinates.forall(gameModel.toMap.contains),
             "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
-
-          // The feature shards for the locked coordinates must be defined
-          modelIndexMapLoaders
-            .keys
-            .filter(lockedCoordinates.contains)
-            .foreach { featureShard =>
-              require(
-                featureIndexMapLoaders.contains(featureShard),
-                s"Missing feature shard definition for shard '$featureShard' used by the pre-trained model.")
-            }
 
           val dataConfigs = gameModel
             .toMap

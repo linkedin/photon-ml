@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import scala.collection.{Map, SortedMap}
+import scala.collection.SortedMap
 
 import org.apache.spark.rdd.RDD
 
@@ -34,7 +34,7 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
   // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
   // GameModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
-  override lazy val modelType = GameModel.determineModelType(gameModels)
+  override lazy val modelType: TaskType = GameModel.determineModelType(gameModels)
   modelType
 
   /**
