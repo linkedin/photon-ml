@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.Vector
+import breeze.linalg.{DenseMatrix, Vector}
 import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -165,8 +165,10 @@ trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationD
    * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
    * @return The computed diagonal of the Hessian matrix
    */
-  abstract override protected[ml] def hessianDiagonal(input: Data, coefficients: Coefficients): Vector[Double] =
-    super.hessianDiagonal(input, coefficients) + l2RegHessianDiagonal
+  abstract override protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double] = {
+    val hessianMatrix = super.hessianMatrix(input, coefficients)
+    hessianMatrix + l2RegHessianDiagonal * DenseMatrix.eye[Double](hessianMatrix.rows)
+  }
 
   /**
    * Compute the Hessian vector of the L2 regularization term for the given Hessian multiplication vector.

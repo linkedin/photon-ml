@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.Vector
+import breeze.linalg.{Vector, cholesky, diag}
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.Linalg.choleskyInverse
 
 /**
  * An optimization problem solved by multiple tasks on one or more executors. Used for solving the global optimization
@@ -82,12 +83,12 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     (isComputingVariances, objectiveFunction) match {
       case (true, twiceDiffFunc: TwiceDiffFunction) =>
         val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
-        val result = Some(twiceDiffFunc
-          .hessianDiagonal(input, broadcastCoefficients)
-          .map(v => 1.0 / (v + MathConst.EPSILON)))
+        val hessianMatrix = twiceDiffFunc.hessianMatrix(input, broadcastCoefficients)
+        val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
 
         broadcastCoefficients.unpersist()
-        result
+
+        Some(diag(invHessianMatrix))
 
       case _ =>
         None
@@ -123,8 +124,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
       logger.info(s"History tracker information:\n $tracker")
       val modelsPerIteration = tracker.getTrackedStates.map { x =>
         val coefficients = x.coefficients
-        val variances = computeVariances(input, coefficients)
-        createModel(normalizationContext, coefficients, variances)
+        createModel(normalizationContext, coefficients, variances = None)
       }
       logger.info(s"Number of iterations: ${modelsPerIteration.length}")
       modelTrackerBuilder += ModelTracker(tracker, modelsPerIteration)

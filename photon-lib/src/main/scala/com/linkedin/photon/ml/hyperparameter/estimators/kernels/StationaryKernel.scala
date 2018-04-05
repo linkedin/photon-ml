@@ -18,7 +18,7 @@ import breeze.linalg._
 import breeze.numerics.constants.Pi
 import breeze.numerics.{log, pow, sqrt}
 
-import com.linkedin.photon.ml.hyperparameter.Linalg.choleskySolve
+import com.linkedin.photon.ml.util.Linalg.choleskySolve
 
 /**
  * Base trait for stationary covariance kernel functions

@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, sum}
+import breeze.linalg.{DenseMatrix, Vector, sum}
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{ObjectiveFunction, TwiceDiffFunction}
@@ -112,10 +112,11 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
   /**
    * Unused, only implemented as part of TwiceDiffFunction.
    */
-  override protected[ml] def hessianDiagonal(
-    input: Iterable[LabeledPoint],
-    coefficients: Vector[Double]): Vector[Double] =
-    Coefficients.initializeZeroCoefficients(coefficients.length).means
+  override protected[ml] def hessianMatrix(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): DenseMatrix[Double] =
+    DenseMatrix.zeros[Double](coefficients.length, coefficients.length)
+
 }
 
 object TestObjective {

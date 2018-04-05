@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, sum}
+import breeze.linalg.{DenseMatrix, Vector, sum}
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -121,15 +121,12 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
 
   /**
    * Unused, only implemented as part of TwiceDiffFunction.
-   *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
    */
-  override protected[ml] def hessianDiagonal(
+  override protected[ml] def hessianMatrix(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]]): Vector[Double] =
-    Coefficients.initializeZeroCoefficients(coefficients.value.size).means
+      coefficients: Broadcast[Vector[Double]]): DenseMatrix[Double] =
+    DenseMatrix.zeros[Double](coefficients.value.length, coefficients.value.length)
+
 }
 
 object IntegTestObjective {
