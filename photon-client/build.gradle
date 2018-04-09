@@ -26,6 +26,7 @@ dependencies {
   compile("com.github.scopt:scopt$scalaSuffix:3.5.0")
 
   testCompile(project(":photon-test-utils$scalaSuffix"))
+  testCompile(project(path: ":photon-lib$scalaSuffix", configuration: 'testOutput'))
   testCompile('com.linkedin.paldb:paldb:1.1.0')
   testCompile("org.mockito:mockito-core:1.+")
 

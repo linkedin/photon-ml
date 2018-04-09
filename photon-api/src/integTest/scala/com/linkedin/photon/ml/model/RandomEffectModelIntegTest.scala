@@ -85,9 +85,9 @@ class RandomEffectModelIntegTest extends SparkTestUtils {
     val numFeatures = 10
 
     // Random effect with 2 items of the same type.
-    val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
+    val randomEffectItem1 = CoefficientsTest.sparseCoefficients(numFeatures)(1,5,7)(111,511,911)
     val glm1: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem1)
-    val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
+    val randomEffectItem2 = CoefficientsTest.sparseCoefficients(numFeatures)(1,2)(112,512)
     val glm2: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem2)
     val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
 
@@ -104,9 +104,9 @@ class RandomEffectModelIntegTest extends SparkTestUtils {
     val numFeatures = 10
 
     // Random effect with 2 items of differing types.
-    val randomEffectItem1 = Coefficients(numFeatures)(1,5,7)(111,511,911)
+    val randomEffectItem1 = CoefficientsTest.sparseCoefficients(numFeatures)(1,5,7)(111,511,911)
     val glm1: GeneralizedLinearModel = new LogisticRegressionModel(randomEffectItem1)
-    val randomEffectItem2 = Coefficients(numFeatures)(1,2)(112,512)
+    val randomEffectItem2 = CoefficientsTest.sparseCoefficients(numFeatures)(1,2)(112,512)
     val glm2: GeneralizedLinearModel = new PoissonRegressionModel(randomEffectItem2)
     val randomEffectRDD = sc.parallelize(List(("RandomEffectItem1", glm1), ("RandomEffectItem2", glm2)))
 

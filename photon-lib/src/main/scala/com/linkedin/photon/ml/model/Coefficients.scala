@@ -128,6 +128,7 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
 }
 
 protected[ml] object Coefficients {
+
   /**
    * Create a zero coefficient vector.
    *
@@ -136,33 +137,5 @@ protected[ml] object Coefficients {
    */
   def initializeZeroCoefficients(dimension: Int): Coefficients = {
     Coefficients(Vector.zeros[Double](dimension), variancesOption = None)
-  }
-
-  /**
-   * Constructor for an instance backed by a Breeze DenseVector.
-   *
-   * @param values The coefficients values
-   * @return An instance of Coefficients
-   */
-  def apply(values: Double*): Coefficients =
-    Coefficients(new DenseVector[Double](Array[Double](values: _*)))
-
-  /**
-   * Constructor for an instance backed by a Breeze SparseVector.
-   *
-   * @note The non-zeros must be sorted in order of increasing indices!!!
-   * @param length The Coefficients dimension ( (1,0,0,4) has dimension 4)
-   * @param indices The indices of the non-zeros
-   * @param nnz The non-zero values
-   * @return An instance of Coefficients
-   */
-  def apply(length: Int)(indices: Int*)(nnz: Double*): Coefficients = {
-
-    require(0 < length)
-    require(indices.length == nnz.length)
-    require(indices.sorted == indices)
-    // TODO: check for duplicates?
-
-    Coefficients(new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length))
   }
 }

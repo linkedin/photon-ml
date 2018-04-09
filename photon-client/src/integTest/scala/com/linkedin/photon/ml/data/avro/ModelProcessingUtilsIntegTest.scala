@@ -91,17 +91,17 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
         .map(identity) // .map(identity) needed because of: https://issues.scala-lang.org/browse/SI-7005
 
     // Fixed effect model
-    val glm = new LogisticRegressionModel(Coefficients(numFeatures("fixed"))(1,2,5)(11,21,51))
+    val glm = new LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("fixed"))(1,2,5)(11,21,51))
     val fixedEffectModel = new FixedEffectModel(sc.broadcast(glm), "fixed")
 
-    val glmRE11 = LogisticRegressionModel(Coefficients(numFeatures("RE1"))(1, 5, 7)(111, 511, 911))
-    val glmRE12 = LogisticRegressionModel(Coefficients(numFeatures("RE1"))(1, 2)(112, 512))
+    val glmRE11 = LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("RE1"))(1, 5, 7)(111, 511, 911))
+    val glmRE12 = LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("RE1"))(1, 2)(112, 512))
     val glmRE1RDD = sc.parallelize(List(("RE1Item1", glmRE11), ("RE1Item2", glmRE12)))
     val RE1Model = new RandomEffectModel(glmRE1RDD, "randomEffectModel1", "RE1")
 
-    val glmRE21 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(3, 4, 6)(321, 421, 621))
-    val glmRE22 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(4, 5)(322, 422))
-    val glmRE23 = LogisticRegressionModel(Coefficients(numFeatures("RE2"))(2, 7, 8)(323, 423, 523))
+    val glmRE21 = LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("RE2"))(3, 4, 6)(321, 421, 621))
+    val glmRE22 = LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("RE2"))(4, 5)(322, 422))
+    val glmRE23 = LogisticRegressionModel(CoefficientsTest.sparseCoefficients(numFeatures("RE2"))(2, 7, 8)(323, 423, 523))
     val glmRE2RDD = sc.parallelize(List(("RE2Item1", glmRE21), ("RE2Item2", glmRE22), ("RE2Item3", glmRE23)))
     val RE2Model = new RandomEffectModel(glmRE2RDD, "randomEffectModel2", "RE2")
 
