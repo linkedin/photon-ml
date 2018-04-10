@@ -36,3 +36,16 @@ dependencies {
 
   testRuntime("org.scalanlp:breeze$scalaSuffix:0.11.2")
 }
+
+task testsJar(type: Jar, dependsOn: testClasses) {
+  classifier = 'test'
+  from sourceSets.test.output
+}
+
+configurations {
+  testOutput.extendsFrom(testCompile)
+}
+
+artifacts {
+  testOutput testsJar
+}

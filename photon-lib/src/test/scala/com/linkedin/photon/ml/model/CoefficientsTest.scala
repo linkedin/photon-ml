@@ -43,11 +43,21 @@ class CoefficientsTest {
   @Test
   def testEquals(): Unit = {
 
-    assertFalse(Coefficients(1,0,3,0) == Coefficients(1,0,2,0))
-    assertTrue(Coefficients(1,0,3,0) == Coefficients(1,0,3,0))
-    assertFalse(Coefficients(4)(0,2)(1,3) == Coefficients(5)(0,2)(1,3))
-    assertTrue(Coefficients(4)(0,2)(1,3) == Coefficients(4)(0,2)(1,3))
-    assertFalse(Coefficients(1,0,3,0) == Coefficients(4)(0,2)(1,3))
+    val denseCoefficients1 = denseCoefficients(1,0,2,0)
+    val denseCoefficients2 = denseCoefficients(1,0,3,0)
+    val sparseCoefficients1 = sparseCoefficients(4)(0,2)(1,3)
+    val sparseCoefficients2 = sparseCoefficients(4)(0,2)(1,2)
+
+    assertFalse(denseCoefficients1 == denseCoefficients2)
+    assertTrue(denseCoefficients1 == denseCoefficients1)
+    assertTrue(denseCoefficients2 == denseCoefficients2)
+
+    assertFalse(sparseCoefficients1 == sparseCoefficients2)
+    assertTrue(sparseCoefficients1 == sparseCoefficients1)
+    assertTrue(sparseCoefficients2 == sparseCoefficients2)
+
+    assertFalse(denseCoefficients1 == sparseCoefficients1)
+    assertFalse(sparseCoefficients2 == denseCoefficients2)
   }
 
   @Test
@@ -65,7 +75,7 @@ object CoefficientsTest {
    * @param values
    * @return
    */
-  private def dense(values: Double*) = new DenseVector[Double](Array[Double](values: _*))
+  def dense(values: Double*) = new DenseVector[Double](Array[Double](values: _*))
 
   /**
    *
@@ -74,6 +84,22 @@ object CoefficientsTest {
    * @param nnz
    * @return
    */
-  private def sparse(length: Int)(indices: Int*)(nnz: Double*) =
+  def sparse(length: Int)(indices: Int*)(nnz: Double*) =
     new SparseVector[Double](Array[Int](indices: _*), Array[Double](nnz: _*), length)
+
+  /**
+   *
+   * @param values
+   * @return
+   */
+  def denseCoefficients(values: Double*) = Coefficients(dense(values: _*))
+
+  /**
+   *
+   * @param length
+   * @param indices
+   * @param nnz
+   * @return
+   */
+  def sparseCoefficients(length: Int)(indices: Int*)(nnz: Double*) = Coefficients(sparse(length)(indices: _*)(nnz: _*))
 }

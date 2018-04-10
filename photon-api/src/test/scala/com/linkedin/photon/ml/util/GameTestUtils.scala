@@ -34,8 +34,6 @@ import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
-// TODO: No good way to import test sources between modules - sticking these test utils in main code.
-
 /**
  * A set of utility functions for GAME unit and integration tests.
  */
