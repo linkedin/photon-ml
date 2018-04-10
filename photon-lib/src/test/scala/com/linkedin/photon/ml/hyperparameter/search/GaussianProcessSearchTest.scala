@@ -74,7 +74,7 @@ class GaussianProcessSearchTest {
 
     assertEquals(candidates.length, n)
     assertTrue(candidates.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertEquals(candidates.toSet.size, n)
+    assertEquals(candidates.size, n)
   }
 
   @DataProvider
