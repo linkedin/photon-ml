@@ -21,25 +21,23 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * An aggregator to perform calculation of the Hessian diagonal vector. Both Iterable and RDD data share the same logic
- * for data aggregation.
- *
- * This class is heavily influenced by the HessianVectorAggregator and the ValueAndGradientAggregator.
+ * An aggregator to perform calculation of the Hessian matrix. Both Iterable and RDD data share the same logic for data
+ * aggregation.
  *
  * @param func A single loss function for the generalized linear model
  * @param dim The dimension (number of features) of the aggregator
  */
 @SerialVersionUID(1L)
-protected[ml] class HessianDiagonalAggregator(func: PointwiseLossFunction, val dim: Int) extends Serializable {
+protected[ml] class HessianMatrixAggregator(func: PointwiseLossFunction, val dim: Int) extends Serializable {
 
-  protected var vectorSum: Vector[Double] = DenseVector.zeros[Double](dim)
+  protected var matrixSum: DenseMatrix[Double] = DenseMatrix.zeros[Double](dim, dim)
 
   /**
-   * Return the cumulative Hessian diagonal.
+   * Return the cumulative Hessian matrix.
    *
    * @return The cumulative Hessian diagonal
    */
-  def getVector: Vector[Double] = vectorSum
+  def getMatrix: DenseMatrix[Double] = matrixSum
 
   /**
    * Add a data point to the aggregator.
@@ -56,7 +54,12 @@ protected[ml] class HessianDiagonalAggregator(func: PointwiseLossFunction, val d
     val margin = datum.computeMargin(coefficients)
     val dzzLoss = func.DzzLoss(margin, label)
 
-    axpy(weight * dzzLoss, features :* features, vectorSum)
+    // Convert features to a dense matrix so that we can compute the outer product
+    val x = features.toDenseVector.asDenseMatrix
+    val hessianMatrix = dzzLoss * (x.t * x)
+
+    axpy(weight, hessianMatrix, matrixSum)
+
     this
   }
 
@@ -66,62 +69,61 @@ protected[ml] class HessianDiagonalAggregator(func: PointwiseLossFunction, val d
    * @param that The other aggregator
    * @return A merged aggregator
    */
-  def merge(that: HessianDiagonalAggregator): this.type = {
+  def merge(that: HessianMatrixAggregator): this.type = {
     require(dim == that.dim, s"Dimension mismatch. this.dim=$dim, that.dim=${that.dim}")
     require(that.getClass.eq(getClass), s"Class mismatch. this.class=$getClass, that.class=${that.getClass}")
 
-    axpy(1.0, that.vectorSum, vectorSum)
+    axpy(1.0, that.matrixSum, matrixSum)
 
     this
   }
 }
 
-object HessianDiagonalAggregator {
+object HessianMatrixAggregator {
   /**
-   * Calculate the Hessian diagonal for an objective function in Spark.
+   * Calculate the Hessian matrix for an objective function in Spark.
    *
    * @param input An RDD of data points
    * @param coef The current model coefficients
    * @param singleLossFunction The function used to compute loss for predictions
    * @param treeAggregateDepth The tree aggregate depth
-   * @return The Hessian vector
+   * @return The Hessian matrix
    */
-  def calcHessianDiagonal(
+  def calcHessianMatrix(
     input: RDD[LabeledPoint],
     coef: Broadcast[Vector[Double]],
     singleLossFunction: PointwiseLossFunction,
-    treeAggregateDepth: Int): Vector[Double] = {
+    treeAggregateDepth: Int): DenseMatrix[Double] = {
 
-    val aggregator = new HessianDiagonalAggregator(singleLossFunction, coef.value.size)
+    val aggregator = new HessianMatrixAggregator(singleLossFunction, coef.value.size)
     val resultAggregator = input.treeAggregate(aggregator)(
       seqOp = (ag, datum) => ag.add(datum, coef.value),
       combOp = (ag1, ag2) => ag1.merge(ag2),
       depth = treeAggregateDepth
     )
 
-    resultAggregator.getVector
+    resultAggregator.getMatrix
   }
 
   /**
-   * Calculate the Hessian diagonal for an objective function locally.
+   * Calculate the Hessian matrix for an objective function locally.
    *
    * @param input An iterable set of points
    * @param coef The current model coefficients
    * @param singleLossFunction The function used to compute loss for predictions
-   * @return The Hessian vector
+   * @return The Hessian matrix
    */
-  def calcHessianDiagonal(
+  def calcHessianMatrix(
     input: Iterable[LabeledPoint],
     coef: Vector[Double],
-    singleLossFunction: PointwiseLossFunction): Vector[Double] = {
+    singleLossFunction: PointwiseLossFunction): DenseMatrix[Double] = {
 
-    val aggregator = new HessianDiagonalAggregator(singleLossFunction, coef.size)
+    val aggregator = new HessianMatrixAggregator(singleLossFunction, coef.size)
     val resultAggregator = input.aggregate(aggregator)(
       seqop = (ag, datum) => ag.add(datum, coef),
       combop = (ag1, ag2) => ag1.merge(ag2)
     )
 
-    resultAggregator.getVector
+    resultAggregator.getMatrix
   }
 }
-

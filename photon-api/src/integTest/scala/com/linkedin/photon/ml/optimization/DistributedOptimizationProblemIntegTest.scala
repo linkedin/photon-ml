@@ -16,7 +16,9 @@ package com.linkedin.photon.ml.optimization
 
 import java.util.Random
 
-import breeze.linalg.{DenseVector, Vector}
+import scala.math.abs
+
+import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag, pinv}
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.mockito.Mockito._
@@ -280,7 +282,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   def testComputeVariancesSimple(
       dataGenerationFunction: () => Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
+      resultDirectDerivationFunction: (Vector[Double]) => (DenseMatrix[Double], LabeledPoint) => DenseMatrix[Double]): Unit =
     sparkTest("testComputeVariancesSimple") {
       val input = sc.parallelize(dataGenerationFunction())
       val coefficients = generateDenseVector(DIMENSIONS)
@@ -304,12 +306,12 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
         NoRegularizationContext,
         isComputingVariances = true)
 
-      val hessianDiagonal = input.treeAggregate(new DenseVector[Double](DIMENSIONS).asInstanceOf[Vector[Double]])(
+      val hessianMatrix = input.treeAggregate(DenseMatrix.zeros[Double](DIMENSIONS, DIMENSIONS))(
         seqOp = resultDirectDerivationFunction(coefficients),
-        combOp = (vector1: Vector[Double], vector2: Vector[Double]) => vector1 + vector2,
+        combOp = (matrix1: DenseMatrix[Double], matrix2: DenseMatrix[Double]) => matrix1 + matrix2,
         depth = 1)
-      // Simple estimate of the diagonal of the covariance matrix (instead of a full inverse).
-      val expected = hessianDiagonal.map( v => 1D / (v + MathConst.EPSILON))
+
+      val expected = diag(pinv(hessianMatrix))
       val actual: Vector[Double] = optimizationProblem.computeVariances(input, coefficients).get
 
       assertEquals(actual.length, DIMENSIONS)
@@ -332,7 +334,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       regularizationWeight: Double,
       dataGenerationFunction: () => Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      resultDirectDerivationFunction: (Vector[Double]) => (Vector[Double], LabeledPoint) => Vector[Double]): Unit =
+      resultDirectDerivationFunction: (Vector[Double]) => (DenseMatrix[Double], LabeledPoint) => DenseMatrix[Double]): Unit =
     sparkTest("testComputeVariancesComplex") {
       val input = sc.parallelize(dataGenerationFunction())
       val coefficients = generateDenseVector(DIMENSIONS)
@@ -358,13 +360,13 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
         L2RegularizationContext,
         isComputingVariances = true)
 
-      val hessianDiagonal = input.treeAggregate(new DenseVector[Double](DIMENSIONS).asInstanceOf[Vector[Double]])(
+      val hessianMatrix = input.treeAggregate(DenseMatrix.zeros[Double](DIMENSIONS, DIMENSIONS))(
         seqOp = resultDirectDerivationFunction(coefficients),
-        combOp = (vector1: Vector[Double], vector2: Vector[Double]) => vector1 + vector2,
+        combOp = (matrix1: DenseMatrix[Double], matrix2: DenseMatrix[Double]) => matrix1 + matrix2,
         depth = 1)
-      val hessianDiagonalWithL2 = hessianDiagonal + regularizationWeight
-      // Simple estimate of the diagonal of the covariance matrix (instead of a full inverse).
-      val expected = hessianDiagonalWithL2.map( v => 1D / (v + MathConst.EPSILON))
+      val hessianMatrixWithL2 = hessianMatrix + regularizationWeight * DenseMatrix.eye[Double](DIMENSIONS)
+
+      val expected = diag(pinv(hessianMatrixWithL2))
       val actual: Vector[Double] = optimizationProblem.computeVariances(input, coefficients).get
 
       assertEquals(actual.length, DIMENSIONS)
@@ -373,6 +375,86 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
         assertEquals(actual(i), expected(i), CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       }
     }
+
+  /**
+   * Test the variance computation against a reference implementation in R glm
+   */
+  @Test
+  def testComputeVariancesAgainstReference(): Unit = sparkTest("testComputeVariancesAgainstReference") {
+    // Read the "heart disease" dataset from libSVM format
+    val input: RDD[LabeledPoint] = {
+      val tt = getClass.getClassLoader.getResource("DriverIntegTest/input/heart.txt")
+      val inputFile = tt.toString
+      val rawInput = sc.textFile(inputFile, 1)
+      rawInput.map(x => {
+        val y = x.split(" ")
+        val label = y(0).toDouble / 2 + 0.5
+        val features = y.drop(1).map(z => z.split(":")(1).toDouble) :+ 1.0
+        new LabeledPoint(label, DenseVector(features))
+      }).persist()
+    }
+
+    val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
+    val statesTracker = mock(classOf[OptimizationStatesTracker])
+    val regContext = mock(classOf[RegularizationContext])
+    val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
+
+    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(regContext).when(optConfig).regularizationContext
+    doReturn(RegularizationType.NONE).when(regContext).regularizationType
+
+    val objective = DistributedGLMLossFunction(optConfig, LogisticLossFunction, treeAggregateDepth = 1)
+
+    val optimizationProblem = new DistributedOptimizationProblem(
+      optimizer,
+      objective,
+      samplerOption = None,
+      glmConstructorMock,
+      NoRegularizationContext,
+      isComputingVariances = true)
+
+    // From a prior optimization run
+    val coefficients = DenseVector(
+      -0.022306127,
+      1.299914831,
+      0.792316427,
+      0.033470557,
+      0.004679123,
+      -0.459432925,
+      0.294831754,
+      -0.023566341,
+      0.890054910,
+      0.410533616,
+      0.216417307,
+      1.167698255,
+      0.367261286,
+      -8.303806435)
+
+    // Produced by the reference implementation in R glm
+    val expected = DenseVector(
+      0.0007320271,
+      0.3204454,
+      0.05394657,
+      0.0001520536,
+      1.787598e-05,
+      0.3898167,
+      0.04483891,
+      0.0001226556,
+      0.2006968,
+      0.05705076,
+      0.1752335,
+      0.08054471,
+      0.01292064,
+      10.37188)
+
+    val actual: Vector[Double] = optimizationProblem.computeVariances(input, coefficients).get
+
+    assertEquals(actual.length, expected.length)
+    for (i <- 0 until expected.length) {
+      val relDiff = abs(actual(i) / expected(i) - 1)
+      assertTrue(relDiff < 0.001)
+    }
+  }
 
   /**
    * Test a mock run-through of the optimization problem.
@@ -417,7 +499,7 @@ object DistributedOptimizationProblemIntegTest {
   private val DATA_RANDOM_SEED: Int = 7
   private val WEIGHT_RANDOM_SEED = 100
   private val WEIGHT_RANDOM_MAX = 10
-  private val DIMENSIONS: Int = 5
+  private val DIMENSIONS: Int = 25
   private val TRAINING_SAMPLES: Int = DIMENSIONS * DIMENSIONS
   private val NORMALIZATION = NoNormalization()
   private val NORMALIZATION_MOCK: BroadcastWrapper[NormalizationContext] = mock(classOf[BroadcastWrapper[NormalizationContext]])
@@ -428,32 +510,33 @@ object DistributedOptimizationProblemIntegTest {
    * Point-wise Hessian diagonal computation function for linear regression.
    *
    * @param coefficients Coefficient means vector
-   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param matrix Current Hessian matrix (prior to processing the next data point)
    * @param datum The next data point to process
    * @return The updated Hessian diagonal
    */
   def linearHessianSum
     (coefficients: Vector[Double])
-    (diagonal: DenseVector[Double], datum: LabeledPoint): Vector[Double] = {
+    (matrix: DenseMatrix[Double], datum: LabeledPoint): DenseMatrix[Double] = {
 
     // For linear regression, the second derivative of the loss function (with regard to z = X_i * B) is 1.
     val features: Vector[Double] = datum.features
     val weight: Double = datum.weight
+    val x = features.toDenseVector.toDenseMatrix
 
-    diagonal + (weight * features :* features)
+    matrix + (weight * (x.t * x))
   }
 
   /**
    * Point-wise Hessian diagonal computation function for logistic regression.
    *
    * @param coefficients Coefficient means vector
-   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param matrix Current Hessian matrix (prior to processing the next data point)
    * @param datum The next data point to process
    * @return The updated Hessian diagonal
    */
   def logisticHessianSum
     (coefficients: Vector[Double])
-    (diagonal: DenseVector[Double], datum: LabeledPoint): Vector[Double] = {
+    (matrix: DenseMatrix[Double], datum: LabeledPoint): DenseMatrix[Double] = {
 
     // For logistic regression, the second derivative of the loss function (with regard to z = X_i * B) is:
     //    sigmoid(z) * (1 - sigmoid(z))
@@ -464,29 +547,31 @@ object DistributedOptimizationProblemIntegTest {
     val z: Double = datum.computeMargin(coefficients)
     val sigm: Double = sigmoid(z)
     val d2lossdz2: Double = sigm * (1.0 - sigm)
+    val x = features.toDenseVector.toDenseMatrix
 
-    diagonal + (weight * d2lossdz2 * features :* features)
+    matrix + (weight * d2lossdz2 * (x.t * x))
   }
 
   /**
    * Point-wise Hessian diagonal computation function for Poisson regression.
    *
    * @param coefficients Coefficient means vector
-   * @param diagonal Current Hessian diagonal (prior to processing the next data point)
+   * @param matrix Current Hessian matrix (prior to processing the next data point)
    * @param datum The next data point to process
    * @return The updated Hessian diagonal
    */
   def poissonHessianSum
     (coefficients: Vector[Double])
-    (diagonal: DenseVector[Double], datum: LabeledPoint): Vector[Double] = {
+    (matrix: DenseMatrix[Double], datum: LabeledPoint): DenseMatrix[Double] = {
 
     // For Poisson regression, the second derivative of the loss function (with regard to z = X_i * B) is e^z.
     val features: Vector[Double] = datum.features
     val weight: Double = datum.weight
     val z: Double = datum.computeMargin(coefficients)
     val d2lossdz2 = math.exp(z)
+    val x = features.toDenseVector.toDenseMatrix
 
-    diagonal + (weight * d2lossdz2 * features :* features)
+    matrix + (weight * d2lossdz2 * (x.t * x))
   }
 
   // No way to pass Mixin class type to Mockito, need to define a concrete class

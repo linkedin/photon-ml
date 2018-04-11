@@ -16,8 +16,8 @@ package com.linkedin.photon.ml.hyperparameter.estimators
 
 import breeze.linalg.{DenseMatrix, DenseVector, cholesky, diag}
 
-import com.linkedin.photon.ml.hyperparameter.Linalg.{choleskySolve, vectorMean}
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels._
+import com.linkedin.photon.ml.util.Linalg.{choleskySolve, vectorMean}
 
 /**
  * Gaussian Process regression model that predicts mean and variance of response for new observations

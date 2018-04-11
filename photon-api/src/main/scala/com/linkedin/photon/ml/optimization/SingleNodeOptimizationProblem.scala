@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.Vector
+import breeze.linalg.{Vector, cholesky, diag}
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -24,6 +24,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.Linalg.choleskyInverse
 
 /**
  * An optimization problem solved by a single task on one executor. Used for solving the per-entity optimization
@@ -57,9 +58,10 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
   override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
     (isComputingVariances, objectiveFunction) match {
       case (true, twiceDiffFunc: TwiceDiffFunction) =>
-        Some(twiceDiffFunc
-          .hessianDiagonal(input, coefficients)
-          .map(v => 1.0 / (v + MathConst.EPSILON)))
+        val hessianMatrix = twiceDiffFunc.hessianMatrix(input, coefficients)
+        val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
+
+        Some(diag(invHessianMatrix))
 
       case _ =>
         None
@@ -92,8 +94,7 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
       logger.info(s"History tracker information:\n $tracker")
       val modelsPerIteration = tracker.getTrackedStates.map { x =>
         val coefficients = x.coefficients
-        val variances = computeVariances(input, coefficients)
-        createModel(normalizationContext, coefficients, variances)
+        createModel(normalizationContext, coefficients, variances = None)
       }
       logger.info(s"Number of iterations: ${modelsPerIteration.length}")
       modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
