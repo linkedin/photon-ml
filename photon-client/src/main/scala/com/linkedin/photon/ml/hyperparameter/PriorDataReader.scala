@@ -27,7 +27,8 @@ object PriorDataReader {
     * @param hyperParameterList The list of hyperparameters in the tuning setup
     * @return The list of (options, evaluationValue)
     */
-  def getPriorData(priorDataJson: String,
+  def getPriorData(
+      priorDataJson: String,
       priorDefault: Map[String, String],
       hyperParameterList: Seq[String]): Seq[(DenseVector[Double], Double)] = {
 
