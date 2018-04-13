@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.cli.game.training
 
 import scala.math.log
 
+import breeze.linalg.DenseVector
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -621,7 +623,8 @@ object GameTrainingDriver extends GameDriver {
       estimator: GameEstimator,
       trainingData: DataFrame,
       validationData: Option[DataFrame],
-      models: Seq[GameEstimator.GameResult]): Seq[GameEstimator.GameResult] =
+      models: Seq[GameEstimator.GameResult],
+      priorData: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[GameEstimator.GameResult] =
 
     validationData match {
       case Some(testData) if getOrDefault(hyperParameterTuning) != HyperparameterTuningMode.NONE =>
@@ -642,7 +645,7 @@ object GameTrainingDriver extends GameDriver {
             new RandomSearch[GameEstimator.GameResult](ranges, evaluationFunction)
         }
 
-        searcher.find(getOrDefault(hyperParameterTuningIter), models)
+        searcher.find(getOrDefault(hyperParameterTuningIter), models, priorData)
 
       case _ => Seq()
     }

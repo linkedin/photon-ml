@@ -74,7 +74,7 @@ class GaussianProcessSearchTest {
 
     assertEquals(candidates.length, n)
     assertTrue(candidates.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertEquals(candidates.toSet.size, n)
+    assertEquals(candidates.size, n)
   }
 
   @DataProvider
@@ -175,7 +175,7 @@ class GaussianProcessSearchTest {
     }
   }
 
-  @Test(dataProvider = "priorDataProvider")
+  @Test(dataProvider = "priorDataProvider", dependsOnMethods = Array[String]("testFind"))
   def testFindWithPrior(
       currentCandidates: Seq[(DenseVector[Double], Double)],
       priorCandidates: Option[Seq[(DenseVector[Double], Double)]] = None,
@@ -185,7 +185,7 @@ class GaussianProcessSearchTest {
 
     assertEquals(candidates1.length, n)
     assertTrue(candidates1.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertEquals(candidates1.toSet.size, n)
+    assertEquals(candidates1.size, n)
 
   }
 }

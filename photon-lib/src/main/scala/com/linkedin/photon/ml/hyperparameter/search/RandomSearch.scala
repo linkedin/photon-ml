@@ -98,9 +98,10 @@ class RandomSearch[T](
    *
    * @param n the number of points to find
    * @param observations observations made prior to searching
+   * @param priorData prior data from the past datasets. These are consider as mean centered
    * @return the found points
    */
-  def find(n: Int, observations: Seq[T]): Seq[T] = {
+  def find(n: Int, observations: Seq[T], priorData: Option[Seq[(DenseVector[Double], Double)]]): Seq[T] = {
     require(n > 0, "The number of results must be greater than zero.")
 
     // Vectorize the initial observations
@@ -110,16 +111,17 @@ class RandomSearch[T](
       (candidate, value)
     }
 
-    findWithPrior(n, convertedObservations)
+    findWithPrior(n, convertedObservations, priorData)
   }
 
   /**
    * Searches and returns n points in the space
    *
    * @param n the number of points to find
+   * @param priorData prior data from the past datasets. These are consider as mean centered
    * @return the found points
    */
-  def find(n: Int): Seq[T] = {
+  def find(n: Int, priorData: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[T] = {
     require(n > 0, "The number of results must be greater than zero.")
 
     val candidate = drawCandidates(1)(0,::).t
@@ -131,7 +133,7 @@ class RandomSearch[T](
 
     val (_, model) = evaluationFunction(candidate)
 
-    Seq(model) ++ (if (n == 1) Seq() else find(n - 1, Seq(model)))
+    Seq(model) ++ (if (n == 1) Seq() else find(n - 1, Seq(model), priorData))
   }
 
   /**
