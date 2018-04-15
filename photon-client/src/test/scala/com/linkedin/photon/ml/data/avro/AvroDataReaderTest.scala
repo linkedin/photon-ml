@@ -41,15 +41,16 @@ class AvroDataReaderTest {
       Array(avroSchema.getFields.get(4).schema, FloatType),
       Array(avroSchema.getFields.get(5).schema, LongType),
       Array(avroSchema.getFields.get(6).schema, MapType(StringType, StringType, valueContainsNull = false)),
-      Array(avroSchema.getFields.get(7).schema, IntegerType),
-      Array(avroSchema.getFields.get(8).schema, LongType),
-      Array(avroSchema.getFields.get(9).schema, DoubleType),
+      Array(avroSchema.getFields.get(7).schema, StringType),
+      Array(avroSchema.getFields.get(8).schema, IntegerType),
+      Array(avroSchema.getFields.get(9).schema, LongType),
       Array(avroSchema.getFields.get(10).schema, DoubleType),
-      Array(avroSchema.getFields.get(11).schema, IntegerType),
-      Array(avroSchema.getFields.get(12).schema, BooleanType),
-      Array(avroSchema.getFields.get(13).schema, DoubleType),
-      Array(avroSchema.getFields.get(14).schema, FloatType),
-      Array(avroSchema.getFields.get(15).schema, LongType))
+      Array(avroSchema.getFields.get(11).schema, DoubleType),
+      Array(avroSchema.getFields.get(12).schema, IntegerType),
+      Array(avroSchema.getFields.get(13).schema, BooleanType),
+      Array(avroSchema.getFields.get(14).schema, DoubleType),
+      Array(avroSchema.getFields.get(15).schema, FloatType),
+      Array(avroSchema.getFields.get(16).schema, LongType))
   }
 
   @Test(dataProvider = "fieldSchemaProvider")
@@ -68,20 +69,38 @@ class AvroDataReaderTest {
       AvroDataReader.avroTypeToSql(FloatField, avroSchema.getFields.get(4).schema),
       AvroDataReader.avroTypeToSql(LongField, avroSchema.getFields.get(5).schema),
       AvroDataReader.avroTypeToSql(MapField, avroSchema.getFields.get(6).schema),
-      AvroDataReader.avroTypeToSql(UnionField, avroSchema.getFields.get(7).schema),
-      AvroDataReader.avroTypeToSql(UnionFieldIntLong, avroSchema.getFields.get(8).schema),
-      AvroDataReader.avroTypeToSql(UnionFieldFloatDouble, avroSchema.getFields.get(9).schema),
-      AvroDataReader.avroTypeToSql(UnionFieldIntLongFloatDouble, avroSchema.getFields.get(10).schema),
-      AvroDataReader.avroTypeToSql(NullableIntField, avroSchema.getFields.get(11).schema),
-      AvroDataReader.avroTypeToSql(NullableBooleanField, avroSchema.getFields.get(12).schema),
-      AvroDataReader.avroTypeToSql(NullableDoubleField, avroSchema.getFields.get(13).schema),
-      AvroDataReader.avroTypeToSql(NullableFloatField, avroSchema.getFields.get(14).schema),
-      AvroDataReader.avroTypeToSql(NullableLongField, avroSchema.getFields.get(15).schema)).flatten
+      AvroDataReader.avroTypeToSql(UnionFieldIntString, avroSchema.getFields.get(7).schema),
+      AvroDataReader.avroTypeToSql(UnionFieldIntBoolean, avroSchema.getFields.get(8).schema),
+      AvroDataReader.avroTypeToSql(UnionFieldIntLong, avroSchema.getFields.get(9).schema),
+      AvroDataReader.avroTypeToSql(UnionFieldFloatDouble, avroSchema.getFields.get(10).schema),
+      AvroDataReader.avroTypeToSql(UnionFieldIntLongFloatDouble, avroSchema.getFields.get(11).schema),
+      AvroDataReader.avroTypeToSql(NullableIntField, avroSchema.getFields.get(12).schema),
+      AvroDataReader.avroTypeToSql(NullableBooleanField, avroSchema.getFields.get(13).schema),
+      AvroDataReader.avroTypeToSql(NullableDoubleField, avroSchema.getFields.get(14).schema),
+      AvroDataReader.avroTypeToSql(NullableFloatField, avroSchema.getFields.get(15).schema),
+      AvroDataReader.avroTypeToSql(NullableLongField, avroSchema.getFields.get(16).schema)).flatten
 
     val vals = AvroDataReader.readColumnValuesFromRecord(record, fields)
-    assertEquals(vals,
-      Seq(IntValue, StringValue, BooleanValue, DoubleValue, FloatValue, LongValue, MapValue, UnionIntValue,
-        UnionIntLongValue, UnionFloatDoubleValue, UnionIntLongFloatDoubleValue, null, null, null, null, null))
+    assertEquals(
+      vals,
+      Seq(
+        IntValue,
+        StringValue,
+        BooleanValue,
+        DoubleValue,
+        FloatValue,
+        LongValue,
+        MapValue,
+        UnionIntStringValue.toString,
+        UnionIntBooleanValue,
+        UnionIntLongValue,
+        UnionFloatDoubleValue,
+        UnionIntLongFloatDoubleValue,
+        null,
+        null,
+        null,
+        null,
+        null))
   }
 
   @Test
@@ -145,8 +164,10 @@ object AvroDataReaderTest {
   private val LongValue = 31L
   private val MapField = "mapField"
   private val MapValue = Map("a" -> 5)
-  private val UnionField = "unionField"
-  private val UnionIntValue = 55
+  private val UnionFieldIntString = "unionFieldIntString"
+  private val UnionIntStringValue = 55
+  private val UnionFieldIntBoolean = "UnionFieldIntBoolean"
+  private val UnionIntBooleanValue = 66
   private val UnionFieldIntLong = "unionFieldIntLong"
   private val UnionIntLongValue = 17
   private val UnionFieldFloatDouble = "unionFieldFloatDouble"
@@ -186,7 +207,8 @@ object AvroDataReaderTest {
     .name(FloatField).`type`().floatType().noDefault()
     .name(LongField).`type`().longType().noDefault()
     .name(MapField).`type`().map().values().stringType().noDefault()
-    .name(UnionField).`type`().unionOf().intType().and().nullType().endUnion().noDefault()
+    .name(UnionFieldIntString).`type`().unionOf().intType().and().stringType().endUnion().noDefault()
+    .name(UnionFieldIntBoolean).`type`().unionOf().intType().and().booleanType().endUnion().noDefault()
     .name(UnionFieldIntLong).`type`().unionOf().intType().and().longType().endUnion().noDefault()
     .name(UnionFieldFloatDouble).`type`().unionOf().floatType().and().doubleType().and().nullType().endUnion().noDefault()
     .name(UnionFieldIntLongFloatDouble).`type`().unionOf().intType().and().longType().and().floatType().and().doubleType().and().nullType().endUnion().noDefault()
@@ -206,7 +228,8 @@ object AvroDataReaderTest {
   record.put(FloatField, FloatValue)
   record.put(LongField, LongValue)
   record.put(MapField, MapValue.asJava)
-  record.put(UnionField, UnionIntValue)
+  record.put(UnionFieldIntString, UnionIntStringValue)
+  record.put(UnionFieldIntBoolean, UnionIntBooleanValue)
   record.put(UnionFieldIntLong, UnionIntLongValue)
   record.put(UnionFieldFloatDouble, UnionFloatDoubleValue)
   record.put(UnionFieldIntLongFloatDouble, UnionIntLongFloatDoubleValue)

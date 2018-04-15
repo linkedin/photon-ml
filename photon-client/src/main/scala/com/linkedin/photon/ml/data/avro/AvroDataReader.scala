@@ -353,10 +353,7 @@ object AvroDataReader {
    */
   protected[data] def inferSchemaFields(records: RDD[GenericRecord]): Option[Seq[StructField]] =
     records
-      .map(r => r.getSchema
-        .getFields
-        .asScala
-        .flatMap { f => avroTypeToSql(f.name, f.schema) })
+      .map(_.getSchema.getFields.asScala.flatMap(f => avroTypeToSql(f.name, f.schema)))
       .take(1)
       .headOption
 
@@ -367,7 +364,7 @@ object AvroDataReader {
    * @return true if all specified types are numeric
    */
   protected[data] def allNumericTypes(types: Seq[Schema.Type]): Boolean =
-    types.forall(numericPrecedence.toSet)
+    types.forall(numericPrecedence.contains)
 
   /**
    * Selects the "dominant" avro numeric type from the list. Dominance in this sense means the numeric type with highest
@@ -410,12 +407,20 @@ object AvroDataReader {
           }
 
         } else avroSchema.getTypes.asScala.map(_.getType) match {
-          // When there are cases of multiple non-null types, resolve to a single sql type
-          case Seq(_) =>
-            avroTypeToSql(name, avroSchema.getTypes.get(0))
 
           case numericTypes if allNumericTypes(numericTypes) =>
             Some(StructField(name, primitiveTypeMap(getDominantNumericType(numericTypes)), nullable = false))
+
+          // When there are cases of multiple non-null types, resolve to a single sql type
+          case types: Seq[Schema.Type] =>
+            // If String is in the union, choose String
+            if (types.contains(STRING)) {
+              Some(StructField(name, primitiveTypeMap(STRING), nullable = false))
+
+            // Otherwise, choose first type in list
+            } else {
+              avroTypeToSql(name, avroSchema.getTypes.get(0))
+            }
 
           case _ =>
             // Unsupported union type. Drop this for now.
