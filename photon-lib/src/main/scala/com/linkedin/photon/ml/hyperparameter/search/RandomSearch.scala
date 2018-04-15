@@ -126,7 +126,7 @@ class RandomSearch[T](
 
     val candidate = drawCandidates(1)(0,::).t
 
-    // Discretize values specified as discrete
+    // Make values discrete as specified
     discreteParams.foreach { index =>
       candidate(index) = round(candidate(index))
     }
