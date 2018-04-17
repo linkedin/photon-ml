@@ -263,7 +263,7 @@ object GameTrainingDriver extends GameDriver {
     }
 
     // Each feature shard used by a coordinate must have a configuration
-    coordinateConfigs.foreach { case(coordinate, config) =>
+    coordinateConfigs.foreach { case (coordinate, config) =>
 
       val featureShardId = config.dataConfiguration.featureShardId
 
@@ -287,7 +287,7 @@ object GameTrainingDriver extends GameDriver {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(
           paramMap.get(hyperParameterTuningIter).isDefined,
-          "Hyperparameter tuning enabled, but number of iterations unspecified.")
+          "Hyper-parameter tuning enabled, but number of iterations unspecified.")
       case _ =>
     }
   }
@@ -335,39 +335,36 @@ object GameTrainingDriver extends GameDriver {
       cleanOutputDirs()
     }
 
+    val avroDataReader = new AvroDataReader()
     val featureIndexMapLoadersOpt = Timed("Prepare features") {
       prepareFeatureMaps()
     }
     val (trainingData, featureIndexMapLoaders) = Timed(s"Read training data") {
-      readTrainingData(featureIndexMapLoadersOpt)
+      readTrainingData(avroDataReader, featureIndexMapLoadersOpt)
     }
     val validationData = Timed(s"Read validation data") {
-      readValidationData(featureIndexMapLoaders)
+      readValidationData(avroDataReader, featureIndexMapLoaders)
     }
+
+    trainingData.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+    validationData.map(_.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+
     val (partialRetrainingModelOpt, partialRetrainingDataConfigsOpt) = Timed("Load model for partial retraining") {
+
       (get(partialRetrainModelDirectory), get(partialRetrainLockedCoordinates)) match {
+
         case (Some(preTrainedModelDir), Some(lockedCoordinates)) =>
-          val (gameModel, modelIndexMapLoaders) = ModelProcessingUtils
-            .loadGameModelFromHDFS(
-              sc,
-              preTrainedModelDir,
-              StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-              Some(featureIndexMapLoaders))
+          val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
+            sc,
+            preTrainedModelDir,
+            StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+            featureIndexMapLoaders,
+            Some(lockedCoordinates))
 
           // All of the locked coordinates must be present in the pre-trained model
           require(
             lockedCoordinates.forall(gameModel.toMap.contains),
             "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
-
-          // The feature shards for the locked coordinates must be defined
-          modelIndexMapLoaders
-            .keys
-            .filter(lockedCoordinates.contains)
-            .foreach { featureShard =>
-              require(
-                featureIndexMapLoaders.contains(featureShard),
-                s"Missing feature shard definition for shard '$featureShard' used by the pre-trained model.")
-            }
 
           val dataConfigs = gameModel
             .toMap
@@ -459,6 +456,9 @@ object GameTrainingDriver extends GameDriver {
       runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
     }
 
+    trainingData.unpersist()
+    validationData.map(_.unpersist())
+
     val (outputModels, bestModel) = selectModels(explicitModels, tunedModels)
 
     Timed("Save models") {
@@ -481,10 +481,13 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Reads the training dataset, handling specifics of input date ranges in the params.
    *
+   * @param avroDataReader The [[AvroDataReader]] to use for reading training data
    * @param featureIndexMapLoadersOpt Optional feature index map loaders
    * @return A ([[DataFrame]] of input data, feature index map loaders) pair
    */
-  private def readTrainingData(featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
+  private def readTrainingData(
+      avroDataReader: AvroDataReader,
+      featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
     : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
 
     val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
@@ -494,9 +497,7 @@ object GameTrainingDriver extends GameDriver {
 
     val numPartitions = getRequiredParam(coordinateConfigurations).values.map(_.dataConfiguration.minNumPartitions).max
 
-    // The 'map(identity)' call is required due to a long-standing Scala bug SI-7005: the result of a 'mapValues' call
-    // is not serializable.
-    new AvroDataReader().readMerged(
+    avroDataReader.readMerged(
       trainingRecordsPath.map(_.toString),
       featureIndexMapLoadersOpt,
       getRequiredParam(featureShardConfigurations),
@@ -506,10 +507,13 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Reads the validation data set, handling specifics of input date ranges in the params.
    *
+   * @param avroDataReader The [[AvroDataReader]] to use for reading validation data
    * @param featureIndexMapLoaders The feature index map loaders
    * @return The loaded data frame
    */
-  private def readValidationData(featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Option[DataFrame] =
+  private def readValidationData(
+      avroDataReader: AvroDataReader,
+      featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Option[DataFrame] =
     get(validationDataDirectories).map { validationDirs =>
 
       val dateRange = IOUtils.resolveRange(get(validationDataDateRange), get(validationDataDaysRange))
@@ -519,7 +523,7 @@ object GameTrainingDriver extends GameDriver {
 
       // The 'map(identity)' call is required due to a long-standing Scala bug SI-7005: the result of a 'mapValues' call
       // is not serializable.
-      new AvroDataReader().readMerged(
+      avroDataReader.readMerged(
         validationRecordsPath.map(_.toString),
         featureIndexMapLoaders,
         getRequiredParam(featureShardConfigurations),

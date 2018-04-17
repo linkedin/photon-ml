@@ -591,16 +591,16 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     validatingLabelsAndOffsetsAndWeights.count()
 
-    val (gameModel1, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+    val gameModel1 = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath1,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
-      Some(indexMapLoaders))
-    val (gameModel2, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+      indexMapLoaders)
+    val gameModel2 = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath2,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
-      Some(indexMapLoaders))
+      indexMapLoaders)
 
     val scores1 = gameModel1.score(gameDataSet).scores.mapValues(_.score)
     val scores2 = gameModel2.score(gameDataSet).scores.mapValues(_.score)
@@ -643,11 +643,11 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     validatingLabelsAndOffsetsAndWeights.count()
 
-    val (gameModel, _) = ModelProcessingUtils.loadGameModelFromHDFS(
+    val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath,
       StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
-      Some(indexMapLoaders))
+      indexMapLoaders)
 
     val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)
 

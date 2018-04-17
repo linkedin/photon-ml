@@ -162,12 +162,12 @@ object GameScoringDriver extends GameDriver {
         get(evaluators).map(_ => TaskType.LINEAR_REGRESSION))
     }
 
-    val (gameModel, _) = Timed("Load model") {
+    val gameModel = Timed("Load model") {
       ModelProcessingUtils.loadGameModelFromHDFS(
         sc,
         getRequiredParam(modelInputDirectory),
         StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-        Some(featureShardIdToIndexMapLoaderMap))
+        featureShardIdToIndexMapLoaderMap)
     }
 
     val gameTransformer = Timed("Setup transformer") {
