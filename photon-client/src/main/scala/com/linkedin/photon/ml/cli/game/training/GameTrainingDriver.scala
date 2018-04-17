@@ -627,8 +627,7 @@ object GameTrainingDriver extends GameDriver {
       estimator: GameEstimator,
       trainingData: DataFrame,
       validationData: Option[DataFrame],
-      models: Seq[GameEstimator.GameResult],
-      priorData: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[GameEstimator.GameResult] =
+      models: Seq[GameEstimator.GameResult]): Seq[GameEstimator.GameResult] =
 
     validationData match {
       case Some(testData) if getOrDefault(hyperParameterTuning) != HyperparameterTuningMode.NONE =>
@@ -648,8 +647,9 @@ object GameTrainingDriver extends GameDriver {
           case HyperparameterTuningMode.RANDOM =>
             new RandomSearch[GameEstimator.GameResult](ranges, evaluationFunction)
         }
+        val observations = searcher.convertObservations(models)
 
-        searcher.find(getOrDefault(hyperParameterTuningIter), models, priorData)
+        searcher.findWithObservations(getOrDefault(hyperParameterTuningIter), observations)
 
       case _ => Seq()
     }

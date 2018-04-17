@@ -15,32 +15,32 @@
 package com.linkedin.photon.ml.hyperparameter
 
 import breeze.linalg.DenseVector
-import org.testng.annotations.Test
 import org.testng.Assert.assertEquals
+import org.testng.annotations.Test
+
 /**
-  * Test[[PriorDataReader]].
-  */
+ * Unit tests for [[PriorDataReader]].
+ */
 class PriorDataReaderTest {
 
+  /**
+   * Test that prior observation data can be loaded from JSON.
+   */
   @Test
-  def testGetPriorData(): Unit = {
+  def testFromJson(): Unit = {
 
     val priorDataJson = "{\"records\":[" +
       "{\"alpha\": \"1.0\",\"lambda\": \"2.0\",\"gamma\": \"3.0\",\"evaluationValue\": \"2.0\"}," +
       "{\"alpha\": \"0.5\",\"evaluationValue\": \"-2.0\"}]}"
-    val priorDefault: Map[String, String] = Map(
-      "alpha" -> "1.0",
-      "lambda" -> "1.0",
-      "gamma" -> "1.0")
-    val hyperparameterList = Seq("alpha", "lambda", "gamma")
+    val priorDefault: Map[String, String] = Map("alpha" -> "1.0", "lambda" -> "4.0", "gamma" -> "8.0")
+    val hyperParameterList = Seq("alpha", "lambda", "gamma")
 
-    val priorData = PriorDataReader.getPriorData(priorDataJson, priorDefault, hyperparameterList)
+    val priorData = PriorDataReader.fromJson(priorDataJson, priorDefault, hyperParameterList)
     val trueData = Seq(
       (DenseVector(Array(1.0, 2.0 ,3.0)), 2.0),
-      (DenseVector(Array(0.5, 1.0, 1.0)), -2.0)
+      (DenseVector(Array(0.5, 4.0, 8.0)), -2.0)
     )
 
     assertEquals(priorData, trueData)
   }
-
 }

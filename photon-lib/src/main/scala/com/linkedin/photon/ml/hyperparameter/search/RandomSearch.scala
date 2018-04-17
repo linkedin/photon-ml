@@ -15,18 +15,20 @@
 package com.linkedin.photon.ml.hyperparameter.search
 
 import scala.math.round
+
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
+
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
- * Performs a random search of the space whose bounds are specified by the given ranges
+ * Performs a random search of the bounded space.
  *
- * @param ranges the ranges that define the boundaries of the search space
- * @param evaluationFunction the function that evaluates points in the space to real values
- * @param discreteParams specifies the indices of parameters that should be treated as discrete values
- * @param seed the random seed value
+ * @param ranges The ranges that define the boundaries of the search space
+ * @param evaluationFunction The function that evaluates points in the space to real values
+ * @param discreteParams Specifies the indices of parameters that should be treated as discrete values
+ * @param seed A random seed
  */
 class RandomSearch[T](
     ranges: Seq[DoubleRange],
@@ -34,11 +36,11 @@ class RandomSearch[T](
     discreteParams: Seq[Int] = Seq(),
     seed: Long = System.currentTimeMillis) {
 
-  // The length of the ranges sequence corresponds to the dimensionality of the hyperparameter tuning problem
+  // The length of the ranges sequence corresponds to the dimensionality of the hyper-parameter tuning problem
   protected val numParams: Int = ranges.length
 
   /**
-   * Sobol generator for uniformly choosing rougly equidistant points
+   * Sobol generator for uniformly choosing roughly equidistant points.
    */
   private val paramDistributions = {
     val sobol = new SobolSequenceGenerator(numParams)
@@ -48,18 +50,18 @@ class RandomSearch[T](
   }
 
   /**
-   * Searches and returns n points in the space with the given prior observations
+   * Searches and returns n points in the space, given prior observations from this data set and past data sets.
    *
-   * @param n the number of points to find
-   * @param observations observations made prior to searching, as (paramVector, evaluationValue) tuples in the current
-   *                     dataset
-   * @param priorObservations observations from the past datasets. These are consider as mean centered.
-   * @return the found points
+   * @param n The number of points to find
+   * @param observations Observations made prior to searching, from this data set (not mean-centered)
+   * @param priorObservations Observations made prior to searching, from past data sets (mean-centered)
+   * @return The found points
    */
-  def findWithPrior(
+  def findWithPriors(
       n: Int,
       observations: Seq[(DenseVector[Double], Double)],
-      priorObservations: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[T] = {
+      priorObservations: Seq[(DenseVector[Double], Double)]): Seq[T] = {
+
     require(n > 0, "The number of results must be greater than zero.")
 
     // Load the initial observations
@@ -67,12 +69,9 @@ class RandomSearch[T](
       onObservation(candidate, value)
     }
 
-    // Load the prior data observations. If it is missing we do not do anything.
-    priorObservations match {
-      case Some(priorObs) => priorObs.foreach { case (candidate, value) =>
-        onPriorObservation(candidate, value)
-      }
-      case _ =>
+    // Load the prior data observations
+    priorObservations.foreach { case (candidate, value) =>
+      onPriorObservation(candidate, value)
     }
 
     val (results, _) = (0 until n).foldLeft((List.empty[T], observations.last)) {
@@ -94,34 +93,24 @@ class RandomSearch[T](
   }
 
   /**
-   * Searches and returns n points in the space
+   * Searches and returns n points in the space, given prior observations from this data set.
    *
-   * @param n the number of points to find
-   * @param observations observations made prior to searching
-   * @param priorData prior data from the past datasets. These are consider as mean centered
-   * @return the found points
+   * @param n The number of points to find
+   * @param observations Observations made prior to searching, from this data set (not mean-centered)
+   * @return The found points
    */
-  def find(n: Int, observations: Seq[T], priorData: Option[Seq[(DenseVector[Double], Double)]]): Seq[T] = {
-    require(n > 0, "The number of results must be greater than zero.")
-
-    // Vectorize the initial observations
-    val convertedObservations = observations.map { observation =>
-      val candidate = evaluationFunction.vectorizeParams(observation)
-      val value = evaluationFunction.getEvaluationValue(observation)
-      (candidate, value)
-    }
-
-    findWithPrior(n, convertedObservations, priorData)
-  }
+  def findWithObservations(n: Int, observations: Seq[(DenseVector[Double], Double)]): Seq[T] =
+    findWithPriors(n, observations, Seq())
 
   /**
-   * Searches and returns n points in the space
+   * Searches and returns n points in the space, given prior observations from past data sets.
    *
-   * @param n the number of points to find
-   * @param priorData prior data from the past datasets. These are consider as mean centered
-   * @return the found points
+   * @param n The number of points to find
+   * @param priorObservations Observations made prior to searching, from past data sets (mean-centered)
+   * @return The found points
    */
-  def find(n: Int, priorData: Option[Seq[(DenseVector[Double], Double)]] = None): Seq[T] = {
+  def findWithPriorObservations(n: Int, priorObservations: Seq[(DenseVector[Double], Double)]): Seq[T] = {
+
     require(n > 0, "The number of results must be greater than zero.")
 
     val candidate = drawCandidates(1)(0,::).t
@@ -133,8 +122,30 @@ class RandomSearch[T](
 
     val (_, model) = evaluationFunction(candidate)
 
-    Seq(model) ++ (if (n == 1) Seq() else find(n - 1, Seq(model), priorData))
+    Seq(model) ++ (if (n == 1) Seq() else findWithPriors(n - 1, convertObservations(Seq(model)), priorObservations))
   }
+
+  /**
+   * Searches and returns n points in the space.
+   *
+   * @param n The number of points to find
+   * @return The found points
+   */
+  def find(n: Int): Seq[T] = findWithPriorObservations(n, Seq())
+
+  /**
+   * Vectorize a [[Seq]] of prior observations.
+   *
+   * @param observations Prior observations in estimator output form
+   * @return Prior observations as tuples of (vector representation of the original estimator output, evaluated value)
+   */
+  def convertObservations(observations: Seq[T]): Seq[(DenseVector[Double], Double)] =
+    observations.map { observation =>
+      val candidate = evaluationFunction.vectorizeParams(observation)
+      val value = evaluationFunction.getEvaluationValue(observation)
+
+      (candidate, value)
+    }
 
   /**
    * Produces the next candidate, given the last. In this case, the next candidate is chosen uniformly from the space.

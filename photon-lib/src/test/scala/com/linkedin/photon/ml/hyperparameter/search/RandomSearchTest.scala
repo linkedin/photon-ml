@@ -24,21 +24,68 @@ import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
- * Test cases for the RandomSearch class
+ * Unit tests for [[RandomSearch]].
  */
 class RandomSearchTest {
 
-  val seed = 1L
-  val dim = 10
-  val n = 25
-  val lower = 1e-5
-  val upper = 1e5
-  val ranges: Seq[DoubleRange] = Seq.fill(dim)(DoubleRange(lower, upper))
-  val discreteParams = Seq(0)
+  import RandomSearchTest._
+
+  /**
+   * Test that [[RandomSearch]] can generate multiple points in the search space.
+   */
+  @Test
+  def testFind(): Unit = {
+
+    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
+    val candidates = searcher.find(N)
+
+    assertEquals(candidates.length, N)
+    assertEquals(candidates.toSet.size, N)
+    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= LOWER && x <= UPPER)))
+    assertTrue(candidates.forall(c => c.params(0) == floor(c.params(0))))
+  }
+
+  /**
+   * Test that prior observations don't affect [[RandomSearch]].
+   */
+  @Test(dependsOnMethods = Array[String]("testFind"))
+  def testFindWithPriors(): Unit = {
+
+    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
+    val priorSearcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
+    val observation1 = (DenseVector(1.0, 1.0, 1.0), 0.1)
+    val observation2 = (DenseVector(2.0, 2.0, 2.0), 0.2)
+    val observation3 = (DenseVector(3.0, 3.0, 3.0), 0.3)
+    val observations = Seq(observation1, observation3)
+    val priorObservations = Seq(observation2)
+
+    val candidates = searcher.find(N)
+    val priorsCandidates = priorSearcher.findWithPriors(N, observations, priorObservations)
+
+    assertEquals(priorsCandidates.length, N)
+    assertEquals(priorsCandidates.toSet.size, N)
+
+    candidates.zip(priorsCandidates).foreach { case (candidate, priorCandidate) =>
+      assertTrue(candidate.params == priorCandidate.params)
+      assertEquals(candidate.evaluation, priorCandidate.evaluation, TOLERANCE)
+    }
+  }
+}
+
+object RandomSearchTest {
+
+  val SEED = 1L
+  val DIM = 10
+  val N = 25
+  val LOWER = 1e-5
+  val UPPER = 1e5
+  val RANGES: Seq[DoubleRange] = Seq.fill(DIM)(DoubleRange(LOWER, UPPER))
+  val DISCRETE_PARAMS = Seq(0)
+  val TOLERANCE = 1E-12
 
   case class TestModel(params: DenseVector[Double], evaluation: Double)
 
-  val evaluationFunction = new EvaluationFunction[TestModel] {
+  val EVALUATION_FUNCTION = new EvaluationFunction[TestModel] {
 
     def apply(hyperParameters: DenseVector[Double]): (Double, TestModel) = {
       (0.0, TestModel(hyperParameters, 0.0))
@@ -46,18 +93,5 @@ class RandomSearchTest {
 
     def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
     def getEvaluationValue(result: TestModel): Double = result.evaluation
-  }
-
-  val searcher = new RandomSearch[TestModel](ranges, evaluationFunction, discreteParams, seed)
-
-  @Test
-  def testFind(): Unit = {
-
-    val candidates = searcher.find(n)
-
-    assertEquals(candidates.length, n)
-    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertTrue(candidates.forall(c => c.params(0) == floor(c.params(0))))
-    assertEquals(candidates.toSet.size, n)
   }
 }

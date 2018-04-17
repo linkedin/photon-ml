@@ -93,7 +93,7 @@ class GaussianProcessSearch[T](
         val kernel = new Matern52
 
         // Finding the overall bestEval
-        val currentMean =  mean(evals)
+        val currentMean = mean(evals)
         val overallBestEval = if (evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
           priorBestEval
         } else {
@@ -127,7 +127,7 @@ class GaussianProcessSearch[T](
         selectBestCandidate(candidates, predictions)
 
       // If we've received fewer observations than the number of parameters, fall back to a uniform search, to ensure
-      // that the problem is not underdetermined.
+      // that the problem is not under-determined.
       case _ => super.next(lastCandidate, lastObservation)
     }
   }

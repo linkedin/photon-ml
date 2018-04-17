@@ -15,19 +15,23 @@
 package com.linkedin.photon.ml.hyperparameter
 
 import scala.util.parsing.json.JSON
+
 import breeze.linalg.DenseVector
 
+/**
+ * Helper class to load prior observation data.
+ */
 object PriorDataReader {
 
   /**
-    * Creates a Sequence of (evaluationValue, optionsMap) from the priorRuns
-    *
-    * @param priorDataJson The json string containing prior data
-    * @param priorDefault The map containing the default values for hyperparameters
-    * @param hyperParameterList The list of hyperparameters in the tuning setup
-    * @return The list of (options, evaluationValue)
-    */
-  def getPriorData(
+   * Parse a [[Seq]] of prior observations for hyper-parameter tuning from JSON format.
+   *
+   * @param priorDataJson The JSON containing prior observations
+   * @param priorDefault Default values for missing hyper-parameters
+   * @param hyperParameterList The list of hyper-parameters to tune
+   * @return A [[Seq]] of (vectorized hyper-parameter settings, evaluationValue) tuples
+   */
+  def fromJson(
       priorDataJson: String,
       priorDefault: Map[String, String],
       hyperParameterList: Seq[String]): Seq[(DenseVector[Double], Double)] = {
@@ -40,8 +44,9 @@ object PriorDataReader {
 
             optionsList.map { paramMap =>
               val evaluationValue = paramMap("evaluationValue").toDouble
-              val sortedValues = hyperParameterList.map(paramName =>
-                paramMap.getOrElse(paramName, priorDefault(paramName)).toDouble)
+              val sortedValues = hyperParameterList.map { paramName =>
+                paramMap.getOrElse(paramName, priorDefault(paramName)).toDouble
+              }
 
               (sortedValues, evaluationValue)
             }
