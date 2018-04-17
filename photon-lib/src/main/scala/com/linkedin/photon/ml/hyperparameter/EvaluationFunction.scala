@@ -17,34 +17,34 @@ package com.linkedin.photon.ml.hyperparameter
 import breeze.linalg.DenseVector
 
 /**
- * Base trait for all Evaluation functions
+ * Base trait for all Evaluation functions.
  *
- * An evaluation function is the integration point between the hyperparameter tuning module and an estimator, or any
+ * An evaluation function is the integration point between the hyper-parameter tuning module and an estimator, or any
  * system that can unpack a vector of values and produce a real evaluation.
  */
 trait EvaluationFunction[T] {
 
   /**
-   * Performs the evaluation
+   * Performs the evaluation.
    *
-   * @param hyperParameters the vector of hyperparameter values under which to evaluate the function
-   * @return a tuple of the evaluated value and the original output from the inner estimator
+   * @param hyperParameters The vector of hyper-parameter values under which to evaluate the function
+   * @return A tuple of (evaluated value, original output from the inner estimator)
    */
   def apply(hyperParameters: DenseVector[Double]): (Double, T)
 
   /**
-   * Extracts a vector representation from the hyperparameters associated with the original estimator output
+   * Extracts a vector representation from the hyper-parameters associated with the original estimator output.
    *
-   * @param result the original estimator output
-   * @return vector representation
+   * @param result The original estimator output
+   * @return Vector representation of the original estimator output
    */
   def vectorizeParams(result: T): DenseVector[Double]
 
   /**
-   * Extracts the evaluated value from the original estimator output
+   * Extracts the evaluated value from the original estimator output.
    *
-   * @param result the original estimator output
-   * @return the evaluated value
+   * @param result The original estimator output
+   * @return The evaluated value for the original estimator output
    */
   def getEvaluationValue(result: T): Double
 }
