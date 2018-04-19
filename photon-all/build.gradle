@@ -52,6 +52,12 @@ sourcesJar {
 }
 */
 
+configurations {
+  all {
+    exclude group: 'org.xerial.snappy'
+  }
+}
+
 shadowJar {
   // Remove the classifier as we want the shadow jar to be the main jar
   classifier = ''
@@ -89,11 +95,6 @@ shadowJar {
   relocate 'org.tukaani', 'photonml.shaded.org.tukaani'
   relocate 'scopt', 'photonml.shaded.scopt'
   relocate 'org.joda.time', 'photonml.shaded.org.joda.time'
-
-  // Deliberately not relocating Snappy. The reason: Snappy includes native libraries that speed up the
-  // compression / decompression process. After relocation, it can't find the native libraries anymore.
-  //relocate 'org.xerial.snappy', 'org.xerial.snappy'
-
 }
 
 artifacts {
