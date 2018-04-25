@@ -108,7 +108,7 @@ class GaussianProcessSearchTest {
     assertEquals(candidates1.size, n)
   }
 
-  @Test(dataProvider = "priorDataProvider", dependsOnMethods = Array[String]("testFindWithPriors"))
+  @Test(dataProvider = "priorDataProvider", dependsOnMethods = Array[String]("testFindWithObservations"))
   def testFindWithPastObservations(
     currentCandidates: Seq[(DenseVector[Double], Double)],
     priorCandidates: Seq[(DenseVector[Double], Double)],
@@ -121,7 +121,7 @@ class GaussianProcessSearchTest {
     assertEquals(candidates1.size, n)
   }
 
-  @Test(dependsOnMethods = Array[String]("testFindWithObservations", "testFindWithPastObservations"))
+  @Test(dependsOnMethods = Array[String]("testFindWithPastObservations"))
   def testFind(): Unit = {
     val candidates = searcher.find(n)
 

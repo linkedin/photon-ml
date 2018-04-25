@@ -26,7 +26,9 @@ import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 class StationaryKernelTest {
 
   private val tol = 1e-7
-  private val kernel = new RBF(noise = 0.0)
+  private val kernel = new RBF(
+    noise = 0.0,
+    indexedTransformMap = Map(1 -> ((x:Double) => Math.pow(10, x)), 3 -> ((x:Double) => Math.pow(x, 2))))
 
   /**
    * Test data and results generated from reference implementation in scikit-learn
@@ -75,4 +77,19 @@ class StationaryKernelTest {
     assertEquals(likelihood, expectedLikelihood, tol)
   }
 
+  /**
+    * Test for that the unwrap function can transform elements correctly given indexedTransformMap in the kernel
+    */
+  @Test
+  def testUnwrap(): Unit = {
+
+    val x = DenseMatrix((1.0, 3.0, 2.0, 4.0),
+      (0.0, 2.0, 3.6, -1.0),
+      (10.0, -3.0, 0.0, -3.0))
+    val u = DenseMatrix((1.0, 1000.0, 2.0, 16.0),
+      (0.0, 100.0, 3.6, 1.0),
+      (10.0, 0.001, 0.0, 9.0))
+
+    assertEquals(kernel.transform(x), u)
+  }
 }
