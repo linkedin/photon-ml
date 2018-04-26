@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.io.scopt.game
 import scala.language.existentials
 
 import org.apache.hadoop.fs.Path
+import org.joda.time.DateTimeZone
 
 import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
@@ -135,5 +136,11 @@ trait ScoptGameParametersParser extends ScoptParser {
       // Application Name
       ScoptParameter[String, String](
         driver.applicationName,
-        usageText = "<name>"))
+        usageText = "<name>"),
+
+      // Time zone
+      ScoptParameter[DateTimeZone, DateTimeZone](
+        driver.timeZone,
+        usageText = "<time zone>",
+        additionalDocs = Seq("For a list of valid timezone ids, see: http://joda-time.sourceforge.net/timezones.html")))
 }

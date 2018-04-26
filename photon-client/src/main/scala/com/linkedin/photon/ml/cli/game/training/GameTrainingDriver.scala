@@ -310,6 +310,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
     setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
+    setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
   }
 
   /**
@@ -490,7 +491,7 @@ object GameTrainingDriver extends GameDriver {
       featureIndexMapLoadersOpt: Option[Map[FeatureShardId, IndexMapLoader]])
     : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
 
-    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
+    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange), getOrDefault(timeZone))
     val trainingRecordsPath = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
 
     logger.debug(s"Training records paths:\n${trainingRecordsPath.mkString("\n")}")
@@ -516,7 +517,8 @@ object GameTrainingDriver extends GameDriver {
       featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Option[DataFrame] =
     get(validationDataDirectories).map { validationDirs =>
 
-      val dateRange = IOUtils.resolveRange(get(validationDataDateRange), get(validationDataDaysRange))
+      val dateRange = IOUtils.resolveRange(
+        get(validationDataDateRange), get(validationDataDaysRange), getOrDefault(timeZone))
       val validationRecordsPath = pathsForDateRange(validationDirs, dateRange)
 
       logger.debug(s"Validation records paths:\n${validationRecordsPath.mkString("\n")}")

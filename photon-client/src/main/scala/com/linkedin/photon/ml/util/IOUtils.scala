@@ -22,7 +22,7 @@ import scala.util.Try
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileContext, Options, Path}
 import org.apache.spark.SparkContext
-import org.joda.time.Days
+import org.joda.time.{DateTimeZone, Days}
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.estimators.GameEstimator
@@ -40,17 +40,22 @@ protected[ml] object IOUtils {
    *
    * @param dateRangeOpt Optional date range specified using a [[DateRange]]
    * @param daysRangeOpt Optional date range specified using a [[DaysRange]]
+   * @param timeZone The local timezone to use for date math
    * @return A single [[DateRange]] to use, if either of the date range options are specified
    * @throws IllegalArgumentException If both date ranges are specified
    */
-  def resolveRange(dateRangeOpt: Option[DateRange], daysRangeOpt: Option[DaysRange]): Option[DateRange] =
+  def resolveRange(
+      dateRangeOpt: Option[DateRange],
+      daysRangeOpt: Option[DaysRange],
+      timeZone: DateTimeZone = Constants.DEFAULT_TIME_ZONE): Option[DateRange] =
+
     (dateRangeOpt, daysRangeOpt) match {
 
       // Specified as date range
       case (Some(dateRange), None) => Some(dateRange)
 
       // Specified as a range of start days ago - end days ago
-      case (None, Some(daysRange)) => Some(daysRange.toDateRange)
+      case (None, Some(daysRange)) => Some(daysRange.toDateRange(timeZone))
 
       // Both types specified: illegal
       case (Some(_), Some(_)) =>

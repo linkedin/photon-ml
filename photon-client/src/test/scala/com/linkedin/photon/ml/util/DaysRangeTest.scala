@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.util
 
-import org.joda.time.{DateTime, DateTimeUtils}
+import org.joda.time.{DateTime, DateTimeUtils, DateTimeZone, LocalDate}
 import org.testng.Assert._
 import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
 
@@ -23,11 +23,12 @@ import org.testng.annotations.{AfterClass, BeforeClass, DataProvider, Test}
  */
 class DaysRangeTest {
 
-  private val today = "2016-04-01"
+  // 4/2 in UTC, 4/1 in America/Los_Angeles
+  private val today = new DateTime(2016, 4, 2, 1, 0, DateTimeZone.UTC)
 
   @BeforeClass
   def setup() {
-    DateTimeUtils.setCurrentMillisFixed(DateTime.parse(today).getMillis)
+    DateTimeUtils.setCurrentMillisFixed(today.getMillis)
   }
 
   @AfterClass
@@ -56,8 +57,25 @@ class DaysRangeTest {
   @Test
   def testToDateRange(): Unit = {
 
+    val expected = DateRange.fromDateString("20160103-20160401")
+
+    // Today is 4/2 in UTC. One day ago should be 4/1 in UTC
+    val actual = DaysRange.fromDaysString("90-1").toDateRange()
+
+    assertEquals(actual.startDate, expected.startDate)
+    assertEquals(actual.endDate, expected.endDate)
+  }
+
+  /**
+   * Test that a [[DaysRange]] can be converted to a correct [[DateRange]] using today as the base date in PST.
+   */
+  @Test
+  def testToDateRangePst(): Unit = {
+
     val expected = DateRange.fromDateString("20160102-20160331")
-    val actual = DaysRange.fromDaysString("90-1").toDateRange
+
+    // Today is 4/2 in UTC and 4/1 in America/Los_Angeles. One day ago should be 3/31 in America/Los_Angeles
+    val actual = DaysRange.fromDaysString("90-1").toDateRange(DateTimeZone.forID("America/Los_Angeles"))
 
     assertEquals(actual.startDate, expected.startDate)
     assertEquals(actual.endDate, expected.endDate)

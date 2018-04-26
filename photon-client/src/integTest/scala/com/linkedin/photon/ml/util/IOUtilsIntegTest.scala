@@ -55,9 +55,9 @@ class IOUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
       Array(DateRange.fromDateString("20160101-20160201"), Seq(path1, path2)),
       Array(DateRange.fromDateString("20160101-20160102"), Seq(path1)),
       Array(DateRange.fromDateString("20160101-20160101"), Seq(path1)),
-      Array(DaysRange.fromDaysString("95-1").toDateRange, Seq(path1, path2, path3)),
-      Array(DaysRange.fromDaysString("60-1").toDateRange, Seq(path2, path3)),
-      Array(DaysRange.fromDaysString("45-1").toDateRange, Seq(path3)))
+      Array(DaysRange.fromDaysString("95-1").toDateRange(), Seq(path1, path2, path3)),
+      Array(DaysRange.fromDaysString("60-1").toDateRange(), Seq(path2, path3)),
+      Array(DaysRange.fromDaysString("45-1").toDateRange(), Seq(path3)))
   }
 
   /**

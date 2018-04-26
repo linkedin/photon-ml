@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml
 
+import org.joda.time.DateTimeZone
+
 import com.linkedin.photon.ml.util.Utils
 
 /**
@@ -38,4 +40,9 @@ object Constants {
   val INTERCEPT_NAME = "(INTERCEPT)"
   val INTERCEPT_TERM = ""
   val INTERCEPT_KEY = Utils.getFeatureKey(INTERCEPT_NAME, INTERCEPT_TERM)
+
+  /**
+   * Default time zone for relative date calculations
+   */
+  val DEFAULT_TIME_ZONE = DateTimeZone.UTC
 }

@@ -25,6 +25,7 @@ import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkContext}
+import org.joda.time.DateTimeZone
 
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.data.avro._
@@ -96,6 +97,10 @@ object FeatureIndexingDriver extends Params with Logging {
     "application name",
     "The name for this Spark application.")
 
+  val timeZone: Param[DateTimeZone] = ParamUtils.createParam[DateTimeZone](
+    "time zone",
+    "The time zone to use for days ago calculations. See: http://joda-time.sourceforge.net/timezones.html")
+
   //
   // Initialize object
   //
@@ -154,6 +159,7 @@ object FeatureIndexingDriver extends Params with Logging {
     setDefault(overrideOutputDirectory, false)
     setDefault(minInputPartitions, 1)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
+    setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
   }
 
   /**
@@ -173,7 +179,7 @@ object FeatureIndexingDriver extends Params with Logging {
     validateParams()
 
     // Handle date range input
-    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
+    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange), getOrDefault(timeZone))
     val inputPaths = dateRangeOpt
       .map { dateRange =>
         IOUtils.getInputPathsWithinDateRange(

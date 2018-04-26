@@ -19,6 +19,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
+import org.joda.time.DateTimeZone
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
@@ -121,6 +122,10 @@ trait GameDriver extends Params {
   val applicationName: Param[String] = ParamUtils.createParam[String](
     "application name",
     "The name for this Spark application.")
+
+  val timeZone: Param[DateTimeZone] = ParamUtils.createParam[DateTimeZone](
+    "time zone",
+    "The time zone to use for days ago calculations. See: http://joda-time.sourceforge.net/timezones.html")
 
   //
   // Params functions

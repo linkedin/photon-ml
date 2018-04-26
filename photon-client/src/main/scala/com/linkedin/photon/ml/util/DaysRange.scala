@@ -14,7 +14,9 @@
  */
 package com.linkedin.photon.ml.util
 
-import org.joda.time.LocalDate
+import org.joda.time.{DateTime, DateTimeZone, LocalDate}
+
+import com.linkedin.photon.ml.Constants
 
 /**
  * Represents an immutable date range, in days prior to today.
@@ -35,11 +37,12 @@ case class DaysRange(startDays: Int, endDays: Int) {
   /**
    * Convert the [[DaysRange]] to a [[DateRange]].
    *
+   * @param timeZone The local timezone to use for date math
    * @return The [[DateRange]] equivalent of the [[DaysRange]] at the time of function call
    */
-  def toDateRange: DateRange = {
+  def toDateRange(timeZone: DateTimeZone = Constants.DEFAULT_TIME_ZONE): DateRange = {
 
-    val now: LocalDate = LocalDate.now
+    val now: LocalDate = (new DateTime).withZone(timeZone).toLocalDate
 
     DateRange(now.minusDays(startDays), now.minusDays(endDays))
   }

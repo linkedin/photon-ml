@@ -18,6 +18,7 @@ import scala.language.existentials
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
+import org.joda.time.DateTimeZone
 import scopt.{OptionDef, OptionParser, Read}
 
 import com.linkedin.photon.ml.data.avro.NameAndTermFeatureBagsDriver
@@ -72,7 +73,13 @@ object ScoptNameAndTermFeatureBagsParametersParser extends ScoptParser {
     // Application Name
     ScoptParameter[String, String](
       NameAndTermFeatureBagsDriver.applicationName,
-      usageText = "<name>"))
+      usageText = "<name>"),
+
+    // Time zone
+    ScoptParameter[DateTimeZone, DateTimeZone](
+      NameAndTermFeatureBagsDriver.timeZone,
+      usageText = "<time zone>",
+      additionalDocs = Seq("For a list of valid timezone ids, see: http://joda-time.sourceforge.net/timezones.html")))
 
   /**
    * Parse command line arguments for name-and-term generation into a [[ParamMap]].
