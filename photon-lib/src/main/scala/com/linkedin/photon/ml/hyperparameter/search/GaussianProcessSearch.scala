@@ -21,7 +21,7 @@ import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
 import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel}
-import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{StationaryKernel, Matern52}
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -46,6 +46,7 @@ import com.linkedin.photon.ml.util.DoubleRange
  * @param evaluationFunction the function that evaluates points in the space to real values
  * @param evaluator the original evaluator
  * @param discreteParams specifies the indices of parameters that should be treated as discrete values
+ * @param kernel Specifies the covariance kernel for hyper-parameters
  * @param candidatePoolSize the number of candidate points to draw at each iteration. Larger numbers give more precise
  *   results, but also incur higher computational cost.
  * @param noisyTarget whether to include observation noise in the evaluation function model
@@ -56,10 +57,11 @@ class GaussianProcessSearch[T](
     evaluationFunction: EvaluationFunction[T],
     evaluator: Evaluator,
     discreteParams: Seq[Int] = Seq(),
+    kernel: StationaryKernel = new Matern52,
     candidatePoolSize: Int = 250,
     noisyTarget: Boolean = false,
     seed: Long = System.currentTimeMillis)
-  extends RandomSearch[T](ranges, evaluationFunction, discreteParams, seed){
+  extends RandomSearch[T](ranges, evaluationFunction, discreteParams, kernel, seed){
 
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None
@@ -87,10 +89,6 @@ class GaussianProcessSearch[T](
     (observedPoints, observedEvals) match {
       case (Some(points), Some(evals)) if points.rows > numParams =>
         val candidates = drawCandidates(candidatePoolSize)
-
-        // We choose the Matérn 5/2 covariance kernel since it performs best in the literature and our tests for
-        // hyperparameter spaces.
-        val kernel = new Matern52
 
         // Finding the overall bestEval
         val currentMean = mean(evals)

@@ -20,6 +20,8 @@ import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
 
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{StationaryKernel, Matern52}
+
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -28,12 +30,14 @@ import com.linkedin.photon.ml.util.DoubleRange
  * @param ranges The ranges that define the boundaries of the search space
  * @param evaluationFunction The function that evaluates points in the space to real values
  * @param discreteParams Specifies the indices of parameters that should be treated as discrete values
+ * @param kernel Specifies the indices and transformation function of hyper-parameters
  * @param seed A random seed
  */
 class RandomSearch[T](
     ranges: Seq[DoubleRange],
     evaluationFunction: EvaluationFunction[T],
     discreteParams: Seq[Int] = Seq(),
+    kernel: StationaryKernel = new Matern52,
     seed: Long = System.currentTimeMillis) {
 
   // The length of the ranges sequence corresponds to the dimensionality of the hyper-parameter tuning problem

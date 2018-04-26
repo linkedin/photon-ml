@@ -21,6 +21,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -36,7 +37,7 @@ class RandomSearchTest {
   @Test
   def testFind(): Unit = {
 
-    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
+    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, KERNEL, SEED)
     val candidates = searcher.find(N)
 
     assertEquals(candidates.length, N)
@@ -51,8 +52,8 @@ class RandomSearchTest {
   @Test(dependsOnMethods = Array[String]("testFind"))
   def testFindWithPriors(): Unit = {
 
-    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
-    val priorSearcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, SEED)
+    val searcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, KERNEL, SEED)
+    val priorSearcher = new RandomSearch[TestModel](RANGES, EVALUATION_FUNCTION, DISCRETE_PARAMS, KERNEL, SEED)
     val observation1 = (DenseVector(1.0, 1.0, 1.0), 0.1)
     val observation2 = (DenseVector(2.0, 2.0, 2.0), 0.2)
     val observation3 = (DenseVector(3.0, 3.0, 3.0), 0.3)
@@ -81,6 +82,7 @@ object RandomSearchTest {
   val UPPER = 1e5
   val RANGES: Seq[DoubleRange] = Seq.fill(DIM)(DoubleRange(LOWER, UPPER))
   val DISCRETE_PARAMS = Seq(0)
+  val KERNEL = new Matern52
   val TOLERANCE = 1E-12
 
   case class TestModel(params: DenseVector[Double], evaluation: Double)
