@@ -19,6 +19,7 @@ import java.io.File
 import org.apache.avro.generic.GenericRecord
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.{FileFilterUtils, PrefixFileFilter}
+import org.apache.hadoop.mapred.JobConf
 import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.Test
 
@@ -73,8 +74,8 @@ class AvroUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
         val builder = FeatureAvro.newBuilder()
         builder.setName(name).setTerm(term).setValue(value).build()
     }
-
-    AvroUtils.saveAsAvro[FeatureAvro](outputRdd, outputDir, schemaString)
+    val jobConf = new JobConf(sc.hadoopConfiguration)
+    AvroUtils.saveAsAvro[FeatureAvro](outputRdd, outputDir, schemaString, jobConf)
 
     // TODO: Rewrite the filter logic when Photon has better file util supports
     val fileFilter = FileFilterUtils
