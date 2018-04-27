@@ -52,7 +52,7 @@ object GameConverters {
 
     data
       .rdd
-      .zipWithIndex
+      .zipWithUniqueId
       .map { case (row, index) =>
         (index, getGameDatumFromRow(row, featureShards, idTagSet, isResponseRequired, inputColumnsNamesBroadcast))
       }
