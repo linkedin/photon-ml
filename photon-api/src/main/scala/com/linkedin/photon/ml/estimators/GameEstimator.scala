@@ -478,9 +478,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             .setName(s"Fixed Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
 
-          logger.debug(
-            s"Summary of fixed effect data set with coordinate ID '$coordinateId':\n" +
-              s"${fixedEffectDataSet.toSummaryString}")
+          if (logger.isDebugEnabled) {
+            // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
+            logger.debug(
+              s"Summary of fixed effect data set with coordinate ID '$coordinateId':\n" +
+                s"${fixedEffectDataSet.toSummaryString}")
+          }
 
           (coordinateId, fixedEffectDataSet)
 
@@ -522,9 +525,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               randomEffectDataSetInProjectedSpace
           }
 
-          logger.debug(
-            s"Summary of random effect data set with coordinate ID $coordinateId:\n" +
-              s"${randomEffectDataSet.toSummaryString}\n")
+          if (logger.isDebugEnabled) {
+            // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
+            logger.debug(
+              s"Summary of random effect data set with coordinate ID $coordinateId:\n" +
+                s"${randomEffectDataSet.toSummaryString}\n")
+          }
 
           partitioner.unpersistBroadcast()
 
