@@ -4,6 +4,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
@@ -76,7 +77,8 @@ class AvroDataWriter {
     AvroUtils.saveAsAvro[SimplifiedResponsePrediction](
       avroDataset,
       outputPath,
-      SimplifiedResponsePrediction.getClassSchema.toString)
+      SimplifiedResponsePrediction.getClassSchema.toString,
+      new JobConf(sc.hadoopConfiguration))
   }
 }
 

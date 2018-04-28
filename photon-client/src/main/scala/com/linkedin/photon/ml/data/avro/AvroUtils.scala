@@ -96,8 +96,11 @@ object AvroUtils {
    * @param outputDir The output directory to save the data as Avro files
    * @param schemaString The schema string of the data
    */
-  protected[ml] def saveAsAvro[T <: SpecificRecord : ClassTag](data: RDD[T], outputDir: String, schemaString: String): Unit = {
-    val job = new JobConf
+  protected[ml] def saveAsAvro[T <: SpecificRecord : ClassTag](
+      data: RDD[T],
+      outputDir: String,
+      schemaString: String,
+      job: JobConf = new JobConf): Unit = {
     val schema: Schema = new Parser().parse(schemaString)
     AvroJob.setOutputSchema(job, schema)
     val dataFinal = data.map(row => (new AvroKey[T](row), NullWritable.get()))
