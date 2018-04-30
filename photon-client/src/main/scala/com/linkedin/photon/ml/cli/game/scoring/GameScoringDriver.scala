@@ -19,7 +19,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
 
-import com.linkedin.photon.ml.{DataValidationType, SparkSessionConfiguration, TaskType}
+import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.StorageLevel
@@ -119,6 +119,7 @@ object GameScoringDriver extends GameDriver {
     setDefault(spillScoresToDisk, false)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
+    setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
   }
 
   /**
@@ -209,7 +210,7 @@ object GameScoringDriver extends GameDriver {
     val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
 
     // Handle date range input
-    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange))
+    val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange), getOrDefault(timeZone))
     val recordsPaths = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
 
     logger.debug(s"Input records paths:\n${recordsPaths.mkString("\n")}")

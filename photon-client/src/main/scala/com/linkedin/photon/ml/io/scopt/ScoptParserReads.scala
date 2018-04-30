@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.io.scopt
 
 import org.apache.hadoop.fs.Path
+import org.joda.time.DateTimeZone
 
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
@@ -42,6 +43,10 @@ object ScoptParserReads {
   implicit val normalizationTypeRead: scopt.Read[NormalizationType] = scopt.Read.reads(NormalizationType.withName)
   implicit val pathRead: scopt.Read[Path] = scopt.Read.reads(parsePath)
   implicit val taskTypeRead: scopt.Read[TaskType] = scopt.Read.reads(TaskType.withName)
+
+  // For a list of valid timezone ids, see:
+  // http://joda-time.sourceforge.net/timezones.html
+  implicit val timeZoneRead: scopt.Read[DateTimeZone] = scopt.Read.reads(DateTimeZone.forID)
 
   /**
    * Create a HDFS path to a file/directory defined by a [[String]].
