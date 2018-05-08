@@ -27,6 +27,16 @@ class AvroDataWriterTest {
     )
     val types = Array(IntegerType, BooleanType, FloatType, LongType, DoubleType)
 
+    // build a row with null fields for offset and weight
+    val nullArray = Array(1.0D, null, null, vector)
+    val nullSchema = new StructType(
+      Array(
+        StructField("response", DoubleType),
+        StructField("offset", NullType),
+        StructField("weight", NullType),
+        StructField("features", new VectorUDT)))
+    val nullRow = new GenericRowWithSchema(nullArray, nullSchema)
+
     arrays.zip(types).map { case (a, t) =>
       val schema = new StructType(
         Array(
@@ -35,7 +45,7 @@ class AvroDataWriterTest {
           StructField("weight", t),
           StructField("features", new VectorUDT)))
       Array(new GenericRowWithSchema(a, schema))
-    }
+    } :+ Array(nullRow)
   }
 
   @Test(dataProvider = "rowsProvider")
