@@ -44,8 +44,8 @@ class AvroDataWriter {
     require(columns.contains(responseColumn), s"There must be a $responseColumn column present in dataframe")
     require(columns.contains(featureColumn), s"There must be a $featureColumn column present in dataframe")
 
-    val hasOffset = columns.contains("offset")
-    val hasWeight = columns.contains("weight")
+    val hasOffset = columns.contains(OFFSET)
+    val hasWeight = columns.contains(WEIGHT)
 
     val avroDataset = df.rdd.mapPartitions { rows =>
       val indexMap = indexMapLoader.indexMapForRDD()
@@ -54,8 +54,8 @@ class AvroDataWriter {
       rows.map { r: Row =>
         val features = r.getAs[Vector](featureColumn)
         val response = getValueAsDouble(r, responseColumn)
-        val offset = if (hasOffset) getValueAsDouble(r, "offset") else 0.0D
-        val weight = if (hasWeight) getValueAsDouble(r, "weight") else 1.0D
+        val offset = if (hasOffset) getValueAsDouble(r, OFFSET) else DEFAULTS(OFFSET)
+        val weight = if (hasWeight) getValueAsDouble(r, WEIGHT) else DEFAULTS(WEIGHT)
         rowBuilder
           .setResponse(response)
           .setOffset(offset)
@@ -83,6 +83,11 @@ class AvroDataWriter {
 }
 
 object AvroDataWriter {
+
+  val OFFSET = "offset"
+  val WEIGHT = "weight"
+  val DEFAULTS = Map(OFFSET -> 0.0D, WEIGHT -> 1.0D)
+
   /**
    * Helper function to convert Row index field to double
    *
@@ -93,6 +98,8 @@ object AvroDataWriter {
   protected[data] def getValueAsDouble(row: Row, fieldName: String): Double = {
 
     row.getAs[Any](fieldName) match {
+      case null => DEFAULTS
+        .getOrElse(fieldName, throw new IllegalArgumentException(s"Unsupported null for fieldName $fieldName"))
       case n: Number => n.doubleValue()
       case b: Boolean => if (b) 1.0D else 0.0D
       case _ =>
