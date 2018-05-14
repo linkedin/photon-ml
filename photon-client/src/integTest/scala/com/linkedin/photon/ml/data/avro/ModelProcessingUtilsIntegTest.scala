@@ -371,9 +371,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     // TODO: This test is incomplete - need to check that all parameters are loaded correctly.
     assertEquals(
       TASK_TYPE,
-      ModelProcessingUtils
-        .loadGameModelMetadataFromHDFS(sc, outputDir)
-        .getOrElse(GameTrainingDriver.trainingTask, TaskType.NONE))
+      ModelProcessingUtils.loadGameModelMetadataFromHDFS(sc, outputDir)(GameTrainingDriver.trainingTask))
   }
 
   /**

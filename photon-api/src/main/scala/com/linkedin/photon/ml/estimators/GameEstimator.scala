@@ -69,8 +69,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   val trainingTask: Param[TaskType] = ParamUtils.createParam(
     "training task",
-    "The type of training task to perform.",
-    {taskType: TaskType => taskType != TaskType.NONE})
+    "The type of training task to perform.")
 
   val inputColumnNames: Param[InputColumnsNames] = ParamUtils.createParam[InputColumnsNames](
     "input column names",

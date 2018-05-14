@@ -78,8 +78,7 @@ object GameTrainingDriver extends GameDriver {
 
   val trainingTask: Param[TaskType] = ParamUtils.createParam(
     "training task",
-    "The type of training task to perform.",
-    {taskType: TaskType => taskType != TaskType.NONE})
+    "The type of training task to perform.")
 
   val validationDataDirectories: Param[Set[Path]] = ParamUtils.createParam(
     "validation data directories",

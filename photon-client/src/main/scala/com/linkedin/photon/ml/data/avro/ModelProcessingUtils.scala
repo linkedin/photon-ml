@@ -19,7 +19,6 @@ import java.util.{Map => JMap}
 
 import scala.collection.JavaConversions._
 import scala.io.Source
-import scala.util.Try
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -49,9 +48,7 @@ import com.linkedin.photon.ml.{Constants, TaskType}
  * The main challenge in saving/loading GAME models is that the number of random effect submodels can be
  * arbitrarily large. That's why e.g. "numberOfOutputFilesForRandomEffectModel" is needed.
  *
- * TODO: This object needs additional documentation
- *
- * TODO: We might want to extract the various Path we setup to a method called by both save and load,
+ * TODO: We might want to extract the various Paths we setup to a method called by both save and load,
  * TODO:  (to avoid bugs where save would use different Paths from load)
  *
  * TODO: Change the scope of all functions to com.linkedin.photon.ml.avro after Avro related
@@ -60,6 +57,11 @@ import com.linkedin.photon.ml.{Constants, TaskType}
  * TODO: Separate what's Avro and what's not, and locate appropriately: most of this should go into photon.ml.models
  */
 object ModelProcessingUtils {
+
+  val ID_INFO = "id-info"
+  val METADATA_FILE = "model-metadata.json"
+
+  val MODEL_TYPE = "modelType"
 
   /**
    * Save a GAME model to HDFS.
@@ -94,7 +96,7 @@ object ModelProcessingUtils {
           Utils.createHDFSDir(fixedEffectModelOutputDir, hadoopConfiguration)
 
           //Write the model ID info
-          val modelIdInfoPath = new Path(fixedEffectModelOutputDir, AvroConstants.ID_INFO)
+          val modelIdInfoPath = new Path(fixedEffectModelOutputDir, ID_INFO)
           val id = Array(featureShardId)
           IOUtils.writeStringsToHDFS(id.iterator, modelIdInfoPath, hadoopConfiguration, forceOverwrite = false)
 
@@ -111,7 +113,7 @@ object ModelProcessingUtils {
           val randomEffectModelOutputDir = new Path(outputDir, s"${AvroConstants.RANDOM_EFFECT}/$name")
 
           //Write the model ID info
-          val modelIdInfoPath = new Path(randomEffectModelOutputDir, AvroConstants.ID_INFO)
+          val modelIdInfoPath = new Path(randomEffectModelOutputDir, ID_INFO)
           val ids = Array(randomEffectType, featureShardId)
           IOUtils.writeStringsToHDFS(ids.iterator, modelIdInfoPath, hadoopConfiguration, forceOverwrite = false)
 
@@ -147,8 +149,7 @@ object ModelProcessingUtils {
 
     val configuration = sc.hadoopConfiguration
     val fs = modelsDir.getFileSystem(configuration)
-    val modelType = loadGameModelMetadataFromHDFS(sc, modelsDir)
-      .getOrElse(GameTrainingDriver.trainingTask, TaskType.NONE)
+    val modelType = loadGameModelMetadataFromHDFS(sc, modelsDir)(GameTrainingDriver.trainingTask)
 
     // Load the fixed effect model(s)
     val fixedEffectModelInputDir = new Path(modelsDir, AvroConstants.FIXED_EFFECT)
@@ -168,7 +169,7 @@ object ModelProcessingUtils {
           val name = innerPath.getName
 
           // Load the model ID info
-          val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
+          val idInfoPath = new Path(innerPath, ID_INFO)
           val Array(featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
           require(!featureShardId.isEmpty, s"Error reading feature shard ID for coordinate '$name' in loaded model")
@@ -211,7 +212,7 @@ object ModelProcessingUtils {
           val name = innerPath.getName
 
           // Load the model ID info
-          val idInfoPath = new Path(innerPath, AvroConstants.ID_INFO)
+          val idInfoPath = new Path(innerPath, ID_INFO)
           val Array(randomEffectType, featureShardId) = IOUtils.readStringsFromHDFS(idInfoPath, configuration).toArray
 
           require(!featureShardId.isEmpty, s"Error reading feature shard ID for coordinate '$name' in loaded model")
@@ -247,8 +248,8 @@ object ModelProcessingUtils {
     val gameModel = new GameModel(datumScoringModels.toMap)
 
     require(
-      modelType == TaskType.NONE || gameModel.modelType == modelType,
-      s"GAME model type ${gameModel.modelType} does not match type $modelType listed in metadata")
+      gameModel.modelType == modelType,
+      s"GAME model type ${gameModel.modelType} does not match metadata type $modelType")
 
     gameModel
   }
@@ -498,7 +499,7 @@ object ModelProcessingUtils {
       writer => writer.println(
         s"""
            |{
-           |  "modelType": "$optimizationTask",
+           |  "$MODEL_TYPE": "$optimizationTask",
            |  "optimizationConfigurations": $optConfigurations
            |}
          """.stripMargin)
@@ -598,28 +599,20 @@ object ModelProcessingUtils {
    * @param sc The Spark context
    * @return Either a new Param object, or Failure if a metadata file was not found, or it did not contain "modelType"
    */
-  def loadGameModelMetadataFromHDFS(
-      sc: SparkContext,
-      inputDir: Path,
-      metadataFileName: String = "model-metadata.json"): ParamMap = {
+  def loadGameModelMetadataFromHDFS(sc: SparkContext, inputDir: Path): ParamMap = {
 
-    val inputPath = new Path(inputDir, metadataFileName)
+    val inputPath = new Path(inputDir, METADATA_FILE)
     val paramMap = ParamMap.empty
-    val modelTypeRegularExpression = """"modelType"\s*:\s*"(.+?)"""".r
+    val modelTypeRegularExpression = s""""$MODEL_TYPE"\s*:\s*"(.+?)"""".r
 
-    val fs = Try(inputPath.getFileSystem(sc.hadoopConfiguration))
-    val stream = fs.map(f => f.open(inputPath))
-    val fileContents = stream.map(s => Source.fromInputStream(s).getLines.mkString)
+    val fs = inputPath.getFileSystem(sc.hadoopConfiguration)
+    val stream = fs.open(inputPath)
+    val fileContents = Source.fromInputStream(stream).getLines.mkString
 
-    // TODO: Log if we are in a legacy case and don't have metadata
-
-    fileContents
-      .map { fc =>
-        modelTypeRegularExpression.findFirstMatchIn(fc) match {
-          case Some(modelType) => paramMap.put(GameTrainingDriver.trainingTask, TaskType.withName(modelType.group(1)))
-          case None => throw new RuntimeException(s"Couldn't find 'modelType' in metadata file: $inputPath")
-        }
-      }.getOrElse(TaskType.NONE)
+    modelTypeRegularExpression.findFirstMatchIn(fileContents) match {
+      case Some(modelType) => paramMap.put(GameTrainingDriver.trainingTask, TaskType.withName(modelType.group(1)))
+      case None => throw new RuntimeException(s"Couldn't find '$MODEL_TYPE' in metadata file: $inputPath")
+    }
 
     paramMap
   }
