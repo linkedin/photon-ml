@@ -19,8 +19,6 @@ import org.apache.spark.rdd.RDD._
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{HashPartitioner, SparkContext}
 
-import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{UniqueSampleId, REId, REType, FeatureShardId}
 import com.linkedin.photon.ml.data.GameDatum
@@ -42,9 +40,9 @@ class RandomEffectModel(
   extends DatumScoringModel
   with RDDLike {
 
-  // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
-  // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
-  // GameModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
+  // The model type should be consistent at construction time. However, copies of this object shouldn't need to call the
+  // check again. Thus the value is lazy, so that anonymous classes can overwrite it without triggering a call to
+  // determineModelType, but it's called immediately so that it's evaluated at construction time.
   override lazy val modelType: TaskType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
   modelType
 
@@ -58,9 +56,18 @@ class RandomEffectModel(
 
     val currType = this.modelType
 
-    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId) {
+    // TODO: Should verify that each update retains the model type, however this is slow and materializes the RDD early
+//    val isMatch = updatedModelsRdd
+//      .mapPartitions { iter =>
+//        Array(iter.forall(_._2.modelType == currType)).iterator
+//      }
+//      .fold(true) { case (result, nextVal) =>
+//        result && nextVal
+//      }
+//    require(isMatch, s"One or more models in updated RDD do not match model type '$currType'")
 
-      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
+    // Since model type matches, override explicit check using anonymous class
+    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId) {
       override lazy val modelType: TaskType = currType
     }
   }
@@ -84,7 +91,7 @@ class RandomEffectModel(
       ModelDataScores.apply)
 
   /**
-   * Compute the scores for the GAME data set, and store the scores only.
+   * Compute the scores for the GAME dataset, and store the scores only.
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
    * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired

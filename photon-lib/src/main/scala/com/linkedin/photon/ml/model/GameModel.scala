@@ -31,9 +31,9 @@ import com.linkedin.photon.ml.util.ClassUtils
  */
 class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) extends DatumScoringModel {
 
-  // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
-  // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
-  // GameModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
+  // The model type should be consistent at construction time. However, copies of this object shouldn't need to call the
+  // check again. Thus the value is lazy, so that anonymous classes can overwrite it without triggering a call to
+  // determineModelType, but it's called immediately so that it's evaluated at construction time.
   override lazy val modelType: TaskType = GameModel.determineModelType(gameModels)
   modelType
 
@@ -52,29 +52,27 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    * @param model The new model
    * @return A GAME model with updated sub-model `name`
    */
-  def updateModel(name: CoordinateId, model: DatumScoringModel): GameModel =
+  def updateModel(name: CoordinateId, model: DatumScoringModel): GameModel = {
 
-    getModel(name) match {
-      case Some(oldModel) =>
-        val oldModelClass = ClassUtils.getTrueClass(oldModel)
-        val newModelClass = ClassUtils.getTrueClass(model)
+    val oldModel = gameModels(name)
+    val oldModelClass = ClassUtils.getTrueClass(oldModel)
+    val newModelClass = ClassUtils.getTrueClass(model)
 
-        if (!oldModelClass.equals(newModelClass)) {
-          throw new UnsupportedOperationException(
-            s"$name: Update model of class $oldModelClass to model of class $newModelClass is not supported")
-        }
+    require(
+      oldModelClass.equals(newModelClass),
+      s"$name: Update model of class $oldModelClass to model of class $newModelClass is not supported")
+    require(
+      oldModel.modelType == model.modelType,
+      s"$name: Updated model type ${model.modelType} does not match current type ${oldModel.modelType}")
 
-        require(
-          oldModel.modelType == model.modelType,
-          s"$name: Updated model type ${model.modelType} does not match current type ${oldModel.modelType}")
-
-        // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-        val currType = this.modelType
-        new GameModel(gameModels.updated(name, model)) { override lazy val modelType: TaskType = currType }
-
-      // TODO: What should we do when updateModel called for non-existant coordinate?
-      case None => this
+    // Since all component models must have the same type at construction time, and the updated model has the same type
+    // as the previous model, therefore the model type must still match and thus the value of the new model can be
+    // explicitly set
+    val currType = modelType
+    new GameModel(gameModels.updated(name, model)) {
+      override lazy val modelType: TaskType = currType
     }
+  }
 
   /**
    * Convert the GAME model into a (modelName -> model) map representation.

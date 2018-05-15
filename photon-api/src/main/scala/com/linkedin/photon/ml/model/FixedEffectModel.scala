@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.BroadcastLike
@@ -34,7 +35,7 @@ class FixedEffectModel(
   extends DatumScoringModel
   with BroadcastLike {
 
-  override val modelType = modelBroadcast.value.modelType
+  override val modelType: TaskType = modelBroadcast.value.modelType
 
   /**
    * Get the underlying [[GeneralizedLinearModel]].

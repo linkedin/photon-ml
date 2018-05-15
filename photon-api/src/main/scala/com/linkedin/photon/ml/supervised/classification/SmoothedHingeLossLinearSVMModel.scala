@@ -38,7 +38,7 @@ class SmoothedHingeLossLinearSVMModel(override val coefficients: Coefficients)
    *
    * @return The model type
    */
-  override def modelType: TaskType = SMOOTHED_HINGE_LOSS_LINEAR_SVM
+  override val modelType: TaskType = SMOOTHED_HINGE_LOSS_LINEAR_SVM
 
   /**
    * Compute the mean response of the smoothed hinge loss linear SVM model.

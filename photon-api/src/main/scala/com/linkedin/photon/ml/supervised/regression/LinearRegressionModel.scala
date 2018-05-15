@@ -36,7 +36,7 @@ class LinearRegressionModel(override val coefficients: Coefficients)
    *
    * @return The model type
    */
-  override def modelType: TaskType = LINEAR_REGRESSION
+  override val modelType: TaskType = LINEAR_REGRESSION
 
   /**
    * Compute the mean response of the linear regression model.

@@ -36,7 +36,7 @@ class PoissonRegressionModel(override val coefficients: Coefficients)
    *
    * @return The model type
    */
-  override def modelType: TaskType = POISSON_REGRESSION
+  override val modelType: TaskType = POISSON_REGRESSION
 
   /**
    * Compute the mean response of the Poisson regression model.
