@@ -21,13 +21,14 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.fs.Path
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.storage.StorageLevel
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.GameEstimator
@@ -619,12 +620,12 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val gameModel1 = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath1,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       indexMapLoaders)
     val gameModel2 = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath2,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
     val scores1 = gameModel1.score(gameDataSet).scores.mapValues(_.score)
@@ -671,7 +672,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       modelPath,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
     val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)

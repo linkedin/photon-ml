@@ -19,11 +19,10 @@ import scala.util.hashing.byteswap64
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 
@@ -119,7 +118,7 @@ protected[ml] class RandomEffectDataSet(
    * @return This object with the storage level of [[activeData]], [[uniqueIdToRandomEffectIds]], and
    *         [[passiveDataOption]] set
    */
-  override def persistRDD(storageLevel: SparkStorageLevel): RandomEffectDataSet = {
+  override def persistRDD(storageLevel: StorageLevel): RandomEffectDataSet = {
 
     if (!activeData.getStorageLevel.isValid) activeData.persist(storageLevel)
     if (!uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.persist(storageLevel)
@@ -254,7 +253,7 @@ object RandomEffectDataSet {
       existingModelKeysRddOpt)
     val activeData = featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration)
       .setName("Active data")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     val globalIdToIndividualIds = activeData
       .flatMap { case (individualId, localDataSet) =>
@@ -449,7 +448,7 @@ object RandomEffectDataSet {
 
     val passiveData = keyedRandomEffectDataSet.subtractByKey(activeDataUniqueIds, gameDataPartitioner)
         .setName("tmp passive data")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .persist(StorageLevel.DISK_ONLY)
 
     val passiveDataRandomEffectIdCountsMap = passiveData
       .map { case (_, (randomEffectId, _)) =>
@@ -469,7 +468,7 @@ object RandomEffectDataSet {
         passiveDataRandomEffectIdsBroadcast.value.contains(id)
       }
       .setName("passive data")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     filteredPassiveData.count()
     passiveData.unpersist()

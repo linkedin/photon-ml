@@ -18,11 +18,11 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
@@ -163,7 +163,7 @@ object GameScoringDriver extends GameDriver {
       ModelProcessingUtils.loadGameModelFromHDFS(
         sc,
         getRequiredParam(modelInputDirectory),
-        StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+        StorageLevel.MEMORY_ONLY,
         featureShardIdToIndexMapLoaderMap)
     }
 
@@ -236,7 +236,7 @@ object GameScoringDriver extends GameDriver {
 
     if (getOrDefault(logDataAndModelStats)) {
       // Persist scored items here since we introduce multiple passes
-      scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      scoredItems.setName("Scored items").persist(StorageLevel.MEMORY_AND_DISK)
 
       val numScoredItems = scoredItems.count()
       logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")

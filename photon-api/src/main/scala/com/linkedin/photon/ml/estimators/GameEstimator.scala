@@ -21,13 +21,14 @@ import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation._
@@ -470,7 +471,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           getOrDefault(inputColumnNames))
         .partitionBy(gameDataPartitioner)
         .setName("GAME training data")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .persist(StorageLevel.DISK_ONLY)
     }
     // Transform the GAME dataset into fixed and random effect specific datasets
     val trainingDataSet = Timed("Prepare training data sets") {
@@ -503,7 +504,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
           val fixedEffectDataSet = FixedEffectDataSet(gameDataSet, feConfig.featureShardId)
             .setName(s"Fixed Effect Data Set: $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .persistRDD(StorageLevel.DISK_ONLY)
 
           if (logger.isDebugEnabled) {
             // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
@@ -536,7 +537,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
           val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, partitioner, existingModelKeysRddOpt)
             .setName(s"Random Effect Data Set: $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
           val projectorType = reConfig.projectorType
           val randomEffectDataSet = projectorType match {
@@ -548,7 +549,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
                 .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
                 .setName(s"Projected Random Effect Data Set: $coordinateId")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                .persistRDD(StorageLevel.DISK_ONLY)
                 .materialize()
 
               // Only un-persist the active data and passive data, because randomEffectDataSet and
@@ -594,7 +595,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val labelAndOffsetAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
       .setName("Training labels, offsets and weights")
-      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_AND_DISK)
 
     labelAndOffsetAndWeights.count()
 
@@ -637,7 +638,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             getOrDefault(inputColumnNames))
           .partitionBy(partitioner)
           .setName("Validating Game data set")
-          .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+          .persist(StorageLevel.DISK_ONLY)
 
         result.count()
         result
@@ -667,7 +668,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val validatingLabelsAndOffsetsAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
       .setName(s"Validating labels and offsets")
-      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_AND_DISK)
     validatingLabelsAndOffsetsAndWeights.count()
 
     get(validationEvaluators)

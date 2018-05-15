@@ -19,10 +19,10 @@ import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
@@ -228,7 +228,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
         getOrDefault(inputColumnNames))
       .partitionBy(partitioner)
       .setName("Game data set with UIDs for scoring")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     gameDataSet
   }
@@ -269,9 +269,9 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
   protected def scoreGameDataSet(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
 
     val storageLevel = if (getOrDefault(spillScoresToDisk)) {
-      StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL
+      StorageLevel.MEMORY_AND_DISK
     } else {
-      StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL
+      StorageLevel.MEMORY_ONLY
     }
     // Need to split these calls to keep correct return type
     val scores = getRequiredParam(model).score(gameDataSet)

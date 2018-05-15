@@ -19,6 +19,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml._
 import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
@@ -26,7 +27,6 @@ import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.{DataValidators, FixedEffectDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
@@ -359,15 +359,15 @@ object GameTrainingDriver extends GameDriver {
       readValidationData(avroDataReader, featureIndexMapLoaders)
     }
 
-    trainingData.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
-    validationData.map(_.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+    trainingData.persist(StorageLevel.DISK_ONLY)
+    validationData.map(_.persist(StorageLevel.DISK_ONLY))
 
     val modelOpt = get(modelInputDirectory).map { modelDir =>
       Timed("Load model for warm-start training") {
         ModelProcessingUtils.loadGameModelFromHDFS(
           sc,
           modelDir,
-          StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+          StorageLevel.MEMORY_AND_DISK,
           featureIndexMapLoaders,
           Some(updateSequence.toSet))
       }

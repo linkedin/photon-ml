@@ -16,9 +16,9 @@ package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{Vector, cholesky, diag}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
@@ -151,7 +151,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
         case None => input.values
       })
       .setName("In memory fixed effect training data set")
-      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_AND_DISK)
     val result = run(data, initialModel)
 
     data.unpersist()

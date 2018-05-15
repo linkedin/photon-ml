@@ -15,10 +15,10 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
@@ -141,14 +141,14 @@ class CoordinateDescent(
         val updatedScores = coordinates(coordinateId).score(updatedGameModel.getModel(coordinateId).get)
         updatedScores
           .setName(s"Initialized training scores with coordinateId $coordinateId")
-          .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+          .persistRDD(StorageLevel.DISK_ONLY)
           .materialize()
 
         (coordinateId, updatedScores)
       }
       .toMap
     var fullTrainingScore = updatedScoresContainer.values.reduce(_ + _)
-    fullTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+    fullTrainingScore.persistRDD(StorageLevel.DISK_ONLY).materialize()
 
     // Initialize the regularization term value
     // TODO: Should read regularization term or regularization term value from metadata and add to the total. Otherwise,
@@ -170,7 +170,7 @@ class CoordinateDescent(
           val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
           validatingScores
             .setName(s"Initialized validating scores with coordinateId $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
 
           (coordinateId, validatingScores)
@@ -178,7 +178,7 @@ class CoordinateDescent(
         .toMap
     }
     var fullValidationScoreOption = validationScoresContainerOption.map(_.values.reduce(_ + _))
-    fullValidationScoreOption.map(_.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize())
+    fullValidationScoreOption.map(_.persistRDD(StorageLevel.DISK_ONLY).materialize())
 
     /*
      * This will track the "best" model according to the first evaluation function chosen by the user.
@@ -229,7 +229,7 @@ class CoordinateDescent(
                 case rddLike: RDDLike =>
                   rddLike
                     .setName(s"Updated model with coordinateId $coordinateId at iteration $iteration")
-                    .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                    .persistRDD(StorageLevel.DISK_ONLY)
                     .materialize()
 
                 case _ =>
@@ -244,13 +244,13 @@ class CoordinateDescent(
               val updatedScores = coordinate.score(updatedModel)
               updatedScores
                 .setName(s"Updated training scores with key $coordinateId at iteration $iteration")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                .persistRDD(StorageLevel.DISK_ONLY)
                 .materialize()
               val newTrainingScore = fullTrainingScore - updatedScoresContainer(coordinateId) + updatedScores
 
               updatedScoresContainer(coordinateId).unpersistRDD()
               updatedScoresContainer = updatedScoresContainer.updated(coordinateId, updatedScores)
-              newTrainingScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+              newTrainingScore.persistRDD(StorageLevel.DISK_ONLY).materialize()
               fullTrainingScore.unpersistRDD()
               fullTrainingScore = newTrainingScore
 
@@ -294,12 +294,12 @@ class CoordinateDescent(
                   val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
                   validatingScores
                     .setName(s"Updated validating scores with coordinateId $coordinateId")
-                    .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                    .persistRDD(StorageLevel.DISK_ONLY)
                     .materialize()
                   val fullValidationScore = (fullValidationScoreOption.get
                     - validatingScoresContainer(coordinateId)
                     + validatingScores)
-                  fullValidationScore.persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).materialize()
+                  fullValidationScore.persistRDD(StorageLevel.DISK_ONLY).materialize()
                   fullValidationScoreOption.get.unpersistRDD()
                   fullValidationScoreOption = Some(fullValidationScore)
                   validatingScoresContainer(coordinateId).unpersistRDD()
