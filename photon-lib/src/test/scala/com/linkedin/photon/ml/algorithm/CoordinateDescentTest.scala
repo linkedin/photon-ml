@@ -42,15 +42,11 @@ class CoordinateDescentTest {
     val evaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
     val validationData = mock(classOf[RDD[(UniqueSampleId, GameDatum)]])
-    val gameModel = mock(classOf[GameModel])
 
     // Mock parameters
-    val gameModelMap: Map[CoordinateId, DatumScoringModel] = Map()
     val goodUpdateSequence = Seq("someCoordinate")
     val badUpdateSequence = Seq("someCoordinate", "someCoordinate")
     val goodIter = 1
-
-    doReturn(gameModelMap).when(gameModel).toMap
 
     Array(
       // Repeated coordinates in the update sequence
@@ -60,11 +56,7 @@ class CoordinateDescentTest {
       // Negative iterations
       Array(goodUpdateSequence, -1, evaluator, None, None, logger),
       // Empty validation evaluators list
-      Array(goodUpdateSequence, goodIter, evaluator, Some((validationData, Seq())), None, logger),
-      // Empty locked coordinates list
-      Array(goodUpdateSequence, goodIter, evaluator, None, Some((gameModel, Set())), logger),
-      // Locked coordinate not found in the pre-trained model
-      Array(goodUpdateSequence, goodIter, evaluator, None, Some((gameModel, Set("someCoordinate"))), logger))
+      Array(goodUpdateSequence, goodIter, evaluator, Some((validationData, Seq())), Set(), logger))
   }
 
   /**
@@ -73,8 +65,7 @@ class CoordinateDescentTest {
    * @param updateSequence The order in which to update coordinates
    * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
    * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
-   * @param partialRetrainInputOpt Optional pre-trained model and list of locked coordinates within that model for
-   *                               performing partial retraining
+   * @param lockedCoordinates Set of locked coordinates within the initial model for performing partial retraining
    */
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testCheckInvariants(
@@ -82,14 +73,14 @@ class CoordinateDescentTest {
       descentIterations: Int,
       trainingLossFunctionEvaluator: Evaluator,
       validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
-      partialRetrainInputOpt: Option[(GameModel, Set[CoordinateId])],
+      lockedCoordinates: Set[CoordinateId],
       logger: PhotonLogger): Unit =
     new CoordinateDescent(
       updateSequence,
       descentIterations,
       trainingLossFunctionEvaluator,
       validationDataAndEvaluatorsOption,
-      partialRetrainInputOpt,
+      lockedCoordinates,
       logger)
 
 
@@ -99,23 +90,18 @@ class CoordinateDescentTest {
     // Mocks
     val evaluator = mock(classOf[Evaluator])
     val logger = mock(classOf[PhotonLogger])
-    val pretrainedGameModel = mock(classOf[GameModel])
     val goodGameModel = mock(classOf[GameModel])
     val badGameModel = mock(classOf[GameModel])
     val datumScoringModel = mock(classOf[DatumScoringModel])
     val coordinate = mock(classOf[CoordinateType])
 
     // Mock parameters
-    val pretrainedGameModelMap: Map[CoordinateId, DatumScoringModel] = Map(
-      "a" -> datumScoringModel,
-      "c" -> datumScoringModel)
     val updateSequence = Seq("a", "b", "c", "d")
     val lockedCoordinates = Set("a", "c")
     val descentIterations = 1
     val goodCoordinates = Map("a" -> coordinate, "b" -> coordinate,"c" -> coordinate, "d" -> coordinate)
     val badCoordinates = Map("a" -> coordinate, "b" -> coordinate, "d" -> coordinate)
 
-    doReturn(pretrainedGameModelMap).when(pretrainedGameModel).toMap
     doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("a")
     doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("b")
     doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("c")
@@ -130,7 +116,7 @@ class CoordinateDescentTest {
       descentIterations,
       evaluator,
       validationDataAndEvaluatorsOption = None,
-      Some((pretrainedGameModel, lockedCoordinates)),
+      lockedCoordinates,
       logger)
 
     Array(
@@ -211,7 +197,7 @@ class CoordinateDescentTest {
       numIterations,
       evaluator,
       validationDataAndEvaluatorsOption = None,
-      partialRetrainInputOpt = None,
+      lockedCoordinates = Set(),
       logger)
     coordinateDescent.run(coordinates, gameModel)
 
@@ -297,7 +283,7 @@ class CoordinateDescentTest {
       iterationCount,
       lossEvaluator,
       validationDataAndEvaluators,
-      partialRetrainInputOpt = None,
+      lockedCoordinates = Set(),
       logger)
     val (returnedModel, _) = coordinateDescent.run(coordinates, gameModels.head)
 

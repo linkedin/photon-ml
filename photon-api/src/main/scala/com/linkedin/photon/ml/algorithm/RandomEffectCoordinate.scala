@@ -91,6 +91,7 @@ protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjec
 }
 
 object RandomEffectCoordinate {
+
   /**
    * Update the model (i.e. run the coordinate optimizer).
    *
@@ -105,28 +106,37 @@ object RandomEffectCoordinate {
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
       randomEffectModel: RandomEffectModel): (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
-    val updatedModelsAndTrackers = randomEffectDataSet
+    val dataAndOptimizationProblems = randomEffectDataSet
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
-      .join(randomEffectModel.modelsRDD)
+
+    // Left join the models to data and optimization problems for cases where we have a prior model but no new data
+    val updatedModelsAndTrackers = randomEffectModel
+      .modelsRDD
+      .leftOuterJoin(dataAndOptimizationProblems)
       .mapValues {
-        case (((localDataSet, optimizationProblem), localModel)) =>
+        case (localModel, Some((localDataSet, optimizationProblem))) =>
           val trainingLabeledPoints = localDataSet.dataPoints.map(_._2)
           val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
           val stateTrackers = optimizationProblem.getStatesTracker
 
           (updatedModel, stateTrackers)
+
+        case (localModel, _) =>
+          (localModel, None)
       }
       .setName(s"Updated models and state trackers for random effect ${randomEffectDataSet.randomEffectType}")
       .persist(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
     val updatedRandomEffectModel = randomEffectModel
       .update(updatedModelsAndTrackers.mapValues(_._1))
       .setName(s"Updated models for random effect ${randomEffectDataSet.randomEffectType}")
       .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
       .materialize()
+
     val optimizationTracker: Option[RandomEffectOptimizationTracker] =
       if (randomEffectOptimizationProblem.isTrackingState) {
-        val stateTrackers = updatedModelsAndTrackers.map(_._2._2.get)
+        val stateTrackers = updatedModelsAndTrackers.flatMap(_._2._2)
         val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
           .setName(s"State trackers for random effect ${randomEffectDataSet.randomEffectType}")
           .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -134,7 +144,7 @@ object RandomEffectCoordinate {
 
         Some(randomEffectTracker)
       } else {
-        None.asInstanceOf[Option[RandomEffectOptimizationTracker]]
+        None
       }
 
     updatedModelsAndTrackers.unpersist()

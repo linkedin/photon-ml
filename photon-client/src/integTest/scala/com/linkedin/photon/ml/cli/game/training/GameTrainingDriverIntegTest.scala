@@ -426,6 +426,26 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME warm-start with initial model
+   */
+  @Test
+  def testWarmStartWithInitialModel(): Unit = sparkTest("testWarmStartWithInitialModel", useKryo = true) {
+    // TODO This is really not much more than a quick sanity check. At some point we need to split the data in 2 sets,
+    // and check that incremental training works as expected.
+    val outputDir = new Path(getTmpDir, "testInitialModel")
+
+    val args = defaultArgs
+      .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
+      .put(GameTrainingDriver.coordinateConfigurations, mixedEffectSeriousGameConfig)
+      .put(GameTrainingDriver.modelInputDirectory, trainedMixedModelPath)
+
+    runDriver(args.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.005)
+  }
+
+  /**
    * Test GAME training with a custom model sparsity threshold.
    */
   @Test
@@ -854,7 +874,7 @@ object GameTrainingDriverIntegTest {
       .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
       .put(GameTrainingDriver.coordinateConfigurations, randomEffectOnlySeriousGameConfig)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedFixedOnlyModelPath)
+      .put(GameTrainingDriver.modelInputDirectory, trainedFixedOnlyModelPath)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, Set(fixedEffectCoordinateId))
 
   /**
@@ -867,7 +887,7 @@ object GameTrainingDriverIntegTest {
       .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
       .put(GameTrainingDriver.coordinateConfigurations, fixedEffectOnlySeriousGameConfig)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedRandomOnlyModelPath)
+      .put(GameTrainingDriver.modelInputDirectory, trainedRandomOnlyModelPath)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, randomEffectCoordinateIds.toSet)
 
   /**

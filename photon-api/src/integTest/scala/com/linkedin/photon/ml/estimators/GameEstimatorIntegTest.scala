@@ -98,7 +98,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       estimator.getOrDefault(estimator.coordinateDescentIterations),
       trainingLossEvaluator,
       validationDataAndEvaluatorsOption = None,
-      partialRetrainInputOpt = None,
+      lockedCoordinates = Set(),
       logger)
     val models: (GameModel, Option[EvaluationResults]) = estimator.train(
       modelConfig,
@@ -179,7 +179,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
         estimator.getOrDefault(estimator.coordinateDescentIterations),
         trainingLossEvaluator,
         validationDataAndEvaluatorsOption = None,
-        partialRetrainInputOpt = None,
+        lockedCoordinates = Set(),
         logger)
       val models: (GameModel, Option[EvaluationResults]) = estimator.train(
         modelConfig,
@@ -431,8 +431,6 @@ object GameEstimatorIntegTest {
    * cases.
    */
   private class MockGameEstimator(sc: SparkContext, logger: Logger) extends GameEstimator(sc, logger) {
-
-    set(useWarmStart, false)
 
     override def prepareTrainingDataSetsAndEvaluator(
         data: DataFrame,

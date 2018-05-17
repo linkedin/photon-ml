@@ -44,4 +44,12 @@ protected[ml] class IdentityProjector extends RandomEffectProjector {
   def projectCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
     modelsRDD
 
+  /**
+   * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the original space to the projected space.
+   *
+   * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
+   */
+  def transformCoefficientsRDD(modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
+    modelsRDD
 }

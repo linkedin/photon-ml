@@ -125,4 +125,74 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     assertEquals(projectedShiftDimensions, projectedSize)
     assertEquals(projectedFactorDimensions, projectedSize)
   }
+
+  @Test
+  def testProjectCoefficientsRDD(): Unit = sparkTest("testProjectCoefficientsRDD") {
+    val features = List(
+      DenseVector(0.0, 2.0, 3.0, 4.0, 0.0, 1.0),
+      DenseVector(1.0, 5.0, 6.0, 7.0, 0.0, 1.0))
+
+    val originalSize = features.head.length
+    val projectedSize = originalSize - 1
+
+    val dataSet = generateRandomEffectDataSetWithFeatures(
+      randomEffectIds = Seq("1"),
+      randomEffectType = "per-item",
+      featureShardId = "itemShard",
+      features = features)
+
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
+    val reIds = dataSet.activeData.map(_._1).collect
+
+    // The model contains an re id from a prior run that doesn't exist in current data
+    val reIdsWithExtra = reIds :+ "extraReId"
+    val models = sc.parallelize(generateLinearModelsForRandomEffects(reIdsWithExtra, projectedSize))
+
+    val projected = projector.projectCoefficientsRDD(models).collect
+
+    // Ensure that re id present in the model but not in the dataset is preserved
+    assertEquals(projected.map(_._1).toSet, reIdsWithExtra.toSet)
+
+    projected.dropRight(1).foreach { case (_, model) =>
+      assertEquals(model.coefficients.means.length, originalSize)
+    }
+
+    // The "extra" model doesn't have a projector, so its size remains the same
+    assertEquals(projected.last._2.coefficients.means.length, projectedSize)
+  }
+
+  @Test
+  def testTransformCoefficientsRDD(): Unit = sparkTest("testTansformCoefficientsRDD") {
+    val features = List(
+      DenseVector(0.0, 2.0, 3.0, 4.0, 0.0, 1.0),
+      DenseVector(1.0, 5.0, 6.0, 7.0, 0.0, 1.0))
+
+    val originalSize = features.head.length
+    val projectedSize = originalSize - 1
+
+    val dataSet = generateRandomEffectDataSetWithFeatures(
+      randomEffectIds = Seq("1"),
+      randomEffectType = "per-item",
+      featureShardId = "itemShard",
+      features = features)
+
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
+    val reIds = dataSet.activeData.map(_._1).collect
+
+    // The model contains an re id from a prior run that doesn't exist in current data
+    val reIdsWithExtra = reIds :+ "extraReId"
+    val models = sc.parallelize(generateLinearModelsForRandomEffects(reIdsWithExtra, originalSize))
+
+    val projected = projector.transformCoefficientsRDD(models).collect
+
+    // Ensure that re id present in the model but not in the dataset is preserved
+    assertEquals(projected.map(_._1).toSet, reIdsWithExtra.toSet)
+
+    projected.dropRight(1).foreach { case (_, model) =>
+      assertEquals(model.coefficients.means.length, projectedSize)
+    }
+
+    // The "extra" model doesn't have a projector, so its size remains the same
+    assertEquals(projected.last._2.coefficients.means.length, originalSize)
+  }
 }

@@ -103,18 +103,14 @@ object GameTrainingDriver extends GameDriver {
     "Minimum number of partitions for the validation data (if any).",
     ParamValidators.gt[Int](0.0))
 
-  val partialRetrainModelDirectory: Param[Path] = ParamUtils.createParam(
-    "partial retrain model directory",
-    "Path to directory containing a model to use as a base for partial retraining.")
+  val outputMode: Param[ModelOutputMode] = ParamUtils.createParam[ModelOutputMode](
+    "output mode",
+    "Granularity of model output to HDFS.")
 
   val partialRetrainLockedCoordinates: Param[Set[CoordinateId]] = ParamUtils.createParam(
     "partial retrain locked coordinates",
     "The set of coordinates present in the pre-trained model to reuse during partial retraining.",
     PhotonParamValidators.nonEmpty)
-
-  val outputMode: Param[ModelOutputMode] = ParamUtils.createParam[ModelOutputMode](
-    "output mode",
-    "Granularity of model output to HDFS.")
 
   val coordinateConfigurations: Param[Map[CoordinateId, CoordinateConfiguration]] =
     ParamUtils.createParam[Map[CoordinateId, CoordinateConfiguration]](
@@ -165,10 +161,6 @@ object GameTrainingDriver extends GameDriver {
     "compute variance",
     "Whether to compute the coefficient variances.")
 
-  val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
-    "use warm start",
-    "Whether to re-use trained GAME models as starting points.")
-
   val modelSparsityThreshold: Param[Double] = ParamUtils.createParam[Double](
     "model sparsity threshold",
     "The model sparsity threshold, or the minimum absolute value considered nonzero when persisting a model",
@@ -214,20 +206,25 @@ object GameTrainingDriver extends GameDriver {
     val coordinateConfigs = paramMap(coordinateConfigurations)
     val updateSequence = paramMap(coordinateUpdateSequence)
     val featureShards = paramMap(featureShardConfigurations)
-    val retrainModelDirOpt = paramMap.get(partialRetrainModelDirectory)
+    val baseModelDirOpt = paramMap.get(modelInputDirectory)
     val retrainModelCoordsOpt = paramMap.get(partialRetrainLockedCoordinates)
     val inputColNames = paramMap.getOrElse(inputColumnNames, getDefault(inputColumnNames).get).getNames
     val normalizationType = paramMap.getOrElse(normalization, getDefault(normalization).get)
-    val hyperparameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getDefault(hyperParameterTuning).get)
+    val hyperParameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getDefault(hyperParameterTuning).get)
 
-    // If partial retraining is enabled, both a model to use and list of coordinates to reuse must be provided
-    val coordinatesToTrain = (retrainModelDirOpt, retrainModelCoordsOpt) match {
+    // Partial retraining and warm-start training require an initial GAME model to be provided as input
+    val coordinatesToTrain = (baseModelDirOpt, retrainModelCoordsOpt) match {
       case (Some(_), Some(retrainModelCoords)) =>
 
         // Locked coordinates should not be present in the coordinate configurations
         require(
           coordinateConfigs.keys.forall(coordinateId => !retrainModelCoords.contains(coordinateId)),
           "One or more locked coordinates for partial retraining are present in the coordinate configurations.")
+
+        // All locked coordinates must be used by the update sequence
+        require(
+          retrainModelCoords.forall(updateSequence.contains),
+          "One or more locked coordinates for partial retraining are missing from the update sequence.")
 
         val newCoordinates = updateSequence.filterNot(retrainModelCoords.contains)
 
@@ -237,21 +234,13 @@ object GameTrainingDriver extends GameDriver {
           "All coordinates in the update sequence are locked coordinates from the pre-trained model: no new " +
             "coordinates to train.")
 
-        // All locked coordinates must be used by the update sequence
-        require(
-          retrainModelCoords.forall(updateSequence.contains),
-          "One or more locked coordinates for partial retraining are missing from the update sequence.")
-
         newCoordinates
 
-      case (None, None) =>
+      case (Some(_), None) | (None, None) =>
         updateSequence
 
-      case (Some(_), None) =>
-        throw new IllegalArgumentException("Missing locked coordinates for partial retraining.")
-
       case (None, Some(_)) =>
-        throw new IllegalArgumentException("Partial retraining coordinates provided without model.")
+        throw new IllegalArgumentException("Partial retraining enabled, but no base model provided.")
     }
 
     // Each (non-reused) coordinate in the update sequence must have a configuration
@@ -294,11 +283,12 @@ object GameTrainingDriver extends GameDriver {
     }
 
     // If hyper-parameter tuning is enabled, need to specify the number of tuning iterations
-    hyperparameterTuningMode match {
+    hyperParameterTuningMode match {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(
           paramMap.get(hyperParameterTuningIter).isDefined,
           "Hyper-parameter tuning enabled, but number of iterations unspecified.")
+
       case _ =>
     }
   }
@@ -316,7 +306,6 @@ object GameTrainingDriver extends GameDriver {
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
     setDefault(hyperParameterTuningRange, DoubleRange(1e-4, 1e4))
     setDefault(computeVariance, false)
-    setDefault(useWarmStart, false)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
@@ -347,6 +336,8 @@ object GameTrainingDriver extends GameDriver {
       cleanOutputDirs()
     }
 
+    val updateSequence = getRequiredParam(coordinateUpdateSequence)
+
     val avroDataReader = new AvroDataReader()
     val featureIndexMapLoadersOpt = Timed("Prepare features") {
       prepareFeatureMaps()
@@ -361,47 +352,44 @@ object GameTrainingDriver extends GameDriver {
     trainingData.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
     validationData.map(_.persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
 
-    val (partialRetrainingModelOpt, partialRetrainingDataConfigsOpt) = Timed("Load model for partial retraining") {
+    val modelOpt = get(modelInputDirectory).map { modelDir =>
+      Timed("Load model for warm-start training") {
+        ModelProcessingUtils.loadGameModelFromHDFS(
+          sc,
+          modelDir,
+          StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+          featureIndexMapLoaders,
+          Some(updateSequence.toSet))
+      }
+    }
 
-      (get(partialRetrainModelDirectory), get(partialRetrainLockedCoordinates)) match {
+    val partialRetrainingDataConfigsOpt = get(partialRetrainLockedCoordinates).map { lockedCoordinates =>
+      Timed("Build data configurations for locked coordinates") {
 
-        case (Some(preTrainedModelDir), Some(lockedCoordinates)) =>
-          val gameModel = ModelProcessingUtils.loadGameModelFromHDFS(
-            sc,
-            preTrainedModelDir,
-            StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
-            featureIndexMapLoaders,
-            Some(lockedCoordinates))
+        val modelMap = modelOpt.get.toMap
 
-          // All of the locked coordinates must be present in the pre-trained model
-          require(
-            lockedCoordinates.forall(gameModel.toMap.contains),
-            "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
+        require(
+          lockedCoordinates.forall(modelMap.contains),
+          "One or more locked coordinates for partial retraining are missing from the initial model.")
 
-          val dataConfigs = gameModel
-            .toMap
-            .filter { case (coordinateId, _) =>
-              lockedCoordinates.contains(coordinateId)
-            }
-            .mapValues {
-              case fEM: FixedEffectModel =>
-                FixedEffectDataConfiguration(fEM.featureShardId)
+        modelMap
+          .filter { case (coordinateId, _) =>
+            lockedCoordinates.contains(coordinateId)
+          }
+          .mapValues {
+            case fEM: FixedEffectModel =>
+              FixedEffectDataConfiguration(fEM.featureShardId)
 
-              case rEM: RandomEffectModel =>
-                RandomEffectDataConfiguration(
-                  rEM.randomEffectType,
-                  rEM.featureShardId,
-                  projectorType = IdentityProjection)
+            case rEM: RandomEffectModel =>
+              RandomEffectDataConfiguration(
+                rEM.randomEffectType,
+                rEM.featureShardId,
+                projectorType = IdentityProjection)
 
-              case other: DatumScoringModel =>
-                throw new IllegalArgumentException(s"Encountered unknown model type '${other.getClass.getName}'")
-            }
-            .map(identity)
-
-          (Some(gameModel), Some(dataConfigs))
-
-        case _ =>
-          (None, None)
+            case other: DatumScoringModel =>
+              throw new IllegalArgumentException(s"Encountered unknown model type '${other.getClass.getName}'")
+          }
+          .map(identity)
       }
     }
 
@@ -448,10 +436,9 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setComputeVariance(getOrDefault(computeVariance))
-        .setWarmStart(getOrDefault(useWarmStart))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
-      partialRetrainingModelOpt.foreach(estimator.setPartialRetrainModel)
+      modelOpt.foreach(estimator.setInitialModel)
       get(partialRetrainLockedCoordinates).foreach(estimator.setPartialRetrainLockedCoordinates)
       normalizationContexts.foreach(estimator.setCoordinateNormalizationContexts)
       get(treeAggregateDepth).foreach(estimator.setTreeAggregateDepth)

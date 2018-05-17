@@ -77,6 +77,12 @@ trait ScoptGameParametersParser extends ScoptParser {
         driver.featureBagsDirectory,
         usageText = "<path>"),
 
+      // Model Input Dir
+      ScoptParameter[Path, Path](
+        driver.modelInputDirectory,
+        usageText = "<path>",
+        isRequired = true),
+
       // Input Column Names
       ScoptParameter[Map[String, String], InputColumnsNames](
         driver.inputColumnNames,

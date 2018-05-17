@@ -56,7 +56,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNo
    * @param seed A random seed
    * @return The basic model
    */
-  override protected[algorithm] def initializeModel(seed: Long): RandomEffectModelInProjectedSpace =
+  override protected[ml] def initializeModel(seed: Long): RandomEffectModelInProjectedSpace =
     RandomEffectCoordinateInProjectedSpace.initializeModel(dataSetInProjectedSpace, optimizationProblem)
 
   /**

@@ -27,13 +27,13 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.model.GameModel
+import com.linkedin.photon.ml.model.{GameModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjectorRDD, ProjectionMatrixBroadcast}
@@ -101,14 +101,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         "coordinate, but the shifts and factors are different for each shard.",
       PhotonParamValidators.nonEmpty[TraversableOnce, (CoordinateId, NormalizationContext)])
 
-  val partialRetrainModel: Param[GameModel] = ParamUtils.createParam(
-    "partial retrain model",
-    "Pre-trained model to use as a base for partial retraining.")
+  val initialModel: Param[GameModel] = ParamUtils.createParam(
+    "initial model",
+    "Prior model to use as a starting point for training.")
 
   val partialRetrainLockedCoordinates: Param[Set[CoordinateId]] = ParamUtils.createParam(
     "partial retrain locked coordinates",
-    "The set of coordinates present in the pre-trained model to reuse during partial retraining.",
-    PhotonParamValidators.nonEmpty)
+    "The set of coordinates present in the pre-trained model to reuse during partial retraining.")
 
   val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
     "compute variance",
@@ -124,10 +123,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "A list of evaluators used to validate computed scores (Note: the first evaluator in the list is the one used " +
       "for model selection)",
     PhotonParamValidators.nonEmpty[Seq, EvaluatorType])
-
-  val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
-    "use warm start",
-    "Whether to re-use trained GAME models as starting points.")
 
   //
   // Initialize object
@@ -153,7 +148,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   def setCoordinateNormalizationContexts(value: Map[CoordinateId, NormalizationContext]): this.type =
     set(coordinateNormalizationContexts, value)
 
-  def setPartialRetrainModel(value: GameModel): this.type = set(partialRetrainModel, value)
+  def setInitialModel(value: GameModel): this.type = set(initialModel, value)
 
   def setPartialRetrainLockedCoordinates(value: Set[CoordinateId]): this.type =
     set(partialRetrainLockedCoordinates, value)
@@ -163,8 +158,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   def setTreeAggregateDepth(value: Int): this.type = set(treeAggregateDepth, value)
 
   def setValidationEvaluators(value: Seq[EvaluatorType]): this.type = set(validationEvaluators, value)
-
-  def setWarmStart(value: Boolean): this.type = set(useWarmStart, value)
 
   //
   // Params trait extensions
@@ -186,11 +179,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   private def setDefaultParams(): Unit = {
 
-    setDefault(coordinateDescentIterations, 1)
     setDefault(inputColumnNames, InputColumnsNames())
+    setDefault(coordinateDescentIterations, 1)
+    setDefault(partialRetrainLockedCoordinates, Set.empty[CoordinateId])
     setDefault(computeVariance, false)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
-    setDefault(useWarmStart, false)
   }
 
   /**
@@ -209,7 +202,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val dataConfigs = getRequiredParam(coordinateDataConfigurations)
-    val retrainModelOpt = get(partialRetrainModel)
+    val initialModelOpt = get(initialModel)
     val retrainModelCoordsOpt = get(partialRetrainLockedCoordinates)
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val numUniqueCoordinates = updateSequence.toSet.size
@@ -219,9 +212,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       numUniqueCoordinates == updateSequence.size,
       "One or more coordinates are repeated in the update sequence.")
 
-    // If partial retraining is enabled, both a pre-trained model and a list of coordinates to reuse must be provided
-    val coordinatesToTrain = (retrainModelOpt, retrainModelCoordsOpt) match {
-      case (Some(retrainModel), Some(retrainModelCoords)) =>
+    // Partial retraining and warm-start training require an initial GAME model to be provided as input
+    val coordinatesToTrain = (initialModelOpt, retrainModelCoordsOpt) match {
+      case (Some(initModel), Some(retrainModelCoords)) =>
 
         val newCoordinates = updateSequence.filterNot(retrainModelCoords.contains)
 
@@ -233,29 +226,25 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         // No point in training if every coordinate is being reused
         require(
           newCoordinates.nonEmpty,
-          "All coordinates in the update sequence are locked coordinates from the pre-trained model: no new " +
-            "coordinates to train.")
+          "All coordinates in the update sequence are re-used from the initial model: no new coordinates to train.")
 
         // All locked coordinates must be used by the update sequence
         require(
           retrainModelCoords.forall(updateSequence.contains),
           "One or more locked coordinates for partial retraining are missing from the update sequence.")
 
-        // All locked coordinates must be used present in the pre-trained model
+        // All locked coordinates must be present in the initial model
         require(
-          retrainModelCoords.forall(retrainModel.toMap.contains),
-          "One or more locked coordinates for partial retraining are missing from the pre-trained model.")
+          retrainModelCoords.forall(initModel.toMap.contains),
+          "One or more locked coordinates for partial retraining are missing from the initial model.")
 
         newCoordinates
 
-      case (None, None) =>
+      case (Some(_), None) | (None, None) =>
         updateSequence
 
-      case (Some(_), None) =>
-        throw new IllegalArgumentException("Missing locked coordinates for partial retraining.")
-
       case (None, Some(_)) =>
-        throw new IllegalArgumentException("Partial retraining coordinates provided without model.")
+        throw new IllegalArgumentException("Partial retraining enabled, but no base model provided.")
     }
 
     // All coordinates (including locked coordinates) should have a data configuration
@@ -336,18 +325,17 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       featureShards,
       additionalCols)
     val normalizationContextWrappersOpt = prepareNormalizationContextWrappers(trainingDataSets)
-    val coordinateDescent = CoordinateDescent(
+    val coordinateDescent = new CoordinateDescent(
       getRequiredParam(coordinateUpdateSequence),
       getOrDefault(coordinateDescentIterations),
       trainingLossFunctionEvaluator,
-      logger,
       validationDataSetAndEvaluatorsOpt,
-      get(partialRetrainModel),
-      get(partialRetrainLockedCoordinates))
+      getOrDefault(partialRetrainLockedCoordinates),
+      logger)
 
     val results = Timed(s"Training models:") {
 
-      var prevGameModel: Option[GameModel] = None
+      var prevGameModel: Option[GameModel] = getInitialModel(trainingDataSets)
 
       optimizationConfigurations.map { optimizationConfiguration =>
         val (gameModel, evaluation) = train(
@@ -357,9 +345,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           normalizationContextWrappersOpt,
           prevGameModel)
 
-        if (getOrDefault(useWarmStart)) {
-          prevGameModel = Some(gameModel)
-        }
+        prevGameModel = Some(gameModel)
 
         (gameModel, evaluation, optimizationConfiguration)
       }
@@ -381,6 +367,34 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     results
   }
+
+  /**
+   * Gets and initializes the prior model, if specified
+   *
+   * @param trainingDataSets Per-item prior models are projected with the projectors of the current dataset, so
+   *   initializing the model is a function of the current dataset.
+   * @return The initial model
+   */
+  protected def getInitialModel(
+      trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }]): Option[GameModel] =
+    get(initialModel).map { gameModel =>
+      new GameModel(gameModel
+        .toMap
+        .map { case (coordinateId, model) => (model, trainingDataSets(coordinateId)) match {
+          // For random effect models, we need to transform the prior model into the projected space of the current
+          // dataset
+          case (reModel: RandomEffectModel, reDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace) =>
+            (coordinateId,
+              new RandomEffectModelInProjectedSpace(
+                reDataSetInProjectedSpace.randomEffectProjector.transformCoefficientsRDD(reModel.modelsRDD),
+                reDataSetInProjectedSpace.randomEffectProjector,
+                reModel.randomEffectType,
+                reModel.featureShardId).persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+
+          case _ =>
+            (coordinateId, model)
+        }})
+    }
 
   /**
    * Verify that the input to which we're fitting a model is valid.
@@ -696,9 +710,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    * @param configuration The configuration for the GAME optimization problem
    * @param trainingDataSets The training data sets for each coordinate of the GAME optimization problem
    * @param coordinateDescent The coordinate descent driver
-   * @param prevGameModelOpt An optional existing GAME model to use as the starting point from which to optimize
    * @param normalizationContextWrappersOpt Optional normalization contexts, wrapped for use by random effect
    *                                        coordinates
+   * @param initialModelOpt An optional existing GAME model who's components should be used to warm-start training
    * @return A trained GAME model
    */
   protected def train(
@@ -706,16 +720,16 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
       coordinateDescent: CoordinateDescent,
       normalizationContextWrappersOpt: Option[Map[CoordinateId, NormalizationContextWrapper]],
-      prevGameModelOpt: Option[GameModel] = None)
-    : (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
+      initialModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
 
     logger.info("Model configuration:")
     configuration.foreach { case (coordinateId, coordinateConfig) =>
       logger.info(s"coordinate '$coordinateId':\n$coordinateConfig")
     }
 
-    val variance = getOrDefault(computeVariance)
     val task = getRequiredParam(trainingTask)
+    val updateSequence = getRequiredParam(coordinateUpdateSequence)
+    val variance = getOrDefault(computeVariance)
     val lossFunctionFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
     val glmConstructor = task match {
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
@@ -729,9 +743,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       normalizationContextWrappersOpt.getOrElse(configuration.mapValues(_ => defaultNormalizationContext))
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
 
-    // For each model, create the optimization coordinates
+    // Create the optimization coordinates for each component model
     val coordinates: Map[CoordinateId, C forSome { type C <: Coordinate[_] }] =
-      getRequiredParam(coordinateUpdateSequence)
+      updateSequence
         .map { coordinateId =>
           val coordinate: C forSome { type C <: Coordinate[_] } = if (lockedCoordinates.contains(coordinateId)) {
             trainingDataSets(coordinateId) match {
@@ -755,10 +769,34 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         }
         .toMap
 
-    prevGameModelOpt match {
-      case Some(prevGameModel) => coordinateDescent.run(coordinates, prevGameModel)
-      case None => coordinateDescent.run(coordinates)
-    }
+    // Create the base model to optimize, using a combination of existing coordinates (if provided) and new ones
+    val model = updateSequence
+      .map { coordinateId =>
+
+        val initializedModel = initialModelOpt
+          .flatMap(_.getModel(coordinateId))
+          .getOrElse(coordinates(coordinateId).initializeModel(MathConst.RANDOM_SEED))
+
+        initializedModel match {
+          case rddLike: RDDLike =>
+            rddLike
+              .setName(s"Initialized model with coordinate id $coordinateId")
+              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+
+          case _ =>
+        }
+
+        if (logger.isDebugEnabled) {
+          logger.debug(
+            s"Summary of model (${initializedModel.getClass}) initialized for coordinate with ID $coordinateId:" +
+              s"\n${initializedModel.toSummaryString}")
+        }
+
+        (coordinateId, initializedModel)
+      }
+      .toMap
+
+    coordinateDescent.run(coordinates, new GameModel(model))
   }
 }
 

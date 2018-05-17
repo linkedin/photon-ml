@@ -82,6 +82,10 @@ trait GameDriver extends Params {
     "input column names",
     "A map of custom column names which replace the default column names of expected fields in the Avro input.")
 
+  val modelInputDirectory: Param[Path] = ParamUtils.createParam(
+    "model input directory",
+    "Path to directory containing GAME model.")
+
   val evaluators: Param[Seq[EvaluatorType]] = ParamUtils.createParam(
     "validation evaluators",
     "A list of evaluators used to validate computed scores.",

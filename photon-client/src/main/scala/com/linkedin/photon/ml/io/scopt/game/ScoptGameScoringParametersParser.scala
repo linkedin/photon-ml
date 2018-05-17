@@ -33,12 +33,6 @@ object ScoptGameScoringParametersParser extends ScoptGameParametersParser {
   val scoptGameScoringParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
     createScoptGameParams(GameScoringDriver) ++ Seq(
 
-      // Model Input Dir
-      ScoptParameter[Path, Path](
-        GameScoringDriver.modelInputDirectory,
-        usageText = "<path>",
-        isRequired = true),
-
       // Model ID
       ScoptParameter[String, String](
         GameScoringDriver.modelId,

@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
@@ -24,10 +25,8 @@ import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
  * Integration tests for the [[RandomEffectCoordinate]] implementation.
  */
 class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
-  import RandomEffectCoordinateIntegTest._
 
-  private val randomEffectType = "random-effect-1"
-  private val featureShardId = "shard1"
+  import RandomEffectCoordinateIntegTest._
 
   @DataProvider
   def numEntitiesDataProvider(): Array[Array[Integer]] = {
@@ -36,9 +35,10 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
 
   @Test(dataProvider = "numEntitiesDataProvider")
   def testUpdateModel(numEntities: Int): Unit = sparkTest("testUpdateModel") {
+
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectType,
-      featureShardId,
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_ID,
       numEntities,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
@@ -57,10 +57,36 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
   }
 
   @Test(dataProvider = "numEntitiesDataProvider")
+  def testUpdateInitialModel(numEntities: Int): Unit = sparkTest("testUpdateInitialModel") {
+
+    val (coordinate, baseModel) = generateRandomEffectCoordinateAndModel(
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_ID,
+      numEntities,
+      NUM_TRAINING_SAMPLES,
+      DIMENSIONALITY)
+
+    // Add in an item that exists in the prior model, but not the data
+    val randomEffectIds = baseModel.modelsRDD.keys.collect() :+ "reExtra"
+    val model = baseModel.update(sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, DIMENSIONALITY)))
+    val (newModel, _) = coordinate.updateModel(model)
+
+    newModel match {
+      case m: RandomEffectModel =>
+        // Make sure that the prior model items are still there
+        assertEquals(m.modelsRDD.map(_._1).collect.toSet, randomEffectIds.toSet)
+
+      case other =>
+        fail(s"Unexpected model type: ${other.getClass.getName}")
+    }
+  }
+
+  @Test(dataProvider = "numEntitiesDataProvider")
   def testScore(numEntities: Int): Unit = sparkTest("testScore") {
+
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectType,
-      featureShardId,
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_ID,
       numEntities,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
@@ -73,6 +99,9 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
 }
 
 object RandomEffectCoordinateIntegTest {
+
+  private val RANDOM_EFFECT_TYPE = "random-effect-1"
+  private val FEATURE_SHARD_ID = "shard1"
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }

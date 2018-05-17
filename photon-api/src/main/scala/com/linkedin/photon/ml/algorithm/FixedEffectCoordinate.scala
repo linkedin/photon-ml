@@ -60,7 +60,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @param seed A random seed
    * @return The basic model
    */
-  override protected[algorithm] def initializeModel(seed: Long): FixedEffectModel = {
+  override protected[ml] def initializeModel(seed: Long): FixedEffectModel = {
     val numFeatures = dataSet.numFeatures
     val generalizedLinearModel = optimizationProblem.initializeZeroModel(numFeatures)
     val generalizedLinearModelBroadcast = dataSet
