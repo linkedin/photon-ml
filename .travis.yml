@@ -26,6 +26,7 @@ before_script:
   - sudo service rsync stop || true
   - sudo service x11-common stop || true
 env:
+  - TESTS=rat
   - TESTS=unit
   - TESTS=integration
 script:
