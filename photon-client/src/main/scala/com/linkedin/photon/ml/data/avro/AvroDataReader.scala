@@ -129,7 +129,7 @@ class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_D
       numPartitions: Int): DataFrame = {
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
-    require(numPartitions > 0, "Partition count must be positive.")
+    require(numPartitions >= 0, "Partition count cannot be negative.")
 
     val featureColumnMap = featureColumnConfigsMap.mapValues(_.featureBags).map(identity)
     val records = AvroUtils.readAvroFiles(sc, paths, numPartitions)

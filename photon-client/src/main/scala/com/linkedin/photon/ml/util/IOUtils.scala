@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 /**
  * Some basic IO util functions to be merged with the other util functions.
  */
-protected[ml] object IOUtils {
+object IOUtils {
 
   /**
    * Resolve between multiple date range specification options.
