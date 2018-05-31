@@ -24,12 +24,15 @@ import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationConte
 import com.linkedin.photon.ml.test.{Assertions, CommonTestUtils}
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
+/**
+ * Unit tests for [[LBFGSB]].
+ */
 class LBFGSBTest {
 
   @DataProvider(name = "dataProvider")
   def dataProvider(): Array[Array[Any]] = {
     Array(
-      //Cannot use Double.PositiveInfinity or Double.NegativeInfinity because of mean used later
+      // Cannot use Double.PositiveInfinity or Double.NegativeInfinity because of mean used later
       Array(Array(-10.0), Array(10.0), Array(4.0), 0.0),
       Array(Array(-5.0), Array(5.0), Array(4.0), 0.0),
       Array(Array(-10.0), Array(3.0), Array(3.0), 1.0),
@@ -46,17 +49,21 @@ class LBFGSBTest {
 
     val normalizationContext = NoNormalization()
     val normalizationContextBroadcast = mock(classOf[BroadcastWrapper[NormalizationContext]])
+
     doReturn(normalizationContext).when(normalizationContextBroadcast).value
 
     val lbfgsb = new LBFGSB(DenseVector(lowerBounds), DenseVector(upperBounds), normalizationContext = normalizationContextBroadcast)
     val objective = new TestObjective
     val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(expectedCoef.length), 0.0, 0.0))
-    // update each initial coefficient in the range [lowerBounds, upperBounds]
-    val initialCoefficients = DenseVector.zeros[Double](expectedCoef.length)
-    for(i <- 0 until initialCoefficients.length){
-      initialCoefficients(i) = CommonTestUtils.generateDenseVector(1, (lowerBounds(i) + upperBounds(i))/2)(0)
-    }
-    val (actualCoef, actualValue) = lbfgsb.optimize(objective, initialCoefficients)(trainingData)
+    // Update each initial coefficient in the range [lowerBounds, upperBounds]
+    val initialCoefficients = (1 to expectedCoef.length)
+      .map { i =>
+        val pos = i - 1
+
+        (lowerBounds(pos) + upperBounds(pos)) / 2
+      }
+      .toArray
+    val (actualCoef, actualValue) = lbfgsb.optimize(objective, DenseVector[Double](initialCoefficients))(trainingData)
 
     Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, LBFGSBTest.EPSILON)
     assertEquals(actualValue, expectedValue, LBFGSBTest.EPSILON)
