@@ -402,6 +402,24 @@ class ScoptParserHelpersTest {
     assertEquals(ScoptParserHelpers.doubleRangeToString(doubleRange), expected)
   }
 
+  @DataProvider
+  def doubleRangeProvider = Array(
+    Array("1-2", DoubleRange(1.0, 2.0)),
+    Array("1.5-2.5", DoubleRange(1.5, 2.5)),
+    Array("-2--1", DoubleRange(-2.0, -1.0)),
+    Array("1e-10-1e10", DoubleRange(1e-10, 1e10)),
+    Array("-1e10--1e-10", DoubleRange(-1e10, -1e-10)),
+    Array("1.5e-4-2.5e4", DoubleRange(1.5e-4, 2.5e4)),
+    Array("+5-4.1e+4", DoubleRange(5.0, 4.1e4)))
+
+  /**
+   * Test that [[DoubleRange]] parses correctly
+   */
+  @Test(dataProvider = "doubleRangeProvider")
+  def testParseDoubleRange(input: String, expected: DoubleRange): Unit = {
+    assertEquals(ScoptParserHelpers.parseDoubleRange(input), expected)
+  }
+
   /**
    * Test that a multiple [[CoordinateConfiguration]] instances can be correctly printed into a Scopt-parseable
    * [[String]].
