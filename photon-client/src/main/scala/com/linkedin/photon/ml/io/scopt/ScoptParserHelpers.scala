@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.io.scopt
 
 import java.util.StringJoiner
 
-import scala.util.Try
 import scala.collection.mutable
 
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId}
@@ -41,6 +40,8 @@ object ScoptParserHelpers extends Logging {
   val LIST_DELIMITER = ","
   val SECONDARY_LIST_DELIMITER = '|'
   val RANGE_DELIMITER = '-'
+  val DOUBLE_PATTERN = """\s*[+-]?\d+(\.\d+)?([eE][+-]?\d+)?\s*"""
+  val DOUBLE_RANGE_PATTERN = s"($DOUBLE_PATTERN)$RANGE_DELIMITER($DOUBLE_PATTERN)".r
 
   // Feature shard configuration parameters
   val FEATURE_SHARD_CONFIG_NAME = "name"
@@ -161,12 +162,10 @@ object ScoptParserHelpers extends Logging {
    * @return A [[DoubleRange]]
    * @throws IllegalArgumentException if the input cannot be parsed into delimited two [[Double]] values
    */
-  def parseDoubleRange(input: String): DoubleRange =
-    Try {
-        val Array(start, end) = input.split(RANGE_DELIMITER)
-        DoubleRange(start.toDouble, end.toDouble)
-      }
-      .getOrElse(throw new IllegalArgumentException(s"Couldn't parse the range '$input'."))
+  def parseDoubleRange(input: String): DoubleRange = input match {
+    case DOUBLE_RANGE_PATTERN(start, _, _, end, _, _) => DoubleRange(start.toDouble, end.toDouble)
+    case _ => throw new IllegalArgumentException(s"Couldn't parse the range '$input'.")
+  }
 
   /**
    * Create a single [[CoordinateConfiguration]] from a [[Map]] of (coordinate config arg -> coordinate config value),
