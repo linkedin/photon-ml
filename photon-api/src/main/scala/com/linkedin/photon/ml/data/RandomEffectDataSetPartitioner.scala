@@ -107,29 +107,44 @@ object RandomEffectDataSetPartitioner {
    * We stop filling in idToPartitionMap at partitionerCapacity records, because this map is passed to the executors
    * and we therefore wish to control/limit its size.
    *
-   * @param numPartitions The number of partitions to fill
-   * @param randomEffectType The random effect type (e.g. "memberId")
    * @param gameDataSet The GAME training dataset
+   * @param reConfig The random effect data configuration options
    * @param partitionerCapacity The partitioner capacity
    * @return A partitioner for one random effect model
    */
   def fromGameDataSet(
-      numPartitions: Int,
-      randomEffectType: String,
       gameDataSet: RDD[(Long, GameDatum)],
+      reConfig: RandomEffectDataConfiguration,
       partitionerCapacity: Int = 10000): RandomEffectDataSetPartitioner = {
+
+    val numPartitions = reConfig.minNumPartitions
+    val randomEffectType = reConfig.randomEffectType
+    val activeDataUpperBoundOpt = reConfig.numActiveDataPointsUpperBound
 
     require(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")
 
-    val sortedRandomEffectTypes =
-      gameDataSet
-          .values
-          .filter(_.idTagToValueMap.contains(randomEffectType))
-          .map(gameData => (gameData.idTagToValueMap(randomEffectType), 1))
-          .reduceByKey(_ + _)
-          .collect()
-          .sortBy(_._2 * -1)
-          .take(partitionerCapacity)
+    val rawSortedRandomEffectTypes = gameDataSet
+      .values
+      .filter(_.idTagToValueMap.contains(randomEffectType))
+      .map(gameData => (gameData.idTagToValueMap(randomEffectType), 1))
+      .reduceByKey(_ + _)
+      .collect()
+      .sortBy(_._2 * -1)
+      .take(partitionerCapacity)
+
+    // If the number of active samples is bounded, we can partition them better by using the bound as the count
+    val sortedRandomEffectTypes = activeDataUpperBoundOpt match {
+      case Some(bound) =>
+        rawSortedRandomEffectTypes.map { case (reId, count) =>
+
+          val newCount = if (count > bound) bound else count
+
+          (reId, newCount)
+        }
+
+      case None =>
+        rawSortedRandomEffectTypes
+    }
 
     val ordering = new Ordering[(Int, Int)] {
       def compare(pair1: (Int, Int), pair2: (Int, Int)): Int = pair2._2 compare pair1._2

@@ -511,15 +511,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         case reConfig: RandomEffectDataConfiguration =>
 
-          val partitioner = RandomEffectDataSetPartitioner.fromGameDataSet(
-            reConfig.minNumPartitions,
-            reConfig.randomEffectType,
-            gameDataSet)
+          val rePartitioner = RandomEffectDataSetPartitioner.fromGameDataSet(gameDataSet, reConfig)
 
           val existingModelKeysRddOpt = if (getOrDefault(ignoreThresholdForNewModels)) {
             getRequiredParam(initialModel).getModel(coordinateId).map {
               case rem: RandomEffectModel =>
-                rem.modelsRDD.partitionBy(partitioner).keys
+                rem.modelsRDD.partitionBy(rePartitioner).keys
 
               case other =>
                 throw new IllegalArgumentException(
@@ -529,7 +526,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, partitioner, existingModelKeysRddOpt)
+          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, rePartitioner, existingModelKeysRddOpt)
             .setName(s"Random Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
@@ -568,7 +565,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
                 s"${randomEffectDataSet.toSummaryString}\n")
           }
 
-          partitioner.unpersistBroadcast()
+          rePartitioner.unpersistBroadcast()
 
           (coordinateId, randomEffectDataSet)
       }
