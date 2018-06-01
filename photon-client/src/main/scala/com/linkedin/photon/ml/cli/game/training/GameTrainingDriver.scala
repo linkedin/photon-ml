@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -192,11 +193,39 @@ object GameTrainingDriver extends GameDriver {
   }
 
   //
-  // Params functions
+  // PhotonParams trait extensions
   //
 
   /**
+   * Set default values for parameters that have them.
+   */
+  override protected def setDefaultParams(): Unit = {
+
+    setDefault(inputColumnNames, InputColumnsNames())
+    setDefault(minValidationPartitions, 1)
+    setDefault(outputMode, ModelOutputMode.BEST)
+    setDefault(overrideOutputDirectory, false)
+    setDefault(normalization, NormalizationType.NONE)
+    setDefault(hyperParameterTunerName, HyperparameterTunerName.DUMMY)
+    setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
+    setDefault(computeVariance, false)
+    setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
+    setDefault(logLevel, PhotonLogger.LogLevelInfo)
+    setDefault(applicationName, DEFAULT_APPLICATION_NAME)
+    setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
+    setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
+    setDefault(ignoreThresholdForNewModels, false)
+  }
+
+  /**
    * Check that all required parameters have been set and validate interactions between parameters.
+   *
+   * @note In Spark, interactions between parameters are checked by
+   *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
+   *       Photon-ML, we need to have this function to check the interactions between parameters.
+   * @throws MissingArgumentException if a required parameter is missing
+   * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
   override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
@@ -301,32 +330,6 @@ object GameTrainingDriver extends GameDriver {
       case _ =>
     }
   }
-
-  /**
-   * Set default values for parameters that have them.
-   */
-  private def setDefaultParams(): Unit = {
-
-    setDefault(inputColumnNames, InputColumnsNames())
-    setDefault(minValidationPartitions, 1)
-    setDefault(outputMode, ModelOutputMode.BEST)
-    setDefault(overrideOutputDirectory, false)
-    setDefault(normalization, NormalizationType.NONE)
-    setDefault(hyperParameterTunerName, HyperparameterTunerName.DUMMY)
-    setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
-    setDefault(computeVariance, false)
-    setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
-    setDefault(logLevel, PhotonLogger.LogLevelInfo)
-    setDefault(applicationName, DEFAULT_APPLICATION_NAME)
-    setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
-    setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
-    setDefault(ignoreThresholdForNewModels, false)
-  }
-
-  /**
-   * Clear all set parameters.
-   */
-  def clear(): Unit = params.foreach(clear)
 
   //
   // Training driver functions

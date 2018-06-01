@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.util._
 /**
  * Contains common parameters and functions for GAME training/scoring drivers.
  */
-trait GameDriver extends Params {
+trait GameDriver extends PhotonParams {
 
   //
   // Members
@@ -132,25 +132,20 @@ trait GameDriver extends Params {
     "The time zone to use for days ago calculations. See: http://joda-time.sourceforge.net/timezones.html")
 
   //
-  // Params functions
+  // PhotonParams trait extensions
   //
 
   /**
-   * Return the user-supplied value for a required parameter. Used for mandatory parameters without default values.
-   *
-   * @tparam T The type of the parameter
-   * @param param The parameter
-   * @return The value associated with the parameter
-   * @throws MissingArgumentException if no value is associated with the given parameter
-   */
-  protected def getRequiredParam[T](param: Param[T]): T =
-    get(param)
-      .getOrElse(throw new MissingArgumentException(s"Missing required parameter ${param.name}"))
-
-  /**
    * Check that all required parameters have been set and validate interactions between parameters.
+   *
+   * @note In Spark, interactions between parameters are checked by
+   *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
+   *       Photon-ML, we need to have this function to check the interactions between parameters.
+   * @throws MissingArgumentException if a required parameter is missing
+   * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that these parameters are explicitly set
     paramMap(inputDataDirectories)
@@ -175,11 +170,6 @@ trait GameDriver extends Params {
       case _ =>
     }
   }
-
-  /**
-   * Clear all set parameters.
-   */
-  def clear(): Unit
 
   //
   // Common driver functions

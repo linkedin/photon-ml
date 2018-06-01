@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.estimators
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.sql.DataFrame
@@ -213,7 +214,9 @@ class GameEstimatorTest {
    *
    * @param estimator A [[GameEstimator]] with one or more flaws in its parameters
    */
-  @Test(dataProvider = "invalidParamMaps", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  @Test(
+    dataProvider = "invalidParamMaps",
+    expectedExceptions = Array(classOf[IllegalArgumentException], classOf[MissingArgumentException]))
   def testValidateParams(estimator: GameEstimator): Unit = estimator.validateParams()
 
   /**

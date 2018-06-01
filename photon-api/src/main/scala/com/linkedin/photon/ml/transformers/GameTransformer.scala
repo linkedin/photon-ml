@@ -14,8 +14,9 @@
  */
 package com.linkedin.photon.ml.transformers
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, Params}
+import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -27,7 +28,7 @@ import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
-import com.linkedin.photon.ml.util.{LongHashPartitioner, ParamUtils, PhotonParamValidators, Timed}
+import com.linkedin.photon.ml.util._
 
 /**
  * Scores input data using a [[GameModel]]. Plays a similar role to the [[org.apache.spark.ml.Model]].
@@ -35,7 +36,7 @@ import com.linkedin.photon.ml.util.{LongHashPartitioner, ParamUtils, PhotonParam
  * @param sc The spark context for the application
  * @param logger The logger instance for the application
  */
-class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends Params {
+class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends PhotonParams {
 
   import GameTransformer._
 
@@ -105,10 +106,14 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
     copy
   }
 
+  //
+  // PhotonParams trait extensions
+  //
+
   /**
    * Set the default parameters.
    */
-  private def setDefaultParams(): Unit = {
+  override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(logDataAndModelStats, false)
@@ -116,31 +121,20 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
   }
 
   /**
-   * Verify that the interactions between individual parameters are valid.
+   * Check that all required parameters have been set and validate interactions between parameters.
    *
    * @note In Spark, interactions between parameters are checked by
    *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
    *       Photon-ML, we need to have this function to check the interactions between parameters.
-   *
+   * @throws MissingArgumentException if a required parameter is missing
    * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  protected[transformers] def validateParams(): Unit = {
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that these parameters are explicitly set
     getRequiredParam(model)
   }
-
-  /**
-   * Return the user-supplied value for a required parameter. Used for mandatory parameters without default values.
-   *
-   * @tparam T The type of the parameter
-   * @param param The parameter
-   * @return The value associated with the parameter
-   * @throws IllegalArgumentException if no value is associated with the given parameter
-   */
-  private def getRequiredParam[T](param: Param[T]): T =
-    get(param)
-      .getOrElse(throw new IllegalArgumentException(s"Missing required parameter ${param.name}"))
 
   //
   // GameTransformer functions

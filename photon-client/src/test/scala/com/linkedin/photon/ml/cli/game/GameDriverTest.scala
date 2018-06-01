@@ -187,12 +187,14 @@ object GameDriverTest {
     var sc: SparkContext = _
     implicit var logger: PhotonLogger = _
 
-    def clear(): Unit = params.foreach(MockGameDriver.clear)
-    def copy(extra: ParamMap): Params = this
+    override def copy(extra: ParamMap): Params = this
 
     override def getRequiredParam[T](param: Param[T]): T = super.getRequiredParam(param)
-    def mockSetDefault[T](param: Param[T], value: T): Unit = {
-      setDefault(param, value)
-    }
+
+    override def setDefaultParams(): Unit = {}
+
+    override def validateParams(paramMap: ParamMap): Unit = super.validateParams(paramMap)
+
+    def mockSetDefault[T](param: Param[T], value: T): Unit = setDefault(param, value)
   }
 }

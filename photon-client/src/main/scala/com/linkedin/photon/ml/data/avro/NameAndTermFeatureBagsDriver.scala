@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.util._
  * A driver to build one or more feature bags from an input data set. These feature bags can be modified to act as
  * feature whitelists for GAME input data.
  */
-object NameAndTermFeatureBagsDriver extends Params with Logging {
+object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {
 
   override val uid = "Name_And_Term_Feature_Bags_Driver"
   protected implicit val parent: Identifiable = this
@@ -102,36 +102,13 @@ object NameAndTermFeatureBagsDriver extends Params with Logging {
   }
 
   //
-  // Params functions
+  // PhotonParams trait extensions
   //
-
-  /**
-   * Return the user-supplied value for a required parameter. Used for mandatory parameters without default values.
-   *
-   * @tparam T The type of the parameter
-   * @param param The parameter
-   * @return The value associated with the parameter
-   * @throws MissingArgumentException if no value is associated with the given parameter
-   */
-  protected def getRequiredParam[T](param: Param[T]): T =
-    get(param)
-      .getOrElse(throw new MissingArgumentException(s"Missing required parameter ${param.name}"))
-
-  /**
-   * Check that all required parameters have been set and validate interactions between parameters.
-   */
-  def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
-
-    // Just need to check that these parameters are explicitly set
-    paramMap(inputDataDirectories)
-    paramMap(rootOutputDirectory)
-    paramMap(featureBagsKeys)
-  }
 
   /**
    * Set default values for parameters that have them.
    */
-  private def setDefaultParams(): Unit = {
+  override protected def setDefaultParams(): Unit = {
 
     setDefault(overrideOutputDirectory, false)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
@@ -139,9 +116,22 @@ object NameAndTermFeatureBagsDriver extends Params with Logging {
   }
 
   /**
-   * Clear all set parameters.
+   * Check that all required parameters have been set and validate interactions between parameters.
+   *
+   * @note In Spark, interactions between parameters are checked by
+   *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
+   *       Photon-ML, we need to have this function to check the interactions between parameters.
+   * @throws MissingArgumentException if a required parameter is missing
+   * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  def clear(): Unit = params.foreach(clear)
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
+
+    // Just need to check that these parameters are explicitly set
+    paramMap(inputDataDirectories)
+    paramMap(rootOutputDirectory)
+    paramMap(featureBagsKeys)
+  }
 
   //
   // Training driver functions

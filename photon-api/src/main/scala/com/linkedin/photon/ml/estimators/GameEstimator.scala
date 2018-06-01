@@ -16,8 +16,9 @@ package com.linkedin.photon.ml.estimators
 
 import scala.language.existentials
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -50,7 +51,7 @@ import com.linkedin.photon.ml.util._
  * @param sc The spark context for the application
  * @param logger The logger instance for the application
  */
-class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends Params {
+class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends PhotonParams {
 
   import GameEstimator._
 
@@ -181,10 +182,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     copy
   }
 
+  //
+  // PhotonParams trait extensions
+  //
+
   /**
    * Set the default parameters.
    */
-  private def setDefaultParams(): Unit = {
+  override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(coordinateDescentIterations, 1)
@@ -195,15 +200,16 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Verify that the interactions between individual parameters are valid.
+   * Check that all required parameters have been set and validate interactions between parameters.
    *
    * @note In Spark, interactions between parameters are checked by
    *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
    *       Photon-ML, we need to have this function to check the interactions between parameters.
-   *
+   * @throws MissingArgumentException if a required parameter is missing
    * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  protected[estimators] def validateParams(): Unit = {
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that the training task has been explicitly set
     getRequiredParam(trainingTask)
@@ -275,18 +281,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         s"Coordinate $coordinate in the update sequence is missing normalization context")
     }
   }
-
-  /**
-   * Return the user-supplied value for a required parameter. Used for mandatory parameters without default values.
-   *
-   * @tparam T The type of the parameter
-   * @param param The parameter
-   * @return The value associated with the parameter
-   * @throws IllegalArgumentException if no value is associated with the given parameter
-   */
-  private def getRequiredParam[T](param: Param[T]): T =
-    get(param)
-      .getOrElse(throw new IllegalArgumentException(s"Missing required parameter ${param.name}"))
 
   //
   // GameEstimator functions
