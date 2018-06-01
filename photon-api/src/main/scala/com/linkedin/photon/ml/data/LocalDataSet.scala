@@ -14,64 +14,57 @@
  */
 package com.linkedin.photon.ml.data
 
-import java.util.Random
-
 import scala.collection.{Map, Set, mutable}
-import scala.reflect.ClassTag
 
-import breeze.linalg.{SparseVector, Vector}
+import breeze.linalg.Vector
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Local dataset implementation.
+ * Local data set implementation.
  *
- * TODO: Use Array or Map to represent the local data structure?
- *       Array: overhead in sorting the entries by key
- *       Map: overhead in accessing value by key
+ * @note: One design concern is whether to store the local data as a [[Map]] or an [[Array]] (high sort cost, but low
+ *       merge cost vs. no sort cost but high merge cost). Currently, we use an [[Array]] since the data is only sorted
+ *       once, and used as the base for all other data/score [[Array]]s.
  *
  * @param dataPoints Local data points consists of (globalId, labeledPoint) pairs
  */
-protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
+protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, LabeledPoint)]) {
+
+  require(
+    dataPoints.length > 0,
+    "Cannot create LocalDataSet with empty data array")
 
   val numDataPoints: Int = dataPoints.length
-  val numFeatures: Int = if (numDataPoints > 0) dataPoints.head._2.features.length else 0
-  val numActiveFeatures: Int =
-    if (numDataPoints > 0) dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size else 0
-
-  private lazy val featureIndexCountMap: Map[Int, Int] = {
-    dataPoints
-      .map(_._2.features)
-      .flatMap(_.activeKeysIterator)
-      .map((_, 1))
-      .groupBy(_._1)
-      .map { case (index, counts) => (index, counts.map(_._2).sum) }
-  }
+  val numFeatures: Int = dataPoints.head._2.features.length
+  val numActiveFeatures: Int = dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size
 
   /**
    *
    * @return
    */
-  def getLabels: Array[(Long, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.label) }
+  def getLabels: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.label) }
 
   /**
    *
    * @return
    */
-  def getWeights: Array[(Long, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.weight) }
+  def getWeights: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.weight) }
 
   /**
    *
    * @return
    */
-  def getOffsets: Array[(Long, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.offset) }
+  def getOffsets: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.offset) }
 
   /**
    *
    * @return
    */
-  def getUniqueIds: Array[Long] = dataPoints.map(_._1)
+  def getUniqueIds: Array[UniqueSampleId] = dataPoints.map(_._1)
 
   /**
    * Add the residual scores to the offsets.
@@ -79,12 +72,17 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param residualScores The residual scores
    * @return The [[LocalDataSet]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(Long, Double)]): LocalDataSet = {
-    val updatedDataPoints = dataPoints.zip(residualScores).map {
-      case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
-        assert(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataSet = {
+
+    val updatedDataPoints = dataPoints
+      .zip(residualScores)
+      .map { case ((dataId, LabeledPoint(label, features, offset, weight)), (residualScoreId, residualScoreDatum)) =>
+
+        require(residualScoreId == dataId, s"residual score Id ($residualScoreId) and data Id ($dataId) don't match!")
+
         (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
-    }
+      }
+
     LocalDataSet(updatedDataPoints)
   }
 
@@ -96,34 +94,12 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @return The [[LocalDataSet]] with projected features
    */
   def projectFeatures(projector: Projector): LocalDataSet = {
+
     val projectedDataPoints = dataPoints.map { case (uniqueId, LabeledPoint(label, features, offset, weight)) =>
-      val projectedFeatures = projector.projectFeatures(features)
-      (uniqueId, LabeledPoint(label, projectedFeatures, offset, weight))
+      (uniqueId, LabeledPoint(label, projector.projectFeatures(features), offset, weight))
     }
+
     LocalDataSet(projectedDataPoints)
-  }
-
-  /**
-   * Filter features by support.
-   *
-   * @param minNumSupportThreshold The minimum support threshold
-   * @return The filtered dataset
-   */
-  def filterFeaturesBySupport(minNumSupportThreshold: Int): LocalDataSet = {
-    if (minNumSupportThreshold > 0) {
-      val filteredFeaturesIndexSet = featureIndexCountMap
-          .filter { case (_, count) => count >= minNumSupportThreshold }
-          .keySet
-
-      val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
-        val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
-        (id, LabeledPoint(label, filteredFeatures, offset, weight))
-      }
-
-      LocalDataSet(filteredActivities)
-    } else {
-      this
-    }
   }
 
   /**
@@ -132,45 +108,31 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(Long, LabeledPoint)]) {
    * @param numFeaturesToKeep The number of features to keep
    * @return The filtered dataset
    */
-  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet = {
+  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet =
     if (numFeaturesToKeep < numActiveFeatures) {
+
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
       val pearsonScores = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures)
 
-      val filteredFeaturesIndexSet = pearsonScores.toArray
-        .sortBy { case (key, score) => math.abs(score) }
-        .takeRight(numFeaturesToKeep).map(_._1).toSet
+      val filteredFeaturesIndexSet = pearsonScores
+        .toArray
+        .sortBy { case (_, score) => math.abs(score) }
+        .takeRight(numFeaturesToKeep)
+        .map(_._1)
+        .toSet
 
       val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
+
         val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
+
         (id, LabeledPoint(label, filteredFeatures, offset, weight))
       }
 
       LocalDataSet(filteredActivities)
-    } else {
-      this
-    }
-  }
 
-  /**
-   * Reservoir sampling on all samples.
-   *
-   * @param numSamplesToKeep The number of samples to keep
-   * @return The sampled dataset
-   */
-  def reservoirSamplingOnAllSamples(numSamplesToKeep: Int): LocalDataSet = {
-    if (numSamplesToKeep == 0) {
-      LocalDataSet(Array())
-    } else if (numSamplesToKeep < numDataPoints) {
-      val weightRatio = 1.0 * numDataPoints / numSamplesToKeep
-      val sampledData = LocalDataSet.reservoirSampling(dataPoints.iterator, numSamplesToKeep)
-      LocalDataSet(sampledData.map { case (id, LabeledPoint(label, feature, offset, weight)) =>
-        (id, LabeledPoint(label, feature, offset, weight * weightRatio))
-      })
     } else {
       this
     }
-  }
 }
 
 object LocalDataSet {
@@ -181,7 +143,10 @@ object LocalDataSet {
    * @param isSortedByFirstIndex Whether or not to sort the data by global ID
    * @return A new LocalDataSet
    */
-  protected[ml] def apply(dataPoints: Array[(Long, LabeledPoint)], isSortedByFirstIndex: Boolean): LocalDataSet = {
+  protected[ml] def apply(
+      dataPoints: Array[(UniqueSampleId, LabeledPoint)],
+      isSortedByFirstIndex: Boolean): LocalDataSet = {
+
     if (isSortedByFirstIndex) {
       LocalDataSet(dataPoints)
     } else {
@@ -198,18 +163,17 @@ object LocalDataSet {
    */
   private def filterFeaturesWithFeatureIndexSet(
       features: Vector[Double],
-      featureIndexSet: Set[Int]): SparseVector[Double] = {
+      featureIndexSet: Set[Int]): Vector[Double] = {
 
-    val filteredIndexBuilder = new mutable.ArrayBuilder.ofInt
-    val filteredDataBuilder = new mutable.ArrayBuilder.ofDouble
+    val result = VectorUtils.zeroOfSameType(features)
+
     features.activeIterator.foreach { case (key, value) =>
       if (featureIndexSet.contains(key)) {
-        filteredIndexBuilder += key
-        filteredDataBuilder += value
+        result(key) = value
       }
     }
 
-    new SparseVector(filteredIndexBuilder.result(), filteredDataBuilder.result(), features.length)
+    result
   }
 
   /**
@@ -242,80 +206,43 @@ object LocalDataSet {
       }
     }
 
-    featureFirstOrderSums.keySet.map { key =>
-      val featureFirstOrderSum = featureFirstOrderSums(key)
-      val featureSecondOrderSum = featureSecondOrderSums(key)
-      val featureLabelProductSum = featureLabelProductSums(key)
-      val numerator = numSamples * featureLabelProductSum - featureFirstOrderSum * labelFirstOrderSum
-      val std = math.sqrt(math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum))
-      val denominator = std * math.sqrt(numSamples * labelSecondOrderSum - labelFirstOrderSum * labelFirstOrderSum)
+    featureFirstOrderSums
+      .keySet
+      .map { key =>
+        val featureFirstOrderSum = featureFirstOrderSums(key)
+        val featureSecondOrderSum = featureSecondOrderSums(key)
+        val featureLabelProductSum = featureLabelProductSums(key)
+        val numerator = numSamples * featureLabelProductSum - featureFirstOrderSum * labelFirstOrderSum
+        val std = math.sqrt(math.abs(numSamples * featureSecondOrderSum - featureFirstOrderSum * featureFirstOrderSum))
+        val denominator = std * math.sqrt(numSamples * labelSecondOrderSum - labelFirstOrderSum * labelFirstOrderSum)
 
-      // When the standard deviation of the feature is close to 0, we treat it as the intercept term
-      val score = if (std < MathConst.EPSILON) {
-        if (interceptAdded) {
-          0.0
+        // When the standard deviation of the feature is close to 0, we treat it as the intercept term
+        val score = if (std < MathConst.EPSILON) {
+          if (interceptAdded) {
+            0.0
+          } else {
+            interceptAdded = true
+            1.0
+          }
         } else {
-          interceptAdded = true
-          1.0
+          numerator / (denominator + MathConst.EPSILON)
         }
-      } else {
-        numerator / (denominator + MathConst.EPSILON)
+
+        require(math.abs(score) <= 1 + MathConst.EPSILON,
+          s"Computed pearson correlation score is $score, while the score's magnitude should be less than 1. " +
+          s"(Diagnosis:\n" +
+          s"numerator=$numerator\n" +
+          s"denominator=$denominator\n" +
+          s"numSamples=$numSamples\n" +
+          s"featureFirstOrderSum=$featureFirstOrderSum\n" +
+          s"featureSecondOrderSum=$featureSecondOrderSum\n" +
+          s"featureLabelProductSum=$featureLabelProductSum\n" +
+          s"labelFirstOrderSum=$labelFirstOrderSum\n" +
+          s"labelSecondOrderSum=$labelSecondOrderSum\n" +
+          s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
+
+        (key, score)
       }
-
-      require(math.abs(score) <= 1 + MathConst.EPSILON,
-        s"Computed pearson correlation score is $score, while the score's magnitude should be less than 1. " +
-        s"(Diagnosis:\n" +
-        s"numerator=$numerator\n" +
-        s"denominator=$denominator\n" +
-        s"numSamples=$numSamples\n" +
-        s"featureFirstOrderSum=$featureFirstOrderSum\n" +
-        s"featureSecondOrderSum=$featureSecondOrderSum\n" +
-        s"featureLabelProductSum=$featureLabelProductSum\n" +
-        s"labelFirstOrderSum=$labelFirstOrderSum\n" +
-        s"labelSecondOrderSum=$labelSecondOrderSum\n" +
-        s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
-
-      (key, score)
-    }.toMap
-  }
-
-  /**
-   * Perform reservoir sampling.
-   *
-   * @param dataPoints The input data
-   * @param numDataPointsToKeep The number of data points to keep
-   * @return The filtered array of data points
-   */
-  protected[ml] def reservoirSampling[T: ClassTag](dataPoints: Iterator[T], numDataPointsToKeep: Int): Array[T] = {
-    val reservoir = new Array[T](numDataPointsToKeep)
-
-    // Put the first k elements in the reservoir.
-    var i = 0
-    while (i < numDataPointsToKeep && dataPoints.hasNext) {
-      reservoir(i) = dataPoints.next()
-      i += 1
-    }
-
-    // If we have consumed all the elements, return them. Otherwise do the replacement.
-    if (i < numDataPointsToKeep) {
-      // If input size < k, trim the array to return only an array of input size.
-      val trimReservoir = new Array[T](i)
-      System.arraycopy(reservoir, 0, trimReservoir, 0, i)
-      trimReservoir
-
-    } else {
-      // If input size > k, continue the sampling process.
-      val rand = new Random(MathConst.RANDOM_SEED)
-      while (dataPoints.hasNext) {
-        val item = dataPoints.next()
-        val replacementIndex = rand.nextInt(i)
-        if (replacementIndex < numDataPointsToKeep) {
-          reservoir(replacementIndex) = item
-        }
-        i += 1
-      }
-
-      reservoir
-    }
+      .toMap
   }
 }
