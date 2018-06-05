@@ -225,28 +225,21 @@ class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_D
       featureColumnMap: Map[MergedColumnName, Set[InputColumnName]],
       interceptColumnMap: Map[MergedColumnName, Boolean]): Map[MergedColumnName, IndexMapLoader] = {
 
-    // Read a flattened collection of tuples of (shardId, features)
-    val featuresByShard = records.flatMap { record =>
-      featureColumnMap.map { case (shardId, sourceCols) =>
-        (shardId, readFeaturesFromRecord(record, sourceCols).map(_._1))
+    featureColumnMap.map { case (shardId, sourceCols) =>
+      val features = records
+        .flatMap { record => readFeaturesFromRecord(record, sourceCols).map(_._1) }
+        .distinct
+        .collect
+
+      val addIntercept = interceptColumnMap(shardId)
+      val featureNames = if (addIntercept) {
+        features :+ Constants.INTERCEPT_KEY
+      } else {
+        features
       }
+
+      (shardId, DefaultIndexMapLoader(sc, featureNames))
     }
-
-    featuresByShard
-      .reduceByKey { case (a, b) => (a ++ b).distinct }
-      .collect
-      .toMap
-      .map { case (shardId, features) =>
-
-        val addIntercept = interceptColumnMap(shardId)
-        val featureNames = if (addIntercept) {
-          (features :+ Constants.INTERCEPT_KEY).toSeq
-        } else {
-          features.toSeq
-        }
-
-        (shardId, DefaultIndexMapLoader(sc, featureNames))
-      }
   }
 }
 
