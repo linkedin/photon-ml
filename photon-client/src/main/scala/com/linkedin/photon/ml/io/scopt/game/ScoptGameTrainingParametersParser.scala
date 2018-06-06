@@ -42,6 +42,12 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
   val scoptGameTrainingParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
     createScoptGameParams(GameTrainingDriver) ++ Seq(
 
+      // Model Input Dir
+      ScoptParameter[Path, Path](
+        GameTrainingDriver.modelInputDirectory,
+        usageText = "<path>",
+        isRequired = false),
+
       // Task Type
       ScoptParameter[TaskType, TaskType](
         GameTrainingDriver.trainingTask,

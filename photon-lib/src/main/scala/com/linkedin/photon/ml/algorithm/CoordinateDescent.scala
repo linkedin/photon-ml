@@ -201,7 +201,7 @@ class CoordinateDescent(
         val oldGameModel = updatedGameModel
         var unpersistOldGameModel = true
 
-        val evaluationsOpt = coordinatesToTrain
+        coordinatesToTrain
           .map { coordinateId =>
             Timed(s"Update coordinate $coordinateId") {
 
@@ -320,9 +320,8 @@ class CoordinateDescent(
               }
             }
           } // End of coordinates update
-
-        evaluationsOpt.last match {
-          case Some(evaluations) =>
+          .last
+          .foreach { evaluations =>
             // The first evaluator is used for model selection
             val (evaluator, evaluation) = evaluations.head
 
@@ -331,7 +330,7 @@ class CoordinateDescent(
               // Unpersist the previous best models
               bestModel.foreach { currBestModel =>
                 // Make sure we don't unpersist a model that was passed in from elsewhere
-                if (currBestModel != gameModel) {
+                if (currBestModel.eq(gameModel)) {
                   coordinatesToTrain.foreach { coordinateId =>
                     gameModel.getModel(coordinateId) match {
                       case Some(broadcastLike: BroadcastLike) => broadcastLike.unpersistBroadcast()
@@ -348,19 +347,16 @@ class CoordinateDescent(
               logger.debug(s"Found better GAME model, with evaluation: $evaluation")
 
             } else {
-
               // Mark the previous GAME model to be unpersisted, unless the previous GAME model is the best model
               unpersistOldGameModel = bestModel.forall(_ != oldGameModel)
 
               logger.debug(
                 s"New GAME model does not improve evaluation; ignoring GAME model with evaluation $evaluation")
             }
-
-          case None =>
-        }
+          }
 
         // Unpersist the previous GAME model if it has been marked AND if it is not an initial model input
-        if (unpersistOldGameModel && (oldGameModel != gameModel)) {
+        if (unpersistOldGameModel && oldGameModel.eq(gameModel)) {
           coordinatesToTrain.foreach { coordinateId =>
             oldGameModel.getModel(coordinateId) match {
               case Some(broadcastLike: BroadcastLike) => broadcastLike.unpersistBroadcast()

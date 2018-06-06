@@ -25,7 +25,6 @@ import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.L2RegularizationDiff
 import com.linkedin.photon.ml.function.glm._

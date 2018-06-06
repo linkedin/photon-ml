@@ -59,7 +59,7 @@ if [[ "$1" == "integration" ]]; then
   PING_LOOP_PID=$!
 
   # Run integration tests, redirect output to tmp file
-  ./gradlew integTest -Pexclude=ml/DriverTest,training/DriverTest &> ${BUILD_OUTPUT}
+  ./gradlew integTest -Pexclude=ml/DriverTest,deprecated/GLMSuiteIntegTest &> ${BUILD_OUTPUT}
 
   # Kill ping process, output final
   clean_up
