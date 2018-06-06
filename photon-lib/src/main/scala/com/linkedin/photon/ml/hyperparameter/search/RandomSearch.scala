@@ -14,34 +14,30 @@
  */
 package com.linkedin.photon.ml.hyperparameter.search
 
-import scala.math.round
-
+import scala.math.floor
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
-
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
-import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{StationaryKernel, Matern52}
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{Matern52, StationaryKernel}
 
-import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Performs a random search of the bounded space.
  *
- * @param ranges The ranges that define the boundaries of the search space
+ * @param numParams The dimensionality of the hyper-parameter tuning problem
  * @param evaluationFunction The function that evaluates points in the space to real values
- * @param discreteParams Specifies the indices of parameters that should be treated as discrete values
+ * @param discreteParams Specifies the indices of discrete parameters and their numbers of discrete values
  * @param kernel Specifies the indices and transformation function of hyper-parameters
  * @param seed A random seed
  */
 class RandomSearch[T](
-    ranges: Seq[DoubleRange],
+    numParams: Int,
     evaluationFunction: EvaluationFunction[T],
-    discreteParams: Seq[Int] = Seq(),
+    discreteParams: Map[Int, Int] = Map(),
     kernel: StationaryKernel = new Matern52,
     seed: Long = System.currentTimeMillis) {
 
-  // The length of the ranges sequence corresponds to the dimensionality of the hyper-parameter tuning problem
-  protected val numParams: Int = ranges.length
+  require(numParams > 0, "Number of parameters must be non-negative.")
 
   /**
    * Sobol generator for uniformly choosing roughly equidistant points.
@@ -67,6 +63,7 @@ class RandomSearch[T](
       priorObservations: Seq[(DenseVector[Double], Double)]): Seq[T] = {
 
     require(n > 0, "The number of results must be greater than zero.")
+    require(observations.nonEmpty, "There must be at least one observation.")
 
     // Load the initial observations
     observations.init.foreach { case (candidate, value) =>
@@ -84,27 +81,15 @@ class RandomSearch[T](
         val candidate = next(lastCandidate, lastObservation)
 
         // Discretize values specified as discrete
-        discreteParams.foreach { index =>
-          candidate(index) = round(candidate(index))
-        }
+        val candidateWithDiscrete = discretizeCandidate(candidate, discreteParams)
 
-        val (observation, model) = evaluationFunction(candidate)
+        val (observation, model) = evaluationFunction(candidateWithDiscrete)
 
-        (models :+ model, (candidate, observation))
+        (models :+ model, (candidateWithDiscrete, observation))
     }
 
     results
   }
-
-  /**
-   * Searches and returns n points in the space, given prior observations from this data set.
-   *
-   * @param n The number of points to find
-   * @param observations Observations made prior to searching, from this data set (not mean-centered)
-   * @return The found points
-   */
-  def findWithObservations(n: Int, observations: Seq[(DenseVector[Double], Double)]): Seq[T] =
-    findWithPriors(n, observations, Seq())
 
   /**
    * Searches and returns n points in the space, given prior observations from past data sets.
@@ -117,17 +102,17 @@ class RandomSearch[T](
 
     require(n > 0, "The number of results must be greater than zero.")
 
-    val candidate = drawCandidates(1)(0,::).t
+    val candidate = drawCandidates(1)(0, ::).t
 
     // Make values discrete as specified
-    discreteParams.foreach { index =>
-      candidate(index) = round(candidate(index))
-    }
+    val candidateWithDiscrete = discretizeCandidate(candidate, discreteParams)
 
-    val (_, model) = evaluationFunction(candidate)
+    val (_, model) = evaluationFunction(candidateWithDiscrete)
+    val initialObservation = evaluationFunction.convertObservations(Seq(model))
 
-    Seq(model) ++ (if (n == 1) Seq() else findWithPriors(n - 1, convertObservations(Seq(model)), priorObservations))
+    Seq(model) ++ (if (n == 1) Seq() else findWithPriors(n - 1, initialObservation, priorObservations))
   }
+
 
   /**
    * Searches and returns n points in the space.
@@ -136,20 +121,6 @@ class RandomSearch[T](
    * @return The found points
    */
   def find(n: Int): Seq[T] = findWithPriorObservations(n, Seq())
-
-  /**
-   * Vectorize a [[Seq]] of prior observations.
-   *
-   * @param observations Prior observations in estimator output form
-   * @return Prior observations as tuples of (vector representation of the original estimator output, evaluated value)
-   */
-  def convertObservations(observations: Seq[T]): Seq[(DenseVector[Double], Double)] =
-    observations.map { observation =>
-      val candidate = evaluationFunction.vectorizeParams(observation)
-      val value = evaluationFunction.getEvaluationValue(observation)
-
-      (candidate, value)
-    }
 
   /**
    * Produces the next candidate, given the last. In this case, the next candidate is chosen uniformly from the space.
@@ -170,11 +141,11 @@ class RandomSearch[T](
   protected[search] def onObservation(point: DenseVector[Double], eval: Double): Unit = {}
 
   /**
-    * Handler callback for each observation in the prior data. In this case, we do nothing.
-    *
-    * @param point the observed point in the space
-    * @param eval the observed value
-    */
+   * Handler callback for each observation in the prior data. In this case, we do nothing.
+   *
+   * @param point the observed point in the space
+   * @param eval the observed value
+   */
   protected[search] def onPriorObservation(point: DenseVector[Double], eval: Double): Unit = {}
 
   /**
@@ -184,16 +155,28 @@ class RandomSearch[T](
    */
   protected[search] def drawCandidates(n: Int): DenseMatrix[Double] = {
     // Draw candidates from a Sobol generator, which produces values in the range [0, 1]
-    val candidates = (1 until n).foldLeft(DenseMatrix(paramDistributions.nextVector)) { case (acc, _) =>
+    (1 until n).foldLeft(DenseMatrix(paramDistributions.nextVector)) { case (acc, _) =>
       DenseMatrix.vertcat(acc, DenseMatrix(paramDistributions.nextVector))
     }
+  }
 
-    // Adjust candidates according to specified ranges
-    ranges.zipWithIndex.foreach { case (range, j) =>
-      candidates(::,j) *= (range.end - range.start)
-      candidates(::,j) += range.start
+  /**
+   * Discretize candidates with specified indices.
+   *
+   * @param candidate candidate with values in [0, 1]
+   * @param discreteParams Map that specifies the indices of discrete parameters and their numbers of discrete values
+   * @return candidate with the specified discrete values
+   */
+  protected[search] def discretizeCandidate(
+      candidate: DenseVector[Double],
+      discreteParams: Map[Int, Int]): DenseVector[Double] = {
+
+    val candidateWithDiscrete = candidate.copy
+
+    discreteParams.foreach { case (index, numDiscreteValues) =>
+      candidateWithDiscrete(index) = floor(candidate(index) * numDiscreteValues) / numDiscreteValues
     }
 
-    candidates
+    candidateWithDiscrete
   }
 }

@@ -30,14 +30,12 @@ import breeze.stats.stddev
  * @param lengthScale the length scale of the kernel. This controls the complexity of the kernel, or the degree to which
  *   it can vary within a given region of the function's domain. Higher values allow less variation, and lower values
  *   allow more.
- * @param indexedTransformMap the map specifies the indices and transformation function of hyper-parameters
  */
 class RBF(
     amplitude: Double = 1.0,
     noise: Double = 1e-4,
-    lengthScale: DenseVector[Double] = DenseVector(1.0),
-    indexedTransformMap: Map[Int, Double => Double] = Map())
-  extends StationaryKernel(amplitude, noise, lengthScale, indexedTransformMap) {
+    lengthScale: DenseVector[Double] = DenseVector(1.0))
+  extends StationaryKernel(amplitude, noise, lengthScale) {
 
   /**
    * Computes the RBF kernel function from the pairwise distances between points.

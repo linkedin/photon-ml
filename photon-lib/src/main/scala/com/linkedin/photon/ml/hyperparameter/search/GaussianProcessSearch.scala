@@ -22,7 +22,6 @@ import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
 import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel}
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{StationaryKernel, Matern52}
-import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Performs a guided random search of the given ranges, where the search is guided by a Gaussian Process estimated from
@@ -42,26 +41,26 @@ import com.linkedin.photon.ml.util.DoubleRange
  *  4) Evaluate the best candidate with the actual evaluation function to acquire a new observation.
  *  5) Repeat from step 2.
  *
- * @param ranges the value ranges within which to search. There should be one for every dimension in the space.
+ * @param numParams the dimensionality of the hyper-parameter tuning problem
  * @param evaluationFunction the function that evaluates points in the space to real values
  * @param evaluator the original evaluator
- * @param discreteParams specifies the indices of parameters that should be treated as discrete values
- * @param kernel Specifies the covariance kernel for hyper-parameters
+ * @param discreteParams specifies the indices of discrete parameters and their numbers of discrete values
+ * @param kernel specifies the covariance kernel for hyper-parameters
  * @param candidatePoolSize the number of candidate points to draw at each iteration. Larger numbers give more precise
  *   results, but also incur higher computational cost.
  * @param noisyTarget whether to include observation noise in the evaluation function model
  * @param seed the random seed value
  */
 class GaussianProcessSearch[T](
-    ranges: Seq[DoubleRange],
+    numParams: Int,
     evaluationFunction: EvaluationFunction[T],
     evaluator: Evaluator,
-    discreteParams: Seq[Int] = Seq(),
+    discreteParams: Map[Int, Int] = Map(),
     kernel: StationaryKernel = new Matern52,
     candidatePoolSize: Int = 250,
     noisyTarget: Boolean = false,
     seed: Long = System.currentTimeMillis)
-  extends RandomSearch[T](ranges, evaluationFunction, discreteParams, kernel, seed){
+  extends RandomSearch[T](numParams, evaluationFunction, discreteParams, kernel, seed){
 
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None

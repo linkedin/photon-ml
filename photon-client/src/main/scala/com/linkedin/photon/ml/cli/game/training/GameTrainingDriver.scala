@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.cli.game.training
 
 import scala.math.log
 
-import breeze.linalg.DenseVector
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -649,21 +648,22 @@ object GameTrainingDriver extends GameDriver {
         // TODO: Match on this to make it clearer
         val evaluator = models.head._2.get.head._1
         val baseConfig = models.head._3
-        val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData)
-
+        val dimension = baseConfig.toSeq.length
         val range = getOrDefault(hyperParameterTuningRange)
-        val ranges = List.fill(evaluationFunction.numParams)(DoubleRange(log(range.start), log(range.end)))
+        val ranges = List.fill(dimension)(DoubleRange(log(range.start), log(range.end)))
+
+        val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData, ranges)
 
         val searcher = getOrDefault(hyperParameterTuning) match {
           case HyperparameterTuningMode.BAYESIAN =>
-            new GaussianProcessSearch[GameEstimator.GameResult](ranges, evaluationFunction, evaluator)
+            new GaussianProcessSearch[GameEstimator.GameResult](dimension, evaluationFunction, evaluator)
 
           case HyperparameterTuningMode.RANDOM =>
-            new RandomSearch[GameEstimator.GameResult](ranges, evaluationFunction)
+            new RandomSearch[GameEstimator.GameResult](dimension, evaluationFunction)
         }
-        val observations = searcher.convertObservations(models)
+        val observations = evaluationFunction.convertObservations(models)
 
-        searcher.findWithObservations(getOrDefault(hyperParameterTuningIter), observations)
+        searcher.findWithPriors(getOrDefault(hyperParameterTuningIter), observations, Seq())
 
       case _ => Seq()
     }
