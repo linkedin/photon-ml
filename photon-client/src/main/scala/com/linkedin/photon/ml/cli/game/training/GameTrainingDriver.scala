@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.cli.game.training
 import scala.math.log
 
 import breeze.linalg.DenseVector
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -36,7 +35,7 @@ import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfigura
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
 import com.linkedin.photon.ml.hyperparameter.search.{GaussianProcessSearch, RandomSearch}
 import com.linkedin.photon.ml.index.IndexMapLoader
-import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
+import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameTrainingParametersParser
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel, RandomEffectModel}
@@ -218,8 +217,9 @@ object GameTrainingDriver extends GameDriver {
     val featureShards = paramMap(featureShardConfigurations)
     val retrainModelDirOpt = paramMap.get(partialRetrainModelDirectory)
     val retrainModelCoordsOpt = paramMap.get(partialRetrainLockedCoordinates)
-    val normalizationType = paramMap.getOrElse(normalization, getOrDefault(normalization))
-    val hyperparameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getOrDefault(hyperParameterTuning))
+    val inputColNames = paramMap.getOrElse(inputColumnNames, getDefault(inputColumnNames).get).getNames
+    val normalizationType = paramMap.getOrElse(normalization, getDefault(normalization).get)
+    val hyperparameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getDefault(hyperParameterTuning).get)
 
     // If partial retraining is enabled, both a model to use and list of coordinates to reuse must be provided
     val coordinatesToTrain = (retrainModelDirOpt, retrainModelCoordsOpt) match {
@@ -270,6 +270,18 @@ object GameTrainingDriver extends GameDriver {
       require(
         featureShards.contains(featureShardId),
         s"Feature shard '$featureShardId' used by coordinate '$coordinate' is missing from the set of column names")
+
+      config match {
+        case reConfig: RandomEffectCoordinateConfiguration =>
+          val randomEffectType = reConfig.dataConfiguration.randomEffectType
+
+          require(
+            !inputColNames.contains(randomEffectType),
+            s"Cannot use field '$randomEffectType' as random effect grouping field for coordinate '$coordinate'; " +
+              "that field is reserved")
+
+        case _ =>
+      }
     }
 
     // If standardization is enabled, all feature shards must have intercepts enabled
@@ -282,7 +294,7 @@ object GameTrainingDriver extends GameDriver {
       case _ =>
     }
 
-    // If hyperparameter tuning is enabled, need to specify the number of tuning iterations
+    // If hyper-parameter tuning is enabled, need to specify the number of tuning iterations
     hyperparameterTuningMode match {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(

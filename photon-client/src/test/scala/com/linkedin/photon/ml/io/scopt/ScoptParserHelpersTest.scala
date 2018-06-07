@@ -331,17 +331,13 @@ class ScoptParserHelpersTest {
   @Test
   def testInputColumnNamesToString(): Unit = {
 
-    val columnNamesMap = InputColumnsNames.all.zipWithIndex.toMap.mapValues(_.toString)
-    val inputColumnsNames = InputColumnsNames()
+    val columnNamesMap = InputColumnsNames.all.map(col => (col, s"___${col.toString}")).toMap
+    val inputColumnsNames = InputColumnsNames(columnNamesMap)
     val expected = columnNamesMap
       .map { case (column, name) =>
         s"$column${ScoptParserHelpers.KV_DELIMITER}$name"
       }
       .mkString(ScoptParserHelpers.LIST_DELIMITER)
-
-    columnNamesMap.foreach { case (column, name) =>
-      inputColumnsNames.updated(column, name)
-    }
 
     assertEquals(ScoptParserHelpers.inputColumnNamesToString(inputColumnsNames), expected)
   }

@@ -133,10 +133,14 @@ object ScoptParserHelpers extends Logging {
    * @param input A [[Map]] of (default column name -> new column name)
    * @return A new [[InputColumnsNames]] instance
    */
-  def parseInputColumnNames(input: Map[String, String]): InputColumnsNames =
-    input.foldLeft(InputColumnsNames()) { case (columns, (origColName, newColName)) =>
-      columns.updated(InputColumnsNames.withName(origColName), newColName)
+  def parseInputColumnNames(input: Map[String, String]): InputColumnsNames = {
+
+    val columnsMap = input.map {
+      case (origColName, newColName) => (InputColumnsNames.withName(origColName), newColName)
     }
+
+    InputColumnsNames(columnsMap)
+  }
 
   /**
    * Create a single [[FeatureShardConfiguration]] from a [[Map]] of (feature shard arg -> feature shard value), and

@@ -48,6 +48,13 @@ object GameConverters {
       isResponseRequired: Boolean,
       inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(UniqueSampleId, GameDatum)] = {
 
+    val colNamesSet = inputColumnsNames.getNames
+
+    // Cannot use response, offset, weight, or uid fields as fields for grouping random effects or queries
+    require(
+      idTagSet.intersect(colNamesSet).isEmpty,
+      s"Cannot use required columns (${colNamesSet.mkString(", ")}) for random effect/validation grouping.")
+
     val inputColumnsNamesBroadcast = data.sqlContext.sparkContext.broadcast(inputColumnsNames)
 
     data

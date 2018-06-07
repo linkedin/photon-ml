@@ -41,8 +41,7 @@ class ScoptGameScoringParametersParserTest {
     val inputDateRange = DateRange.fromDateString("20170101-20181231")
     val offHeapIndexMapPath = new Path("/some/off/heap/path")
     val offHeapIndexMapPartitions = 1
-    val customColumnsNames = InputColumnsNames()
-    InputColumnsNames.all.foreach(colName => customColumnsNames.updated(colName, s"___$colName"))
+    val customColumnsNames = InputColumnsNames(InputColumnsNames.all.map(col => (col, s"___${col.toString}")).toMap)
     val evaluators = Seq(AUC, RMSE)
     val outputPath = new Path("/some/output/path")
     val overrideOutputDir = true
