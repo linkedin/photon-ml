@@ -20,21 +20,12 @@ package com.linkedin.photon.ml.data
  * The default values are defined in the companion object. Any of these defaults can be overridden by the user (see
  * GameParams).
  *
- * @note Tried to mix-in trait Map[A, +B], but that turned into a quagmire that is not worth it.
+ * @param array Array of input column names
  */
-class InputColumnsNames extends Serializable {
+class InputColumnsNames private (array: Array[String]) extends Serializable {
 
-  // We store default or user-defined input columns names in this efficient Array
-  private val array: Array[String] = InputColumnsNames.all.map(colName => colName.toString)
-
-  /**
-   * Same as Map.updated, but the types are fixed.
-   *
-   * @param key The key to update
-   * @param value The value corresponding to key
-   * @return A new InputColumnsNames instance containing the update
-   */
-  def updated(key: InputColumnsNames.Value, value: String): InputColumnsNames = { array(key.id) = value; this }
+  // Check that there are no duplicate column names
+  require(array.length == getNames.size, "Each column must have unique a name.")
 
   /**
    * Same as Array.apply(i: Int), i.e. an accessor for elements.
@@ -43,6 +34,13 @@ class InputColumnsNames extends Serializable {
    * @return The column name for that key
    */
   def apply(key: InputColumnsNames.Value): String = array(key.id)
+
+  /**
+   * Get the set of column names reserved for required columns.
+   *
+   * @return The input column names as a [[Set]]
+   */
+  def getNames: Set[String] = array.toSet
 
   /**
    * Returns a hash code value for the object.
@@ -93,7 +91,16 @@ object InputColumnsNames extends Enumeration {
    *
    * By default, they contain the names defined just above for the input column names.
    *
-   * @return An instance of class InputColumnsNames with default column names
+   * @param customNames [[Map]] of column to custom name
+   * @return An instance of class InputColumnsNames with the given column names set, and default column names otherwise
    */
-  def apply(): InputColumnsNames = new InputColumnsNames
+  def apply(customNames: Map[Value, String] = Map()): InputColumnsNames = {
+
+    val array = all.map(_.toString)
+    customNames.foreach { case (column, name) =>
+      array(column.id) = name
+    }
+
+    new InputColumnsNames(array)
+  }
 }

@@ -21,10 +21,10 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
-import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames}
+import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
-import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, ModelOutputMode}
+import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.NormalizationType
@@ -138,12 +138,15 @@ class GameTrainingDriverTest {
     val mockCoordinateConfig = mock(classOf[CoordinateConfiguration])
     val mockBadDataConfig = mock(classOf[CoordinateDataConfiguration])
     val mockBadCoordinateConfig = mock(classOf[CoordinateConfiguration])
+    val mockRECoordinateConfig = mock(classOf[RandomEffectCoordinateConfiguration])
+    val mockREDataConfig = mock(classOf[RandomEffectDataConfiguration])
 
     val coordinateId1 = "id1"
     val coordinateId2 = "id2"
     val featureShardId = "id"
     val missingCoordinateId = "missing"
     val missingFeatureShardId = "missing"
+    val badREType = "uid"
     val updateSequence1 = Seq(coordinateId1, coordinateId2)
     val updateSequence2 = Seq(coordinateId1)
     val updateSequence3 = Seq(coordinateId2)
@@ -156,6 +159,9 @@ class GameTrainingDriverTest {
     doReturn(featureShardId).when(mockDataConfig).featureShardId
     doReturn(mockBadDataConfig).when(mockBadCoordinateConfig).dataConfiguration
     doReturn(missingFeatureShardId).when(mockBadDataConfig).featureShardId
+    doReturn(mockREDataConfig).when(mockRECoordinateConfig).dataConfiguration
+    doReturn(featureShardId).when(mockREDataConfig).featureShardId
+    doReturn(badREType).when(mockREDataConfig).randomEffectType
 
     val validParamMap = ParamMap
       .empty
@@ -227,6 +233,11 @@ class GameTrainingDriverTest {
         validParamMap
           .copy
           .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId1, mockBadCoordinateConfig)))),
+      // Random effect coordinate configuration with invalid random effect field
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId1, mockRECoordinateConfig)))),
       // No intercepts for standardization
       Array(validParamMap.copy.put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)),
       // No iterations for hyperparameter tuning

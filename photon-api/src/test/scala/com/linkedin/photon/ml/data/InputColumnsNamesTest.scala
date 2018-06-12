@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.data
 
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
 /**
  * Unit tests for [[InputColumnsNames]]
@@ -29,17 +29,55 @@ class InputColumnsNamesTest {
   def testDefaultConstructor(): Unit = {
 
     val columnsNames = InputColumnsNames()
+
     InputColumnsNames.all.foreach(n => assertEquals(columnsNames(n), n.toString))
   }
 
-  /**
-   * Test that column names can be updated and accessed.
-   */
-  @Test
-  def testAccessors(): Unit = {
-
-    val columnsNames = InputColumnsNames()
-    columnsNames.updated(InputColumnsNames.RESPONSE, "label")
-    assertEquals(columnsNames(InputColumnsNames.RESPONSE), "label")
+  @DataProvider
+  def validNames(): Array[Array[Object]] = {
+    Array(
+      Array(Map(InputColumnsNames.UID -> "newUID")),
+      Array(Map(InputColumnsNames.RESPONSE -> "newResponse")),
+      Array(Map(InputColumnsNames.OFFSET -> "newOffset")),
+      Array(Map(InputColumnsNames.WEIGHT -> "newWeight")),
+      Array(Map(InputColumnsNames.META_DATA_MAP -> "newMap")),
+      Array(
+        Map(
+          InputColumnsNames.RESPONSE -> "newResponse",
+          InputColumnsNames.OFFSET -> "newOffset",
+          InputColumnsNames.WEIGHT -> "newWeight")))
   }
+
+  /**
+   * Test that some or all of the column names can be overwritten.
+   */
+  @Test(dataProvider = "validNames")
+  def testConstructor(customNames: Map[InputColumnsNames.Value, String]): Unit = {
+
+    val columnNames = InputColumnsNames(customNames)
+
+    InputColumnsNames.all.foreach { column =>
+      if (customNames.contains(column)) {
+        assertEquals(columnNames(column), customNames(column))
+      } else {
+        assertEquals(columnNames(column), column.toString)
+      }
+    }
+  }
+
+  @DataProvider
+  def invalidNames(): Array[Array[Object]] = {
+    Array(
+      Array(Map(InputColumnsNames.RESPONSE -> "uid")),
+      Array(
+        Map(
+          InputColumnsNames.RESPONSE -> "sameName",
+          InputColumnsNames.OFFSET -> "sameName")))
+  }
+
+  /**
+   * Test that multiple required columns with the same name will be rejected.
+   */
+  @Test(dataProvider = "invalidNames", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  def testInvalidInput(customNames: Map[InputColumnsNames.Value, String]): Unit = InputColumnsNames(customNames)
 }
