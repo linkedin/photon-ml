@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Generic trait for a configuration to define a coordinate.
@@ -27,15 +28,25 @@ sealed trait CoordinateOptimizationConfiguration
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
  * @param regularizationWeight Regularization weight
+ * @param regularizationWeightRange Regularization weight range
+ * @param elasticNetParamRange Elastic net alpha range
  */
 protected[ml] abstract class GLMOptimizationConfiguration(
     val optimizerConfig: OptimizerConfig,
     val regularizationContext: RegularizationContext,
-    val regularizationWeight: Double)
+    val regularizationWeight: Double,
+    val regularizationWeightRange: Option[DoubleRange] = None,
+    val elasticNetParamRange: Option[DoubleRange] = None)
   extends CoordinateOptimizationConfiguration
   with Serializable {
 
   require(0 <= regularizationWeight, s"Negative regularization weight: $regularizationWeight")
+  regularizationWeightRange.foreach { case DoubleRange(start, _) =>
+    require(start > 0.0, "Regularization weight ranges must be positive")
+  }
+  elasticNetParamRange.foreach { case DoubleRange(start, end) =>
+    require(start >= 0.0 && end <= 1.0, "Elastic net alpha ranges must lie within [0, 1]")
+  }
 }
 
 /**
@@ -44,14 +55,23 @@ protected[ml] abstract class GLMOptimizationConfiguration(
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
  * @param regularizationWeight Regularization weight
+ * @param regularizationWeightRange Regularization weight range
+ * @param elasticNetParamRange Elastic net alpha range
  * @param downSamplingRate Down-sampling rate
  */
 case class FixedEffectOptimizationConfiguration(
     override val optimizerConfig: OptimizerConfig,
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
     override val regularizationWeight: Double = 0D,
+    override val regularizationWeightRange: Option[DoubleRange] = None,
+    override val elasticNetParamRange: Option[DoubleRange] = None,
     downSamplingRate: Double = 1D)
-  extends GLMOptimizationConfiguration(optimizerConfig, regularizationContext, regularizationWeight) {
+  extends GLMOptimizationConfiguration(
+    optimizerConfig,
+    regularizationContext,
+    regularizationWeight,
+    regularizationWeightRange,
+    elasticNetParamRange) {
 
   require(downSamplingRate > 0.0 && downSamplingRate <= 1.0, s"Unexpected downSamplingRate: $downSamplingRate")
 }
@@ -62,9 +82,18 @@ case class FixedEffectOptimizationConfiguration(
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
  * @param regularizationWeight Regularization weight
+ * @param regularizationWeightRange Regularization weight range
+ * @param elasticNetParamRange Elastic net alpha range
  */
 case class RandomEffectOptimizationConfiguration(
     override val optimizerConfig: OptimizerConfig,
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
-    override val regularizationWeight: Double = 0D)
-  extends GLMOptimizationConfiguration(optimizerConfig, regularizationContext, regularizationWeight)
+    override val regularizationWeight: Double = 0D,
+    override val regularizationWeightRange: Option[DoubleRange] = None,
+    override val elasticNetParamRange: Option[DoubleRange] = None)
+  extends GLMOptimizationConfiguration(
+    optimizerConfig,
+    regularizationContext,
+    regularizationWeight,
+    regularizationWeightRange,
+    elasticNetParamRange)

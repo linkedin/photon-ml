@@ -152,11 +152,6 @@ object GameTrainingDriver extends GameDriver {
     "Number of iterations of hyper-parameter tuning to perform (if enabled).",
     ParamValidators.gt[Int](0.0))
 
-  val hyperParameterTuningRange: Param[DoubleRange] = ParamUtils.createParam[DoubleRange](
-    "hyper parameter tuning range",
-    "Range of values within which to search for the optimal hyper-parameters (if enabled).",
-    (range: DoubleRange) => range.start > 0.0)
-
   val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
     "compute variance",
     "Whether to compute the coefficient variances.")
@@ -304,7 +299,6 @@ object GameTrainingDriver extends GameDriver {
     setDefault(overrideOutputDirectory, false)
     setDefault(normalization, NormalizationType.NONE)
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
-    setDefault(hyperParameterTuningRange, DoubleRange(1e-4, 1e4))
     setDefault(computeVariance, false)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
@@ -636,10 +630,12 @@ object GameTrainingDriver extends GameDriver {
         val evaluator = models.head._2.get.head._1
         val baseConfig = models.head._3
         val dimension = baseConfig.toSeq.length
-        val range = getOrDefault(hyperParameterTuningRange)
-        val ranges = List.fill(dimension)(DoubleRange(log(range.start), log(range.end)))
 
-        val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData, ranges)
+        val evaluationFunction = new GameEstimatorEvaluationFunction(
+          estimator,
+          baseConfig,
+          trainingData,
+          testData)
 
         val searcher = getOrDefault(hyperParameterTuning) match {
           case HyperparameterTuningMode.BAYESIAN =>

@@ -145,13 +145,6 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         GameTrainingDriver.hyperParameterTuningIter,
         usageText = "<value>"),
 
-      // Hyper Parameter Tuning Range
-      ScoptParameter[String, DoubleRange](
-        GameTrainingDriver.hyperParameterTuningRange,
-        parse = ScoptParserHelpers.parseDoubleRange,
-        print = ScoptParserHelpers.doubleRangeToString,
-        usageText = "<start>-<end>"),
-
       // Compute Variance
       ScoptParameter[Boolean, Boolean](
         GameTrainingDriver.computeVariance),

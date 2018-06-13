@@ -65,7 +65,6 @@ class ScoptGameTrainingParametersParserTest {
     val treeAggregateDepth = 5
     val hyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
     val hyperparameterTuningIter = 6
-    val hyperparameterTuningRange = DoubleRange(0.1, 1000.1)
     val computeVariance = true
 
     val featureShard1 = "featureShard1"
@@ -119,9 +118,13 @@ class ScoptGameTrainingParametersParserTest {
       randomEffectMaxIter,
       randomEffectTolerance)
     val randomEffectRegularizationContext = L1RegularizationContext
+    val randomEffectRegularizationWeightRange = DoubleRange(1.0, 100.0)
+    val randomEffectElasticNetParamRange = DoubleRange(0.0, 0.5)
     val randomEffectOptimizationConfiguration = RandomEffectOptimizationConfiguration(
       randomEffectOptimizerConfig,
-      randomEffectRegularizationContext)
+      randomEffectRegularizationContext,
+      regularizationWeightRange = Some(randomEffectRegularizationWeightRange),
+      elasticNetParamRange = Some(randomEffectElasticNetParamRange))
     val randomEffectRegularizationWeights = Set(16.0, 17.0)
     val randomEffectCoordinateConfiguration = RandomEffectCoordinateConfiguration(
       randomEffectDataConfiguration,
@@ -164,7 +167,6 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.treeAggregateDepth, treeAggregateDepth)
       .put(GameTrainingDriver.hyperParameterTuning, hyperparameterTuningMode)
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
-      .put(GameTrainingDriver.hyperParameterTuningRange, hyperparameterTuningRange)
       .put(GameTrainingDriver.computeVariance, computeVariance)
 
     val finalParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(
@@ -229,6 +231,10 @@ class ScoptGameTrainingParametersParserTest {
     assertEquals(finalRandomOptimizationConfig.maximumIterations, randomEffectMaxIter)
     assertEquals(finalRandomOptimizationCoordinateConfig.regularizationContext, randomEffectRegularizationContext)
     assertEquals(finalRandomOptimizationCoordinateConfig.regularizationWeight, 0D)
+    assertEquals(
+      finalRandomOptimizationCoordinateConfig.regularizationWeightRange,
+      Some(randomEffectRegularizationWeightRange))
+    assertEquals(finalRandomOptimizationCoordinateConfig.elasticNetParamRange, Some(randomEffectElasticNetParamRange))
 
     assertEquals(finalRandomRegularizationWeights, randomEffectRegularizationWeights)
   }

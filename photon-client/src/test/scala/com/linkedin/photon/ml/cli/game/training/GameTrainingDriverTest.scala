@@ -123,7 +123,6 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.treeAggregateDepth, mockInt)
       .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
       .put(GameTrainingDriver.hyperParameterTuningIter, mockInt)
-      .put(GameTrainingDriver.hyperParameterTuningRange, mockDoubleRange)
       .put(GameTrainingDriver.computeVariance, mockBoolean)
 
     GameTrainingDriver.validateParams(validParamMap)
@@ -264,7 +263,6 @@ class GameTrainingDriverTest {
     GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuningRange)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.computeVariance)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.logLevel)

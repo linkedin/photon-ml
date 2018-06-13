@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.util.{MathUtils, Summarizable}
  * @param regularizationType The type of regularization
  * @param elasticNetParam The alpha
  */
-class RegularizationContext(val regularizationType: RegularizationType, val elasticNetParam: Option[Double])
+case class RegularizationContext(regularizationType: RegularizationType, elasticNetParam: Option[Double] = None)
   extends Summarizable with Serializable {
 
   checkInvariants()
@@ -131,17 +131,4 @@ object ElasticNetRegularizationContext {
 
   def apply(alpha: Double): RegularizationContext =
     new RegularizationContext(RegularizationType.ELASTIC_NET, Some(alpha))
-}
-
-object RegularizationContext {
-
-  /**
-   * Helper method to create a new [[RegularizationContext]] instance.
-   *
-   * @param regularizationType The type of regularization
-   * @param elasticNetParam The alpha
-   * @return An instance of RegularizationContext
-   */
-  def apply(regularizationType: RegularizationType, elasticNetParam: Option[Double] = None): RegularizationContext =
-    new RegularizationContext(regularizationType, elasticNetParam)
 }
