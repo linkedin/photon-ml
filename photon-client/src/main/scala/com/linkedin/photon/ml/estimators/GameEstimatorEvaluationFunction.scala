@@ -21,20 +21,26 @@ import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.estimators.GameEstimator.{GameOptimizationConfiguration, GameResult}
-import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.hyperparameter.{EvaluationFunction, VectorRescaling}
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-
+import com.linkedin.photon.ml.util.DoubleRange
 /**
  * Evaluation function implementation for GAME.
  *
  * An evaluation function is the integration point between the hyperparameter tuning module and an estimator, or any
  * system that can unpack a vector of values and produce a real evaluation.
+ * @param estimator The estimator for GAME model
+ * @param baseConfig The initial configuration supplied by the user
+ * @param data Training data
+ * @param validationData Validation data
+ * @param ranges Hyper-parameter searching range. If search space is [a, b], range here is [log(a), log(b)].
  */
 class GameEstimatorEvaluationFunction(
     estimator: GameEstimator,
     baseConfig: GameOptimizationConfiguration,
     data: DataFrame,
-    validationData: DataFrame)
+    validationData: DataFrame,
+    ranges: Seq[DoubleRange])
   extends EvaluationFunction[GameResult] {
 
   // CoordinateOptimizationConfigurations sorted in order by coordinate ID name
@@ -46,17 +52,37 @@ class GameEstimatorEvaluationFunction(
   /**
    * Performs the evaluation.
    *
-   * @param hyperParameters The vector of hyperparameter values under which to evaluate the function
+   * @param candidate The candidate vector of hyperparameter with values in [0, 1]
    * @return A tuple of the evaluated value and the original output from the inner estimator
    */
-  override def apply(hyperParameters: DenseVector[Double]): (Double, GameResult) = {
-    val newConfiguration = vectorToConfiguration(hyperParameters)
+  override def apply(candidate: DenseVector[Double]): (Double, GameResult) = {
+
+    val candidateScaled = VectorRescaling.scaleBackward(candidate, ranges)
+
+    val newConfiguration = vectorToConfiguration(candidateScaled)
 
     val model = estimator.fit(data, Some(validationData), Seq(newConfiguration)).head
     val (_, Some(evaluations), _) = model
 
     // Assumes model selection evaluator is in "head" position
     (evaluations.head._2, model)
+  }
+
+  /**
+   * Vectorize and scale a [[Seq]] of prior observations.
+   *
+   * @param observations Prior observations in estimator output form
+   * @return Prior observations as tuples of (vector representation of the original estimator output, evaluated value)
+   */
+  override def convertObservations(observations: Seq[GameResult]): Seq[(DenseVector[Double], Double)] = {
+
+    observations.map { observation =>
+      val candidate = vectorizeParams(observation)
+      val candidateScaled = VectorRescaling.scaleForward(candidate, ranges)
+      val value = getEvaluationValue(observation)
+
+      (candidateScaled, value)
+    }
   }
 
   /**

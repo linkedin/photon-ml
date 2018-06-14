@@ -29,6 +29,7 @@ import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfigura
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
+import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Unit tests for [[GameEstimatorEvaluationFunction]].
@@ -43,6 +44,7 @@ class GameEstimatorEvaluationFunctionTest {
   private val random = new Random(1)
   private val regWeights = Array.fill[Double](4) { random.nextDouble }
   private val tolerance = MathConst.EPSILON
+  private val ranges = Seq(DoubleRange(log(0.001), log(1000)))
 
   /**
    * Test that a [[GameOptimizationConfiguration]] can be correctly constructed from a hyperparameter vector.
@@ -54,7 +56,7 @@ class GameEstimatorEvaluationFunctionTest {
       ("a", FixedEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(0))),
       ("b", RandomEffectOptimizationConfiguration(mockOptimizerConfig, mockRegContext, regWeights(1))))
 
-    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, configuration, mockData, mockData)
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, configuration, mockData, mockData, ranges)
     val hypers = DenseVector(log(regWeights(2)), log(regWeights(3)))
     val newConfiguration = evaluationFunction.vectorToConfiguration(hypers)
 
@@ -90,7 +92,7 @@ class GameEstimatorEvaluationFunctionTest {
   @Test(dataProvider = "invalidVectorProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidVectorToConfiguration(config: GameOptimizationConfiguration, hypers: DenseVector[Double]): Unit = {
 
-    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData)
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData, ranges)
     evaluationFunction.vectorToConfiguration(hypers)
   }
 
@@ -118,7 +120,7 @@ class GameEstimatorEvaluationFunctionTest {
   @Test(dataProvider = "configurationProvider")
   def testConfigurationToVector(config: GameOptimizationConfiguration, expected: DenseVector[Double]): Unit = {
 
-    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData)
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, config, mockData, mockData, ranges)
     val result = evaluationFunction.configurationToVector(config)
 
     assertEquals(result.length, expected.length)
@@ -164,7 +166,7 @@ class GameEstimatorEvaluationFunctionTest {
     baseConfig: GameOptimizationConfiguration,
     vectorConfig: GameOptimizationConfiguration): Unit = {
 
-    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, baseConfig, mockData, mockData)
+    val evaluationFunction = new GameEstimatorEvaluationFunction(mockEstimator, baseConfig, mockData, mockData, ranges)
     evaluationFunction.configurationToVector(vectorConfig)
   }
 }

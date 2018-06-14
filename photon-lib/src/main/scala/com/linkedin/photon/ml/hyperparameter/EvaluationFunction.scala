@@ -33,6 +33,14 @@ trait EvaluationFunction[T] {
   def apply(hyperParameters: DenseVector[Double]): (Double, T)
 
   /**
+   * Vectorize a [[Seq]] of prior observations.
+   *
+   * @param observations Prior observations in estimator output form
+   * @return Prior observations as tuples of (vector representation of the original estimator output, evaluated value)
+   */
+  def convertObservations(observations: Seq[T]): Seq[(DenseVector[Double], Double)]
+
+  /**
    * Extracts a vector representation from the hyper-parameters associated with the original estimator output.
    *
    * @param result The original estimator output

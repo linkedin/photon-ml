@@ -22,112 +22,77 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
-import com.linkedin.photon.ml.util.DoubleRange
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
 
 /**
- * Test cases for the GaussianProcessSearch class
+ * Unit tests for [[GaussianProcessSearch]]
  */
 class GaussianProcessSearchTest {
 
-  val seed = 1L
-  val dim = 3
-  val n = 5
-  val lower = 1e-5
-  val upper = 1e5
-  val ranges: Seq[DoubleRange] = Seq.fill(dim)(DoubleRange(lower, upper))
+  import GaussianProcessSearchTest._
 
-  case class TestModel(params: DenseVector[Double], evaluation: Double)
-
-  val evaluationFunction = new EvaluationFunction[TestModel] {
-
-    def apply(hyperParameters: DenseVector[Double]): (Double, TestModel) = {
-      (0.0, TestModel(hyperParameters, 0.0))
-    }
-
-    def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
-    def getEvaluationValue(result: TestModel): Double = result.evaluation
-  }
-
-  val evaluator = new Evaluator {
-
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
-      mock(classOf[RDD[(Long, (Double, Double, Double))]])
-    override val evaluatorType = EvaluatorType.AUC
-    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
-
-    override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
-  }
-
-  val searcher = new GaussianProcessSearch[TestModel](ranges, evaluationFunction, evaluator, seed = seed)
+  val searcher = new GaussianProcessSearch[TestModel](
+    DIM,
+    EVALUATION_FUNCTION,
+    EVALUATOR,
+    DISCRETE_PARAMS,
+    KERNEL,
+    seed = SEED)
 
   var observedPoints: Option[DenseMatrix[Double]] = None
   var observedEvals: Option[DenseVector[Double]] = None
-  var bestEval: Double = evaluator.defaultScore
+  var bestEval: Double = EVALUATOR.defaultScore
   var priorObservedPoints: Option[DenseMatrix[Double]] = None
   var priorObservedEvals: Option[DenseVector[Double]] = None
-  var priorBestEval: Double = evaluator.defaultScore
+  var priorBestEval: Double = EVALUATOR.defaultScore
 
   @DataProvider
   def priorDataProvider: Array[Array[Any]] = {
 
-    val candidate1 = (DenseVector(1.0, 1.0, 1.0), 0.1)
-    val candidate2 = (DenseVector(2.0, 2.0, 2.0), 0.2)
-    val candidate3 = (DenseVector(3.0, 3.0, 3.0), 0.3)
-    val currentCandidates = Seq(candidate1, candidate2, candidate3)
-    val priorCandidates = Seq(candidate3, candidate1, candidate2)
+    val candidate1 = (DenseVector(0.25, 0.2, 0.1999, 0.125, 0.999), 0.1)
+    val candidate2 = (DenseVector(0.2, 0.2, 0.2, 0.2, 0.2), 0.2)
+    val candidate3 = (DenseVector(0.3, 0.3, 0.3, 0.3, 0.3), 0.3)
+    val observations = Seq(candidate1, candidate2)
+    val priorObservations = Seq(candidate2, candidate3)
 
     Array(
-      Array(currentCandidates, Seq(), 0),
-      Array(currentCandidates, priorCandidates, 1))
+      Array(observations, Seq(), 0),
+      Array(observations, priorObservations, 1))
   }
 
   @Test(dataProvider = "priorDataProvider")
   def testFindWithPriors(
-    currentCandidates: Seq[(DenseVector[Double], Double)],
-    priorCandidates: Seq[(DenseVector[Double], Double)],
-    testSetIndex: Int): Unit = {
+      currentCandidates: Seq[(DenseVector[Double], Double)],
+      priorCandidates: Seq[(DenseVector[Double], Double)],
+      testSetIndex: Int): Unit = {
 
-    val candidates1 = searcher.findWithPriors(n, currentCandidates, priorCandidates)
+    val candidates = searcher.findWithPriors(N, currentCandidates, priorCandidates)
 
-    assertEquals(candidates1.length, n)
-    assertEquals(candidates1.toSet.size, n)
-    assertTrue(candidates1.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
+    assertEquals(candidates.length, N)
+    assertEquals(candidates.toSet.size, N)
+    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= 0 && x < 1)))
   }
 
   @Test(dataProvider = "priorDataProvider", dependsOnMethods = Array[String]("testFindWithPriors"))
-  def testFindWithObservations(
-    currentCandidates: Seq[(DenseVector[Double], Double)],
-    priorCandidates: Seq[(DenseVector[Double], Double)],
-    testSetIndex: Int): Unit = {
+  def testFindWithPriorObservations(
+      currentCandidates: Seq[(DenseVector[Double], Double)],
+      priorCandidates: Seq[(DenseVector[Double], Double)],
+      testSetIndex: Int): Unit = {
 
-    val candidates1 = searcher.findWithObservations(n, currentCandidates)
+    val candidates = searcher.findWithPriorObservations(N, priorCandidates)
 
-    assertEquals(candidates1.length, n)
-    assertTrue(candidates1.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertEquals(candidates1.size, n)
+    assertEquals(candidates.length, N)
+    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= 0 && x < 1)))
+    assertEquals(candidates.size, N)
   }
 
-  @Test(dataProvider = "priorDataProvider", dependsOnMethods = Array[String]("testFindWithObservations"))
-  def testFindWithPastObservations(
-    currentCandidates: Seq[(DenseVector[Double], Double)],
-    priorCandidates: Seq[(DenseVector[Double], Double)],
-    testSetIndex: Int): Unit = {
-
-    val candidates1 = searcher.findWithPriorObservations(n, priorCandidates)
-
-    assertEquals(candidates1.length, n)
-    assertTrue(candidates1.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
-    assertEquals(candidates1.size, n)
-  }
-
-  @Test(dependsOnMethods = Array[String]("testFindWithPastObservations"))
+  @Test(dependsOnMethods = Array[String]("testFindWithPriorObservations"))
   def testFind(): Unit = {
-    val candidates = searcher.find(n)
+    val candidates = searcher.find(N)
 
-    assertEquals(candidates.length, n)
-    assertEquals(candidates.toSet.size, n)
-    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= lower && x <= upper)))
+    assertEquals(candidates.length, N)
+    assertEquals(candidates.toSet.size, N)
+    assertTrue(candidates.forall(_.params.toArray.forall(x => x >= 0 && x < 1)))
   }
 
   @DataProvider
@@ -172,7 +137,7 @@ class GaussianProcessSearchTest {
         .map(DenseVector.vertcat(_, DenseVector(value)))
         .orElse(Some(DenseVector(value)))
 
-      if (evaluator.betterThan(value, bestEval)) {
+      if (EVALUATOR.betterThan(value, bestEval)) {
         bestEval = value
       }
     }
@@ -186,28 +151,67 @@ class GaussianProcessSearchTest {
         .map(DenseVector.vertcat(_, DenseVector(value)))
         .orElse(Some(DenseVector(value)))
 
-      if (evaluator.betterThan(value, priorBestEval)) {
+      if (EVALUATOR.betterThan(value, priorBestEval)) {
         priorBestEval = value
       }
     }
 
     testSetIndex match {
       case 0 =>
-        assertEquals(observedPoints.get.rows, 3)
-        assertEquals(observedPoints.get.cols, 3)
-        assertEquals(observedEvals.get.length, 3)
-        assertEquals(bestEval, 0.3)
+        assertEquals(observedPoints.get.rows, 2)
+        assertEquals(observedPoints.get.cols, 5)
+        assertEquals(observedEvals.get.length, 2)
+        assertEquals(bestEval, 0.2)
         assertFalse(priorObservedPoints.isDefined)
         assertFalse(priorObservedEvals.isDefined)
       case 1 =>
-        assertEquals(observedPoints.get.rows, 6)
-        assertEquals(observedPoints.get.cols, 3)
-        assertEquals(observedEvals.get.length, 6)
-        assertEquals(bestEval, 0.3)
-        assertEquals(priorObservedPoints.get.rows, 3)
-        assertEquals(priorObservedPoints.get.cols, 3)
-        assertEquals(priorObservedEvals.get.length, 3)
+        assertEquals(observedPoints.get.rows, 4)
+        assertEquals(observedPoints.get.cols, 5)
+        assertEquals(observedEvals.get.length, 4)
+        assertEquals(bestEval, 0.2)
+        assertEquals(priorObservedPoints.get.rows, 2)
+        assertEquals(priorObservedPoints.get.cols, 5)
+        assertEquals(priorObservedEvals.get.length, 2)
         assertEquals(priorBestEval, 0.3)
     }
+  }
+}
+
+object GaussianProcessSearchTest {
+
+  val SEED = 1L
+  val DIM = 5
+  val N = 25
+  val DISCRETE_PARAMS = Map(0 -> 5, 1 -> 5, 2 -> 5, 4 -> 9)
+  val KERNEL = new Matern52
+  val TOLERANCE = 1E-12
+
+  case class TestModel(params: DenseVector[Double], evaluation: Double)
+
+  val EVALUATION_FUNCTION: EvaluationFunction[TestModel] = new EvaluationFunction[TestModel] {
+
+    def apply(hyperParameters: DenseVector[Double]): (Double, TestModel) = {
+      (0.0, TestModel(hyperParameters, 0.0))
+    }
+    def convertObservations(results: Seq[TestModel]): Seq[(DenseVector[Double], Double)] = {
+      results.map { result =>
+        val candidate = vectorizeParams(result)
+        val value = getEvaluationValue(result)
+        (candidate, value)
+      }
+    }
+    def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
+    def getEvaluationValue(result: TestModel): Double = result.evaluation
+  }
+
+  val EVALUATOR: Evaluator = new Evaluator {
+
+    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
+      mock(classOf[RDD[(Long, (Double, Double, Double))]])
+    override val evaluatorType: EvaluatorType = EvaluatorType.AUC
+    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
+        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
+
+    override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
   }
 }
