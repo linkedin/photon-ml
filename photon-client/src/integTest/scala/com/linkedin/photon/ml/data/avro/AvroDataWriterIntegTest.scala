@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 /**
- * Integeration test for AvroDataWriter
+ * Integration tests for [[AvroDataWriter]].
  */
 class AvroDataWriterIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
