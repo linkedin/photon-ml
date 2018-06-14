@@ -112,10 +112,18 @@ object AvroDataWriter {
   protected[data] def getValueAsDouble(row: Row, fieldName: String): Double = {
 
     row.getAs[Any](fieldName) match {
-      case null => DEFAULTS
-        .getOrElse(fieldName, throw new IllegalArgumentException(s"Unsupported null for fieldName $fieldName"))
-      case n: Number => n.doubleValue()
-      case b: Boolean => if (b) 1.0D else 0.0D
+      case null =>
+        DEFAULTS.getOrElse(fieldName, throw new IllegalArgumentException(s"Unsupported null for fieldName $fieldName"))
+
+      case n: Number =>
+        n.doubleValue
+
+      case s: String =>
+        s.toDouble
+
+      case b: Boolean =>
+        if (b) 1.0D else 0.0D
+
       case _ =>
         throw new IllegalArgumentException(s"Unsupported data type")
     }

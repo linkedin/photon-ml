@@ -26,22 +26,25 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.Constants.DELIMITER
 import com.linkedin.photon.ml.index.{DefaultIndexMap, IndexMap}
 
+/**
+ * Unit tests for [[AvroDataWriter]].
+ */
 class AvroDataWriterTest {
 
   @DataProvider
   def rowsProvider(): Array[Array[GenericRowWithSchema]] = {
 
     val vector = Vectors.sparse(3, Array(0, 2), Array(0.0, 1.0))
-    val arrays = Array(
+    val arrays = Array[Array[Any]](
       Array(1, 0, 1, vector),
       Array(true, false, true, vector),
       Array(1.0f, 0.0f, 1.0f, vector),
       Array(1L, 0L, 1L, vector),
-      Array(1.0D, 0.0D, 1.0D, vector)
-    )
-    val types = Array(IntegerType, BooleanType, FloatType, LongType, DoubleType)
+      Array(1.0D, 0.0D, 1.0D, vector),
+      Array("1", "0.0", "1E0", vector))
+    val types = Array(IntegerType, BooleanType, FloatType, LongType, DoubleType, StringType)
 
-    // build a row with null fields for offset and weight
+    // Build a row with null fields for offset and weight
     val nullArray = Array(1.0D, null, null, vector)
     val nullSchema = new StructType(
       Array(
@@ -51,15 +54,20 @@ class AvroDataWriterTest {
         StructField("features", new VectorUDT)))
     val nullRow = new GenericRowWithSchema(nullArray, nullSchema)
 
-    arrays.zip(types).map { case (a, t) =>
-      val schema = new StructType(
-        Array(
-          StructField("response", t),
-          StructField("offset", t),
-          StructField("weight", t),
-          StructField("features", new VectorUDT)))
-      Array(new GenericRowWithSchema(a, schema))
-    } :+ Array(nullRow)
+    val rows = arrays
+      .zip(types)
+      .map { case (a, t) =>
+        val schema = new StructType(
+          Array(
+            StructField("response", t),
+            StructField("offset", t),
+            StructField("weight", t),
+            StructField("features", new VectorUDT)))
+
+        Array(new GenericRowWithSchema(a, schema))
+      }
+
+    rows :+ Array(nullRow)
   }
 
   @Test(dataProvider = "rowsProvider")
