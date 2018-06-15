@@ -112,7 +112,7 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.validationDataDirectories, Set[Path](mockPath))
       .put(GameTrainingDriver.validationDataDateRange, mockDateRange)
       .put(GameTrainingDriver.minValidationPartitions, mockInt)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+      .put(GameTrainingDriver.modelInputDirectory, mockPath)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, Set(coordinateId2))
       .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
       .put(GameTrainingDriver.coordinateDescentIterations, mockInt)
@@ -200,15 +200,13 @@ class GameTrainingDriverTest {
       Array(validParamMap.copy.remove(GameTrainingDriver.coordinateConfigurations)),
       // No coordinate update sequence
       Array(validParamMap.copy.remove(GameTrainingDriver.coordinateUpdateSequence)),
-      // Pre-trained model path without locked coordinates
-      Array(validParamMap.copy.put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)),
       // Locked coordinates without pre-trained model path
       Array(validParamMap.copy.put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
       // Locked coordinate present in the coordinate configurations
       Array(
         validParamMap
           .copy
-          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.modelInputDirectory, mockPath)
           .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
       // All coordinates in the update sequence are locked
       Array(
@@ -216,7 +214,7 @@ class GameTrainingDriverTest {
           .copy
           .put(GameTrainingDriver.coordinateUpdateSequence, updateSequence2)
           .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs2)
-          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.modelInputDirectory, mockPath)
           .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
       // Locked coordinate missing from the update sequence
       Array(
@@ -224,7 +222,7 @@ class GameTrainingDriverTest {
           .copy
           .put(GameTrainingDriver.coordinateUpdateSequence, updateSequence3)
           .put(GameTrainingDriver.coordinateConfigurations, coordinateConfigs2)
-          .put(GameTrainingDriver.partialRetrainModelDirectory, mockPath)
+          .put(GameTrainingDriver.modelInputDirectory, mockPath)
           .put(GameTrainingDriver.partialRetrainLockedCoordinates, lockedCoordinates)),
       // Missing coordinate configuration
       Array(validParamMap.copy.put(GameTrainingDriver.coordinateUpdateSequence, Seq(missingCoordinateId))),

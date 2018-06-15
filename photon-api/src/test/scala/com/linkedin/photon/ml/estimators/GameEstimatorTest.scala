@@ -79,7 +79,6 @@ class GameEstimatorTest {
     val computeVariance = true
     val treeAggregateDepth = 2
     val validationEvaluators = Seq(AUC)
-    val useWarmStart = false
     val updateSeq = Seq(coordinateId1, coordinateId2)
     val dataConfigs = Map((coordinateId1, mockDataConfig), (coordinateId2, mockDataConfig))
     val normalizationConfigs = Map((coordinateId1, mockNormalizationContext))
@@ -96,12 +95,11 @@ class GameEstimatorTest {
       .setCoordinateDataConfigurations(dataConfigs)
       .setCoordinateDescentIterations(coordinateDescentIter)
       .setCoordinateNormalizationContexts(normalizationConfigs)
-      .setPartialRetrainModel(mockPretrainedModel)
+      .setInitialModel(mockPretrainedModel)
       .setPartialRetrainLockedCoordinates(lockedCoordinates)
       .setComputeVariance(computeVariance)
       .setTreeAggregateDepth(treeAggregateDepth)
       .setValidationEvaluators(validationEvaluators)
-      .setWarmStart(useWarmStart)
 
     estimator.validateParams()
   }
@@ -166,12 +164,6 @@ class GameEstimatorTest {
       .setCoordinateUpdateSequence(badUpdateSeq)
     result = result :+ Array[Any](badEstimator)
 
-    // Pre-trained model without locked coordinates
-    badEstimator = estimator
-      .copy(ParamMap.empty)
-      .setPartialRetrainModel(mockPretrainedModel1)
-    result = result :+ Array[Any](badEstimator)
-
     // Locked coordinates without pre-trained model
     badEstimator = estimator
       .copy(ParamMap.empty)
@@ -181,14 +173,14 @@ class GameEstimatorTest {
     // All coordinates in the update sequence are locked
     badEstimator = estimator
       .copy(ParamMap.empty)
-      .setPartialRetrainModel(mockPretrainedModel1)
+      .setInitialModel(mockPretrainedModel1)
       .setPartialRetrainLockedCoordinates(lockedCoordinates1)
     result = result :+ Array[Any](badEstimator)
 
     // Locked coordinate missing from the update sequence
     badEstimator = estimator
       .copy(ParamMap.empty)
-      .setPartialRetrainModel(mockPretrainedModel2)
+      .setInitialModel(mockPretrainedModel2)
       .setPartialRetrainLockedCoordinates(lockedCoordinates2)
     result = result :+ Array[Any](badEstimator)
 
@@ -197,7 +189,7 @@ class GameEstimatorTest {
       .copy(ParamMap.empty)
       .setCoordinateUpdateSequence(updateSeq2)
       .setCoordinateDataConfigurations(coordinateDataConfig2)
-      .setPartialRetrainModel(mockPretrainedModel2)
+      .setInitialModel(mockPretrainedModel2)
       .setPartialRetrainLockedCoordinates(lockedCoordinates1)
     result = result :+ Array[Any](badEstimator)
 
@@ -239,7 +231,6 @@ class GameEstimatorTest {
     estimator.getOrDefault(estimator.inputColumnNames)
     estimator.getOrDefault(estimator.computeVariance)
     estimator.getOrDefault(estimator.treeAggregateDepth)
-    estimator.getOrDefault(estimator.useWarmStart)
   }
 
   /**
@@ -271,7 +262,7 @@ class GameEstimatorTest {
       .setTrainingTask(trainingTask)
       .setCoordinateUpdateSequence(updateSeq)
       .setCoordinateDataConfigurations(coordinateDataConfiguration)
-      .setPartialRetrainModel(mockPretrainedModel)
+      .setInitialModel(mockPretrainedModel)
       .setPartialRetrainLockedCoordinates(lockedCoordinates)
 
     estimator.fit(mockDataFrame, validationData = None, Seq(coordinateOptConfiguration))

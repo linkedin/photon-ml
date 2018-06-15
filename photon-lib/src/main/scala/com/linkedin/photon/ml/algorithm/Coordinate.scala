@@ -40,7 +40,7 @@ protected[ml] abstract class Coordinate[D <: DataSet[D]](dataSet: D) {
    * @param seed A random seed
    * @return The basic model
    */
-  protected[algorithm] def initializeModel(seed: Long): DatumScoringModel
+  protected[ml] def initializeModel(seed: Long): DatumScoringModel
 
   /**
    * Update the coordinate with a new dataset.

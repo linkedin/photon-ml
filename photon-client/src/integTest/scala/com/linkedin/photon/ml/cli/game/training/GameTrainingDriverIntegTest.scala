@@ -27,7 +27,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.StorageLevel
+import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.estimators.GameEstimator
@@ -77,7 +77,10 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val errorThreshold = 1.2
     val outputDir = new Path(getTmpDir, "fixedEffects")
 
-    runDriver(fixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+    runDriver(
+      fixedEffectSeriousRunArgs
+        .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+        .put(GameTrainingDriver.modelSparsityThreshold, MathConst.EPSILON))
 
     val allFixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
     val bestFixedEffectModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId)
@@ -86,8 +89,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertTrue(fs.exists(allFixedEffectModelPath))
     assertTrue(fs.exists(bestFixedEffectModelPath))
 
-    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14983)
-    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14983)
+    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14985)
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14985)
 
     assertTrue(evaluateModel(new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}/0")) < errorThreshold)
     assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
@@ -108,7 +111,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 1.2
-    val outputDir = new Path(getTmpDir, "fixedEffects")
+    val outputDir = new Path(getTmpDir, "fixedEffectsAdditionalOpts")
     val newArgs = fixedEffectSeriousRunArgs
       .copy
       .put(GameTrainingDriver.rootOutputDirectory, outputDir)
@@ -141,7 +144,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 1.2
-    val outputDir = new Path(getTmpDir, "fixedEffects")
+    val outputDir = new Path(getTmpDir, "fixedEffectsNoIntercept")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
       .map(identity)
@@ -149,7 +152,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       .copy
       .put(GameTrainingDriver.rootOutputDirectory, outputDir)
       .put(GameTrainingDriver.featureShardConfigurations, modifiedFeatureShardConfigs)
-    newArgs.remove(GameTrainingDriver.featureBagsDirectory)
+      .put(GameTrainingDriver.modelSparsityThreshold, MathConst.EPSILON)
 
     runDriver(newArgs)
 
@@ -160,8 +163,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertTrue(fs.exists(allFixedEffectModelPath))
     assertTrue(fs.exists(bestFixedEffectModelPath))
 
-    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14980)
-    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14980)
+    assertModelSane(allFixedEffectModelPath, expectedNumCoefficients = 14984)
+    assertModelSane(bestFixedEffectModelPath, expectedNumCoefficients = 14984)
 
     assertTrue(evaluateModel(new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}/0")) < errorThreshold)
     assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
@@ -207,7 +210,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedEffectInterceptOnlyFeatureBagsDir(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
 
-    val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnly")
+    val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnlyBags")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
       .mapValues(_.copy(featureBags = Set()))
       .map(identity)
@@ -263,7 +266,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
-    val outputDir = new Path(getTmpDir, "randomEffects")
+    val outputDir = new Path(getTmpDir, "randomEffectsNoIntercept")
     val modifiedFeatureShardConfigs = randomEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
       .map(identity)
@@ -293,7 +296,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
-    val outputDir = new Path(getTmpDir, "randomEffects")
+    val outputDir = new Path(getTmpDir, "randomEffectsNormalization")
     runDriver(
       randomEffectSeriousRunArgs
         .put(GameTrainingDriver.rootOutputDirectory, outputDir)
@@ -355,7 +358,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
 
-    val hyperParameterTuningIter = 3
+    val hyperParameterTuningIter = 1
     val outputDir = new Path(getTmpDir, "hyperParameterTuning")
     val newArgs = mixedEffectSeriousRunArgs
       .copy
@@ -426,6 +429,26 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Test GAME warm-start with initial model
+   */
+  @Test
+  def testWarmStartWithInitialModel(): Unit = sparkTest("testWarmStartWithInitialModel", useKryo = true) {
+    // TODO This is really not much more than a quick sanity check. At some point we need to split the data in 2 sets,
+    // and check that incremental training works as expected.
+    val outputDir = new Path(getTmpDir, "testInitialModel")
+
+    val args = defaultArgs
+      .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
+      .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
+      .put(GameTrainingDriver.coordinateConfigurations, mixedEffectSeriousGameConfig)
+      .put(GameTrainingDriver.modelInputDirectory, trainedMixedModelPath)
+
+    runDriver(args.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.005)
+  }
+
+  /**
    * Test GAME training with a custom model sparsity threshold.
    */
   @Test
@@ -461,9 +484,9 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training, loading an off-heap index map.
    */
   @Test
-  def testOffHeapIndexMap(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
+  def testOffHeapIndexMap(): Unit = sparkTest("testOffHeapIndexMap", useKryo = true) {
 
-    val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
+    val outputDir = new Path(getTmpDir, "testOffHeapIndexMap")
     val indexMapPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath)
     val params = mixedEffectToyRunArgs
       .put(GameTrainingDriver.rootOutputDirectory, outputDir)
@@ -854,7 +877,7 @@ object GameTrainingDriverIntegTest {
       .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
       .put(GameTrainingDriver.coordinateConfigurations, randomEffectOnlySeriousGameConfig)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedFixedOnlyModelPath)
+      .put(GameTrainingDriver.modelInputDirectory, trainedFixedOnlyModelPath)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, Set(fixedEffectCoordinateId))
 
   /**
@@ -867,7 +890,7 @@ object GameTrainingDriverIntegTest {
       .put(GameTrainingDriver.featureShardConfigurations, mixedEffectFeatureShardConfigs)
       .put(GameTrainingDriver.coordinateUpdateSequence, Seq(fixedEffectCoordinateId) ++ randomEffectCoordinateIds)
       .put(GameTrainingDriver.coordinateConfigurations, fixedEffectOnlySeriousGameConfig)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, trainedRandomOnlyModelPath)
+      .put(GameTrainingDriver.modelInputDirectory, trainedRandomOnlyModelPath)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, randomEffectCoordinateIds.toSet)
 
   /**

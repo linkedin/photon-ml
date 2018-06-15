@@ -67,7 +67,6 @@ class ScoptGameTrainingParametersParserTest {
     val hyperparameterTuningIter = 6
     val hyperparameterTuningRange = DoubleRange(0.1, 1000.1)
     val computeVariance = true
-    val useWarmStart = false
 
     val featureShard1 = "featureShard1"
     val featureBags1 = Set("bag1", "bag2")
@@ -154,7 +153,7 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.validationDataDirectories, validationPaths)
       .put(GameTrainingDriver.validationDataDateRange, validationDateRange)
       .put(GameTrainingDriver.minValidationPartitions, validationPartitions)
-      .put(GameTrainingDriver.partialRetrainModelDirectory, partialRetrainModelDir)
+      .put(GameTrainingDriver.modelInputDirectory, partialRetrainModelDir)
       .put(GameTrainingDriver.partialRetrainLockedCoordinates, partialRetrainLockedCoordinates)
       .put(GameTrainingDriver.outputMode, outputMode)
       .put(GameTrainingDriver.coordinateDescentIterations, coordinateDescentIter)
@@ -167,7 +166,6 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
       .put(GameTrainingDriver.hyperParameterTuningRange, hyperparameterTuningRange)
       .put(GameTrainingDriver.computeVariance, computeVariance)
-      .put(GameTrainingDriver.useWarmStart, useWarmStart)
 
     val finalParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(
       ScoptGameTrainingParametersParser.printForCommandLine(initialParamMap).flatMap(_.split(" ")).toArray)

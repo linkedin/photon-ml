@@ -221,8 +221,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
 
-    new RandomEffectDataSet(
-      activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
+    new RandomEffectDataSet(activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
   }
 
   /**

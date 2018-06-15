@@ -52,10 +52,6 @@ object GameScoringDriver extends GameDriver {
   // Parameters
   //
 
-  val modelInputDirectory: Param[Path] = ParamUtils.createParam(
-    "model input directory",
-    "Path to directory containing model to use for scoring.")
-
   val modelId: Param[String] = ParamUtils.createParam(
     "model id",
     "ID to tag scores with.")

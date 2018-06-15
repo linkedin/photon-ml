@@ -88,15 +88,44 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    */
   override def projectCoefficientsRDD(
       modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
-    modelsRDD
-      .join(indexMapProjectorRDD)
-      .mapValues { case (model, projector) =>
-        val oldCoefficients = model.coefficients
 
-        model.updateCoefficients(
-          Coefficients(
-            projector.projectCoefficients(oldCoefficients.means),
-            oldCoefficients.variancesOption.map(projector.projectCoefficients)))
+    // Left join the models to projectors for cases where we have a prior model but no new data (and hence no
+    // projectors)
+    modelsRDD
+      .leftOuterJoin(indexMapProjectorRDD)
+      .mapValues { case (model, projectorOpt) =>
+        projectorOpt.map { projector =>
+          val oldCoefficients = model.coefficients
+
+          model.updateCoefficients(
+            Coefficients(
+              projector.projectCoefficients(oldCoefficients.means),
+              oldCoefficients.variancesOption.map(projector.projectCoefficients)))
+        }.getOrElse(model)
+      }
+
+  /**
+   * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the original space to the projected space.
+   *
+   * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
+   */
+  override def transformCoefficientsRDD(
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
+
+    // Left join the models to projectors for cases where we have a prior model but no new data (and hence no
+    // projectors)
+    modelsRDD
+      .leftOuterJoin(indexMapProjectorRDD)
+      .mapValues { case (model, projectorOpt) =>
+        projectorOpt.map { projector =>
+          val oldCoefficients = model.coefficients
+
+          model.updateCoefficients(
+            Coefficients(
+              projector.projectFeatures(oldCoefficients.means),
+              oldCoefficients.variancesOption.map(projector.projectFeatures)))
+        }.getOrElse(model)
       }
 
   /**

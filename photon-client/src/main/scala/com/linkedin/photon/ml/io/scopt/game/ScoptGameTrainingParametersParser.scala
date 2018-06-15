@@ -42,6 +42,12 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
   val scoptGameTrainingParams: Seq[ScoptParameter[In, Out] forSome { type In; type Out }] =
     createScoptGameParams(GameTrainingDriver) ++ Seq(
 
+      // Model Input Dir
+      ScoptParameter[Path, Path](
+        GameTrainingDriver.modelInputDirectory,
+        usageText = "<path>",
+        isRequired = false),
+
       // Task Type
       ScoptParameter[TaskType, TaskType](
         GameTrainingDriver.trainingTask,
@@ -70,11 +76,6 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       ScoptParameter[Int, Int](
         GameTrainingDriver.minValidationPartitions,
         usageText = "<value>"),
-
-      // Partial Retraining Base Model Directory
-      ScoptParameter[Path, Path](
-        GameTrainingDriver.partialRetrainModelDirectory,
-        usageText = "<path>"),
 
       // Partial Retraining Locked Coordinates
       ScoptParameter[Seq[CoordinateId], Set[CoordinateId]](
@@ -154,11 +155,6 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       // Compute Variance
       ScoptParameter[Boolean, Boolean](
         GameTrainingDriver.computeVariance),
-
-      // Use Warm Start
-      ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.useWarmStart),
-
       // Model Sparsity Threshold
       ScoptParameter[Double, Double](
         GameTrainingDriver.modelSparsityThreshold))
@@ -192,7 +188,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
           .map(_.mkString(" "))
           .mkString("\n")
 
-        throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString()}")
+        throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString}")
     }
   }
 

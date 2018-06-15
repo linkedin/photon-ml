@@ -41,7 +41,7 @@ abstract class ModelCoordinate[D <: DataSet[D]](dataSet: D) extends Coordinate(d
    * @param seed A random seed
    * @return The basic model
    */
-  override protected[algorithm] def initializeModel(seed: Long): DatumScoringModel =
+  override protected[ml] def initializeModel(seed: Long): DatumScoringModel =
     throw new UnsupportedOperationException("Attempted to initialize model using pre-trained coordinate.")
 
   /**

@@ -77,6 +77,22 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
     }
 
   /**
+   * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the original space to the projected space.
+   *
+   * @param modelsRDD The input [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the original space
+   * @return The [[RDD]] of [[GeneralizedLinearModel]] with [[Coefficients]] in the projected space
+   */
+  override def transformCoefficientsRDD(
+      modelsRDD: RDD[(String, GeneralizedLinearModel)]): RDD[(String, GeneralizedLinearModel)] =
+    modelsRDD.mapValues { model =>
+      val oldCoefficients = model.coefficients
+      model.updateCoefficients(
+        Coefficients(
+          projectionMatrixBroadcast.value.projectFeatures(oldCoefficients.means),
+          oldCoefficients.variancesOption))
+    }
+
+  /**
    * Project a [[NormalizationContext]] from the original space to the projected space.
    *
    * @param originalNormalizationContext The [[NormalizationContext]] in the original space
