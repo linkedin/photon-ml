@@ -59,7 +59,8 @@ object ScoptParserHelpers extends Logging {
   val COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE = "random.effect.type"
   val COORDINATE_DATA_CONFIG_FEATURE_SHARD = "feature.shard"
   val COORDINATE_DATA_CONFIG_MIN_PARTITIONS = "min.partitions"
-  val COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND = "active.data.bound"
+  val COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND = "active.data.lower.bound"
+  val COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND = "active.data.upper.bound"
   val COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND = "passive.data.bound"
   val COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO = "features.to.samples.ratio"
 
@@ -91,13 +92,15 @@ object ScoptParserHelpers extends Logging {
   val COORDINATE_CONFIG_FIXED_EFFECT_OPTIONAL_ARGS = Map(
     (COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE, "<value>"))
   val COORDINATE_CONFIG_RANDOM_EFFECT_OPTIONAL_ARGS = Map(
-    (COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND, "<value>"),
+    (COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND, "<value>"),
+    (COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND, "<value>"),
     (COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND, "<value>"),
     (COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO, "<value>"))
 
   val COORDINATE_CONFIG_FIXED_ONLY_ARGS = Seq(COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE)
   val COORDINATE_CONFIG_RANDOM_ONLY_ARGS = Seq(
-    COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND,
+    COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND,
+    COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND,
     COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND,
     COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO)
 
@@ -233,7 +236,8 @@ object ScoptParserHelpers extends Logging {
           reType,
           featureShard,
           minPartitions,
-          input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND).map(_.toInt),
+          input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND).map(_.toInt),
+          input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO).map(_.toDouble),
           IndexMapProjection)
@@ -243,7 +247,7 @@ object ScoptParserHelpers extends Logging {
           regularizationWeightRange = regularizationWeightRange,
           elasticNetParamRange = elasticNetParamRange)
 
-        //
+        // Log warnings for fixed effect coordinate settings found in random effect coordinate
         COORDINATE_CONFIG_FIXED_ONLY_ARGS.foreach { config =>
           input.get(config).foreach { _ =>
             logger.warn(s"Found and ignored $config for random effect coordinate '$coordinateName'")
@@ -260,7 +264,7 @@ object ScoptParserHelpers extends Logging {
           regularizationWeightRange = regularizationWeightRange,
           elasticNetParamRange = elasticNetParamRange)
 
-        //
+        // Log warnings for random effect coordinate settings found in fixed effect coordinate
         COORDINATE_CONFIG_RANDOM_ONLY_ARGS.foreach { config =>
           input.get(config).foreach { _ =>
             logger.warn(s"Found and ignored $config for fixed effect coordinate '$coordinateName'")
@@ -435,8 +439,11 @@ object ScoptParserHelpers extends Logging {
           argsMap += (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reDataConfig.randomEffectType)
           argsMap += (COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reDataConfig.randomEffectType)
 
+          reDataConfig.numActiveDataPointsLowerBound.foreach { bound =>
+            argsMap += (COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND -> bound.toString)
+          }
           reDataConfig.numActiveDataPointsUpperBound.foreach { bound =>
-            argsMap += (COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND -> bound.toString)
+            argsMap += (COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND -> bound.toString)
           }
           reDataConfig.numPassiveDataPointsLowerBound.foreach { bound =>
             argsMap += (COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND -> bound.toString)

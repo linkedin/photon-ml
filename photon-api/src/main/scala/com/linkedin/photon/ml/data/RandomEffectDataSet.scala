@@ -311,7 +311,15 @@ object RandomEffectDataSet {
       }
       .getOrElse(keyedRandomEffectDataSet.groupByKey(randomEffectPartitioner))
 
-    groupedRandomEffectDataSet.mapValues(iterable => LocalDataSet(iterable.toArray, isSortedByFirstIndex = false))
+    randomEffectDataConfiguration
+      .numActiveDataPointsLowerBound
+      .map { activeDataLowerBound =>
+        groupedRandomEffectDataSet.filter { case (_, data) =>
+          data.size >= activeDataLowerBound
+        }
+      }
+      .getOrElse(groupedRandomEffectDataSet)
+      .mapValues(data => LocalDataSet(data.toArray, isSortedByFirstIndex = false))
   }
 
   /**
