@@ -104,15 +104,15 @@ object VectorRescaling {
   }
 
   /**
-    * Apply backward scaling to a vector. Given range [a, b] and an element x of the vector,
-    * y = x * (b - a) + a, if x is continuous;
-    * y = x * (b - a + 1) + a, if x is discrete.
-    *
-    * @param vector A DenseVector.
-    * @param ranges A sequence of ranges for every element in the vector to be scaled.
-    * @param discreteIndexSet A Set with indices of discrete elements in the vector.
-    * @return The scaled vector.
-    */
+   * Apply backward scaling to a vector. Given range [a, b] and an element x of the vector,
+   * y = x * (b - a) + a, if x is continuous;
+   * y = x * (b - a + 1) + a, if x is discrete.
+   *
+   * @param vector A DenseVector.
+   * @param ranges A sequence of ranges for every element in the vector to be scaled.
+   * @param discreteIndexSet A Set with indices of discrete elements in the vector.
+   * @return The scaled vector.
+   */
   def scaleBackward(
       vector: DenseVector[Double],
       ranges: Seq[DoubleRange],
@@ -131,4 +131,20 @@ object VectorRescaling {
 
     vectorScaled
   }
+
+  /**
+   * This function applies forward transformation and scaling on prior data.
+   *
+   * @param priors A sequence of observations (vector, eval) from previous iterations or past data set.
+   * @param hyperParams Hyper-parameter configuration.
+   * @return Obervations with vectors transformed and scaled forward.
+   */
+  def rescalePriors(priors: Seq[(DenseVector[Double], Double)], hyperParams: HyperparameterConfig): Seq[(DenseVector[Double], Double)] =
+
+    priors.map { case (candidate, eval) =>
+      val candidateTransformed = VectorRescaling.transformForward(candidate, hyperParams.transformMap)
+      val candidateScaled = VectorRescaling.scaleForward(candidateTransformed, hyperParams.ranges, hyperParams.discreteParams.keySet)
+
+      (candidateScaled, eval)
+    }
 }
