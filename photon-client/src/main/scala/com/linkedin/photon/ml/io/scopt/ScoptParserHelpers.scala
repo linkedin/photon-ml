@@ -68,7 +68,9 @@ object ScoptParserHelpers extends Logging {
   val COORDINATE_OPT_CONFIG_TOLERANCE = "tolerance"
   val COORDINATE_OPT_CONFIG_REGULARIZATION = "regularization"
   val COORDINATE_OPT_CONFIG_REG_ALPHA = "reg.alpha"
+  val COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE = "reg.alpha.range"
   val COORDINATE_OPT_CONFIG_REG_WEIGHTS = "reg.weights"
+  val COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE = "reg.weight.range"
   val COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE = "down.sampling.rate"
 
   val COORDINATE_CONFIG_REQUIRED_ARGS = Map(
@@ -83,7 +85,9 @@ object ScoptParserHelpers extends Logging {
   val COORDINATE_CONFIG_OPTIONAL_ARGS = Map(
     (COORDINATE_OPT_CONFIG_REGULARIZATION, s"[${RegularizationType.values.mkString(", ")}]"),
     (COORDINATE_OPT_CONFIG_REG_ALPHA, "<value>"),
-    (COORDINATE_OPT_CONFIG_REG_WEIGHTS, "<list of values>"))
+    (COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE, "<start>-<end>"),
+    (COORDINATE_OPT_CONFIG_REG_WEIGHTS, "<list of values>"),
+    (COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE, "<start>-<end>"))
   val COORDINATE_CONFIG_FIXED_EFFECT_OPTIONAL_ARGS = Map(
     (COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE, "<value>"))
   val COORDINATE_CONFIG_RANDOM_EFFECT_OPTIONAL_ARGS = Map(
@@ -207,10 +211,19 @@ object ScoptParserHelpers extends Logging {
         }
       }
       .getOrElse(NoRegularizationContext)
+
     val regularizationWeights = input
       .get(COORDINATE_OPT_CONFIG_REG_WEIGHTS)
       .map(_.split(SECONDARY_LIST_DELIMITER).map(_.toDouble).toSet)
       .getOrElse(Set())
+
+    val regularizationWeightRange = input
+      .get(COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE)
+      .map(parseDoubleRange(_))
+
+    val elasticNetParamRange = input
+      .get(COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE)
+      .map(parseDoubleRange(_))
 
     val reTypeOpt = input.get(COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE)
     val config = reTypeOpt match {
@@ -224,7 +237,11 @@ object ScoptParserHelpers extends Logging {
           input.get(COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO).map(_.toDouble),
           IndexMapProjection)
-        val optConfig = RandomEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
+        val optConfig = RandomEffectOptimizationConfiguration(
+          optimizerConfig,
+          regularizationContext,
+          regularizationWeightRange = regularizationWeightRange,
+          elasticNetParamRange = elasticNetParamRange)
 
         //
         COORDINATE_CONFIG_FIXED_ONLY_ARGS.foreach { config =>
@@ -237,7 +254,11 @@ object ScoptParserHelpers extends Logging {
 
       case None =>
         val dataConfig = FixedEffectDataConfiguration(featureShard, minPartitions)
-        val optConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
+        val optConfig = FixedEffectOptimizationConfiguration(
+          optimizerConfig,
+          regularizationContext,
+          regularizationWeightRange = regularizationWeightRange,
+          elasticNetParamRange = elasticNetParamRange)
 
         //
         COORDINATE_CONFIG_RANDOM_ONLY_ARGS.foreach { config =>
@@ -445,6 +466,12 @@ object ScoptParserHelpers extends Logging {
           argsMap +=
             (COORDINATE_OPT_CONFIG_REG_WEIGHTS ->
               coordinateConfig.regularizationWeights.mkString(SECONDARY_LIST_DELIMITER.toString))
+          optConfig.regularizationWeightRange.foreach { range =>
+            argsMap += (COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE -> doubleRangeToString(range))
+          }
+          optConfig.elasticNetParamRange.foreach { range =>
+            argsMap += (COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE -> doubleRangeToString(range))
+          }
       }
 
       //

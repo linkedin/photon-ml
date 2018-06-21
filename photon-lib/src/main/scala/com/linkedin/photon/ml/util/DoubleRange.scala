@@ -23,4 +23,12 @@ package com.linkedin.photon.ml.util
 case class DoubleRange(start: Double, end: Double) {
 
   require(start < end, s"Invalid range: start $start comes after end date $end.")
+
+  /**
+   * Applies the transformation function to the range
+   *
+   * @param fn The transformation function
+   * @return The transformed range
+   */
+  def transform(fn: Double => Double): DoubleRange = DoubleRange(fn(start), fn(end))
 }
