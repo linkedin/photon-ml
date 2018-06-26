@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.data
 
-import scala.collection.{Map, Set, mutable}
+import scala.collection.mutable
 
 import breeze.linalg.Vector
 
@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.util.VectorUtils
 /**
  * Local data set implementation.
  *
- * @note: One design concern is whether to store the local data as a [[Map]] or an [[Array]] (high sort cost, but low
+ * @note One design concern is whether to store the local data as a [[Map]] or an [[Array]] (high sort cost, but low
  *       merge cost vs. no sort cost but high merge cost). Currently, we use an [[Array]] since the data is only sorted
  *       once, and used as the base for all other data/score [[Array]]s.
  *

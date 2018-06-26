@@ -603,7 +603,7 @@ object ModelProcessingUtils {
 
     val inputPath = new Path(inputDir, METADATA_FILE)
     val paramMap = ParamMap.empty
-    val modelTypeRegularExpression = s""""$MODEL_TYPE"\s*:\s*"(.+?)"""".r
+    val modelTypeRegularExpression = ("\"" + MODEL_TYPE + "\"\\s*:\\s*\"(.+?)\"").r
 
     val fs = inputPath.getFileSystem(sc.hadoopConfiguration)
     val stream = fs.open(inputPath)

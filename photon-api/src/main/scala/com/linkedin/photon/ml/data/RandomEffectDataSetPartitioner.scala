@@ -38,12 +38,15 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * for multiple random effects). However, since idToPartitionMap is eventually broadcast to the executors, we also want
  * to keep the size of that Map under control (see parameter partitionerCapacity below).
  *
+ * @param numPartitions Number of partitions across which to split random effects
  * @param idToPartitionMap Random effect type to partition map
  */
-protected[ml] class RandomEffectDataSetPartitioner(private val idToPartitionMap: Broadcast[Map[REId, Int]])
-  extends Partitioner with BroadcastLike {
+protected[ml] class RandomEffectDataSetPartitioner(
+    val numPartitions: Int,
+    private val idToPartitionMap: Broadcast[Map[REId, Int]])
+  extends Partitioner
+    with BroadcastLike {
 
-  val numPartitions: Int = idToPartitionMap.value.values.max + 1
   // Backup partitioner for random effect IDs not found in the primary assignment Map
   lazy private val backupPartitioner: HashPartitioner = new HashPartitioner(numPartitions)
 
@@ -161,6 +164,8 @@ object RandomEffectDataSetPartitioner {
       minHeap.enqueue((partition, currentSize + size))
     }
 
-    new RandomEffectDataSetPartitioner(gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
+    new RandomEffectDataSetPartitioner(
+      numPartitions,
+      gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
   }
 }

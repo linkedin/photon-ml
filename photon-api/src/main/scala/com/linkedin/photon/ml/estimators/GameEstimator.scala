@@ -397,7 +397,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
                 reDataSetInProjectedSpace.randomEffectProjector.transformCoefficientsRDD(reModel.modelsRDD),
                 reDataSetInProjectedSpace.randomEffectProjector,
                 reModel.randomEffectType,
-                reModel.featureShardId).persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+                reModel.featureShardId).persistRDD(StorageLevel.DISK_ONLY))
 
           case _ =>
             (coordinateId, model)
@@ -800,7 +800,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           case rddLike: RDDLike =>
             rddLike
               .setName(s"Initialized model with coordinate id $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+              .persistRDD(StorageLevel.DISK_ONLY)
 
           case _ =>
         }

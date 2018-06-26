@@ -41,7 +41,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test
   def testRead(): Unit = sparkTest("testRead") {
     val dr = new AvroDataReader()
-    val (df, _) = dr.readMerged(inputPath.toString, featureShardConfigurationsMap, numPartitions)
+    val (df, _) = dr.readMerged(TRAIN_INPUT_PATH.toString, FEATURE_SHARD_CONFIGS_MAP, NUM_PARTITIONS)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
@@ -51,10 +51,10 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
    */
   @Test
   def testReadWithFeatureIndex(): Unit = sparkTest("testReadWithIndex") {
-    val indexMapLoaders = featureShardConfigurationsMap.map { case (shardId, _) =>
+    val indexMapLoaders = FEATURE_SHARD_CONFIGS_MAP.map { case (shardId, _) =>
       val indexMapLoader = PalDBIndexMapLoader(
         sc,
-        indexMapPath,
+        INDEX_MAP_PATH,
         numPartitions = 1,
         shardId)
 
@@ -62,7 +62,11 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     }
 
     val dr = new AvroDataReader()
-    val df = dr.readMerged(inputPath.toString, indexMapLoaders, featureShardConfigurationsMap, numPartitions)
+    val df = dr.readMerged(
+      TRAIN_INPUT_PATH.toString,
+      indexMapLoaders,
+      FEATURE_SHARD_CONFIGS_MAP,
+      NUM_PARTITIONS)
 
     verifyDataFrame(df, expectedRows = 34810)
   }
@@ -74,9 +78,9 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   def testReadMultipleFiles(): Unit = sparkTest("testReadMultipleFiles") {
     val dr = new AvroDataReader()
     val (df, _) = dr.readMerged(
-      Seq(inputPath, inputPath2).map(_.toString),
-      featureShardConfigurationsMap,
-      numPartitions)
+      Seq(TRAIN_INPUT_PATH, TEST_INPUT_PATH).map(_.toString),
+      FEATURE_SHARD_CONFIGS_MAP,
+      NUM_PARTITIONS)
 
     verifyDataFrame(df, expectedRows = 44005)
   }
@@ -90,11 +94,11 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     val shardId = "shard2"
     val dr = new AvroDataReader()
     val modifiedFeatureShardConfigsMap = Map(
-      shardId -> featureShardConfigurationsMap(shardId).copy(hasIntercept = false))
+      shardId -> FEATURE_SHARD_CONFIGS_MAP(shardId).copy(hasIntercept = false))
     val (df, indexMapLoaders) = dr.readMerged(
-      inputPath.toString,
+      TRAIN_INPUT_PATH.toString,
       modifiedFeatureShardConfigsMap,
-      numPartitions)
+      NUM_PARTITIONS)
 
     // Assert that shard2 exists and has the correct # features
     assertTrue(df.columns.contains(shardId))
@@ -113,7 +117,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[SparkException]))
   def testReadDuplicateFeatures(): Unit = sparkTest("testReadDuplicateFeatures") {
     val dr = new AvroDataReader()
-    val (df, _) = dr.read(duplicateFeaturesPath.toString, numPartitions)
+    val (df, _) = dr.read(DUPLICATE_FEATURES_PATH.toString, NUM_PARTITIONS)
 
     // Force evaluation
     df.head
@@ -125,7 +129,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPaths(): Unit = sparkTest("testReadInvalidPaths") {
     val dr = new AvroDataReader()
-    dr.read(Seq.empty[String], numPartitions)
+    dr.read(Seq.empty[String], NUM_PARTITIONS)
   }
 
   /**
@@ -134,7 +138,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPartitions(): Unit = sparkTest("testReadInvalidPartitions") {
     val dr = new AvroDataReader()
-    dr.read(inputPath.toString, -1)
+    dr.read(TRAIN_INPUT_PATH.toString, -1)
   }
 
   /**
@@ -144,19 +148,19 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   def testInvalidInputPath(): Unit = sparkTest("testInvalidInputPath") {
     val emptyInputPath = getClass.getClassLoader.getResource("GameIntegTest/empty-input").getPath
     val dr = new AvroDataReader()
-    dr.read(emptyInputPath, numPartitions)
+    dr.read(emptyInputPath, NUM_PARTITIONS)
   }
 }
 
 object AvroDataReaderIntegTest {
 
-  private val inputDir = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
-  private val inputPath = new Path(inputDir, "train")
-  private val inputPath2 = new Path(inputDir, "test")
-  private val duplicateFeaturesPath = new Path(inputDir, "duplicateFeatures")
-  private val indexMapPath = new Path(inputDir, "feature-indexes")
-  private val numPartitions = 4
-  private val featureShardConfigurationsMap = Map(
+  private val INPUT_DIR = getClass.getClassLoader.getResource("GameIntegTest/input").getPath
+  private val TRAIN_INPUT_PATH = new Path(INPUT_DIR, "train")
+  private val TEST_INPUT_PATH = new Path(INPUT_DIR, "test")
+  private val DUPLICATE_FEATURES_PATH = new Path(INPUT_DIR, "duplicateFeatures")
+  private val INDEX_MAP_PATH = new Path(INPUT_DIR, "feature-indexes")
+  private val NUM_PARTITIONS = 4
+  private val FEATURE_SHARD_CONFIGS_MAP = Map(
     "shard1" -> FeatureShardConfiguration(Set("userFeatures", "songFeatures"), hasIntercept = true),
     "shard2" -> FeatureShardConfiguration(Set("userFeatures"), hasIntercept = true),
     "shard3" -> FeatureShardConfiguration(Set("songFeatures"), hasIntercept = true))
