@@ -356,7 +356,7 @@ class CoordinateDescent(
           }
 
         // Unpersist the previous GAME model if it has been marked AND if it is not an initial model input
-        if (unpersistOldGameModel && oldGameModel.eq(gameModel)) {
+        if (unpersistOldGameModel && !oldGameModel.eq(gameModel)) {
           coordinatesToTrain.foreach { coordinateId =>
             oldGameModel.getModel(coordinateId) match {
               case Some(broadcastLike: BroadcastLike) => broadcastLike.unpersistBroadcast()
