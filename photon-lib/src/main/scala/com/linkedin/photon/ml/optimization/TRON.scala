@@ -249,6 +249,22 @@ class TRON(
 
     objectiveFunction.cleanupCoefficients(convertedPrevCoefficients)
 
+    // If any coefficients exceed the bounds imposed by the constraintMap, knock them back into range
+    if (constraintMap.isEmpty == false) {
+      constraintMap.foreach { map => 
+        map.keys.foreach { key =>
+          val range = map(key)
+          val currentCoef = finalState.coefficients(key)
+          if (currentCoef < range._1) {
+            finalState.coefficients(key) = range._1
+          }
+          else if (currentCoef > range._2) {
+            finalState.coefficients(key) = range._2
+          }
+        }
+      }
+    }
+
     finalState
   }
 }
