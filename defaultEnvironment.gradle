@@ -15,11 +15,23 @@
 
 project.ext.avroMapReduceModifier = ''
 
+def versionArgName = 'v'
+
 subprojects {
   // Specify Jar versions here instead of within gradle.properties
   // This will provide overriding ability for internal builds
   tasks.withType(Jar) {
     version '1.0.0'
+  }
+
+  if (project.hasProperty(versionArgName)) {
+    def version = project.getProperty(versionArgName)
+
+    tasks.withType(Test) {
+      onlyIf {
+        getProject().getName().endsWith(version)
+      }
+    }
   }
 
   repositories {

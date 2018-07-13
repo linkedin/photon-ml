@@ -44,6 +44,8 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
+SCALA_SUFFIX="${TRAVIS_SCALA_VERSION%.[0-9]}"
+
 if [[ "$1" == "integration" ]]; then
   # Redirect output to file, ping Travis intermittently so it doesn't kill the test.
   PING_SLEEP=30s
@@ -59,13 +61,13 @@ if [[ "$1" == "integration" ]]; then
   PING_LOOP_PID=$!
 
   # Run integration tests, redirect output to tmp file
-  ./gradlew integTest -Pexclude=ml/DriverTest,deprecated/GLMSuiteIntegTest &> ${BUILD_OUTPUT}
+  ./gradlew integTest -Pexclude=ml/DriverTest,deprecated/GLMSuiteIntegTest &> ${BUILD_OUTPUT} -Pv=${SCALA_SUFFIX}
 
   # Kill ping process, output final
   clean_up
 
 elif [[ "$1" == "unit" ]]; then
-  ./gradlew test
+  ./gradlew test -Pv=${SCALA_SUFFIX}
 
 else
   echo "ERROR: Invalid test type specified; must be either 'unit' or 'integration'"
