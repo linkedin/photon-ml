@@ -22,7 +22,7 @@ package com.linkedin.photon.ml.util
  */
 case class DoubleRange(start: Double, end: Double) {
 
-  require(start < end, s"Invalid range: start $start comes after end date $end.")
+  require(start <= end, s"Invalid range: start $start comes after end date $end.")
 
   /**
    * Applies the transformation function to the range
