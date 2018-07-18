@@ -225,7 +225,7 @@ class TRON(
         improved = true
         /* project coefficients into constrained space, if any, after the optimization step */
         finalState = OptimizerState(
-          coefficients,
+          OptimizationUtils.projectCoefficientsToSubspace(coefficients, constraintMap),
           updatedFunctionValue,
           updatedFunctionGradient,
           prevIter + 1)
@@ -248,22 +248,6 @@ class TRON(
     } while (!improved && numImprovementFailure < maxNumImprovementFailures)
 
     objectiveFunction.cleanupCoefficients(convertedPrevCoefficients)
-
-    // If any coefficients exceed the bounds imposed by the constraintMap, knock them back into range
-    if (constraintMap.isEmpty == false) {
-      constraintMap.foreach { map => 
-        map.keys.foreach { key =>
-          val range = map(key)
-          val currentCoef = finalState.coefficients(key)
-          if (currentCoef < range._1) {
-            finalState.coefficients(key) = range._1
-          }
-          else if (currentCoef > range._2) {
-            finalState.coefficients(key) = range._2
-          }
-        }
-      }
-    }
 
     finalState
   }
