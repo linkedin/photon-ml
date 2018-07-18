@@ -225,7 +225,7 @@ class TRON(
         improved = true
         /* project coefficients into constrained space, if any, after the optimization step */
         finalState = OptimizerState(
-          coefficients,
+          OptimizationUtils.projectCoefficientsToSubspace(coefficients, constraintMap),
           updatedFunctionValue,
           updatedFunctionGradient,
           prevIter + 1)
