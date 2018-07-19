@@ -32,9 +32,10 @@ trait EvaluatorType {
 object EvaluatorType {
 
   // Comparable to the valueSet, if this were an enumeration
-  val all: Seq[EvaluatorType] = Seq(AUC, RMSE, LogisticLoss, PoissonLoss, SmoothedHingeLoss, SquaredLoss)
+  val all: Seq[EvaluatorType] = Seq(AUC, AUPR, RMSE, LogisticLoss, PoissonLoss, SmoothedHingeLoss, SquaredLoss)
 
   case object AUC extends EvaluatorType { val name = "AUC" }
+  case object AUPR extends EvaluatorType { val name = "AUPR" }
   case object RMSE extends EvaluatorType { val name = "RMSE" }
   case object LogisticLoss extends EvaluatorType { val name = "LOGISTIC_LOSS" }
   case object PoissonLoss extends EvaluatorType { val name = "POISSON_LOSS" }

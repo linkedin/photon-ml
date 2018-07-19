@@ -307,6 +307,7 @@ object Utils {
    */
   def evaluatorWithName(name: String): EvaluatorType = name.trim.toUpperCase match {
     case AUC.name => AUC
+    case AUPR.name => AUPR
     case RMSE.name => RMSE
     case LogisticLoss.name | "LOGISTICLOSS" => LogisticLoss
     case PoissonLoss.name | "POISSONLOSS" => PoissonLoss

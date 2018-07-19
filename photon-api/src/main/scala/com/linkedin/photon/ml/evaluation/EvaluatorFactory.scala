@@ -36,6 +36,7 @@ object EvaluatorFactory {
 
     evaluatorType match {
       case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
+      case AUPR => new AreaUnderPRCurveEvaluator(labelAndOffsetAndWeights)
       case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
       case PoissonLoss => new PoissonLossEvaluator(labelAndOffsetAndWeights)
       case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
