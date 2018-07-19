@@ -64,6 +64,42 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Array(data, partitionMap, 3, 1L))
   }
 
+  @DataProvider
+  def rawDataProvider2(): Array[Array[Any]] = {
+
+    val dummyResponse: Double = 1.0
+    val dummyOffset: Option[Double] = None
+    val dummyWeight: Option[Double] = None
+    val dummyFeatureVector: Vector[Double] = DenseVector(1, 2, 3)
+    val dummyFeatures: Map[FeatureShardId, Vector[Double]] = Map(FEATURE_SHARD_NAME -> dummyFeatureVector)
+
+    val reId1: REId = "1"
+    val reId2: REId = "2"
+    val reId3: REId = "3"
+    // Counts: 1 * reId1, 2 * reId2, 3 * reId3
+    val dataIds: Seq[REId] = Seq(reId1, reId2, reId2, reId3, reId3, reId3)
+
+    val data: Seq[(UniqueSampleId, GameDatum)] = dataIds
+      .zipWithIndex
+      .map { case (reId, uid) =>
+        val datum = new GameDatum(
+          dummyResponse,
+          dummyOffset,
+          dummyWeight,
+          dummyFeatures,
+          Map(RANDOM_EFFECT_TYPE -> reId))
+
+        (uid.toLong, datum)
+      }
+    val existingIds = Seq(reId1)
+    val partitionMap: Map[REId, Int] = Map(reId1 -> 0, reId2 -> 0, reId3 -> 0)
+
+    Array(
+      Array(data, existingIds, partitionMap, 1, 3L),
+      Array(data, existingIds, partitionMap, 2, 2L),
+      Array(data, existingIds, partitionMap, 3, 2L))
+  }
+
   /**
    * Test that the random effects with less data than the active data lower bound will be dropped.
    *
@@ -87,7 +123,39 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val partitioner = new RandomEffectDataSetPartitioner(sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner)
+    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, None)
+    val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
+
+    assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
+  }
+
+  /**
+   * Test that the random effects with less data than the active data lower bound will be dropped.
+   *
+   * @param data Raw training data
+   * @param partitionMap Raw map to build [[RandomEffectDataSetPartitioner]]
+   * @param activeDataLowerBound Threshold for active data
+   * @param expectedUniqueRandomEffects Expected number of random effects which have data exceeding the threshold
+   */
+  @Test(dataProvider = "rawDataProvider2")
+  def testIgnoreActiveDataLowerBound(
+      data: Seq[(UniqueSampleId, GameDatum)],
+      existingIds: Seq[REId],
+      partitionMap: Map[REId, Int],
+      activeDataLowerBound: Int,
+      expectedUniqueRandomEffects: Long): Unit = sparkTest("testActiveDataLowerBound") {
+
+    val rdd = sc.parallelize(data, NUM_PARTITIONS).partitionBy(new LongHashPartitioner(NUM_PARTITIONS))
+    val existingIdsRDD = sc.parallelize(existingIds, NUM_PARTITIONS)
+
+    val randomEffectDataConfig = RandomEffectDataConfiguration(
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_NAME,
+      NUM_PARTITIONS,
+      Some(activeDataLowerBound))
+    val partitioner = new RandomEffectDataSetPartitioner(sc.broadcast(partitionMap))
+
+    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)

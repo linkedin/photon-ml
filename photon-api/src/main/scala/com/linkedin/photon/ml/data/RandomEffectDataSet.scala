@@ -239,14 +239,19 @@ object RandomEffectDataSet {
   protected[ml] def apply(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner): RandomEffectDataSet = {
+      randomEffectPartitioner: Partitioner,
+      existingModelKeysRddOpt: Option[RDD[REId]]): RandomEffectDataSet = {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
 
     val gameDataPartitioner = gameDataSet.partitioner.get
 
-    val rawActiveData = generateActiveData(gameDataSet, randomEffectDataConfiguration, randomEffectPartitioner)
+    val rawActiveData = generateActiveData(
+      gameDataSet,
+      randomEffectDataConfiguration,
+      randomEffectPartitioner,
+      existingModelKeysRddOpt)
     val activeData = featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration)
       .setName("Active data")
       .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
@@ -289,7 +294,8 @@ object RandomEffectDataSet {
   private def generateActiveData(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner): RDD[(REId, LocalDataSet)] = {
+      randomEffectPartitioner: Partitioner,
+      existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, LocalDataSet)] = {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
@@ -314,8 +320,22 @@ object RandomEffectDataSet {
     randomEffectDataConfiguration
       .numActiveDataPointsLowerBound
       .map { activeDataLowerBound =>
-        groupedRandomEffectDataSet.filter { case (_, data) =>
-          data.size >= activeDataLowerBound
+        existingModelKeysRddOpt match {
+          case Some(existingModelKeysRdd) =>
+            groupedRandomEffectDataSet
+              .zipPartitions(existingModelKeysRdd, preservesPartitioning = true) { (dataIt, existingKeysIt) =>
+
+              val lookupTable = existingKeysIt.toSet
+
+              dataIt.filter { case (key, data) =>
+                (data.size >= activeDataLowerBound) || !lookupTable.contains(key)
+              }
+            }
+
+          case None =>
+            groupedRandomEffectDataSet.filter { case (_, data) =>
+              data.size >= activeDataLowerBound
+            }
         }
       }
       .getOrElse(groupedRandomEffectDataSet)
@@ -379,8 +399,11 @@ object RandomEffectDataSet {
           val comparableKey = (byteswap64(randomEffectType.hashCode) ^ byteswap64(uniqueId)).hashCode()
           ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
         }
-        .combineByKey[MinHeapWithFixedCapacity[ComparableLabeledPointWithId]](createCombiner, mergeValue,
-           mergeCombiners, partitioner)
+        .combineByKey[MinHeapWithFixedCapacity[ComparableLabeledPointWithId]](
+          createCombiner,
+          mergeValue,
+          mergeCombiners,
+          partitioner)
         .mapValues { minHeapWithFixedCapacity =>
           val cumCount = minHeapWithFixedCapacity.cumCount
           val data = minHeapWithFixedCapacity.getData

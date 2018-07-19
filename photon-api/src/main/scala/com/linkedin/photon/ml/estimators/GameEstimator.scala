@@ -124,6 +124,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       "for model selection)",
     PhotonParamValidators.nonEmpty[Seq, EvaluatorType])
 
+  val ignoreThresholdForNewModels: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "ignore threshold for new models",
+    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an existing " +
+      "model during warm-start training.")
+
   //
   // Initialize object
   //
@@ -159,6 +164,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setValidationEvaluators(value: Seq[EvaluatorType]): this.type = set(validationEvaluators, value)
 
+  def setIgnoreThresholdForNewModels(value: Boolean): this.type = set(ignoreThresholdForNewModels, value)
+
   //
   // Params trait extensions
   //
@@ -184,6 +191,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(partialRetrainLockedCoordinates, Set.empty[CoordinateId])
     setDefault(computeVariance, false)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
+    setDefault(ignoreThresholdForNewModels, false)
   }
 
   /**
@@ -205,12 +213,18 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val initialModelOpt = get(initialModel)
     val retrainModelCoordsOpt = get(partialRetrainLockedCoordinates)
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
+    val ignoreThreshold = getOrDefault(ignoreThresholdForNewModels)
     val numUniqueCoordinates = updateSequence.toSet.size
 
     // Cannot have coordinates repeat in the update sequence
     require(
       numUniqueCoordinates == updateSequence.size,
       "One or more coordinates are repeated in the update sequence.")
+
+    // Warm-start must be enabled to ignore threshold
+    require(
+      !ignoreThreshold || initialModelOpt.isDefined,
+      "'Ignore threshold for new models' flag set but no initial model provided for warm-start")
 
     // Partial retraining and warm-start training require an initial GAME model to be provided as input
     val coordinatesToTrain = (initialModelOpt, retrainModelCoordsOpt) match {
@@ -507,7 +521,21 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             reConfig.minNumPartitions,
             reConfig.randomEffectType,
             gameDataSet)
-          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, partitioner)
+
+          val existingModelKeysRddOpt = if (getOrDefault(ignoreThresholdForNewModels)) {
+            getRequiredParam(initialModel).getModel(coordinateId).map {
+              case rem: RandomEffectModel =>
+                rem.modelsRDD.partitionBy(partitioner).keys
+
+              case other =>
+                throw new IllegalArgumentException(
+                  s"Model type mismatch: expected Random Effect Model but found '${other.getClass}'")
+            }
+          } else {
+            None
+          }
+
+          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, partitioner, existingModelKeysRddOpt)
             .setName(s"Random Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
             .materialize()

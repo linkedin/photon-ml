@@ -148,9 +148,14 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       // Compute Variance
       ScoptParameter[Boolean, Boolean](
         GameTrainingDriver.computeVariance),
+
       // Model Sparsity Threshold
       ScoptParameter[Double, Double](
-        GameTrainingDriver.modelSparsityThreshold))
+        GameTrainingDriver.modelSparsityThreshold),
+
+      // Ignore Threshold for New Models
+      ScoptParameter[Boolean, Boolean](
+        GameTrainingDriver.ignoreThresholdForNewModels))
 
   /**
    * Parse command line arguments for GAME training into a [[ParamMap]].

@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.cli.game.training
 
-import scala.math.log
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
@@ -161,6 +159,11 @@ object GameTrainingDriver extends GameDriver {
     "The model sparsity threshold, or the minimum absolute value considered nonzero when persisting a model",
     ParamValidators.gt[Double](0.0))
 
+  val ignoreThresholdForNewModels: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "ignore threshold for new models",
+    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an existing " +
+      "model during warm-start training.")
+
   //
   // Initialize object
   //
@@ -206,6 +209,12 @@ object GameTrainingDriver extends GameDriver {
     val inputColNames = paramMap.getOrElse(inputColumnNames, getDefault(inputColumnNames).get).getNames
     val normalizationType = paramMap.getOrElse(normalization, getDefault(normalization).get)
     val hyperParameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getDefault(hyperParameterTuning).get)
+    val ignoreThreshold = paramMap.getOrElse(ignoreThresholdForNewModels, getDefault(ignoreThresholdForNewModels).get)
+
+    // Warm-start must be enabled to ignore threshold
+    require(
+      !ignoreThreshold || baseModelDirOpt.isDefined,
+      "'Ignore threshold for new models' flag set but no initial model provided for warm-start")
 
     // Partial retraining and warm-start training require an initial GAME model to be provided as input
     val coordinatesToTrain = (baseModelDirOpt, retrainModelCoordsOpt) match {
@@ -305,6 +314,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
     setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
+    setDefault(ignoreThresholdForNewModels, false)
   }
 
   /**
@@ -430,6 +440,7 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setComputeVariance(getOrDefault(computeVariance))
+        .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)
