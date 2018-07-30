@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.hyperparameter.criteria
 import breeze.linalg.DenseVector
 import breeze.numerics.sqrt
 import breeze.stats.distributions.Gaussian
-
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.estimators.PredictionTransformation
 
@@ -49,6 +48,6 @@ class ExpectedImprovement(evaluator: Evaluator, bestEvaluation: Double) extends 
     val gamma = (predictiveMeans - bestEvaluation) / std * direction
 
     // Eq. 2
-    std :* (gamma :* gamma.map(standardNormal.cdf(_)) + gamma.map(standardNormal.pdf(_)))
+    std :* ((gamma :* gamma.map(standardNormal.cdf(_))) + gamma.map(standardNormal.pdf(_)))
   }
 }
