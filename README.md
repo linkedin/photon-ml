@@ -209,8 +209,27 @@ For more information, see the [Spark docs](http://spark.apache.org/docs/latest/i
 ```
 git clone git@github.com:linkedin/photon-ml.git
 cd photon-ml
+```
+
+If you work at LinkedIn you should be able to do the following:
+```
 ./gradlew build -x integTest
 ```
+
+If not, to get anything to work you'll need to add `scalaVersion = '2.11.8'` to `build.gradle` under `ext` like so:
+```
+ext {
+  sparkVersion = '2.1.0'
+  scalaVersion = '2.11.8'
+}
+```
+and then in `settings.gradle` modify the default and target versions of scala like so:
+```
+  defaultScalaVersion '2.11.8'
+  targetScalaVersions '2.11.8'
+```
+That's because LinkedIn uses a modified version of scala 2.10, and if you're the general populace, you won't have access to that.
+
 
 #### Grab a Dataset
 
@@ -251,6 +270,7 @@ spark-submit \
   --num-iterations 50 \
   --regularization-weights "0.1,1,10,100" \
   --job-name "demo_photon_ml_logistic_regression"
+  --diagnostic-mode ALL
 ```
 
 When this command finishes, you should have a new folder named "out" containing the model and a diagnostic report. On OS X:
