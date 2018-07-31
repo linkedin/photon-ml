@@ -66,6 +66,7 @@ class ScoptGameTrainingParametersParserTest {
     val hyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
     val hyperparameterTuningIter = 6
     val computeVariance = true
+    val ignoreThreshold = true
 
     val featureShard1 = "featureShard1"
     val featureBags1 = Set("bag1", "bag2")
@@ -99,6 +100,7 @@ class ScoptGameTrainingParametersParserTest {
     val randomEffectCoordinateId = "randomCoordinate"
     val randomEffectType = "myType"
     val randomEffectPartitions = 10
+    val randomEffectActiveLowerBound = Some(11)
     val randomEffectActiveUpperBound = Some(11)
     val randomEffectPassiveLowerBound = Some(12)
     val randomEffectFeatureRatio = Some(13.0)
@@ -106,6 +108,7 @@ class ScoptGameTrainingParametersParserTest {
       randomEffectType,
       featureShard2,
       randomEffectPartitions,
+      randomEffectActiveLowerBound,
       randomEffectActiveUpperBound,
       randomEffectPassiveLowerBound,
       randomEffectFeatureRatio,
@@ -168,6 +171,7 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.hyperParameterTuning, hyperparameterTuningMode)
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
       .put(GameTrainingDriver.computeVariance, computeVariance)
+      .put(GameTrainingDriver.ignoreThresholdForNewModels, ignoreThreshold)
 
     val finalParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(
       ScoptGameTrainingParametersParser.printForCommandLine(initialParamMap).flatMap(_.split(" ")).toArray)
@@ -221,6 +225,7 @@ class ScoptGameTrainingParametersParserTest {
     assertEquals(finalRandomDataCoordinateConfig.randomEffectType, randomEffectType)
     assertEquals(finalRandomDataCoordinateConfig.featureShardId, featureShard2)
     assertEquals(finalRandomDataCoordinateConfig.minNumPartitions, randomEffectPartitions)
+    assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsLowerBound, randomEffectActiveLowerBound)
     assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsUpperBound, randomEffectActiveUpperBound)
     assertEquals(finalRandomDataCoordinateConfig.numPassiveDataPointsLowerBound, randomEffectPassiveLowerBound)
     assertEquals(finalRandomDataCoordinateConfig.numFeaturesToSamplesRatioUpperBound, randomEffectFeatureRatio)

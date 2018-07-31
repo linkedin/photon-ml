@@ -45,7 +45,7 @@ class RandomEffectModel(
   // TODO: This needs to be lazy to be overwritten by anonymous functions without triggering a call to
   // determineModelType. However, for non-anonymous instances of GameModel (i.e. those not created from an existing
   // GameModel) we want this check to run at construction time. That's why modelType is materialized immediately below.
-  override lazy val modelType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
+  override lazy val modelType: TaskType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
   modelType
 
   /**
@@ -278,20 +278,19 @@ object RandomEffectModel {
         (randomEffectId, (uniqueId, gameDatum))
       }
       .partitionBy(hashPartitioner)
-      .zipPartitions(modelsRDD.partitionBy(hashPartitioner))(
-        (dataIt, modelIt) => {
-          val lookupTable = modelIt.toMap
-          dataIt.map {
-            case (id, (uid, datum)) =>
-              val score = lookupTable
-                .get(id)
-                .map(_.computeScore(datum.featureShardContainer(featureShardId)))
-                .getOrElse(0.0)
+      .zipPartitions(modelsRDD.partitionBy(hashPartitioner)) { (dataIt, modelIt) =>
 
-              (uid, toScore(datum, score))
-          }
+        val lookupTable = modelIt.toMap
+
+        dataIt.map { case (id, (uid, datum)) =>
+          val score = lookupTable
+            .get(id)
+            .map(_.computeScore(datum.featureShardContainer(featureShardId)))
+            .getOrElse(0.0)
+
+          (uid, toScore(datum, score))
         }
-      )
+      }
 
     toResult(scores)
   }

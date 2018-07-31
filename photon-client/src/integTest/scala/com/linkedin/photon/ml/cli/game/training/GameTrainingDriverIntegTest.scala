@@ -748,7 +748,7 @@ object GameTrainingDriverIntegTest {
     .zip(randomEffectFeatureShardIds)
     .zip(randomEffectProjectors)
     .map { case ((reType, reShardId), reProjector) =>
-      RandomEffectDataConfiguration(reType, reShardId, randomEffectMinPartitions, None, None, None, reProjector)
+      RandomEffectDataConfiguration(reType, reShardId, randomEffectMinPartitions, projectorType = reProjector)
     }
   private val randomEffectOptimizerConfig = OptimizerConfig(
     OptimizerType.TRON,

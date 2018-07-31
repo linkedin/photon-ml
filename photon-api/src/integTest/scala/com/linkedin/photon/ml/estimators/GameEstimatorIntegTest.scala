@@ -421,9 +421,9 @@ object GameEstimatorIntegTest {
    */
   private val coordinateDataConfigurations = Map(
     "global" -> FixedEffectDataConfiguration("shard1", 2),
-    "per-user" -> RandomEffectDataConfiguration("userId", "shard2", 2, None, None, None, IndexMapProjection),
-    "per-song" -> RandomEffectDataConfiguration("songId", "shard3", 2, None, None, None, IndexMapProjection),
-    "per-artist" -> RandomEffectDataConfiguration("artistId", "shard3", 2, None, None, None, RandomProjection(2)))
+    "per-user" -> RandomEffectDataConfiguration("userId", "shard2", 2),
+    "per-song" -> RandomEffectDataConfiguration("songId", "shard3", 2),
+    "per-artist" -> RandomEffectDataConfiguration("artistId", "shard3", 2, projectorType = RandomProjection(2)))
   private val idTagSet = Set("userId", "songId", "artistId")
 
   /**

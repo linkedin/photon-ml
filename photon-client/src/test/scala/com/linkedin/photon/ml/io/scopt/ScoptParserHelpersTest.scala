@@ -117,14 +117,16 @@ class ScoptParserHelpersTest {
     val regWeights2Str =
       Seq("1", "10", "100", "100", "10").mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)
     val regWeights2 = Set(1, 10, 100)
+    val activeDataLowerBound1 = None
+    val activeDataLowerBound2 = Some(5)
     val activeDataUpperBound1 = None
-    val activeDataUpperBound2 = Some(5)
+    val activeDataUpperBound2 = Some(6)
     val passiveDataLowerBound1 = None
-    val passiveDataLowerBound2 = Some(6)
+    val passiveDataLowerBound2 = Some(7)
     val featuresSamplesRatio1 = None
-    val featuresSamplesRatio2 = Some(7)
+    val featuresSamplesRatio2 = Some(8)
     val downSamplingRate1 = 1.0
-    val downSamplingRate2 = 0.7
+    val downSamplingRate2 = 0.9
 
     val inputMap1 = Map[String, String](
       ScoptParserHelpers.COORDINATE_CONFIG_NAME -> coordinateId,
@@ -142,7 +144,8 @@ class ScoptParserHelpersTest {
       ScoptParserHelpers.COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reType)
     val inputMap4 = inputMap1 ++ Map[String, String](
       ScoptParserHelpers.COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reType,
-      ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND -> activeDataUpperBound2.get.toString,
+      ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND -> activeDataLowerBound2.get.toString,
+      ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND -> activeDataUpperBound2.get.toString,
       ScoptParserHelpers.COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND -> passiveDataLowerBound2.get.toString,
       ScoptParserHelpers.COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO -> featuresSamplesRatio2.get.toString,
       ScoptParserHelpers.COORDINATE_OPT_CONFIG_REGULARIZATION -> regularizationType.toString,
@@ -182,6 +185,7 @@ class ScoptParserHelpersTest {
         assertEquals(reConfig.dataConfiguration.randomEffectType, reType)
         assertEquals(reConfig.dataConfiguration.featureShardId, featureShard)
         assertEquals(reConfig.dataConfiguration.minNumPartitions, minPartitions)
+        assertEquals(reConfig.dataConfiguration.numActiveDataPointsLowerBound, activeDataLowerBound1)
         assertEquals(reConfig.dataConfiguration.numActiveDataPointsUpperBound, activeDataUpperBound1)
         assertEquals(reConfig.dataConfiguration.numPassiveDataPointsLowerBound, passiveDataLowerBound1)
         assertEquals(reConfig.dataConfiguration.numFeaturesToSamplesRatioUpperBound, featuresSamplesRatio1)
@@ -198,6 +202,7 @@ class ScoptParserHelpersTest {
     val coordinateConfig4 = ScoptParserHelpers.parseCoordinateConfiguration(inputMap4)(coordinateId)
     coordinateConfig4 match {
       case reConfig: RandomEffectCoordinateConfiguration =>
+        assertEquals(reConfig.dataConfiguration.numActiveDataPointsLowerBound, activeDataLowerBound2)
         assertEquals(reConfig.dataConfiguration.numActiveDataPointsUpperBound, activeDataUpperBound2)
         assertEquals(reConfig.dataConfiguration.numPassiveDataPointsLowerBound, passiveDataLowerBound2)
         assertEquals(reConfig.dataConfiguration.numFeaturesToSamplesRatioUpperBound, featuresSamplesRatio2)
@@ -430,12 +435,13 @@ class ScoptParserHelpersTest {
     val maxIterations = 3
     val optimizerConfig = OptimizerConfig(optimizer, maxIterations, tolerance)
     val reType = "type"
-    val activeDataBound = 4
-    val passiveDataBound = 5
-    val featuresSamplesRatio = 6.0
+    val activeDataLowerBound = 4
+    val activeDataUpperBound = 5
+    val passiveDataBound = 6
+    val featuresSamplesRatio = 7.0
     val regularizationType = RegularizationType.ELASTIC_NET
-    val regularizationAlpha = 0.7
-    val regularizationWeights = SortedSet[Double](8.8, 9.9).asInstanceOf[Set[Double]]
+    val regularizationAlpha = 0.8
+    val regularizationWeights = SortedSet[Double](9.9, 10.1).asInstanceOf[Set[Double]]
 
     val feDataConfig = FixedEffectDataConfiguration(featureShardId, minPartitions)
 
@@ -457,6 +463,7 @@ class ScoptParserHelpersTest {
       None,
       None,
       None,
+      None,
       IdentityProjection)
     val optConfig3 = RandomEffectOptimizationConfiguration(optimizerConfig)
     val coordinateConfig3 = RandomEffectCoordinateConfiguration(dataConfig3, optConfig3)
@@ -466,7 +473,8 @@ class ScoptParserHelpersTest {
       reType,
       featureShardId,
       minPartitions,
-      Some(activeDataBound),
+      Some(activeDataLowerBound),
+      Some(activeDataUpperBound),
       Some(passiveDataBound),
       Some(featuresSamplesRatio),
       IdentityProjection)
@@ -509,7 +517,8 @@ class ScoptParserHelpersTest {
     val expected4 = (((ScoptParserHelpers.COORDINATE_CONFIG_NAME -> coordinateId4) +: baseArgs) ++
       Seq[(String, String)](
         ScoptParserHelpers.COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE -> reType,
-        ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_BOUND -> activeDataBound.toString,
+        ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND -> activeDataLowerBound.toString,
+        ScoptParserHelpers.COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND -> activeDataUpperBound.toString,
         ScoptParserHelpers.COORDINATE_DATA_CONFIG_PASSIVE_DATA_BOUND -> passiveDataBound.toString,
         ScoptParserHelpers.COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO -> featuresSamplesRatio.toString,
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REGULARIZATION -> regularizationType.toString,

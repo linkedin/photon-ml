@@ -45,6 +45,8 @@ case class FixedEffectDataConfiguration(
  * @param randomEffectType The corresponding random effect type of the data set
  * @param featureShardId Key of the feature shard used to generate the data set
  * @param minNumPartitions Minimum number of data partitions
+ * @param numActiveDataPointsLowerBound The lower bound on the number of samples required to train a random effect model
+ *                                      for an entity. If this bound is not met, the data is discarded.
  * @param numActiveDataPointsUpperBound The upper bound on the number of samples to keep (via reservoir sampling) as
  *                                      "active" for each individual-id level local data set. The remaining samples that
  *                                      meet the numPassiveDataPointsToKeepLowerBound as discussed below will be kept as
@@ -67,6 +69,7 @@ case class RandomEffectDataConfiguration(
     randomEffectType: REType,
     featureShardId: FeatureShardId,
     minNumPartitions: Int = 1,
+    numActiveDataPointsLowerBound: Option[Int] = None,
     numActiveDataPointsUpperBound: Option[Int] = None,
     numPassiveDataPointsLowerBound: Option[Int] = None,
     numFeaturesToSamplesRatioUpperBound: Option[Double] = None,
@@ -74,12 +77,18 @@ case class RandomEffectDataConfiguration(
   extends CoordinateDataConfiguration {
 
   require(
+    numActiveDataPointsLowerBound.forall(_ > 0),
+    s"Active data lower bound must be greater than 0: ${numActiveDataPointsLowerBound.get}")
+  require(
     numActiveDataPointsUpperBound.forall(_ > 0),
-    s"Active data upper bound must be greater than 0: $numActiveDataPointsUpperBound")
+    s"Active data upper bound must be greater than 0: ${numActiveDataPointsUpperBound.get}")
+  require(
+    numActiveDataPointsLowerBound.forall(_ <= numActiveDataPointsUpperBound.getOrElse(Int.MaxValue)),
+    s"Active data lower bound must be less than active data upper bound (${numActiveDataPointsUpperBound.get})")
   require(
     numPassiveDataPointsLowerBound.forall(_ > 0),
-    s"Passive data lower bound must be greater than 0: $numPassiveDataPointsLowerBound")
+    s"Passive data lower bound must be greater than 0: ${numPassiveDataPointsLowerBound.get}")
   require(
     numFeaturesToSamplesRatioUpperBound.forall(_ > 0),
-    s"Features to samples ratio must be greater than 0: $numFeaturesToSamplesRatioUpperBound")
+    s"Features to samples ratio must be greater than 0: ${numFeaturesToSamplesRatioUpperBound.get}")
 }
