@@ -15,11 +15,12 @@
 package com.linkedin.photon.ml.hyperparameter.search
 
 import scala.math.floor
+
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.math3.random.SobolSequenceGenerator
+
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{Matern52, StationaryKernel}
-
 
 /**
  * Performs a random search of the bounded space.

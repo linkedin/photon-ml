@@ -105,6 +105,7 @@ class GaussianProcessModelTest {
       1.7 * means / std
 
     val transformation = new PredictionTransformation {
+      def isMaxOpt: Boolean = true
       def apply(
           predictiveMeans: DenseVector[Double],
           predictiveVariances: DenseVector[Double]): DenseVector[Double] =

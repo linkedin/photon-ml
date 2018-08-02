@@ -33,10 +33,16 @@ import com.linkedin.photon.ml.hyperparameter.estimators.PredictionTransformation
  */
 class ExpectedImprovement(evaluator: Evaluator, bestEvaluation: Double) extends PredictionTransformation {
 
+  def isMaxOpt: Boolean = true
+
   private val standardNormal = new Gaussian(0, 1)
 
   /**
    * Applies the expected improvement transformation to the model output
+   *
+   * @param predictiveMeans predictive mean output from the model
+   * @param predictiveVariances predictive variance output from the model
+   * @return the expected improvement
    */
   def apply(
       predictiveMeans: DenseVector[Double],
