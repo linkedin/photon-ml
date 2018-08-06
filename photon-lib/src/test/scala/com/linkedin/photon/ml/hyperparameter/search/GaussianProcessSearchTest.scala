@@ -130,7 +130,7 @@ class GaussianProcessSearchTest {
     val selectedMax = searcher.selectBestCandidate(candidates, predictions, transformationEI)
     assertEquals(selectedMax, expectedMax)
 
-    val transformationCB = new ConfidenceBound(EVALUATOR_RMSE, 0.0)
+    val transformationCB = new ConfidenceBound(EVALUATOR_RMSE)
     val selectedMin = searcher.selectBestCandidate(candidates, predictions, transformationCB)
     assertEquals(selectedMin, expectedMin)
   }

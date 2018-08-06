@@ -170,7 +170,9 @@ class GaussianProcessSearch[T](
   }
 
   /**
-   * Selects the best candidate according to the predicted values, where "best" is determined by the given transformation
+   * Selects the best candidate according to the predicted values, where "best" is determined by the given
+   * transformation. In the case of EI, we always search for the max; In the case of CB, we search for max or min given
+   * the optimization problem.
    *
    * @param candidates matrix of candidates
    * @param predictions predicted values for each candidate
@@ -184,7 +186,7 @@ class GaussianProcessSearch[T](
 
     val init = (candidates(0,::).t, predictions(0))
 
-    val direction = if(transformation.isMaxOpt) 1 else -1
+    val direction = if (transformation.isMaxOpt) 1 else -1
 
     val (selectedCandidate, _) = (1 until candidates.rows).foldLeft(init) {
       case ((bestCandidate, bestPrediction), i) =>
