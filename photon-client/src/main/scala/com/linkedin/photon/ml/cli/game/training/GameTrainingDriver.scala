@@ -647,13 +647,13 @@ object GameTrainingDriver extends GameDriver {
     validationData match {
       case Some(testData) if getOrDefault(hyperParameterTuning) != HyperparameterTuningMode.NONE =>
 
-        val (_, evaluationResults, baseConfig) = models.head
+        val (_, baseConfig, evaluationResults) = models.head
 
         val iteration = getOrDefault(hyperParameterTuningIter)
         val dimension = baseConfig.toSeq.length
         val mode = getOrDefault(hyperParameterTuning)
 
-        val evaluator = evaluationResults.get.head._1
+        val evaluator = evaluationResults.get.primaryEvaluator
         val isOptMax = evaluator.betterThan(1.0, 0.0)
         val evaluationFunction = new GameEstimatorEvaluationFunction(
           estimator,
@@ -708,28 +708,28 @@ object GameTrainingDriver extends GameDriver {
   protected[training] def selectBestModel(models: Seq[GameEstimator.GameResult]): GameEstimator.GameResult = {
 
     val bestResult = models
-      .flatMap { case (model, evaluations, modelConfig) => evaluations.map((model, _, modelConfig)) }
+      .flatMap { case (model, modelConfig, evaluationsOpt) => evaluationsOpt.map((model, modelConfig, _)) }
       .reduceOption { (configModelEval1, configModelEval2) =>
-        val (eval1, eval2) = (configModelEval1._2, configModelEval2._2)
-        val (evaluator1, score1) = eval1.head
-        val (evaluator2, score2) = eval2.head
 
-        // TODO: Each iteration of the Bayesian hyperparameter tuning recomputes the GAME dataset. This causes the
-        // TODO: equality check to fail: not only are the evaluators not identical (ev1.eq(ev2)) but they're not equal
-        // TODO: either (they reference different RDDs, which are computed identically). The below check is a temporary
-        // TODO: solution.
+        val (evaluations1, evaluations2) = (configModelEval1._3, configModelEval2._3)
+        val evaluator1 = evaluations1.primaryEvaluator
+        val evaluation1 = evaluations1.primaryEvaluation
+        val evaluator2 = evaluations2.primaryEvaluator
+        val evaluation2 = evaluations2.primaryEvaluation
+
         require(
-          evaluator1.evaluatorType == evaluator2.evaluatorType,
+          evaluator1 == evaluator2,
           "Evaluator mismatch while selecting best model; some error has occurred during validation.")
 
-        if (evaluator1.betterThan(score1, score2)) configModelEval1 else configModelEval2
+        if (evaluator1.betterThan(evaluation1, evaluation2)) configModelEval1 else configModelEval2
       }
 
     bestResult match {
       case Some(gameResult) =>
-        val (model, eval, configs) = gameResult
+        val (model, configs, evaluations) = gameResult
 
-        logger.info(s"Best model has ${eval.head._1.getEvaluatorName} score of ${eval.head._2} and following config:")
+        logger.info(s"Best model has ${evaluations.primaryEvaluator.name} score of ${evaluations.primaryEvaluation} " +
+          s"and following config:")
         logger.info(IOUtils.optimizationConfigToString(configs))
 
         // Computing model summary is slow, we should only do it if necessary
@@ -737,7 +737,7 @@ object GameTrainingDriver extends GameDriver {
           logger.debug(s"Model summary:\n${model.toSummaryString}\n")
         }
 
-        (model, Some(eval), configs)
+        (model, configs, Some(evaluations))
 
       case None =>
         logger.info("Could not select best model: missing evaluation results. Using most recently trained model.")
@@ -769,7 +769,7 @@ object GameTrainingDriver extends GameDriver {
 
       // Write the best model to HDFS
       bestModel match {
-        case Some((model, _, modelConfig)) =>
+        case Some((model, modelConfig, _)) =>
 
           val modelOutputDir = new Path(rootOutputDir, BEST_MODEL_DIR)
           val modelSpecDir = new Path(modelOutputDir, MODEL_SPEC_DIR)
@@ -798,7 +798,7 @@ object GameTrainingDriver extends GameDriver {
 
       // Write additional models to HDFS
       models.foldLeft(0) {
-        case (modelIndex, (model, _, modelConfig)) =>
+        case (modelIndex, (model, modelConfig, _)) =>
 
           val modelOutputDir = new Path(allOutputDir, modelIndex.toString)
           val modelSpecDir = new Path(modelOutputDir, MODEL_SPEC_DIR)

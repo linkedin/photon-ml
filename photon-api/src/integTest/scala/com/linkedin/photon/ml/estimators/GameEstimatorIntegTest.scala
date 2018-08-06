@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.TaskType._
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.algorithm.CoordinateDescent
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
+import com.linkedin.photon.ml.evaluation.EvaluationSuite.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel}

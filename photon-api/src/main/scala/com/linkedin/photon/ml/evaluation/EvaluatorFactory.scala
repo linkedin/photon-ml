@@ -16,39 +16,50 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.rdd.RDD
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 
+/**
+ * Factory for [[Evaluator]] object construction.
+ */
 object EvaluatorFactory {
 
   /**
-   * Factory for different types of [[Evaluator]].
+   * Construct [[Evaluator]] objects.
    *
-   * @param evaluatorType The type of the evaluator
-   * @param gameDataset A [[RDD]] of ([[Long]], [[GameDatum]]), which are usually the validation/test data, used to
-   *                    construct the evaluator
-   * @return The evaluator
+   * @param evaluatorType The [[EvaluatorType]]
+   * @param gameDataset A [[RDD]] of (unique ID, GAME data point) which may be necessary to construct [[MultiEvaluator]]
+   *                    objects
+   * @return A new [[Evaluator]]
    */
-  protected[ml] def buildEvaluator(evaluatorType: EvaluatorType, gameDataset: RDD[(Long, GameDatum)]): Evaluator = {
-    val labelAndOffsetAndWeights = gameDataset.mapValues(gameData =>
-      (gameData.response, gameData.offset, gameData.weight)
-    )
-
+  protected[ml] def buildEvaluator(
+      evaluatorType: EvaluatorType,
+      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
     evaluatorType match {
-      case AUC => new AreaUnderROCCurveEvaluator(labelAndOffsetAndWeights)
-      case AUPR => new AreaUnderPRCurveEvaluator(labelAndOffsetAndWeights)
-      case RMSE => new RMSEEvaluator(labelAndOffsetAndWeights)
-      case PoissonLoss => new PoissonLossEvaluator(labelAndOffsetAndWeights)
-      case LogisticLoss => new LogisticLossEvaluator(labelAndOffsetAndWeights)
-      case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
-      case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
+      case AUC => AreaUnderROCCurveEvaluator
+
+      case AUPR => AreaUnderPRCurveEvaluator
+
+      case RMSE => RMSEEvaluator
+
+      case PoissonLoss => PoissonLossEvaluator
+
+      case LogisticLoss => LogisticLossEvaluator
+
+      case SmoothedHingeLoss => SmoothedHingeLossEvaluator
+
+      case SquaredLoss => SquaredLossEvaluator
+
       case MultiPrecisionAtK(k, idTag) =>
         val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
-        new PrecisionAtKMultiEvaluator(k, idTag, ids, labelAndOffsetAndWeights)
+        new PrecisionAtKMultiEvaluator(k, idTag, ids)
+
       case MultiAUC(idTag) =>
         val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
-        new AreaUnderROCCurveMultiEvaluator(idTag, ids, labelAndOffsetAndWeights)
-      case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
+        new AreaUnderROCCurveMultiEvaluator(idTag, ids)
+
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
     }
-  }
 }

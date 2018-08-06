@@ -90,13 +90,13 @@ class GameEstimatorEvaluationFunction(
     val newConfiguration = vectorToConfiguration(candidateScaled)
 
     val model = estimator.fit(data, Some(validationData), Seq(newConfiguration)).head
-    val (_, Some(evaluations), _) = model
+    val (_, _, Some(evaluations)) = model
 
     // If this is a maximization problem, flip signs of evaluation values
     val direction = if (isOptMax) -1 else 1
 
     // Assumes model selection evaluator is in "head" position
-    (direction * evaluations.head._2, model)
+    (direction * evaluations.primaryEvaluation, model)
   }
 
   /**
@@ -127,7 +127,7 @@ class GameEstimatorEvaluationFunction(
    * @return A vector representation of hyperparameters for a [[GameResult]]
    */
   override def vectorizeParams(gameResult: GameResult): DenseVector[Double] =
-    configurationToVector(gameResult._3)
+    configurationToVector(gameResult._2)
 
   /**
    * Extracts the evaluated value from the original estimator output.
@@ -136,9 +136,8 @@ class GameEstimatorEvaluationFunction(
    * @return The evaluated value
    */
   override def getEvaluationValue(gameResult: GameResult): Double = gameResult match {
-    case (_, Some(evaluations), _) =>
-      // We assume the model selection evaluator is in head position
-      evaluations.head._2
+    case (_, _, Some(evaluations)) =>
+      evaluations.primaryEvaluation
 
     case _ => throw new IllegalArgumentException(
       s"Can't extract evaluation value from a GAME result with no evaluations: $gameResult")

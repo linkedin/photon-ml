@@ -22,31 +22,55 @@ import com.linkedin.photon.ml.constants.MathConst
 /**
  * Evaluator for Precision@k. Definition of this evaluator along with terminologies used here can be
  * found at [[https://en.wikipedia.org/wiki/Information_retrieval#Precision_at_K]]. No special tiebreaker is used if
- * there are ties in scores, and one of them will be picked randomly.
+ * there are ties in scores; one of them will be picked randomly.
  *
- * @param k The cut-off rank based on which the precision is computed (precision @ k)
+ * @param k The cut-off rank for which precision is computed
  */
-protected[ml] class PrecisionAtKLocalEvaluator(k: Int) extends LocalEvaluator {
+protected[evaluation] class PrecisionAtKLocalEvaluator(protected val k: Int) extends LocalEvaluator {
 
   require(k > 0, s"Position k must be greater than 0: $k")
 
   /**
-   * Evaluate the scores of the model.
+   * Compute the precision @ k for the given data.
    *
-   * @param scoreLabelAndWeights An [[Iterable]] of (score, label, weight) used to for evaluation
-   * @return Score metric value
+   * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
+   * @return The precision @ k
    */
-  protected[ml] override def evaluate(scoreLabelAndWeights: Array[(Double, Double, Double)]): Double = {
-    // directly calling scoresAndLabelAndWeight.sort in Scala would cause some performance issue with large arrays
+  protected[evaluation] override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
+
+    // Directly calling scoresAndLabelAndWeight.sort in Scala would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {
       override def compare(tuple1: (Double, Double, Double), tuple2: (Double, Double, Double)): Int = {
         JDouble.compare(tuple1._1, tuple2._1)
       }
     }
-    JArrays.sort(scoreLabelAndWeights, comparator.reversed())
+    JArrays.sort(scoresAndLabelsAndWeights, comparator.reversed())
 
-    val hits = scoreLabelAndWeights.take(k).count(_._2 > MathConst.POSITIVE_RESPONSE_THRESHOLD)
+    val hits = scoresAndLabelsAndWeights.take(k).count(_._2 > MathConst.POSITIVE_RESPONSE_THRESHOLD)
 
     1.0 * hits / k
   }
+
+  //
+  // Object functions
+  //
+
+  /**
+   * Compares two [[PrecisionAtKLocalEvaluator]] objects.
+   *
+   * @param other Some other object
+   * @return True if the both models conform to the equality contract and have the same model coefficients, false
+   *         otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: PrecisionAtKLocalEvaluator => this.k == that.k
+    case _ => false
+  }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = k.hashCode()
 }

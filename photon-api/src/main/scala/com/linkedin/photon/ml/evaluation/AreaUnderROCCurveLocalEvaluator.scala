@@ -22,15 +22,15 @@ import com.linkedin.photon.ml.constants.MathConst._
 /**
  * Local evaluator for Area Under ROC curve.
  */
-protected[ml] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
+protected[evaluation] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
 
   /**
-   * Evaluate the scores of the model.
+   * Compute the AUROC for the given data.
    *
-   * @param scoreLabelAndWeights An [[Iterable]] of (score, label, weight) used to for evaluation
-   * @return score metric value
+   * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
+   * @return The AUROC
    */
-  protected[ml] override def evaluate(scoreLabelAndWeights: Array[(Double, Double, Double)]): Double = {
+  protected[evaluation] override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
 
     //Directly calling scoresAndLabelAndWeight.sort would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {
@@ -38,16 +38,16 @@ protected[ml] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
         JDouble.compare(tuple1._1, tuple2._1)
       }
     }
-    JArrays.sort(scoreLabelAndWeights, comparator.reversed())
+    JArrays.sort(scoresAndLabelsAndWeights, comparator.reversed())
 
     var rawAUC = 0.0
     var totalPositiveCount = 0.0
     var totalNegativeCount = 0.0
     var currentPositiveCount = 0.0
     var currentNegativeCount = 0.0
-    var previousScore = scoreLabelAndWeights.head._1
+    var previousScore = scoresAndLabelsAndWeights.head._1
 
-    scoreLabelAndWeights.foreach { case (score, label, weight) =>
+    scoresAndLabelsAndWeights.foreach { case (score, label, weight) =>
       if (score != previousScore) {
         rawAUC += totalPositiveCount * currentNegativeCount + currentPositiveCount * currentNegativeCount / 2.0
         totalPositiveCount += currentPositiveCount
@@ -65,6 +65,7 @@ protected[ml] object AreaUnderROCCurveLocalEvaluator extends LocalEvaluator {
     rawAUC += totalPositiveCount * currentNegativeCount + currentPositiveCount * currentNegativeCount / 2.0
     totalPositiveCount += currentPositiveCount
     totalNegativeCount += currentNegativeCount
+
     //normalize AUC over the total area
     rawAUC / (totalPositiveCount * totalNegativeCount)
   }

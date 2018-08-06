@@ -20,10 +20,10 @@ package com.linkedin.photon.ml.evaluation
 trait LocalEvaluator extends Serializable {
 
   /**
-   * Evaluate the scores of the model.
+   * Compute the evaluation metric for the given data.
    *
-   * @param scoreLabelAndWeight An [[Iterable]] of (score, label, weight) used to for evaluation
-   * @return Score metric value
+   * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
+   * @return The evaluation metric
    */
-  protected[ml] def evaluate(scoreLabelAndWeight: Array[(Double, Double, Double)]): Double
+  protected[evaluation] def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double
 }

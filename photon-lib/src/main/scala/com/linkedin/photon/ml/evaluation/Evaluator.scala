@@ -14,58 +14,20 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import java.util.Objects
-
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
-
 /**
- * An interface for evaluation implementations at the [[RDD]] level.
+ * An interface for evaluation metric computation implementations at the [[RDD]] level.
  */
 trait Evaluator {
 
-  val defaultScore: Double = 0.0
+  type ScoredData
+
   val evaluatorType: EvaluatorType
 
-  protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]
-
-  /**
-   * Evaluate the scores of the model.
-   *
-   * @param scores The scores to evaluate
-   * @return An evaluation metric value
-   */
-  protected[ml] def evaluate(scores: RDD[(UniqueSampleId, Double)]): Double = {
-    // Create a local copy of the defaultScore, so that the underlying object won't get shipped to the executor nodes
-    val defaultScore = this.defaultScore
-    val scoreAndLabelAndWeights = scores
-      .rightOuterJoin(labelAndOffsetAndWeights)
-      .mapValues { case (scoredDatumOption, (label, offset, weight)) =>
-        val score = scoredDatumOption.getOrElse(defaultScore)
-        (score + offset, label, weight)
-      }
-    evaluateWithScoresAndLabelsAndWeights(scoreAndLabelAndWeights)
-  }
-
-  /**
-   * Evaluate scores with labels and weights.
-   *
-   * @param scoresAndLabelsAndWeights A [[RDD]] of (uniqueId, (score, label, weight)) pairs
-   * @return An evaluation metric value
-   */
-  protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double
-
-  /**
-   * Determine the better between two scores returned by this [[Evaluator]]. In some cases, the better score is higher
-   * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
-   *
-   * @param score1 The first score to compare
-   * @param score2 The second score to compare
-   * @return True if the first score is better than the second, false otherwise
-   */
-  def betterThan(score1: Double, score2: Double): Boolean
+  //
+  // Evaluator functions
+  //
 
   /**
    * Get the name of this [[Evaluator]] object.
@@ -75,6 +37,18 @@ trait Evaluator {
   def getEvaluatorName: String = evaluatorType.name
 
   /**
+   * Compute the evaluation metric for the given data.
+   *
+   * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
+   * @return The evaluation metric
+   */
+  protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[ScoredData]): Double
+
+  //
+  // Object functions
+  //
+
+  /**
    * Compares two [[Evaluator]] objects.
    *
    * @param other Some other object
@@ -82,9 +56,7 @@ trait Evaluator {
    *         otherwise
    */
   override def equals(other: Any): Boolean = other match {
-    case that: Evaluator =>
-      (this.evaluatorType == that.evaluatorType) && (this.labelAndOffsetAndWeights == that.labelAndOffsetAndWeights)
-
+    case that: Evaluator => this.evaluatorType == that.evaluatorType
     case _ => false
   }
 
@@ -93,9 +65,5 @@ trait Evaluator {
    *
    * @return An [[Int]] hash code
    */
-  override def hashCode: Int = Objects.hash(evaluatorType, labelAndOffsetAndWeights)
-}
-
-object Evaluator {
-  type EvaluationResults = Seq[(Evaluator, Double)]
+  override def hashCode: Int = evaluatorType.hashCode()
 }
