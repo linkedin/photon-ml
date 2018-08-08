@@ -41,6 +41,7 @@ import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjectorRDD, ProjectionMatrixBroadcast}
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
@@ -102,6 +103,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         "coordinate, but the shifts and factors are different for each shard.",
       PhotonParamValidators.nonEmpty[TraversableOnce, (CoordinateId, NormalizationContext)])
 
+  val featureShardStatistics: Param[Map[FeatureShardId, BasicStatisticalSummary]] =
+    ParamUtils.createParam[Map[FeatureShardId, BasicStatisticalSummary]](
+    "feature shard statistics",
+    "A map of shard name to feature space statistical summary. " +
+      "Used to filter random effect features by binomial proportions.",
+    PhotonParamValidators.nonEmpty[TraversableOnce, (FeatureShardId, BasicStatisticalSummary)])
+
   val initialModel: Param[GameModel] = ParamUtils.createParam(
     "initial model",
     "Prior model to use as a starting point for training.")
@@ -153,6 +161,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setCoordinateNormalizationContexts(value: Map[CoordinateId, NormalizationContext]): this.type =
     set(coordinateNormalizationContexts, value)
+
+  def setFeatureShardStatistics(value: Map[FeatureShardId, BasicStatisticalSummary]) : this.type =
+    set(featureShardStatistics, value)
 
   def setInitialModel(value: GameModel): this.type = set(initialModel, value)
 
@@ -526,7 +537,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, rePartitioner, existingModelKeysRddOpt)
+          val rawRandomEffectDataSet = RandomEffectDataSet(
+              gameDataSet,
+              reConfig,
+              rePartitioner,
+              existingModelKeysRddOpt,
+              get(featureShardStatistics))
             .setName(s"Random Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()

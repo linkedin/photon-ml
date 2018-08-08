@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import scala.collection.Set
-
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel

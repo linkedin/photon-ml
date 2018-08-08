@@ -33,6 +33,8 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * standard statistical practice. A degree of freedom is lost when using an estimated mean to compute the variance.
  *
  * TODO: rename just "BasicStatistics": descriptive statistics are summaries of the data by definition
+ * TODO: need to replace the MultivariateStatisticalSummary with the spark.ml.stat.Summarizer
+ * (as part of the changes from spark.mllib to spark.ml)
  */
 case class BasicStatisticalSummary(
     mean: BreezeVector[Double],
