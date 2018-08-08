@@ -15,8 +15,6 @@
 package com.linkedin.photon.ml.stat
 
 import breeze.linalg.{Vector => BreezeVector}
-import org.apache.spark.ml.linalg.{Vector => MLVector}
-import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 import org.apache.spark.rdd.RDD
 
@@ -33,6 +31,8 @@ import com.linkedin.photon.ml.util.{Logging, VectorUtils}
  * standard statistical practice. A degree of freedom is lost when using an estimated mean to compute the variance.
  *
  * TODO: rename just "BasicStatistics": descriptive statistics are summaries of the data by definition
+ * TODO: need to replace the MultivariateStatisticalSummary with the spark.ml.stat.Summarizer
+ * (as part of the changes from spark.mllib to spark.ml)
  */
 case class BasicStatisticalSummary(
     mean: BreezeVector[Double],
@@ -71,8 +71,8 @@ object BasicStatisticalSummary extends Logging {
    * @param inputData The input data (usually training data)
    * @return An instance of BasicStatisticalSummary
    */
-  def apply(inputData: RDD[MLVector], interceptIndex: Option[Int]): BasicStatisticalSummary =
-    calculateBasicStatistics(Statistics.colStats(inputData.map(Vectors.fromML)), interceptIndex)
+  def apply(inputData: RDD[BreezeVector[Double]], interceptIndex: Option[Int]): BasicStatisticalSummary =
+    calculateBasicStatistics(Statistics.colStats(inputData.map(VectorUtils.breezeToMllib)), interceptIndex)
 
   /**
    * Auxiliary function to scale vectors.

@@ -123,7 +123,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, None)
+    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, None, None)
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
@@ -155,7 +155,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
+    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD), None)
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)

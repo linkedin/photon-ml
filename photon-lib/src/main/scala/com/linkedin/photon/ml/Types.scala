@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+
 /**
  * Some types that make the code easier to read and more documented. This class should be visible from everywhere in
  * photon-ml.

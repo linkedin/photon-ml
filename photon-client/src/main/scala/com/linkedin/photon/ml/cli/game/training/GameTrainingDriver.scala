@@ -15,10 +15,14 @@
 package com.linkedin.photon.ml.cli.game.training
 
 import org.apache.commons.cli.MissingArgumentException
+import scala.reflect.ClassTag
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
+import org.apache.spark.mllib.linalg.{Vectors, DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
+import breeze.linalg.{DenseVector, SparseVector, Vector => BreezeVector}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
@@ -51,14 +55,6 @@ import com.linkedin.photon.ml.util._
  * This object is the entry point and driver for GAME training. There is a separate driver object for scoring.
  */
 object GameTrainingDriver extends GameDriver {
-
-  //
-  // These types make the code easier to read, and are somewhat specific to the GAME Driver
-  //
-
-  type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
-  type FeatureShardStatisticsOpt = Option[FeatureShardStatistics]
-  type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
 
   //
   // Members
@@ -425,12 +421,12 @@ object GameTrainingDriver extends GameDriver {
       }
     }
 
-    val featureShardStats = Timed("Calculate statistics for each feature shard") {
+    val featureShardStatsOpt = Timed("Calculate statistics for each feature shard") {
       calculateAndSaveFeatureShardStats(trainingData, featureIndexMapLoaders)
     }
 
     val normalizationContexts = Timed("Prepare normalization contexts") {
-      prepareNormalizationContexts(trainingData, featureIndexMapLoaders, featureShardStats)
+      prepareNormalizationContexts(trainingData, featureIndexMapLoaders, featureShardStatsOpt)
     }
 
     val gameOptimizationConfigs = Timed("Prepare optimization configuration(s)") {
@@ -450,6 +446,13 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setComputeVariance(getOrDefault(computeVariance))
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
+
+      if (getRequiredParam(trainingTask) == TaskType.LOGISTIC_REGRESSION) {
+        featureShardStatsOpt match {
+          case Some(featureShardStats) => estimator.setFeatureShardStatistics(featureShardStats)
+          case _ =>
+        }
+      }
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)
@@ -553,8 +556,8 @@ object GameTrainingDriver extends GameDriver {
    */
   private def prepareNormalizationContexts(
       trainingData: DataFrame,
-      featureIndexMapLoaders: IndexMapLoaders,
-      statistics: FeatureShardStatisticsOpt): Option[Map[CoordinateId, NormalizationContext]] =
+      featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader],
+      statistics: Option[Map[FeatureShardId, BasicStatisticalSummary]]): Option[Map[CoordinateId, NormalizationContext]] =
 
     Utils.filter(getOrDefault(normalization) != NormalizationType.NONE) {
       val featureShardToNormalizationContextMap = statistics
@@ -562,7 +565,7 @@ object GameTrainingDriver extends GameDriver {
         .map { case (featureShardId, featureShardStats) =>
           (featureShardId, NormalizationContext(getOrDefault(normalization), featureShardStats))
         }
-        .toMap
+
 
       getRequiredParam(coordinateConfigurations).mapValues { coordinateConfig =>
         featureShardToNormalizationContextMap(coordinateConfig.dataConfiguration.featureShardId)
@@ -575,11 +578,11 @@ object GameTrainingDriver extends GameDriver {
    *
    * @param trainingData The training data
    * @param featureIndexMapLoaders The index map loaders
-   * @return Basic for each feature shard
+   * @return BasicStatisticalSummary for each feature shard
    */
   private def calculateAndSaveFeatureShardStats(
       trainingData: DataFrame,
-      featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatisticsOpt =
+      featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Option[Map[FeatureShardId, BasicStatisticalSummary]] =
     get(dataSummaryDirectory).map { summarizationOutputDir: Path =>
       calculateStatistics(trainingData, featureIndexMapLoaders)
         .tap { case (featureShardId, featureShardStats) =>
@@ -588,7 +591,7 @@ object GameTrainingDriver extends GameDriver {
 
           ModelProcessingUtils.writeBasicStatistics(sc, featureShardStats, outputPath, indexMap)
         }
-    }
+      }
 
   /**
    * Calculate basic statistics (same as spark-ml) on a DataFrame.
@@ -599,12 +602,12 @@ object GameTrainingDriver extends GameDriver {
    */
   private def calculateStatistics(
       data: DataFrame,
-      featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics =
+      featureIndexMapLoaders: Map[FeatureShardId, IndexMapLoader]): Map[FeatureShardId, BasicStatisticalSummary] =
     featureIndexMapLoaders.map { case (featureShardId, indexMapLoader) =>
 
       val summary = BasicStatisticalSummary(
         // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-        data.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)),
+        data.select(featureShardId).rdd.map(x => VectorUtils.mlToBreeze(x.getAs[SparkMLVector](0))),
         indexMapLoader.indexMapForDriver().get(Constants.INTERCEPT_KEY))
 
       (featureShardId, summary)
@@ -822,6 +825,8 @@ object GameTrainingDriver extends GameDriver {
           modelIndex + 1
       }
     }
+
+
 
   /**
    * Entry point to the driver.
