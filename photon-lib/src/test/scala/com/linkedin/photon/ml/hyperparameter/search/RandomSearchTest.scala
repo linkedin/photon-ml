@@ -33,11 +33,13 @@ class RandomSearchTest {
   @DataProvider
   def priorDataProvider: Array[Array[Any]] = {
 
-    val candidate1 = (DenseVector(0.25, 0.2, 0.1999, 0.125, 0.999), 0.1)
-    val candidate2 = (DenseVector(0.2, 0.2, 0.2, 0.2, 0.2), 0.2)
-    val candidate3 = (DenseVector(0.3, 0.3, 0.3, 0.3, 0.3), 0.3)
-    val observations = Seq(candidate1)
-    val priorObservations = Seq(candidate2, candidate3)
+    val candidate1 = (DenseVector(0.25, 0.125, 0.999), 0.1)
+    val candidate2 = (DenseVector(0.2, 0.2, 0.2), 0.2)
+    val candidate3 = (DenseVector(0.3, 0.3, 0.3), -0.3)
+    val candidate4 = (DenseVector(0.2, 0.2, 0.2), 0.4)
+    val candidate5 = (DenseVector(0.3, 0.3, 0.3), -0.4)
+    val observations = Seq(candidate1, candidate2, candidate3)
+    val priorObservations = Seq(candidate4, candidate5)
 
     Array(Array(observations, priorObservations))
   }
@@ -105,7 +107,7 @@ class RandomSearchTest {
       priorObservations: Seq[(DenseVector[Double], Double)]): Unit = {
 
     val candidate = observations.head._1
-    val expectedData = DenseVector(0.2, 0.2, 0, 0.125, 8.0 / 9.0)
+    val expectedData = DenseVector(0.2, 0.125, 8.0 / 9.0)
 
     val candidateWithDiscrete = searcher.discretizeCandidate(candidate, DISCRETE_PARAMS)
     assertEquals(norm(candidateWithDiscrete), norm(expectedData), TOLERANCE)
@@ -115,9 +117,9 @@ class RandomSearchTest {
 object RandomSearchTest {
 
   val SEED = 1L
-  val DIM = 5
-  val N = 25
-  val DISCRETE_PARAMS = Map(0 -> 5, 1 -> 5, 2 -> 5, 4 -> 9)
+  val DIM = 3
+  val N = 5
+  val DISCRETE_PARAMS = Map(0 -> 5, 2 -> 9)
   val KERNEL = new Matern52
   val TOLERANCE = 1E-12
 

@@ -33,6 +33,8 @@ class ConfidenceBound(
     explorationFactor: Double = 2.0)
   extends PredictionTransformation {
 
+  def isMaxOpt: Boolean = evaluator.betterThan(1.0, 0.0)
+
   /**
    * Applies the confidence bound transformation to the model output
    *

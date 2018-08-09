@@ -22,6 +22,8 @@ import breeze.linalg.DenseVector
  */
 trait PredictionTransformation {
 
+  def isMaxOpt: Boolean
+
   /**
    * Applies the transformation. Implementing classes should provide specific transformations here.
    *

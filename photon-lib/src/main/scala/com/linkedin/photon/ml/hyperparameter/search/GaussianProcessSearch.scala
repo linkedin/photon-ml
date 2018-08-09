@@ -20,8 +20,8 @@ import breeze.stats.mean
 import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
-import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel}
-import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{StationaryKernel, Matern52}
+import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel, PredictionTransformation}
+import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{Matern52, StationaryKernel}
 
 /**
  * Performs a guided random search of the given ranges, where the search is guided by a Gaussian Process estimated from
@@ -121,7 +121,7 @@ class GaussianProcessSearch[T](
 
         val predictions = model.predictTransformed(candidates)
 
-        selectBestCandidate(candidates, predictions)
+        selectBestCandidate(candidates, predictions, transformation)
 
       // If we've received fewer observations than the number of parameters, fall back to a uniform search, to ensure
       // that the problem is not under-determined.
@@ -170,21 +170,27 @@ class GaussianProcessSearch[T](
   }
 
   /**
-   * Selects the best candidate according to the predicted values, where "best" is determined by the given evaluator
+   * Selects the best candidate according to the predicted values, where "best" is determined by the given
+   * transformation. In the case of EI, we always search for the max; In the case of CB, we search for max or min given
+   * the optimization problem.
    *
    * @param candidates matrix of candidates
    * @param predictions predicted values for each candidate
+   * @param transformation prediction transformation function
    * @return the candidate with the best value
    */
   protected[search] def selectBestCandidate(
       candidates: DenseMatrix[Double],
-      predictions: DenseVector[Double]): DenseVector[Double] = {
+      predictions: DenseVector[Double],
+      transformation: PredictionTransformation): DenseVector[Double] = {
 
     val init = (candidates(0,::).t, predictions(0))
 
+    val direction = if (transformation.isMaxOpt) 1 else -1
+
     val (selectedCandidate, _) = (1 until candidates.rows).foldLeft(init) {
       case ((bestCandidate, bestPrediction), i) =>
-        if (evaluator.betterThan(predictions(i), bestPrediction)) {
+        if (predictions(i) * direction > bestPrediction * direction) {
           (candidates(i,::).t, predictions(i))
         } else {
           (bestCandidate, bestPrediction)
