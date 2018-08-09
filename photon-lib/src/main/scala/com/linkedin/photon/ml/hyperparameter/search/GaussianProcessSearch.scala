@@ -58,7 +58,7 @@ class GaussianProcessSearch[T](
     discreteParams: Map[Int, Int] = Map(),
     kernel: StationaryKernel = new Matern52,
     candidatePoolSize: Int = 250,
-    noisyTarget: Boolean = false,
+    noisyTarget: Boolean = true,
     seed: Long = System.currentTimeMillis)
   extends RandomSearch[T](numParams, evaluationFunction, discreteParams, kernel, seed){
 
