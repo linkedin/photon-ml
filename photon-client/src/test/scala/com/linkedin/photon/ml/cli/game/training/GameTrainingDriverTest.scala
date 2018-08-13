@@ -20,7 +20,7 @@ import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
@@ -121,6 +121,7 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)
       .put(GameTrainingDriver.dataSummaryDirectory, mockPath)
       .put(GameTrainingDriver.treeAggregateDepth, mockInt)
+      .put(GameTrainingDriver.hyperParameterTunerName, HyperparameterTunerName.DUMMY)
       .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
       .put(GameTrainingDriver.hyperParameterTuningIter, mockInt)
       .put(GameTrainingDriver.computeVariance, mockBoolean)
@@ -262,6 +263,7 @@ class GameTrainingDriverTest {
     GameTrainingDriver.getOrDefault(GameTrainingDriver.outputMode)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTunerName)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.computeVariance)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)

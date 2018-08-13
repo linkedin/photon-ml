@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfigur
 import com.linkedin.photon.ml.optimization.{L1RegularizationContext, NoRegularizationContext, OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 
 /**
  * Unit tests for the [[ScoptGameTrainingParametersParser]].
@@ -63,6 +63,7 @@ class ScoptGameTrainingParametersParserTest {
     val normalization = NormalizationType.SCALE_WITH_MAX_MAGNITUDE
     val dataSummaryPath = new Path("/some/summary/path")
     val treeAggregateDepth = 5
+    val hyperparameterTunerName = HyperparameterTunerName.DUMMY
     val hyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
     val hyperparameterTuningIter = 6
     val computeVariance = true
@@ -168,6 +169,7 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.normalization, normalization)
       .put(GameTrainingDriver.dataSummaryDirectory, dataSummaryPath)
       .put(GameTrainingDriver.treeAggregateDepth, treeAggregateDepth)
+      .put(GameTrainingDriver.hyperParameterTunerName, hyperparameterTunerName)
       .put(GameTrainingDriver.hyperParameterTuning, hyperparameterTuningMode)
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
       .put(GameTrainingDriver.computeVariance, computeVariance)

@@ -1,3 +1,17 @@
+/*
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain a
+ * copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 package com.linkedin.photon.ml.hyperparameter
 
 import scala.math.{floor, max, min}
@@ -9,20 +23,20 @@ import com.linkedin.photon.ml.hyperparameter.estimators.GaussianProcessEstimator
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
 
 /**
-  * An object to shrink search range given prior data.
-  */
+ * An object to shrink search range given prior data.
+ */
 object ShrinkSearchRange {
 
   /**
-    * Compute the lower bound and upper bound of the new prior config
-    *
-    * @param hyperParams Configurations of hyper-parameters
-    * @param priorJsonString JSON string containing prior observations
-    * @param priorDefault Default values for missing hyper-parameters
-    * @param radius The radius of search range after transformation to [0, 1]
-    * @return A tuple of lower bounds and upper bounds for each hyperparameter. Lower bounds and upper bounds are
-    *         discrete for discrete parameters. Lower bounds and upper bounds are dense vectors.
-    */
+   * Compute the lower bound and upper bound of the new prior config
+   *
+   * @param hyperParams Configurations of hyper-parameters
+   * @param priorJsonString JSON string containing prior observations
+   * @param priorDefault Default values for missing hyper-parameters
+   * @param radius The radius of search range after transformation to [0, 1]
+   * @return A tuple of lower bounds and upper bounds for each hyperparameter. Lower bounds and upper bounds are
+   *         discrete for discrete parameters. Lower bounds and upper bounds are dense vectors.
+   */
   def getBounds(
       hyperParams: HyperparameterConfig,
       priorJsonString: String,
@@ -87,12 +101,12 @@ object ShrinkSearchRange {
   }
 
   /**
-    * Selects the best candidate according to the predicted values, where "best" is defined as the largest
-    *
-    * @param candidates matrix of candidates
-    * @param predictions predicted values for each candidate
-    * @return the candidate with the best value
-    */
+   * Selects the best candidate according to the predicted values, where "best" is defined as the largest
+   *
+   * @param candidates matrix of candidates
+   * @param predictions predicted values for each candidate
+   * @return the candidate with the best value
+   */
   private def selectBestCandidate(
       candidates: DenseMatrix[Double],
       predictions: DenseVector[Double]): DenseVector[Double] = {
@@ -112,12 +126,12 @@ object ShrinkSearchRange {
   }
 
   /**
-    * Discretize candidates with specified indices.
-    *
-    * @param candidate candidate with values in [0, 1]
-    * @param discreteParams Map that specifies the indices of discrete parameters and their numbers of discrete values
-    * @return candidate with the specified discrete values
-    */
+   * Discretize candidates with specified indices.
+   *
+   * @param candidate candidate with values in [0, 1]
+   * @param discreteParams Map that specifies the indices of discrete parameters and their numbers of discrete values
+   * @return candidate with the specified discrete values
+   */
   private def discretizeCandidate(
       candidate: DenseVector[Double],
       discreteParams: Map[Int, Int]): DenseVector[Double] = {
