@@ -20,6 +20,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
 import scopt.{OptionDef, OptionParser, Read}
 
+import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.CoordinateId
@@ -29,8 +30,8 @@ import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserHelpers, Scop
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
-import com.linkedin.photon.ml.util.{DateRange, DaysRange, DoubleRange}
-import com.linkedin.photon.ml.{HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.util.{DateRange, DaysRange}
+import com.linkedin.photon.ml.{HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 
 /**
  * Scopt command line argument parser for GAME training parameters.
@@ -133,6 +134,12 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       ScoptParameter[Int, Int](
         GameTrainingDriver.treeAggregateDepth,
         usageText = "<value>"),
+
+      // Hyper Parameter Tuner Name
+      ScoptParameter[HyperparameterTunerName, HyperparameterTunerName](
+        GameTrainingDriver.hyperParameterTunerName,
+        usageText = "<type>",
+        additionalDocs = Seq(s"output tuner: ${HyperparameterTunerName.values.map(_.toString).mkString(", ")}")),
 
       // Hyper Parameter Tuning
       ScoptParameter[HyperparameterTuningMode, HyperparameterTuningMode](

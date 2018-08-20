@@ -25,7 +25,7 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
@@ -353,48 +353,50 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
   /**
    * Test GAME training with a fixed effect model only and hyperparameter tuning. Note that the best model may not be
-   * one of the tuned models.
+   * one of the tuned models. (This test is commented out since hyper-parameter tuning is temporarily disabled in
+   * photon-ml. Hyper-parameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
-  @Test
-  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
-
-    val hyperParameterTuningIter = 1
-    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
-    val newArgs = mixedEffectSeriousRunArgs
-      .copy
-      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
-      .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
-      .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.RANDOM)
-      .put(GameTrainingDriver.hyperParameterTuningIter, hyperParameterTuningIter)
-
-    runDriver(newArgs)
-
-    val allModelsPath = new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}")
-    val bestModelPath = new Path(outputDir, s"${GameTrainingDriver.BEST_MODEL_DIR}")
-    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
-
-    assertTrue(fs.exists(allModelsPath))
-    assertTrue(fs.exists(bestModelPath))
-
-    val allFixedEffectModelsPathContents = fs.listStatus(allModelsPath)
-    assertEquals(allFixedEffectModelsPathContents.length, hyperParameterTuningIter)
-    allFixedEffectModelsPathContents.forall(_.isDirectory)
-
-    val bestRMSE = evaluateModel(bestModelPath)
-
-    (0 until hyperParameterTuningIter).foreach { i =>
-      val modelPath = new Path(allModelsPath, s"$i")
-      val fixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId, i)
-      assertTrue(fs.exists(fixedEffectModelPath))
-
-      randomEffectCoordinateIds.foreach { randomEffectCoordinateId =>
-        val randomEffectModelPath = outputModelPath(outputDir, AvroConstants.RANDOM_EFFECT, randomEffectCoordinateId, i)
-        assertTrue(fs.exists(randomEffectModelPath))
-      }
-
-      assertTrue(evaluateModel(modelPath) >= bestRMSE)
-    }
-  }
+//  @Test
+//  def c(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
+//
+//    val hyperParameterTuningIter = 1
+//    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
+//    val newArgs = mixedEffectSeriousRunArgs
+//      .copy
+//      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+//      .put(GameTrainingDriver.outputMode, ModelOutputMode.TUNED)
+//      .put(GameTrainingDriver.hyperParameterTunerName, HyperparameterTunerName.DUMMY)
+//      .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.RANDOM)
+//      .put(GameTrainingDriver.hyperParameterTuningIter, hyperParameterTuningIter)
+//
+//    runDriver(newArgs)
+//
+//    val allModelsPath = new Path(outputDir, s"${GameTrainingDriver.MODELS_DIR}")
+//    val bestModelPath = new Path(outputDir, s"${GameTrainingDriver.BEST_MODEL_DIR}")
+//    val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
+//
+//    assertTrue(fs.exists(allModelsPath))
+//    assertTrue(fs.exists(bestModelPath))
+//
+//    val allFixedEffectModelsPathContents = fs.listStatus(allModelsPath)
+//    assertEquals(allFixedEffectModelsPathContents.length, fixedEffectRegularizationWeights.size)
+//    allFixedEffectModelsPathContents.forall(_.isDirectory)
+//
+//    val bestRMSE = evaluateModel(bestModelPath)
+//
+//    (0 until hyperParameterTuningIter).foreach { i =>
+//      val modelPath = new Path(allModelsPath, s"$i")
+//      val fixedEffectModelPath = outputModelPath(outputDir, AvroConstants.FIXED_EFFECT, fixedEffectCoordinateId, i)
+//      assertTrue(fs.exists(fixedEffectModelPath))
+//
+//      randomEffectCoordinateIds.foreach { randomEffectCoordinateId =>
+//        val randomEffectModelPath = outputModelPath(outputDir, AvroConstants.RANDOM_EFFECT, randomEffectCoordinateId, i)
+//        assertTrue(fs.exists(randomEffectModelPath))
+//      }
+//
+//      assertTrue(evaluateModel(modelPath) >= bestRMSE)
+//    }
+//  }
 
   /**
    * Test GAME partial retraining using a pre-trained fixed effect model.

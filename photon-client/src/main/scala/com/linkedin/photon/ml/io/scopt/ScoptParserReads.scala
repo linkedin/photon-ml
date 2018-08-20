@@ -17,8 +17,9 @@ package com.linkedin.photon.ml.io.scopt
 import org.apache.hadoop.fs.Path
 import org.joda.time.DateTimeZone
 
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
+import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.evaluation.EvaluatorType
@@ -37,6 +38,8 @@ object ScoptParserReads {
   implicit val dateRangeRead: scopt.Read[DateRange] = scopt.Read.reads(DateRange.fromDateString)
   implicit val daysRangeRead: scopt.Read[DaysRange] = scopt.Read.reads(DaysRange.fromDaysString)
   implicit val evaluatorTypeRead: scopt.Read[EvaluatorType] = scopt.Read.reads(Utils.evaluatorWithName)
+  implicit val hyperParameterTunerNameRead: scopt.Read[HyperparameterTunerName] =
+    scopt.Read.reads(HyperparameterTunerName.withName)
   implicit val hyperParameterTuningModeRead: scopt.Read[HyperparameterTuningMode] =
     scopt.Read.reads(HyperparameterTuningMode.withName)
   implicit val modelOutputModeRead: scopt.Read[ModelOutputMode] = scopt.Read.reads(ModelOutputMode.withName)

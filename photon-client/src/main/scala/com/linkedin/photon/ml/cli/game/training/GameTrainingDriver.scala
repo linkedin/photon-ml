@@ -20,8 +20,9 @@ import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.sql.DataFrame
 
-import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml._
+import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
+import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
@@ -30,7 +31,7 @@ import com.linkedin.photon.ml.data.{DataValidators, FixedEffectDataConfiguration
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
-import com.linkedin.photon.ml.hyperparameter.search.{GaussianProcessSearch, RandomSearch}
+import com.linkedin.photon.ml.hyperparameter.tuner.HyperparameterTunerFactory
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
@@ -140,6 +141,11 @@ object GameTrainingDriver extends GameDriver {
     "tree aggregate depth",
     "Suggested depth for tree aggregation.",
     ParamValidators.gt[Int](0.0))
+
+  val hyperParameterTunerName: Param[HyperparameterTunerName] = ParamUtils.createParam[HyperparameterTunerName](
+    "hyper parameter tuner",
+    "Package name of hyper-parameter tuner."
+  )
 
   val hyperParameterTuning: Param[HyperparameterTuningMode] = ParamUtils.createParam[HyperparameterTuningMode](
     "hyper parameter tuning",
@@ -307,6 +313,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(outputMode, ModelOutputMode.BEST)
     setDefault(overrideOutputDirectory, false)
     setDefault(normalization, NormalizationType.NONE)
+    setDefault(hyperParameterTunerName, HyperparameterTunerName.DUMMY)
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
     setDefault(computeVariance, false)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
@@ -637,27 +644,18 @@ object GameTrainingDriver extends GameDriver {
     validationData match {
       case Some(testData) if getOrDefault(hyperParameterTuning) != HyperparameterTuningMode.NONE =>
 
-        // TODO: Match on this to make it clearer
-        val evaluator = models.head._2.get.head._1
-        val baseConfig = models.head._3
+        val (_, evaluationResults, baseConfig) = models.head
+
+        val iteration = getOrDefault(hyperParameterTuningIter)
         val dimension = baseConfig.toSeq.length
-
-        val evaluationFunction = new GameEstimatorEvaluationFunction(
-          estimator,
-          baseConfig,
-          trainingData,
-          testData)
-
-        val searcher = getOrDefault(hyperParameterTuning) match {
-          case HyperparameterTuningMode.BAYESIAN =>
-            new GaussianProcessSearch[GameEstimator.GameResult](dimension, evaluationFunction, evaluator)
-
-          case HyperparameterTuningMode.RANDOM =>
-            new RandomSearch[GameEstimator.GameResult](dimension, evaluationFunction)
-        }
+        val mode = getOrDefault(hyperParameterTuning)
+        val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData)
+        val evaluator = evaluationResults.get.head._1
         val observations = evaluationFunction.convertObservations(models)
 
-        searcher.findWithPriors(getOrDefault(hyperParameterTuningIter), observations, Seq())
+        val hyperparameterTuner = HyperparameterTunerFactory[GameEstimator.GameResult](getOrDefault(hyperParameterTunerName))
+
+        hyperparameterTuner.search(iteration, dimension, mode, evaluationFunction, evaluator, observations)
 
       case _ => Seq()
     }
