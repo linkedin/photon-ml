@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.hyperparameter.search
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.stats.mean
 
-import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.ExpectedImprovement
 import com.linkedin.photon.ml.hyperparameter.estimators.{GaussianProcessEstimator, GaussianProcessModel, PredictionTransformation}
@@ -43,7 +42,6 @@ import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{Matern52, Stati
  *
  * @param numParams the dimensionality of the hyper-parameter tuning problem
  * @param evaluationFunction the function that evaluates points in the space to real values
- * @param evaluator the original evaluator
  * @param discreteParams specifies the indices of discrete parameters and their numbers of discrete values
  * @param kernel specifies the covariance kernel for hyper-parameters
  * @param candidatePoolSize the number of candidate points to draw at each iteration. Larger numbers give more precise
@@ -54,7 +52,6 @@ import com.linkedin.photon.ml.hyperparameter.estimators.kernels.{Matern52, Stati
 class GaussianProcessSearch[T](
     numParams: Int,
     evaluationFunction: EvaluationFunction[T],
-    evaluator: Evaluator,
     discreteParams: Map[Int, Int] = Map(),
     kernel: StationaryKernel = new Matern52,
     candidatePoolSize: Int = 250,
@@ -64,10 +61,10 @@ class GaussianProcessSearch[T](
 
   private var observedPoints: Option[DenseMatrix[Double]] = None
   private var observedEvals: Option[DenseVector[Double]] = None
-  private var bestEval: Double = evaluator.defaultScore
+  private var bestEval: Double = Double.PositiveInfinity
   private var priorObservedPoints: Option[DenseMatrix[Double]] = None
   private var priorObservedEvals: Option[DenseVector[Double]] = None
-  private var priorBestEval: Double = evaluator.defaultScore
+  private var priorBestEval: Double = Double.PositiveInfinity
   private var lastModel: GaussianProcessModel = _
 
   /**
@@ -91,14 +88,10 @@ class GaussianProcessSearch[T](
 
         // Finding the overall bestEval
         val currentMean = mean(evals)
-        val overallBestEval = if (evaluator.betterThan(priorBestEval, bestEval - currentMean)) {
-          priorBestEval
-        } else {
-          bestEval - currentMean
-        }
+        val overallBestEval = Math.min(priorBestEval, bestEval - currentMean)
 
         // Expected improvement transformation
-        val transformation = new ExpectedImprovement(evaluator, overallBestEval)
+        val transformation = new ExpectedImprovement(overallBestEval)
 
         val estimator = new GaussianProcessEstimator(
           kernel = kernel,
@@ -144,9 +137,7 @@ class GaussianProcessSearch[T](
       .map(DenseVector.vertcat(_, DenseVector(eval)))
       .orElse(Some(DenseVector(eval)))
 
-    if (evaluator.betterThan(eval, bestEval)) {
-      bestEval = eval
-    }
+    bestEval = Math.min(bestEval, eval)
   }
 
   /**
@@ -164,15 +155,12 @@ class GaussianProcessSearch[T](
       .map(DenseVector.vertcat(_, DenseVector(eval)))
       .orElse(Some(DenseVector(eval)))
 
-    if (evaluator.betterThan(eval, priorBestEval)) {
-      priorBestEval = eval
-    }
+    priorBestEval = Math.min(priorBestEval, eval)
   }
 
   /**
    * Selects the best candidate according to the predicted values, where "best" is determined by the given
-   * transformation. In the case of EI, we always search for the max; In the case of CB, we search for max or min given
-   * the optimization problem.
+   * transformation. In the case of EI, we always search for the max; In the case of CB, we always search for the min.
    *
    * @param candidates matrix of candidates
    * @param predictions predicted values for each candidate

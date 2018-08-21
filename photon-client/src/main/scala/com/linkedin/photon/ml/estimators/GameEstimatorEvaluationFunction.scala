@@ -35,12 +35,14 @@ import com.linkedin.photon.ml.util.DoubleRange
  * @param baseConfig The initial configuration supplied by the user
  * @param data Training data
  * @param validationData Validation data
+ * @param isOptMax a Boolean indicates that the problem is a maximization (true) or minimization (false).
  */
 class GameEstimatorEvaluationFunction(
     estimator: GameEstimator,
     baseConfig: GameOptimizationConfiguration,
     data: DataFrame,
-    validationData: DataFrame)
+    validationData: DataFrame,
+    isOptMax: Boolean)
   extends EvaluationFunction[GameResult] {
 
   import GameEstimatorEvaluationFunction._
@@ -90,8 +92,11 @@ class GameEstimatorEvaluationFunction(
     val model = estimator.fit(data, Some(validationData), Seq(newConfiguration)).head
     val (_, Some(evaluations), _) = model
 
+    // If this is a maximization problem, flip signs of evaluation values
+    val direction = if (isOptMax) -1 else 1
+
     // Assumes model selection evaluator is in "head" position
-    (evaluations.head._2, model)
+    (direction * evaluations.head._2, model)
   }
 
   /**
@@ -105,7 +110,11 @@ class GameEstimatorEvaluationFunction(
     observations.map { observation =>
       val candidate = vectorizeParams(observation)
       val candidateScaled = VectorRescaling.scaleForward(candidate, ranges)
-      val value = getEvaluationValue(observation)
+
+      // If this is a maximization problem, flip signs of evaluation values
+      val direction = if (isOptMax) -1 else 1
+
+      val value = direction * getEvaluationValue(observation)
 
       (candidateScaled, value)
     }

@@ -15,12 +15,9 @@
 package com.linkedin.photon.ml.hyperparameter.search
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import org.apache.spark.rdd.RDD
-import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.criteria.{ConfidenceBound, ExpectedImprovement}
 import com.linkedin.photon.ml.hyperparameter.estimators.kernels.Matern52
@@ -35,17 +32,16 @@ class GaussianProcessSearchTest {
   val searcher = new GaussianProcessSearch[TestModel](
     DIM,
     EVALUATION_FUNCTION,
-    EVALUATOR_AUC,
     DISCRETE_PARAMS,
     KERNEL,
     seed = SEED)
 
   var observedPoints: Option[DenseMatrix[Double]] = None
   var observedEvals: Option[DenseVector[Double]] = None
-  var bestEval: Double = EVALUATOR_AUC.defaultScore
+  var bestEval: Double = 0.0
   var priorObservedPoints: Option[DenseMatrix[Double]] = None
   var priorObservedEvals: Option[DenseVector[Double]] = None
-  var priorBestEval: Double = EVALUATOR_AUC.defaultScore
+  var priorBestEval: Double = 0.0
 
   @DataProvider
   def priorDataProvider: Array[Array[Any]] = {
@@ -116,8 +112,8 @@ class GaussianProcessSearchTest {
 
   /**
    * Unit test for [[GaussianProcessSearch.selectBestCandidate]].
-   * If transformation is EI, always select the best candidate that maximize the prediction.
-   * If transformation is CB, the best candidate is determined by the evaluator.
+   * If transformation is EI, select the best candidate that maximize the prediction.
+   * If transformation is CB, select the best candidate that minimize the prediction.
    */
   @Test(dataProvider = "bestCandidateDataProvider")
   def testSelectBestCandidate(
@@ -126,11 +122,12 @@ class GaussianProcessSearchTest {
       expectedMax: DenseVector[Double],
       expectedMin: DenseVector[Double]): Unit = {
 
-    val transformationEI = new ExpectedImprovement(EVALUATOR_AUC, 0.0)
+    val bestCandidate = 0.0
+    val transformationEI = new ExpectedImprovement(bestCandidate)
     val selectedMax = searcher.selectBestCandidate(candidates, predictions, transformationEI)
     assertEquals(selectedMax, expectedMax)
 
-    val transformationCB = new ConfidenceBound(EVALUATOR_RMSE)
+    val transformationCB = new ConfidenceBound
     val selectedMin = searcher.selectBestCandidate(candidates, predictions, transformationCB)
     assertEquals(selectedMin, expectedMin)
   }
@@ -151,9 +148,7 @@ class GaussianProcessSearchTest {
         .map(DenseVector.vertcat(_, DenseVector(value)))
         .orElse(Some(DenseVector(value)))
 
-      if (EVALUATOR_AUC.betterThan(value, bestEval)) {
-        bestEval = value
-      }
+      bestEval = Math.min(bestEval, value)
     }
 
     priorCandidates.foreach { case (candidate, value) =>
@@ -165,9 +160,7 @@ class GaussianProcessSearchTest {
         .map(DenseVector.vertcat(_, DenseVector(value)))
         .orElse(Some(DenseVector(value)))
 
-      if (EVALUATOR_AUC.betterThan(value, priorBestEval)) {
-        priorBestEval = value
-      }
+      priorBestEval = Math.min(priorBestEval, value)
     }
 
     testSetIndex match {
@@ -175,18 +168,18 @@ class GaussianProcessSearchTest {
         assertEquals(observedPoints.get.rows, 3)
         assertEquals(observedPoints.get.cols, 3)
         assertEquals(observedEvals.get.length, 3)
-        assertEquals(bestEval, 0.2)
+        assertEquals(bestEval, -0.3)
         assertFalse(priorObservedPoints.isDefined)
         assertFalse(priorObservedEvals.isDefined)
       case 1 =>
         assertEquals(observedPoints.get.rows, 6)
         assertEquals(observedPoints.get.cols, 3)
         assertEquals(observedEvals.get.length, 6)
-        assertEquals(bestEval, 0.2)
+        assertEquals(bestEval, -0.3)
         assertEquals(priorObservedPoints.get.rows, 2)
         assertEquals(priorObservedPoints.get.cols, 3)
         assertEquals(priorObservedEvals.get.length, 2)
-        assertEquals(priorBestEval, 0.4)
+        assertEquals(priorBestEval, -0.4)
     }
   }
 }
@@ -216,27 +209,5 @@ object GaussianProcessSearchTest {
     }
     def vectorizeParams(result: TestModel): DenseVector[Double] = result.params
     def getEvaluationValue(result: TestModel): Double = result.evaluation
-  }
-
-  val EVALUATOR_AUC: Evaluator = new Evaluator {
-
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
-      mock(classOf[RDD[(Long, (Double, Double, Double))]])
-    override val evaluatorType: EvaluatorType = EvaluatorType.AUC
-    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
-
-    override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
-  }
-
-  val EVALUATOR_RMSE: Evaluator = new Evaluator {
-
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
-      mock(classOf[RDD[(Long, (Double, Double, Double))]])
-    override val evaluatorType: EvaluatorType = EvaluatorType.RMSE
-    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
-
-    override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
   }
 }

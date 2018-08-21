@@ -32,7 +32,6 @@ class DummyTuner[T] extends HyperparameterTuner[T] {
    * @param dimension Numbers of hyper-parameters to be tuned
    * @param mode Hyper-parameter tuning mode (random or Bayesian)
    * @param evaluationFunction Function that evaluates points in the space to real values
-   * @param evaluator the original evaluator
    * @param observations Observations made prior to searching, from this data set (not mean-centered)
    * @param priorObservations Observations made prior to searching, from past data sets (mean-centered)
    * @param discreteParams Map that specifies the indices of discrete parameters and their numbers of discrete values
@@ -43,7 +42,6 @@ class DummyTuner[T] extends HyperparameterTuner[T] {
       dimension: Int,
       mode: HyperparameterTuningMode,
       evaluationFunction: EvaluationFunction[T],
-      evaluator: Evaluator,
       observations: Seq[(DenseVector[Double], Double)],
       priorObservations: Seq[(DenseVector[Double], Double)] = Seq(),
       discreteParams: Map[Int, Int] = Map()): Seq[T] = Seq()
