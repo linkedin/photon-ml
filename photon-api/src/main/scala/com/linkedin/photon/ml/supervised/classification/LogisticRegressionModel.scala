@@ -39,7 +39,7 @@ class LogisticRegressionModel(override val coefficients: Coefficients)
    *
    * @return The model type
    */
-  override def modelType: TaskType = LOGISTIC_REGRESSION
+  override val modelType: TaskType = LOGISTIC_REGRESSION
 
   /**
    * Compute the mean response of the logistic regression model.

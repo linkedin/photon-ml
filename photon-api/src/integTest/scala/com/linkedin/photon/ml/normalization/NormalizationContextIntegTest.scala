@@ -146,9 +146,13 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
 
   @DataProvider(name = "generateStandardizationTestData")
   def generateStandardizationTestData(): Array[Array[Any]] = {
-    (for (x <- OptimizerType.values;
-          y <- TaskType.values.filter { t => t != TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM && t != TaskType.NONE })
-      yield Array[Any](x, y)).toArray
+
+    val testData = for (x <- OptimizerType.values;
+                        y <- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)) yield {
+      Array[Any](x, y)
+    }
+
+    testData.toArray
   }
 
   /**

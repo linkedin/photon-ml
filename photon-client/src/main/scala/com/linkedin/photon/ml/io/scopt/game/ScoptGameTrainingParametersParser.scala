@@ -53,7 +53,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       ScoptParameter[TaskType, TaskType](
         GameTrainingDriver.trainingTask,
         usageText = s"<task>",
-        additionalDocs = Seq(s"training tasks: ${TaskType.values.filterNot(_ == TaskType.NONE).mkString(", ")}"),
+        additionalDocs = Seq(s"training tasks: ${TaskType.values.mkString(", ")}"),
         isRequired = true),
 
       // Validation Data Directories

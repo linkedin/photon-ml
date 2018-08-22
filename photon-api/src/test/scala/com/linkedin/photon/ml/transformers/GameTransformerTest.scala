@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.transformers
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.ParamMap
 import org.mockito.Mockito._
@@ -101,7 +102,9 @@ class GameTransformerTest {
    *
    * @param transformer A [[GameTransformer]] with one or more flaws in its parameters
    */
-  @Test(dataProvider = "invalidTransformers", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  @Test(
+    dataProvider = "invalidTransformers",
+    expectedExceptions = Array(classOf[IllegalArgumentException], classOf[MissingArgumentException]))
   def testValidateParams(transformer: GameTransformer): Unit = transformer.validateParams()
 
   /**

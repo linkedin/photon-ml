@@ -69,6 +69,9 @@ if [[ "$1" == "integration" ]]; then
 elif [[ "$1" == "unit" ]]; then
   ./gradlew test -Pv=${SCALA_SUFFIX}
 
+elif [[ "$1" == "rat" ]]; then
+  ./gradlew rat
+
 else
   echo "ERROR: Invalid test type specified; must be either 'unit' or 'integration'"
   exit 1

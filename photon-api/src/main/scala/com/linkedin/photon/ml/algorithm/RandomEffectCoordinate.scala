@@ -18,9 +18,9 @@ import scala.collection.Set
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
@@ -126,12 +126,12 @@ object RandomEffectCoordinate {
           (localModel, None)
       }
       .setName(s"Updated models and state trackers for random effect ${randomEffectDataSet.randomEffectType}")
-      .persist(StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_ONLY)
 
     val updatedRandomEffectModel = randomEffectModel
       .update(updatedModelsAndTrackers.mapValues(_._1))
       .setName(s"Updated models for random effect ${randomEffectDataSet.randomEffectType}")
-      .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persistRDD(StorageLevel.DISK_ONLY)
       .materialize()
 
     val optimizationTracker: Option[RandomEffectOptimizationTracker] =
@@ -139,7 +139,7 @@ object RandomEffectCoordinate {
         val stateTrackers = updatedModelsAndTrackers.flatMap(_._2._2)
         val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
           .setName(s"State trackers for random effect ${randomEffectDataSet.randomEffectType}")
-          .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+          .persistRDD(StorageLevel.DISK_ONLY)
           .materialize()
 
         Some(randomEffectTracker)
@@ -178,7 +178,7 @@ object RandomEffectCoordinate {
       }
       .partitionBy(randomEffectDataSet.uniqueIdPartitioner)
       .setName("Active scores")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     val passiveDataOption = randomEffectDataSet.passiveDataOption
     if (passiveDataOption.isDefined) {
@@ -188,7 +188,7 @@ object RandomEffectCoordinate {
           passiveDataRandomEffectIdsOption.get,
           randomEffectModel.modelsRDD)
         .setName("Passive scores")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .persist(StorageLevel.DISK_ONLY)
 
       new CoordinateDataScores(activeScores ++ passiveScores)
     } else {
@@ -218,13 +218,13 @@ object RandomEffectCoordinate {
       }
       .collectAsMap()
 
-    //TODO: Need a better design that properly unpersists the broadcasted variables and persists the computed RDD
+    // TODO: Need a better design that properly unpersists the broadcasted variables and persists the computed RDD
     val modelsForPassiveDataBroadcast = passiveData.sparkContext.broadcast(modelsForPassiveData)
     val passiveScores = passiveData.mapValues { case (randomEffectId, labeledPoint) =>
       modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features)
     }
 
-    passiveScores.setName("Passive scores").persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL).count()
+    passiveScores.setName("Passive scores").persist(StorageLevel.DISK_ONLY).count()
     modelsForPassiveDataBroadcast.unpersist()
 
     passiveScores

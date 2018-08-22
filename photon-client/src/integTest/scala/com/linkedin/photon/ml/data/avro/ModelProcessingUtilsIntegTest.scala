@@ -23,6 +23,7 @@ import org.apache.avro.file.DataFileReader
 import org.apache.avro.specific.SpecificDatumReader
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
+import org.apache.spark.storage.StorageLevel
 import org.testng.Assert._
 import org.testng.annotations.Test
 
@@ -40,7 +41,6 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.TaskType
-import com.linkedin.photon.ml.constants.StorageLevel
 
 /**
  * Integration tests for [[ModelProcessingUtils]].
@@ -73,7 +73,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       outputDir,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       featureIndexLoaders)
 
     // Check that the model loaded correctly and that it is identical to the model saved
@@ -107,7 +107,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       .loadGameModelFromHDFS(
         sc,
         outputDir,
-        StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+        StorageLevel.DISK_ONLY,
         featureIndexLoaders,
         Some(SHARD_NAMES.take(numCoordinatesToLoad).toSet))
       .toMap
@@ -149,7 +149,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       outputDir,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       featureIndexLoaders)
 
     // Check that some of the values have been filtered out by the new threshold for non-zero values
@@ -248,7 +248,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       outputDir,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       modifiedIndexMapLoaders)
 
     // Extract features from the GAME model
@@ -318,7 +318,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     val loadedGameModel = ModelProcessingUtils.loadGameModelFromHDFS(
       sc,
       outputDir,
-      StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL,
+      StorageLevel.DISK_ONLY,
       modifiedIndexMapLoaders)
 
     // Extract features from the GAME model
@@ -371,9 +371,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     // TODO: This test is incomplete - need to check that all parameters are loaded correctly.
     assertEquals(
       TASK_TYPE,
-      ModelProcessingUtils
-        .loadGameModelMetadataFromHDFS(sc, outputDir)
-        .getOrElse(GameTrainingDriver.trainingTask, TaskType.NONE))
+      ModelProcessingUtils.loadGameModelMetadataFromHDFS(sc, outputDir)(GameTrainingDriver.trainingTask))
   }
 
   /**

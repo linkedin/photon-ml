@@ -16,18 +16,20 @@ package com.linkedin.photon.ml.estimators
 
 import scala.language.existentials
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.constants.{MathConst, StorageLevel}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation._
@@ -49,7 +51,7 @@ import com.linkedin.photon.ml.util._
  * @param sc The spark context for the application
  * @param logger The logger instance for the application
  */
-class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends Params {
+class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends PhotonParams {
 
   import GameEstimator._
 
@@ -69,8 +71,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   val trainingTask: Param[TaskType] = ParamUtils.createParam(
     "training task",
-    "The type of training task to perform.",
-    {taskType: TaskType => taskType != TaskType.NONE})
+    "The type of training task to perform.")
 
   val inputColumnNames: Param[InputColumnsNames] = ParamUtils.createParam[InputColumnsNames](
     "input column names",
@@ -181,10 +182,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     copy
   }
 
+  //
+  // PhotonParams trait extensions
+  //
+
   /**
    * Set the default parameters.
    */
-  private def setDefaultParams(): Unit = {
+  override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(coordinateDescentIterations, 1)
@@ -195,15 +200,16 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Verify that the interactions between individual parameters are valid.
+   * Check that all required parameters have been set and validate interactions between parameters.
    *
    * @note In Spark, interactions between parameters are checked by
    *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
    *       Photon-ML, we need to have this function to check the interactions between parameters.
-   *
+   * @throws MissingArgumentException if a required parameter is missing
    * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  protected[estimators] def validateParams(): Unit = {
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that the training task has been explicitly set
     getRequiredParam(trainingTask)
@@ -275,18 +281,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         s"Coordinate $coordinate in the update sequence is missing normalization context")
     }
   }
-
-  /**
-   * Return the user-supplied value for a required parameter. Used for mandatory parameters without default values.
-   *
-   * @tparam T The type of the parameter
-   * @param param The parameter
-   * @return The value associated with the parameter
-   * @throws IllegalArgumentException if no value is associated with the given parameter
-   */
-  private def getRequiredParam[T](param: Param[T]): T =
-    get(param)
-      .getOrElse(throw new IllegalArgumentException(s"Missing required parameter ${param.name}"))
 
   //
   // GameEstimator functions
@@ -403,7 +397,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
                 reDataSetInProjectedSpace.randomEffectProjector.transformCoefficientsRDD(reModel.modelsRDD),
                 reDataSetInProjectedSpace.randomEffectProjector,
                 reModel.randomEffectType,
-                reModel.featureShardId).persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL))
+                reModel.featureShardId).persistRDD(StorageLevel.DISK_ONLY))
 
           case _ =>
             (coordinateId, model)
@@ -471,7 +465,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           getOrDefault(inputColumnNames))
         .partitionBy(gameDataPartitioner)
         .setName("GAME training data")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .persist(StorageLevel.DISK_ONLY)
     }
     // Transform the GAME dataset into fixed and random effect specific datasets
     val trainingDataSet = Timed("Prepare training data sets") {
@@ -504,7 +498,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
           val fixedEffectDataSet = FixedEffectDataSet(gameDataSet, feConfig.featureShardId)
             .setName(s"Fixed Effect Data Set: $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .persistRDD(StorageLevel.DISK_ONLY)
 
           if (logger.isDebugEnabled) {
             // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
@@ -517,15 +511,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         case reConfig: RandomEffectDataConfiguration =>
 
-          val partitioner = RandomEffectDataSetPartitioner.fromGameDataSet(
-            reConfig.minNumPartitions,
-            reConfig.randomEffectType,
-            gameDataSet)
+          val rePartitioner = RandomEffectDataSetPartitioner.fromGameDataSet(gameDataSet, reConfig)
 
           val existingModelKeysRddOpt = if (getOrDefault(ignoreThresholdForNewModels)) {
             getRequiredParam(initialModel).getModel(coordinateId).map {
               case rem: RandomEffectModel =>
-                rem.modelsRDD.partitionBy(partitioner).keys
+                rem.modelsRDD.partitionBy(rePartitioner).keys
 
               case other =>
                 throw new IllegalArgumentException(
@@ -535,9 +526,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, partitioner, existingModelKeysRddOpt)
+          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, rePartitioner, existingModelKeysRddOpt)
             .setName(s"Random Effect Data Set: $coordinateId")
-            .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+            .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
           val projectorType = reConfig.projectorType
           val randomEffectDataSet = projectorType match {
@@ -549,7 +540,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
                 .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
                 .setName(s"Projected Random Effect Data Set: $coordinateId")
-                .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+                .persistRDD(StorageLevel.DISK_ONLY)
                 .materialize()
 
               // Only un-persist the active data and passive data, because randomEffectDataSet and
@@ -574,7 +565,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
                 s"${randomEffectDataSet.toSummaryString}\n")
           }
 
-          partitioner.unpersistBroadcast()
+          rePartitioner.unpersistBroadcast()
 
           (coordinateId, randomEffectDataSet)
       }
@@ -595,7 +586,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val labelAndOffsetAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
       .setName("Training labels, offsets and weights")
-      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_AND_DISK)
 
     labelAndOffsetAndWeights.count()
 
@@ -638,7 +629,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             getOrDefault(inputColumnNames))
           .partitionBy(partitioner)
           .setName("Validating Game data set")
-          .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+          .persist(StorageLevel.DISK_ONLY)
 
         result.count()
         result
@@ -668,7 +659,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val validatingLabelsAndOffsetsAndWeights = gameDataSet
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
       .setName(s"Validating labels and offsets")
-      .persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.MEMORY_AND_DISK)
     validatingLabelsAndOffsetsAndWeights.count()
 
     get(validationEvaluators)
@@ -809,7 +800,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           case rddLike: RDDLike =>
             rddLike
               .setName(s"Initialized model with coordinate id $coordinateId")
-              .persistRDD(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+              .persistRDD(StorageLevel.DISK_ONLY)
 
           case _ =>
         }

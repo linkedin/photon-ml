@@ -14,15 +14,16 @@
  */
 package com.linkedin.photon.ml.cli.game.scoring
 
+import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
@@ -89,24 +90,13 @@ object GameScoringDriver extends GameDriver {
   }
 
   //
-  // Params functions
+  // PhotonParams trait extensions
   //
-
-  /**
-   * Check that all required parameters have been set and validate interactions between parameters.
-   */
-  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
-
-    super.validateParams(paramMap)
-
-    // Just need to check that these parameters are explicitly set
-    paramMap(modelInputDirectory)
-  }
 
   /**
    * Set default values for parameters that have them.
    */
-  private def setDefaultParams(): Unit = {
+  override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(overrideOutputDirectory, false)
@@ -119,9 +109,22 @@ object GameScoringDriver extends GameDriver {
   }
 
   /**
-   * Clear all set parameters.
+   * Check that all required parameters have been set and validate interactions between parameters.
+   *
+   * @note In Spark, interactions between parameters are checked by
+   *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
+   *       Photon-ML, we need to have this function to check the interactions between parameters.
+   * @throws MissingArgumentException if a required parameter is missing
+   * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+   * @param paramMap The parameters to validate
    */
-  def clear(): Unit = params.foreach(clear)
+  override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
+
+    super.validateParams(paramMap)
+
+    // Just need to check that these parameters are explicitly set
+    paramMap(modelInputDirectory)
+  }
 
   //
   // Scoring driver functions
@@ -163,7 +166,7 @@ object GameScoringDriver extends GameDriver {
       ModelProcessingUtils.loadGameModelFromHDFS(
         sc,
         getRequiredParam(modelInputDirectory),
-        StorageLevel.VERY_FREQUENT_REUSE_RDD_STORAGE_LEVEL,
+        StorageLevel.MEMORY_ONLY,
         featureShardIdToIndexMapLoaderMap)
     }
 
@@ -236,7 +239,7 @@ object GameScoringDriver extends GameDriver {
 
     if (getOrDefault(logDataAndModelStats)) {
       // Persist scored items here since we introduce multiple passes
-      scoredItems.setName("Scored items").persist(StorageLevel.FREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      scoredItems.setName("Scored items").persist(StorageLevel.MEMORY_AND_DISK)
 
       val numScoredItems = scoredItems.count()
       logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")

@@ -22,7 +22,6 @@ package com.linkedin.photon.ml.data.avro
 object AvroConstants {
 
   val DEFAULT_AVRO_FILE_NAME = "part-00000.avro"
-  val ID_INFO = "id-info"
   val COEFFICIENTS = "coefficients"
   val FIXED_EFFECT = "fixed-effect"
   val RANDOM_EFFECT = "random-effect"

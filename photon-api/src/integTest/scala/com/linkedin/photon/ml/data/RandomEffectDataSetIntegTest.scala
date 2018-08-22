@@ -56,7 +56,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
 
         (uid.toLong, datum)
       }
-    val partitionMap: Map[REId, Int] = Map(reId1 -> NUM_PARTITIONS, reId2 -> NUM_PARTITIONS, reId3 -> NUM_PARTITIONS)
+    val partitionMap: Map[REId, Int] = Map(reId1 -> 0, reId2 -> 0, reId3 -> 0)
 
     Array(
       Array(data, partitionMap, 1, 3L),
@@ -121,7 +121,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       FEATURE_SHARD_NAME,
       NUM_PARTITIONS,
       Some(activeDataLowerBound))
-    val partitioner = new RandomEffectDataSetPartitioner(sc.broadcast(partitionMap))
+    val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
     val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, None)
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
@@ -153,7 +153,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       FEATURE_SHARD_NAME,
       NUM_PARTITIONS,
       Some(activeDataLowerBound))
-    val partitioner = new RandomEffectDataSetPartitioner(sc.broadcast(partitionMap))
+    val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
     val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()

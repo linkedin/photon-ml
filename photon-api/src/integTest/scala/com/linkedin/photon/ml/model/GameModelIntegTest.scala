@@ -124,7 +124,7 @@ class GameModelIntegTest extends SparkTestUtils {
     assertEquals(gameModel22.getModel(REModelName).get, REModel2)
   }
 
-  @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
+  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testUpdateModelOfDifferentType(): Unit = sparkTest("testUpdateModelOfDifferentType") {
 
     val FEModelName = "fix"

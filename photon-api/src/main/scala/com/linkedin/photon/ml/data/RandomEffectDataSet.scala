@@ -19,11 +19,10 @@ import scala.util.hashing.byteswap64
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.{StorageLevel => SparkStorageLevel}
+import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.constants.StorageLevel
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 
@@ -119,7 +118,7 @@ protected[ml] class RandomEffectDataSet(
    * @return This object with the storage level of [[activeData]], [[uniqueIdToRandomEffectIds]], and
    *         [[passiveDataOption]] set
    */
-  override def persistRDD(storageLevel: SparkStorageLevel): RandomEffectDataSet = {
+  override def persistRDD(storageLevel: StorageLevel): RandomEffectDataSet = {
 
     if (!activeData.getStorageLevel.isValid) activeData.persist(storageLevel)
     if (!uniqueIdToRandomEffectIds.getStorageLevel.isValid) uniqueIdToRandomEffectIds.persist(storageLevel)
@@ -254,7 +253,7 @@ object RandomEffectDataSet {
       existingModelKeysRddOpt)
     val activeData = featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration)
       .setName("Active data")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     val globalIdToIndividualIds = activeData
       .flatMap { case (individualId, localDataSet) =>
@@ -309,7 +308,7 @@ object RandomEffectDataSet {
     val groupedRandomEffectDataSet = randomEffectDataConfiguration
       .numActiveDataPointsUpperBound
       .map { activeDataUpperBound =>
-        groupKeyedDataSetViaReservoirSampling(
+        groupDataByKeyAndSample(
           keyedRandomEffectDataSet,
           randomEffectPartitioner,
           activeDataUpperBound,
@@ -343,20 +342,26 @@ object RandomEffectDataSet {
   }
 
   /**
-   * Generate a group keyed dataset via reservoir sampling.
+   * Generate a data set, grouped by random effect ID and limited to a maximum number of samples selected via reservoir
+   * sampling.
    *
-   * @param rawKeyedDataSet The raw keyed dataset
+   * The 'Min Heap' reservoir sampling algorithm is used for two reasons:
+   * 1. The exact sampling must be reproducible so that [[RDD]] partitions can be recovered
+   * 2. The linear algorithm is non-trivial to combine in a distributed manner
+   *
+   * @param rawKeyedDataSet The raw data set, with samples keyed by random effect ID
    * @param partitioner The partitioner
    * @param sampleCap The sample cap
    * @param randomEffectType The type of random effect
    * @return An RDD of data grouped by individual ID
    */
-  private def groupKeyedDataSetViaReservoirSampling(
+  private def groupDataByKeyAndSample(
       rawKeyedDataSet: RDD[(REId, (UniqueSampleId, LabeledPoint))],
       partitioner: Partitioner,
       sampleCap: Int,
       randomEffectType: REType): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = {
 
+    // Helper class for defining a constant ordering between data samples (necessary for RDD re-computation)
     case class ComparableLabeledPointWithId(comparableKey: Int, uniqueId: UniqueSampleId, labeledPoint: LabeledPoint)
       extends Comparable[ComparableLabeledPointWithId] {
 
@@ -386,35 +391,30 @@ object RandomEffectDataSet {
       minHeapWithFixedCapacity1 ++= minHeapWithFixedCapacity2
     }
 
-    /*
-     * Currently the reservoir sampling algorithm is not fault tolerant, as the comparable key depends on uniqueId,
-     * which is computed based on the RDD partition id. The uniqueId will change after recomputing the RDD while
-     * recovering from node failure.
-     *
-     * TODO: Need to make sure that the comparableKey is robust to RDD recompute and node failure
-     */
-    val localDataSets =
-      rawKeyedDataSet
-        .mapValues { case (uniqueId, labeledPoint) =>
-          val comparableKey = (byteswap64(randomEffectType.hashCode) ^ byteswap64(uniqueId)).hashCode()
-          ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
-        }
-        .combineByKey[MinHeapWithFixedCapacity[ComparableLabeledPointWithId]](
-          createCombiner,
-          mergeValue,
-          mergeCombiners,
-          partitioner)
-        .mapValues { minHeapWithFixedCapacity =>
-          val cumCount = minHeapWithFixedCapacity.cumCount
-          val data = minHeapWithFixedCapacity.getData
-          val size = data.size
-          val weightMultiplierFactor = 1.0 * cumCount / size
-          val dataPoints =
-            data.map { case ComparableLabeledPointWithId(_, uniqueId, LabeledPoint(label, features, offset, weight)) =>
-              (uniqueId, LabeledPoint(label, features, offset, weight * weightMultiplierFactor))
-            }
-          dataPoints
-        }
+    // The reservoir sampling algorithm is fault tolerant, assuming that the uniqueId for a sample is recovered after
+    // node failure. We attempt to maximize the likelihood of successful recovery through RDD replication, however there
+    // is a non-zero possibility of massive failure. If this becomes an issue, we may need to resort to check-pointing
+    // the raw data RDD after uniqueId assignment.
+    val localDataSets = rawKeyedDataSet
+      .mapValues { case (uniqueId, labeledPoint) =>
+        val comparableKey = (byteswap64(randomEffectType.hashCode) ^ byteswap64(uniqueId)).hashCode()
+        ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
+      }
+      .combineByKey[MinHeapWithFixedCapacity[ComparableLabeledPointWithId]](
+        createCombiner,
+        mergeValue,
+        mergeCombiners,
+        partitioner)
+      .mapValues { minHeapWithFixedCapacity =>
+        val count = minHeapWithFixedCapacity.getCount
+        val data = minHeapWithFixedCapacity.getData
+        val weightMultiplierOpt = if (count > sampleCap) Some(1D * count / sampleCap) else None
+        val dataPoints =
+          data.map { case ComparableLabeledPointWithId(_, uniqueId, LabeledPoint(label, features, offset, weight)) =>
+            (uniqueId, LabeledPoint(label, features, offset, weightMultiplierOpt.map(_ * weight).getOrElse(weight)))
+          }
+        dataPoints
+      }
 
     localDataSets
   }
@@ -449,7 +449,7 @@ object RandomEffectDataSet {
 
     val passiveData = keyedRandomEffectDataSet.subtractByKey(activeDataUniqueIds, gameDataPartitioner)
         .setName("tmp passive data")
-        .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+        .persist(StorageLevel.DISK_ONLY)
 
     val passiveDataRandomEffectIdCountsMap = passiveData
       .map { case (_, (randomEffectId, _)) =>
@@ -469,7 +469,7 @@ object RandomEffectDataSet {
         passiveDataRandomEffectIdsBroadcast.value.contains(id)
       }
       .setName("passive data")
-      .persist(StorageLevel.INFREQUENT_REUSE_RDD_STORAGE_LEVEL)
+      .persist(StorageLevel.DISK_ONLY)
 
     filteredPassiveData.count()
     passiveData.unpersist()
