@@ -15,11 +15,8 @@
 package com.linkedin.photon.ml.hyperparameter.criteria
 
 import breeze.linalg.DenseVector
-import org.apache.spark.rdd.RDD
-import org.mockito.Mockito.mock
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 
 /**
@@ -27,9 +24,7 @@ import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
   */
 class ExpectedImprovementTest {
 
-  import ExpectedImprovementTest._
-
-  val tol = 1e-3
+  val TOL = 1e-3
 
   /**
    * Test data
@@ -46,48 +41,15 @@ class ExpectedImprovementTest {
   @Test(dataProvider = "modelDataProvider")
   def testApply(mu: DenseVector[Double], sigma: DenseVector[Double], testSetIndex: Int): Unit = {
 
-    val expectedImprovementMax = new ExpectedImprovement(EVALUATOR_AUC, 0.0)
-    val predictedMax = expectedImprovementMax(mu, sigma)
+    val bestCandidate = 0.0
+    val expectedImprovement = new ExpectedImprovement(bestCandidate)
+    val predicted = expectedImprovement(mu, sigma)
 
-    val expectedMax = testSetIndex match {
-      case 0 => DenseVector(1.0833, 2.0503, 3.0293)
-      case 1 => DenseVector(0.0062, 5.0001, 0.0000)
-    }
-
-    assertIterableEqualsWithTolerance(predictedMax.toArray, expectedMax.toArray, tol)
-
-    val expectedImprovementMin = new ExpectedImprovement(EVALUATOR_RMSE, 0.0)
-    val predictedMin = expectedImprovementMin(mu, sigma)
-
-    val expectedMin = testSetIndex match {
+    val expected = testSetIndex match {
       case 0 => DenseVector(0.0833, 0.0503, 0.0292)
       case 1 => DenseVector(4.0062, 0.0000, 6.0000)
     }
 
-    assertIterableEqualsWithTolerance(predictedMin.toArray, expectedMin.toArray, tol)
-  }
-}
-
-object ExpectedImprovementTest {
-  val EVALUATOR_AUC: Evaluator = new Evaluator {
-
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
-      mock(classOf[RDD[(Long, (Double, Double, Double))]])
-    override val evaluatorType: EvaluatorType = EvaluatorType.AUC
-    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
-
-    override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
-  }
-
-  val EVALUATOR_RMSE: Evaluator = new Evaluator {
-
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(Long, (Double, Double, Double))] =
-      mock(classOf[RDD[(Long, (Double, Double, Double))]])
-    override val evaluatorType: EvaluatorType = EvaluatorType.RMSE
-    override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-        scoresAndLabelsAndWeights: RDD[(Long, (Double, Double, Double))]): Double = 0.0
-
-    override def betterThan(score1: Double, score2: Double): Boolean = score1 < score2
+    assertIterableEqualsWithTolerance(predicted.toArray, expected.toArray, TOL)
   }
 }

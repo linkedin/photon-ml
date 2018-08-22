@@ -17,30 +17,25 @@ package com.linkedin.photon.ml.hyperparameter.criteria
 import breeze.linalg.DenseVector
 import breeze.numerics.sqrt
 
-import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.estimators.PredictionTransformation
 
 /**
- * Confidence bound selection criterion. This transformation produces either an upper or lower confidence bound,
- * depending on how the evaluator compares values.
+ * Confidence bound selection criterion. This transformation produces a lower confidence bound.
  *
- * @param evaluator the evaluator
- * @param explorationFactor a factor that determines the tradeoff between exploration and exploitation during search:
+ * @param explorationFactor a factor that determines the trade-off between exploration and exploitation during search:
  *   higher values favor exploration.
  */
-class ConfidenceBound(
-    evaluator: Evaluator,
-    explorationFactor: Double = 2.0)
-  extends PredictionTransformation {
+class ConfidenceBound(explorationFactor: Double = 2.0) extends PredictionTransformation {
 
-  def isMaxOpt: Boolean = evaluator.betterThan(1.0, 0.0)
+  // Minimize CB to minimize the evaluation value.
+  def isMaxOpt: Boolean = false
 
   /**
    * Applies the confidence bound transformation to the model output
    *
    * @param predictiveMeans predictive mean output from the model
    * @param predictiveVariances predictive variance output from the model
-   * @return the confidence bounds
+   * @return the lower confidence bounds
    */
   def apply(
       predictiveMeans: DenseVector[Double],
@@ -48,14 +43,6 @@ class ConfidenceBound(
 
     // PBO Eq. 3
     val confidenceBounds = explorationFactor * sqrt(predictiveVariances)
-    val upper = predictiveMeans + confidenceBounds
-    val lower = predictiveMeans - confidenceBounds
-
-
-    if (evaluator.betterThan(upper(0), lower(0))) {
-      upper
-    } else {
-      lower
-    }
+    predictiveMeans - confidenceBounds
   }
 }

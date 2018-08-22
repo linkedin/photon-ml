@@ -651,13 +651,21 @@ object GameTrainingDriver extends GameDriver {
         val iteration = getOrDefault(hyperParameterTuningIter)
         val dimension = baseConfig.toSeq.length
         val mode = getOrDefault(hyperParameterTuning)
-        val evaluationFunction = new GameEstimatorEvaluationFunction(estimator, baseConfig, trainingData, testData)
+
         val evaluator = evaluationResults.get.head._1
+        val isOptMax = evaluator.betterThan(1.0, 0.0)
+        val evaluationFunction = new GameEstimatorEvaluationFunction(
+          estimator,
+          baseConfig,
+          trainingData,
+          testData,
+          isOptMax)
+
         val observations = evaluationFunction.convertObservations(models)
 
         val hyperparameterTuner = HyperparameterTunerFactory[GameEstimator.GameResult](getOrDefault(hyperParameterTunerName))
 
-        hyperparameterTuner.search(iteration, dimension, mode, evaluationFunction, evaluator, observations)
+        hyperparameterTuner.search(iteration, dimension, mode, evaluationFunction, observations)
 
       case _ => Seq()
     }

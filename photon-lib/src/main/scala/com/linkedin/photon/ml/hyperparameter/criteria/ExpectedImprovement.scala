@@ -18,7 +18,6 @@ import breeze.linalg.DenseVector
 import breeze.numerics.sqrt
 import breeze.stats.distributions.Gaussian
 
-import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.estimators.PredictionTransformation
 
 /**
@@ -28,11 +27,11 @@ import com.linkedin.photon.ml.hyperparameter.estimators.PredictionTransformation
  * @see "Practical Bayesian Optimization of Machine Learning Algorithms" (PBO),
  *   https://papers.nips.cc/paper/4522-practical-bayesian-optimization-of-machine-learning-algorithms.pdf
  *
- * @param evaluator the evaluator
  * @param bestEvaluation the current best evaluation
  */
-class ExpectedImprovement(evaluator: Evaluator, bestEvaluation: Double) extends PredictionTransformation {
+class ExpectedImprovement(bestEvaluation: Double) extends PredictionTransformation {
 
+  // Maximize EI to minimize the evaluation value.
   def isMaxOpt: Boolean = true
 
   private val standardNormal = new Gaussian(0, 1)
@@ -51,8 +50,7 @@ class ExpectedImprovement(evaluator: Evaluator, bestEvaluation: Double) extends 
     val std = sqrt(predictiveVariances)
 
     // PBO Eq. 1
-    val direction = if (evaluator.betterThan(1.0, -1.0)) 1.0 else -1.0
-    val gamma = (predictiveMeans - bestEvaluation) / std * direction
+    val gamma = - (predictiveMeans - bestEvaluation) / std
 
     // Eq. 2
     std :* ((gamma :* gamma.map(standardNormal.cdf(_))) + gamma.map(standardNormal.pdf(_)))
