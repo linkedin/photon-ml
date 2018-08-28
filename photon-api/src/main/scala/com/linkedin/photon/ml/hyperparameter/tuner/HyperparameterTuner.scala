@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.hyperparameter.tuner
 import breeze.linalg.DenseVector
 
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
-import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 
 /**
