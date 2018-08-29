@@ -65,7 +65,33 @@ class HyperparameterSerializationTest {
   @Test
   def testConfigFromJson(): Unit = {
 
-    val hyperParams = HyperparameterSerialization.configFromJson(GameHyperparameterDefaults.configDefault)
+    val config: String =
+      """
+        |{ "tuning_mode" : "BAYESIAN",
+        |  "variables" : {
+        |    "global_regularizer" : {
+        |      "type" : "FLOAT",
+        |      "transform" : "LOG",
+        |      "min" : -3,
+        |      "max" : 3
+        |    },
+        |    "member_regularizer" : {
+        |      "type" : "FLOAT",
+        |      "transform" : "LOG",
+        |      "min" : -3,
+        |      "max" : 3
+        |    },
+        |    "item_regularizer" : {
+        |      "type" : "FLOAT",
+        |      "transform" : "LOG",
+        |      "min" : -3,
+        |      "max" : 3
+        |    }
+        |  }
+        |}
+      """.stripMargin
+
+    val hyperParams = HyperparameterSerialization.configFromJson(config)
 
     assertEquals(hyperParams.tuningMode, HyperparameterTuningMode.BAYESIAN)
     assertNotEquals(hyperParams.tuningMode, HyperparameterTuningMode.NONE)
