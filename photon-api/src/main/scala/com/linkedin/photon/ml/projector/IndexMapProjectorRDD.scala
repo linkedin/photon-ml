@@ -137,13 +137,17 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   def projectNormalizationRDD(originalNormalizationContext: NormalizationContext): RDD[(REId, NormalizationContext)] =
 
     indexMapProjectorRDD.mapValues { projector =>
-      val factors = originalNormalizationContext.factors.map(factors => projector.projectFeatures(factors))
-      val shifts = originalNormalizationContext.shifts.map(shifts => projector.projectFeatures(shifts))
-      val interceptId = originalNormalizationContext
-        .interceptId
-        .map(interceptId => projector.originalToProjectedSpaceMap(interceptId))
+      val factors = originalNormalizationContext.factorsOpt.map(factors => projector.projectFeatures(factors))
+      val shiftsAndIntercept = originalNormalizationContext
+        .shiftsAndInterceptOpt
+        .map { case (shifts, intercept) =>
+          val newShifts = projector.projectFeatures(shifts)
+          val newIntercept = projector.originalToProjectedSpaceMap(intercept)
 
-      new NormalizationContext(factors, shifts, interceptId)
+          (newShifts, newIntercept)
+        }
+
+      new NormalizationContext(factors, shiftsAndIntercept)
     }
 
   /**

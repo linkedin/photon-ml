@@ -277,7 +277,9 @@ protected[ml] class Driver(
   protected def summarizeFeatures(outputDir: Option[Path]): BasicStatisticalSummary = {
 
     val beforeSummarization = System.currentTimeMillis()
-    val summary = BasicStatisticalSummary(trainingData)
+    val summary = BasicStatisticalSummary(
+      trainingData,
+      inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_KEY))
 
     outputDir.foreach { dir =>
       ModelProcessingUtils.writeBasicStatistics(
@@ -317,10 +319,7 @@ protected[ml] class Driver(
     if (params.summarizationOutputDirOpt.isDefined || params.normalizationType != NormalizationType.NONE) {
       val summary = summarizeFeatures(params.summarizationOutputDirOpt)
       summaryOption = Some(summary)
-      normalizationContext = NormalizationContext(
-        params.normalizationType,
-        summary,
-        inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_KEY))
+      normalizationContext = NormalizationContext(params.normalizationType, summary)
     }
 
     val preprocessingTime = (System.currentTimeMillis() - startTimeForPreprocessing) * 0.001

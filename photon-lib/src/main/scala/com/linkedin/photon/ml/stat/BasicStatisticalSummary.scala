@@ -43,7 +43,8 @@ case class BasicStatisticalSummary(
     min: BreezeVector[Double],
     normL1: BreezeVector[Double],
     normL2: BreezeVector[Double],
-    meanAbs: BreezeVector[Double])
+    meanAbs: BreezeVector[Double],
+    interceptIndex: Option[Int])
 
 /**
  * Object BasicStatisticalSummary has functions to actually compute statistical summaries from RDDs.
@@ -57,8 +58,12 @@ object BasicStatisticalSummary extends Logging {
    * @param p A DummyImplicit to allow the Scala compiler to distinguish from other apply function
    * @return An instance of BasicStatisticalSummary
    */
-  def apply(inputData: RDD[LabeledPoint])(implicit p: DummyImplicit): BasicStatisticalSummary =
-    calculateBasicStatistics(Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))))
+  def apply
+      (inputData: RDD[LabeledPoint], interceptIndex: Option[Int])
+      (implicit p: DummyImplicit): BasicStatisticalSummary =
+    calculateBasicStatistics(
+      Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))),
+      interceptIndex)
 
   /**
    * This function accepts a RDD[MLVector]. Used in GAME.
@@ -66,8 +71,8 @@ object BasicStatisticalSummary extends Logging {
    * @param inputData The input data (usually training data)
    * @return An instance of BasicStatisticalSummary
    */
-  def apply(inputData: RDD[MLVector]): BasicStatisticalSummary =
-    calculateBasicStatistics(Statistics.colStats(inputData.map(Vectors.fromML(_))))
+  def apply(inputData: RDD[MLVector], interceptIndex: Option[Int]): BasicStatisticalSummary =
+    calculateBasicStatistics(Statistics.colStats(inputData.map(Vectors.fromML)), interceptIndex)
 
   /**
    * Auxiliary function to scale vectors.
@@ -85,7 +90,9 @@ object BasicStatisticalSummary extends Logging {
    * @param summary An instance of spark-ml MultivariateStatisticalSummary
    * @return An instance of BasicStatisticalSummary
    */
-  protected[ml] def calculateBasicStatistics(summary: MultivariateStatisticalSummary): BasicStatisticalSummary = {
+  protected[ml] def calculateBasicStatistics(
+      summary: MultivariateStatisticalSummary,
+      interceptIndex: Option[Int]): BasicStatisticalSummary = {
 
     val meanAbs = scale(summary.count, VectorUtils.mllibToBreeze(summary.normL1))
     val tMean = VectorUtils.mllibToBreeze(summary.mean)
@@ -110,9 +117,16 @@ object BasicStatisticalSummary extends Logging {
         "infinite. The variances for these features have been re-set to 1.0.")
     }
 
-    this(
+    BasicStatisticalSummary(
       tMean,
       tVariance.mapActiveValues(x => if (x.isNaN || x.isInfinite || x < 0) 1.0 else x),
-      summary.count, tNumNonZeros, tMax, tMin, tNormL1, tNormL2, meanAbs)
+      summary.count,
+      tNumNonZeros,
+      tMax,
+      tMin,
+      tNormL1,
+      tNormL2,
+      meanAbs,
+      interceptIndex)
   }
 }

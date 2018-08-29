@@ -43,6 +43,7 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
    * @return The same data set in the projected space
    */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
     val projectedActiveData = activeData.mapValues(_.projectFeatures(projectionMatrixBroadcast.value))
@@ -100,11 +101,14 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
    */
   def projectNormalizationContext(originalNormalizationContext: NormalizationContext): NormalizationContext = {
 
-    val factors = originalNormalizationContext.factors.map(factors => projectionMatrix.projectFeatures(factors))
-    val shifts = originalNormalizationContext.shifts.map(shifts => projectionMatrix.projectFeatures(shifts))
-    val interceptId = originalNormalizationContext.interceptId.map(_ => projectionMatrix.projectedInterceptId)
+    val factors = originalNormalizationContext.factorsOpt.map(factors => projectionMatrix.projectFeatures(factors))
+    val shiftsAndIntercept = originalNormalizationContext
+      .shiftsAndInterceptOpt
+      .map { case (shifts, _) =>
+        (projectionMatrix.projectFeatures(shifts), projectionMatrix.projectedInterceptId)
+      }
 
-    new NormalizationContext(factors, shifts, interceptId)
+    new NormalizationContext(factors, shiftsAndIntercept)
   }
 
   /**
