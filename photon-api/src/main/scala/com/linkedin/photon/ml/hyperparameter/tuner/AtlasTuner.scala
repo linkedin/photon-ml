@@ -18,7 +18,6 @@ import breeze.linalg.DenseVector
 
 import com.linkedin.photon.ml.HyperparameterTuningMode
 import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
-import com.linkedin.photon.ml.evaluation.Evaluator
 import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.search.{GaussianProcessSearch, RandomSearch}
 

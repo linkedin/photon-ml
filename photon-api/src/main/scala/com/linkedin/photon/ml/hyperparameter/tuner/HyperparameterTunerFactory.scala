@@ -20,11 +20,7 @@ object HyperparameterTunerFactory {
 
   // Use DUMMY_TUNER for photon-ml, which does an empty operation for hyper-parameter tuning
   val DUMMY_TUNER = "com.linkedin.photon.ml.hyperparameter.tuner.DummyTuner"
-
-  // TODO: Move AtlasTuner into atlas-ml for the auto-tuning system migration:
-  // TODO: val ATLAS_TUNER = "com.linkedin.atlas.ml.hyperparameter.tuner.AtlasTuner".
-  // TODO: Temporarily stay in photon-ml for test purpose.
-  val ATLAS_TUNER = "com.linkedin.photon.ml.hyperparameter.tuner.AtlasTuner"
+  val ATLAS_TUNER = "com.linkedin.atlas.tuner.AtlasTuner"
 
   /**
    * Factory for different packages of [[HyperparameterTuner]].
