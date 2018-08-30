@@ -32,4 +32,3 @@ case class HyperparameterConfig(
     ranges: Seq[DoubleRange],
     discreteParams: Map[Int, Int],
     transformMap: Map[Int, String])
-
