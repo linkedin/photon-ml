@@ -34,7 +34,7 @@ class FeatureImportanceDiagnosticTest {
     val count = 1000L
     val features = DenseVector((1 to size).map(_.toDouble).toArray)
     val coefficients = Coefficients(features, variancesOption = None)
-    val summary = new BasicStatisticalSummary(features, features, count, DenseVector.ones[Double](size) * count.toDouble, features, features, features, features, features)
+    val summary = new BasicStatisticalSummary(features, features, count, DenseVector.ones[Double](size) * count.toDouble, features, features, features, features, features, None)
     val model = new LinearRegressionModel(coefficients)
     val featureIdx = (1 to size).map(x => (s"FEATURE_$x", x - 1)).toMap[String, Int]
 
