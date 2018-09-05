@@ -38,7 +38,7 @@ import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationContextWrapper, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerConfig, OptimizerType}
-import com.linkedin.photon.ml.projector.{IndexMapProjection, RandomProjection}
+import com.linkedin.photon.ml.projector.RandomProjection
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
@@ -162,9 +162,8 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
           constraintMap = None))
       val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
-      val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values)
-      val normalizationContext =
-        NormalizationContext(normalizationType, statisticalSummary, Some(labeledPoints.head.features.length))
+      val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values, Some(labeledPoints.head.features.length))
+      val normalizationContext = NormalizationContext(normalizationType, statisticalSummary)
       val normalizationContexts = Map((coordinateId, normalizationContext))
       val logger = createLogger("NormalizationTest")
 

@@ -36,7 +36,8 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  */
 protected[ml] class NormalizationContext(
     val factorsOpt: Option[Vector[Double]],
-    val shiftsAndInterceptOpt: Option[(Vector[Double], Int)]) {
+    val shiftsAndInterceptOpt: Option[(Vector[Double], Int)])
+  extends Serializable {
 
   val size: Int = (factorsOpt, shiftsAndInterceptOpt) match {
     case (Some(factors), None) =>

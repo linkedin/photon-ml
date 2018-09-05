@@ -32,6 +32,8 @@ import com.linkedin.photon.ml.util.VectorUtils
  */
 class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
 
+  import BasicStatisticalSummaryIntegTest._
+
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.
    *
@@ -68,7 +70,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
         .toDF("response", featureShardId)
 
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)))
+      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)), None)
 
       assertEquals(stats.count, 10)
       assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
@@ -95,21 +97,24 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
   @Test
   def testBasicStatistics(): Unit = sparkTest("testBasicStatistics") {
 
-    val NUM_POINTS: Int = 1000
-    val NUM_FEATURES: Int = 100
-    val SEED: Int = 0
-
-    val labeledPoints =
-      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(SEED, NUM_POINTS, NUM_FEATURES)
-        .map(obj => new LabeledPoint(label = obj._1, obj._2, offset = 0, weight = 1)).toList
+    val labalAndFeatures = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
+      SEED,
+      NUM_POINTS,
+      NUM_FEATURES)
+    val labeledPoints = labalAndFeatures
+      .map { case (label, features) =>
+        new LabeledPoint(label, features, offset = 0, weight = 1)
+      }
+      .toList
     val dataRdd = sc.parallelize(labeledPoints)
-    val summary = BasicStatisticalSummary(dataRdd)
+    val summary = BasicStatisticalSummary(dataRdd, None)
+
     assertEquals(summary.count, NUM_POINTS.toLong)
+
     val allElements = labeledPoints.map(x => x.features.toArray).reduceLeft((x, y) => x ++: y)
     // A matrix with columns representing points and rows representing features.
     // The matrix is filled in column major order.
     val matrix = new DenseMatrix(NUM_FEATURES, NUM_POINTS, allElements)
-
     val items = for (i <- 0 until NUM_FEATURES) yield {
       // Get the i-th row and transpose to a vector. Similar to MATLAB syntax
       val vector = matrix(i, ::).t
@@ -119,6 +124,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
       val oneMin = Bmin(vector)
       val mV: MeanAndVariance = meanAndVariance(vector)
       val oneNumNonzeros = vector.toArray.count(_ != 0).toDouble
+
       (oneNormL1, oneNormL2, oneMax, oneMin, mV.mean, mV.variance, oneNumNonzeros)
     }
 
@@ -140,4 +146,11 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
     assertIterableEqualsWithTolerance(summary.numNonzeros.toArray, numNonzeros, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertIterableEqualsWithTolerance(summary.meanAbs.toArray, meanAbs, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
+}
+
+object BasicStatisticalSummaryIntegTest {
+
+  val NUM_POINTS: Int = 1000
+  val NUM_FEATURES: Int = 100
+  val SEED: Int = 0
 }

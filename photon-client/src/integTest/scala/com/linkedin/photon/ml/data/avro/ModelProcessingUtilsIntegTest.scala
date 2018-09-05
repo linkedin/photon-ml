@@ -40,7 +40,7 @@ import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
-import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.{Constants, TaskType}
 
 /**
  * Integration tests for [[ModelProcessingUtils]].
@@ -380,25 +380,27 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
   @Test
   def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
 
-    val dim: Int = 5
-    val minVector = VectorUtils.toSparseVector(Array((0, 1.5d), (3, 6.7d), (4, 2.33d)), dim)
-    val maxVector = VectorUtils.toSparseVector(Array((0, 10d), (3, 7d), (4, 4d)), dim)
-    val normL1Vector = VectorUtils.toSparseVector(Array((0, 1d), (3, 7d), (4, 4d)), dim)
-    val normL2Vector = VectorUtils.toSparseVector(Array((0, 2d), (3, 8d), (4, 5d)), dim)
-    val numNonzeros = VectorUtils.toSparseVector(Array((0, 6d), (3, 3d), (4, 89d)), dim)
-    val meanVector = VectorUtils.toSparseVector(Array((0, 1.1d), (3, 2.4d), (4, 3.6d)), dim)
-    val varianceVector = VectorUtils.toSparseVector(Array((0, 1d), (3, 7d), (4, 0.5d)), dim)
+    val dim: Int = 6
+    val interceptIndex: Int = dim - 1
+    val minVector = VectorUtils.toSparseVector(Array((0, 1.5), (3, 6.7), (4, 2.33), (5, 1D)), dim)
+    val maxVector = VectorUtils.toSparseVector(Array((0, 10D), (3, 7D), (4, 4D), (5, 1D)), dim)
+    val normL1Vector = VectorUtils.toSparseVector(Array((0, 1D), (3, 7D), (4, 4D), (5, 10D)), dim)
+    val normL2Vector = VectorUtils.toSparseVector(Array((0, 2D), (3, 8D), (4, 5D), (5, 10D)), dim)
+    val numNonzeros = VectorUtils.toSparseVector(Array((0, 6D), (3, 3D), (4, 89D), (5, 100D)), dim)
+    val meanVector = VectorUtils.toSparseVector(Array((0, 1.1), (3, 2.4), (4, 3.6), (5, 1D)), dim)
+    val varianceVector = VectorUtils.toSparseVector(Array((0, 1D), (3, 7D), (4, 0.5), (5, 0D)), dim)
 
     val summary = BasicStatisticalSummary(
       meanVector,
       varianceVector,
-      count = 101L,
+      count = 100L,
       numNonzeros,
       maxVector,
       minVector,
       normL1Vector,
       normL2Vector,
-      meanVector)
+      meanVector,
+      Some(interceptIndex))
 
     val indexMap: IndexMap = new DefaultIndexMap(
       Map(
@@ -406,7 +408,8 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
         Utils.getFeatureKey("f1", "t1") -> 1,
         Utils.getFeatureKey("f2", "") -> 2,
         Utils.getFeatureKey("f3", "t3") -> 3,
-        Utils.getFeatureKey("f4", "") -> 4))
+        Utils.getFeatureKey("f4", "") -> 4,
+        Constants.INTERCEPT_KEY -> 5))
 
     val outputDir = new Path(getTmpDir, "summary-output")
     ModelProcessingUtils.writeBasicStatistics(sc, summary, outputDir, indexMap)
@@ -422,6 +425,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
         val featureIndex = indexMap(featureKey)
         val metrics = record.getMetrics.map {case (key, value) => (String.valueOf(key), value)}
 
+        assertNotEquals(featureIndex, interceptIndex)
         assertEquals(featureKey, indexMap.getFeatureName(featureIndex).get)
         assertEquals(metrics("min"), minVector(featureIndex), EPSILON)
         assertEquals(metrics("max"), maxVector(featureIndex), EPSILON)
@@ -436,8 +440,9 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       .takeWhile(_ => reader.hasNext)
       .length
 
-    // Add one to count, since the value of reader is always evaluated once before hasNext is checked
-    assertEquals(count + 1, dim)
+    // Add one to count, since the value of reader is always evaluated once before hasNext is checked. However, also
+    // subtract one from count, since intercept should be skipped.
+    assertEquals(count + 1, dim - 1)
   }
 }
 
