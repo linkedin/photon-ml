@@ -29,7 +29,7 @@ sealed trait CoordinateDataConfiguration {
 }
 
 /**
- * Configuration needed in order to generate a [[com.linkedin.photon.ml.data.FixedEffectDataSet]].
+ * Configuration needed in order to generate a [[com.linkedin.photon.ml.data.FixedEffectDataset]].
  *
  * @param featureShardId Key of the feature shard used to generate the dataset
  * @param minNumPartitions Minimum number of data partitions
@@ -40,7 +40,7 @@ case class FixedEffectDataConfiguration(
   extends CoordinateDataConfiguration
 
 /**
- * Configurations needed in order to generate a [[com.linkedin.photon.ml.data.RandomEffectDataSet]]
+ * Configurations needed in order to generate a [[com.linkedin.photon.ml.data.RandomEffectDataset]]
  *
  * @param randomEffectType The corresponding random effect type of the dataset
  * @param featureShardId Key of the feature shard used to generate the dataset

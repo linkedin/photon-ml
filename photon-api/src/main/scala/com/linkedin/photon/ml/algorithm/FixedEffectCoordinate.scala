@@ -33,9 +33,9 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param optimizationProblem The fixed effect optimization problem
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
-    dataSet: FixedEffectDataSet,
+    dataSet: FixedEffectDataset,
     optimizationProblem: DistributedOptimizationProblem[Objective])
-  extends Coordinate[FixedEffectDataSet](dataSet) {
+  extends Coordinate[FixedEffectDataset](dataSet) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -78,7 +78,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @return A new coordinate with the updated dataset
    */
   override protected[algorithm] def updateCoordinateWithDataSet(
-      dataSet: FixedEffectDataSet): FixedEffectCoordinate[Objective] =
+      dataSet: FixedEffectDataset): FixedEffectCoordinate[Objective] =
     new FixedEffectCoordinate[Objective](dataSet, optimizationProblem)
 
   /**
@@ -155,7 +155,7 @@ object FixedEffectCoordinate {
    * @param fixedEffectModel The model to score the dataset with
    * @return The computed scores
    */
-  protected[algorithm] def score(fixedEffectDataSet: FixedEffectDataSet, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
+  protected[algorithm] def score(fixedEffectDataSet: FixedEffectDataset, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
     val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
       modelBroadcast.value.computeScore(features)

@@ -18,7 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextRDD, NormalizationContextWrapper}
@@ -141,7 +141,7 @@ object RandomEffectOptimizationProblem {
    * @return A new RandomEffectOptimizationProblem
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectDataSet: RandomEffectDataset,
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,

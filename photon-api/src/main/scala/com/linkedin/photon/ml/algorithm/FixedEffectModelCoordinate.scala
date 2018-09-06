@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.FixedEffectDataSet
+import com.linkedin.photon.ml.data.FixedEffectDataset
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 
@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
  *
  * @param dataSet The training dataset
  */
-class FixedEffectModelCoordinate(dataSet: FixedEffectDataSet) extends ModelCoordinate(dataSet) {
+class FixedEffectModelCoordinate(dataSet: FixedEffectDataset) extends ModelCoordinate(dataSet) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.

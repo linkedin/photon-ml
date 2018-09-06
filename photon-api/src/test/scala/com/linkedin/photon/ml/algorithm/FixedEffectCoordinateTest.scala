@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 import org.mockito.Mockito._
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, LabeledPoint}
+import com.linkedin.photon.ml.data.{FixedEffectDataset, LabeledPoint}
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.FixedEffectModel
 import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, OptimizationStatesTracker}
@@ -33,7 +33,7 @@ class FixedEffectCoordinateTest {
   @Test
   def testUpdateModel(): Unit = {
     // Create mocks
-    val dataset = mock(classOf[FixedEffectDataSet])
+    val dataset = mock(classOf[FixedEffectDataset])
     val optimizationProblem = mock(classOf[DistributedOptimizationProblem[DistributedObjectiveFunction]])
 
     val fixedEffectModel = mock(classOf[FixedEffectModel])

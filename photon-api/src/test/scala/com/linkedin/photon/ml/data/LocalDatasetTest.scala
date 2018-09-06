@@ -24,9 +24,9 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.CommonTestUtils
 
 /**
- * Unit tests for [[LocalDataSet]].
+ * Unit tests for [[LocalDataset]].
  */
-class LocalDataSetTest {
+class LocalDatasetTest {
 
   /**
    * Test the Pearson correlation score computation.
@@ -40,7 +40,7 @@ class LocalDataSetTest {
       Vector(0.0, 0.0, 2.0), Vector(5.0, 0.0, -3.0), Vector(7.0, 0.0, -8.0), Vector(0.0, 0.0, -1.0))
     val expected = Map(0 -> 0.05564149, 1 -> 1.0, 2 -> -0.40047142)
     val labelAndFeatures = labels.zip(features)
-    val computed = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures)
+    val computed = LocalDataset.computePearsonCorrelationScore(labelAndFeatures)
 
     computed.foreach { case (key, value) =>
       assertEquals(
@@ -83,7 +83,7 @@ class LocalDataSetTest {
       new SparseVector[Double](featureIndices, featureValues, numFeatures)
     }
     val localDataSet =
-      LocalDataSet(
+      LocalDataset(
         Array.tabulate(numSamples)(i => (i.toLong, LabeledPoint(labels(i), features(i), offset = 0.0, weight = 1.0))))
 
     // don't keep any features

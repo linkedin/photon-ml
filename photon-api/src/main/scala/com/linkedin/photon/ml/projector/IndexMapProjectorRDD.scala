@@ -19,7 +19,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataset}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.RDDLike
@@ -41,7 +41,7 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    * @param randomEffectDataSet The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
 
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
@@ -219,7 +219,7 @@ object IndexMapProjectorRDD {
    * @param randomEffectDataSet The input random effect dataset
    * @return The generated index map based RDD projectors
    */
-  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
+  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataset): IndexMapProjectorRDD = {
 
     val originalSpaceDimension = randomEffectDataSet
       .activeData

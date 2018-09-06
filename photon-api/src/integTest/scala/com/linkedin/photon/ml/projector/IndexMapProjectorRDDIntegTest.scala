@@ -74,10 +74,10 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
       randomEffectType: String,
       featureShardId: String,
       features: Seq[Vector[Double]],
-      numPartitions: Int = 4): RandomEffectDataSet = {
+      numPartitions: Int = 4): RandomEffectDataset = {
 
     val datasets = randomEffectIds.map((_,
-      new LocalDataSet(
+      new LocalDataset(
         features
           .map(vector => new LabeledPoint(0, vector))
           .map(addUniqueId)
@@ -88,7 +88,7 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
       randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
 
-    new RandomEffectDataSet(
+    new RandomEffectDataset(
       activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
   }
 

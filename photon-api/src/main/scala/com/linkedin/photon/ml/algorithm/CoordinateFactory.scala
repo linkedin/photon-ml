@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{DataSet, FixedEffectDataSet, RandomEffectDataSetInProjectedSpace}
+import com.linkedin.photon.ml.data.{Dataset, FixedEffectDataset, RandomEffectDatasetInProjectedSpace}
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.ObjectiveFunctionFactory
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
@@ -33,10 +33,10 @@ import com.linkedin.photon.ml.util.PhotonBroadcast
 object CoordinateFactory {
 
   /**
-   * Creates a [[Coordinate]] of the appropriate type, given the input [[DataSet]],
+   * Creates a [[Coordinate]] of the appropriate type, given the input [[Dataset]],
    * [[CoordinateOptimizationConfiguration]], and [[ObjectiveFunction]].
    *
-   * @tparam D Some type of [[DataSet]]
+   * @tparam D Some type of [[Dataset]]
    * @param dataSet The input data to use for training
    * @param coordinateOptConfig The optimization settings for training
    * @param lossFunctionConstructor A constructor for the loss function used for training
@@ -45,9 +45,9 @@ object CoordinateFactory {
    * @param normalizationContextWrapper A wrapper for the [[com.linkedin.photon.ml.normalization.NormalizationContext]]
    * @param trackState Should the internal optimization states be recorded?
    * @param computeVariance Should the trained coefficient variances be computed in addition to the means?
-   * @return A [[Coordinate]] for the [[DataSet]] of type [[D]]
+   * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
    */
-  def build[D <: DataSet[D]](
+  def build[D <: Dataset[D]](
       dataSet: D,
       coordinateOptConfig: CoordinateOptimizationConfiguration,
       lossFunctionConstructor: ObjectiveFunctionFactory,
@@ -61,7 +61,7 @@ object CoordinateFactory {
 
     (dataSet, coordinateOptConfig, lossFunction, normalizationContextWrapper) match {
       case (
-        fEDataSet: FixedEffectDataSet,
+        fEDataSet: FixedEffectDataset,
         fEOptConfig: FixedEffectOptimizationConfiguration,
         distributedLossFunction: DistributedObjectiveFunction,
         normalizationContextBroadcast: NormalizationContextBroadcast) =>
@@ -84,7 +84,7 @@ object CoordinateFactory {
             computeVariance)).asInstanceOf[Coordinate[D]]
 
       case (
-        rEDataSet: RandomEffectDataSetInProjectedSpace,
+        rEDataSet: RandomEffectDatasetInProjectedSpace,
         rEOptConfig: RandomEffectOptimizationConfiguration,
         singleNodeLossFunction: SingleNodeObjectiveFunction,
         _) =>

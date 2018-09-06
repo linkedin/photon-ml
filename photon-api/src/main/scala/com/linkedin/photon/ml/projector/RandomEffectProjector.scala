@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.projector
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -41,7 +41,7 @@ protected[ml] trait RandomEffectProjector {
    * @param randomEffectDataSet The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet
+  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset
 
   /**
    * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original
@@ -72,7 +72,7 @@ object RandomEffectProjector {
    * @return A new [[RandomEffectProjector]]
    */
   protected[ml] def build(
-      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectDataSet: RandomEffectDataset,
       projectorType: ProjectorType): RandomEffectProjector = projectorType match {
 
     case RandomProjection(projectedSpaceDimension) =>

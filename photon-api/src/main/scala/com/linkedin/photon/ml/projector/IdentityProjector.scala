@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.projector
 import org.apache.spark.rdd.RDD
 import breeze.linalg.Vector
 
-import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -31,7 +31,7 @@ protected[ml] class IdentityProjector extends RandomEffectProjector {
    * @param randomEffectDataSet The input sharded dataset in the original space
    * @return The sharded dataset in the projected space
    */
-  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet =
+  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset =
     randomEffectDataSet
 
   /**

@@ -18,7 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataset}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.BroadcastLike
@@ -42,7 +42,7 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
    * @param randomEffectDataSet The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
 
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
@@ -134,7 +134,7 @@ object ProjectionMatrixBroadcast {
    * @return The generated random projection based broadcast projector
    */
   protected[ml] def buildRandomProjectionBroadcastProjector(
-      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectDataSet: RandomEffectDataset,
       projectedSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,
       seed: Long = MathConst.RANDOM_SEED): ProjectionMatrixBroadcast = {
