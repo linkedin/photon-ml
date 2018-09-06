@@ -354,8 +354,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
   /**
    * Test GAME training with a fixed effect model only and hyperparameter tuning. Note that the best model may not be
-   * one of the tuned models. (This test is commented out since hyper-parameter tuning is temporarily disabled in
-   * photon-ml. Hyper-parameter tuning is still available in LinkedIn internal library li-photon-ml.)
+   * one of the tuned models. (This test is commented out since hyperparameter tuning is temporarily disabled in
+   * photon-ml. Hyperparameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
 //  @Test
 //  def c(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {

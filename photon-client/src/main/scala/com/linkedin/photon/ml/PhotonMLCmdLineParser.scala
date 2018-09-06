@@ -261,7 +261,7 @@ object PhotonMLCmdLineParser {
         .foreach(x => params.featureDimension = x)
 
       opt[Boolean](USE_WARM_START)
-        .text("Whether to use warm start when exploring hyper-parameters or not. Default is 'true'.")
+        .text("Whether to use warm start when exploring hyperparameter space or not. Default is 'true'.")
         .foreach(x => params.useWarmStart = x)
 
       help(HELP_OPTION).text("prints Photon-ML's usage text")

@@ -97,7 +97,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
 
   /**
    * Run the algorithm with the configured parameters, starting from an initial model of all-0 coefficients
-   * (cold start in iterations over the regularization weights for hyper-parameter tuning).
+   * (cold start in iterations over the regularization weights for hyperparameter tuning).
    *
    * @param input The training data
    * @return The learned generalized linear models of each regularization weight and iteration.
@@ -107,7 +107,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
 
   /**
    * Run the algorithm with the configured parameters, starting from the initial model provided
-   * (warm start in iterations over the regularization weights for hyper-parameter tuning).
+   * (warm start in iterations over the regularization weights for hyperparameter tuning).
    *
    * @param input The training data
    * @param initialModel The initial model from which to begin optimization
