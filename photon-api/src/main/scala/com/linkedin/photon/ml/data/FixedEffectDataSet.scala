@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
- * DataSet implementation for fixed effect data sets.
+ * DataSet implementation for fixed effect datasets.
  *
  * @param labeledPoints The input data
  * @param featureShardId The feature shard id
@@ -135,11 +135,11 @@ protected[ml] class FixedEffectDataSet(
 object FixedEffectDataSet {
 
   /**
-   * Build an instance of a fixed effect data set for the given feature shard.
+   * Build an instance of a fixed effect dataset for the given feature shard.
    *
    * @param gameDataSet The input dataset
    * @param featureShardId The feature shard ID
-   * @return A new data set with given configuration
+   * @return A new dataset with given configuration
    */
   protected[ml] def apply(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],

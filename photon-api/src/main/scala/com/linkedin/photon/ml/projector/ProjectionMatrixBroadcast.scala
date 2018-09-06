@@ -37,10 +37,10 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
   val projectionMatrix: ProjectionMatrix = projectionMatrixBroadcast.value
 
   /**
-   * Project the data set from the original space to the projected space.
+   * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input data set in the original space
-   * @return The same data set in the projected space
+   * @param randomEffectDataSet The input dataset in the original space
+   * @return The same dataset in the projected space
    */
   override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
 
@@ -127,7 +127,7 @@ object ProjectionMatrixBroadcast {
   /**
    * Generate random projection based broadcast projector
    *
-   * @param randomEffectDataSet The input random effect data set
+   * @param randomEffectDataSet The input random effect dataset
    * @param projectedSpaceDimension The dimension of the projected feature space
    * @param isKeepingInterceptTerm Whether to keep the intercept in the original feature space
    * @param seed The seed of random number generator

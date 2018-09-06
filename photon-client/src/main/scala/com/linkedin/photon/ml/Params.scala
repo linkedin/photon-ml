@@ -47,7 +47,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * Validating data directory. Note that
    *    1. Validation is optional
-   *    2. If validation data set is provided, the best model will be provided;
+   *    2. If validation dataset is provided, the best model will be provided;
    *    3. No matter 1 or 2, all learned models will be provided, so users can always perform an independent model
    *       selection job
    */

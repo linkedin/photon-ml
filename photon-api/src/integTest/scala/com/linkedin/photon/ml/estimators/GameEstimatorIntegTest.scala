@@ -51,7 +51,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
   import GameEstimatorIntegTest._
 
   /**
-   * A very simple test that fits a toy data set using only the [[GameEstimator]] (not the full Driver).
+   * A very simple test that fits a toy dataset using only the [[GameEstimator]] (not the full Driver).
    * This is useful to understand the minimum setting in which a [[GameEstimator]] will function properly,
    * and to verify the algorithms manually.
    *
@@ -113,9 +113,9 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
   }
 
   /**
-   * Combine the trivial data set with each type of normalization.
+   * Combine the trivial dataset with each type of normalization.
    *
-   * @return A data set to train on and the type or normalization to use during training
+   * @return A dataset to train on and the type or normalization to use during training
    */
   @DataProvider
   def normalizationParameters(): Array[Array[Object]] = {
@@ -407,7 +407,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 object GameEstimatorIntegTest {
 
   /**
-   * The test data set here is a subset of the Yahoo! music data set available on the internet, in [[DataFrame]] form,
+   * The test dataset here is a subset of the Yahoo! music dataset available on the internet, in [[DataFrame]] form,
    * stored in the parquet format.
    */
   private val inputPath = getClass

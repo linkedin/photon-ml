@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.Regression
 
 /**
- * Verify that on a particular data set, the model only produces non-negative predictions.
+ * Verify that on a particular dataset, the model only produces non-negative predictions.
  */
 class NonNegativePredictionValidator[-GLM <: GeneralizedLinearModel with Regression: ClassTag]
   extends ModelValidator[GLM] {

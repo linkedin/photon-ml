@@ -1,4 +1,4 @@
-This directory contains a data set with user-defined column names that are not standard.
+This directory contains a dataset with user-defined column names that are not standard.
 
 import avro.schema
 from avro.datafile import DataFileReader, DataFileWriter

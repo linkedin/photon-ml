@@ -49,7 +49,7 @@ object Evaluation extends Logging {
    * all metrics.
    *
    * @param model The GLM model to be evaluated
-   * @param dataSet The data set used to evaluate the GLM model
+   * @param dataSet The dataset used to evaluate the GLM model
    * @return Map of (metricName &rarr; value)
    */
   def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): MetricsMap = {

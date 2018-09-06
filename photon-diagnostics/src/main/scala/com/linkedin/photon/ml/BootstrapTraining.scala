@@ -113,7 +113,7 @@ object BootstrapTraining {
    *
    * The choice of aggregations will determine what the output of this function is. For example, using
    * [[BootstrapTraining.aggregateCoefficientConfidenceIntervals()]] will produce useful diagnostic metadata about
-   * a model trained on the full data set, while one could just as easily use an aggregator that binds the underlying
+   * a model trained on the full dataset, while one could just as easily use an aggregator that binds the underlying
    * models to a bootstrap aggregating adapter to get model bagging.
    *
    * @param numBootstrapSamples How many bootstrap samples to draw

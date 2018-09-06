@@ -80,7 +80,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
     data.map( x => new LabeledPoint(label = x._1, features = x._2)).toList
 
   /**
-   * Enumerate valid sets of (description, optimization problem builder, data set, validator) tuples.
+   * Enumerate valid sets of (description, optimization problem builder, dataset, validator) tuples.
    */
   @DataProvider
   def getGeneralizedLinearOptimizationProblems: Array[Array[Object]] = {

@@ -150,7 +150,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
         case Some(sampler) => sampler.downSample(input).values
         case None => input.values
       })
-      .setName("In memory fixed effect training data set")
+      .setName("In memory fixed effect training dataset")
       .persist(StorageLevel.MEMORY_AND_DISK)
     val result = run(data, initialModel)
 

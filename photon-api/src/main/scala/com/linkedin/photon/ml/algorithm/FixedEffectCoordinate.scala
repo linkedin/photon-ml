@@ -38,7 +38,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   extends Coordinate[FixedEffectDataSet](dataSet) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Score the effect-specific dataset in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores

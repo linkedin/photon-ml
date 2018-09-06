@@ -27,18 +27,18 @@ import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 
 /**
- * Data set implementation for random effect datasets:
+ * dataset implementation for random effect datasets:
  *
- *   activeData + passiveData = full sharded data set
+ *   activeData + passiveData = full sharded dataset
  *
  * For the cases where a random effect ID may have a lot of data (enough that it starts causing trouble running on a
  * single node), active and passive data provide tuning options. Active data is the subset of data that is used for
  * both training and scoring (when determining residuals), while passive data is used only for scoring. In the vast
  * majority of cases, all data will be active data.
  *
- * @param activeData Grouped data sets mostly to train the sharded model and score the whole data set.
+ * @param activeData Grouped datasets mostly to train the sharded model and score the whole dataset.
  * @param uniqueIdToRandomEffectIds Unique id to random effect id map
- * @param passiveDataOption Flattened data sets used to score the whole data set
+ * @param passiveDataOption Flattened datasets used to score the whole dataset
  * @param passiveDataRandomEffectIdsOption Passive data individual IDs
  * @param randomEffectType The random effect type (e.g. "memberId")
  * @param featureShardId The feature shard ID
@@ -228,10 +228,10 @@ protected[ml] class RandomEffectDataSet(
 
 object RandomEffectDataSet {
   /**
-   * Build the random effect data set with the given configuration.
+   * Build the random effect dataset with the given configuration.
    *
-   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect data set
-   * @param randomEffectDataConfiguration The data configuration for the random effect data set
+   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect dataset
+   * @param randomEffectDataConfiguration The data configuration for the random effect dataset
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return A new random effect dataset with the given configuration
    */
@@ -342,14 +342,14 @@ object RandomEffectDataSet {
   }
 
   /**
-   * Generate a data set, grouped by random effect ID and limited to a maximum number of samples selected via reservoir
+   * Generate a dataset, grouped by random effect ID and limited to a maximum number of samples selected via reservoir
    * sampling.
    *
    * The 'Min Heap' reservoir sampling algorithm is used for two reasons:
    * 1. The exact sampling must be reproducible so that [[RDD]] partitions can be recovered
    * 2. The linear algorithm is non-trivial to combine in a distributed manner
    *
-   * @param rawKeyedDataSet The raw data set, with samples keyed by random effect ID
+   * @param rawKeyedDataSet The raw dataset, with samples keyed by random effect ID
    * @param partitioner The partitioner
    * @param sampleCap The sample cap
    * @param randomEffectType The type of random effect
@@ -422,13 +422,13 @@ object RandomEffectDataSet {
   /**
    * Generate passive dataset.
    *
-   * @param gameDataSet The raw input data set
-   * @param activeData The active data set
+   * @param gameDataSet The raw input dataset
+   * @param activeData The active dataset
    * @param gameDataPartitioner A global partitioner
-   * @param randomEffectType The corresponding random effect type of the data set
-   * @param featureShardId Key of the feature shard used to generate the data set
-   * @param passiveDataLowerBound The lower bound on the number of data points required to create a passive data set
-   * @return The passive data set
+   * @param randomEffectType The corresponding random effect type of the dataset
+   * @param featureShardId Key of the feature shard used to generate the dataset
+   * @param passiveDataLowerBound The lower bound on the number of data points required to create a passive dataset
+   * @return The passive dataset
    */
   private def generatePassiveData(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],

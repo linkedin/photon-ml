@@ -59,7 +59,7 @@ object GameScoringDriver extends GameDriver {
 
   val logDataAndModelStats: Param[Boolean] = ParamUtils.createParam(
     "log data and model stats",
-    "Whether to log data set and model statistics (can be time-consuming for very large data sets).")
+    "Whether to log dataset and model statistics (can be time-consuming for very large datasets).")
 
   val spillScoresToDisk: Param[Boolean] = ParamUtils.createParam(
     "spill scores to disk",

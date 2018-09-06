@@ -18,7 +18,7 @@ import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.projector.{IndexMapProjection, ProjectorType}
 
 /**
- * Generic trait for a configuration to define a coordinate data set.
+ * Generic trait for a configuration to define a coordinate dataset.
  */
 sealed trait CoordinateDataConfiguration {
 
@@ -31,7 +31,7 @@ sealed trait CoordinateDataConfiguration {
 /**
  * Configuration needed in order to generate a [[com.linkedin.photon.ml.data.FixedEffectDataSet]].
  *
- * @param featureShardId Key of the feature shard used to generate the data set
+ * @param featureShardId Key of the feature shard used to generate the dataset
  * @param minNumPartitions Minimum number of data partitions
  */
 case class FixedEffectDataConfiguration(
@@ -42,27 +42,27 @@ case class FixedEffectDataConfiguration(
 /**
  * Configurations needed in order to generate a [[com.linkedin.photon.ml.data.RandomEffectDataSet]]
  *
- * @param randomEffectType The corresponding random effect type of the data set
- * @param featureShardId Key of the feature shard used to generate the data set
+ * @param randomEffectType The corresponding random effect type of the dataset
+ * @param featureShardId Key of the feature shard used to generate the dataset
  * @param minNumPartitions Minimum number of data partitions
  * @param numActiveDataPointsLowerBound The lower bound on the number of samples required to train a random effect model
  *                                      for an entity. If this bound is not met, the data is discarded.
  * @param numActiveDataPointsUpperBound The upper bound on the number of samples to keep (via reservoir sampling) as
- *                                      "active" for each individual-id level local data set. The remaining samples that
+ *                                      "active" for each individual-id level local dataset. The remaining samples that
  *                                      meet the numPassiveDataPointsToKeepLowerBound as discussed below will be kept as
  *                                      "passive" data.
  * @param numPassiveDataPointsLowerBound The lower bound on the number of data points required to create an
- *                                       individual-id level passive data set using the data points leftover from the
- *                                       active data set. In summary: IDs with fewer than
- *                                       [[numActiveDataPointsUpperBound]] samples will only an active data set
+ *                                       individual-id level passive dataset using the data points leftover from the
+ *                                       active dataset. In summary: IDs with fewer than
+ *                                       [[numActiveDataPointsUpperBound]] samples will only an active dataset
  *                                       containing all samples; IDs with fewer than ([[numActiveDataPointsUpperBound]]
- *                                       + [[numPassiveDataPointsLowerBound]]) will have only an active data set
+ *                                       + [[numPassiveDataPointsLowerBound]]) will have only an active dataset
  *                                       containing [[numActiveDataPointsUpperBound]] samples; all other IDs will have
- *                                       an active data set containing [[numActiveDataPointsUpperBound]] samples and a
- *                                       passive data set containing the remaining samples.
+ *                                       an active dataset containing [[numActiveDataPointsUpperBound]] samples and a
+ *                                       passive dataset containing the remaining samples.
  * @param numFeaturesToSamplesRatioUpperBound The upper bound on the ratio between number of features and number of
  *                                            samples. Used for dimensionality reduction for IDs with very few samples.
- * @param projectorType The projector type, which is used to project the feature space of the random effect data set
+ * @param projectorType The projector type, which is used to project the feature space of the random effect dataset
  *                      into a different space, usually one with lower dimension.
  */
 case class RandomEffectDataConfiguration(

@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.projector.Projector
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Local data set implementation.
+ * Local dataset implementation.
  *
  * @note One design concern is whether to store the local data as a [[Map]] or an [[Array]] (high sort cost, but low
  *       merge cost vs. no sort cost but high merge cost). Currently, we use an [[Array]] since the data is only sorted

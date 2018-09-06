@@ -24,22 +24,22 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * A trait that performs two types of projections:
  * <ul>
  * <li>
- *   Project the random effect data set from the original space to the projected space, usually as a pre-processing
+ *   Project the random effect dataset from the original space to the projected space, usually as a pre-processing
  *   step before the model training phase.
  * </li>
  * <li>
  *   Project the model coefficients from the projected space back to the original space after training the model,
- *   before scoring a data set in the original space.
+ *   before scoring a dataset in the original space.
  * </li>
  * </ul>
  */
 protected[ml] trait RandomEffectProjector {
 
   /**
-   * Project the data set from the original space to the projected space.
+   * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input data set in the original space
-   * @return The same data set in the projected space
+   * @param randomEffectDataSet The input dataset in the original space
+   * @return The same dataset in the projected space
    */
   def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet
 
@@ -67,7 +67,7 @@ object RandomEffectProjector {
   /**
    * Builds a random effect projector instance.
    *
-   * @param randomEffectDataSet The data set to project
+   * @param randomEffectDataSet The dataset to project
    * @param projectorType The type of the projector
    * @return A new [[RandomEffectProjector]]
    */
@@ -87,6 +87,6 @@ object RandomEffectProjector {
 
     case _ =>
       throw new UnsupportedOperationException(
-        s"Projector type $projectorType for random effect data set is not supported")
+        s"Projector type $projectorType for random effect dataset is not supported")
   }
 }

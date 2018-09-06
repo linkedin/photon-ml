@@ -1,4 +1,4 @@
-This directory contains data sets that contain bad weight values for the samples, i.e. negative or 0 weights. The data
+This directory contains datasets that contain bad weight values for the samples, i.e. negative or 0 weights. The data
 is the heart data, with only the weights modified via the following python script:
 
 import avro.schema

@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.util.{Logging, PhotonBroadcast}
 object ModelTraining extends Logging {
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings.
+   * Train a generalized linear model using the given training dataset and the Photon-ML's parameter settings.
    *
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
@@ -81,7 +81,7 @@ object ModelTraining extends Logging {
       useWarmStart)
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings.
+   * Train a generalized linear model using the given training dataset and the Photon-ML's parameter settings.
    * Sets up a GLM of the appropriate kind then trains it for various regularization weights, performing hyperparameter
    * tuning.
    *

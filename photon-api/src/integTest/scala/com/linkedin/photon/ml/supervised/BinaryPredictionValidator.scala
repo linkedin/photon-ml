@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
- * Verify that on a particular data set, the model only produces finite predictions.
+ * Verify that on a particular dataset, the model only produces finite predictions.
  */
 class BinaryPredictionValidator[-GLM <: GeneralizedLinearModel with BinaryClassifier: ClassTag]
   extends ModelValidator[GLM] {

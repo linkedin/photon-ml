@@ -185,9 +185,9 @@ object DataValidators extends Logging {
     }
 
   /**
-   * Validate a data set using one or more data point validators.
+   * Validate a dataset using one or more data point validators.
    *
-   * @param dataSet The input data set
+   * @param dataSet The input dataset
    * @param perSampleValidators A list of (data validator, error message) pairs
    * @return The list of validation error messages for the input data
    */
@@ -207,9 +207,9 @@ object DataValidators extends Logging {
       .map(_._2)
 
   /**
-   * Validate a full or sampled data set using the set of data point validators relevant to the training problem.
+   * Validate a full or sampled dataset using the set of data point validators relevant to the training problem.
    *
-   * @param inputData The input data set
+   * @param inputData The input dataset
    * @param taskType The training task type
    * @param dataValidationType The validation intensity
    * @throws IllegalArgumentException if one or more of the data validations failed

@@ -91,7 +91,7 @@ object PhotonMLCmdLineParser {
       opt[String](VALIDATE_DIR_OPTION)
         .text(s"Input directory of validating data. Default: ${defaultParams.validateDirOpt}. Note that:\n" +
             "1. Validation is optional\n" +
-            "2. If a validation data set is provided, then model validation will be performed and the best model will" +
+            "2. If a validation dataset is provided, then model validation will be performed and the best model will" +
             " be selected\n" +
             "3. No matter what, all learned models will be provided so that users can perform an independent model " +
             "selection job")

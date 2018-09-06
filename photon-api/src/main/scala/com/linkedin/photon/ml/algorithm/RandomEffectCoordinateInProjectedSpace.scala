@@ -35,7 +35,7 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNo
   extends RandomEffectCoordinate[Objective](dataSetInProjectedSpace, optimizationProblem) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Score the effect-specific dataset in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores

@@ -117,8 +117,8 @@ class CoordinateDescent(
 
   /**
    * This function optimizes the model w.r.t. the objective function. Optionally, it also evaluates the model on the
-   * validation data set using one or more validation functions. In that case, the output is the model which yielded the
-   * best evaluation on the validation data set w.r.t. the primary evaluation function. Otherwise, it's simply the
+   * validation dataset using one or more validation functions. In that case, the output is the model which yielded the
+   * best evaluation on the validation dataset w.r.t. the primary evaluation function. Otherwise, it's simply the
    * trained model.
    *
    * @param coordinates A map of optimization problem coordinates (optimization sub-problems)

@@ -206,7 +206,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Calculate the Optimizer state given some data.
    *
-   * @note involves a calculation over the whole data set, so can be expensive.
+   * @note involves a calculation over the whole dataset, so can be expensive.
    *
    * @param objectiveFunction The objective function to be optimized
    * @param coefficients The model coefficients

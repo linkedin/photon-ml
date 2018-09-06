@@ -518,7 +518,7 @@ object GameTrainingDriver extends GameDriver {
   }
 
   /**
-   * Reads the validation data set, handling specifics of input date ranges in the params.
+   * Reads the validation dataset, handling specifics of input date ranges in the params.
    *
    * @param avroDataReader The [[AvroDataReader]] to use for reading validation data
    * @param featureIndexMapLoaders The feature index map loaders
@@ -702,7 +702,7 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Select best model according to validation evaluator.
    *
-   * @param models The models to evaluate (single evaluator, on the validation data set)
+   * @param models The models to evaluate (single evaluator, on the validation dataset)
    * @return The best model
    */
   protected[training] def selectBestModel(models: Seq[GameEstimator.GameResult]): GameEstimator.GameResult = {
@@ -714,7 +714,7 @@ object GameTrainingDriver extends GameDriver {
         val (evaluator1, score1) = eval1.head
         val (evaluator2, score2) = eval2.head
 
-        // TODO: Each iteration of the Bayesian hyperparameter tuning recomputes the GAME data set. This causes the
+        // TODO: Each iteration of the Bayesian hyperparameter tuning recomputes the GAME dataset. This causes the
         // TODO: equality check to fail: not only are the evaluators not identical (ev1.eq(ev2)) but they're not equal
         // TODO: either (they reference different RDDs, which are computed identically). The below check is a temporary
         // TODO: solution.

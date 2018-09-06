@@ -39,7 +39,7 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
    * Compute training-time diagnostics without warm-start models.
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingData
    * Set of <em>training</em> data
@@ -57,7 +57,7 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
    * Compute training-time diagnostics, with (potentially empty) warm start models.
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingData
    * Set of <em>training</em> data

@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.io.scopt.avro.ScoptNameAndTermFeatureBagsParameter
 import com.linkedin.photon.ml.util._
 
 /**
- * A driver to build one or more feature bags from an input data set. These feature bags can be modified to act as
+ * A driver to build one or more feature bags from an input dataset. These feature bags can be modified to act as
  * feature whitelists for GAME input data.
  */
 object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {

@@ -57,7 +57,7 @@ import com.linkedin.photon.ml.util.{IOUtils, PhotonLogger, Utils}
  * internal data structure </li>
  * <li> Train, which trains the model given the user's specified configurations and parameters
  * (through [[Params]]) </li>
- * <li> Validate, which validates the trained model using the validating data set, if provided, and select the best
+ * <li> Validate, which validates the trained model using the validating dataset, if provided, and select the best
  * model given the validating results </li>
  * </ul>
  * More detailed documentation can be found either through the comments and notations in the source code, or at
@@ -422,7 +422,7 @@ protected[ml] class Driver(
     // TODO: we potentially have an excessive memory usage issue at this step, 2M feature dataset with fail at here
     // due to OOM
 
-    /* Select the best model using the validating data set and stores the best model as text file */
+    /* Select the best model using the validating dataset and stores the best model as text file */
     val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
       case TaskType.LINEAR_REGRESSION =>
         val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
@@ -452,7 +452,7 @@ protected[ml] class Driver(
    *
    */
   protected def validate(): Unit = {
-    /* Validating the learned models using the validating data set */
+    /* Validating the learned models using the validating dataset */
     logger.info("\nStart to validate the learned models with validating data")
     val startTimeForValidating = System.currentTimeMillis()
     computeAndLogModelMetrics()

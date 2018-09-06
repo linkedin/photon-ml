@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.Logging
 
 /**
- * Try to diagnose under/over-fit and label bias problems in a data set. The idea here is that by computing metrics
+ * Try to diagnose under/over-fit and label bias problems in a dataset. The idea here is that by computing metrics
  * on both a training set and a hold-out set, we can show how the metrics move as a function of the training set size
  *
  */
@@ -37,7 +37,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
   /**
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingSet
    * @param summary

@@ -44,7 +44,7 @@ import com.linkedin.photon.ml.util._
 /**
  * Test cases for the GAME training driver.
  *
- * Most of the cases are based on the Yahoo! Music data set in:
+ * Most of the cases are based on the Yahoo! Music dataset in:
  * photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
  */
 class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with TestTemplateWithTmpDir {
@@ -639,7 +639,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
-   * Evaluate the model by the specified evaluators with the validation data set.
+   * Evaluate the model by the specified evaluators with the validation dataset.
    *
    * @param modelPath Base path to the GAME model files
    * @return Evaluation results for each specified evaluator
