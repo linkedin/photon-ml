@@ -28,11 +28,11 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Integration tests for [[BasicStatisticalSummary]].
+ * Integration tests for [[FeatureDataStatistics]].
  */
-class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
+class FeatureDataStatisticsIntegTest extends SparkTestUtils {
 
-  import BasicStatisticalSummaryIntegTest._
+  import FeatureDataStatisticsIntegTest._
 
   /**
    * A trivial set of fixed labeled points for simple tests to verify by hand.
@@ -70,15 +70,15 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
         .toDF("response", featureShardId)
 
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)), None)
+      val stats = FeatureDataStatistics(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)), None)
 
       assertEquals(stats.count, 10)
       assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       assertEquals(stats.mean(1), -0.26976712031174965, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       assertEquals(stats.variance(0), 0.40303763661250336, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       assertEquals(stats.variance(1), 0.13748971393448942, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-      assertEquals(stats.numNonzeros(0), 10.0)
-      assertEquals(stats.numNonzeros(1), 4.0)
+      assertEquals(stats.numNonZeros(0), 10.0)
+      assertEquals(stats.numNonZeros(1), 4.0)
       assertEquals(stats.max(0), 0.9699938346531928, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       assertEquals(stats.max(1), 0.0, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
       assertEquals(stats.min(0), -0.7306653538519616, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
@@ -107,7 +107,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
       }
       .toList
     val dataRdd = sc.parallelize(labeledPoints)
-    val summary = BasicStatisticalSummary(dataRdd, None)
+    val summary = FeatureDataStatistics(dataRdd, None)
 
     assertEquals(summary.count, NUM_POINTS.toLong)
 
@@ -143,12 +143,12 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
     assertIterableEqualsWithTolerance(summary.variance.toArray, variance, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertIterableEqualsWithTolerance(summary.normL1.toArray, normL1, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertIterableEqualsWithTolerance(summary.normL2.toArray, normL2, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertIterableEqualsWithTolerance(summary.numNonzeros.toArray, numNonzeros, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    assertIterableEqualsWithTolerance(summary.numNonZeros.toArray, numNonzeros, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
     assertIterableEqualsWithTolerance(summary.meanAbs.toArray, meanAbs, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
 }
 
-object BasicStatisticalSummaryIntegTest {
+object FeatureDataStatisticsIntegTest {
 
   val NUM_POINTS: Int = 1000
   val NUM_FEATURES: Int = 100

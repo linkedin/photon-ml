@@ -36,7 +36,7 @@ import com.linkedin.photon.ml.index.{IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game._
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, TaskType}
@@ -515,7 +515,7 @@ object ModelProcessingUtils {
    */
   def writeBasicStatistics(
       sc: SparkContext,
-      summary: BasicStatisticalSummary,
+      summary: FeatureDataStatistics,
       outputDir: Path,
       keyToIdMap: IndexMap): Unit = {
 
@@ -547,7 +547,7 @@ object ModelProcessingUtils {
       summary.mean.toArray,
       summary.normL1.toArray,
       summary.normL2.toArray,
-      summary.numNonzeros.toArray,
+      summary.numNonZeros.toArray,
       summary.variance.toArray)
       .transpose
       .map {

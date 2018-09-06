@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.normalization
 import breeze.linalg.{DenseVector, Vector}
 
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 
 /**
  * The transformation consists of up to two parts: a translational shift and a scaling factor. The normalization of a
@@ -136,7 +136,7 @@ protected[ml] object NormalizationContext {
    */
   def apply(
       normalizationType: NormalizationType,
-      summary: BasicStatisticalSummary): NormalizationContext = normalizationType match {
+      summary: FeatureDataStatistics): NormalizationContext = normalizationType match {
 
     case NormalizationType.NONE =>
       NoNormalization()

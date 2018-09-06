@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.classification.{BinaryClassifier, LogisticRegressionModel}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
@@ -92,7 +92,7 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
       normalizationType: NormalizationType): Unit = {
 
     // This is necessary to make Spark not complain serialization error of this class.
-    val summary = BasicStatisticalSummary(trainRDD, Some(DIMENSION))
+    val summary = FeatureDataStatistics(trainRDD, Some(DIMENSION))
     val normalizationContext = NormalizationContext(normalizationType, summary)
     val threshold = THRESHOLD
     val (models, _) = ModelTraining.trainGeneralizedLinearModel(
@@ -185,10 +185,10 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
     val heartSummaryInputPath = getClass.getClassLoader.getResource("DriverIntegTest/input/heart_summary.txt")
     val heartSummaryInput = readFileAsString(heartSummaryInputPath).split('\n')
     val mean = stringToVector(heartSummaryInput(0))
-    val heartSummary = new BasicStatisticalSummary(
+    val heartSummary = new FeatureDataStatistics(
+      heartData.length,
       mean,
       stringToVector(heartSummaryInput(1)),
-      heartData.length,
       stringToVector(heartSummaryInput(2)),
       stringToVector(heartSummaryInput(3)),
       stringToVector(heartSummaryInput(4)),
@@ -269,7 +269,7 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
         .persist()
 
       // Verify that the transformed rdd will have the correct transformation condition
-      val summaryAfterStandardization = BasicStatisticalSummary(transformedRDD, Some(normalizationContext.size - 1))
+      val summaryAfterStandardization = FeatureDataStatistics(transformedRDD, Some(normalizationContext.size - 1))
       val dim = summaryAfterStandardization.mean.size
 
       summaryAfterStandardization

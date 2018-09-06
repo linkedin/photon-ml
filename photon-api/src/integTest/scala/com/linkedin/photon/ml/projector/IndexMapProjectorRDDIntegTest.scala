@@ -21,7 +21,7 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.GameTestUtils
 
@@ -113,7 +113,7 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val dataPoints = dataSet.activeData.map{case(_, locals) => locals.dataPoints}
     val localPoints = dataPoints.flatMap{e => e.map(_._2)}
 
-    val summary = BasicStatisticalSummary(localPoints, Some(projectedSize))
+    val summary = FeatureDataStatistics(localPoints, Some(projectedSize))
     val normalizationContext = NormalizationContext(NormalizationType.STANDARDIZATION, summary)
 
     val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)

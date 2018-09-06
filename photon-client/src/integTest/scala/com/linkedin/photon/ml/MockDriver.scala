@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.diagnostics.featureimportance.FeatureImportanceRep
 import com.linkedin.photon.ml.diagnostics.fitting.FittingReport
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowReport
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.util.PhotonLogger
 
 /**
@@ -100,7 +100,7 @@ class MockDriver(
    * @param outputDir
    * @return
    */
-  override def summarizeFeatures(outputDir: Option[Path]): BasicStatisticalSummary = {
+  override def summarizeFeatures(outputDir: Option[Path]): FeatureDataStatistics = {
     isSummarized = true
     super.summarizeFeatures(outputDir)
   }

@@ -18,7 +18,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -34,7 +34,7 @@ abstract class AbstractFeatureImportanceDiagnostic(protected val modelNameToInde
   def diagnose(
       model: GeneralizedLinearModel,
       data: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): FeatureImportanceReport = {
+      summary: Option[FeatureDataStatistics]): FeatureImportanceReport = {
 
     val importanceMeasure = getImportanceDescription(summary)
 
@@ -60,7 +60,7 @@ abstract class AbstractFeatureImportanceDiagnostic(protected val modelNameToInde
     * @param summary Summary of the data (if available)
     * @return Description of how the importance scores are calculated
     */
-  protected def getImportanceDescription(summary: Option[BasicStatisticalSummary]): String
+  protected def getImportanceDescription(summary: Option[FeatureDataStatistics]): String
 
   /**
     *
@@ -71,7 +71,7 @@ abstract class AbstractFeatureImportanceDiagnostic(protected val modelNameToInde
     */
   protected def getImportances(
     model: GeneralizedLinearModel,
-    summary: Option[BasicStatisticalSummary]): Iterable[((String, String), Int, Double)]
+    summary: Option[FeatureDataStatistics]): Iterable[((String, String), Int, Double)]
 
   /**
     * @return The measure of importance is being used. This is in contrast with the importance description. The intent
@@ -97,7 +97,7 @@ abstract class AbstractFeatureImportanceDiagnostic(protected val modelNameToInde
       idx: Int,
       importance: Double,
       model: GeneralizedLinearModel,
-      summary: Option[BasicStatisticalSummary]): String = {
+      summary: Option[FeatureDataStatistics]): String = {
 
     val basic = f"Feature (name=[${id._1}], term=[${id._2}]) importance = [$importance%.03f], " +
       f"coefficient = [${model.coefficients.means(idx)}%.06g]"

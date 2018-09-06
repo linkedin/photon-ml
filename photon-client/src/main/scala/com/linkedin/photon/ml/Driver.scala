@@ -43,7 +43,7 @@ import com.linkedin.photon.ml.event._
 import com.linkedin.photon.ml.io.deprecated.{InputDataFormat, InputFormatFactory}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.RegularizationContext
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -92,7 +92,7 @@ protected[ml] class Driver(
   private[this] var featureNum: Int = -1
   private[this] var trainingDataNum: Int = -1
 
-  private[this] var summaryOption: Option[BasicStatisticalSummary] = None
+  private[this] var summaryOption: Option[FeatureDataStatistics] = None
   private[this] var normalizationContext: NormalizationContext = NoNormalization()
 
   private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
@@ -274,10 +274,10 @@ protected[ml] class Driver(
    * @param outputDir
    * @return
    */
-  protected def summarizeFeatures(outputDir: Option[Path]): BasicStatisticalSummary = {
+  protected def summarizeFeatures(outputDir: Option[Path]): FeatureDataStatistics = {
 
     val beforeSummarization = System.currentTimeMillis()
-    val summary = BasicStatisticalSummary(
+    val summary = FeatureDataStatistics(
       trainingData,
       inputDataFormat.indexMapLoader().indexMapForDriver().get(Constants.INTERCEPT_KEY))
 

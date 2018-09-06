@@ -19,7 +19,7 @@ import org.testng.annotations._
 
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.LinearRegressionModel
 
@@ -30,11 +30,21 @@ class FeatureImportanceDiagnosticTest {
 
   import org.testng.Assert._
 
-  private def generateModel(size: Int): (Map[String, Int], GeneralizedLinearModel, BasicStatisticalSummary) = {
+  private def generateModel(size: Int): (Map[String, Int], GeneralizedLinearModel, FeatureDataStatistics) = {
     val count = 1000L
     val features = DenseVector((1 to size).map(_.toDouble).toArray)
     val coefficients = Coefficients(features, variancesOption = None)
-    val summary = new BasicStatisticalSummary(features, features, count, DenseVector.ones[Double](size) * count.toDouble, features, features, features, features, features, None)
+    val summary = new FeatureDataStatistics(
+      count,
+      features,
+      features,
+      DenseVector.ones[Double](size) * count.toDouble,
+      features,
+      features,
+      features,
+      features,
+      features,
+      None)
     val model = new LinearRegressionModel(coefficients)
     val featureIdx = (1 to size).map(x => (s"FEATURE_$x", x - 1)).toMap[String, Int]
 
@@ -48,7 +58,7 @@ class FeatureImportanceDiagnosticTest {
     *
     * @return
    */
-  private def generateSmallModel(): (Map[String, Int], GeneralizedLinearModel, BasicStatisticalSummary) = {
+  private def generateSmallModel(): (Map[String, Int], GeneralizedLinearModel, FeatureDataStatistics) = {
     generateModel(AbstractFeatureImportanceDiagnostic.MAX_RANKED_FEATURES / 2)
   }
 
@@ -57,7 +67,7 @@ class FeatureImportanceDiagnosticTest {
     *
     * @return
    */
-  private def generateLargeModel(): (Map[String, Int], GeneralizedLinearModel, BasicStatisticalSummary) = {
+  private def generateLargeModel(): (Map[String, Int], GeneralizedLinearModel, FeatureDataStatistics) = {
     generateModel(2 * AbstractFeatureImportanceDiagnostic.MAX_RANKED_FEATURES)
   }
 
@@ -81,7 +91,7 @@ class FeatureImportanceDiagnosticTest {
   def checkHappyPath(diagnostic: ModelDiagnostic[GeneralizedLinearModel, FeatureImportanceReport],
                      featureIndices: Map[String, Int],
                      model: GeneralizedLinearModel,
-                     summary: Option[BasicStatisticalSummary]): Unit = {
+                     summary: Option[FeatureDataStatistics]): Unit = {
     val report = diagnostic.diagnose(model, null, summary)
     val expectedSize = math.min(featureIndices.size, AbstractFeatureImportanceDiagnostic.MAX_RANKED_FEATURES)
     val expectedRankImportanceSamples = AbstractFeatureImportanceDiagnostic.NUM_IMPORTANCE_FRACTILES + 1

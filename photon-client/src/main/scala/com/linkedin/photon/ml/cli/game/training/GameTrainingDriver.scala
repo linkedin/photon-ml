@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
 import com.linkedin.photon.ml.projector.IdentityProjection
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils
 import com.linkedin.photon.ml.util._
@@ -56,7 +56,7 @@ object GameTrainingDriver extends GameDriver {
   // These types make the code easier to read, and are somewhat specific to the GAME Driver
   //
 
-  type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
+  type FeatureShardStatistics = Iterable[(FeatureShardId, FeatureDataStatistics)]
   type FeatureShardStatisticsOpt = Option[FeatureShardStatistics]
   type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
 
@@ -602,7 +602,7 @@ object GameTrainingDriver extends GameDriver {
       featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics =
     featureIndexMapLoaders.map { case (featureShardId, indexMapLoader) =>
 
-      val summary = BasicStatisticalSummary(
+      val summary = FeatureDataStatistics(
         // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
         data.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)),
         indexMapLoader.indexMapForDriver().get(Constants.INTERCEPT_KEY))

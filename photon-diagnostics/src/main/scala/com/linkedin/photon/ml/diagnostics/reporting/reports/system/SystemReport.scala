@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 
 /**
  * Composite containing all of the system-related (i.e. common to all models) information.
@@ -27,5 +27,5 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 case class SystemReport(
     val nameToIndex: Map[String, Int],
 //    var params: Params,
-    var summary: Option[BasicStatisticalSummary] = None)
+    var summary: Option[FeatureDataStatistics] = None)
   extends LogicalReport

@@ -22,7 +22,7 @@ import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 import com.linkedin.photon.ml.test.CommonTestUtils
 import com.linkedin.photon.ml.util.VectorUtils
@@ -46,9 +46,9 @@ class NormalizationContextTest {
    * Test that a [[NormalizationContext]] can be correctly built from a statistical summary.
    *
    * @param normalizationType Type of normalization to build a [[NormalizationContext]] for
-   * @param expectedFactors The expected scaling factors for the test [[BasicStatisticalSummary]] and
+   * @param expectedFactors The expected scaling factors for the test [[FeatureDataStatistics]] and
    *                        [[NormalizationType]]
-   * @param expectedShifts The expected translational shifts for the test [[BasicStatisticalSummary]] and
+   * @param expectedShifts The expected translational shifts for the test [[FeatureDataStatistics]] and
    *                       [[NormalizationType]]
    */
   @Test(dataProvider = "normalizationTypes")
@@ -175,7 +175,7 @@ object NormalizationContextTest {
       DenseVector[Double](0.2, 0.0, 0.5, 0.0, 1.0, 0.0),
       DenseVector[Double](0.0, 10.0, 0.0, 5.0, 1.0, 0.0))
 
-    BasicStatisticalSummary.calculateBasicStatistics(
+    FeatureDataStatistics.calculateBasicStatistics(
       features.foldLeft(new MultivariateOnlineSummarizer()) { case (summarizer, vector) =>
         summarizer.add(VectorUtils.breezeToMllib(vector))
       },

@@ -20,7 +20,7 @@ import com.linkedin.photon.ml.diagnostics.fitting.FittingReport
 import com.linkedin.photon.ml.diagnostics.hl.HosmerLemeshowReport
 import com.linkedin.photon.ml.diagnostics.independence.PredictionErrorIndependenceReport
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -58,7 +58,7 @@ case class ModelDiagnosticReport[GLM <: GeneralizedLinearModel](
     val modelDescription: String,
     val nameIdxMap: Map[String, Int],
     val metrics: Map[String, Double],
-    val summary: Option[BasicStatisticalSummary],
+    val summary: Option[FeatureDataStatistics],
     val predictionErrorIndependence: Option[PredictionErrorIndependenceReport],
     var hosmerLemeshow: Option[HosmerLemeshowReport],
     val meanImpactFeatureImportance: Option[FeatureImportanceReport],

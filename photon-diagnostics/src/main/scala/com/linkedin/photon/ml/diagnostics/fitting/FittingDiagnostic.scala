@@ -21,7 +21,7 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.Logging
 
@@ -49,7 +49,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       warmStart: Map[Double, GeneralizedLinearModel],
       trainingSet: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary],
+      summary: Option[FeatureDataStatistics],
       seed: Long = System.nanoTime): Map[Double, FittingReport] = {
 
     val numSamples = trainingSet.count()
