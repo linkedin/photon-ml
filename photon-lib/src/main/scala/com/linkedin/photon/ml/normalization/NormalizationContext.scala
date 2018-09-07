@@ -20,35 +20,44 @@ import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
-  * The normalization approach for the optimization problem, especially for generalized linear model.
-  *
-  * The transformation consists of two parts, a translational shift and a scaling factor.
-  * The normalization of a feature vector x is:
-  *
-  * x[i] -> (x[i] - shift) .* factor
-  *
-  * The normalized vector has mean 0 and unit variance.
-  * If the shift is enabled, there must be an intercept provided.
-  * Normalization allows regularization to be applied evenly to all the features (same scale).
-  *
-  * This class assume that the intercepts for the original and the transformed space are both 1, so the shift for the
-  * intercept should be 0, and the factor for the intercept should be 1.
-  *
-  * Also note that this normalization context class covers all affine transformations without rotation.
-  */
-private[ml] case class NormalizationContext(
-    factors: Option[_ <: Vector[Double]],
-    shifts: Option[_ <: Vector[Double]],
-    interceptId: Option[Int]) {
+ * The transformation consists of up to two parts: a translational shift and a scaling factor. The normalization of a
+ * feature vector x is:
+ *
+ * x' = (x .- shift) .* factor
+ *
+ * where the operations are point-wise. A missing shift vector is equivalent to the 0 vector (all 0s), and a missing
+ * factor vector is equivalent to the 1 vector (all 1s).
+ *
+ * If the shift is enabled, there must be an intercept provided. This class assume that the intercepts for the original
+ * and the transformed space are both 1, so the shift for the intercept should be 0, and the factor for the intercept
+ * should be 1.
+ *
+ * Note that this class covers all affine transformations, excluding rotation.
+ */
+protected[ml] class NormalizationContext(
+    val factorsOpt: Option[Vector[Double]],
+    val shiftsAndInterceptOpt: Option[(Vector[Double], Int)])
+  extends Serializable {
 
-  require(!(shifts.isDefined && interceptId.isEmpty), "Shift without intercept is illegal.")
-  if (factors.isDefined && shifts.isDefined) {
-    require(factors.get.size == shifts.get.size, "Factors and shifts vectors should have the same size")
+  val size: Int = (factorsOpt, shiftsAndInterceptOpt) match {
+    case (Some(factors), None) =>
+      factors.length
+
+    case (None, Some((shifts, _))) =>
+      shifts.length
+
+    case (Some(factors), Some((shifts, _))) =>
+      require(factors.size == shifts.size, "Factors and shifts vectors should have the same size")
+
+      factors.length
+
+    case (None, None) =>
+      0
   }
 
   /**
-   * Transform the model coefficients of the transformed space to the original space for other usages. The key
-   * requirement for the transformation is to keep the margin consistent in both space, i.e:
+   * Transform the model coefficients of the transformed space to the original space. The key requirement for the
+   * transformation is to keep the margin consistent in both spaces, i.e:
    *
    * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
    *
@@ -58,30 +67,31 @@ private[ml] case class NormalizationContext(
    * w = w' .* factor
    * b = - w'^T^ shift + b'
    *
-   * @param inputCoef The coefficients + the intercept in the transformed space
-   * @return The coefficients + the intercept in the original space
+   * @param inputCoef The coefficients + the intercept (if present) in the transformed space
+   * @return The coefficients + the intercept (if present) in the original space
    */
-  def modelToOriginalSpace(inputCoef: Vector[Double]): Vector[Double] = {
+  def modelToOriginalSpace(inputCoef: Vector[Double]): Vector[Double] =
+    if (size == 0) {
+      inputCoef
+    } else {
+      require(size == inputCoef.size, "Vector size and the scaling factor/shift size are different.")
 
-    val outputCoef = factors match {
-      case Some(fs) =>
-        require(fs.size == inputCoef.size, "Vector size and the scaling factor size are different.")
-        inputCoef :* fs
-      case None =>
-        inputCoef.copy
-    }
-    // All shifts go to intercept
-    shifts.foreach { ss =>
-      require(ss.size == outputCoef.size, "Vector size and the translational shift size are different.")
-      outputCoef(interceptId.get) -= outputCoef.dot(ss)
-    }
+      val outputCoef = inputCoef.copy
 
-    outputCoef
-  }
+      factorsOpt.foreach { factors =>
+        outputCoef :*= factors
+      }
+      // All shifts go to intercept
+      shiftsAndInterceptOpt.foreach { case (shifts, intercept) =>
+        outputCoef(intercept) -= outputCoef.dot(shifts)
+      }
+
+      outputCoef
+    }
 
   /**
-   * Transform the model coefficients of the original space to the transformed space for other usages. The key
-   * requirement for the transformation is to keep the margin consistent in both space, i.e:
+   * Transform the model coefficients of the original space to the transformed space. The key requirement for the
+   * transformation is to keep the margin consistent in both spaces, i.e:
    *
    * w^T^ x + b = w'^T^ x' + b' = w'^T^ [(x - shift) .* factor] + b'
    *
@@ -91,86 +101,115 @@ private[ml] case class NormalizationContext(
    * w' = w ./ factor
    * b' = w^T^ shift + b
    *
-   * @param inputCoef The coefficients + the intercept in the original space
-   * @return The coefficients + the intercept in the transformed space
+   * @param inputCoef The coefficients + the intercept (if present) in the original space
+   * @return The coefficients + the intercept (if present) in the transformed space
    */
-  def modelToTransformedSpace(inputCoef: Vector[Double]): Vector[Double] = {
-    val outputCoef = inputCoef.copy
+  def modelToTransformedSpace(inputCoef: Vector[Double]): Vector[Double] =
+    if (size == 0) {
+      inputCoef
+    } else {
+      require(size == inputCoef.size, "Vector size and the scaling factor/shift size are different.")
 
-    // All shifts go to intercept
-    shifts.foreach { ss =>
-      require(ss.size == outputCoef.size, "Vector size and the translational shift size are different.")
-      outputCoef(interceptId.get) += outputCoef.dot(ss)
-    }
-    factors.foreach { fs =>
-      require(fs.size == outputCoef.size, "Vector size and the scaling factor size are different.")
-      outputCoef :/= fs
-    }
+      val outputCoef = inputCoef.copy
 
-    outputCoef
-  }
+      // All shifts go to intercept
+      shiftsAndInterceptOpt.foreach { case (shifts, intercept) =>
+        outputCoef(intercept) += outputCoef.dot(shifts)
+      }
+      factorsOpt.foreach { factors =>
+        outputCoef :/= factors
+      }
+
+      outputCoef
+    }
 }
 
-private[ml] object NormalizationContext {
+protected[ml] object NormalizationContext {
+
   /**
-   * A factory method to create normalization context according to the [[NormalizationType]] and the
-   * feature summary. If using [[NormalizationType]].STANDARDIZATION, an intercept index is also needed.
+   * A factory method to create a normalization context according to the [[NormalizationType]] and the
+   * feature summary. If using [[NormalizationType.STANDARDIZATION]], an intercept index is also needed.
    *
    * @param normalizationType The normalization type
-   * @param summary Feature summary
-   * @param interceptId The index of the intercept
-   * @return The normalization context
+   * @param summary Features statistical summary
+   * @return A normalization context
    */
   def apply(
       normalizationType: NormalizationType,
-      summary: => BasicStatisticalSummary,
-      interceptId: Option[Int]): NormalizationContext = normalizationType match {
+      summary: BasicStatisticalSummary): NormalizationContext = normalizationType match {
 
     case NormalizationType.NONE =>
-      new NormalizationContext(None, None, interceptId)
+      NoNormalization()
 
     case NormalizationType.SCALE_WITH_MAX_MAGNITUDE =>
-      val factors = summary.max.toArray.zip(summary.min.toArray).map {
-        case (max, min) =>
+      val factors = summary
+        .max
+        .toArray
+        .zip(summary.min.toArray)
+        .map { case (max, min) =>
           val magnitude = math.max(math.abs(max), math.abs(min))
           if (magnitude == 0) 1.0 else 1.0 / magnitude
         }
-      new NormalizationContext(Some(DenseVector(factors)), None, interceptId)
+
+      new NormalizationContext(Some(DenseVector(factors)), None)
 
     case NormalizationType.SCALE_WITH_STANDARD_DEVIATION =>
-      val factors = summary.variance.map(x => {
-        val std = math.sqrt(x)
-        if (std == 0) 1.0 else 1.0 / std
-      })
-      new NormalizationContext(Some(factors), None, interceptId)
+      val factors = summary
+        .variance
+        .map { s =>
+          val std = math.sqrt(s)
+
+          if (std == 0) 1.0 else 1.0 / std
+        }
+
+      new NormalizationContext(Some(factors), None)
 
     case NormalizationType.STANDARDIZATION =>
-      val factors = summary.variance.map(x => {
-        val std = math.sqrt(x)
-        if (std == 0) 1.0 else 1.0 / std
-      })
+      val factors = summary
+        .variance
+        .map { s =>
+          val std = math.sqrt(s)
+
+          if (std == 0) 1.0 else 1.0 / std
+        }
       val shifts = summary.mean.copy
+      val interceptId = summary.interceptIndex.get
+
       // Do not transform intercept
-      interceptId.foreach(id => {
-        shifts(id) = 0.0
-        factors(id) = 1.0
-      })
-      new NormalizationContext(Some(factors), Some(shifts), interceptId)
+      shifts(interceptId) = 0.0
+      factors(interceptId) = 1.0
+
+      new NormalizationContext(Some(factors), Some((shifts, interceptId)))
 
     case _ =>
       throw new IllegalArgumentException(s"NormalizationType $normalizationType not recognized.")
   }
+
+  /**
+   * Convenience method to extract construction arguments.
+   *
+   * @param context An existing [[NormalizationContext]]
+   * @return The contstruction arguments of the [[NormalizationContext]]
+   */
+  def unapply(context: NormalizationContext): Option[(Option[Vector[Double]], Option[(Vector[Double], Int)])] =
+    if (context == null) {
+      None
+    } else {
+      Some(context.factorsOpt, context.shiftsAndInterceptOpt)
+    }
 }
 
 /**
  * Factory to create contexts for no normalization.
  */
-private[ml] object NoNormalization {
+protected[ml] object NoNormalization {
+
+  private val none: NormalizationContext = new NormalizationContext(None, None)
 
   /**
    * Constructor ex nihilo, comme appelé du néant.
    *
    * @return An instance of NoNormalizationContext
    */
-  def apply(): NormalizationContext = NormalizationContext(factors = None, shifts = None, interceptId = None)
+  def apply(): NormalizationContext = none
 }

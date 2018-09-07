@@ -558,10 +558,9 @@ object GameTrainingDriver extends GameDriver {
 
     Utils.filter(getOrDefault(normalization) != NormalizationType.NONE) {
       val featureShardToNormalizationContextMap = statistics
-        .getOrElse(calculateStatistics(trainingData, featureIndexMapLoaders.keys))
+        .getOrElse(calculateStatistics(trainingData, featureIndexMapLoaders))
         .map { case (featureShardId, featureShardStats) =>
-          val intercept = featureIndexMapLoaders(featureShardId).indexMapForDriver().get(Constants.INTERCEPT_KEY)
-          (featureShardId, NormalizationContext(getOrDefault(normalization), featureShardStats, intercept))
+          (featureShardId, NormalizationContext(getOrDefault(normalization), featureShardStats))
         }
         .toMap
 
@@ -582,7 +581,7 @@ object GameTrainingDriver extends GameDriver {
       trainingData: DataFrame,
       featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatisticsOpt =
     get(dataSummaryDirectory).map { summarizationOutputDir: Path =>
-      calculateStatistics(trainingData, featureIndexMapLoaders.keys)
+      calculateStatistics(trainingData, featureIndexMapLoaders)
         .tap { case (featureShardId, featureShardStats) =>
           val outputPath = new Path(summarizationOutputDir, featureShardId)
           val indexMap = featureIndexMapLoaders(featureShardId).indexMapForDriver()
@@ -595,18 +594,20 @@ object GameTrainingDriver extends GameDriver {
    * Calculate basic statistics (same as spark-ml) on a DataFrame.
    *
    * @param data The data to compute statistics on
-   * @param featureShards The feature shards for which to compute statistics
+   * @param featureIndexMapLoaders The index map loaders
    * @return One BasicStatisticalSummary per feature shard
    */
   private def calculateStatistics(
       data: DataFrame,
-      featureShards: Iterable[FeatureShardId]): FeatureShardStatistics =
-    featureShards.map { featureShardId =>
-      // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      (featureShardId, BasicStatisticalSummary(
-        data.select(featureShardId)
-          .rdd
-          .map(_.getAs[SparkMLVector](0))))
+      featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics =
+    featureIndexMapLoaders.map { case (featureShardId, indexMapLoader) =>
+
+      val summary = BasicStatisticalSummary(
+        // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
+        data.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)),
+        indexMapLoader.indexMapForDriver().get(Constants.INTERCEPT_KEY))
+
+      (featureShardId, summary)
     }
 
   /**

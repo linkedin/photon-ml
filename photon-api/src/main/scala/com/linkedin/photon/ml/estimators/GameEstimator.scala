@@ -758,8 +758,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       case _ => throw new Exception("Need to specify a valid loss function")
     }
     val downSamplerFactory = DownSamplerHelper.buildFactory(task)
-    val normalizationContextsWrappers =
-      normalizationContextWrappersOpt.getOrElse(configuration.mapValues(_ => defaultNormalizationContext))
+    val normalizationContextsWrappers = normalizationContextWrappersOpt
+      .getOrElse(configuration.mapValues(_ => defaultNormalizationContext))
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
 
     // Create the optimization coordinates for each component model

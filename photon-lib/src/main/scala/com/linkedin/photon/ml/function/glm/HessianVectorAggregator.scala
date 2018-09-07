@@ -59,29 +59,20 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
    * @param normalizationContext The normalization context
    */
   def init(coef: Vector[Double], multiplyVector: Vector[Double], normalizationContext: NormalizationContext): Unit = {
+
+    require(multiplyVector.size == dim, s"Size mismatch. Multiply vector size ${multiplyVector.size} != $dim.")
+
     super.init(coef, normalizationContext)
 
-    require(multiplyVector.size == dim, s"Size mismatch. Multiply vector size: ${multiplyVector.size} != $dim.")
+    val NormalizationContext(factorsOpt, shiftsAndInterceptOpt) = normalizationContext
 
-    val NormalizationContext(factorsOption, shiftsOption, interceptIdOption) = normalizationContext
-    effectiveMultiplyVector = factorsOption match {
-      case Some(factors) =>
-        interceptIdOption.foreach(id =>
-          require(
-            factors(id) == 1.0,
-            s"The intercept should not be transformed. Intercept scaling factor: ${factors(id)}"))
-        require(factors.size == dim, s"Size mismatch. Factors vector size: ${factors.size} != $dim.")
-
-        multiplyVector :* factors
-
-      case None =>
-        multiplyVector
+    effectiveMultiplyVector = factorsOpt match {
+      case Some(factors) => multiplyVector :* factors
+      case None => multiplyVector
     }
-    featureVectorProductShift = shiftsOption match {
-      case Some(shifts) =>
-        effectiveMultiplyVector.dot(shifts)
-      case None =>
-        0.0
+    featureVectorProductShift = shiftsAndInterceptOpt match {
+      case Some((shifts, _)) => effectiveMultiplyVector.dot(shifts)
+      case None => 0.0
     }
   }
 
@@ -95,10 +86,10 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
    * @return The aggregator itself
    */
   def add(
-    datum: LabeledPoint,
-    coef: Vector[Double],
-    multiplyVector: Vector[Double],
-    normalizationContext: NormalizationContext): this.type = {
+      datum: LabeledPoint,
+      coef: Vector[Double],
+      multiplyVector: Vector[Double],
+      normalizationContext: NormalizationContext): this.type = {
 
     if (!initialized) {
       this.synchronized {
@@ -108,7 +99,9 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
     }
 
     val LabeledPoint(label, features, _, weight) = datum
+
     require(features.size == dim, s"Size mismatch. Coefficient size: $dim, features size: ${features.size}")
+
     val margin = datum.computeMargin(effectiveCoefficients) + marginShift
     val dzzLoss = func.DzzLoss(margin, label)
     // l'' * (\sum_k x_{ki} * effectiveMultiplyVector_k - featureVectorProductShift)

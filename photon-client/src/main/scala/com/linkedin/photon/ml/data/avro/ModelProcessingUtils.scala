@@ -537,11 +537,10 @@ object ModelProcessingUtils {
       }
     }
 
-    val featureTuples = keyToIdMap
+    val indexToFilter = summary.interceptIndex.getOrElse(-1)
+    val featureKeys = keyToIdMap
       .toArray
       .sortBy[Int] { case (_, id) => id }
-      .map { case (key, _) => featureStringToTuple(key) }
-
     val summaryList = List(
       summary.max.toArray,
       summary.min.toArray,
@@ -556,24 +555,31 @@ object ModelProcessingUtils {
           BasicSummaryItems(max, min, mean, normL1, normL2, numNonZeros, variance)
       }
 
-    val outputAvro = featureTuples
+    val outputAvro = featureKeys
       .zip(summaryList)
-      .map {
-        case ((name, term), items) =>
-          val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(Map(
-            "max" -> items.max,
-            "min" -> items.min,
-            "mean" -> items.mean,
-            "normL1" -> items.normL1,
-            "normL2" -> items.normL2,
-            "numNonzeros" -> items.numNonzeros,
-            "variance" -> items.variance))
+      .flatMap { case ((key, id), items) =>
+        if (id != indexToFilter) {
+          val (name, term) = featureStringToTuple(key)
+          val jMap: JMap[CharSequence, JDouble] = mapAsJavaMap(
+            Map(
+              "max" -> items.max,
+              "min" -> items.min,
+              "mean" -> items.mean,
+              "normL1" -> items.normL1,
+              "normL2" -> items.normL2,
+              "numNonzeros" -> items.numNonzeros,
+              "variance" -> items.variance))
 
-          FeatureSummarizationResultAvro.newBuilder()
-            .setFeatureName(name)
-            .setFeatureTerm(term)
-            .setMetrics(jMap)
-            .build()
+          Some(
+            FeatureSummarizationResultAvro
+              .newBuilder()
+              .setFeatureName(name)
+              .setFeatureTerm(term)
+              .setMetrics(jMap)
+              .build())
+        } else {
+          None
+        }
       }
 
     val outputFile = new Path(outputDir, AvroConstants.DEFAULT_AVRO_FILE_NAME).toString

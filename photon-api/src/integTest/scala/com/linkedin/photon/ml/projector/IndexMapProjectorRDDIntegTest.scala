@@ -113,17 +113,15 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val dataPoints = dataSet.activeData.map{case(_, locals) => locals.dataPoints}
     val localPoints = dataPoints.flatMap{e => e.map(_._2)}
 
-    val summary = BasicStatisticalSummary(localPoints)
-    val normalizationContext = NormalizationContext(NormalizationType.STANDARDIZATION, summary, Some(projectedSize))
+    val summary = BasicStatisticalSummary(localPoints, Some(projectedSize))
+    val normalizationContext = NormalizationContext(NormalizationType.STANDARDIZATION, summary)
 
     val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
     val projectedNormalization = projector.projectNormalizationRDD(normalizationContext)
 
-    val projectedShiftDimensions = projectedNormalization.mapValues(_.shifts.get.length).take(1)(0)._2
-    val projectedFactorDimensions = projectedNormalization.mapValues(_.factors.get.length).take(1)(0)._2
+    val projectedDimensions = projectedNormalization.mapValues(_.size).take(1)(0)._2
 
-    assertEquals(projectedShiftDimensions, projectedSize)
-    assertEquals(projectedFactorDimensions, projectedSize)
+    assertEquals(projectedDimensions, projectedSize)
   }
 
   @Test
