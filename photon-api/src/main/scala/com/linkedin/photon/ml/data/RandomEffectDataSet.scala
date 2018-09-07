@@ -23,8 +23,10 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
+import com.linkedin.photon.ml.constants.{MathConst}
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 
 /**
  * Data set implementation for random effect datasets:
@@ -239,19 +241,27 @@ object RandomEffectDataSet {
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner,
-      existingModelKeysRddOpt: Option[RDD[REId]]): RandomEffectDataSet = {
+      existingModelKeysRddOpt: Option[RDD[REId]],
+      featureShardStatsMapOpt: Option[Map[FeatureShardId, BasicStatisticalSummary]]): RandomEffectDataSet = {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
 
     val gameDataPartitioner = gameDataSet.partitioner.get
 
+    val globalPositiveInstances = gameDataSet
+      .values
+      .filter( _.response > MathConst.POSITIVE_RESPONSE_THRESHOLD)
+      .map( _.featureShardContainer(randomEffectDataConfiguration.featureShardId)).reduce(_ + _)
+      .toArray
+
     val rawActiveData = generateActiveData(
       gameDataSet,
       randomEffectDataConfiguration,
       randomEffectPartitioner,
       existingModelKeysRddOpt)
-    val activeData = featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration)
+
+    val activeData = featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration, featureShardStatsMapOpt, globalPositiveInstances)
       .setName("Active data")
       .persist(StorageLevel.DISK_ONLY)
 
@@ -488,21 +498,65 @@ object RandomEffectDataSet {
    */
   private def featureSelectionOnActiveData(
       activeData: RDD[(REId, LocalDataSet)],
-      randomEffectDataConfiguration: RandomEffectDataConfiguration): RDD[(REId, LocalDataSet)] = {
+      randomEffectDataConfiguration: RandomEffectDataConfiguration,
+      featureShardStatsOpt: Option[Map[FeatureShardId, BasicStatisticalSummary]],
+      globalPositiveInstances: Array[Double]): RDD[(REId, LocalDataSet)] = {
 
-    randomEffectDataConfiguration
-      .numFeaturesToSamplesRatioUpperBound
-      .map { numFeaturesToSamplesRatioUpperBound =>
-        activeData.mapValues { localDataSet =>
-          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataSet.numDataPoints).toInt
+    featureShardStatsOpt match {
+      case Some(featureShardStats) =>
+        val globalFeatureShardStats = featureShardStats(randomEffectDataConfiguration.featureShardId)
+        val (binaryIndices, nonBinaryIndices) = segregateBinaryFeatures(globalFeatureShardStats)
 
-          // In case the above product overflows
-          if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
-          val filteredLocalDataSet = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
+        val broadcastBinaryFeatureIndices = activeData.sparkContext.broadcast(binaryIndices)
+        val broadcastNonBinaryFeatureIndices = activeData.sparkContext.broadcast(nonBinaryIndices)
+        val broadcastGlobalPositiveInstances = activeData.sparkContext.broadcast(globalPositiveInstances)
 
-          filteredLocalDataSet
+        val filteredActiveData = activeData.mapValues{ localDataSet =>
+          localDataSet.filterFeaturesByRatioCIBound(
+            globalFeatureShardStats,
+            broadcastGlobalPositiveInstances.value,
+            broadcastBinaryFeatureIndices.value,
+            broadcastNonBinaryFeatureIndices.value)
         }
-      }
-      .getOrElse(activeData)
+
+        broadcastBinaryFeatureIndices.unpersist
+        broadcastNonBinaryFeatureIndices.unpersist
+        broadcastGlobalPositiveInstances.unpersist
+
+        filteredActiveData
+
+      case None =>
+        randomEffectDataConfiguration
+          .numFeaturesToSamplesRatioUpperBound
+          .map { numFeaturesToSamplesRatioUpperBound =>
+            activeData.mapValues { localDataSet =>
+              var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataSet.numDataPoints).toInt
+              // In case the above product overflows
+              if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
+
+              localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
+            }
+          }
+          .getOrElse(activeData)
+    }
+  }
+
+  /**
+   * Split the feature indices into binary features and non-binary features
+   *
+   * @param featureStatsSummary The feature statistical summary for global population
+   * @return The indices for binary and non-binary feature columns
+   */
+  private def segregateBinaryFeatures(featureStatsSummary: BasicStatisticalSummary): (Set[Int], Set[Int]) = {
+
+    val nonZerosDiff = (featureStatsSummary.mean * featureStatsSummary.count.toDouble) - featureStatsSummary.numNonzeros
+    val allFeatureIndices = nonZerosDiff.keySet
+    val candidates = nonZerosDiff.findAll(_ < MathConst.EPSILON).toSet
+    val maxOne = featureStatsSummary.max.findAll(_ == 1D).toSet
+
+    val binaryIndices = candidates.intersect(maxOne)
+    val nonBinaryIndices = allFeatureIndices.diff(binaryIndices) ++ featureStatsSummary.interceptIndex
+
+    (binaryIndices, nonBinaryIndices)
   }
 }

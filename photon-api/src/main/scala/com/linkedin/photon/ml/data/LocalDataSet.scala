@@ -15,6 +15,8 @@
 package com.linkedin.photon.ml.data
 
 import scala.collection.mutable
+import scala.collection.Set
+
 
 import breeze.linalg.Vector
 
@@ -22,7 +24,7 @@ import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.projector.Projector
 import com.linkedin.photon.ml.util.VectorUtils
-
+import com.linkedin.photon.ml.stat.BasicStatisticalSummary
 /**
  * Local data set implementation.
  *
@@ -103,6 +105,50 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
   }
 
   /**
+   * Filter features by binomial ratio confidence intervals.
+   *
+   * @param globalFeatureShardStats The global population feature statistics
+   * @param globalPositiveInstances The global positive instances with the features present
+   * @param binaryIndices The binary feature columns indices
+   * @param nonBinaryIndices The binary feature columns indices
+   * @param intervalBound The lower bound threshold of the confidence interval used to filter features
+   * @param zScore The Z-score for the chosen two-tailed confidence level
+   * @return The filtered dataset
+   */
+  def filterFeaturesByRatioCIBound(
+      globalFeatureShardStats: BasicStatisticalSummary,
+      globalPositiveInstances: Array[Double],
+      binaryIndices: Set[Int],
+      nonBinaryIndices: Set[Int],
+      intervalBound: Double = 1.0,
+      zScore: Double = 2.575): LocalDataSet = {
+
+    val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
+    val lowerBounds = LocalDataSet.computeRatioCILowerBound(
+      labelAndFeatures,
+      zScore,
+      globalFeatureShardStats,
+      globalPositiveInstances,
+      binaryIndices,
+      numFeatures)
+    val filteredBinaryFeaturesIndexSet = lowerBounds
+      .toArray
+      .filter(_._2 > intervalBound)
+      .map(_._1)
+      .toSet
+    val filteredFeaturesIndexSet = filteredBinaryFeaturesIndexSet ++ nonBinaryIndices
+
+    val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
+
+      val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
+
+      (id, LabeledPoint(label, filteredFeatures, offset, weight))
+    }
+
+    LocalDataSet(filteredActivities)
+  }
+
+  /**
    * Filter features by Pearson correlation score.
    *
    * @param numFeaturesToKeep The number of features to keep
@@ -177,6 +223,119 @@ object LocalDataSet {
   }
 
   /**
+   * Compute feature ratio confidence interval lower bounds.
+   *
+   * @param LabelAndFeatures An [[Array]] of (label, feature vector) tuples
+   * @param zScore The Z-score for the chosen two-tailed confidence level
+   * @param globalFeatureShardStats The global population feature statistics
+   * @param globalPositiveInstances The global positive instances with the features present
+   * @param binaryIndices The binary feature columns indices
+   * @param epsilon The constant used to compute for extreme case of ratio modeling
+   * @return the lowerBounds for feature columns
+   */
+  protected[ml] def computeRatioCILowerBound(
+      LabelAndFeatures: Array[(Double, Vector[Double])],
+      zScore: Double,
+      globalFeatureShardStats: BasicStatisticalSummary,
+      globalPositiveInstances: Array[Double],
+      binaryIndices: Set[Int],
+      epsilon: Double = 0.5): Map[Int, Double] = {
+
+    val n = globalFeatureShardStats.numNonzeros.toArray
+    val y = globalPositiveInstances
+    val numFeatures = LabelAndFeatures(0)._2.size
+
+    val m = LabelAndFeatures.map(_._2).toSeq.reduce(_ + _)
+    val x = LabelAndFeatures.filter(_._1 == 1).map(_._2).toSeq.reduceLeftOption(_ + _).getOrElse(Vector.zeros[Double](numFeatures))
+
+    binaryIndices
+      .map { key =>
+        val x_col = x(key)
+        val m_col = m(key)
+        val y_col = y(key)
+        val n_col = n(key)
+
+        val lowerBound = if (x_col == 0.0 && y_col == 0.0) {
+          0D
+        } else if (x_col == 0.0 && y_col != 0.0) {
+          val (t, variance) = computeTAndVariance(epsilon, m_col, y_col, n_col)
+
+          1D / computeUpperBound(t, variance, zScore)
+        } else if (x_col == m_col && y_col == n_col) {
+          val (t, variance) = computeTAndVariance(m_col - epsilon, m_col, n_col - epsilon, n_col)
+
+          if (t < 1D) {
+            1D / computeUpperBound(t, variance, zScore)
+          } else {
+            computeLowerBound(t, variance, zScore)
+          }
+        } else {
+          val (t, variance) = computeTAndVariance(x_col, m_col, y_col, n_col)
+
+          if (t < 1D) {
+            1D / computeUpperBound(t, variance, zScore)
+          } else {
+            computeLowerBound(t, variance, zScore)
+          }
+        }
+
+        (key, lowerBound)
+      }
+      .toMap
+
+  }
+
+  /**
+   * Compute t value and variance for ratio modelling.
+   *
+   * @param x The count for f_i == 1 and label == 1 in the local population
+   * @param m The count for f_i == 1 in the local population
+   * @param y The count for f_i == 1 and label == 1 in the global population
+   * @param n The count for f_i == 1 in the global population
+   * @return The mean and variance for ratio t
+   */
+  protected[ml] def computeTAndVariance(x: Double, m: Double, y: Double, n: Double): (Double, Double) = {
+
+    if (m == 0 || n == 0) {
+      (0.0, 0.0)
+
+    }else {
+      val t = (x / m) / (y / n)
+      val variance = 1.0 / x - 1.0 / m + 1.0 / y - 1.0 / n
+      (t, variance)
+
+    }
+  }
+
+  /**
+   * Compute the confidence interval lowerbound for ratio modelling.
+   *
+   * @param t The value of ratio
+   * @param variance The variance of the ratio
+   * @param zScore The Z-score for the chosen two-tailed confidence level
+   * @return The lowerbound for ratio t
+   */
+  protected[ml] def computeLowerBound(
+      t: Double,
+      variance: Double,
+      zScore: Double): Double =
+    t * math.exp(-math.sqrt(variance) * zScore)
+
+  /**
+   * Compute the confidence interval upperbound for ratio modelling.
+   *
+   * @param t The value of ratio
+   * @param variance The variance of the ratio
+   * @param zScore The Z-score for the chosen two-tailed confidence level
+   * @return The upperbound for ratio t
+   */
+  protected[ml] def computeUpperBound(
+      t: Double,
+      variance: Double,
+      zScore: Double): Double =
+    t * math.exp(math.sqrt(variance) * zScore)
+
+  /**
    * Compute Pearson correlation scores.
    *
    * @param labelAndFeatures An array of (label, feature) tuples
@@ -245,4 +404,5 @@ object LocalDataSet {
       }
       .toMap
   }
+
 }

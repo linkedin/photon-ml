@@ -70,7 +70,7 @@ class BasicStatisticalSummaryIntegTest extends SparkTestUtils {
         .toDF("response", featureShardId)
 
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)), None)
+      val stats = BasicStatisticalSummary(trainingData.select(featureShardId).rdd.map(x => VectorUtils.mlToBreeze(x.getAs[SparkMLVector](0))), None:Option[Int])
 
       assertEquals(stats.count, 10)
       assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
