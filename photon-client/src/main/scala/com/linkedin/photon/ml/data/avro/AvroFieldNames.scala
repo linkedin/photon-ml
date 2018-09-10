@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.data.avro
 
 /**
- * Common field names in the Avro data set used in Photon-ML.
+ * Common field names in the Avro dataset used in Photon-ML.
  */
 abstract class AvroFieldNames extends Serializable {
 

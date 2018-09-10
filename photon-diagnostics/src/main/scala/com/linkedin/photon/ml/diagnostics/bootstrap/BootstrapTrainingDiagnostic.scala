@@ -20,7 +20,7 @@ import com.linkedin.photon.ml.BootstrapTraining
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
 import com.linkedin.photon.ml.diagnostics.reporting.reports.DiagnosticUtils
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.{CoefficientSummary, GeneralizedLinearModel}
 
 class BootstrapTrainingDiagnostic(
@@ -34,7 +34,7 @@ class BootstrapTrainingDiagnostic(
   private def getImportances(
       coefficients: Map[Double, Array[CoefficientSummary]],
       indexToNameTerm: Map[Int, (String, String)],
-      summary: Option[BasicStatisticalSummary],
+      summary: Option[FeatureDataStatistics],
       models: Map[Double, GeneralizedLinearModel]) = {
 
     coefficients.map(x => {
@@ -42,7 +42,7 @@ class BootstrapTrainingDiagnostic(
       (lambda, coeff.zipWithIndex.map(x => {
         val (_, idx) = x
         val value = summary match {
-          case Some(sum: BasicStatisticalSummary) =>
+          case Some(sum: FeatureDataStatistics) =>
             sum.meanAbs(idx)
           case None =>
             1
@@ -91,7 +91,7 @@ class BootstrapTrainingDiagnostic(
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       models: Map[Double, GeneralizedLinearModel],
       trainingData: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary],
+      summary: Option[FeatureDataStatistics],
       seed: Long = System.nanoTime): Map[Double, BootstrapReport] = {
 
     val aggregators: Map[String, Seq[(GeneralizedLinearModel, Map[String, Double])] => Any] = Map(

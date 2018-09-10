@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.projector.Projector
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Local data set implementation.
+ * Local dataset implementation.
  *
  * @note One design concern is whether to store the local data as a [[Map]] or an [[Array]] (high sort cost, but low
  *       merge cost vs. no sort cost but high merge cost). Currently, we use an [[Array]] since the data is only sorted
@@ -32,7 +32,7 @@ import com.linkedin.photon.ml.util.VectorUtils
  *
  * @param dataPoints Local data points consists of (globalId, labeledPoint) pairs
  */
-protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, LabeledPoint)]) {
+protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, LabeledPoint)]) {
 
   require(
     dataPoints.length > 0,
@@ -70,9 +70,9 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
    * Add the residual scores to the offsets.
    *
    * @param residualScores The residual scores
-   * @return The [[LocalDataSet]] with updated offsets
+   * @return The [[LocalDataset]] with updated offsets
    */
-  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataSet = {
+  def addScoresToOffsets(residualScores: Array[(UniqueSampleId, Double)]): LocalDataset = {
 
     val updatedDataPoints = dataPoints
       .zip(residualScores)
@@ -83,7 +83,7 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
         (dataId, LabeledPoint(label, features, residualScoreDatum + offset, weight))
       }
 
-    LocalDataSet(updatedDataPoints)
+    LocalDataset(updatedDataPoints)
   }
 
   /**
@@ -91,15 +91,15 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
    * (usually with lower dimension) space.
    *
    * @param projector The projector
-   * @return The [[LocalDataSet]] with projected features
+   * @return The [[LocalDataset]] with projected features
    */
-  def projectFeatures(projector: Projector): LocalDataSet = {
+  def projectFeatures(projector: Projector): LocalDataset = {
 
     val projectedDataPoints = dataPoints.map { case (uniqueId, LabeledPoint(label, features, offset, weight)) =>
       (uniqueId, LabeledPoint(label, projector.projectFeatures(features), offset, weight))
     }
 
-    LocalDataSet(projectedDataPoints)
+    LocalDataset(projectedDataPoints)
   }
 
   /**
@@ -108,11 +108,11 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
    * @param numFeaturesToKeep The number of features to keep
    * @return The filtered dataset
    */
-  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataSet =
+  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataset =
     if (numFeaturesToKeep < numActiveFeatures) {
 
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
-      val pearsonScores = LocalDataSet.computePearsonCorrelationScore(labelAndFeatures)
+      val pearsonScores = LocalDataset.computePearsonCorrelationScore(labelAndFeatures)
 
       val filteredFeaturesIndexSet = pearsonScores
         .toArray
@@ -123,19 +123,19 @@ protected[ml] case class LocalDataSet(dataPoints: Array[(UniqueSampleId, Labeled
 
       val filteredActivities = dataPoints.map { case (id, LabeledPoint(label, features, offset, weight)) =>
 
-        val filteredFeatures = LocalDataSet.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
+        val filteredFeatures = LocalDataset.filterFeaturesWithFeatureIndexSet(features, filteredFeaturesIndexSet)
 
         (id, LabeledPoint(label, filteredFeatures, offset, weight))
       }
 
-      LocalDataSet(filteredActivities)
+      LocalDataset(filteredActivities)
 
     } else {
       this
     }
 }
 
-object LocalDataSet {
+object LocalDataset {
   /**
    * Factory method for LocalDataSet.
    *
@@ -145,12 +145,12 @@ object LocalDataSet {
    */
   protected[ml] def apply(
       dataPoints: Array[(UniqueSampleId, LabeledPoint)],
-      isSortedByFirstIndex: Boolean): LocalDataSet = {
+      isSortedByFirstIndex: Boolean): LocalDataset = {
 
     if (isSortedByFirstIndex) {
-      LocalDataSet(dataPoints)
+      LocalDataset(dataPoints)
     } else {
-      LocalDataSet(dataPoints.sortBy(_._1))
+      LocalDataset(dataPoints.sortBy(_._1))
     }
   }
 

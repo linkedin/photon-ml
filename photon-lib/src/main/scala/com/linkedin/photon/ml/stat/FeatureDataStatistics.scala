@@ -24,21 +24,28 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.{Logging, VectorUtils}
 
 /**
- * Class BasicStatisticalSummary contains various statistics about that data.
- *
- * It is a wrapper around spark-ml MultivariateStatisticalSummary, that relies on breeze Vector rather than
- * spark-ml Vector. We also tweak the numbers for our needs (see calculateBasicStatistics).
+ * Statistical summary of a dataset. It is a wrapper around spark-ml MultivariateStatisticalSummary, that relies on
+ * breeze Vector rather than spark-ml Vector. We also tweak the numbers for our needs (see calculateBasicStatistics).
  *
  * @note variance is calculated by spark.ml to be unbiased, so based on N-1 degrees of freedom, which is the
  * standard statistical practice. A degree of freedom is lost when using an estimated mean to compute the variance.
  *
- * TODO: rename just "BasicStatistics": descriptive statistics are summaries of the data by definition
+ * @param count The number of samples in the dataset
+ * @param mean Vector of feature mean values for the dataset
+ * @param variance Vector of feature variance values for the dataset
+ * @param numNonZeros Vector of feature non-zero counts for the dataset
+ * @param max Vector of feature maximum values for the dataset
+ * @param min Vector of feature minimum values for the dataset
+ * @param normL1 Vector of feature L1 norm (for the column)
+ * @param normL2 Vector of feature L2 norm (for the column)
+ * @param meanAbs Vector of feature mean absolute values for the dataset
+ * @param interceptIndex Index of intercept (if present)
  */
-case class BasicStatisticalSummary(
+case class FeatureDataStatistics(
+    count: Long,
     mean: BreezeVector[Double],
     variance: BreezeVector[Double],
-    count: Long,
-    numNonzeros: BreezeVector[Double],
+    numNonZeros: BreezeVector[Double],
     max: BreezeVector[Double],
     min: BreezeVector[Double],
     normL1: BreezeVector[Double],
@@ -49,7 +56,7 @@ case class BasicStatisticalSummary(
 /**
  * Object BasicStatisticalSummary has functions to actually compute statistical summaries from RDDs.
  */
-object BasicStatisticalSummary extends Logging {
+object FeatureDataStatistics extends Logging {
 
   /**
    * This function accepts a RDD[LabeledPoint]. Used in Photon.
@@ -60,7 +67,7 @@ object BasicStatisticalSummary extends Logging {
    */
   def apply
       (inputData: RDD[LabeledPoint], interceptIndex: Option[Int])
-      (implicit p: DummyImplicit): BasicStatisticalSummary =
+      (implicit p: DummyImplicit): FeatureDataStatistics =
     calculateBasicStatistics(
       Statistics.colStats(inputData.map(x => VectorUtils.breezeToMllib(x.features))),
       interceptIndex)
@@ -71,7 +78,7 @@ object BasicStatisticalSummary extends Logging {
    * @param inputData The input data (usually training data)
    * @return An instance of BasicStatisticalSummary
    */
-  def apply(inputData: RDD[MLVector], interceptIndex: Option[Int]): BasicStatisticalSummary =
+  def apply(inputData: RDD[MLVector], interceptIndex: Option[Int]): FeatureDataStatistics =
     calculateBasicStatistics(Statistics.colStats(inputData.map(Vectors.fromML)), interceptIndex)
 
   /**
@@ -92,7 +99,7 @@ object BasicStatisticalSummary extends Logging {
    */
   protected[ml] def calculateBasicStatistics(
       summary: MultivariateStatisticalSummary,
-      interceptIndex: Option[Int]): BasicStatisticalSummary = {
+      interceptIndex: Option[Int]): FeatureDataStatistics = {
 
     val meanAbs = scale(summary.count, VectorUtils.mllibToBreeze(summary.normL1))
     val tMean = VectorUtils.mllibToBreeze(summary.mean)
@@ -117,10 +124,10 @@ object BasicStatisticalSummary extends Logging {
         "infinite. The variances for these features have been re-set to 1.0.")
     }
 
-    BasicStatisticalSummary(
+    FeatureDataStatistics(
+      summary.count,
       tMean,
       tVariance.mapActiveValues(x => if (x.isNaN || x.isInfinite || x < 0) 1.0 else x),
-      summary.count,
       tNumNonZeros,
       tMax,
       tMin,

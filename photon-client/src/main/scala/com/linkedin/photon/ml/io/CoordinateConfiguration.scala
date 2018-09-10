@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.optimization._
 sealed trait CoordinateConfiguration {
 
   /**
-   * Coordinate data set definition
+   * Coordinate dataset definition
    */
   protected[ml] val dataConfiguration: CoordinateDataConfiguration
 
@@ -50,7 +50,7 @@ sealed trait CoordinateConfiguration {
 /**
  * Definition of a fixed effect problem coordinate.
  *
- * @param dataConfiguration Coordinate data set definition
+ * @param dataConfiguration Coordinate dataset definition
  * @param optimizationConfiguration Coordinate optimization problem definition
  * @param regularizationWeights Regularization weights
  */
@@ -85,7 +85,7 @@ object FixedEffectCoordinateConfiguration {
   /**
    * Helper function to generate a [[FixedEffectCoordinateConfiguration]].
    *
-   * @param dataConfiguration Coordinate data set definition
+   * @param dataConfiguration Coordinate dataset definition
    * @param optimizationConfiguration Coordinate optimization problem definition
    * @param regularizationWeights Regularization weights
    * @return
@@ -108,7 +108,7 @@ object FixedEffectCoordinateConfiguration {
 /**
  * Definition of a random effect problem coordinate.
  *
- * @param dataConfiguration Coordinate data set definition
+ * @param dataConfiguration Coordinate dataset definition
  * @param optimizationConfiguration Coordinate optimization problem definition
  * @param regularizationWeights Regularization weights
  */
@@ -143,7 +143,7 @@ object RandomEffectCoordinateConfiguration {
   /**
    * Helper function to generate a [[RandomEffectCoordinateConfiguration]].
    *
-   * @param dataConfiguration Coordinate data set definition
+   * @param dataConfiguration Coordinate dataset definition
    * @param optimizationConfiguration Coordinate optimization problem definition
    * @param regularizationWeights Regularization weights
    * @return

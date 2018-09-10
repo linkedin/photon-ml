@@ -23,11 +23,11 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.LongHashPartitioner
 
 /**
- * Integration tests for [[RandomEffectDataSet]].
+ * Integration tests for [[RandomEffectDataset]].
  */
-class RandomEffectDataSetIntegTest extends SparkTestUtils {
+class RandomEffectDatasetIntegTest extends SparkTestUtils {
 
-  import RandomEffectDataSetIntegTest._
+  import RandomEffectDatasetIntegTest._
 
   @DataProvider
   def rawDataProvider(): Array[Array[Any]] = {
@@ -123,7 +123,7 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, None)
+    val randomEffectDataSet = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, None)
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
@@ -155,14 +155,14 @@ class RandomEffectDataSetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataSet(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
+    val randomEffectDataSet = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
     val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
   }
 }
 
-object RandomEffectDataSetIntegTest {
+object RandomEffectDatasetIntegTest {
 
   private val NUM_PARTITIONS = 1
   private val FEATURE_SHARD_NAME = "shard"

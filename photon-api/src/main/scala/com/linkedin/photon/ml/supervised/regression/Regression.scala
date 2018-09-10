@@ -18,12 +18,12 @@ import breeze.linalg.Vector
 import org.apache.spark.rdd.RDD
 
 /**
- * Represents a regression that predicts values for the given data set / data point using the model trained.
+ * Represents a regression that predicts values for the given dataset / data point using the model trained.
  */
 trait Regression extends Serializable {
 
   /**
-   * Predict values for the given data set.
+   * Predict values for the given dataset.
    *
    * @param features RDD representing data points' features
    * @return RDD[Double] where each entry contains the corresponding prediction

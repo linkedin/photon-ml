@@ -20,19 +20,19 @@ import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data.LabeledPoint
 
 /**
- * Default sampler implementation. This will act as a standard simple random sampler on the data set.
- * This should be used when all instances in the data set are equivalently important (e.g the labels are balanced).
+ * Default sampler implementation. This will act as a standard simple random sampler on the dataset.
+ * This should be used when all instances in the dataset are equivalently important (e.g the labels are balanced).
  *
  * @param downSamplingRate The down sampling rate
  */
 protected[ml] class DefaultDownSampler(override val downSamplingRate: Double) extends DownSampler with Serializable {
 
   /**
-   * Down-sample the given data set.
+   * Down-sample the given dataset.
    *
-   * @param labeledPoints The full data set
+   * @param labeledPoints The full dataset
    * @param seed A random seed
-   * @return A down-sampled data set
+   * @return A down-sampled dataset
    */
   override def downSample(
       labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],

@@ -37,12 +37,12 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param optimizationProblem The random effect optimization problem
  */
 protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
-    dataSet: RandomEffectDataSet,
+    dataSet: RandomEffectDataset,
     optimizationProblem: RandomEffectOptimizationProblem[Objective])
-  extends Coordinate[RandomEffectDataSet](dataSet) {
+  extends Coordinate[RandomEffectDataset](dataSet) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Score the effect-specific dataset in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores
@@ -102,7 +102,7 @@ object RandomEffectCoordinate {
    * @return A tuple of optimized model and optimization tracker
    */
   protected[algorithm] def updateModel[Function <: SingleNodeObjectiveFunction](
-      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectDataSet: RandomEffectDataset,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
       randomEffectModel: RandomEffectModel): (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
@@ -155,7 +155,7 @@ object RandomEffectCoordinate {
   /**
    * Score a dataset using a given model.
    *
-   * For information about the differences between active and passive data, see the [[RandomEffectDataSet]]
+   * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
    * documentation.
    *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
@@ -165,7 +165,7 @@ object RandomEffectCoordinate {
    * @return The computed scores
    */
   protected[algorithm] def score(
-    randomEffectDataSet: RandomEffectDataSet,
+    randomEffectDataSet: RandomEffectDataset,
     randomEffectModel: RandomEffectModel): CoordinateDataScores = {
 
     val activeScores = randomEffectDataSet
@@ -199,7 +199,7 @@ object RandomEffectCoordinate {
   /**
    * Computes passive scores.
    *
-   * For information about the differences between active and passive data, see the [[RandomEffectDataSet]]
+   * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
    * documentation.
    *
    * @param passiveData The passive dataset to score

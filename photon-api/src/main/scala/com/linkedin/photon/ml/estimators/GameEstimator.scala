@@ -384,14 +384,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    * @return The initial model
    */
   protected def getInitialModel(
-      trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }]): Option[GameModel] =
+      trainingDataSets: Map[CoordinateId, D forSome { type D <: Dataset[D] }]): Option[GameModel] =
     get(initialModel).map { gameModel =>
       new GameModel(gameModel
         .toMap
         .map { case (coordinateId, model) => (model, trainingDataSets(coordinateId)) match {
           // For random effect models, we need to transform the prior model into the projected space of the current
           // dataset
-          case (reModel: RandomEffectModel, reDataSetInProjectedSpace: RandomEffectDataSetInProjectedSpace) =>
+          case (reModel: RandomEffectModel, reDataSetInProjectedSpace: RandomEffectDatasetInProjectedSpace) =>
             (coordinateId,
               new RandomEffectModelInProjectedSpace(
                 reDataSetInProjectedSpace.randomEffectProjector.transformCoefficientsRDD(reModel.modelsRDD),
@@ -440,17 +440,17 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Construct one or more training [[DataSet]]s using a [[DataFrame]] of training data and an [[Evaluator]] for
+   * Construct one or more training [[Dataset]]s using a [[DataFrame]] of training data and an [[Evaluator]] for
    * computing training loss.
    *
    * @param data The training data [[DataFrame]]
    * @param idTagSet A set of additional columns whose values should be maintained for training
-   * @return A (map of training [[DataSet]]s (one per coordinate), training loss [[Evaluator]]) tuple
+   * @return A (map of training [[Dataset]]s (one per coordinate), training loss [[Evaluator]]) tuple
    */
   protected def prepareTrainingDataSetsAndEvaluator(
       data: DataFrame,
       featureShards: Set[FeatureShardId],
-      idTagSet: Set[String]): (Map[CoordinateId, D forSome { type D <: DataSet[D] }], Evaluator) = {
+      idTagSet: Set[String]): (Map[CoordinateId, D forSome { type D <: Dataset[D] }], Evaluator) = {
 
     val numPartitions = data.rdd.getNumPartitions
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
@@ -468,7 +468,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         .persist(StorageLevel.DISK_ONLY)
     }
     // Transform the GAME dataset into fixed and random effect specific datasets
-    val trainingDataSet = Timed("Prepare training data sets") {
+    val trainingDataSet = Timed("Prepare training datasets") {
       prepareTrainingDataSets(gameDataSet)
     }
     val trainingLossFunctionEvaluator = Timed("Prepare training loss evaluator") {
@@ -482,13 +482,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Construct one or more [[DataSet]]s from an [[RDD]] of samples.
+   * Construct one or more [[Dataset]]s from an [[RDD]] of samples.
    *
    * @param gameDataSet The training data samples
-   * @return A map of coordinate ID to training [[DataSet]]
+   * @return A map of coordinate ID to training [[Dataset]]
    */
   protected def prepareTrainingDataSets(
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: DataSet[D] }] = {
+      gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
 
     getRequiredParam(coordinateDataConfigurations).map { case (coordinateId, config) =>
 
@@ -496,14 +496,14 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         case feConfig: FixedEffectDataConfiguration =>
 
-          val fixedEffectDataSet = FixedEffectDataSet(gameDataSet, feConfig.featureShardId)
+          val fixedEffectDataSet = FixedEffectDataset(gameDataSet, feConfig.featureShardId)
             .setName(s"Fixed Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.DISK_ONLY)
 
           if (logger.isDebugEnabled) {
             // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
             logger.debug(
-              s"Summary of fixed effect data set with coordinate ID '$coordinateId':\n" +
+              s"Summary of fixed effect dataset with coordinate ID '$coordinateId':\n" +
                 s"${fixedEffectDataSet.toSummaryString}")
           }
 
@@ -526,7 +526,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val rawRandomEffectDataSet = RandomEffectDataSet(gameDataSet, reConfig, rePartitioner, existingModelKeysRddOpt)
+          val rawRandomEffectDataSet = RandomEffectDataset(gameDataSet, reConfig, rePartitioner, existingModelKeysRddOpt)
             .setName(s"Random Effect Data Set: $coordinateId")
             .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
@@ -537,7 +537,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
             case _ =>
 
-              val randomEffectDataSetInProjectedSpace = RandomEffectDataSetInProjectedSpace
+              val randomEffectDataSetInProjectedSpace = RandomEffectDatasetInProjectedSpace
                 .buildWithProjectorType(rawRandomEffectDataSet, projectorType)
                 .setName(s"Projected Random Effect Data Set: $coordinateId")
                 .persistRDD(StorageLevel.DISK_ONLY)
@@ -561,7 +561,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           if (logger.isDebugEnabled) {
             // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
             logger.debug(
-              s"Summary of random effect data set with coordinate ID $coordinateId:\n" +
+              s"Summary of random effect dataset with coordinate ID $coordinateId:\n" +
                 s"${randomEffectDataSet.toSummaryString}\n")
           }
 
@@ -570,7 +570,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           (coordinateId, randomEffectDataSet)
       }
 
-      result.asInstanceOf[(CoordinateId, D forSome { type D <: DataSet[D] })]
+      result.asInstanceOf[(CoordinateId, D forSome { type D <: Dataset[D] })]
     }
   }
 
@@ -628,7 +628,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             isResponseRequired = true,
             getOrDefault(inputColumnNames))
           .partitionBy(partitioner)
-          .setName("Validating Game data set")
+          .setName("Validating Game dataset")
           .persist(StorageLevel.DISK_ONLY)
 
         result.count()
@@ -687,7 +687,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   protected def prepareNormalizationContextWrappers(
-      dataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }])
+      dataSets: Map[CoordinateId, D forSome { type D <: Dataset[D] }])
     : Option[Map[CoordinateId, NormalizationContextWrapper]] =
 
     get(coordinateNormalizationContexts).map { normalizationContextsMap =>
@@ -696,7 +696,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         val normalization = dataSets(coordinate) match {
 
-          case reInProjSpace: RandomEffectDataSetInProjectedSpace =>
+          case reInProjSpace: RandomEffectDatasetInProjectedSpace =>
             reInProjSpace.randomEffectProjector match {
 
               case indexProj: IndexMapProjectorRDD =>
@@ -727,7 +727,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    * of the previous 'coordinates'.
    *
    * @param configuration The configuration for the GAME optimization problem
-   * @param trainingDataSets The training data sets for each coordinate of the GAME optimization problem
+   * @param trainingDataSets The training datasets for each coordinate of the GAME optimization problem
    * @param coordinateDescent The coordinate descent driver
    * @param normalizationContextWrappersOpt Optional normalization contexts, wrapped for use by random effect
    *                                        coordinates
@@ -736,7 +736,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   protected def train(
       configuration: GameOptimizationConfiguration,
-      trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
+      trainingDataSets: Map[CoordinateId, D forSome { type D <: Dataset[D] }],
       coordinateDescent: CoordinateDescent,
       normalizationContextWrappersOpt: Option[Map[CoordinateId, NormalizationContextWrapper]],
       initialModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
@@ -768,9 +768,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         .map { coordinateId =>
           val coordinate: C forSome { type C <: Coordinate[_] } = if (lockedCoordinates.contains(coordinateId)) {
             trainingDataSets(coordinateId) match {
-              case feDataSet: FixedEffectDataSet => new FixedEffectModelCoordinate(feDataSet)
-              case reDataSet: RandomEffectDataSet => new RandomEffectModelCoordinate(reDataSet)
-              case dataSet => throw new UnsupportedOperationException(s"Unsupported data set type: ${dataSet.getClass}")
+              case feDataSet: FixedEffectDataset => new FixedEffectModelCoordinate(feDataSet)
+              case reDataSet: RandomEffectDataset => new RandomEffectModelCoordinate(reDataSet)
+              case dataSet => throw new UnsupportedOperationException(s"Unsupported dataset type: ${dataSet.getClass}")
             }
           } else {
             CoordinateFactory.build(

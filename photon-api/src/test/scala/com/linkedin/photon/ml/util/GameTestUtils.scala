@@ -126,11 +126,11 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
     featureShardId: String,
     size: Int,
     dimensions: Int,
-    seed: Int = DefaultSeed): FixedEffectDataSet = {
+    seed: Int = DefaultSeed): FixedEffectDataset = {
 
     val data = sc.parallelize(generateLabeledPoints(size, dimensions, seed).map(addUniqueId).toSeq)
 
-    new FixedEffectDataSet(data, featureShardId)
+    new FixedEffectDataset(data, featureShardId)
   }
 
   /**
@@ -208,10 +208,10 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       size: Int,
       dimensions: Int,
       seed: Int = DefaultSeed,
-      numPartitions: Int = 4): RandomEffectDataSet = {
+      numPartitions: Int = 4): RandomEffectDataset = {
 
     val datasets = randomEffectIds.map((_,
-      new LocalDataSet(
+      new LocalDataset(
         generateLabeledPoints(size, dimensions, seed)
           .map(addUniqueId)
           .toArray)))
@@ -221,7 +221,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
 
-    new RandomEffectDataSet(activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
+    new RandomEffectDataset(activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
   }
 
   /**
@@ -243,7 +243,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated random effect optimization problem
    */
   def generateRandomEffectOptimizationProblem(
-    dataset: RandomEffectDataSet): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
+    dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
 
     val configuration = RandomEffectOptimizationConfiguration(generateOptimizerConfig())
 
@@ -284,7 +284,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       size,
       dimensions,
       seed)
-    val dataset = RandomEffectDataSetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
+    val dataset = RandomEffectDatasetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
 
     val optimizationProblem = generateRandomEffectOptimizationProblem(dataset)
     val coordinate = new RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction](dataset, optimizationProblem)

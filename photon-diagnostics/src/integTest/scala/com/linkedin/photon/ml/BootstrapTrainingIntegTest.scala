@@ -53,7 +53,7 @@ class BootstrapTrainingIntegTest extends SparkTestUtils {
 
   /**
    * Sanity check that the bootstrapping mechanics appear to work before we attempt to do integration tests with
-   * "real" aggregation operations and data sets
+   * "real" aggregation operations and datasets
    */
   @Test
   def checkBootstrapHappyPathRegressionDummyAggregates(): Unit = sparkTest("checkBootstrapHappyPathDummyAggregates") {

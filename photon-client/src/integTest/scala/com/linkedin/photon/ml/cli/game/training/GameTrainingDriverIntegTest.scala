@@ -44,7 +44,7 @@ import com.linkedin.photon.ml.util._
 /**
  * Test cases for the GAME training driver.
  *
- * Most of the cases are based on the Yahoo! Music data set in:
+ * Most of the cases are based on the Yahoo! Music dataset in:
  * photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
  */
 class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with TestTemplateWithTmpDir {
@@ -354,8 +354,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
   /**
    * Test GAME training with a fixed effect model only and hyperparameter tuning. Note that the best model may not be
-   * one of the tuned models. (This test is commented out since hyper-parameter tuning is temporarily disabled in
-   * photon-ml. Hyper-parameter tuning is still available in LinkedIn internal library li-photon-ml.)
+   * one of the tuned models. (This test is commented out since hyperparameter tuning is temporarily disabled in
+   * photon-ml. Hyperparameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
 //  @Test
 //  def c(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
@@ -639,7 +639,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
-   * Evaluate the model by the specified evaluators with the validation data set.
+   * Evaluate the model by the specified evaluators with the validation dataset.
    *
    * @param modelPath Base path to the GAME model files
    * @return Evaluation results for each specified evaluator

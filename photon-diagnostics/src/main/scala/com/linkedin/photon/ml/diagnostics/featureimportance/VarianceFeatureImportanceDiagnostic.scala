@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.diagnostics.featureimportance
 
 import com.linkedin.photon.ml.diagnostics.reporting.reports.DiagnosticUtils
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -31,7 +31,7 @@ class VarianceFeatureImportanceDiagnostic(modelNameToIndex: Map[String, Int])
     "Inner product variance"
   }
 
-  protected def getImportanceDescription(summary: Option[BasicStatisticalSummary]): String = {
+  protected def getImportanceDescription(summary: Option[FeatureDataStatistics]): String = {
     summary match {
       case Some(_) => "Expected inner product variance contribution"
       case None => "Magnitude of feature coefficient"
@@ -40,7 +40,7 @@ class VarianceFeatureImportanceDiagnostic(modelNameToIndex: Map[String, Int])
 
   protected def getImportances(
       model: GeneralizedLinearModel,
-      summary: Option[BasicStatisticalSummary]): Iterable[((String, String), Int, Double)] = {
+      summary: Option[FeatureDataStatistics]): Iterable[((String, String), Int, Double)] = {
 
     modelNameToIndex.map(x => {
       val nameTerm = DiagnosticUtils.extractNameTerm(x._1)

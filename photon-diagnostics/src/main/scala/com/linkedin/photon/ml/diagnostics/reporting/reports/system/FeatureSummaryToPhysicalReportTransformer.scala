@@ -33,7 +33,7 @@ class FeatureSummaryToPhysicalReportTransformer
         val max = sum.summary.max(x._2)
         val mean = sum.summary.mean(x._2)
         val variance = sum.summary.variance(x._2)
-        val nnz = sum.summary.numNonzeros(x._2)
+        val nnz = sum.summary.numNonZeros(x._2)
         val count = sum.summary.count
 
         new SimpleTextPhysicalReport(

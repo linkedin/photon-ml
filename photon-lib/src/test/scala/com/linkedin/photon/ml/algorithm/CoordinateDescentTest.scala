@@ -32,8 +32,8 @@ import com.linkedin.photon.ml.util.PhotonLogger
  */
 class CoordinateDescentTest {
 
-  abstract class MockDataSet extends DataSet[MockDataSet] {}
-  type CoordinateType = Coordinate[MockDataSet]
+  abstract class MockDataset extends Dataset[MockDataset] {}
+  type CoordinateType = Coordinate[MockDataset]
 
   @DataProvider
   def invalidInput: Array[Array[Any]] = {

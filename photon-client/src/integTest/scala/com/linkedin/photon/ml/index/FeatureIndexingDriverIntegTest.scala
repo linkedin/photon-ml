@@ -42,7 +42,7 @@ class FeatureIndexingDriverIntegTest extends SparkTestUtils with TestTemplateWit
     .toArray
 
   /**
-   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a data set with a single feature shard,
+   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a dataset with a single feature shard,
    * with intercept, using one or more partitions.
    *
    * @param partitionNum The number of partitions for the PalDB index
@@ -72,7 +72,7 @@ class FeatureIndexingDriverIntegTest extends SparkTestUtils with TestTemplateWit
   }
 
   /**
-   * Validate a [[PalDBIndexMap]] constructed for the heart data set.
+   * Validate a [[PalDBIndexMap]] constructed for the heart dataset.
    *
    * @param indexMap The [[PalDBIndexMap]]
    * @param expectedFeatureDimension The expected feature dimension
@@ -127,7 +127,7 @@ class FeatureIndexingDriverIntegTest extends SparkTestUtils with TestTemplateWit
   }
 
   /**
-   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a data set with a multiple feature
+   * Test that a [[PalDBIndexMap]] can be correctly generated and registered for a dataset with a multiple feature
    * shards, with or without intercept, using one or more partitions.
    *
    * @param partitionNum The number of partitions for the PalDB index
@@ -286,7 +286,7 @@ object FeatureIndexingDriverIntegTest {
     .put(FeatureIndexingDriver.overrideOutputDirectory, true)
 
   /**
-   * Heart data set arguments to the feature indexing driver.
+   * Heart dataset arguments to the feature indexing driver.
    *
    * @return Arguments to prepare a feature index map
    */
@@ -295,7 +295,7 @@ object FeatureIndexingDriverIntegTest {
     .put(FeatureIndexingDriver.featureShardConfigurations, heartFeatureShardConfigs)
 
   /**
-   * Yahoo music data set arguments to the feature indexing driver.
+   * Yahoo music dataset arguments to the feature indexing driver.
    *
    * @return Arguments to prepare a feature index map
    */

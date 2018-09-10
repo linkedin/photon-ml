@@ -21,12 +21,12 @@ import org.apache.spark.rdd.RDD
 import com.linkedin.photon.ml.Evaluation
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.TrainingDiagnostic
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.Logging
 
 /**
- * Try to diagnose under/over-fit and label bias problems in a data set. The idea here is that by computing metrics
+ * Try to diagnose under/over-fit and label bias problems in a dataset. The idea here is that by computing metrics
  * on both a training set and a hold-out set, we can show how the metrics move as a function of the training set size
  *
  */
@@ -37,7 +37,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
   /**
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingSet
    * @param summary
@@ -49,7 +49,7 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, GeneralizedLinearModel)],
       warmStart: Map[Double, GeneralizedLinearModel],
       trainingSet: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary],
+      summary: Option[FeatureDataStatistics],
       seed: Long = System.nanoTime): Map[Double, FittingReport] = {
 
     val numSamples = trainingSet.count()

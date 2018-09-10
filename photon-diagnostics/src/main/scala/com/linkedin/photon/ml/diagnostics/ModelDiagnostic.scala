@@ -18,7 +18,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -35,5 +35,5 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  *           Output diagnostic type
  */
 trait ModelDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
-  def diagnose(model:M, data:RDD[LabeledPoint], summary:Option[BasicStatisticalSummary]): D
+  def diagnose(model:M, data:RDD[LabeledPoint], summary:Option[FeatureDataStatistics]): D
 }

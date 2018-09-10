@@ -47,7 +47,7 @@ class Params extends PalDBIndexMapParams {
   /**
    * Validating data directory. Note that
    *    1. Validation is optional
-   *    2. If validation data set is provided, the best model will be provided;
+   *    2. If validation dataset is provided, the best model will be provided;
    *    3. No matter 1 or 2, all learned models will be provided, so users can always perform an independent model
    *       selection job
    */
@@ -200,7 +200,7 @@ class Params extends PalDBIndexMapParams {
   var featureDimension: Int = -1
 
   /**
-   * Whether to use warm start or not during hyper-parameter tuning. If true, the optimization with the next value of
+   * Whether to use warm start or not during hyperparameter tuning. If true, the optimization with the next value of
    * the regularization parameter starts from the best model found with the previous value of the regularization
    * parameter. If false, an initial model with all coefficients identically set to zero is used to optimize the model
    * for each value of the regularization parameter.

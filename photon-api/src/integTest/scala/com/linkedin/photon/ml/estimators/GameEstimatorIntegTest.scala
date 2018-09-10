@@ -39,7 +39,7 @@ import com.linkedin.photon.ml.normalization.{NormalizationContext, Normalization
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{L2RegularizationContext, OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.projector.RandomProjection
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 import com.linkedin.photon.ml.util._
 
@@ -51,7 +51,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
   import GameEstimatorIntegTest._
 
   /**
-   * A very simple test that fits a toy data set using only the [[GameEstimator]] (not the full Driver).
+   * A very simple test that fits a toy dataset using only the [[GameEstimator]] (not the full Driver).
    * This is useful to understand the minimum setting in which a [[GameEstimator]] will function properly,
    * and to verify the algorithms manually.
    *
@@ -71,7 +71,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
         (index.toLong, newPoint)
       }
     val trainingDataRdd = sc.parallelize(trainingDataSeq)
-    val fixedEffectDataSet = new FixedEffectDataSet(trainingDataRdd, featureShardId)
+    val fixedEffectDataSet = new FixedEffectDataset(trainingDataRdd, featureShardId)
     val trainingDataSets = Map((coordinateId, fixedEffectDataSet))
 
     val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
@@ -113,9 +113,9 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
   }
 
   /**
-   * Combine the trivial data set with each type of normalization.
+   * Combine the trivial dataset with each type of normalization.
    *
-   * @return A data set to train on and the type or normalization to use during training
+   * @return A dataset to train on and the type or normalization to use during training
    */
   @DataProvider
   def normalizationParameters(): Array[Array[Object]] = {
@@ -148,7 +148,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
           (index.toLong, newPoint)
         }
       val trainingDataRdd = sc.parallelize(trainingDataSeq)
-      val fixedEffectDataSet = new FixedEffectDataSet(trainingDataRdd, featureShardId)
+      val fixedEffectDataSet = new FixedEffectDataset(trainingDataRdd, featureShardId)
       val trainingDataSets = Map((coordinateId, fixedEffectDataSet))
 
       val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
@@ -162,7 +162,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
           constraintMap = None))
       val modelConfig: GameEstimator.GameOptimizationConfiguration = Map((coordinateId, fixedEffectOptConfig))
 
-      val statisticalSummary = BasicStatisticalSummary(trainingDataRdd.values, Some(labeledPoints.head.features.length))
+      val statisticalSummary = FeatureDataStatistics(trainingDataRdd.values, Some(labeledPoints.head.features.length))
       val normalizationContext = NormalizationContext(normalizationType, statisticalSummary)
       val normalizationContexts = Map((coordinateId, normalizationContext))
       val logger = createLogger("NormalizationTest")
@@ -194,7 +194,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
   /**
    * Test that the [[GameEstimator]] can correctly convert a [[DataFrame]] of training data into one or more
-   * [[DataSet]]s.
+   * [[Dataset]]s.
    */
   @Test
   def testPrepareTrainingDataSetsAndEvaluator(): Unit = sparkTest("testPrepareTrainingDataSetsAndEvaluator") {
@@ -218,7 +218,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
     // global data
     trainingDataSets("global") match {
-      case ds: FixedEffectDataSet =>
+      case ds: FixedEffectDataset =>
         assertEquals(ds.labeledPoints.count(), 34810)
         assertEquals(ds.numFeatures, 30085)
 
@@ -227,7 +227,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
     // per-user data
     trainingDataSets("per-user") match {
-      case ds: RandomEffectDataSet =>
+      case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 33110)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
@@ -242,7 +242,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
     // per-song data
     trainingDataSets("per-song") match {
-      case ds: RandomEffectDataSet =>
+      case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 23167)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
@@ -257,7 +257,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 
     // per-artist data
     trainingDataSets("per-artist") match {
-      case ds: RandomEffectDataSet =>
+      case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 4471)
 
         val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
@@ -407,7 +407,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
 object GameEstimatorIntegTest {
 
   /**
-   * The test data set here is a subset of the Yahoo! music data set available on the internet, in [[DataFrame]] form,
+   * The test dataset here is a subset of the Yahoo! music dataset available on the internet, in [[DataFrame]] form,
    * stored in the parquet format.
    */
   private val inputPath = getClass
@@ -434,7 +434,7 @@ object GameEstimatorIntegTest {
     override def prepareTrainingDataSetsAndEvaluator(
         data: DataFrame,
         featureShards: Set[FeatureShardId],
-        additionalCols: Set[String]): (Map[CoordinateId, D forSome { type D <: DataSet[D] }], Evaluator) =
+        additionalCols: Set[String]): (Map[CoordinateId, D forSome { type D <: Dataset[D] }], Evaluator) =
       super.prepareTrainingDataSetsAndEvaluator(data, featureShards, additionalCols)
 
     override def prepareTrainingLossEvaluator(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
@@ -449,14 +449,14 @@ object GameEstimatorIntegTest {
     override def prepareValidationEvaluators(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): Seq[Evaluator] =
       super.prepareValidationEvaluators(gameDataSet)
 
-    override def prepareNormalizationContextWrappers(dataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] } ])
+    override def prepareNormalizationContextWrappers(dataSets: Map[CoordinateId, D forSome { type D <: Dataset[D] } ])
       : Option[Map[CoordinateId, NormalizationContextWrapper]] =
 
       super.prepareNormalizationContextWrappers(dataSets)
 
     override def train(
         configuration: GameEstimator.GameOptimizationConfiguration,
-        trainingDataSets: Map[CoordinateId, D forSome { type D <: DataSet[D] }],
+        trainingDataSets: Map[CoordinateId, D forSome { type D <: Dataset[D] }],
         coordinateDescent: CoordinateDescent,
         normalizationContextWrappersOpt: Option[Map[CoordinateId, NormalizationContextWrapper]] = None,
         prevGameModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) =

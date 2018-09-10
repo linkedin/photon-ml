@@ -18,7 +18,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -32,7 +32,7 @@ class PredictionErrorIndependenceDiagnostic
   override def diagnose(
       model: GeneralizedLinearModel,
       data: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): PredictionErrorIndependenceReport = {
+      summary: Option[FeatureDataStatistics]): PredictionErrorIndependenceReport = {
 
     val broadcastModel = data.sparkContext.broadcast(model)
     val predictionError = data.map { labeledPoint =>

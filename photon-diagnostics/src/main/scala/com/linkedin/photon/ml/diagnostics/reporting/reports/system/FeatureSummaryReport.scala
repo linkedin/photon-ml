@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.diagnostics.reporting.reports.system
 
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 
 /**
  * Report describing a feature summary
@@ -27,4 +27,4 @@ import com.linkedin.photon.ml.stat.BasicStatisticalSummary
  */
 case class FeatureSummaryReport(
   nameToIndex: Map[String, Int],
-  summary:BasicStatisticalSummary) extends LogicalReport
+  summary:FeatureDataStatistics) extends LogicalReport

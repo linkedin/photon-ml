@@ -34,15 +34,15 @@ protected[ml] class BinaryClassificationDownSampler(override val downSamplingRat
   with Serializable {
 
   /**
-   * Down-sample the negatives in the data set.
+   * Down-sample the negatives in the dataset.
    *
    * @note The current down-sampling method does it in one pass, filtering negative data points and flat-scaling the
    *       weights of the remaining negative data points. The correct solution would perform weight-proportional
    *       sampling and weight-proportional scaling, though this would require multiple passes.
    *
-   * @param labeledPoints The data set
+   * @param labeledPoints The dataset
    * @param seed Random seed
-   * @return Down-sampled data set
+   * @return Down-sampled dataset
    */
   override def downSample(
       labeledPoints: RDD[(Long, LabeledPoint)],

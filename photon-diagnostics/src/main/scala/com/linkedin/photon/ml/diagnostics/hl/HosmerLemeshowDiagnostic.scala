@@ -19,7 +19,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.ModelDiagnostic
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 
 /**
@@ -36,7 +36,7 @@ class HosmerLemeshowDiagnostic(
   def diagnose(
       model: LogisticRegressionModel,
       data: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): HosmerLemeshowReport = {
+      summary: Option[FeatureDataStatistics]): HosmerLemeshowReport = {
 
     val scored = data.map(x => (x.label, model.computeMeanFunction(x.features)))
     val count = data.count

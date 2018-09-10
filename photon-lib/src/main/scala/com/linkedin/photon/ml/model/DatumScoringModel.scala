@@ -32,7 +32,7 @@ trait DatumScoringModel extends Summarizable {
   def modelType: TaskType
 
   /**
-   * Compute the scores for the GAME data set.
+   * Compute the scores for the GAME dataset.
    *
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
    * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
@@ -42,7 +42,7 @@ trait DatumScoringModel extends Summarizable {
   def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores
 
   /**
-   * Compute the scores for the GAME data set, and store the scores only.
+   * Compute the scores for the GAME dataset, and store the scores only.
    *
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
    * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired

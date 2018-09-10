@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.util.Logging
 object ModelSelection extends Logging {
 
   /**
-   * Select the best binary classifier via AUC (Area Under ROC Curve) computed on validation data set.
+   * Select the best binary classifier via AUC (Area Under ROC Curve) computed on validation dataset.
    *
    * @param binaryClassifiers A map of (key -> binary classifier) to select from
    * @param evaluationMetrics The pre-computed evaluation metrics
@@ -37,7 +37,7 @@ object ModelSelection extends Logging {
     selectModelByKey(binaryClassifiers, evaluationMetrics, Evaluation.AREA_UNDER_RECEIVER_OPERATOR_CHARACTERISTICS)
 
   /**
-   * Select the best linear regression model via RMSE (rooted mean square error) computed on validation data set.
+   * Select the best linear regression model via RMSE (rooted mean square error) computed on validation dataset.
    *
    * @param linearRegressionModels A map of (key -> linear regression model) to select from
    * @param evaluationMetrics The pre-computed evaluation metrics
@@ -49,7 +49,7 @@ object ModelSelection extends Logging {
     selectModelByKey(linearRegressionModels, evaluationMetrics, Evaluation.ROOT_MEAN_SQUARE_ERROR)
 
   /**
-   * Select the best poisson regression model via minimizing regularized log-likelihood computed on validation data set.
+   * Select the best poisson regression model via minimizing regularized log-likelihood computed on validation dataset.
    *
    * @param poissonRegressionModels A map of (key -> poisson regression model) to select from
    * @param evaluationMetrics The pre-computed evaluation metrics

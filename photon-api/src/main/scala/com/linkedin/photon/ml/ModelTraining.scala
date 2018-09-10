@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.util.{Logging, PhotonBroadcast}
 object ModelTraining extends Logging {
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings.
+   * Train a generalized linear model using the given training dataset and the Photon-ML's parameter settings.
    *
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
    * @param taskType Learning task type, e.g., LINEAR_REGRESSION or LOGISTIC_REGRESSION or POISSON_REGRESSION
@@ -81,8 +81,8 @@ object ModelTraining extends Logging {
       useWarmStart)
 
   /**
-   * Train a generalized linear model using the given training data set and the Photon-ML's parameter settings.
-   * Sets up a GLM of the appropriate kind then trains it for various regularization weights, performing hyper-parameter
+   * Train a generalized linear model using the given training dataset and the Photon-ML's parameter settings.
+   * Sets up a GLM of the appropriate kind then trains it for various regularization weights, performing hyperparameter
    * tuning.
    *
    * @param trainingData The training data represented as a RDD of [[data.LabeledPoint]]
@@ -99,7 +99,7 @@ object ModelTraining extends Logging {
    * @param constraintMap An optional mapping of feature indices to box constraints
    * @param warmStartModels Map of (lambda -> model) to use for warm start training
    * @param treeAggregateDepth The depth for tree aggregation
-   * @param useWarmStart Whether to use warm start or not in hyper-parameter tuning
+   * @param useWarmStart Whether to use warm start or not in hyperparameter tuning
    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
    *         regularization weight used to train the model
    */
@@ -182,7 +182,7 @@ object ModelTraining extends Logging {
     logger.info(s"Starting model fits with $numWarmStartModels warm start models for lambdas " +
       s"${warmStartModels.keys.mkString(", ")}")
 
-    // Hyper-parameter tuning
+    // Hyperparameter tuning
     val initWeightsAndModels = List[(Double, GeneralizedLinearModel)]()
     val finalWeightsAndModels = sortedRegularizationWeights
       .foldLeft(initWeightsAndModels) {

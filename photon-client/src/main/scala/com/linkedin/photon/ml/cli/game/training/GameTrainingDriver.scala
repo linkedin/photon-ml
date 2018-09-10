@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
 import com.linkedin.photon.ml.projector.IdentityProjection
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils
 import com.linkedin.photon.ml.util._
@@ -56,7 +56,7 @@ object GameTrainingDriver extends GameDriver {
   // These types make the code easier to read, and are somewhat specific to the GAME Driver
   //
 
-  type FeatureShardStatistics = Iterable[(FeatureShardId, BasicStatisticalSummary)]
+  type FeatureShardStatistics = Iterable[(FeatureShardId, FeatureDataStatistics)]
   type FeatureShardStatisticsOpt = Option[FeatureShardStatistics]
   type IndexMapLoaders = Map[FeatureShardId, IndexMapLoader]
 
@@ -144,16 +144,16 @@ object GameTrainingDriver extends GameDriver {
 
   val hyperParameterTunerName: Param[HyperparameterTunerName] = ParamUtils.createParam[HyperparameterTunerName](
     "hyper parameter tuner",
-    "Package name of hyper-parameter tuner."
+    "Package name of hyperparameter tuner."
   )
 
   val hyperParameterTuning: Param[HyperparameterTuningMode] = ParamUtils.createParam[HyperparameterTuningMode](
     "hyper parameter tuning",
-    "Type of automatic hyper-parameter tuning to perform during training.")
+    "Type of automatic hyperparameter tuning to perform during training.")
 
   val hyperParameterTuningIter: Param[Int] = ParamUtils.createParam[Int](
     "hyper parameter tuning iterations",
-    "Number of iterations of hyper-parameter tuning to perform (if enabled).",
+    "Number of iterations of hyperparameter tuning to perform (if enabled).",
     ParamValidators.gt[Int](0.0))
 
   val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
@@ -320,12 +320,12 @@ object GameTrainingDriver extends GameDriver {
       case _ =>
     }
 
-    // If hyper-parameter tuning is enabled, need to specify the number of tuning iterations
+    // If hyperparameter tuning is enabled, need to specify the number of tuning iterations
     hyperParameterTuningMode match {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
         require(
           paramMap.get(hyperParameterTuningIter).isDefined,
-          "Hyper-parameter tuning enabled, but number of iterations unspecified.")
+          "Hyperparameter tuning enabled, but number of iterations unspecified.")
 
       case _ =>
     }
@@ -465,7 +465,7 @@ object GameTrainingDriver extends GameDriver {
       gameEstimator.fit(trainingData, validationData, gameOptimizationConfigs)
     }
 
-    val tunedModels = Timed("Tune hyper-parameters") {
+    val tunedModels = Timed("Tune hyperparameters") {
       runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
     }
 
@@ -518,7 +518,7 @@ object GameTrainingDriver extends GameDriver {
   }
 
   /**
-   * Reads the validation data set, handling specifics of input date ranges in the params.
+   * Reads the validation dataset, handling specifics of input date ranges in the params.
    *
    * @param avroDataReader The [[AvroDataReader]] to use for reading validation data
    * @param featureIndexMapLoaders The feature index map loaders
@@ -602,7 +602,7 @@ object GameTrainingDriver extends GameDriver {
       featureIndexMapLoaders: IndexMapLoaders): FeatureShardStatistics =
     featureIndexMapLoaders.map { case (featureShardId, indexMapLoader) =>
 
-      val summary = BasicStatisticalSummary(
+      val summary = FeatureDataStatistics(
         // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
         data.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)),
         indexMapLoader.indexMapForDriver().get(Constants.INTERCEPT_KEY))
@@ -702,7 +702,7 @@ object GameTrainingDriver extends GameDriver {
   /**
    * Select best model according to validation evaluator.
    *
-   * @param models The models to evaluate (single evaluator, on the validation data set)
+   * @param models The models to evaluate (single evaluator, on the validation dataset)
    * @return The best model
    */
   protected[training] def selectBestModel(models: Seq[GameEstimator.GameResult]): GameEstimator.GameResult = {
@@ -714,7 +714,7 @@ object GameTrainingDriver extends GameDriver {
         val (evaluator1, score1) = eval1.head
         val (evaluator2, score2) = eval2.head
 
-        // TODO: Each iteration of the Bayesian hyper-parameter tuning recomputes the GAME data set. This causes the
+        // TODO: Each iteration of the Bayesian hyperparameter tuning recomputes the GAME dataset. This causes the
         // TODO: equality check to fail: not only are the evaluators not identical (ev1.eq(ev2)) but they're not equal
         // TODO: either (they reference different RDDs, which are computed identically). The below check is a temporary
         // TODO: solution.

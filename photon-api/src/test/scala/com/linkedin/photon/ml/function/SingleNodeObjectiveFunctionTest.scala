@@ -138,11 +138,11 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
     .map(pair => Array(pair._1, pair._2))
 
   //
-  // Binary classification data set generation functions
+  // Binary classification dataset generation functions
   //
 
   /**
-   * Generate unweighted benign data sets for binary classification.
+   * Generate unweighted benign datasets for binary classification.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -158,7 +158,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for binary classification.
+   * Generate weighted benign datasets for binary classification.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -177,7 +177,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   }
 
   /**
-   * Generate unweighted outlier-dense data sets for binary classification.
+   * Generate unweighted outlier-dense datasets for binary classification.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -193,7 +193,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted outlier-dense data sets for binary classification.
+   * Generate weighted outlier-dense datasets for binary classification.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -212,11 +212,11 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   }
 
   //
-  // Linear regression data set generation functions
+  // Linear regression dataset generation functions
   //
 
   /**
-   * Generate unweighted benign data sets for linear regression.
+   * Generate unweighted benign datasets for linear regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -232,7 +232,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for linear regression.
+   * Generate weighted benign datasets for linear regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -251,7 +251,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   }
 
   /**
-   * Generate unweighted outlier-dense data sets for linear regression.
+   * Generate unweighted outlier-dense datasets for linear regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -267,7 +267,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted outlier-dense data sets for linear regression.
+   * Generate weighted outlier-dense datasets for linear regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -286,11 +286,11 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   }
 
   //
-  // Poisson regression data set generation functions
+  // Poisson regression dataset generation functions
   //
 
   /**
-   * Generate unweighted benign data sets for Poisson regression.
+   * Generate unweighted benign datasets for Poisson regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -306,7 +306,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for Poisson regression.
+   * Generate weighted benign datasets for Poisson regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -325,7 +325,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
   }
 
   /**
-   * Generate unweighted outlier-dense data sets for Poisson regression.
+   * Generate unweighted outlier-dense datasets for Poisson regression.
    *
    * @return A List of [[LabeledPoint]]
    */
@@ -341,7 +341,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted outlier-dense data sets for Poisson regression.
+   * Generate weighted outlier-dense datasets for Poisson regression.
    *
    * @return A List of [[LabeledPoint]]
    */

@@ -14,19 +14,19 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.RandomEffectDataSet
+import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 
 /**
  * The optimization problem coordinate for a pre-trained random effect model.
  *
- * @param dataSet The training data set
+ * @param dataSet The training dataset
  */
-class RandomEffectModelCoordinate(dataSet: RandomEffectDataSet) extends ModelCoordinate(dataSet) {
+class RandomEffectModelCoordinate(dataSet: RandomEffectDataset) extends ModelCoordinate(dataSet) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Score the effect-specific dataset in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores

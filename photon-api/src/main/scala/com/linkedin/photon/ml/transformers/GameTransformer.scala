@@ -64,7 +64,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
 
   val logDataAndModelStats: Param[Boolean] = ParamUtils.createParam(
     "log data and model stats",
-    "Whether to log data set and model statistics (can be time-consuming for very large data sets).")
+    "Whether to log dataset and model statistics (can be time-consuming for very large datasets).")
 
   val spillScoresToDisk: Param[Boolean] = ParamUtils.createParam(
     "spill scores to disk",
@@ -168,7 +168,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
       }
       .toSet
 
-    val gameDataSet = Timed("Preparing GAME data set") {
+    val gameDataSet = Timed("Preparing GAME dataset") {
       prepareGameDataSet(data, randomEffectTypes, featureShards)
     }
 
@@ -197,12 +197,12 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
   }
 
   /**
-   * Builds a GAME data set according to input data configuration.
+   * Builds a GAME dataset according to input data configuration.
    *
    * @param dataFrame A [[DataFrame]] of raw input data
    * @param randomEffectTypes The set of unique identifier fields used by the random effects of the model
    * @param featureShards The set of feature shards used by the model
-   * @return The prepared GAME data set
+   * @return The prepared GAME dataset
    */
   protected def prepareGameDataSet(
       dataFrame: DataFrame,
@@ -221,23 +221,23 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
         isResponseRequired = false,
         getOrDefault(inputColumnNames))
       .partitionBy(partitioner)
-      .setName("Game data set with UIDs for scoring")
+      .setName("Game dataset with UIDs for scoring")
       .persist(StorageLevel.DISK_ONLY)
 
     gameDataSet
   }
 
   /**
-   * Log some simple summary statistics for the GAME data set.
+   * Log some simple summary statistics for the GAME dataset.
    *
-   * @param gameDataSet The GAME data set
+   * @param gameDataSet The GAME dataset
    * @param randomEffectTypes The set of unique identifier fields used by the random effects of the model
    */
   private def logGameDataSet(gameDataSet: RDD[(UniqueSampleId, GameDatum)], randomEffectTypes: Set[REType]): Unit = {
 
     val numSamples = gameDataSet.count()
 
-    logger.debug(s"Summary for the GAME data set")
+    logger.debug(s"Summary for the GAME dataset")
     logger.debug(s"numSamples: $numSamples")
 
     randomEffectTypes.foreach { idTag =>
@@ -255,9 +255,9 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
   }
 
   /**
-   * Load the GAME model and score the GAME data set.
+   * Load the GAME model and score the GAME dataset.
    *
-   * @param gameDataSet The GAME data set
+   * @param gameDataSet The GAME dataset
    * @return The scores
    */
   protected def scoreGameDataSet(gameDataSet: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
@@ -279,7 +279,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
    *
    * @param evaluatorType The evaluator type
    * @param scores The computed scores
-   * @param gameDataSet The GAME data set
+   * @param gameDataSet The GAME dataset
    * @return The evaluation metric
    */
   protected def evaluateScores(

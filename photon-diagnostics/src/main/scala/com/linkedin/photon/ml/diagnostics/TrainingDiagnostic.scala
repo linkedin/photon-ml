@@ -18,7 +18,7 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.diagnostics.reporting.LogicalReport
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -39,7 +39,7 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
    * Compute training-time diagnostics without warm-start models.
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingData
    * Set of <em>training</em> data
@@ -50,14 +50,14 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
   def diagnose(
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
       trainingData: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary]): Map[Double, D] =
+      summary: Option[FeatureDataStatistics]): Map[Double, D] =
     diagnose(modelFactory, Map.empty, trainingData, summary)
 
   /**
    * Compute training-time diagnostics, with (potentially empty) warm start models.
    *
    * @param modelFactory
-   * Functor that, given a data set, produces a set of (lambda, model) tuples
+   * Functor that, given a dataset, produces a set of (lambda, model) tuples
    *
    * @param trainingData
    * Set of <em>training</em> data
@@ -69,6 +69,6 @@ trait TrainingDiagnostic[-M <: GeneralizedLinearModel, +D <: LogicalReport] {
       modelFactory: (RDD[LabeledPoint], Map[Double, GeneralizedLinearModel]) => List[(Double, M)],
       models:Map[Double, GeneralizedLinearModel],
       trainingData: RDD[LabeledPoint],
-      summary: Option[BasicStatisticalSummary],
+      summary: Option[FeatureDataStatistics],
       seed: Long = System.nanoTime): Map[Double, D]
 }

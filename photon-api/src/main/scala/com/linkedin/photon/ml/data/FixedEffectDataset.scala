@@ -23,15 +23,15 @@ import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
- * DataSet implementation for fixed effect data sets.
+ * DataSet implementation for fixed effect datasets.
  *
  * @param labeledPoints The input data
  * @param featureShardId The feature shard id
  */
-protected[ml] class FixedEffectDataSet(
+protected[ml] class FixedEffectDataset(
     val labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
     val featureShardId: FeatureShardId)
-  extends DataSet[FixedEffectDataSet]
+  extends Dataset[FixedEffectDataset]
   with RDDLike {
 
   lazy val numFeatures: Int = labeledPoints.first()._2.features.length
@@ -42,7 +42,7 @@ protected[ml] class FixedEffectDataSet(
    * @param scores The scores used throughout the coordinate descent algorithm
    * @return An updated dataset with scores added to offsets
    */
-  override def addScoresToOffsets(scores: CoordinateDataScores): FixedEffectDataSet = {
+  override def addScoresToOffsets(scores: CoordinateDataScores): FixedEffectDataset = {
 
     val updatedLabeledPoints = labeledPoints
       .leftOuterJoin(scores.scores)
@@ -50,7 +50,7 @@ protected[ml] class FixedEffectDataSet(
         LabeledPoint(label, features, offset + scoredDatumOption.getOrElse(0.0), weight)
       }
 
-    new FixedEffectDataSet(updatedLabeledPoints, featureShardId)
+    new FixedEffectDataset(updatedLabeledPoints, featureShardId)
   }
 
   /**
@@ -67,7 +67,7 @@ protected[ml] class FixedEffectDataSet(
    * @param name The parent name for all [[RDD]]s in this class
    * @return This object with the name of [[labeledPoints]] assigned
    */
-  override def setName(name: String): FixedEffectDataSet = {
+  override def setName(name: String): FixedEffectDataset = {
 
     labeledPoints.setName(name)
 
@@ -81,7 +81,7 @@ protected[ml] class FixedEffectDataSet(
    * @param storageLevel The storage level
    * @return This object with the storage level of [[labeledPoints]] set
    */
-  override def persistRDD(storageLevel: StorageLevel): FixedEffectDataSet = {
+  override def persistRDD(storageLevel: StorageLevel): FixedEffectDataset = {
 
     if (!labeledPoints.getStorageLevel.isValid) labeledPoints.persist(storageLevel)
 
@@ -93,7 +93,7 @@ protected[ml] class FixedEffectDataSet(
    *
    * @return This object with [[labeledPoints]] marked non-persistent
    */
-  override def unpersistRDD(): FixedEffectDataSet = {
+  override def unpersistRDD(): FixedEffectDataset = {
 
     if (labeledPoints.getStorageLevel.isValid) labeledPoints.unpersist()
 
@@ -105,7 +105,7 @@ protected[ml] class FixedEffectDataSet(
    *
    * @return This object with [[labeledPoints]] materialized
    */
-  override def materialize(): FixedEffectDataSet = {
+  override def materialize(): FixedEffectDataset = {
 
     materializeOnce(labeledPoints)
 
@@ -132,21 +132,21 @@ protected[ml] class FixedEffectDataSet(
   }
 }
 
-object FixedEffectDataSet {
+object FixedEffectDataset {
 
   /**
-   * Build an instance of a fixed effect data set for the given feature shard.
+   * Build an instance of a fixed effect dataset for the given feature shard.
    *
    * @param gameDataSet The input dataset
    * @param featureShardId The feature shard ID
-   * @return A new data set with given configuration
+   * @return A new dataset with given configuration
    */
   protected[ml] def apply(
       gameDataSet: RDD[(UniqueSampleId, GameDatum)],
-      featureShardId: FeatureShardId): FixedEffectDataSet = {
+      featureShardId: FeatureShardId): FixedEffectDataset = {
 
     val labeledPoints = gameDataSet.mapValues(_.generateLabeledPointWithFeatureShardId(featureShardId))
 
-    new FixedEffectDataSet(labeledPoints, featureShardId)
+    new FixedEffectDataset(labeledPoints, featureShardId)
   }
 }

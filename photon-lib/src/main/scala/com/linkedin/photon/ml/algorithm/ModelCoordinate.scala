@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.DataSet
+import com.linkedin.photon.ml.data.Dataset
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
@@ -22,13 +22,13 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
 /**
  * The optimization problem coordinate for a pre-trained model.
  *
- * @tparam D The training data set type
- * @param dataSet The training data set
+ * @tparam D The training dataset type
+ * @param dataSet The training dataset
  */
-abstract class ModelCoordinate[D <: DataSet[D]](dataSet: D) extends Coordinate(dataSet) {
+abstract class ModelCoordinate[D <: Dataset[D]](dataSet: D) extends Coordinate(dataSet) {
 
   /**
-   * Score the effect-specific data set in the coordinate with the input model.
+   * Score the effect-specific dataset in the coordinate with the input model.
    *
    * @param model The input model
    * @return The output scores

@@ -60,8 +60,8 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging, VectorUtils}
 
 /**
  * This class used to solve an optimization problem using trust region Newton method (TRON).
- * Reference1: [[http://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf]]
- * Reference2:
+ * Reference 1: [[http://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf]]
+ * Reference 2:
  *   [[http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/distributed-liblinear/spark/running_spark_liblinear.html]]
  *
  * @param normalizationContext The normalization context
@@ -92,7 +92,7 @@ class TRON(
     isTrackingState) {
 
   /**
-   * Initialize the hyper-parameters for Tron. See the Reference2 for more details on the hyper-parameters.
+   * Initialize the hyperparameters for TRON (see Reference 2 for more details).
    */
   private val (eta0, eta1, eta2) = (1e-4, 0.25, 0.75)
   private val (sigma1, sigma2, sigma3) = (0.25, 0.5, 4.0)

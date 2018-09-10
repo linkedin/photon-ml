@@ -135,7 +135,7 @@ object VectorRescaling {
   /**
    * This function applies forward transformation and scaling on prior data.
    *
-   * @param priors A sequence of observations (vector, eval) from previous iterations or past data set.
+   * @param priors A sequence of observations (vector, eval) from previous iterations or past dataset.
    * @param hyperParams Hyper-parameter configuration.
    * @return Obervations with vectors transformed and scaled forward.
    */

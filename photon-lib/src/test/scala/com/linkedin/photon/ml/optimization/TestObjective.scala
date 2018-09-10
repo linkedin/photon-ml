@@ -149,7 +149,7 @@ object TestObjective {
    * @param dataPoint A single data point
    * @param coefficients The current coefficients
    * @param vector The Hessian multiply vector
-   * @param cumHessianVector The cumulative Hessian vector for all points in the data set
+   * @param cumHessianVector The cumulative Hessian vector for all points in the dataset
    */
   protected def hessianVectorAt(
     dataPoint: LabeledPoint,

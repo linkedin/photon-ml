@@ -18,7 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataset}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.BroadcastLike
@@ -37,12 +37,12 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
   val projectionMatrix: ProjectionMatrix = projectionMatrixBroadcast.value
 
   /**
-   * Project the data set from the original space to the projected space.
+   * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input data set in the original space
-   * @return The same data set in the projected space
+   * @param randomEffectDataSet The input dataset in the original space
+   * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
 
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
@@ -127,14 +127,14 @@ object ProjectionMatrixBroadcast {
   /**
    * Generate random projection based broadcast projector
    *
-   * @param randomEffectDataSet The input random effect data set
+   * @param randomEffectDataSet The input random effect dataset
    * @param projectedSpaceDimension The dimension of the projected feature space
    * @param isKeepingInterceptTerm Whether to keep the intercept in the original feature space
    * @param seed The seed of random number generator
    * @return The generated random projection based broadcast projector
    */
   protected[ml] def buildRandomProjectionBroadcastProjector(
-      randomEffectDataSet: RandomEffectDataSet,
+      randomEffectDataSet: RandomEffectDataset,
       projectedSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,
       seed: Long = MathConst.RANDOM_SEED): ProjectionMatrixBroadcast = {

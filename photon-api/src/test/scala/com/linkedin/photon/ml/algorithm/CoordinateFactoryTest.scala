@@ -21,7 +21,7 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.data.{FixedEffectDataSet, LocalDataSet, RandomEffectDataSet, RandomEffectDataSetInProjectedSpace}
+import com.linkedin.photon.ml.data.{FixedEffectDataset, LocalDataset, RandomEffectDataset, RandomEffectDatasetInProjectedSpace}
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunctionHelper, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContextBroadcast
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
@@ -42,7 +42,7 @@ class CoordinateFactoryTest {
   @Test
   def testBuildFixedEffectCoordinate(): Unit = {
 
-    val mockDataSet = mock(classOf[FixedEffectDataSet])
+    val mockDataSet = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = FixedEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
     val coordinate = CoordinateFactory.build(
@@ -69,12 +69,12 @@ class CoordinateFactoryTest {
   @Test
   def testBuildRandomEffectCoordinate(): Unit = {
 
-    val mockDataSet: RandomEffectDataSet = mock(classOf[RandomEffectDataSetInProjectedSpace])
-    val mockRDD = mock(classOf[RDD[(REId, LocalDataSet)]])
+    val mockDataSet: RandomEffectDataset = mock(classOf[RandomEffectDatasetInProjectedSpace])
+    val mockRDD = mock(classOf[RDD[(REId, LocalDataset)]])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
     doReturn(mockRDD).when(mockDataSet).activeData
-    doReturn(mockRDD).when(mockRDD).mapValues(Matchers.any(classOf[Function1[LocalDataSet, SingleNodeObjectiveFunction]]))
+    doReturn(mockRDD).when(mockRDD).mapValues(Matchers.any(classOf[Function1[LocalDataset, SingleNodeObjectiveFunction]]))
 
     val coordinate = CoordinateFactory.build(
       mockDataSet,
@@ -100,7 +100,7 @@ class CoordinateFactoryTest {
   @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
   def testBuildInvalidCoordinate(): Unit = {
 
-    val mockDataSet = mock(classOf[FixedEffectDataSet])
+    val mockDataSet = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
     CoordinateFactory.build(

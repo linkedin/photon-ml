@@ -19,7 +19,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataSet}
+import com.linkedin.photon.ml.data.{LabeledPoint, RandomEffectDataset}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.spark.RDDLike
@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * A class that holds the projectors for a sharded data set.
+ * A class that holds the projectors for a sharded dataset.
  *
  * @param indexMapProjectorRDD The projectors
  */
@@ -36,12 +36,12 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   with RDDLike {
 
   /**
-   * Project the data set from the original space to the projected space.
+   * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input data set in the original space
-   * @return The same data set in the projected space
+   * @param randomEffectDataSet The input dataset in the original space
+   * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataSet): RandomEffectDataSet = {
+  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
 
     val activeData = randomEffectDataSet.activeData
     val passiveDataOption = randomEffectDataSet.passiveDataOption
@@ -216,10 +216,10 @@ object IndexMapProjectorRDD {
   /**
    * Generate index map based RDD projectors.
    *
-   * @param randomEffectDataSet The input random effect data set
+   * @param randomEffectDataSet The input random effect dataset
    * @return The generated index map based RDD projectors
    */
-  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataSet): IndexMapProjectorRDD = {
+  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataset): IndexMapProjectorRDD = {
 
     val originalSpaceDimension = randomEffectDataSet
       .activeData

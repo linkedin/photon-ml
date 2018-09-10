@@ -54,7 +54,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   def glmConstructorMock(coefficients: Coefficients): GeneralizedLinearModel = mock(classOf[GeneralizedLinearModel])
 
   /**
-   * Generate unweighted benign data sets for binary classification.
+   * Generate unweighted benign datasets for binary classification.
    *
    * @return A Seq of [[LabeledPoint]]
    */
@@ -70,7 +70,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for binary classification.
+   * Generate weighted benign datasets for binary classification.
    *
    * @return A Seq of [[LabeledPoint]]
    */
@@ -90,7 +90,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   }
 
   /**
-   * Generate unweighted benign data sets for linear regression.
+   * Generate unweighted benign datasets for linear regression.
    *
    * @return A Seq of [[LabeledPoint]]
    */
@@ -106,7 +106,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for linear regression.
+   * Generate weighted benign datasets for linear regression.
    *
    * @return A Seq of [[LabeledPoint]]
    */
@@ -126,7 +126,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   }
 
   /**
-   * Generate unweighted benign data sets for Poisson regression.
+   * Generate unweighted benign datasets for Poisson regression.
    *
    * @return A Seq of [[LabeledPoint]]
    */
@@ -142,7 +142,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       .toList
 
   /**
-   * Generate weighted benign data sets for Poisson regression.
+   * Generate weighted benign datasets for Poisson regression.
    *
    * @return A Seq of [[LabeledPoint]]
    */

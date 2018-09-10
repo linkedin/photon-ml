@@ -35,7 +35,7 @@ import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, Ind
 import com.linkedin.photon.ml.model._
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.stat.BasicStatisticalSummary
+import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
@@ -375,7 +375,7 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
   }
 
   /**
-   * Test computing and writing out [[BasicStatisticalSummary]].
+   * Test computing and writing out [[FeatureDataStatistics]].
    */
   @Test
   def testWriteBasicStatistics(): Unit = sparkTest("testWriteBasicStatistics") {
@@ -390,10 +390,10 @@ class ModelProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     val meanVector = VectorUtils.toSparseVector(Array((0, 1.1), (3, 2.4), (4, 3.6), (5, 1D)), dim)
     val varianceVector = VectorUtils.toSparseVector(Array((0, 1D), (3, 7D), (4, 0.5), (5, 0D)), dim)
 
-    val summary = BasicStatisticalSummary(
+    val summary = FeatureDataStatistics(
+      count = 100L,
       meanVector,
       varianceVector,
-      count = 100L,
       numNonzeros,
       maxVector,
       minVector,
