@@ -16,10 +16,8 @@ apply plugin: 'scala-cross-build'
 
 scalaCrossBuild {
 
-  // Spark 2.0 uses Scala 2.11 - LinkedIn uses custom Scala 2.10 Spark jars.
-  // The version info should be changed to 2.11.8 for external builds.
   defaultScalaVersion '2.11.8'
-  targetScalaVersions '2.10.6', '2.11.8'
+  targetScalaVersions  '2.11.8'
   buildDefaultOnly false
 
   projectsToCrossBuild(

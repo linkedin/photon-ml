@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.model
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-import org.dmg.pmml.GeneralRegressionModel.ModelType
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType, REId}

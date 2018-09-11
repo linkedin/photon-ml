@@ -50,7 +50,7 @@ apply from: 'build-scripts/rat.gradle'
 
 // The gradle variables defined here are visible in sub-projects
 ext {
-  sparkVersion = '2.1.0'
+  sparkVersion = '2.3.0'
 }
 
 rat {
