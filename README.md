@@ -310,7 +310,7 @@ Detailed usages are described via command:
 - build-scripts contains scripts used during the build of photon-ml.
 - buildSrc contains Gradle plugins source code. Those plugins are used to build photon-ml.
 - dev-scripts contains various scripts useful to developers of photon-ml.
-- examples contains a script that demonstrates how to run photon ml from command line.
+- examples contain a script that demonstrates how to run photon ml from command line.
 - gradle contains the gradle wrapper jar.
 
 ## IntelliJ IDEA setup
