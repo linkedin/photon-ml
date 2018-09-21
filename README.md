@@ -2,21 +2,31 @@
 
 [![Build Status](https://travis-ci.org/linkedin/photon-ml.svg?branch=master)](https://travis-ci.org/linkedin/photon-ml)
 
-**New**: check out our [hands-on tutorial](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
+**Check out our [hands-on tutorial](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).**
 
-**Photon Machine Learning (Photon ML)** is a machine learning library based upon [Apache Spark](http://spark.apache.org/) originally developed by the LinkedIn Machine Learning Algorithms team.
-
-It's designed to be flexible, scalable and efficient, while providing handy analytical abilities to help modelers / data scientists make predictions easily and quickly.
-
-<!-- MarkdownTOC autolink=true bracket=round depth=0 -->
+Photon ML is a machine learning library based on Apache Spark. It was originally developed by the LinkedIn Machine Learning Algorithms Team. Currently, Photon ML supports training different types of [Generalized Linear Models](https://en.wikipedia.org/wiki/Generalized_linear_model)(GLMs) and [Generalized Linear Mixed Models](https://en.wikipedia.org/wiki/Generalized_linear_mixed_model)(GLMMs/GLMix model): logistic, linear, and Poisson.
 
 - [Features](#features)
+  - [Generalized Linear Models](#generalize-linear-models)
+  - [GAME - Generalized Additive Mixed Effects](#game---generalized-additive-mixed-models)
+  - [Configurable Optimizers](#configurable-optimizers)
+  - [Regularization](#regularization)
+  - [Feature scaling and normalization](#feature-scaling-and-normalization)
+  - [Offset training](#offset-training)
+  - [Feature summarization](#feature-summarization)
+  - [Model validation](#model-evaluation)
+  - [Warm-start training](#warm-start-training)
+  - [Partial re-training](#partial-re-training)
 - [Experimental Features](#experimental-features)
-  - [GAME - Generalized Additive Mixed Effect Model](#game---generalized-additive-mixed-effect-model)
+  - [Smoothed Hinge Loss Linear SVM](#smoothed-hinge-loss-linear-svm)
+  - [Hyperparameter Auto-Tuning](#hyperparameter-auto-tuning)
+  - [Regularize by Previous Model During Warm-Start Training](#regularize-by-previous-model-during-warm-start-training)
 - [How to Build](#how-to-build)
 - [How to Use](#how-to-use)
+  - [Drivers](#drivers)
+  - [API](#api)
   - [Avro Schemas](#avro-schemas)
-    - [*What about other formats?*](#what-about-other-formats)
+  - [What about other formats?](#what-about-other-formats)
   - [Input Data Format](#input-data-format)
   - [Models](#models)
   - [Shaded Jar](#shaded-jar)
@@ -26,72 +36,74 @@ It's designed to be flexible, scalable and efficient, while providing handy anal
     - [Grab a Dataset](#grab-a-dataset)
     - [Train the Model](#train-the-model)
   - [Running Photon ML on Cluster Mode](#running-photon-ml-on-cluster-mode)
+- [Modules and directories](#modules-and-directories)
+  - [Source code](#source-code)
+  - [Other](#other)
+- [IntelliJ IDEA setup](#intellij-idea-setup)
 - [How to Contribute](#how-to-contribute)
 - [Reference](#reference)
 
-<!-- /MarkdownTOC -->
-
-
 ## Features
-**Photon ML** currently supports:
 
-1. Generalized Linear Models:
+#### Generalized Linear Models
+
   * Linear Regression
   * Logistic Regression
   * Poisson Regression
+  
+#### GAME - Generalized Additive Mixed Effects
 
-2. Regularization:
-  * The LBFGS optimizer supports L1, L2, and Elastic Net regularization
-  * The TRON optimizer supports L2 regularization
+The GAME algorithm uses coordinate descent to expand beyond traditional GLMs to further provide per-entity (per-user, per-item, per-country, etc.) coefficients (also known as random effects in statistics literature). It manages to scale model training up to hundreds of billions of coefficients, while remaining solvable within Spark's framework.
 
-3. Boxed constraints towards model coefficients, e.g. [0.1 <= wi <= 0.9] where wi is the model coefficient at dimension i
+For example, a GAME model for movie recommendations can be formulated as (fixed effect model + per-user random effect model + per-movie random effect model + user-movie matrix factorization model). More details on GAME models can be found [here](https://docs.google.com/presentation/d/1vHanpK3KLIVgdDIHYRehUeyb04Hc2AasbBHs4InVPSU).
 
-4. Feature scaling and normalization:
-  * Zero-mean, unit-variant normalization (with efficient optimization techniques that pertains vector sparsity)
+The type of GAME model currently supported by Photon ML is the GLMM or 'GLMix' model. Many of LinkedIn's core products have adopted GLMix models: jobs search and recommendation, news feed ranking, Ads CTR prediction and "People Also Viewed". More details on GLMix models can be found [here](https://docs.google.com/presentation/d/1tYoelUma9-MMYdteWYS31LqVeoyPEncxJRk-k57gj0A/edit?usp=sharing).
+
+#### Configurable Optimizers
+  * [LBFGS](https://en.wikipedia.org/wiki/Limited-memory_BFGS)
+  * [TRON](https://www.csie.ntu.edu.tw/~cjlin/papers/logistic.pdf)
+
+#### Regularization
+  * L1 (LASSO) regularization
+  * L2 (Tikhonov) regularization (only type supported by TRON)
+  * Elastic-net regularization
+
+#### Feature scaling and normalization
+  * Standardization: Zero-mean, unit-variant normalization
   * Scaling by standard deviation
-  * Scaling to range [-1, 1]
+  * Scaling by maximum magnitude to range [-1, 1]
 
-5. Offset training: a typical naive way of training multi-layer models. Offset is a special feature with a fixed model coefficient as 1. It's used to insert a smaller model's response into a global model. For example, when doing a typical binary classification problem, we could train a different model against a subset of all the features, and then set that model's response score as an offset of the global model training data. In this way, the global model will only learn against the residuals of the 1st layer model's response while having the benefits of combining the two models together.
+#### Offset training
+A typical naive way of training multi-layer models, it's used to insert another model's response into a global model. For example, when doing a typical binary classification problem, a model could be trained against a subset of all the features. Next, data could be scored with this model and the response scores set as 'offset' values. In this way, future models will learn against the residuals of the 1st layer model's response while having the benefits of combining the two models together.
 
-6. Feature summarization: **note** it's a direct wrapper of Spark MLLIB Feature summarizer, providing typical metrics (mean, min, max, std, variance and etc.) on a per feature basis
-
-7. Model diagnostic tools: metrics, plots and summarization page for diagnosing model performance. The supported functions include:
-  * rocAUC, prAUC, precision, recall, F1, RMSE plotted under different regularization weights
-  * Error / Prediction Independence Analysis
-  * [Kendall Tau Independence Test](http://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/kend_tau.htm)
-  * Coefficient Importance Analysis
-  * Model fitting analysis, and bootstrap analysis
-  * [Hosmer-Lemeshow Goodness-of-Fit Test](https://en.wikipedia.org/wiki/Hosmer%E2%80%93Lemeshow_test) for Logistic Regression
+#### Feature summarization
+Provides typical metrics (mean, min, max, std, variance, etc.) on a per feature basis.
+  
+#### Model validation
+Compute evaluation metrics for the trained models over a validation dataset, such as AUC, RMSE, or Precision@k.
+  
+#### Warm-start training
+Load existing models and use their coefficients as a starting point for optimization. When training multiple models in succession, use the coefficients of the previous model.
+  
+#### Partial re-training
+Load existing models, but lock their coefficients. Allows efficient re-training of portions of a GAME model.
 
 ## Experimental Features
-Photon ML currently contains a number of experimental features that have not been fully tested, and as such should not be used in production. These features center mostly around the **GAME (Generalized Additive Mixed Effect)** modules.
+Photon ML currently contains a number of experimental features that have not been fully tested.
 
 #### Smoothed Hinge Loss Linear SVM
 In addition to the Generalized Linear Models described above, Photon-ML also supports an optimizer-friendly approximation for linear SVMs as described [here](http://qwone.com/~jason/writing/smoothHinge.pdf) by Jason D. M. Rennie.
 
-### GAME - Generalized Additive Mixed Effect Model
-GAME is a specific expansion of traditional Generalized Linear Models that further provides entity level (e.g., per-user/per-item) or segment level (e.g., per-country/per-category) coefficients, also known as random effects in the statistics literature, in addition to global coefficients. It manages to scale model training up to hundreds of billions of coefficients while still solvable within Spark's framework.
+#### Hyperparameter Auto-Tuning
+Automatically explore the hyperparameter space for your GAME model. Two types of search exist:
+- Random search: Use Sobol sequences to randomly, but evenly, explore the hyperparameter space
+- Bayesian search: Use a Gaussian process to perform a directed search throughout the hyperparameter space
 
-Currently Photon-ML supports GAME models composed of the following three types of components:
-  * Fixed effect model (FE):
-    * Each fixed effect model is effectively a conventional generalized linear model. Its parameters are "global" in the sense that they apply uniformly to all entities.
-  * Random effect model (RE):
-    * Each random effect model consists of "local" parameters – entity-specific coefficients that can be seen as random deviations from the global mean. For example, a per-user random effect models each user's behavior through user-specific coefficients.
-  * Matrix factorization model (MF):
-    * Conventional matrix factorization model that captures interactions between two types of random effects (e.g., user and item) in the latent space.
-
-For example, a GAME model for movie recommendation can be formulated as fixed effect model + per-user random effect model + per-movie random effect model + user-movie matrix factorization model. More details on GAME models can be found [here](https://docs.google.com/presentation/d/1vHanpK3KLIVgdDIHYRehUeyb04Hc2AasbBHs4InVPSU).
-
-One exemplary type of GAME model supported in Photon-ML is [GLMix](https://github.com/linkedin/photon-ml#reference), which has been adopted to serve the machine learning components of LinkedIn's core products, including: jobs search and recommendation, news feed ranking, Ads CTR prediction and "People Also Viewed". More details on GLMix models can be found [here](https://docs.google.com/presentation/d/1tYoelUma9-MMYdteWYS31LqVeoyPEncxJRk-k57gj0A/edit?usp=sharing).
-
-The relevant code can be found in the following namespaces:
- * com.linkedin.photon.ml.algorithm
- * com.linkedin.photon.ml.data
- * com.linkedin.photon.ml.optimization.game
-
+#### Regularize by Previous Model During Warm-Start Training
+Use the means and variances of an existing model to help approximate good coefficients when doing warm-start training. Allows multiple rounds of warm-start training on small datasets to achieve parity with cold-start training on a single large dataset.
 
 ## How to Build
-**Note**: Before building, please make sure environment variable ```JAVA_HOME``` is pointed at a Java 8 JDK properly. Photon ML is not compatible with JDK < 1.8.
+**Note**: Before building, please make sure environment variable ```JAVA_HOME``` is pointed at a Java 8 JDK property. Photon ML is not compatible with JDK < 1.8.
 The below commands are for Linux/Mac users, for Windows, please use ```gradlew.bat``` instead of ```gradlew```.
 
 ```bash
@@ -101,11 +113,20 @@ The below commands are for Linux/Mac users, for Windows, please use ```gradlew.b
 # Build with all tests (unit and integration):
 ./gradlew clean build
 
-# Run only unit tests:
-./gradlew clean test -x integTest
+# Build with only unit tests:
+./gradlew clean build -x integTest
 
-# Run only integration tests:
-./gradlew clean integTest -x test
+# Build with only integration tests:
+./gradlew clean build -x test
+
+# Build with no tests:
+./gradlew clean build -x test -x integTest
+
+# Run unit tests:
+./gradlew test
+
+# Run integration tests:
+./gradlew integTest
 
 # Check License with Apache Rat
 ./gradlew rat
@@ -117,80 +138,84 @@ The below commands are for Linux/Mac users, for Windows, please use ```gradlew.b
 ./gradlew check
 ```
 ## How to Use
-### Avro Schemas
-Currently all serialized Photon ML data other than models is stored in [Apache Avro](https://avro.apache.org/) format. The detailed schemas are declared at [photon-avro-schemas](https://github.com/linkedin/photon-ml/tree/master/photon-avro-schemas/src/main/avro) module. And such Avro schemas are compiled for Avro 1.7.5+, be mindful that Avro 1.4 or any version < 1.7.5 might not be entirely compatible with the in-memory data record representations.
 
-#### *What about other formats?*
-While Avro does provide a unified and rigorous way of managing all critical data representations, we think it is also important to allow other data formats to make Photon ML more flexible. There are future plans to loosen such data format requirements. For the current version, Photon ML is assuming users will properly prepare input data in Avro formats.
+### Drivers
+To use Photon ML from the command line, 3 default drivers exist: the Legacy Photon driver for GLM training, the GAME training driver, and the GAME scoring driver. Each of these have their own input parameters. We recommend using the GAME drivers, as a GLM is a special case of GAME model. The Legacy Photon driver has not been developed for some time and is deprecated.
+
+### API
+Photon ML can be imported just like Spark ML, and the API layer used directly. Where possible, we have tried to make the interfaces identical to those of Spark ML. See the driver source code for examples of how to use the Photon ML API.
+
+### Avro Schemas
+The currently available drivers read/write data in [Apache Avro](https://avro.apache.org/) format. The detailed schemas are declared at [photon-avro-schemas](https://github.com/linkedin/photon-ml/tree/master/photon-avro-schemas/src/main/avro) module.
+
+### What about other formats?
+LinkedIn uses primarily Avro formatted data. While Avro does provide a unified and rigorous way of managing all critical data representations, we think it is also important to allow other data formats to make Photon ML more flexible. Contributions of DataReaders for other formats to Photon ML are welcome and encouraged.
 
 ### Input Data Format
-Currently Photon ML uses Avro schema [TrainingExampleAvro](https://github.com/linkedin/photon-ml/blob/master/photon-avro-schemas/src/main/avro/TrainingExampleAvro.avsc) as the official input format. However, any Avro Generic Datum satisfying the following schema requirements are actually acceptable:
-- The Avro record *must* have two fields:
-  1. **label**: ```double```
-  2. **features**: ```array: [{name:string, term:string, value:float}]```
-- All the other fields are *optional*.
-- We define a feature string to be represented as ```name + INTERNAL_DELIM + term```. For example, if we have a feature called ```age=[10,20]```, i.e. age between 10 years old to 20 years old. The feature can be represented as:
-```
-  name="age"
-  term="[10,20]"
-  value=1.0
-```
-- **term** field is optional, if you don't want to use two fields to represent one feature, feel free to set it as empty string.
-- Train and validation datasets should be in the exact same format. e.g. it is probably a bad idea if train dataset contains the **offset** field while validation data does not.
-- Intercept is not required in the training data, it can be optionally be appended via an option see [example scripts](#example-scripts) for more details;
-- **weight** is an optional field that specifies the weight of the observation. Default is 1.0. If you feel some observation is stronger than the others, feel free to use this field, say making the weak ones 0.5.
-- **offset** is an optional field. Default is 0.0. When it is non-zero, the model will learn coefficients beta by ```x'beta+offset``` instead of ```x'beta```.
 
-Below is a sample of training/test data:
+Photon ML reserves the following field names in the Avro input data:
+1. **response**: `double` (required)
+    - The response/label for the event
+2. **weight**: `double` (optional)
+    - The relative weight of a particular sample compared to other samples
+    - Default = 1.0
+3. **offset**: `double` (optional)
+    - The residual score computed by some other model
+    - Default = 0.0
+    - Computed scores always take the form `(x * B) + offset`, where `x` is the feature vector and `B` is the coefficient vector
+4. **uid**: `string`, `int`, or `long` (optional)
+    - A unique ID for the sample
+5. **metadataMap**: `map: [string]` (optional)
+    - A map of non-feature metadata for the sample
+6. **features**: `array: [FeatureAvro]` (required by Legacy Photon driver)
+    - An array of features to use for training/scoring
+
+All of these default names can be overwritten using the GAME drivers. However, they are reserved and cannot be used for purposes other than their default usage (e.g. cannot specify `response` as your weight column).
+
+Additional fields may exist in the record, and in fact are necessary for certain features (e.g. must have ID fields to group data by for random effect models or certain validation metrics).
+
+Features loaded through the existing drivers are expected to follow the LinkedIn naming convention. Each feature must be an Avro record with the following fields:
+1. **name**: `string`
+  - The feature name/category
+2. **term**: `string`
+  - The feature sub-category
+3. **value**: `double`
+  - The feature value
+  
+To demonstrate the difference between `name` and `term`, consider the following categorical features:
 ```
-Avro Record 1:
-  {
-    "label" : 0,
-    "features" : [
-    {
-      "name" : "7",
-      "term" : "33",
-      "value" : 1.0
-    }, {
-      "name" : "8",
-      "term" : "151",
-      "value" : 1.0
-    }, {
-      "name" : "3",
-      "term" : "0",
-      "value" : 1.0
-    }, {
-      "name" : "12",
-      "term" : "132",
-      "value" : 1.0
-    }
-   ],
-    "weight" : 1.0,
-    "offset" : 0.0,
-    "foo" : "whatever"
- }
+  name = "age"
+  term = "0-10"
+  value = 1.0
+  
+  name = "age"
+  term = "11-20"
+  value = 0.0
+  
+  ...
 ```
 
 ### Models
-The trained model coefficients are output as text directly. It is intended as such for easy consumption. The current output format for Generalized Linear Models are as such:
+
+Legacy Photon outputs model coefficients directly to text:
 ```bash
 # For each line in the text file:
 [feature_string]\t[feature_id]\t[coefficient_value]\t[regularization_weight]
 ```
-Future improvements are planned to make such model formats more flexible.
+
+GAME models are output using the [BayesianLinearModelAvro](https://github.com/linkedin/photon-ml/blob/master/photon-avro-schemas/src/main/avro/BayesianLinearModelAvro.avsc) Avro schema.
 
 ### Shaded Jar
-[photon-all](https://github.com/linkedin/photon-ml/tree/master/photon-all) module releases a shaded jar containing all the required runtime dependencies of Photon ML other than Spark. Shading is a robust way of creating fat/uber jars. It does not only package all dependencies into one single place, but also smartly renames a few selected class packages to avoid dependency conflicts. Although ```photon-all.jar``` is not a necessity, and it is fine for users to provide their own copies of dependences, it is highly recommended to be used in cluster environment where complex dependency conflicts could happen between system and user jars. (See [Gradle Shadow Plugin](https://github.com/johnrengelman/shadow) for more about shading).
+[photon-all](https://github.com/linkedin/photon-ml/tree/master/photon-all) module releases a shaded jar containing all the required runtime dependencies of Photon ML, other than Spark and Hadoop. Shading is a robust way of creating fat/uber jars. It does not only package all dependencies into one single place, but also smartly renames a few selected class packages to avoid dependency conflicts. Although ```photon-all.jar``` is not a necessity, and it is fine for users to provide their own copies of dependences, it is highly recommended to be used in cluster environment where complex dependency conflicts could happen between system and user jars. (See [Gradle Shadow Plugin](https://github.com/johnrengelman/shadow) for more about shading).
 
 Below is a command to build the photon-all jar:
 ```bash
-# Change 2.10 to 2.11 for Scala 2.11
-./gradlew :photon-all_2.10:assemble
+./gradlew :photon-all:assemble
 ```
 
 ### Try It Out!
 
-The easiest way to get started with Photon ML is to try the tutorial we created to demonstrate how generalized linear mixed-effect models can be applied to build a personalized recommendation system. You can view the instructions on the wiki [here](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
+The easiest way to get started with Photon ML is to try the tutorial we created to demonstrate how GLMix models can be applied to build a personalized recommendation system. You can view the instructions on the wiki [here](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).
 
 Alternatively, you can follow these steps to try Photon ML on your machine.
 
@@ -209,7 +234,7 @@ For more information, see the [Spark docs](http://spark.apache.org/docs/latest/i
 ```
 git clone git@github.com:linkedin/photon-ml.git
 cd photon-ml
-./gradlew build -x integTest
+./gradlew build -x test -x integTest
 ```
 
 #### Grab a Dataset
@@ -221,12 +246,14 @@ curl -O https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a
 curl -O https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a.t
 ```
 
-Convert the data to the Avro format that Photon ML understands.
+Convert the data to the Avro format that the Photon ML drivers use.
 
 ```
+mkdir -p a1a/train
+mkdir -p a1a/test
 pip install avro
-python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a dev-scripts/TrainingExample.avsc a1a.avro
-python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a.t dev-scripts/TrainingExample.avsc a1a.t.avro
+python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a dev-scripts/TrainingExample.avsc a1a/train/a1a.avro
+python dev-scripts/libsvm_text_to_trainingexample_avro.py a1a.t dev-scripts/TrainingExample.avsc a1a/test/a1a.t.avro
 ```
 
 The first command might be different, depending on the configuration of your system. If it fails, try your platform's standard approach for installing a Python library.
@@ -243,8 +270,8 @@ spark-submit \
   --driver-memory 1G \
   --executor-memory 1G \
   "./build/photon-all_2.10/libs/photon-all_2.10-1.0.0.jar" \
-  --training-data-directory "./a1a.avro" \
-  --validating-data-directory "./a1a.t.avro" \
+  --training-data-directory "./a1a/train/" \
+  --validating-data-directory "./a1a/test/" \
   --format "TRAINING_EXAMPLE" \
   --output-directory "out" \
   --task "LOGISTIC_REGRESSION" \
@@ -253,24 +280,36 @@ spark-submit \
   --job-name "demo_photon_ml_logistic_regression"
 ```
 
-When this command finishes, you should have a new folder named "out" containing the model and a diagnostic report. On OS X:
+Alternatively, to run the exact same training using the GAME training driver, use the following command:
 
 ```
-open out/model-diagnostic.html
+spark-submit \
+  --class com.linkedin.photon.ml.cli.game.GameTrainingDriver \
+  --master local[*] \
+  --num-executors 4 \
+  --driver-memory 1G \
+  --executor-memory 1G \
+  "./build/photon-all_2.10/libs/photon-all_2.10-1.0.0.jar" \
+  --input-data-directories "./a1a/train/" \
+  --validation-data-directories "./a1a/test/" \
+  --root-output-directory "out" \
+  --feature-shard-configurations "name=globalShard,feature.bags=features" \
+  --coordinate-configurations "name=global,feature.shard=globalShard,min.partitions=4,optimizer=LBFGS,tolerance=1.0E-6,max.iter=50,regularization=L2,reg.weights=0.1|1|10|100" \
+  --coordinate-update-sequence "global" \
+  --coordinate-descent-iterations 1 \
+  --training-task "LOGISTIC_REGRESSION"
 ```
+
+When this command finishes, you should have a new folder named "out" containing the trained model.
 
 ### Running Photon ML on Cluster Mode
-In general, running Photon ML is no different from running other general Spark applications. As a result, using the
-```spark-submit``` script in Spark’s ```bin``` directory we can run
-Photon ML on [different cluster modes](http://spark.apache.org/docs/latest/cluster-overview.html) (e.g.,
-[Spark Standalone Mode](http://spark.apache.org/docs/latest/spark-standalone.html),
-[Mesos](http://mesos.apache.org/), [YARN](http://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html)).
 
-In the following we provide a simple demonstration of running a Logistic Regression
-training and validation job with minimal setups on YARN. For running Photon ML on other cluster modes the relevant
-arguments can be modified accordingly with the ```spark-submit``` script as detailed in
-[http://spark.apache.org/docs/latest/submitting-applications.html](http://spark.apache.org/docs/latest/submitting-applications.html).
+In general, running Photon ML is no different from running other general Spark applications. As a result, using the ```spark-submit``` script in Spark’s ```bin``` directory we can run Photon ML on [different cluster modes](http://spark.apache.org/docs/latest/cluster-overview.html):
+* [Spark Standalone Mode](http://spark.apache.org/docs/latest/spark-standalone.html)
+* [Mesos](http://mesos.apache.org/)
+* [YARN](http://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/YARN.html)
 
+Below is a template for running a logistic regression training job with minimal setup on YARN. For running Photon ML using other cluster modes, the relevant arguments to ```spark-submit``` can be modified as detailed in [http://spark.apache.org/docs/latest/submitting-applications.html](http://spark.apache.org/docs/latest/submitting-applications.html).
 
 ```bash
 spark-submit \
@@ -290,37 +329,34 @@ spark-submit \
   --job-name "demo_photon_ml_logistic_regression"
 ```
 
-There is also a more complex script demonstrating advanced options and customizations of using Photon ML at
-[example/run_photon_ml.driver.sh](https://github.com/linkedin/photon-ml/blob/master/examples/run_photon_ml_driver.sh).
+TODO: This example should be updated to use the GAME training driver instead.
+There is also a more complex script demonstrating advanced options and customizations of using Photon ML at [example/run_photon_ml.driver.sh](https://github.com/linkedin/photon-ml/blob/master/examples/run_photon_ml_driver.sh).
 
 Detailed usages are described via command:
 ```bash
 ./run_photon_ml.driver.sh [-h|--help]
 ```
-**Note**: not all configurations are currently exposed as options in the current script, please directly modify the confs if any customization is needed.
+**Note**: Not all configurations are currently exposed as options in the current script. Please directly modify the configurations if any customization is needed.
 
 ## Modules and directories
 ### Source code
-- photon-all contains only a build.gradle, to build a shaded jar containing all of photon-ml and its dependencies.
-- photon-avro-schemas contains all the Avro schemas used by photon-ml (e.g. when reading in training data).
-- photon-ml contains the code for photon-ml itself.
-- photon-test-utils contains utility classes and functions used in tests and integration tests.
+- TODO: Photon ML modules are in need of a refactor. Once this is complete, this section will be updated.
 
 ### Other
-- build-scripts contains scripts used during the build of photon-ml.
-- buildSrc contains Gradle plugins source code. Those plugins are used to build photon-ml.
-- dev-scripts contains various scripts useful to developers of photon-ml.
-- examples contains a script that demonstrates how to run photon ml from command line.
-- gradle contains the gradle wrapper jar.
+- `build-scripts` contains scripts for Gradle tasks
+- `buildSrc` contains Gradle plugin source code
+- `dev-scripts` contains various scripts which may be useful for development
+- `examples` contains a script which demonstrates how to run Photon ML from the command line
+- `gradle` contains the Gradle wrapper jar
+- `travis` contains scripts for controlling Travis CI test execution
 
 ## IntelliJ IDEA setup
-When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for
-development (IntelliJ IDEA's debugger can be used with all the tests). 
-- Run ./gradlew build first on the command line (some classes need to be generated once).
-- Open project as "New/Project from Existing Source", choose gradle project, and set gradle to use the local wrapper.
+When set up correctly, all the tests (unit and integration) can be run from IntelliJ IDEA, which is very helpful for development (IntelliJ IDEA's debugger can be used with all the tests). 
+- Run `./gradlew idea`
+- Open project as "New/Project from Existing Source", choose Gradle project, and set Gradle to use the local wrapper.
 
 ## How to Contribute
-We welcome contributions. A good way to get started would be to begin with reporting an issue, participating in discussions, or sending out a pull request addressing an issue. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
+We welcome contributions. The following are good ways to get started: reporting an issue, fixing an existing issue, or participating in a discussion. For major functionality changes, it is highly recommended to exchange thoughts and designs with reviewers beforehand. Well communicated changes will have the highest probability of getting accepted.
 
 ## Reference
 - XianXing Zhang, Yitong Zhou, Yiming Ma, Bee-Chung Chen, Liang Zhang and Deepak Agarwal. [GLMix: Generalized Linear Mixed Models For Large-Scale Response Prediction](http://www.kdd.org/kdd2016/papers/files/adf0562-zhangA.pdf). In 22nd SIGKDD Conference on Knowledge Discovery and Data Mining, 2016
