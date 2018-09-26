@@ -21,11 +21,13 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.fs.Path
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.MathConst
@@ -567,7 +569,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * @param expectedNumCoefficients Expected number of non-zero coefficients
    * @return True if the model is sane
    */
-  def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
+  private def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
 
     val modelAvro = AvroUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc,
@@ -586,13 +588,29 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   }
 
   /**
+   * Reformat the raw validation data and scores into the format used by evaluators.
+   *
+   * @param validationLabelsAndOffsetsAndWeights Labels, offsets, and weights for validation data
+   * @param validationScores Prediction scores for validation data
+   * @return Scores, labels, and weights for validation data in the format used by evaluators
+   */
+  private def prepareEvaluationData(
+    validationLabelsAndOffsetsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))],
+    validationScores: RDD[(UniqueSampleId, Double)]): RDD[(Double, Double, Double)] =
+    validationLabelsAndOffsetsAndWeights
+      .join(validationScores)
+      .map { case (_, ((label, offset, weight), score)) =>
+        (score + offset, label, weight)
+      }
+
+  /**
    * Compare the RMSE evaluation results of two models.
    *
    * @param modelPath1 Base path to the GAME model files of the first model
    * @param modelPath2 Base path to the GAME model files of the second model
    * @param tolerance The tolerance within the RMSE of the two models should match
    */
-  def compareModelEvaluation(modelPath1: Path, modelPath2: Path, tolerance: Double): Unit = {
+   private def compareModelEvaluation(modelPath1: Path, modelPath2: Path, tolerance: Double): Unit = {
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
     val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
@@ -628,12 +646,11 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores1 = gameModel1.score(gameDataset).scores.mapValues(_.score)
-    val scores2 = gameModel2.score(gameDataset).scores.mapValues(_.score)
+    val scores1 = gameModel1.scoreForCoordinateDescent(gameDataset).scores
+    val scores2 = gameModel2.scoreForCoordinateDescent(gameDataset).scores
 
-    val rmseEval = new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
-    val rmse1 = rmseEval.evaluate(scores1)
-    val rmse2 = rmseEval.evaluate(scores2)
+    val rmse1 = RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores1))
+    val rmse2 = RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores2))
 
     assertEquals(rmse1, rmse2, tolerance)
   }
@@ -644,7 +661,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * @param modelPath Base path to the GAME model files
    * @return Evaluation results for each specified evaluator
    */
-  def evaluateModel(modelPath: Path): Double = {
+  private def evaluateModel(modelPath: Path): Double = {
 
     val indexMapLoadersOpt = GameTrainingDriver.prepareFeatureMaps()
     val featureShardConfigs = GameTrainingDriver.getOrDefault(GameTrainingDriver.featureShardConfigurations)
@@ -675,9 +692,9 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores = gameModel.score(gameDataset).scores.mapValues(_.score)
+    val scores = gameModel.scoreForCoordinateDescent(gameDataset).scores
 
-    new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores)
+    RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores))
   }
 
   /**
@@ -685,7 +702,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    *
    * @param params Arguments for GAME training
    */
-  def runDriver(params: ParamMap): Unit = {
+  private def runDriver(params: ParamMap): Unit = {
 
     // Reset Driver parameters
     GameTrainingDriver.clear()

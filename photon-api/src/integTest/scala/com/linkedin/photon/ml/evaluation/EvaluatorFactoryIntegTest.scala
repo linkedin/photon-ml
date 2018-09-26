@@ -22,7 +22,7 @@ import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
- * Integration test cases for the [[EvaluatorFactory]]
+ * Integration tests for [[EvaluatorFactory]].
  */
 class EvaluatorFactoryIntegTest extends SparkTestUtils {
 
@@ -40,9 +40,9 @@ class EvaluatorFactoryIntegTest extends SparkTestUtils {
       Array(LogisticLoss),
       Array(SmoothedHingeLoss),
       Array(SquaredLoss),
-      Array(MultiPrecisionAtK(1, idTag)),
-      Array(MultiPrecisionAtK(5, idTag)),
-      Array(MultiAUC(idTag)))
+      Array(MultiPrecisionAtK(1, ID_TAG)),
+      Array(MultiPrecisionAtK(5, ID_TAG)),
+      Array(MultiAUC(ID_TAG)))
 
   /**
    * Test that the [[EvaluatorFactory]] can correctly construct [[Evaluator]]s from [[EvaluatorType]]s.
@@ -55,14 +55,15 @@ class EvaluatorFactoryIntegTest extends SparkTestUtils {
       offsetOpt = Some(0.0),
       weightOpt = None,
       featureShardContainer = Map(),
-      idTagToValueMap = Map(idTag -> "id"))
+      idTagToValueMap = Map(ID_TAG -> "id"))
     val gameDataset = sc.parallelize(Seq((1L, gameDatum)))
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataset)
 
-    assertEquals(evaluator.getEvaluatorName, evaluatorType.name)
+    assertEquals(evaluator.evaluatorType, evaluatorType)
   }
 }
 
 object EvaluatorFactoryIntegTest {
-  private val idTag = "idTag"
+
+  private val ID_TAG = "idTag"
 }
