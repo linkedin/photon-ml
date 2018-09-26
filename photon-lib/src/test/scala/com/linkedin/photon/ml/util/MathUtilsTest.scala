@@ -24,6 +24,9 @@ import com.linkedin.photon.ml.constants.MathConst
  */
 class MathUtilsTest {
 
+  /**
+   * Test that ln(1 + e^^x) can be computed without arithmetic overflow.
+   */
   @Test
   def testLog1pExp(): Unit = {
     assertEquals(MathUtils.log1pExp(-1), 0.313261687518, MathConst.EPSILON)
@@ -34,11 +37,34 @@ class MathUtilsTest {
     assertEquals(MathUtils.log1pExp(10000), 10000, MathConst.EPSILON)
   }
 
+  /**
+   * Test that values less than [[MathConst.EPSILON]] are considered effectively 0.
+   */
   @Test
   def testIsAlmostZero(): Unit = {
     assertTrue(MathUtils.isAlmostZero(0D))
     assertTrue(MathUtils.isAlmostZero(MathConst.EPSILON / 2D))
     assertFalse(MathUtils.isAlmostZero(MathConst.EPSILON))
     assertFalse(MathUtils.isAlmostZero(MathConst.EPSILON * 2D))
+  }
+
+  /**
+   * Test that less-than comparison is correct.
+   */
+  @Test
+  def testLessThan(): Unit = {
+    assertTrue(MathUtils.lessThan(0D, 1D))
+    assertFalse(MathUtils.lessThan(1D, 1D))
+    assertFalse(MathUtils.lessThan(2D, 1D))
+  }
+
+  /**
+   * Test that greater-than comparison is correct.
+   */
+  @Test
+  def testGreaterThan(): Unit = {
+    assertFalse(MathUtils.greaterThan(0D, 1D))
+    assertFalse(MathUtils.greaterThan(1D, 1D))
+    assertTrue(MathUtils.greaterThan(2D, 1D))
   }
 }

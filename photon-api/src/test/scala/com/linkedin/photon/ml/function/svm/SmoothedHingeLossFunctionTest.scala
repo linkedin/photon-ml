@@ -55,6 +55,9 @@ class SmoothedHingeLossFunctionTest {
 
       case _: RandomEffectOptimizationConfiguration =>
         assertTrue(objectiveFunction.isInstanceOf[SingleNodeSmoothedHingeLossFunction])
+
+      case _ =>
+        assertTrue(false)
     }
   }
 }

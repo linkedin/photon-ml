@@ -59,10 +59,11 @@ class CoordinateDescent(
     // Coordinates in the update sequence must not repeat
     require(
       updateSequence.toSet.size == updateSequence.size,
-      "One or more coordinates in the update sequence is repeated.")
-
+      "One or more coordinates in the update sequence is repeated")
     // All locked coordinates must be present in the update sequence
-    lockedCoordinates.forall(updateSequence.contains)
+    require(
+      lockedCoordinates.forall(updateSequence.contains),
+      "One or more locked coordinates is missing from the update sequence")
   }
 
   /**

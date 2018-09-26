@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.cli.game.training
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.ml.param.ParamMap
+import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -23,12 +24,12 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.estimators.GameEstimator
-import com.linkedin.photon.ml.evaluation.{Evaluator, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluatorType}
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.NormalizationType
-import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
+import com.linkedin.photon.ml.util.{DateRange, PhotonLogger}
 
 /**
  * Unit tests for [[GameTrainingDriver]].
@@ -79,7 +80,6 @@ class GameTrainingDriverTest {
     val mockBoolean = true
     val mockInt = 10
     val mockString = "text"
-    val mockDoubleRange = DoubleRange(1, 2)
 
     val mockPath = mock(classOf[Path])
     val mockDateRange = mock(classOf[DateRange])
@@ -292,20 +292,16 @@ class GameTrainingDriverTest {
   def modelOutputModes(): Array[Array[Any]] = {
 
     val mockGameModel = mock(classOf[GameModel])
-    val mockEvaluationResults = mock(classOf[Evaluator.EvaluationResults])
     val mockGameOptConfig = mock(classOf[GameEstimator.GameOptimizationConfiguration])
+    val mockEvaluatorType = mock(classOf[EvaluatorType])
+    val mockEvaluationResults = mock(classOf[EvaluationResults])
 
-    val mockEvaluator = mock(classOf[Evaluator])
-    val mockScore = 1D
-
-    val explicitModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
-    val tunedModels = Seq((mockGameModel, Some(mockEvaluationResults), mockGameOptConfig))
+    val explicitModels = Seq((mockGameModel, mockGameOptConfig, Some(mockEvaluationResults)))
+    val tunedModels = Seq((mockGameModel, mockGameOptConfig, Some(mockEvaluationResults)))
     val allModels = explicitModels ++ tunedModels
 
-    doReturn((mockEvaluator, mockScore)).when(mockEvaluationResults).head
-    doReturn(true).when(mockEvaluator).eq(_)
-    doReturn(true).when(mockEvaluator).betterThan(_, _)
-    doReturn("").when(mockEvaluator).getEvaluatorName
+    doReturn(mockEvaluatorType).when(mockEvaluationResults).primaryEvaluator
+    doReturn(true).when(mockEvaluatorType).betterThan(Matchers.any(), Matchers.any())
     doReturn("").when(mockGameModel).toSummaryString
     doReturn(Seq()).when(mockGameOptConfig).toSeq
 
