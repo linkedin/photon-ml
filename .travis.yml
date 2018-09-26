@@ -2,7 +2,6 @@ os:
   - linux
 language: scala
 scala:
-  - 2.10.6
   - 2.11.8
 sudo: required
 jdk:
