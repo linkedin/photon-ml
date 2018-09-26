@@ -22,19 +22,19 @@ import com.linkedin.photon.ml.spark.RDDLike
 /**
  * Dataset implementation for random effect datasets in projected space.
  *
- * @param randomEffectDataSetInProjectedSpace Input random effect dataset
+ * @param randomEffectDatasetInProjectedSpace Input random effect dataset
  * @param randomEffectProjector The random effect projector
  */
 class RandomEffectDatasetInProjectedSpace(
-    val randomEffectDataSetInProjectedSpace: RandomEffectDataset,
+    val randomEffectDatasetInProjectedSpace: RandomEffectDataset,
     val randomEffectProjector: RandomEffectProjector)
   extends RandomEffectDataset(
-    randomEffectDataSetInProjectedSpace.activeData,
-    randomEffectDataSetInProjectedSpace.uniqueIdToRandomEffectIds,
-    randomEffectDataSetInProjectedSpace.passiveDataOption,
-    randomEffectDataSetInProjectedSpace.passiveDataRandomEffectIdsOption,
-    randomEffectDataSetInProjectedSpace.randomEffectType,
-    randomEffectDataSetInProjectedSpace.featureShardId) {
+    randomEffectDatasetInProjectedSpace.activeData,
+    randomEffectDatasetInProjectedSpace.uniqueIdToRandomEffectIds,
+    randomEffectDatasetInProjectedSpace.passiveDataOption,
+    randomEffectDatasetInProjectedSpace.passiveDataRandomEffectIdsOption,
+    randomEffectDatasetInProjectedSpace.randomEffectType,
+    randomEffectDatasetInProjectedSpace.featureShardId) {
 
   /**
    *
@@ -97,16 +97,16 @@ object RandomEffectDatasetInProjectedSpace {
   /**
    * Build an instance of a random effect dataset in projected space with the given projector type.
    *
-   * @param randomEffectDataSet The input dataset
+   * @param randomEffectDataset The input dataset
    * @param projectorType The projector type
    * @return A new dataset projected with the given projector
    */
   def buildWithProjectorType(
-      randomEffectDataSet: RandomEffectDataset,
+      randomEffectDataset: RandomEffectDataset,
       projectorType: ProjectorType): RandomEffectDatasetInProjectedSpace = {
 
-    val randomEffectProjector = RandomEffectProjector.build(randomEffectDataSet, projectorType)
-    val projectedRandomEffectDataSet = randomEffectProjector.projectRandomEffectDataSet(randomEffectDataSet)
-    new RandomEffectDatasetInProjectedSpace(projectedRandomEffectDataSet, randomEffectProjector)
+    val randomEffectProjector = RandomEffectProjector.build(randomEffectDataset, projectorType)
+    val projectedRandomEffectDataset = randomEffectProjector.projectRandomEffectDataset(randomEffectDataset)
+    new RandomEffectDatasetInProjectedSpace(projectedRandomEffectDataset, randomEffectProjector)
   }
 }

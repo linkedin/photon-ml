@@ -36,7 +36,7 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
 
   require(
     dataPoints.length > 0,
-    "Cannot create LocalDataSet with empty data array")
+    "Cannot create LocalDataset with empty data array")
 
   val numDataPoints: Int = dataPoints.length
   val numFeatures: Int = dataPoints.head._2.features.length
@@ -137,11 +137,11 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
 
 object LocalDataset {
   /**
-   * Factory method for LocalDataSet.
+   * Factory method for LocalDataset.
    *
    * @param dataPoints The array of underlying data
    * @param isSortedByFirstIndex Whether or not to sort the data by global ID
-   * @return A new LocalDataSet
+   * @return A new LocalDataset
    */
   protected[ml] def apply(
       dataPoints: Array[(UniqueSampleId, LabeledPoint)],

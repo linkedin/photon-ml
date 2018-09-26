@@ -42,11 +42,11 @@ class CoordinateFactoryTest {
   @Test
   def testBuildFixedEffectCoordinate(): Unit = {
 
-    val mockDataSet = mock(classOf[FixedEffectDataset])
+    val mockDataset = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = FixedEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
     val coordinate = CoordinateFactory.build(
-      mockDataSet,
+      mockDataset,
       optimizationConfiguration,
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,
@@ -69,15 +69,15 @@ class CoordinateFactoryTest {
   @Test
   def testBuildRandomEffectCoordinate(): Unit = {
 
-    val mockDataSet: RandomEffectDataset = mock(classOf[RandomEffectDatasetInProjectedSpace])
+    val mockDataset: RandomEffectDataset = mock(classOf[RandomEffectDatasetInProjectedSpace])
     val mockRDD = mock(classOf[RDD[(REId, LocalDataset)]])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
-    doReturn(mockRDD).when(mockDataSet).activeData
+    doReturn(mockRDD).when(mockDataset).activeData
     doReturn(mockRDD).when(mockRDD).mapValues(Matchers.any(classOf[Function1[LocalDataset, SingleNodeObjectiveFunction]]))
 
     val coordinate = CoordinateFactory.build(
-      mockDataSet,
+      mockDataset,
       optimizationConfiguration,
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,
@@ -100,11 +100,11 @@ class CoordinateFactoryTest {
   @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
   def testBuildInvalidCoordinate(): Unit = {
 
-    val mockDataSet = mock(classOf[FixedEffectDataset])
+    val mockDataset = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
     CoordinateFactory.build(
-      mockDataSet,
+      mockDataset,
       optimizationConfiguration,
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,

@@ -41,7 +41,7 @@ object GameConverters {
    * @param inputColumnsNames User-supplied input column names to read the input data
    * @return An [[RDD]] of type [[GameDatum]]
    */
-  protected[ml] def getGameDataSetFromDataFrame(
+  protected[ml] def getGameDatasetFromDataFrame(
       data: DataFrame,
       featureShards: Set[FeatureShardId],
       idTagSet: Set[String],

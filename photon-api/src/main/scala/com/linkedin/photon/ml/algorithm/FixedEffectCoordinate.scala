@@ -29,13 +29,13 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * The optimization problem coordinate for a fixed effect model.
  *
  * @tparam Objective The type of objective function used to solve the fixed effect optimization problem
- * @param dataSet The training dataset
+ * @param dataset The training dataset
  * @param optimizationProblem The fixed effect optimization problem
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
-    dataSet: FixedEffectDataset,
+    dataset: FixedEffectDataset,
     optimizationProblem: DistributedOptimizationProblem[Objective])
-  extends Coordinate[FixedEffectDataset](dataSet) {
+  extends Coordinate[FixedEffectDataset](dataset) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -46,7 +46,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(dataSet, fixedEffectModel)
+        FixedEffectCoordinate.score(dataset, fixedEffectModel)
 
       case _ =>
         throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
@@ -61,12 +61,12 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @return The basic model
    */
   override protected[ml] def initializeModel(seed: Long): FixedEffectModel = {
-    val numFeatures = dataSet.numFeatures
+    val numFeatures = dataset.numFeatures
     val generalizedLinearModel = optimizationProblem.initializeZeroModel(numFeatures)
-    val generalizedLinearModelBroadcast = dataSet
+    val generalizedLinearModelBroadcast = dataset
       .sparkContext
       .broadcast(generalizedLinearModel.asInstanceOf[GeneralizedLinearModel])
-    val featureShardId = dataSet.featureShardId
+    val featureShardId = dataset.featureShardId
 
     new FixedEffectModel(generalizedLinearModelBroadcast, featureShardId)
   }
@@ -74,12 +74,12 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   /**
    * Update a coordinate with a new dataset.
    *
-   * @param dataSet The updated dataset
+   * @param dataset The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  override protected[algorithm] def updateCoordinateWithDataSet(
-      dataSet: FixedEffectDataset): FixedEffectCoordinate[Objective] =
-    new FixedEffectCoordinate[Objective](dataSet, optimizationProblem)
+  override protected[algorithm] def updateCoordinateWithDataset(
+      dataset: FixedEffectDataset): FixedEffectCoordinate[Objective] =
+    new FixedEffectCoordinate[Objective](dataset, optimizationProblem)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -93,10 +93,10 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
     model match {
       case fixedEffectModel: FixedEffectModel =>
         val updatedFixedEffectModel = FixedEffectCoordinate.updateModel(
-          dataSet.labeledPoints,
+          dataset.labeledPoints,
           optimizationProblem,
           fixedEffectModel,
-          dataSet.sparkContext)
+          dataset.sparkContext)
         val optimizationTracker = optimizationProblem.getStatesTracker.map(new FixedEffectOptimizationTracker(_))
 
         (updatedFixedEffectModel, optimizationTracker)
@@ -151,13 +151,13 @@ object FixedEffectCoordinate {
    *
    * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
    *       through non-linear link function in logistic regression!).
-   * @param fixedEffectDataSet The dataset to score
+   * @param fixedEffectDataset The dataset to score
    * @param fixedEffectModel The model to score the dataset with
    * @return The computed scores
    */
-  protected[algorithm] def score(fixedEffectDataSet: FixedEffectDataset, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
+  protected[algorithm] def score(fixedEffectDataset: FixedEffectDataset, fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
     val modelBroadcast = fixedEffectModel.modelBroadcast
-    val scores = fixedEffectDataSet.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
+    val scores = fixedEffectDataset.labeledPoints.mapValues { case LabeledPoint(_, features, _, _) =>
       modelBroadcast.value.computeScore(features)
     }
 

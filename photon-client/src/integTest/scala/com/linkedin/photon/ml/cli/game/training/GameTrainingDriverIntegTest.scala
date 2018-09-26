@@ -603,8 +603,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       numPartitions = 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
-    val gameDataSet = GameConverters
-      .getGameDataSetFromDataFrame(
+    val gameDataset = GameConverters
+      .getGameDatasetFromDataFrame(
         testData,
         featureShardConfigs.keySet,
         randomEffectTypes.toSet,
@@ -612,7 +612,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames))
       .partitionBy(partitioner)
 
-    val validatingLabelsAndOffsetsAndWeights = gameDataSet
+    val validatingLabelsAndOffsetsAndWeights = gameDataset
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
 
     validatingLabelsAndOffsetsAndWeights.count()
@@ -628,8 +628,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores1 = gameModel1.score(gameDataSet).scores.mapValues(_.score)
-    val scores2 = gameModel2.score(gameDataSet).scores.mapValues(_.score)
+    val scores1 = gameModel1.score(gameDataset).scores.mapValues(_.score)
+    val scores2 = gameModel2.score(gameDataset).scores.mapValues(_.score)
 
     val rmseEval = new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
     val rmse1 = rmseEval.evaluate(scores1)
@@ -655,8 +655,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       numPartitions = 2)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
-    val gameDataSet = GameConverters
-      .getGameDataSetFromDataFrame(
+    val gameDataset = GameConverters
+      .getGameDatasetFromDataFrame(
         testData,
         featureShardConfigs.keySet,
         randomEffectTypes.toSet,
@@ -664,7 +664,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
         GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames))
       .partitionBy(partitioner)
 
-    val validatingLabelsAndOffsetsAndWeights = gameDataSet
+    val validatingLabelsAndOffsetsAndWeights = gameDataset
       .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
 
     validatingLabelsAndOffsetsAndWeights.count()
@@ -675,7 +675,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores = gameModel.score(gameDataSet).scores.mapValues(_.score)
+    val scores = gameModel.score(gameDataset).scores.mapValues(_.score)
 
     new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights).evaluate(scores)
   }

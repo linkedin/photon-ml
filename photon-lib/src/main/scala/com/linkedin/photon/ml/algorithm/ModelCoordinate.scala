@@ -23,9 +23,9 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
  * The optimization problem coordinate for a pre-trained model.
  *
  * @tparam D The training dataset type
- * @param dataSet The training dataset
+ * @param dataset The training dataset
  */
-abstract class ModelCoordinate[D <: Dataset[D]](dataSet: D) extends Coordinate(dataSet) {
+abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(dataset) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -47,10 +47,10 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataSet: D) extends Coordinate(d
   /**
    * Update the coordinate with a new dataset.
    *
-   * @param dataSet The updated dataset
+   * @param dataset The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  override protected[algorithm] def updateCoordinateWithDataSet(dataSet: D): Coordinate[D] =
+  override protected[algorithm] def updateCoordinateWithDataset(dataset: D): Coordinate[D] =
     throw new UnsupportedOperationException("Attempted to update model coordinate.")
 
   /**

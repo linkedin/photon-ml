@@ -104,7 +104,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
    * Test that the random effects with less data than the active data lower bound will be dropped.
    *
    * @param data Raw training data
-   * @param partitionMap Raw map to build [[RandomEffectDataSetPartitioner]]
+   * @param partitionMap Raw map to build [[RandomEffectDatasetPartitioner]]
    * @param activeDataLowerBound Threshold for active data
    * @param expectedUniqueRandomEffects Expected number of random effects which have data exceeding the threshold
    */
@@ -121,10 +121,10 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       FEATURE_SHARD_NAME,
       NUM_PARTITIONS,
       Some(activeDataLowerBound))
-    val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
+    val partitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, None)
-    val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
+    val randomEffectDataset = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, None)
+    val numUniqueRandomEffects = randomEffectDataset.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
   }
@@ -133,7 +133,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
    * Test that the random effects with less data than the active data lower bound will be dropped.
    *
    * @param data Raw training data
-   * @param partitionMap Raw map to build [[RandomEffectDataSetPartitioner]]
+   * @param partitionMap Raw map to build [[RandomEffectDatasetPartitioner]]
    * @param activeDataLowerBound Threshold for active data
    * @param expectedUniqueRandomEffects Expected number of random effects which have data exceeding the threshold
    */
@@ -153,10 +153,10 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       FEATURE_SHARD_NAME,
       NUM_PARTITIONS,
       Some(activeDataLowerBound))
-    val partitioner = new RandomEffectDataSetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
+    val partitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val randomEffectDataSet = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
-    val numUniqueRandomEffects = randomEffectDataSet.activeData.keys.count()
+    val randomEffectDataset = RandomEffectDataset(rdd, randomEffectDataConfig, partitioner, Some(existingIdsRDD))
+    val numUniqueRandomEffects = randomEffectDataset.activeData.keys.count()
 
     assertEquals(numUniqueRandomEffects, expectedUniqueRandomEffects)
   }

@@ -44,21 +44,21 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
     TaskType.LINEAR_REGRESSION,
     TaskType.POISSON_REGRESSION)
   private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
-  private val binaryClassificationDataSetGenerationFuncs = Array(
-    generateBenignDataSetBinaryClassification _,
-    generateWeightedBenignDataSetBinaryClassification _,
-    generateOutlierDataSetBinaryClassification _,
-    generateWeightedOutlierDataSetBinaryClassification _)
-  private val linearRegressionDataSetGenerationFuncs = Array(
-    generateBenignDataSetLinearRegression _,
-    generateWeightedBenignDataSetLinearRegression _,
-    generateOutlierDataSetLinearRegression _,
-    generateWeightedOutlierDataSetLinearRegression _)
-  private val poissonRegressionDataSetGenerationFuncs = Array(
-    generateBenignDataSetPoissonRegression _,
-    generateWeightedBenignDataSetPoissonRegression _,
-    generateOutlierDataSetPoissonRegression _,
-    generateWeightedOutlierDataSetPoissonRegression _)
+  private val binaryClassificationDatasetGenerationFuncs = Array(
+    generateBenignDatasetBinaryClassification _,
+    generateWeightedBenignDatasetBinaryClassification _,
+    generateOutlierDatasetBinaryClassification _,
+    generateWeightedOutlierDatasetBinaryClassification _)
+  private val linearRegressionDatasetGenerationFuncs = Array(
+    generateBenignDatasetLinearRegression _,
+    generateWeightedBenignDatasetLinearRegression _,
+    generateOutlierDatasetLinearRegression _,
+    generateWeightedOutlierDatasetLinearRegression _)
+  private val poissonRegressionDatasetGenerationFuncs = Array(
+    generateBenignDatasetPoissonRegression _,
+    generateWeightedBenignDatasetPoissonRegression _,
+    generateOutlierDatasetPoissonRegression _,
+    generateWeightedOutlierDatasetPoissonRegression _)
   private val treeAggregateDepths = Array(1, 2)
 
   /**
@@ -77,7 +77,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
-          binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -90,7 +90,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
-          linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -103,7 +103,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
-          poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -116,7 +116,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedSmoothedHingeLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)
 
-          binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -142,7 +142,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
-          binaryClassificationDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -155,7 +155,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
-          linearRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -168,7 +168,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           def lossFuncWithL2Builder =
             () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
-          poissonRegressionDataSetGenerationFuncs.flatMap { dataGenFunc =>
+          poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -187,7 +187,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetBinaryClassification: Seq[LabeledPoint] =
+  def generateBenignDatasetBinaryClassification: Seq[LabeledPoint] =
     drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -203,7 +203,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetBinaryClassification: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetBinaryClassification: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 
@@ -224,7 +224,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateOutlierDataSetBinaryClassification: Seq[LabeledPoint] =
+  def generateOutlierDatasetBinaryClassification: Seq[LabeledPoint] =
     drawBalancedSampleFromOutlierDenseFeaturesForBinaryClassifierLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -240,7 +240,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedOutlierDataSetBinaryClassification: Seq[LabeledPoint] = {
+  def generateWeightedOutlierDatasetBinaryClassification: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 
@@ -265,7 +265,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetLinearRegression: Seq[LabeledPoint] =
+  def generateBenignDatasetLinearRegression: Seq[LabeledPoint] =
     drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -281,7 +281,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetLinearRegression: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetLinearRegression: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 
@@ -302,7 +302,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateOutlierDataSetLinearRegression: Seq[LabeledPoint] =
+  def generateOutlierDatasetLinearRegression: Seq[LabeledPoint] =
     drawSampleFromOutlierDenseFeaturesForLinearRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -318,7 +318,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedOutlierDataSetLinearRegression: Seq[LabeledPoint] = {
+  def generateWeightedOutlierDatasetLinearRegression: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 
@@ -343,7 +343,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetPoissonRegression: Seq[LabeledPoint] =
+  def generateBenignDatasetPoissonRegression: Seq[LabeledPoint] =
     drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -359,7 +359,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetPoissonRegression: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetPoissonRegression: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 
@@ -380,7 +380,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateOutlierDataSetPoissonRegression: Seq[LabeledPoint] =
+  def generateOutlierDatasetPoissonRegression: Seq[LabeledPoint] =
     drawSampleFromOutlierDenseFeaturesForPoissonRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -396,7 +396,7 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedOutlierDataSetPoissonRegression: Seq[LabeledPoint] = {
+  def generateWeightedOutlierDatasetPoissonRegression: Seq[LabeledPoint] = {
 
     val r = new Random(WEIGHT_RANDOM_SEED)
 

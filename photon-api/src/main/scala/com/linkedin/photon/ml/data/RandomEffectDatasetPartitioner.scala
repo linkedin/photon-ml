@@ -30,9 +30,9 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * reduce time spent in shuffle operations by leveraging training record keys (helping joins). Second, we assume that
  * each random effect has less than the maximum partition size of associated training data, i.e. that all the training
  * data for a given RE will fit within a single Spark data partition. So we can group the training records so that they
- * all land in the same partition for a given RE, which is what RandomEffectDataSetPartitioner is about.
+ * all land in the same partition for a given RE, which is what RandomEffectDatasetPartitioner is about.
  *
- * RandomEffectDataSetPartitioner also makes sure that partitions are as equally balanced as possible, to equalize the
+ * RandomEffectDatasetPartitioner also makes sure that partitions are as equally balanced as possible, to equalize the
  * workload of the executors: because we assume the data for each random effect is small, it will usually not even fill
  * a Spark data partition, so we fill up the partition (i.e. add (id/partition) records to idToPartitionMap with data
  * for multiple random effects). However, since idToPartitionMap is eventually broadcast to the executors, we also want
@@ -41,7 +41,7 @@ import com.linkedin.photon.ml.spark.BroadcastLike
  * @param numPartitions Number of partitions across which to split random effects
  * @param idToPartitionMap Random effect type to partition map
  */
-protected[ml] class RandomEffectDataSetPartitioner(
+protected[ml] class RandomEffectDatasetPartitioner(
     val numPartitions: Int,
     private val idToPartitionMap: Broadcast[Map[REId, Int]])
   extends Partitioner
@@ -61,14 +61,14 @@ protected[ml] class RandomEffectDataSetPartitioner(
   }
 
   /**
-   * Compares two [[RandomEffectDataSetPartitioner]] objects.
+   * Compares two [[RandomEffectDatasetPartitioner]] objects.
    *
    * @param that Some other object
    * @return True if the two partitioners have the same idToPartitionMap, false otherwise
    */
   override def equals(that: Any): Boolean =
     that match {
-      case other: RandomEffectDataSetPartitioner => this.idToPartitionMap.value.equals(other.idToPartitionMap.value)
+      case other: RandomEffectDatasetPartitioner => this.idToPartitionMap.value.equals(other.idToPartitionMap.value)
       case _ => false
     }
 
@@ -95,7 +95,7 @@ protected[ml] class RandomEffectDataSetPartitioner(
   }
 }
 
-object RandomEffectDataSetPartitioner {
+object RandomEffectDatasetPartitioner {
 
   /**
    * Generate a partitioner for one random effect model.
@@ -110,15 +110,15 @@ object RandomEffectDataSetPartitioner {
    * We stop filling in idToPartitionMap at partitionerCapacity records, because this map is passed to the executors
    * and we therefore wish to control/limit its size.
    *
-   * @param gameDataSet The GAME training dataset
+   * @param gameDataset The GAME training dataset
    * @param reConfig The random effect data configuration options
    * @param partitionerCapacity The partitioner capacity
    * @return A partitioner for one random effect model
    */
-  def fromGameDataSet(
-      gameDataSet: RDD[(Long, GameDatum)],
+  def fromGameDataset(
+      gameDataset: RDD[(Long, GameDatum)],
       reConfig: RandomEffectDataConfiguration,
-      partitionerCapacity: Int = 10000): RandomEffectDataSetPartitioner = {
+      partitionerCapacity: Int = 10000): RandomEffectDatasetPartitioner = {
 
     val numPartitions = reConfig.minNumPartitions
     val randomEffectType = reConfig.randomEffectType
@@ -126,7 +126,7 @@ object RandomEffectDataSetPartitioner {
 
     require(numPartitions > 0, s"Number of partitions ($numPartitions) has to be larger than 0.")
 
-    val rawSortedRandomEffectTypes = gameDataSet
+    val rawSortedRandomEffectTypes = gameDataset
       .values
       .filter(_.idTagToValueMap.contains(randomEffectType))
       .map(gameData => (gameData.idTagToValueMap(randomEffectType), 1))
@@ -164,8 +164,8 @@ object RandomEffectDataSetPartitioner {
       minHeap.enqueue((partition, currentSize + size))
     }
 
-    new RandomEffectDataSetPartitioner(
+    new RandomEffectDatasetPartitioner(
       numPartitions,
-      gameDataSet.sparkContext.broadcast(idToPartitionMapBuilder.result()))
+      gameDataset.sparkContext.broadcast(idToPartitionMapBuilder.result()))
   }
 }

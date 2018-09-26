@@ -230,13 +230,13 @@ object RandomEffectDataset {
   /**
    * Build the random effect dataset with the given configuration.
    *
-   * @param gameDataSet The RDD of [[GameDatum]] used to generate the random effect dataset
+   * @param gameDataset The RDD of [[GameDatum]] used to generate the random effect dataset
    * @param randomEffectDataConfiguration The data configuration for the random effect dataset
    * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
    * @return A new random effect dataset with the given configuration
    */
   protected[ml] def apply(
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)],
+      gameDataset: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner,
       existingModelKeysRddOpt: Option[RDD[REId]]): RandomEffectDataset = {
@@ -244,10 +244,10 @@ object RandomEffectDataset {
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
 
-    val gameDataPartitioner = gameDataSet.partitioner.get
+    val gameDataPartitioner = gameDataset.partitioner.get
 
     val rawActiveData = generateActiveData(
-      gameDataSet,
+      gameDataset,
       randomEffectDataConfiguration,
       randomEffectPartitioner,
       existingModelKeysRddOpt)
@@ -256,8 +256,8 @@ object RandomEffectDataset {
       .persist(StorageLevel.DISK_ONLY)
 
     val globalIdToIndividualIds = activeData
-      .flatMap { case (individualId, localDataSet) =>
-        localDataSet.getUniqueIds.map((_, individualId))
+      .flatMap { case (individualId, localDataset) =>
+        localDataset.getUniqueIds.map((_, individualId))
       }
       .partitionBy(gameDataPartitioner)
 
@@ -265,7 +265,7 @@ object RandomEffectDataset {
       .numPassiveDataPointsLowerBound
       .map { passiveDataLowerBound =>
         generatePassiveData(
-          gameDataSet,
+          gameDataset,
           activeData,
           gameDataPartitioner,
           randomEffectType,
@@ -285,13 +285,13 @@ object RandomEffectDataset {
   /**
    * Generate active data.
    *
-   * @param gameDataSet The input dataset
+   * @param gameDataset The input dataset
    * @param randomEffectDataConfiguration The random effect data configuration
    * @param randomEffectPartitioner A random effect partitioner
    * @return The active dataset
    */
   private def generateActiveData(
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)],
+      gameDataset: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: Partitioner,
       existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, LocalDataset)] = {
@@ -299,29 +299,29 @@ object RandomEffectDataset {
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
 
-    val keyedRandomEffectDataSet = gameDataSet.map { case (uniqueId, gameData) =>
+    val keyedRandomEffectDataset = gameDataset.map { case (uniqueId, gameData) =>
       val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, (uniqueId, labeledPoint))
     }
 
-    val groupedRandomEffectDataSet = randomEffectDataConfiguration
+    val groupedRandomEffectDataset = randomEffectDataConfiguration
       .numActiveDataPointsUpperBound
       .map { activeDataUpperBound =>
         groupDataByKeyAndSample(
-          keyedRandomEffectDataSet,
+          keyedRandomEffectDataset,
           randomEffectPartitioner,
           activeDataUpperBound,
           randomEffectType)
       }
-      .getOrElse(keyedRandomEffectDataSet.groupByKey(randomEffectPartitioner))
+      .getOrElse(keyedRandomEffectDataset.groupByKey(randomEffectPartitioner))
 
     randomEffectDataConfiguration
       .numActiveDataPointsLowerBound
       .map { activeDataLowerBound =>
         existingModelKeysRddOpt match {
           case Some(existingModelKeysRdd) =>
-            groupedRandomEffectDataSet
+            groupedRandomEffectDataset
               .zipPartitions(existingModelKeysRdd, preservesPartitioning = true) { (dataIt, existingKeysIt) =>
 
               val lookupTable = existingKeysIt.toSet
@@ -332,12 +332,12 @@ object RandomEffectDataset {
             }
 
           case None =>
-            groupedRandomEffectDataSet.filter { case (_, data) =>
+            groupedRandomEffectDataset.filter { case (_, data) =>
               data.size >= activeDataLowerBound
             }
         }
       }
-      .getOrElse(groupedRandomEffectDataSet)
+      .getOrElse(groupedRandomEffectDataset)
       .mapValues(data => LocalDataset(data.toArray, isSortedByFirstIndex = false))
   }
 
@@ -349,14 +349,14 @@ object RandomEffectDataset {
    * 1. The exact sampling must be reproducible so that [[RDD]] partitions can be recovered
    * 2. The linear algorithm is non-trivial to combine in a distributed manner
    *
-   * @param rawKeyedDataSet The raw dataset, with samples keyed by random effect ID
+   * @param rawKeyedDataset The raw dataset, with samples keyed by random effect ID
    * @param partitioner The partitioner
    * @param sampleCap The sample cap
    * @param randomEffectType The type of random effect
    * @return An RDD of data grouped by individual ID
    */
   private def groupDataByKeyAndSample(
-      rawKeyedDataSet: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      rawKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
       partitioner: Partitioner,
       sampleCap: Int,
       randomEffectType: REType): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = {
@@ -395,7 +395,7 @@ object RandomEffectDataset {
     // node failure. We attempt to maximize the likelihood of successful recovery through RDD replication, however there
     // is a non-zero possibility of massive failure. If this becomes an issue, we may need to resort to check-pointing
     // the raw data RDD after uniqueId assignment.
-    val localDataSets = rawKeyedDataSet
+    val localDatasets = rawKeyedDataset
       .mapValues { case (uniqueId, labeledPoint) =>
         val comparableKey = (byteswap64(randomEffectType.hashCode) ^ byteswap64(uniqueId)).hashCode()
         ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
@@ -416,13 +416,13 @@ object RandomEffectDataset {
         dataPoints
       }
 
-    localDataSets
+    localDatasets
   }
 
   /**
    * Generate passive dataset.
    *
-   * @param gameDataSet The raw input dataset
+   * @param gameDataset The raw input dataset
    * @param activeData The active dataset
    * @param gameDataPartitioner A global partitioner
    * @param randomEffectType The corresponding random effect type of the dataset
@@ -431,7 +431,7 @@ object RandomEffectDataset {
    * @return The passive dataset
    */
   private def generatePassiveData(
-      gameDataSet: RDD[(UniqueSampleId, GameDatum)],
+      gameDataset: RDD[(UniqueSampleId, GameDatum)],
       activeData: RDD[(REId, LocalDataset)],
       gameDataPartitioner: Partitioner,
       randomEffectType: REType,
@@ -441,13 +441,13 @@ object RandomEffectDataset {
 
     // The remaining data not included in the active data will be kept as passive data
     val activeDataUniqueIds = activeData.flatMapValues(_.dataPoints.map(_._1)).map(_.swap)
-    val keyedRandomEffectDataSet = gameDataSet.mapValues { gameData =>
+    val keyedRandomEffectDataset = gameDataset.mapValues { gameData =>
       val randomEffectId = gameData.idTagToValueMap(randomEffectType)
       val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
       (randomEffectId, labeledPoint)
     }
 
-    val passiveData = keyedRandomEffectDataSet.subtractByKey(activeDataUniqueIds, gameDataPartitioner)
+    val passiveData = keyedRandomEffectDataset.subtractByKey(activeDataUniqueIds, gameDataPartitioner)
         .setName("tmp passive data")
         .persist(StorageLevel.DISK_ONLY)
 
@@ -462,7 +462,7 @@ object RandomEffectDataset {
     val passiveDataRandomEffectIds = passiveDataRandomEffectIdCountsMap
       .filter(_._2 > passiveDataLowerBound)
       .keySet
-    val sparkContext = gameDataSet.sparkContext
+    val sparkContext = gameDataset.sparkContext
     val passiveDataRandomEffectIdsBroadcast = sparkContext.broadcast(passiveDataRandomEffectIds)
     val filteredPassiveData = passiveData
       .filter { case (_, (id, _)) =>
@@ -493,14 +493,14 @@ object RandomEffectDataset {
     randomEffectDataConfiguration
       .numFeaturesToSamplesRatioUpperBound
       .map { numFeaturesToSamplesRatioUpperBound =>
-        activeData.mapValues { localDataSet =>
-          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataSet.numDataPoints).toInt
+        activeData.mapValues { localDataset =>
+          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataset.numDataPoints).toInt
 
           // In case the above product overflows
           if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
-          val filteredLocalDataSet = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
+          val filteredLocalDataset = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
 
-          filteredLocalDataSet
+          filteredLocalDataset
         }
       }
       .getOrElse(activeData)

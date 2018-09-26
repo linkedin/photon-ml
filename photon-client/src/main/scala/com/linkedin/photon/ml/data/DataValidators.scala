@@ -187,17 +187,17 @@ object DataValidators extends Logging {
   /**
    * Validate a dataset using one or more data point validators.
    *
-   * @param dataSet The input dataset
+   * @param dataset The input dataset
    * @param perSampleValidators A list of (data validator, error message) pairs
    * @return The list of validation error messages for the input data
    */
   private def validateData(
-      dataSet: RDD[LabeledPoint],
+      dataset: RDD[LabeledPoint],
       perSampleValidators: List[((LabeledPoint => Boolean), String)]): Seq[String] =
     perSampleValidators
       .map { case (validator, msg) =>
-        val validatorBroadcast = dataSet.sparkContext.broadcast(validator)
-        val result = dataSet.aggregate(true)(
+        val validatorBroadcast = dataset.sparkContext.broadcast(validator)
+        val result = dataset.aggregate(true)(
           seqOp = (result, dataPoint) => result && validatorBroadcast.value(dataPoint),
           combOp = (result1, result2) => result1 && result2)
 
@@ -246,20 +246,20 @@ object DataValidators extends Logging {
   /**
    * Validate a data frame using one or more data point validators.
    *
-   * @param dataSet The input data frame
+   * @param dataset The input data frame
    * @param perSampleValidators A list of (data validator, input column name, error message) triples
    * @param inputColumnsNames Column names for the provided data frame
    * @param featureSectionKeys Column names for the feature columns in the provided data frame
    * @return The list of validation error messages for the input data frame
    */
   private def validateDataFrame(
-      dataSet: DataFrame,
+      dataset: DataFrame,
       perSampleValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)],
       inputColumnsNames: InputColumnsNames,
       featureSectionKeys: Set[FeatureShardId]): Seq[String] = {
 
-    val columns = dataSet.columns
-    dataSet
+    val columns = dataset.columns
+    dataset
       .rdd
       .flatMap { r =>
         perSampleValidators

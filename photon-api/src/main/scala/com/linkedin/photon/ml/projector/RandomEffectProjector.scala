@@ -38,10 +38,10 @@ protected[ml] trait RandomEffectProjector {
   /**
    * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input dataset in the original space
+   * @param randomEffectDataset The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset
+  def projectRandomEffectDataset(randomEffectDataset: RandomEffectDataset): RandomEffectDataset
 
   /**
    * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original
@@ -67,23 +67,23 @@ object RandomEffectProjector {
   /**
    * Builds a random effect projector instance.
    *
-   * @param randomEffectDataSet The dataset to project
+   * @param randomEffectDataset The dataset to project
    * @param projectorType The type of the projector
    * @return A new [[RandomEffectProjector]]
    */
   protected[ml] def build(
-      randomEffectDataSet: RandomEffectDataset,
+      randomEffectDataset: RandomEffectDataset,
       projectorType: ProjectorType): RandomEffectProjector = projectorType match {
 
     case RandomProjection(projectedSpaceDimension) =>
       ProjectionMatrixBroadcast.buildRandomProjectionBroadcastProjector(
-        randomEffectDataSet, projectedSpaceDimension, isKeepingInterceptTerm = true)
+        randomEffectDataset, projectedSpaceDimension, isKeepingInterceptTerm = true)
 
     case IdentityProjection =>
       new IdentityProjector
 
     case IndexMapProjection =>
-      IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataSet)
+      IndexMapProjectorRDD.buildIndexMapProjector(randomEffectDataset)
 
     case _ =>
       throw new UnsupportedOperationException(

@@ -26,13 +26,13 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * The optimization problem coordinate for a random effect model in projected space.
  *
  * @tparam Objective The type of objective function used to solve individual random effect optimization problems
- * @param dataSetInProjectedSpace The training dataset
+ * @param datasetInProjectedSpace The training dataset
  * @param optimizationProblem The fixed effect optimization problem
  */
 protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNodeObjectiveFunction](
-    dataSetInProjectedSpace: RandomEffectDatasetInProjectedSpace,
+    datasetInProjectedSpace: RandomEffectDatasetInProjectedSpace,
     optimizationProblem: RandomEffectOptimizationProblem[Objective])
-  extends RandomEffectCoordinate[Objective](dataSetInProjectedSpace, optimizationProblem) {
+  extends RandomEffectCoordinate[Objective](datasetInProjectedSpace, optimizationProblem) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -57,23 +57,23 @@ protected[ml] class RandomEffectCoordinateInProjectedSpace[Objective <: SingleNo
    * @return The basic model
    */
   override protected[ml] def initializeModel(seed: Long): RandomEffectModelInProjectedSpace =
-    RandomEffectCoordinateInProjectedSpace.initializeModel(dataSetInProjectedSpace, optimizationProblem)
+    RandomEffectCoordinateInProjectedSpace.initializeModel(datasetInProjectedSpace, optimizationProblem)
 
   /**
    * Update the coordinate with a new dataset.
    *
-   * @param updatedRandomEffectDataSet The updated dataset
+   * @param updatedRandomEffectDataset The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  override protected[algorithm] def updateCoordinateWithDataSet(
-      updatedRandomEffectDataSet: RandomEffectDataset): RandomEffectCoordinate[Objective] = {
+  override protected[algorithm] def updateCoordinateWithDataset(
+      updatedRandomEffectDataset: RandomEffectDataset): RandomEffectCoordinate[Objective] = {
 
-    val updatedRandomEffectDataSetInProjectedSpace = new RandomEffectDatasetInProjectedSpace(
-      updatedRandomEffectDataSet,
-      dataSetInProjectedSpace.randomEffectProjector)
+    val updatedRandomEffectDatasetInProjectedSpace = new RandomEffectDatasetInProjectedSpace(
+      updatedRandomEffectDataset,
+      datasetInProjectedSpace.randomEffectProjector)
 
     new RandomEffectCoordinateInProjectedSpace(
-      updatedRandomEffectDataSetInProjectedSpace,
+      updatedRandomEffectDatasetInProjectedSpace,
       optimizationProblem)
   }
 
@@ -122,23 +122,23 @@ object RandomEffectCoordinateInProjectedSpace {
    * Initialize a basic model (one that has a zero model for each random effect).
    *
    * @tparam Function The type of objective function used to solve individual random effect optimization problems
-   * @param randomEffectDataSetInProjectedSpace The dataset
+   * @param randomEffectDatasetInProjectedSpace The dataset
    * @param randomEffectOptimizationProblem The optimization problem to use for creating the underlying models
    * @return A random effect model for scoring GAME data
    */
   private def initializeModel[Function <: SingleNodeObjectiveFunction](
-      randomEffectDataSetInProjectedSpace: RandomEffectDatasetInProjectedSpace,
+      randomEffectDatasetInProjectedSpace: RandomEffectDatasetInProjectedSpace,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function]): RandomEffectModelInProjectedSpace = {
 
     val glm = randomEffectOptimizationProblem.initializeModel(0)
-    val randomEffectModelsRDD = randomEffectDataSetInProjectedSpace.activeData.mapValues { localDataSet =>
+    val randomEffectModelsRDD = randomEffectDatasetInProjectedSpace.activeData.mapValues { localDataset =>
       glm
-        .updateCoefficients(Coefficients.initializeZeroCoefficients(localDataSet.numFeatures))
+        .updateCoefficients(Coefficients.initializeZeroCoefficients(localDataset.numFeatures))
         .asInstanceOf[GeneralizedLinearModel]
     }
-    val randomEffectType = randomEffectDataSetInProjectedSpace.randomEffectType
-    val featureShardId = randomEffectDataSetInProjectedSpace.featureShardId
-    val randomEffectProjector = randomEffectDataSetInProjectedSpace.randomEffectProjector
+    val randomEffectType = randomEffectDatasetInProjectedSpace.randomEffectType
+    val featureShardId = randomEffectDatasetInProjectedSpace.featureShardId
+    val randomEffectProjector = randomEffectDatasetInProjectedSpace.randomEffectProjector
 
     new RandomEffectModelInProjectedSpace(
       randomEffectModelsRDD,

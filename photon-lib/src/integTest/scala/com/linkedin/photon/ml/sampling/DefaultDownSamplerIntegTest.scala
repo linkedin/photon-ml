@@ -78,12 +78,12 @@ class DefaultDownSamplerIntegTest extends SparkTestUtils {
   @Test(dataProvider = "validDownSamplingRatesProvider")
   def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
 
-    val dataSet = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
+    val dataset = generateDummyDataset(sc, numInstancesToGenerate, numFeatures)
 
     var numInstancesInSampled: Long = 0
     for (_ <- 0 until numTimesToRun) {
       numInstancesInSampled += new DefaultDownSampler(downSamplingRate)
-        .downSample(dataSet)
+        .downSample(dataset)
         .count()
     }
 

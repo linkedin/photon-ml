@@ -51,11 +51,11 @@ class BinaryClassificationDownSamplerIntegTest extends SparkTestUtils {
   @Test(dataProvider = "validDownSamplingRatesProvider")
   def testDownSampling(downSamplingRate: Double): Unit = sparkTest("testDownSampling") {
 
-    val dataSet = generateDummyDataset(sc, NUM_POSITIVES_TO_GENERATE, NUM_NEGATIVES_TO_GENERATE, NUM_FEATURES)
+    val dataset = generateDummyDataset(sc, NUM_POSITIVES_TO_GENERATE, NUM_NEGATIVES_TO_GENERATE, NUM_FEATURES)
     var numNegativesInSampled: Long = 0
 
     for (_ <- 0 until NUM_TIMES_TO_RUN) {
-      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataSet)
+      val sampled = new BinaryClassificationDownSampler(downSamplingRate).downSample(dataset)
 
       // Need to burn seeds - the ones we get without this line cause failures in Travis CI
       DownSampler.getSeed

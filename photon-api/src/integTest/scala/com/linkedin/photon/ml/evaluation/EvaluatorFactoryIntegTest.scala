@@ -56,8 +56,8 @@ class EvaluatorFactoryIntegTest extends SparkTestUtils {
       weightOpt = None,
       featureShardContainer = Map(),
       idTagToValueMap = Map(idTag -> "id"))
-    val gameDataSet = sc.parallelize(Seq((1L, gameDatum)))
-    val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataSet)
+    val gameDataset = sc.parallelize(Seq((1L, gameDatum)))
+    val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataset)
 
     assertEquals(evaluator.getEvaluatorName, evaluatorType.name)
   }

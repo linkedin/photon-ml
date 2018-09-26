@@ -73,16 +73,16 @@ class FittingDiagnostic extends TrainingDiagnostic[GeneralizedLinearModel, Fitti
         .scanLeft(
           (0.0, warmStart, Map[Double, Map[String, Double]](), Map[Double, Map[String, Double]]()))( (prev, maxTag) => {
 
-        val dataSet = tagged.filter(_._1 <= maxTag).map(_._2)
+        val dataset = tagged.filter(_._1 <= maxTag).map(_._2)
         val startTime = System.currentTimeMillis
-        val samples = dataSet.count()
+        val samples = dataset.count()
         val dataPortion = 100.0 * samples / numSamples
         logger.info(s"Data portion: $dataPortion ==> warm start models with lambdas = ${warmStart.keys.mkString(", ")}")
-        val models = modelFactory(dataSet, prev._2).toMap
+        val models = modelFactory(dataset, prev._2).toMap
 
         val metricsTest = models.mapValues(x => Evaluation.evaluate(x, holdOut))
-        val metricsTrain = models.mapValues(x => Evaluation.evaluate(x, dataSet))
-        dataSet.unpersist(blocking = false)
+        val metricsTrain = models.mapValues(x => Evaluation.evaluate(x, dataset))
+        dataset.unpersist(blocking = false)
         val elapsedTime = (System.currentTimeMillis - startTime) / 1000.0
         logger.info(s"Training on $dataPortion%% of the data took $elapsedTime seconds")
 
