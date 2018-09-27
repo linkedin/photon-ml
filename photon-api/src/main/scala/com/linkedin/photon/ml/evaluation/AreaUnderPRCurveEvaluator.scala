@@ -17,51 +17,23 @@ package com.linkedin.photon.ml.evaluation
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
-
 /**
- * Evaluator that computes area under the precision / recall curve.
- *
- * @param labelAndOffsetAndWeights A [[RDD]] of (id, (label, offset, weight)) tuples
+ * Evaluator for area under the precision / recall curve (AUPR).
  */
-protected[ml] class AreaUnderPRCurveEvaluator(
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]) extends Evaluator {
+object AreaUnderPRCurveEvaluator extends SingleEvaluator {
 
   val evaluatorType = EvaluatorType.AUPR
 
   /**
-   * Evaluate scores with labels and weights.
+   * Compute AUPR for the given data.
    *
-   * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight)).
-   * @return Evaluation metric value
+   * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
+   * @return The AUPR
    */
-  override protected[ml] def evaluateWithScoresAndLabelsAndWeights(
-    scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
+  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
 
-    val scoreAndLabels = scoresAndLabelsAndWeights.map { case (_, (score, label, _)) => (score, label) }
+    val scoreAndLabels = scoresAndLabelsAndWeights.map { case (score, label, _) => (score, label) }
 
     new BinaryClassificationMetrics(scoreAndLabels).areaUnderPR()
-  }
-
-  /**
-   * Determine the best between two scores returned by the evaluator. In some cases, the better score is higher
-   * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
-   *
-   * @param score1 The first score to compare
-   * @param score2 The second score to compare
-   * @return True if the first score is better than the second
-   */
-  override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
-
-  /**
-   * Compares two [[AreaUnderPRCurveEvaluator]] objects.
-   *
-   * @param other Some other object
-   * @return True if the both models conform to the equality contract and have the same model coefficients, false
-   *         otherwise
-   */
-  override def equals(other: Any): Boolean = other match {
-    case that: AreaUnderPRCurveEvaluator => super.equals(that)
-    case _ => false
   }
 }

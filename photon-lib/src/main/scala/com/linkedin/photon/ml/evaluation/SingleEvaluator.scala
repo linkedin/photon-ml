@@ -14,25 +14,10 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import org.apache.spark.rdd.RDD
-
 /**
- * Evaluator for root mean squared error (RMSE).
+ * [[Evaluator]] to compute a single evaluation metric across an entire data set.
  */
-object RMSEEvaluator extends SingleEvaluator {
+trait SingleEvaluator extends Evaluator {
 
-  override val evaluatorType = EvaluatorType.RMSE
-
-  /**
-   * Compute RMSE for the given data.
-   *
-   * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
-   * @return The RMSE
-   */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
-
-    val squaredLoss = SquaredLossEvaluator.evaluate(scoresAndLabelsAndWeights)
-
-    math.sqrt(squaredLoss / scoresAndLabelsAndWeights.count())
-  }
+  type ScoredData = (Double, Double, Double)
 }

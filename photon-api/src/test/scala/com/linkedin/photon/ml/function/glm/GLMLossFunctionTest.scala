@@ -56,6 +56,9 @@ class GLMLossFunctionTest {
 
       case _: RandomEffectOptimizationConfiguration =>
         assertTrue(objectiveFunction.isInstanceOf[SingleNodeGLMLossFunction])
+
+      case _ =>
+        assertTrue(false)
     }
   }
 }

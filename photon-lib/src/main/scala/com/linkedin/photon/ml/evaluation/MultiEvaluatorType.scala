@@ -16,6 +16,8 @@ package com.linkedin.photon.ml.evaluation
 
 import scala.util.matching.Regex
 
+import com.linkedin.photon.ml.util.MathUtils
+
 /**
  * Trait for an evaluator applied to a collection of samples grouped by some ID.
  */
@@ -47,11 +49,12 @@ object MultiEvaluatorType {
       .toSet
 }
 
-case class MultiPrecisionAtK(k: Int, idTag: String) extends MultiEvaluatorType {
+case class MultiPrecisionAtK(k: Int, override val idTag: String) extends MultiEvaluatorType {
 
   require(k > 0, s"Position k must be greater than 0: $k")
 
   val name = s"PRECISION@$k${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
+  val op = MathUtils.greaterThan _
 }
 
 object MultiPrecisionAtK {
@@ -60,9 +63,10 @@ object MultiPrecisionAtK {
     s"(?i:PRECISION)@(\\d+)${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}(.*)".r
 }
 
-case class MultiAUC(idTag: String) extends MultiEvaluatorType {
+case class MultiAUC(override val idTag: String) extends MultiEvaluatorType {
 
   val name = s"AUC${MultiEvaluatorType.shardedEvaluatorIdNameSplitter}$idTag"
+  val op = MathUtils.greaterThan _
 }
 
 object MultiAUC {

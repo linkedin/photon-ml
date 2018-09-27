@@ -31,7 +31,6 @@ import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleI
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
@@ -324,11 +323,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         coordinateDataConfig.featureShardId
       }
       .toSet
-    val (trainingDatasets, trainingLossFunctionEvaluator) = prepareTrainingDatasetsAndEvaluator(
+    val trainingDatasets = prepareTrainingDatasets(
       data,
       featureShards,
       additionalCols)
-    val validationDatasetAndEvaluatorsOpt = prepareValidationDatasetAndEvaluators(
+    val validationDatasetAndEvaluationSuiteOpt = prepareValidationDatasetAndEvaluators(
       validationData,
       featureShards,
       additionalCols)
@@ -336,8 +335,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val coordinateDescent = new CoordinateDescent(
       getRequiredParam(coordinateUpdateSequence),
       getOrDefault(coordinateDescentIterations),
-      trainingLossFunctionEvaluator,
-      validationDatasetAndEvaluatorsOpt,
+      validationDatasetAndEvaluationSuiteOpt,
       getOrDefault(partialRetrainLockedCoordinates),
       logger)
 
@@ -346,7 +344,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       var prevGameModel: Option[GameModel] = getInitialModel(trainingDatasets)
 
       optimizationConfigurations.map { optimizationConfiguration =>
-        val (gameModel, evaluation) = train(
+        val (gameModel, evaluations) = train(
           optimizationConfiguration,
           trainingDatasets,
           coordinateDescent,
@@ -355,7 +353,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         prevGameModel = Some(gameModel)
 
-        (gameModel, evaluation, optimizationConfiguration)
+        (gameModel, optimizationConfiguration, evaluations)
       }
     }
 
@@ -370,7 +368,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         case _ =>
       }
     }
-    validationDatasetAndEvaluatorsOpt.map { case (rdd, _) => rdd.unpersist() }
+    validationDatasetAndEvaluationSuiteOpt.map { case (validationDataset, evaluationSuite) =>
+      validationDataset.unpersist()
+      evaluationSuite.unpersistRDD()
+    }
     normalizationContextWrappersOpt.foreach(_.foreach { case (_, nCW) => nCW.unpersist() } )
 
     results
@@ -440,17 +441,18 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Construct one or more training [[Dataset]]s using a [[DataFrame]] of training data and an [[Evaluator]] for
-   * computing training loss.
+   * Construct one or more training [[Dataset]]s using a [[DataFrame]] of raw training data.
    *
-   * @param data The training data [[DataFrame]]
-   * @param idTagSet A set of additional columns whose values should be maintained for training
-   * @return A (map of training [[Dataset]]s (one per coordinate), training loss [[Evaluator]]) tuple
+   * @param data The [[DataFrame]] of training data
+   * @param featureShards The feature shard columns to import from the [[DataFrame]]
+   * @param idTagSet A set of additional columns whose values should be maintained for training (e.g. random effects
+   *                 IDs, IDs for computing validation metrics, etc.)
+   * @return A map of coordinate ID to training [[Dataset]]
    */
-  protected def prepareTrainingDatasetsAndEvaluator(
+  protected def prepareTrainingDatasets(
       data: DataFrame,
       featureShards: Set[FeatureShardId],
-      idTagSet: Set[String]): (Map[CoordinateId, D forSome { type D <: Dataset[D] }], Evaluator) = {
+      idTagSet: Set[String]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
 
     val numPartitions = data.rdd.getNumPartitions
     val gameDataPartitioner = new LongHashPartitioner(numPartitions)
@@ -467,28 +469,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         .setName("GAME training data")
         .persist(StorageLevel.DISK_ONLY)
     }
-    // Transform the GAME dataset into fixed and random effect specific datasets
-    val trainingDataset = Timed("Prepare training datasets") {
-      prepareTrainingDatasets(gameDataset)
-    }
-    val trainingLossFunctionEvaluator = Timed("Prepare training loss evaluator") {
-      prepareTrainingLossEvaluator(gameDataset)
-    }
-
-    // Purge the GAME dataset, which is no longer needed in the following code
-    gameDataset.unpersist()
-
-    (trainingDataset, trainingLossFunctionEvaluator)
-  }
-
-  /**
-   * Construct one or more [[Dataset]]s from an [[RDD]] of samples.
-   *
-   * @param gameDataset The training data samples
-   * @return A map of coordinate ID to training [[Dataset]]
-   */
-  protected def prepareTrainingDatasets(
-      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
 
     getRequiredParam(coordinateDataConfigurations).map { case (coordinateId, config) =>
 
@@ -575,51 +555,22 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Construct the training loss evaluator.
+   * Optionally construct an [[RDD]] of validation data samples, and an [[EvaluationSuite]] to compute evaluation metrics
+   * over the validation data.
    *
-   * @param gameDataset The training data samples
-   * @return A training loss evaluator for the given training task and data
-   */
-  protected def prepareTrainingLossEvaluator(gameDataset: RDD[(UniqueSampleId, GameDatum)]): Evaluator = {
-
-    val taskType = getRequiredParam(trainingTask)
-    val labelAndOffsetAndWeights = gameDataset
-      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
-      .setName("Training labels, offsets and weights")
-      .persist(StorageLevel.MEMORY_AND_DISK)
-
-    labelAndOffsetAndWeights.count()
-
-    taskType match {
-      case TaskType.LOGISTIC_REGRESSION =>
-        new LogisticLossEvaluator(labelAndOffsetAndWeights)
-      case TaskType.LINEAR_REGRESSION =>
-        new SquaredLossEvaluator(labelAndOffsetAndWeights)
-      case TaskType.POISSON_REGRESSION =>
-        new PoissonLossEvaluator(labelAndOffsetAndWeights)
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
-      case _ =>
-        throw new UnsupportedOperationException(s"$taskType is not a valid GAME training task")
-    }
-  }
-
-  /**
-   * Optionally construct an [[RDD]] of validation data samples using a [[DataFrame]] of validation data and the
-   * validation metric [[Evaluator]]s.
-   *
-   * @param dataOpt Optional validation data [[DataFrame]]
+   * @param dataOpt Optional [[DataFrame]] of validation data
+   * @param featureShards The feature shard columns to import from the [[DataFrame]]
    * @param additionalCols A set of additional columns whose values should be maintained for validation evaluation
-   * @return An optional ([[RDD]] of validation samples, validation metric [[Evaluator]]s) tuple
+   * @return An optional ([[RDD]] of validation data, validation metric [[EvaluationSuite]]) tuple
    */
   protected def prepareValidationDatasetAndEvaluators(
       dataOpt: Option[DataFrame],
       featureShards: Set[FeatureShardId],
-      additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])] =
+      additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)] =
 
     dataOpt.map { data =>
       val partitioner = new LongHashPartitioner(data.rdd.partitions.length)
-      val gameDataset = Timed("Convert training data from raw dataframe to processed RDD") {
+      val gameDataset = Timed("Convert validation data from raw DataFrame to processed RDD of GAME data") {
         val result = GameConverters
           .getGameDatasetFromDataFrame(
             data,
@@ -628,64 +579,73 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             isResponseRequired = true,
             getOrDefault(inputColumnNames))
           .partitionBy(partitioner)
-          .setName("Validating Game dataset")
+          .setName("Validation Game dataset")
           .persist(StorageLevel.DISK_ONLY)
 
         result.count()
         result
       }
-
-      val evaluators = Timed("Prepare validation metric evaluators") {
+      val evaluationSuite = Timed("Prepare validation metric evaluators") {
         prepareValidationEvaluators(gameDataset)
       }
 
-      val randomScores = gameDataset.mapValues(_ => math.random)
-      evaluators.foreach { evaluator =>
-        val metric = evaluator.evaluate(randomScores)
-        logger.info(s"Random guessing based baseline evaluation metric for ${evaluator.getEvaluatorName}: $metric")
-      }
-
-      (gameDataset, evaluators)
+      (gameDataset, evaluationSuite)
     }
 
   /**
-   * Construct the validation [[Evaluator]]s.
+   * Construct the validation [[EvaluationSuite]].
    *
    * @param gameDataset An [[RDD]] of validation data samples
-   * @return One or more validation metric [[Evaluator]]s
+   * @return [[EvaluationSuite]] containing one or more validation metric [[Evaluator]] objects
    */
-  protected def prepareValidationEvaluators(gameDataset: RDD[(UniqueSampleId, GameDatum)]): Seq[Evaluator] = {
+  protected def prepareValidationEvaluators(gameDataset: RDD[(UniqueSampleId, GameDatum)]): EvaluationSuite = {
 
     val validatingLabelsAndOffsetsAndWeights = gameDataset
-      .mapValues(gameData => (gameData.response, gameData.offset, gameData.weight))
-      .setName(s"Validating labels and offsets")
-      .persist(StorageLevel.MEMORY_AND_DISK)
-    validatingLabelsAndOffsetsAndWeights.count()
+      .mapValues{gameData => (gameData.response, gameData.offset, gameData.weight)
+      }
+      val evaluators =
 
     get(validationEvaluators)
       .map(_.map(EvaluatorFactory.buildEvaluator(_, gameDataset)))
       .getOrElse {
         // Get default evaluators given the task type
-        val defaultEvaluator =
-          getRequiredParam(trainingTask) match {
-            case TaskType.LOGISTIC_REGRESSION | TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-              new AreaUnderROCCurveEvaluator(validatingLabelsAndOffsetsAndWeights)
-
-            case TaskType.LINEAR_REGRESSION =>
-              new RMSEEvaluator(validatingLabelsAndOffsetsAndWeights)
-
-            case TaskType.POISSON_REGRESSION =>
-              new PoissonLossEvaluator(validatingLabelsAndOffsetsAndWeights)
-
-            case _ =>
-              throw new UnsupportedOperationException(
-                s"${getRequiredParam(trainingTask)} is not a valid GAME training task")
-          }
+        val taskType = getRequiredParam(trainingTask)
+        val defaultEvaluator = taskType match {
+          case TaskType.LOGISTIC_REGRESSION | TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => AreaUnderROCCurveEvaluator
+          case TaskType.LINEAR_REGRESSION => RMSEEvaluator
+          case TaskType.POISSON_REGRESSION => PoissonLossEvaluator
+          case _ => throw new UnsupportedOperationException(s"$taskType is not a valid GAME training task")
+        }
 
         Seq(defaultEvaluator)
       }
+    val evaluationSuite = EvaluationSuite(evaluators, validatingLabelsAndOffsetsAndWeights)
+      .setName(s"Evaluation: validation data labels, offsets, and weights")
+      .persistRDD(StorageLevel.MEMORY_AND_DISK)
+
+    if (logger.isDebugEnabled) {
+
+      val randomScores = gameDataset.mapValues(_ => math.random).persist()
+
+      evaluationSuite
+        .evaluate(randomScores)
+        .evaluations
+        .foreach { case (evaluator, evaluation) =>
+          logger.debug(s"Random guessing baseline for evaluation metric '${evaluator.name}': $evaluation")
+        }
+
+      randomScores.unpersist()
+    }
+
+    evaluationSuite
   }
 
+  /**
+   * Optionally construct a [[NormalizationContextWrapper]] from the raw [[NormalizationContext]] for each coordinate.
+   *
+   * @param datasets A [[Map]] of coordinate ID to training data [[Dataset]]
+   * @return An optional [[Map]] of coordinate ID to [[NormalizationContextWrapper]]
+   */
   protected def prepareNormalizationContextWrappers(
       datasets: Map[CoordinateId, D forSome { type D <: Dataset[D] }])
     : Option[Map[CoordinateId, NormalizationContextWrapper]] =
@@ -826,7 +786,7 @@ object GameEstimator {
   //
 
   type GameOptimizationConfiguration = Map[CoordinateId, CoordinateOptimizationConfiguration]
-  type GameResult = (GameModel, Option[EvaluationResults], GameOptimizationConfiguration)
+  type GameResult = (GameModel, GameOptimizationConfiguration, Option[EvaluationResults])
 
   //
   // Constants

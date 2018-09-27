@@ -14,12 +14,11 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import java.util.Random
-
-import org.mockito.Mockito._
+import org.apache.spark.rdd.RDD
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
@@ -27,33 +26,61 @@ import com.linkedin.photon.ml.test.SparkTestUtils
  */
 class MultiEvaluatorIntegTest extends SparkTestUtils {
 
+  import MultiEvaluatorIntegTest._
+
   /**
    * Test that the [[MultiEvaluator]] will correctly group records by ID and pass them to a [[LocalEvaluator]] for
    * evaluation.
    */
   @Test
-  def testEvaluateWithLabelAndWeight(): Unit = sparkTest("testEvaluateWithLabelAndWeight") {
+  def testEvaluate(): Unit = sparkTest("testEvaluateWithLabelAndWeight") {
 
-    val expectedResult = 0.5
-    // Can't use Mockito here because we need the evaluator to be serializable
-    val localEvaluatorMock = new LocalEvaluator {
-      override protected[ml] def evaluate(
-        scoreLabelAndWeight: Array[(Double, Double, Double)]): Double = expectedResult
+    // Create the following input:
+    //
+    //  UID | REID | Score
+    // --------------------
+    //   1  |  1   |   2
+    //   2  |  0   |   3
+    //   3  |  1   |   4
+    //   4  |  0   |   5
+    //
+    val numUIDs = 4
+    val rawInput = (1 to numUIDs).map { v =>
+      (v.toLong, (v % 2).toString, (v + 1).toDouble)
     }
+    val ids = sc.parallelize(
+      rawInput.map { case (uid, reid, _) =>
+        (uid, reid)
+      })
+    val scores = sc.parallelize(
+      rawInput.map { case (uid, _, score) =>
+        (uid, (score, 1D, 1D))
+      })
 
-    val uniqueIds = (1 to 3).map(_.toLong)
-    val ids = sc.parallelize(uniqueIds.map(long => long -> long.toString))
-    val random = new Random(1L)
-    val labelAndOffsetAndWeights =
-      sc.parallelize(uniqueIds.map(long => long -> (random.nextDouble(), random.nextDouble(), random.nextDouble())))
-    val scoresAndLabelsAndWeights =
-      labelAndOffsetAndWeights.mapValues { case (label, _, weight) => (random.nextDouble(), label, weight) }
+    // Scores are grouped by REID, the metric is sum(scores) ^ 2, and the evaluation should be the average of the metric
+    // values.
+    //
+    // scores_0 = [2, 4], sum_0 = 3 + 5 = 8, metric_0 = 6 ^ 2 = 64
+    // scores_1 = [1, 3], sum_1 = 2 + 4 = 6, metric_1 = 4 ^ 2 = 36
+    // avg_metric = (36 + 64) / 2 = 100 / 2 = 50
+    //
+    val mockMultiEvaluator = new MockMultiEvaluator(ids)
+    val expectedResult = 50D
 
-    val multiEvaluator = mock(classOf[MultiEvaluator], CALLS_REAL_METHODS)
-    doReturn(labelAndOffsetAndWeights).when(multiEvaluator).labelAndOffsetAndWeights
-    doReturn(localEvaluatorMock).when(multiEvaluator).localEvaluator
-    doReturn(ids).when(multiEvaluator).ids
+    assertEquals(mockMultiEvaluator.evaluate(scores), expectedResult)
+  }
+}
 
-    assertEquals(multiEvaluator.evaluateWithScoresAndLabelsAndWeights(scoresAndLabelsAndWeights), expectedResult)
+object MultiEvaluatorIntegTest {
+
+  class MockLocalEvaluator extends LocalEvaluator {
+    override protected[ml] def evaluate(scoreLabelAndWeight: Array[(Double, Double, Double)]): Double =
+      math.pow(scoreLabelAndWeight.map(_._1).sum, 2)
+  }
+
+  class MockMultiEvaluator(ids: RDD[(UniqueSampleId, String)])
+    extends MultiEvaluator(new MockLocalEvaluator, ids) {
+
+    val evaluatorType = EvaluatorType.AUC
   }
 }

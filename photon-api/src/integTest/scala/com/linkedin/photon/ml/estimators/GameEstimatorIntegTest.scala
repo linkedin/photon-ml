@@ -30,7 +30,6 @@ import com.linkedin.photon.ml.TaskType._
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.algorithm.CoordinateDescent
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel}
@@ -74,9 +73,6 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
     val fixedEffectDataset = new FixedEffectDataset(trainingDataRdd, featureShardId)
     val trainingDatasets = Map((coordinateId, fixedEffectDataset))
 
-    val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
-    val trainingLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights)
-
     val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
       OptimizerConfig(
         optimizerType = OptimizerType.LBFGS,
@@ -96,8 +92,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
     val coordinateDescent = new CoordinateDescent(
       estimator.getOrDefault(estimator.coordinateUpdateSequence),
       estimator.getOrDefault(estimator.coordinateDescentIterations),
-      trainingLossEvaluator,
-      validationDataAndEvaluatorsOption = None,
+      validationDataAndEvaluationSuiteOpt = None,
       lockedCoordinates = Set(),
       logger)
     val models: (GameModel, Option[EvaluationResults]) = estimator.train(
@@ -151,9 +146,6 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val fixedEffectDataset = new FixedEffectDataset(trainingDataRdd, featureShardId)
       val trainingDatasets = Map((coordinateId, fixedEffectDataset))
 
-      val labelAndOffsetAndWeights = trainingDataRdd.mapValues(point => (point.label, point.offset, point.weight))
-      val trainingLossEvaluator = new SquaredLossEvaluator(labelAndOffsetAndWeights)
-
       val fixedEffectOptConfig = FixedEffectOptimizationConfiguration(
         OptimizerConfig(
           optimizerType = OptimizerType.LBFGS,
@@ -176,8 +168,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val coordinateDescent = new CoordinateDescent(
         estimator.getOrDefault(estimator.coordinateUpdateSequence),
         estimator.getOrDefault(estimator.coordinateDescentIterations),
-        trainingLossEvaluator,
-        validationDataAndEvaluatorsOption = None,
+        validationDataAndEvaluationSuiteOpt = None,
         lockedCoordinates = Set(),
         logger)
       val models: (GameModel, Option[EvaluationResults]) = estimator.train(
@@ -197,7 +188,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
    * [[Dataset]]s.
    */
   @Test
-  def testPrepareTrainingDatasetsAndEvaluator(): Unit = sparkTest("testPrepareTrainingDatasetsAndEvaluator") {
+  def testPrepareTrainingDatasets(): Unit = sparkTest("testPrepareTrainingDataSetsAndEvaluator") {
 
     // Load DataFrame
     val data = getData(sparkSession)
@@ -212,7 +203,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
         coordinateDataConfig.featureShardId
       }
       .toSet
-    val (trainingDatasets, _) = estimator.prepareTrainingDatasetsAndEvaluator(data, featureShards, idTagSet)
+    val trainingDatasets = estimator.prepareTrainingDatasets(data, featureShards, idTagSet)
 
     assertEquals(trainingDatasets.size, 4)
 
@@ -272,37 +263,6 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
   }
 
   /**
-   * Provide a combination of training task and type of the training evaluator for that task.
-   *
-   * @return A training task as a [[TaskType]] and an [[EvaluatorType]]
-   */
-  @DataProvider
-  def taskAndTrainingEvaluatorTypeProvider(): Array[Array[Any]] =
-    Array(
-      Array(TaskType.LINEAR_REGRESSION, EvaluatorType.SquaredLoss),
-      Array(TaskType.LOGISTIC_REGRESSION, EvaluatorType.LogisticLoss),
-      Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, EvaluatorType.SmoothedHingeLoss),
-      Array(TaskType.POISSON_REGRESSION, EvaluatorType.PoissonLoss))
-
-  /**
-   * Test that the [[GameEstimator]] chooses the correct type of training loss evaluator for the given training task.
-   *
-   * @param taskType The training task
-   * @param trainingEvaluatorType The [[EvaluatorType]] of the correct training loss [[Evaluator]] for the training task
-   */
-  @Test(dataProvider = "taskAndTrainingEvaluatorTypeProvider")
-  def testPrepareTrainingLossEvaluator(
-    taskType: TaskType,
-    trainingEvaluatorType: EvaluatorType): Unit = sparkTest("testPrepareTrainingLossEvaluator") {
-
-    val mockTrainingData = getMockDataRDD()
-    val estimator = new MockGameEstimator(sc, createLogger("testPrepareTrainingLossEvaluator")).setTrainingTask(taskType)
-    val evaluator = estimator.prepareTrainingLossEvaluator(mockTrainingData)
-
-    assertEquals(evaluator.getEvaluatorName, trainingEvaluatorType.name)
-  }
-
-  /**
    * Provide a list of validation [[EvaluatorType]]s, in varying combinations.
    *
    * @return A list of [[EvaluatorType]] and/or [[MultiEvaluatorType]]
@@ -327,11 +287,11 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       val mockValidationData = getMockDataRDD(evaluatorCols)
       val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
         .setValidationEvaluators(evaluatorTypes)
-      val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
+      val evaluationSuite = estimator.prepareValidationEvaluators(mockValidationData)
+      val evaluationSuiteTypes = evaluationSuite.evaluators.map(_.evaluatorType)
 
-      evaluators
-        .zip(evaluatorTypes)
-        .foreach { case (evaluator, evaluatorType) => assertEquals(evaluator.getEvaluatorName, evaluatorType.name) }
+      assertEquals(evaluationSuiteTypes.size, evaluatorTypes.size)
+      evaluatorTypes.foreach(evaluationSuiteTypes.contains)
     }
 
   /**
@@ -363,9 +323,9 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
     val mockValidationData = getMockDataRDD()
     val estimator = new MockGameEstimator(sc, createLogger("taskAndDefaultEvaluatorTypeProvider"))
       .setTrainingTask(taskType)
-    val evaluators = estimator.prepareValidationEvaluators(mockValidationData)
+    val evaluationSuite = estimator.prepareValidationEvaluators(mockValidationData)
 
-    assertEquals(evaluators.head.getEvaluatorName, defaultEvaluatorType.name)
+    assertEquals(evaluationSuite.primaryEvaluator.evaluatorType.name, defaultEvaluatorType.name)
   }
 
   /**
@@ -431,22 +391,19 @@ object GameEstimatorIntegTest {
    */
   private class MockGameEstimator(sc: SparkContext, logger: Logger) extends GameEstimator(sc, logger) {
 
-    override def prepareTrainingDatasetsAndEvaluator(
+    override def prepareTrainingDatasets(
         data: DataFrame,
         featureShards: Set[FeatureShardId],
-        additionalCols: Set[String]): (Map[CoordinateId, D forSome { type D <: Dataset[D] }], Evaluator) =
-      super.prepareTrainingDatasetsAndEvaluator(data, featureShards, additionalCols)
-
-    override def prepareTrainingLossEvaluator(gameDataset: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
-      super.prepareTrainingLossEvaluator(gameDataset)
+        additionalCols: Set[String]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] =
+      super.prepareTrainingDatasets(data, featureShards, additionalCols)
 
     override def prepareValidationDatasetAndEvaluators(
         dataOpt: Option[DataFrame],
         featureShards: Set[FeatureShardId],
-        additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])] =
+        additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)] =
       super.prepareValidationDatasetAndEvaluators(dataOpt, featureShards, additionalCols)
 
-    override def prepareValidationEvaluators(gameDataset: RDD[(UniqueSampleId, GameDatum)]): Seq[Evaluator] =
+    override def prepareValidationEvaluators(gameDataset: RDD[(UniqueSampleId, GameDatum)]): EvaluationSuite =
       super.prepareValidationEvaluators(gameDataset)
 
     override def prepareNormalizationContextWrappers(datasets: Map[CoordinateId, D forSome { type D <: Dataset[D] } ])

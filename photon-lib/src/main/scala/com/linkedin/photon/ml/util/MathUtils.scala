@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.util
 import com.linkedin.photon.ml.constants.MathConst
 
 /**
- *
+ * Utilities for mathematical operations.
  */
 object MathUtils {
 
@@ -31,13 +31,12 @@ object MathUtils {
    * @param x A floating-point value as input.
    * @return The result of `math.log(1 + math.exp(x))`.
    */
-  def log1pExp(x: Double): Double = {
+  def log1pExp(x: Double): Double =
     if (x > 0) {
       x + math.log1p(math.exp(-x))
     } else {
       math.log1p(math.exp(x))
     }
-  }
 
   /**
    * Decides when a very small value should be considered equal to zero.
@@ -46,4 +45,22 @@ object MathUtils {
    * @return True if x is "as good as" zero, false if it is "significantly" different from zero
    */
   def isAlmostZero(x: Double): Boolean = math.abs(x) < MathConst.EPSILON
+
+  /**
+   * Helper function for passing less-than operation as function input.
+   *
+   * @param x1 Some [[Double]] value
+   * @param x2 Some [[Double]] value
+   * @return True if x1 is less than x2, false otherwise
+   */
+  def lessThan(x1: Double, x2: Double): Boolean = x1 < x2
+
+  /**
+   * Helper function for passing greater-than operation as function input.
+   *
+   * @param x1 Some [[Double]] value
+   * @param x2 Some [[Double]] value
+   * @return True if x1 is greater than x2, false otherwise
+   */
+  def greaterThan(x1: Double, x2: Double): Boolean = x1 > x2
 }

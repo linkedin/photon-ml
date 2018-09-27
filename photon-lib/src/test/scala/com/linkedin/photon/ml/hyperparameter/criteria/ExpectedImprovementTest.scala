@@ -20,36 +20,36 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.test.Assertions.assertIterableEqualsWithTolerance
 
 /**
-  * Test cases for the ExpectedImprovement class
-  */
+ * Unit tests for [[ExpectedImprovement]].
+ */
 class ExpectedImprovementTest {
 
   val TOL = 1e-3
 
   /**
-   * Test data
+   * Provide test data.
    */
   @DataProvider
   def modelDataProvider() =
     Array(
-      Array(DenseVector(1.0, 2.0, 3.0), DenseVector(1.0, 2.0, 3.0), 0),
-      Array(DenseVector(-4.0, 5.0, -6.0), DenseVector(3.0, 2.0, 1.0), 1))
+      Array(DenseVector(1.0, 2.0, 3.0), DenseVector(1.0, 2.0, 3.0), DenseVector(0.0833, 0.0503, 0.0292)),
+      Array(DenseVector(-4.0, 5.0, -6.0), DenseVector(3.0, 2.0, 1.0), DenseVector(4.0062, 0.0000, 6.0000)))
 
   /**
-   * Unit tests for [[ExpectedImprovement.apply]]
+   * Test that the expected improvement over an evaluation can be correctly predicted for a vector of means and standard
+   * deviations.
+   *
+   * @param mu Vector of means
+   * @param sigma Vector of standard deviations
+   * @param expectedResult Vector of expected improvements
    */
   @Test(dataProvider = "modelDataProvider")
-  def testApply(mu: DenseVector[Double], sigma: DenseVector[Double], testSetIndex: Int): Unit = {
+  def testApply(mu: DenseVector[Double], sigma: DenseVector[Double], expectedResult: DenseVector[Double]): Unit = {
 
     val bestCandidate = 0.0
     val expectedImprovement = new ExpectedImprovement(bestCandidate)
     val predicted = expectedImprovement(mu, sigma)
 
-    val expected = testSetIndex match {
-      case 0 => DenseVector(0.0833, 0.0503, 0.0292)
-      case 1 => DenseVector(4.0062, 0.0000, 6.0000)
-    }
-
-    assertIterableEqualsWithTolerance(predicted.toArray, expected.toArray, TOL)
+    assertIterableEqualsWithTolerance(predicted.toArray, expectedResult.toArray, TOL)
   }
 }

@@ -14,38 +14,28 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import java.util.Objects
+
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.Types._
+import com.linkedin.photon.ml.Types.UniqueSampleId
 
 /**
  * Batch version of the precision@k evaluator.
  *
  * @param k The cut-off rank based on which the precision is computed
  * @param idTag Name of the column or metadata field containing IDs used to group samples (e.g. documentId or queryId)
- * @param ids A [[RDD]] of (unique sample identifier, ID) pairs. The IDs are used to group samples, then the evaluation
- *            metric is computed on the groups per-ID and averaged. Such IDs can be thought of as a recommendation
- *            context (e.g. queryId when evaluating the relevance of search results for given queries).
- * @param labelAndOffsetAndWeights A [[RDD]] of (unique sample identifier, (label, offset, weight)) pairs
+ * @param ids A [[RDD]] of (unique sample ID, tag ID value) pairs. The IDs are used to group samples, then the
+ *            evaluation metric is computed on the groups per-ID and averaged. Such IDs can be thought of as a
+ *            recommendation context (e.g. queryId when evaluating the relevance of search results for given queries).
  */
 protected[ml] class PrecisionAtKMultiEvaluator(
-    k: Int,
-    idTag: String,
-    override protected[ml] val ids: RDD[(UniqueSampleId, String)],
-    override protected[ml] val labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))])
-  extends MultiEvaluator(new PrecisionAtKLocalEvaluator(k), ids, labelAndOffsetAndWeights) {
+    protected val k: Int,
+    protected val idTag: String,
+    override protected val ids: RDD[(UniqueSampleId, String)])
+  extends MultiEvaluator(new PrecisionAtKLocalEvaluator(k), ids) {
 
   val evaluatorType = MultiPrecisionAtK(k, idTag)
-
-  /**
-   * Determine the better between two scores returned by this [[Evaluator]]. In some cases, the better score is higher
-   * (e.g. AUC) and in others, the better score is lower (e.g. RMSE).
-   *
-   * @param score1 The first score to compare
-   * @param score2 The second score to compare
-   * @return True if the first score is better than the second
-   */
-  override def betterThan(score1: Double, score2: Double): Boolean = score1 > score2
 
   /**
    * Compares two [[PrecisionAtKMultiEvaluator]] objects.
@@ -55,7 +45,14 @@ protected[ml] class PrecisionAtKMultiEvaluator(
    *         otherwise
    */
   override def equals(other: Any): Boolean = other match {
-    case that: PrecisionAtKMultiEvaluator => super.equals(that)
+    case that: PrecisionAtKMultiEvaluator => this.k == that.k && this.idTag == that.idTag && super.equals(that)
     case _ => false
   }
+
+  /**
+   * Returns a hash code value for the object.
+   *
+   * @return An [[Int]] hash code
+   */
+  override def hashCode: Int = Objects.hash(evaluatorType, localEvaluator, ids, idTag) + k
 }

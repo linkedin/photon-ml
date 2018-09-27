@@ -26,7 +26,7 @@ import org.slf4j.Logger
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{GameConverters, GameDatum, InputColumnsNames}
-import com.linkedin.photon.ml.evaluation.{EvaluatorFactory, EvaluatorType, MultiEvaluatorType}
+import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.util._
 
@@ -288,7 +288,23 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
       scores: ModelDataScores): Double = {
 
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataset)
-    evaluator.evaluate(scores.scores.mapValues(_.score))
+
+    evaluator match {
+      case se: SingleEvaluator =>
+        val scoresRDD = scores.scores.map { case (_, sGD) =>
+          (sGD.score + sGD.offset, sGD.response, sGD.weight)
+        }
+
+        se.evaluate(scoresRDD)
+
+      case me: MultiEvaluator =>
+        val scoresRDD = scores.scores.mapValues(sGD => (sGD.score + sGD.offset, sGD.response, sGD.weight))
+
+        me.evaluate(scoresRDD)
+
+      case e =>
+        throw new UnsupportedOperationException(s"Cannot process unknown Evaluator subtype: ${e.getClass}")
+    }
   }
 }
 

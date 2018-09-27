@@ -20,8 +20,7 @@ import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.evaluation.Evaluator
-import com.linkedin.photon.ml.evaluation.Evaluator.EvaluationResults
+import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite}
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.util.Timed
@@ -31,20 +30,17 @@ import com.linkedin.photon.ml.util.Timed
  *
  * @param updateSequence The order in which to update coordinates
  * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
- * @param trainingLossFunctionEvaluator Training loss function evaluator
- * @param validationDataAndEvaluatorsOption Optional validation data and evaluator
+ * @param validationDataAndEvaluationSuiteOpt Optional validation data and [[EvaluationSuite]] of validation metric
+ *                                         [[com.linkedin.photon.ml.evaluation.Evaluator]] objects
  * @param lockedCoordinates Set of locked coordinates within the initial model for performing partial retraining
  * @param logger A logger instance
  */
 class CoordinateDescent(
     updateSequence: Seq[CoordinateId],
     descentIterations: Int,
-    trainingLossFunctionEvaluator: Evaluator,
-    validationDataAndEvaluatorsOption: Option[(RDD[(UniqueSampleId, GameDatum)], Seq[Evaluator])],
+    validationDataAndEvaluationSuiteOpt: Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)],
     lockedCoordinates: Set[CoordinateId],
     implicit private val logger: Logger) {
-
-  import CoordinateDescent._
 
   private val coordinatesToTrain: Seq[CoordinateId] = updateSequence.filterNot(lockedCoordinates.contains)
 
@@ -63,16 +59,11 @@ class CoordinateDescent(
     // Coordinates in the update sequence must not repeat
     require(
       updateSequence.toSet.size == updateSequence.size,
-      "One or more coordinates in the update sequence is repeated.")
-
-    validationDataAndEvaluatorsOption.foreach { case (_, evaluators) =>
-
-      // Must have at least one validation evaluator if validation data is provided
-      require(evaluators.nonEmpty, "List of validation evaluators is empty.")
-    }
-
+      "One or more coordinates in the update sequence is repeated")
     // All locked coordinates must be present in the update sequence
-    lockedCoordinates.forall(updateSequence.contains)
+    require(
+      lockedCoordinates.forall(updateSequence.contains),
+      "One or more locked coordinates is missing from the update sequence")
   }
 
   /**
@@ -150,30 +141,18 @@ class CoordinateDescent(
     var fullTrainingScore = updatedScoresContainer.values.reduce(_ + _)
     fullTrainingScore.persistRDD(StorageLevel.DISK_ONLY).materialize()
 
-    // Initialize the regularization term value
-    // TODO: Should read regularization term or regularization term value from metadata and add to the total. Otherwise,
-    // TODO: this results in misleading logs about objective function loss vs. regularization term loss, since the
-    // TODO: locked coordinates contribute to one but not the other.
-    var regularizationTermValueContainer = coordinatesToTrain
-      .map { coordinateId =>
-        (coordinateId,
-          coordinates(coordinateId).computeRegularizationTermValue(updatedGameModel.getModel(coordinateId).get))
-      }
-      .toMap
-    var fullRegularizationTermValue = regularizationTermValueContainer.values.sum
-
     // Initialize the validation scores
-    var validationScoresContainerOption = validationDataAndEvaluatorsOption.map { case (validatingData, _) =>
+    var validationScoresContainerOption = validationDataAndEvaluationSuiteOpt.map { case (validationData, _) =>
       updateSequence
         .map { coordinateId =>
           val updatedModel = updatedGameModel.getModel(coordinateId).get
-          val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
-          validatingScores
+          val validationScores = updatedModel.scoreForCoordinateDescent(validationData)
+          validationScores
             .setName(s"Initialized validating scores with coordinateId $coordinateId")
             .persistRDD(StorageLevel.DISK_ONLY)
             .materialize()
 
-          (coordinateId, validatingScores)
+          (coordinateId, validationScores)
         }
         .toMap
     }
@@ -268,19 +247,6 @@ class CoordinateDescent(
                     case _ =>
                   }
                 }
-
-                val updatedRegularizationTermValue = coordinate.computeRegularizationTermValue(updatedModel)
-                fullRegularizationTermValue = (fullRegularizationTermValue
-                  - regularizationTermValueContainer(coordinateId)
-                  + updatedRegularizationTermValue)
-                regularizationTermValueContainer =
-                  regularizationTermValueContainer.updated(coordinateId, updatedRegularizationTermValue)
-
-                logger.debug(s"Objective value after updating coordinate $coordinateId, iteration $iteration:")
-                logger.debug(
-                  formatObjectiveValue(
-                    trainingLossFunctionEvaluator.evaluate(fullTrainingScore.scores),
-                    fullRegularizationTermValue))
               }
 
               //
@@ -288,10 +254,10 @@ class CoordinateDescent(
               //
 
               // Update the validation score and evaluate the updated model on the validating data
-              validationDataAndEvaluatorsOption.map { case (validatingData, evaluators) =>
+              validationDataAndEvaluationSuiteOpt.map { case (validationData, evaluationSuite) =>
                 Timed("Validate GAME model") {
                   val validatingScoresContainer = validationScoresContainerOption.get
-                  val validatingScores = updatedModel.scoreForCoordinateDescent(validatingData)
+                  val validatingScores = updatedModel.scoreForCoordinateDescent(validationData)
                   validatingScores
                     .setName(s"Updated validating scores with coordinateId $coordinateId")
                     .persistRDD(StorageLevel.DISK_ONLY)
@@ -306,15 +272,18 @@ class CoordinateDescent(
                   val updatedValidatingScoresContainer = validatingScoresContainer.updated(coordinateId, validatingScores)
                   validationScoresContainerOption = Some(updatedValidatingScoresContainer)
 
-                  evaluators.map { evaluator =>
-                    val evaluation = Timed(s"Evaluate with ${evaluator.getEvaluatorName}") {
-                      evaluator.evaluate(fullValidationScore.scores)
-                    }
+                  Timed(s"Compute validation metrics") {
+                    val results = evaluationSuite.evaluate(fullValidationScore.scores)
 
-                    logger.info(s"Evaluation metric computed with ${evaluator.getEvaluatorName} after updating " +
-                      s"coordinateId $coordinateId at iteration $iteration is $evaluation")
+                    results
+                      .evaluations
+                      .foreach { case (evaluator, evaluation) =>
+                        logger.info(
+                          s"Evaluation metric '${evaluator.name}' after updating coordinate '$coordinateId' during " +
+                            s"iteration $iteration: $evaluation")
+                      }
 
-                    (evaluator, evaluation)
+                    results
                   }
                 }
               }
@@ -322,10 +291,10 @@ class CoordinateDescent(
           } // End of coordinates update
           .last
           .foreach { evaluations =>
-            // The first evaluator is used for model selection
-            val (evaluator, evaluation) = evaluations.head
+            val evaluator = evaluations.primaryEvaluator
+            val evaluation = evaluations.primaryEvaluation
 
-            if (bestEvals.forall(e => evaluator.betterThan(evaluation, e.head._2))) {
+            if (bestEvals.forall(e => evaluator.betterThan(evaluation, e.primaryEvaluation))) {
 
               // Unpersist the previous best models
               bestModel.foreach { currBestModel =>
@@ -375,23 +344,4 @@ class CoordinateDescent(
 
     (bestModel.getOrElse(updatedGameModel), bestEvals)
   }
-}
-
-object CoordinateDescent {
-
-  /**
-   * Helper function to format objective function value for logging purposes.
-   *
-   * @param lossFunctionValue The value of the loss function
-   * @param regularizationTermValue The value of the regularization term
-   * @return The two input values and the total objective function value, formatted for output to logs
-   */
-  private def formatObjectiveValue(lossFunctionValue: Double, regularizationTermValue: Double): String = {
-
-    val objectiveFunctionValue = lossFunctionValue + regularizationTermValue
-
-    s"lossFunctionValue: $lossFunctionValue, regularizationTermValue: $regularizationTermValue, " +
-      s"objectiveFunctionValue: $objectiveFunctionValue"
-  }
-
 }

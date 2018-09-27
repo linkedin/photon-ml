@@ -15,9 +15,10 @@
 package com.linkedin.photon.ml.evaluation
 
 import org.testng.Assert._
-import org.testng.annotations.Test
+import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.CommonTestUtils.zipWithIndex
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
@@ -26,105 +27,90 @@ import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
  */
 class AreaUnderROCCurveMultiEvaluatorIntegTest extends SparkTestUtils {
 
-  var startIndex = 0
+  private def dataHelper(
+      scores: Array[Double],
+      labels: Array[Double],
+      id: String): (Array[(UniqueSampleId, (Double, Double, Double))], Array[(UniqueSampleId, REId)]) = {
 
-  // Normal cases
-  private val labelsInNormalCase = zipWithIndex(Array[Double](1, 0, 0, 0, 1, 1, 1), startIndex)
-  private val scoresInNormalCase = zipWithIndex(Array[Double](-1, -0.1, 0, 1, 2, 6, 8), startIndex)
-  private val idsInNormalCase = zipWithIndex(Array.fill[String](scoresInNormalCase.length)("normal"), startIndex)
-  private val expectedAUCInNormalCase = 0.75
-  startIndex += labelsInNormalCase.length
+    val data = zipWithIndex(scores
+      .zip(labels)
+      .map { case (score, label) =>
+        (score, label, MathConst.DEFAULT_WEIGHT)
+      })
+    val ids = data.map { case (index, _) =>
+      (index, id)
+    }
 
-  // Two identical scores with conflicting ground-truth labels
-  private val labelsInCornerCase = zipWithIndex(Array[Double](0, 1, 0, 0, 1, 1, 1), startIndex)
-  private val scoresInCornerCase = zipWithIndex(Array[Double](-0.1, -1, 0, -1, 2, 6, 8), startIndex)
-  private val idsInCornerCase = zipWithIndex(Array.fill[String](scoresInCornerCase.length)("corner"), startIndex)
-  private val expectedAUCInCornerCase = 0.791666666667
-  startIndex += labelsInCornerCase.length
-
-  // All examples have positive label
-  private val positiveLabelsOnly = zipWithIndex(Array[Double](1, 1), startIndex)
-  private val scoresWithPositiveLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
-  private val idsWithPositiveLabelsOnly =
-    zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-pos"), startIndex)
-  startIndex += labelsInCornerCase.length
-
-  // All examples have negative label
-  private val negativeLabelsOnly = zipWithIndex(Array[Double](0, 0), startIndex)
-  private val scoresWithNegativeLabelsOnly = zipWithIndex(Array[Double](0.5, 0.5), startIndex)
-  private val idsWithNegativeLabelsOnly =
-    zipWithIndex(Array.fill[String](positiveLabelsOnly.length)("all-neg"), startIndex)
+    (data, ids)
+  }
 
   /**
-   * Create a new [[AreaUnderROCCurveMultiEvaluator]].
+   * Provide test K values, IDs, scores, labels, weights, and expected results.
+   */
+  @DataProvider
+  def evaluateInput: Array[Array[Any]] = {
+
+    // Normal case
+    val idInNormalCase = "normal"
+    val scoresInNormalCase = Array[Double](-1, -0.1, 0, 1, 2, 6, 8)
+    val labelsInNormalCase = Array[Double](1, 0, 0, 0, 1, 1, 1)
+    val expectedAUCInNormalCase = 0.75
+    val (dataInNormalCase, idsInNormalCase) = dataHelper(scoresInNormalCase, labelsInNormalCase, idInNormalCase)
+
+    // Corner case: two identical scores with conflicting ground-truth labels
+    val idInIdenticalCase = "identical"
+    val scoresInIdenticalCase = Array[Double](-1, -1, -0.1, 0, 2, 6, 8)
+    val labelsInIdenticalCase = Array[Double](1, 0, 0, 0, 1, 1, 1)
+    val expectedAUCInIdenticalCase = 0.791666666667
+    val (dataInIdenticalCase, idsInIdenticalCase) = dataHelper(
+      scoresInIdenticalCase,
+      labelsInIdenticalCase,
+      idInIdenticalCase)
+
+    // Corner case: all examples have positive label
+    val idInAllPosCase = "all-pos"
+    val scoresInAllPosCase = Array[Double](0.5, 0.5)
+    val labelsInAllPosCase = Array[Double](1, 1)
+    val expectedAUCInAllPosCase = 0D
+    val (dataInAllPosCase, idsInAllPosCase) = dataHelper(scoresInAllPosCase, labelsInAllPosCase, idInAllPosCase)
+
+    // Corner case: all examples have negative label
+    val idInAllNegCase = "all-neg"
+    val scoresInAllNegCase = Array[Double](0.5, 0.5)
+    val labelsInAllNegCase = Array[Double](0, 0)
+    val expectedAUCInAllNegCase = 0D
+    val (dataInAllNegCase, idsInAllNegCase) = dataHelper(scoresInAllNegCase, labelsInAllNegCase, idInAllNegCase)
+
+    Array(
+      // Individual cases
+      Array(idsInNormalCase, dataInNormalCase, expectedAUCInNormalCase),
+      Array(idsInIdenticalCase, dataInIdenticalCase, expectedAUCInIdenticalCase),
+      Array(idsInAllPosCase, dataInAllPosCase, expectedAUCInAllPosCase),
+      Array(idsInAllNegCase, dataInAllNegCase, expectedAUCInAllNegCase),
+
+      // Combined case
+      Array(
+        idsInNormalCase ++ idsInIdenticalCase,
+        dataInNormalCase ++ dataInIdenticalCase,
+        (expectedAUCInNormalCase + expectedAUCInIdenticalCase) / 2))
+  }
+
+  /**
+   * Test that the [[AreaUnderROCCurveMultiEvaluator]] correctly computes AUC, and that it correctly averages the
+   * results across IDs.
    *
-   * @param labels A list of (unique sample identifier, ground truth label) pairs
-   * @param ids A list of (unique sample identifier, ID) pairs
-   * @return The new [[AreaUnderROCCurveMultiEvaluator]]
+   * @param ids Entity Ids of the records, used to group records for each unique entity
+   * @param scoresAndLabelsAndWeights Predicted scores, responses, and weights for the records
+   * @param expectedResult The expected precision @ k value computed for the above inputs
    */
-  private def getEvaluator(labels: Seq[(UniqueSampleId, Double)], ids: Seq[(UniqueSampleId, String)]): Evaluator = {
+  @Test(dataProvider = "evaluateInput")
+  def testEvaluate(
+      ids: Array[(UniqueSampleId, String)],
+      scoresAndLabelsAndWeights: Array[(UniqueSampleId, (Double, Double, Double))],
+      expectedResult: Double): Unit = sparkTest("testEvaluate") {
 
-    val defaultOffset = 0.0
-    val defaultWeight = 1.0
-    val labelAndOffsetAndWeights = sc.parallelize(labels).mapValues((_, defaultOffset, defaultWeight))
-
-    new AreaUnderROCCurveMultiEvaluator(idTag = "", sc.parallelize(ids), labelAndOffsetAndWeights)
-  }
-
-  /**
-   * Test that the [[AreaUnderROCCurveMultiEvaluator]] correctly computes AUC for normal and corner cases, and that it
-   * correctly averages the results across IDs.
-   */
-  @Test
-  def testEvaluateInNormalCase(): Unit = sparkTest("testEvaluateInNormalCase") {
-
-    val labels = labelsInNormalCase ++ labelsInCornerCase
-    val ids = idsInNormalCase ++ idsInCornerCase
-    val scores = scoresInNormalCase ++ scoresInCornerCase
-    val expectedResult = (expectedAUCInNormalCase + expectedAUCInCornerCase) / 2
-
-    val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, score)
-    }))
-
-    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-  }
-
-  /**
-   * Test that the [[AreaUnderROCCurveMultiEvaluator]] correctly filters IDs with invalid AUC results (positive only
-   * case).
-   */
-  @Test
-  def testEvaluateWithPositiveOnlyLabels(): Unit = sparkTest("testEvaluateWithPositiveOnlyLabels") {
-    val labels = labelsInNormalCase ++ labelsInCornerCase ++ positiveLabelsOnly
-    val ids = idsInNormalCase ++ idsInCornerCase ++ idsWithPositiveLabelsOnly
-    val scores = scoresInNormalCase ++ scoresInCornerCase ++ scoresWithPositiveLabelsOnly
-    val expectedResult = (expectedAUCInNormalCase + expectedAUCInCornerCase) / 2
-
-    val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, score)
-    }))
-
-    assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-  }
-
-  /**
-   * Test that the [[AreaUnderROCCurveMultiEvaluator]] correctly filters IDs with invalid AUC results (negative only
-   * case).
-   */
-  @Test
-  def testEvaluateWithNegativeOnlyLabels(): Unit = sparkTest("testEvaluateWithNegativeOnlyLabels") {
-    val labels = labelsInNormalCase ++ labelsInCornerCase ++ negativeLabelsOnly
-    val ids = idsInNormalCase ++ idsInCornerCase ++ idsWithNegativeLabelsOnly
-    val scores = scoresInNormalCase ++ scoresInCornerCase ++ scoresWithNegativeLabelsOnly
-    val expectedResult = (expectedAUCInNormalCase + expectedAUCInCornerCase) / 2
-
-    val evaluator = getEvaluator(labels, ids)
-    val actualResult = evaluator.evaluate(sc.parallelize(scores.map { case (id, score) =>
-      (id, score)
-    }))
+    val evaluator = new AreaUnderROCCurveMultiEvaluator(idTag = "", sc.parallelize(ids))
+    val actualResult = evaluator.evaluate(sc.parallelize(scoresAndLabelsAndWeights))
 
     assertEquals(actualResult, expectedResult, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
   }
