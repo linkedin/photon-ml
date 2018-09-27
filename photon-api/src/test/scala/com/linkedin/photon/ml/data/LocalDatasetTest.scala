@@ -82,17 +82,17 @@ class LocalDatasetTest {
         1.0)
       new SparseVector[Double](featureIndices, featureValues, numFeatures)
     }
-    val localDataSet =
+    val localDataset =
       LocalDataset(
         Array.tabulate(numSamples)(i => (i.toLong, LabeledPoint(labels(i), features(i), offset = 0.0, weight = 1.0))))
 
     // don't keep any features
-    val filteredDataPoints0 = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 0).dataPoints
+    val filteredDataPoints0 = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 0).dataPoints
     assertEquals(filteredDataPoints0.length, numSamples)
     assertTrue(filteredDataPoints0.forall(_._2.features.activeSize == 0))
 
     // keep 1 feature
-    val filteredDataPoints1 = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 1).dataPoints
+    val filteredDataPoints1 = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 1).dataPoints
     val filteredDataPointsKeySet1 = filteredDataPoints1.flatMap(_._2.features.activeKeysIterator).toSet
     assertEquals(filteredDataPoints1.length, numSamples)
     assertTrue(filteredDataPoints1.forall(_._2.features.activeSize == 1))
@@ -104,7 +104,7 @@ class LocalDatasetTest {
       s"$filteredDataPointsKeySet1")
 
     // keep 3 features
-    val filteredDataPoints3 = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 3).dataPoints
+    val filteredDataPoints3 = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 3).dataPoints
     val filteredDataPointsKeySet3 = filteredDataPoints3.flatMap(_._2.features.activeKeysIterator).toSet
     assertEquals(filteredDataPoints3.length, numSamples)
     assertTrue(filteredDataPoints3.forall(_._2.features.activeSize == 3))
@@ -118,14 +118,14 @@ class LocalDatasetTest {
       s"$filteredDataPointsKeySet3")
 
     // keep 5 features
-    val filteredDataPoints5 = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 5).dataPoints
+    val filteredDataPoints5 = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = 5).dataPoints
     val filteredDataPointsKeySet5 = filteredDataPoints5.flatMap(_._2.features.activeKeysIterator).toSet
     assertEquals(filteredDataPoints5.length, numSamples)
     assertTrue(filteredDataPoints5.forall(_._2.features.activeSize == 5))
     assertTrue(filteredDataPointsKeySet5.forall(_ < 6), s"$filteredDataPointsKeySet5")
 
     // keep all features
-    val filteredDataPointsAll = localDataSet.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = numFeatures)
+    val filteredDataPointsAll = localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep = numFeatures)
       .dataPoints
     assertEquals(filteredDataPointsAll.length, numSamples)
     assertTrue(

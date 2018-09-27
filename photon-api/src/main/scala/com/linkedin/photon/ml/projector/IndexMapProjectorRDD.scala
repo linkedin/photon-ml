@@ -38,20 +38,20 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
   /**
    * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input dataset in the original space
+   * @param randomEffectDataset The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
+  override def projectRandomEffectDataset(randomEffectDataset: RandomEffectDataset): RandomEffectDataset = {
 
-    val activeData = randomEffectDataSet.activeData
-    val passiveDataOption = randomEffectDataSet.passiveDataOption
-    val passiveDataRandomEffectIdsOption = randomEffectDataSet.passiveDataRandomEffectIdsOption
+    val activeData = randomEffectDataset.activeData
+    val passiveDataOption = randomEffectDataset.passiveDataOption
+    val passiveDataRandomEffectIdsOption = randomEffectDataset.passiveDataRandomEffectIdsOption
     val projectedActiveData =
       activeData
         // Make sure the activeData retains its partitioner, especially when the partitioner of featureMaps is
         // not the same as that of activeData
         .join(indexMapProjectorRDD, activeData.partitioner.get)
-        .mapValues { case (localDataSet, projector) => localDataSet.projectFeatures(projector) }
+        .mapValues { case (localDataset, projector) => localDataset.projectFeatures(projector) }
 
     val projectedPassiveData =
       if (passiveDataOption.isDefined) {
@@ -76,7 +76,7 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
         None
       }
 
-    randomEffectDataSet.update(projectedActiveData, projectedPassiveData)
+    randomEffectDataset.update(projectedActiveData, projectedPassiveData)
   }
 
   /**
@@ -216,25 +216,25 @@ object IndexMapProjectorRDD {
   /**
    * Generate index map based RDD projectors.
    *
-   * @param randomEffectDataSet The input random effect dataset
+   * @param randomEffectDataset The input random effect dataset
    * @return The generated index map based RDD projectors
    */
-  protected[ml] def buildIndexMapProjector(randomEffectDataSet: RandomEffectDataset): IndexMapProjectorRDD = {
+  protected[ml] def buildIndexMapProjector(randomEffectDataset: RandomEffectDataset): IndexMapProjectorRDD = {
 
-    val originalSpaceDimension = randomEffectDataSet
+    val originalSpaceDimension = randomEffectDataset
       .activeData
       .map { case (_, ds) => ds.dataPoints.head._2.features.length }
       .take(1)(0)
 
     // Collect active indices for the active dataset
-    val activeIndices = randomEffectDataSet
+    val activeIndices = randomEffectDataset
       .activeData
       .mapValues { ds =>
         ds.dataPoints.map(_._2.features).flatMap(VectorUtils.getActiveIndices).toSet
       }
 
     // Collect active indices for the passive dataset
-    val passiveIndicesOption = randomEffectDataSet
+    val passiveIndicesOption = randomEffectDataset
       .passiveDataOption
       .map { passiveData =>
         passiveData

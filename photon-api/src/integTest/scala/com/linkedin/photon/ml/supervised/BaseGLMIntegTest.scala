@@ -76,7 +76,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
    * @param data A sequence of (label, feature vector) pairs
    * @return The data from the given sequence, converted to [[LabeledPoint]] instances
    */
-  def generateDataSetIterable(data: Iterator[(Double, Vector[Double])]): Seq[LabeledPoint] =
+  def generateDatasetIterable(data: Iterator[(Double, Vector[Double])]): Seq[LabeledPoint] =
     data.map( x => new LabeledPoint(label = x._1, features = x._2)).toList
 
   /**
@@ -91,22 +91,22 @@ class BaseGLMIntegTest extends SparkTestUtils {
 //      OptimizerConfig(OptimizerType.TRON, TRON.DEFAULT_MAX_ITER, TRON.DEFAULT_TOLERANCE, None),
 //      L2RegularizationContext)
 
-    val linearRegressionData = generateDataSetIterable(
+    val linearRegressionData = generateDatasetIterable(
       drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
         BaseGLMIntegTest.RANDOM_SEED,
         BaseGLMIntegTest.NUMBER_OF_SAMPLES,
         BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
-    val poissonRegressionData = generateDataSetIterable(
+    val poissonRegressionData = generateDatasetIterable(
       drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
         BaseGLMIntegTest.RANDOM_SEED,
         BaseGLMIntegTest.NUMBER_OF_SAMPLES,
         BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
-    val logisticRegressionData = generateDataSetIterable(
+    val logisticRegressionData = generateDatasetIterable(
       drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
         BaseGLMIntegTest.RANDOM_SEED,
         BaseGLMIntegTest.NUMBER_OF_SAMPLES,
         BaseGLMIntegTest.NUMBER_OF_DIMENSIONS))
-//    val smoothedHingeData = generateDataSetIterable(
+//    val smoothedHingeData = generateDatasetIterable(
 //      drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
 //        BaseGLMIntegTest.RANDOM_SEED,
 //        BaseGLMIntegTest.NUMBER_OF_SAMPLES,

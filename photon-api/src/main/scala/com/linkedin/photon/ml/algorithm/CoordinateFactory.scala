@@ -37,7 +37,7 @@ object CoordinateFactory {
    * [[CoordinateOptimizationConfiguration]], and [[ObjectiveFunction]].
    *
    * @tparam D Some type of [[Dataset]]
-   * @param dataSet The input data to use for training
+   * @param dataset The input data to use for training
    * @param coordinateOptConfig The optimization settings for training
    * @param lossFunctionConstructor A constructor for the loss function used for training
    * @param glmConstructor A constructor for the type of [[GeneralizedLinearModel]] being trained
@@ -48,7 +48,7 @@ object CoordinateFactory {
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
    */
   def build[D <: Dataset[D]](
-      dataSet: D,
+      dataset: D,
       coordinateOptConfig: CoordinateOptimizationConfiguration,
       lossFunctionConstructor: ObjectiveFunctionFactory,
       glmConstructor: (Coefficients) => GeneralizedLinearModel,
@@ -59,9 +59,9 @@ object CoordinateFactory {
 
     val lossFunction: ObjectiveFunction = lossFunctionConstructor(coordinateOptConfig)
 
-    (dataSet, coordinateOptConfig, lossFunction, normalizationContextWrapper) match {
+    (dataset, coordinateOptConfig, lossFunction, normalizationContextWrapper) match {
       case (
-        fEDataSet: FixedEffectDataset,
+        fEDataset: FixedEffectDataset,
         fEOptConfig: FixedEffectOptimizationConfiguration,
         distributedLossFunction: DistributedObjectiveFunction,
         normalizationContextBroadcast: NormalizationContextBroadcast) =>
@@ -73,7 +73,7 @@ object CoordinateFactory {
         }
 
         new FixedEffectCoordinate(
-          fEDataSet,
+          fEDataset,
           DistributedOptimizationProblem(
             fEOptConfig,
             distributedLossFunction,
@@ -84,15 +84,15 @@ object CoordinateFactory {
             computeVariance)).asInstanceOf[Coordinate[D]]
 
       case (
-        rEDataSet: RandomEffectDatasetInProjectedSpace,
+        rEDataset: RandomEffectDatasetInProjectedSpace,
         rEOptConfig: RandomEffectOptimizationConfiguration,
         singleNodeLossFunction: SingleNodeObjectiveFunction,
         _) =>
 
         new RandomEffectCoordinateInProjectedSpace(
-          rEDataSet,
+          rEDataset,
           RandomEffectOptimizationProblem(
-            rEDataSet,
+            rEDataset,
             rEOptConfig,
             singleNodeLossFunction,
             glmConstructor,
@@ -103,7 +103,7 @@ object CoordinateFactory {
       case _ =>
         throw new UnsupportedOperationException(
           s"""Cannot build coordinate for the following input class combination:
-          |  ${dataSet.getClass.getName}
+          |  ${dataset.getClass.getName}
           |  ${coordinateOptConfig.getClass.getName}
           |  ${lossFunction.getClass.getName}
           |  ${normalizationContextWrapper.getClass.getName}""".stripMargin)

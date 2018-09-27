@@ -32,7 +32,7 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
 
   @Test
   def testBuildIndexMapProjector(): Unit = sparkTest("testBuildIndexMapProjector") {
-    val dataSet1 = generateRandomEffectDataSetWithFeatures(
+    val dataset1 = generateRandomEffectDatasetWithFeatures(
       randomEffectIds = Seq("1"),
       randomEffectType = "per-item",
       featureShardId = "itemShard",
@@ -40,19 +40,19 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
         DenseVector(0.0, 2.0, 3.0, 4.0, 0.0),
         DenseVector(1.0, 5.0, 6.0, 7.0, 0.0)))
 
-    val dataSet2 = generateRandomEffectDataSet(
+    val dataset2 = generateRandomEffectDataset(
       randomEffectIds = Seq("1"),
       randomEffectType = "per-item",
       featureShardId = "itemShard",
       size = 20,
       dimensions = 10)
 
-    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet1)
-    val projected = projector.projectRandomEffectDataSet(dataSet2)
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataset1)
+    val projected = projector.projectRandomEffectDataset(dataset2)
 
     val projectedDimentions = projected
       .activeData
-      .map { case (_, localDataSet) => localDataSet.dataPoints.head }
+      .map { case (_, localDataset) => localDataset.dataPoints.head }
       .map { case (_, labeledPoint) => labeledPoint.features.length }
       .take(1)(0)
 
@@ -69,7 +69,7 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
    * @param numPartitions The number of Spark partitions
    * @return A newly generated random effect dataset
    */
-  private def generateRandomEffectDataSetWithFeatures(
+  private def generateRandomEffectDatasetWithFeatures(
       randomEffectIds: Seq[String],
       randomEffectType: String,
       featureShardId: String,
@@ -104,19 +104,19 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
 
     val projectedSize = features.head.length - 1
 
-    val dataSet = generateRandomEffectDataSetWithFeatures(
+    val dataset = generateRandomEffectDatasetWithFeatures(
       randomEffectIds = Seq("1"),
       randomEffectType = "per-item",
       featureShardId = "itemShard",
       features = features)
 
-    val dataPoints = dataSet.activeData.map{case(_, locals) => locals.dataPoints}
+    val dataPoints = dataset.activeData.map{case(_, locals) => locals.dataPoints}
     val localPoints = dataPoints.flatMap{e => e.map(_._2)}
 
     val summary = FeatureDataStatistics(localPoints, Some(projectedSize))
     val normalizationContext = NormalizationContext(NormalizationType.STANDARDIZATION, summary)
 
-    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataset)
     val projectedNormalization = projector.projectNormalizationRDD(normalizationContext)
 
     val projectedDimensions = projectedNormalization.mapValues(_.size).take(1)(0)._2
@@ -133,14 +133,14 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val originalSize = features.head.length
     val projectedSize = originalSize - 1
 
-    val dataSet = generateRandomEffectDataSetWithFeatures(
+    val dataset = generateRandomEffectDatasetWithFeatures(
       randomEffectIds = Seq("1"),
       randomEffectType = "per-item",
       featureShardId = "itemShard",
       features = features)
 
-    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
-    val reIds = dataSet.activeData.map(_._1).collect
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataset)
+    val reIds = dataset.activeData.map(_._1).collect
 
     // The model contains an re id from a prior run that doesn't exist in current data
     val reIdsWithExtra = reIds :+ "extraReId"
@@ -168,14 +168,14 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val originalSize = features.head.length
     val projectedSize = originalSize - 1
 
-    val dataSet = generateRandomEffectDataSetWithFeatures(
+    val dataset = generateRandomEffectDatasetWithFeatures(
       randomEffectIds = Seq("1"),
       randomEffectType = "per-item",
       featureShardId = "itemShard",
       features = features)
 
-    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataSet)
-    val reIds = dataSet.activeData.map(_._1).collect
+    val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataset)
+    val reIds = dataset.activeData.map(_._1).collect
 
     // The model contains an re id from a prior run that doesn't exist in current data
     val reIdsWithExtra = reIds :+ "extraReId"

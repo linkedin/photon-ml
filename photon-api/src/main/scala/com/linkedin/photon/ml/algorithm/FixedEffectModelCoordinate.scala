@@ -21,9 +21,9 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 /**
  * The optimization problem coordinate for a pre-trained fixed effect model.
  *
- * @param dataSet The training dataset
+ * @param dataset The training dataset
  */
-class FixedEffectModelCoordinate(dataSet: FixedEffectDataset) extends ModelCoordinate(dataSet) {
+class FixedEffectModelCoordinate(dataset: FixedEffectDataset) extends ModelCoordinate(dataset) {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -34,7 +34,7 @@ class FixedEffectModelCoordinate(dataSet: FixedEffectDataset) extends ModelCoord
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(dataSet, fixedEffectModel)
+        FixedEffectCoordinate.score(dataset, fixedEffectModel)
 
       case _ =>
         throw new UnsupportedOperationException(

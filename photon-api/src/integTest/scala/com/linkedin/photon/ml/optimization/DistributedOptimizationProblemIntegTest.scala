@@ -58,7 +58,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetBinaryClassification: Seq[LabeledPoint] =
+  def generateBenignDatasetBinaryClassification: Seq[LabeledPoint] =
     drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -74,7 +74,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetBinaryClassification: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetBinaryClassification: Seq[LabeledPoint] = {
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
@@ -94,7 +94,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetLinearRegression: Seq[LabeledPoint] =
+  def generateBenignDatasetLinearRegression: Seq[LabeledPoint] =
     drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -110,7 +110,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetLinearRegression: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetLinearRegression: Seq[LabeledPoint] = {
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromNumericallyBenignDenseFeaturesForLinearRegressionLocal(
@@ -130,7 +130,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateBenignDataSetPoissonRegression: Seq[LabeledPoint] =
+  def generateBenignDatasetPoissonRegression: Seq[LabeledPoint] =
     drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -146,7 +146,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
    *
    * @return A Seq of [[LabeledPoint]]
    */
-  def generateWeightedBenignDataSetPoissonRegression: Seq[LabeledPoint] = {
+  def generateWeightedBenignDatasetPoissonRegression: Seq[LabeledPoint] = {
     val r = new Random(WEIGHT_RANDOM_SEED)
 
     drawSampleFromNumericallyBenignDenseFeaturesForPoissonRegressionLocal(
@@ -165,9 +165,9 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   def variancesSimpleInput(): Array[Array[Object]] =
     // Input data generation function, objective function, manual Hessian calculation function
     Array(
-      Array(generateBenignDataSetBinaryClassification _, LogisticLossFunction, logisticHessianSum _),
-      Array(generateBenignDataSetLinearRegression _, SquaredLossFunction, linearHessianSum _),
-      Array(generateBenignDataSetPoissonRegression _, PoissonLossFunction, poissonHessianSum _))
+      Array(generateBenignDatasetBinaryClassification _, LogisticLossFunction, logisticHessianSum _),
+      Array(generateBenignDatasetLinearRegression _, SquaredLossFunction, linearHessianSum _),
+      Array(generateBenignDatasetPoissonRegression _, PoissonLossFunction, poissonHessianSum _))
 
   @DataProvider(parallel = true)
   def variancesComplexInput(): Array[Array[Object]] = {
@@ -178,17 +178,17 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       Array(
         Array[Object](
           weight,
-          generateWeightedBenignDataSetBinaryClassification _,
+          generateWeightedBenignDatasetBinaryClassification _,
           LogisticLossFunction,
           logisticHessianSum _),
         Array[Object](
           weight,
-          generateWeightedBenignDataSetLinearRegression _,
+          generateWeightedBenignDatasetLinearRegression _,
           SquaredLossFunction,
           linearHessianSum _),
         Array[Object](
           weight,
-          generateWeightedBenignDataSetPoissonRegression _,
+          generateWeightedBenignDatasetPoissonRegression _,
           PoissonLossFunction,
           poissonHessianSum _))
     }

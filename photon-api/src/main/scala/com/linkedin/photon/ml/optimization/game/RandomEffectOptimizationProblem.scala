@@ -132,7 +132,7 @@ object RandomEffectOptimizationProblem {
   /**
    * Factory method to create new RandomEffectOptimizationProblems.
    *
-   * @param randomEffectDataSet The training data
+   * @param randomEffectDataset The training data
    * @param configuration The optimizer configuration
    * @param objectiveFunction The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
@@ -141,7 +141,7 @@ object RandomEffectOptimizationProblem {
    * @return A new RandomEffectOptimizationProblem
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      randomEffectDataSet: RandomEffectDataset,
+      randomEffectDataset: RandomEffectDataset,
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,
@@ -151,7 +151,7 @@ object RandomEffectOptimizationProblem {
 
     val optimizationProblems = normalizationContextWrapper match {
       case nCB: NormalizationContextBroadcast =>
-        randomEffectDataSet
+        randomEffectDataset
           .activeData
           .mapValues(_ =>
             SingleNodeOptimizationProblem(

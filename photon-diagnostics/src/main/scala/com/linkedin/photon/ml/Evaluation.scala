@@ -49,12 +49,12 @@ object Evaluation extends Logging {
    * all metrics.
    *
    * @param model The GLM model to be evaluated
-   * @param dataSet The dataset used to evaluate the GLM model
+   * @param dataset The dataset used to evaluate the GLM model
    * @return Map of (metricName &rarr; value)
    */
-  def evaluate(model: GeneralizedLinearModel, dataSet: RDD[LabeledPoint]): MetricsMap = {
-    val broadcastModel = dataSet.sparkContext.broadcast(model)
-    val scoreAndLabel = dataSet
+  def evaluate(model: GeneralizedLinearModel, dataset: RDD[LabeledPoint]): MetricsMap = {
+    val broadcastModel = dataset.sparkContext.broadcast(model)
+    val scoreAndLabel = dataset
       .map(labeledPoint =>
         (broadcastModel.value.computeMeanFunctionWithOffset(labeledPoint.features, labeledPoint.offset),
           labeledPoint.label))
@@ -92,7 +92,7 @@ object Evaluation extends Logging {
     // Log loss
     model match {
       case p: PoissonRegressionModel =>
-        metrics += ((DATA_LOG_LIKELIHOOD, poissonRegressionLogLikelihood(dataSet, p)))
+        metrics += ((DATA_LOG_LIKELIHOOD, poissonRegressionLogLikelihood(dataset, p)))
 
       case _: LogisticRegressionModel =>
         metrics += ((DATA_LOG_LIKELIHOOD, logisticRegressionLogLikelihood(scoreAndLabel)))

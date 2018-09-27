@@ -122,7 +122,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @param seed A random seed
    * @return A newly generated fixed effect dataset
    */
-  def generateFixedEffectDataSet(
+  def generateFixedEffectDataset(
     featureShardId: String,
     size: Int,
     dimensions: Int,
@@ -180,7 +180,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       seed: Int = DefaultSeed)
     : (FixedEffectCoordinate[DistributedGLMLossFunction], FixedEffectModel) = {
 
-    val dataset = generateFixedEffectDataSet(featureShardId, size, dimensions, seed)
+    val dataset = generateFixedEffectDataset(featureShardId, size, dimensions, seed)
     val optimizationProblem = generateFixedEffectOptimizationProblem
     val coordinate = new FixedEffectCoordinate(dataset, optimizationProblem)
 
@@ -201,7 +201,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @param numPartitions The number of Spark partitions
    * @return A newly generated random effect dataset
    */
-  def generateRandomEffectDataSet(
+  def generateRandomEffectDataset(
       randomEffectIds: Seq[String],
       randomEffectType: String,
       featureShardId: String,
@@ -277,7 +277,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
 
     val randomEffectIds = (1 to numEntities).map("re" + _)
 
-    val randomEffectDataset = generateRandomEffectDataSet(
+    val randomEffectDataset = generateRandomEffectDataset(
       randomEffectIds,
       randomEffectType,
       featureShardId,

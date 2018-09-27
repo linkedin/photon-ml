@@ -25,12 +25,12 @@ object EvaluatorFactory {
    * Factory for different types of [[Evaluator]].
    *
    * @param evaluatorType The type of the evaluator
-   * @param gameDataSet A [[RDD]] of ([[Long]], [[GameDatum]]), which are usually the validation/test data, used to
+   * @param gameDataset A [[RDD]] of ([[Long]], [[GameDatum]]), which are usually the validation/test data, used to
    *                    construct the evaluator
    * @return The evaluator
    */
-  protected[ml] def buildEvaluator(evaluatorType: EvaluatorType, gameDataSet: RDD[(Long, GameDatum)]): Evaluator = {
-    val labelAndOffsetAndWeights = gameDataSet.mapValues(gameData =>
+  protected[ml] def buildEvaluator(evaluatorType: EvaluatorType, gameDataset: RDD[(Long, GameDatum)]): Evaluator = {
+    val labelAndOffsetAndWeights = gameDataset.mapValues(gameData =>
       (gameData.response, gameData.offset, gameData.weight)
     )
 
@@ -43,10 +43,10 @@ object EvaluatorFactory {
       case SmoothedHingeLoss => new SmoothedHingeLossEvaluator(labelAndOffsetAndWeights)
       case SquaredLoss => new SquaredLossEvaluator(labelAndOffsetAndWeights)
       case MultiPrecisionAtK(k, idTag) =>
-        val ids = gameDataSet.mapValues(_.idTagToValueMap(idTag))
+        val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
         new PrecisionAtKMultiEvaluator(k, idTag, ids, labelAndOffsetAndWeights)
       case MultiAUC(idTag) =>
-        val ids = gameDataSet.mapValues(_.idTagToValueMap(idTag))
+        val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
         new AreaUnderROCCurveMultiEvaluator(idTag, ids, labelAndOffsetAndWeights)
       case _ => throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")
     }

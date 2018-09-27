@@ -31,7 +31,7 @@ class LabeledPointTest extends SparkTestUtils {
    *
    * @return
    */
-  def generateBenignLocalDataSetBinaryClassification(): List[LabeledPoint] = {
+  def generateBenignLocalDatasetBinaryClassification(): List[LabeledPoint] = {
     drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       DATA_RANDOM_SEED,
       TRAINING_SAMPLES,
@@ -56,7 +56,7 @@ class LabeledPointTest extends SparkTestUtils {
 
   @DataProvider
   def getRandomDataPoints: Array[Array[LabeledPoint]] = {
-    val randomSamples = generateBenignLocalDataSetBinaryClassification()
+    val randomSamples = generateBenignLocalDatasetBinaryClassification()
     randomSamples.map(Array(_)).toArray
   }
 

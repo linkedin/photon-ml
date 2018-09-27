@@ -23,9 +23,9 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
  * The optimization problem coordinate for each effect model.
  *
  * @tparam D The training dataset type
- * @param dataSet The training dataset
+ * @param dataset The training dataset
  */
-protected[ml] abstract class Coordinate[D <: Dataset[D]](dataSet: D) {
+protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
    *
@@ -45,10 +45,10 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataSet: D) {
   /**
    * Update the coordinate with a new dataset.
    *
-   * @param dataSet The updated dataset
+   * @param dataset The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  protected[algorithm] def updateCoordinateWithDataSet(dataSet: D): Coordinate[D]
+  protected[algorithm] def updateCoordinateWithDataset(dataset: D): Coordinate[D]
 
   /**
    * Optimize an existing model for the new scores of the other coordinates.
@@ -60,7 +60,7 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataSet: D) {
   protected[algorithm] def updateModel(
       model: DatumScoringModel,
       score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
-    updateCoordinateWithDataSet(dataSet.addScoresToOffsets(score)).updateModel(model)
+    updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).updateModel(model)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as

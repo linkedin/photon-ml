@@ -28,11 +28,11 @@ protected[ml] class IdentityProjector extends RandomEffectProjector {
   /**
    * Project the sharded dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input sharded dataset in the original space
+   * @param randomEffectDataset The input sharded dataset in the original space
    * @return The sharded dataset in the projected space
    */
-  def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset =
-    randomEffectDataSet
+  def projectRandomEffectDataset(randomEffectDataset: RandomEffectDataset): RandomEffectDataset =
+    randomEffectDataset
 
   /**
    * Project a [[RDD]] of [[GeneralizedLinearModel]] [[Coefficients]] from the projected space back to the original

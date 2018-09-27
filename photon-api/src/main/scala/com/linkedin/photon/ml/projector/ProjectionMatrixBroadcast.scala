@@ -39,13 +39,13 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
   /**
    * Project the dataset from the original space to the projected space.
    *
-   * @param randomEffectDataSet The input dataset in the original space
+   * @param randomEffectDataset The input dataset in the original space
    * @return The same dataset in the projected space
    */
-  override def projectRandomEffectDataSet(randomEffectDataSet: RandomEffectDataset): RandomEffectDataset = {
+  override def projectRandomEffectDataset(randomEffectDataset: RandomEffectDataset): RandomEffectDataset = {
 
-    val activeData = randomEffectDataSet.activeData
-    val passiveDataOption = randomEffectDataSet.passiveDataOption
+    val activeData = randomEffectDataset.activeData
+    val passiveDataOption = randomEffectDataset.passiveDataOption
     val projectedActiveData = activeData.mapValues(_.projectFeatures(projectionMatrixBroadcast.value))
 
     val projectedPassiveData = if (passiveDataOption.isDefined) {
@@ -57,7 +57,7 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
       None
     }
 
-    randomEffectDataSet.update(projectedActiveData, projectedPassiveData)
+    randomEffectDataset.update(projectedActiveData, projectedPassiveData)
   }
 
   /**
@@ -127,20 +127,20 @@ object ProjectionMatrixBroadcast {
   /**
    * Generate random projection based broadcast projector
    *
-   * @param randomEffectDataSet The input random effect dataset
+   * @param randomEffectDataset The input random effect dataset
    * @param projectedSpaceDimension The dimension of the projected feature space
    * @param isKeepingInterceptTerm Whether to keep the intercept in the original feature space
    * @param seed The seed of random number generator
    * @return The generated random projection based broadcast projector
    */
   protected[ml] def buildRandomProjectionBroadcastProjector(
-      randomEffectDataSet: RandomEffectDataset,
+      randomEffectDataset: RandomEffectDataset,
       projectedSpaceDimension: Int,
       isKeepingInterceptTerm: Boolean,
       seed: Long = MathConst.RANDOM_SEED): ProjectionMatrixBroadcast = {
 
-    val sparkContext = randomEffectDataSet.sparkContext
-    val originalSpaceDimension = randomEffectDataSet.activeData.first()._2.numFeatures
+    val sparkContext = randomEffectDataset.sparkContext
+    val originalSpaceDimension = randomEffectDataset.activeData.first()._2.numFeatures
     val randomProjectionMatrix = ProjectionMatrix.buildGaussianRandomProjectionMatrix(projectedSpaceDimension,
       originalSpaceDimension, isKeepingInterceptTerm, seed)
     val randomProjectionMatrixBroadcast = sparkContext.broadcast[ProjectionMatrix](randomProjectionMatrix)
