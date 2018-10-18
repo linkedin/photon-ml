@@ -18,7 +18,7 @@ import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
-import org.apache.spark.sql.types.DataTypes.DoubleType
+import org.apache.spark.sql.types.DataTypes._
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.testng.Assert.{assertFalse, assertTrue}
 import org.testng.annotations.Test
@@ -229,6 +229,28 @@ class DataValidatorsTest {
     assertFalse(DataValidators.rowHasValidWeight(getRow(featuresVector, weight = Double.MinValue), WEIGHT))
     assertFalse(DataValidators.rowHasValidWeight(getRow(featuresVector, weight = Double.PositiveInfinity), WEIGHT))
     assertFalse(DataValidators.rowHasValidWeight(getRow(featuresVector, weight = Double.NegativeInfinity), WEIGHT))
+  }
+
+  /**
+   * Test that numeric types aside from [[Double]] are valid for data validation.
+   */
+  @Test
+  def testNonDoubleNumbers(): Unit = {
+
+    val response: Int = 1
+    val offset: Long = 0L
+    val weight: Float = 1F
+
+    val schema = new StructType(
+      Array(
+        StructField(RESPONSE, IntegerType),
+        StructField(OFFSET, LongType),
+        StructField(WEIGHT, FloatType)))
+    val row = new GenericRowWithSchema(Array[Any](response, offset, weight), schema)
+
+    assertTrue(DataValidators.rowHasNonNegativeLabel(row, RESPONSE))
+    assertTrue(DataValidators.rowHasFiniteColumn(row, OFFSET))
+    assertTrue(DataValidators.rowHasValidWeight(row, WEIGHT))
   }
 }
 

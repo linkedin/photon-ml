@@ -69,8 +69,13 @@ object DataValidators extends Logging {
    */
   def rowHasFiniteColumn(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case col: Double => !(col.isNaN || col.isInfinite)
-      case _ => false
+      case col: Number =>
+        val d = col.doubleValue()
+
+        !(d.isNaN || d.isInfinite)
+
+      case _ =>
+        false
     }
 
   /**
@@ -101,8 +106,13 @@ object DataValidators extends Logging {
    */
   def rowHasBinaryLabel(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case label: Double => BinaryClassifier.positiveClassLabel == label || BinaryClassifier.negativeClassLabel == label
-      case _ => false
+      case label: Number =>
+        val d = label.doubleValue()
+
+        BinaryClassifier.positiveClassLabel == d || BinaryClassifier.negativeClassLabel == d
+
+      case _ =>
+        false
     }
 
   /**
@@ -123,8 +133,13 @@ object DataValidators extends Logging {
    */
   def rowHasNonNegativeLabel(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case label: Double => !(label.isNaN || label.isInfinite) && (label >= 0)
-      case _ => false
+      case label: Number =>
+        val d = label.doubleValue()
+
+        !(d.isNaN || d.isInfinite) && (d >= 0)
+
+      case _ =>
+        false
     }
 
   /**
@@ -180,8 +195,13 @@ object DataValidators extends Logging {
   def rowHasValidWeight(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
       // Weight should be significantly larger than 0
-      case weight: Double =>  !(weight.isNaN || weight.isInfinite) && (weight > MathConst.EPSILON)
-      case _ => false
+      case weight: Number =>
+        val d = weight.doubleValue()
+
+        !(d.isNaN || d.isInfinite) && (d > MathConst.EPSILON)
+
+      case _ =>
+        false
     }
 
   /**
