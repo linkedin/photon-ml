@@ -18,7 +18,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.DataTypes._
 import org.testng.Assert._
 import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.mllib.linalg.VectorUDT
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.testng.annotations.{DataProvider, Test}
@@ -51,7 +51,7 @@ class AvroDataWriterTest {
         StructField("response", DoubleType),
         StructField("offset", NullType),
         StructField("weight", NullType),
-        StructField("features", new VectorUDT)))
+        StructField("features", VectorType)))
     val nullRow = new GenericRowWithSchema(nullArray, nullSchema)
 
     val rows = arrays
@@ -62,7 +62,7 @@ class AvroDataWriterTest {
             StructField("response", t),
             StructField("offset", t),
             StructField("weight", t),
-            StructField("features", new VectorUDT)))
+            StructField("features", VectorType)))
 
         Array(new GenericRowWithSchema(a, schema))
       }

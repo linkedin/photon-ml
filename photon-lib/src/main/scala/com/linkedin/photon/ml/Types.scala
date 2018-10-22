@@ -20,9 +20,9 @@ package com.linkedin.photon.ml
  */
 object Types {
 
-  type SDV = org.apache.spark.mllib.linalg.DenseVector
-  type SSV = org.apache.spark.mllib.linalg.SparseVector
-  type SparkVector = org.apache.spark.mllib.linalg.Vector
+  type SDV = org.apache.spark.ml.linalg.DenseVector
+  type SSV = org.apache.spark.ml.linalg.SparseVector
+  type SparkVector = org.apache.spark.ml.linalg.Vector
 
   // A "sample" is a training, validation or scoring vector of feature values
   type UniqueSampleId = Long
