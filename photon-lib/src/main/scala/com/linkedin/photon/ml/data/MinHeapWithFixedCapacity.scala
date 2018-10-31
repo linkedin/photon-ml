@@ -162,7 +162,7 @@ protected[ml] class MinHeapWithFixedCapacity[T <: Comparable[T] : ClassTag](capa
       } else {
 
         bigHeap.addAll(smallHeap)
-        bigHeap.clear()
+        smallHeap.clear()
         minHeap = bigHeap
       }
     }
