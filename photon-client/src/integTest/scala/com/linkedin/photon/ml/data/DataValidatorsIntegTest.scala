@@ -18,7 +18,8 @@ import scala.util.{Success, Try}
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
-import org.apache.spark.mllib.linalg.{VectorUDT, Vectors}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
+import org.apache.spark.ml.linalg.Vectors
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
 
@@ -246,7 +247,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
     val schema = new StructType(Array(StructField(InputColumnsNames.RESPONSE.toString, DoubleType),
       StructField(InputColumnsNames.WEIGHT.toString, DoubleType),
       StructField(InputColumnsNames.OFFSET.toString, DoubleType),
-      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, new VectorUDT)))
+      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, VectorType)))
 
     val input = getSuccessArgumentsForSanityCheckData
 
@@ -276,7 +277,7 @@ class DataValidatorsIntegTest extends SparkTestUtils {
     val schema = new StructType(Array(StructField(InputColumnsNames.RESPONSE.toString, DoubleType),
       StructField(InputColumnsNames.WEIGHT.toString, DoubleType),
       StructField(InputColumnsNames.OFFSET.toString, DoubleType),
-      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, new VectorUDT)))
+      StructField(InputColumnsNames.FEATURES_DEFAULT.toString, VectorType)))
 
     val input = getFailureArgumentsForSanityCheckData
 

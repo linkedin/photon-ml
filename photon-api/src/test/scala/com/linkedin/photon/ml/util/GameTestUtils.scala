@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.util
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.{HashPartitioner, SparkConf}
 import org.testng.annotations.DataProvider
 

@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.data
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.mllib.linalg.SparseVector
+import org.apache.spark.ml.linalg.SparseVector
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.TaskType.TaskType

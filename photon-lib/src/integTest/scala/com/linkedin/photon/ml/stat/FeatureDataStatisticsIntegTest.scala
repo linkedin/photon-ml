@@ -16,8 +16,7 @@ package com.linkedin.photon.ml.stat
 
 import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
-import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
-import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -70,7 +69,7 @@ class FeatureDataStatisticsIntegTest extends SparkTestUtils {
         .toDF("response", featureShardId)
 
       // Calling rdd explicitly here to avoid a typed encoder lookup in Spark 2.1
-      val stats = FeatureDataStatistics(trainingData.select(featureShardId).rdd.map(_.getAs[SparkMLVector](0)), None)
+      val stats = FeatureDataStatistics(trainingData.select(featureShardId).rdd.map(_.getAs[Vector](0)), None)
 
       assertEquals(stats.count, 10)
       assertEquals(stats.mean(0), 0.3847210904276229, CommonTestUtils.HIGH_PRECISION_TOLERANCE)

@@ -17,11 +17,11 @@ package com.linkedin.photon.ml.util
 import scala.collection.mutable
 
 import breeze.linalg.{DenseVector, SparseVector, Vector}
-import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
-import org.apache.spark.mllib.linalg.{Vectors, DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
+import org.apache.spark.ml.linalg.{DenseVector => SparkMLDenseVector, SparseVector => SparkMLSparseVector, Vector => SparkMLVector}
+import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
 /**
- * A utility object that contains operations to create, copy, compare, and convert Breeze [[Vector]] objects.
+ * A utility object that contains operations to create, copy, compare, and convert [[Vector]] objects.
  */
 object VectorUtils {
 
@@ -199,7 +199,13 @@ object VectorUtils {
    * @param mlVector The spark.ml vector
    * @return The Breeze vector
    */
-  def mlToBreeze(mlVector: SparkMLVector): Vector[Double] = mllibToBreeze(Vectors.fromML(mlVector))
+  def mlToBreeze(mlVector: SparkMLVector): Vector[Double] =
+    mlVector match {
+      case dv: SparkMLDenseVector =>
+        new DenseVector[Double](dv.values)
+      case sv: SparkMLSparseVector =>
+        new SparseVector[Double](sv.indices, sv.values, sv.size)
+    }
 
   /**
    * Determines when two vectors are "equal" within a very small tolerance.

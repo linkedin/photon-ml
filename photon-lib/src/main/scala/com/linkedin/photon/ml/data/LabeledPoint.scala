@@ -93,7 +93,7 @@ object LabeledPoint {
       features: SparkVector,
       offset: Double = 0.0,
       weight: Double = 1.0): LabeledPoint = {
-    new LabeledPoint(label, VectorUtils.mllibToBreeze(features), offset, weight)
+    new LabeledPoint(label, VectorUtils.mlToBreeze(features), offset, weight)
   }
 
   /**
