@@ -20,7 +20,6 @@ import org.apache.hadoop.fs.Path
 import scopt.OptionParser
 
 import com.linkedin.photon.ml.PhotonOptionNames._
-import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.deprecated.{ConstraintMapKeys, FieldNamesType, InputFormatType}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -64,9 +63,6 @@ object PhotonMLCmdLineParser {
    * @return The parsed [[Params]]
    */
   def parseFromCommandLine(args: Array[String]): Params = {
-
-    require(!(args.contains(s"--$TRAINING_DIAGNOSTICS") && args.contains(s"--$DIAGNOSTIC_MODE")),
-      s"Specifying both $TRAINING_DIAGNOSTICS and $DIAGNOSTIC_MODE at the same time is not supported" )
 
     val defaultParams = new Params()
     val params = new Params()
@@ -180,15 +176,6 @@ object PhotonMLCmdLineParser {
         .text(s"The level of data validation to apply. Options: [${DataValidationType.values.mkString("|")}]. " +
             s"Default: ${defaultParams.dataValidationType}")
         .foreach(x => params.dataValidationType = DataValidationType.withName(x.toUpperCase()))
-
-      opt[Boolean](TRAINING_DIAGNOSTICS)
-        .text(s"DEPRECATED -- USE $DIAGNOSTIC_MODE")
-        .foreach(x => params.diagnosticMode = if (x) DiagnosticMode.ALL else DiagnosticMode.NONE)
-
-      opt[String](DIAGNOSTIC_MODE)
-        .text(s"Diagnostic mode after model training (${DiagnosticMode.ALL}, ${DiagnosticMode.NONE}," +
-            s" ${DiagnosticMode.TRAIN}, ${DiagnosticMode.VALIDATE}). Default: ${defaultParams.diagnosticMode}")
-        .foreach(x => params.diagnosticMode = DiagnosticMode.withName(x.toUpperCase()))
 
       opt[String](COEFFICIENT_BOX_CONSTRAINTS)
         .text("JSON array of maps specifying bound constraints on coefficients. The input is expected to be an array " +

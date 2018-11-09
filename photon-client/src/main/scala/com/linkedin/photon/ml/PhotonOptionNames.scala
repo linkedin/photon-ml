@@ -42,7 +42,6 @@ object PhotonOptionNames {
   val COEFFICIENT_BOX_CONSTRAINTS = "coefficient-box-constraints"
   val DATA_VALIDATION_TYPE = "data-validation-type"
   val TREE_AGGREGATE_DEPTH = "tree-aggregate-depth"
-  val DIAGNOSTIC_MODE = "diagnostic-mode"
   val SELECTED_FEATURES_FILE = "selected-features-file"
   val OFFHEAP_INDEXMAP_DIR = "offheap-indexmap-dir"
   val OFFHEAP_INDEXMAP_NUM_PARTITIONS = "offheap-indexmap-num-partitions"
@@ -51,7 +50,4 @@ object PhotonOptionNames {
   val FEATURE_DIMENSION = "feature-dimension"
   val INPUT_FILE_FORMAT = "input-file-format"
   val USE_WARM_START = "use-warm-start"
-
-  @deprecated("Use 'diagnostic-mode'", "1.0")
-  val TRAINING_DIAGNOSTICS = "training-diagnostics"
 }

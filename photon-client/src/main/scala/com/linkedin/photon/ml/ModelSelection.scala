@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml
 
+import com.linkedin.photon.ml.evaluation.Evaluation
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}

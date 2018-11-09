@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.event
 import org.apache.spark.SparkContext
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.Evaluation.MetricsMap
+import com.linkedin.photon.ml.evaluation.Evaluation.MetricsMap
 import com.linkedin.photon.ml.Params
 import com.linkedin.photon.ml.supervised.model.ModelTracker
 

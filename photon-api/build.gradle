@@ -17,7 +17,6 @@ apply from: '../build-scripts/integration-test.gradle'
 
 dependencies {
   compile(project(":photon-lib$scalaSuffix"))
-  compile(project(":photon-test-utils$scalaSuffix"))
   compile("org.scalanlp:breeze$scalaSuffix:0.11.2")
   compile('com.linkedin.paldb:paldb:1.1.0')
 
