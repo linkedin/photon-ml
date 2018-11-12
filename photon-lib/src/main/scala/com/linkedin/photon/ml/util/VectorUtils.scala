@@ -141,13 +141,14 @@ object VectorUtils {
   }
 
   /**
-   * Converts a Breeze vector to an mllib vector.
+   * Converts a Breeze vector to an spark.mllib vector.
    *
    * @note Lifted from spark private API.
    *
    * @param breezeVector The Breeze vector
    * @return The mllib vector
    */
+  @deprecated
   def breezeToMllib(breezeVector: Vector[Double]): SparkVector = {
 
     breezeVector match {
@@ -163,6 +164,36 @@ object VectorUtils {
           new SparkSparseVector(v.length, v.index, v.data)
         } else {
           new SparkSparseVector(v.length, v.index.slice(0, v.used), v.data.slice(0, v.used))
+        }
+
+      case v: Vector[_] =>
+        throw new IllegalArgumentException("Unsupported Breeze vector type: " + v.getClass.getName)
+    }
+  }
+
+  /**
+   * Converts a Breeze vector to a spark.ml vector.
+   *
+   * @note Lifted from spark private API.
+   *
+   * @param breezeVector The Breeze vector
+   * @return The ml vector
+   */
+  def breezeToMl(breezeVector: Vector[Double]): SparkMLVector = {
+
+    breezeVector match {
+      case v: DenseVector[Double] =>
+        if (v.offset == 0 && v.stride == 1 && v.length == v.data.length) {
+          new SparkMLDenseVector(v.data)
+        } else {
+          new SparkMLDenseVector(v.toArray)  // Can't use underlying array directly, so make a new one
+        }
+
+      case v: SparseVector[Double] =>
+        if (v.index.length == v.used) {
+          new SparkMLSparseVector(v.length, v.index, v.data)
+        } else {
+          new SparkMLSparseVector(v.length, v.index.slice(0, v.used), v.data.slice(0, v.used))
         }
 
       case v: Vector[_] =>

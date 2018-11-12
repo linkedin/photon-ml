@@ -14,18 +14,17 @@
  */
 package com.linkedin.photon.ml.data
 
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.ml.linalg.SparseVector
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.supervised.classification.BinaryClassifier
 import com.linkedin.photon.ml.util.Logging
 import com.linkedin.photon.ml.{DataValidationType, TaskType}
-
-import com.linkedin.photon.ml.constants.MathConst
 
 /**
  * A collection of methods used to validate data before applying ML algorithms.
@@ -36,7 +35,7 @@ object DataValidators extends Logging {
   val baseValidators: List[((LabeledPoint => Boolean), String)] = List(
     (finiteFeatures, "Data contains row(s) with invalid (+/- Inf or NaN) feature(s)"),
     (finiteOffset, "Data contains row(s) with invalid (+/- Inf or NaN) offset(s)"),
-    (nonNegativeWeight, "Data contains row(s) with invalid (-, Inf, or NaN) weight(s)"))
+    (validWeight, "Data contains row(s) with invalid (-, 0, Inf, or NaN) weight(s)"))
   val linearRegressionValidators: List[((LabeledPoint => Boolean), String)] =
     (finiteLabel _, "Data contains row(s) with invalid (+/- Inf or NaN) label(s)") :: baseValidators
   val logisticRegressionValidators: List[((LabeledPoint => Boolean), String)] =
@@ -50,7 +49,7 @@ object DataValidators extends Logging {
       InputColumnsNames.FEATURES_DEFAULT,
       "Data contains row(s) with invalid (+/- Inf or NaN) feature(s)"),
     (rowHasFiniteColumn, InputColumnsNames.OFFSET, "Data contains row(s) with invalid (+/- Inf or NaN) offset(s)"),
-    (rowHasNonNegativeWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with invalid (-, Inf, or NaN) weight(s)"))
+    (rowHasValidWeight, InputColumnsNames.WEIGHT, "Data contains row(s) with invalid (-, 0, Inf, or NaN) weight(s)"))
   val dataFrameLinearRegressionValidators: List[(((Row, String) => Boolean), InputColumnsNames.Value, String)] =
     (rowHasFiniteColumn _, InputColumnsNames.RESPONSE, "Data contains row(s) with invalid (+/- Inf or NaN) label(s)") ::
       dataFrameBaseValidators
@@ -70,8 +69,13 @@ object DataValidators extends Logging {
    */
   def rowHasFiniteColumn(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case col: Double => !(col.isNaN || col.isInfinite)
-      case _ => false
+      case col: Number =>
+        val d = col.doubleValue()
+
+        !(d.isNaN || d.isInfinite)
+
+      case _ =>
+        false
     }
 
   /**
@@ -102,8 +106,13 @@ object DataValidators extends Logging {
    */
   def rowHasBinaryLabel(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case label: Double => BinaryClassifier.positiveClassLabel == label || BinaryClassifier.negativeClassLabel == label
-      case _ => false
+      case label: Number =>
+        val d = label.doubleValue()
+
+        BinaryClassifier.positiveClassLabel == d || BinaryClassifier.negativeClassLabel == d
+
+      case _ =>
+        false
     }
 
   /**
@@ -124,8 +133,13 @@ object DataValidators extends Logging {
    */
   def rowHasNonNegativeLabel(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
-      case label: Double => !(label.isNaN || label.isInfinite) && (label >= 0)
-      case _ => false
+      case label: Number =>
+        val d = label.doubleValue()
+
+        !(d.isNaN || d.isInfinite) && (d >= 0)
+
+      case _ =>
+        false
     }
 
   /**
@@ -149,6 +163,7 @@ object DataValidators extends Logging {
   def rowHasFiniteFeatures(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
       case features: SparseVector => features.values.forall(value => !(value.isNaN || value.isInfinite))
+      case features: DenseVector => features.values.forall(value => !(value.isNaN || value.isInfinite))
       case _ => false
     }
 
@@ -167,7 +182,7 @@ object DataValidators extends Logging {
    * @param labeledPoint The input data point
    * @return Whether the weight of the input data point is finite
    */
-  def nonNegativeWeight(labeledPoint: LabeledPoint): Boolean =
+  def validWeight(labeledPoint: LabeledPoint): Boolean =
     !(labeledPoint.weight.isNaN || labeledPoint.weight.isInfinite) && (labeledPoint.weight > MathConst.EPSILON)
 
   /**
@@ -177,11 +192,16 @@ object DataValidators extends Logging {
    * @param inputColumnName The column name we want to validate
    * @return Whether the weight column of the row is positive
    */
-  def rowHasNonNegativeWeight(row: Row, inputColumnName: String): Boolean =
+  def rowHasValidWeight(row: Row, inputColumnName: String): Boolean =
     row.getAs[Any](inputColumnName) match {
       // Weight should be significantly larger than 0
-      case weight: Double =>  !(weight.isNaN || weight.isInfinite) && (weight > MathConst.EPSILON)
-      case _ => false
+      case weight: Number =>
+        val d = weight.doubleValue()
+
+        !(d.isNaN || d.isInfinite) && (d > MathConst.EPSILON)
+
+      case _ =>
+        false
     }
 
   /**
@@ -259,27 +279,32 @@ object DataValidators extends Logging {
       featureSectionKeys: Set[FeatureShardId]): Seq[String] = {
 
     val columns = dataset.columns
-    dataset
-      .rdd
-      .flatMap { r =>
-        perSampleValidators
-          .flatMap { case (validator, columnName, msg) =>
-            if (columnName == InputColumnsNames.FEATURES_DEFAULT) {
-              featureSectionKeys.map(features => (validator(r, features), msg))
-            } else {
-              val result = if (columns.contains(inputColumnsNames(columnName))) {
-                (validator(r, inputColumnsNames(columnName)), msg)
-              } else {
-                (true, "")
-              }
+    val rdd = dataset.rdd
 
-              Seq(result)
-            }
+    perSampleValidators
+      .flatMap { case (validator, columnName, msg) =>
+
+        val validatorBroadcast = dataset.sparkSession.sparkContext.broadcast(validator)
+
+        def aggregatorHelper(columnName: String): Boolean =
+          rdd.aggregate(true)(
+            seqOp = (result, row) => result && (validatorBroadcast.value)(row, columnName),
+            combOp = (result1, result2) => result1 && result2)
+
+        if (columnName == InputColumnsNames.FEATURES_DEFAULT) {
+          featureSectionKeys.map(featureColumn => (aggregatorHelper(featureColumn), s"$msg: $featureColumn"))
+        } else {
+          val result = if (columns.contains(inputColumnsNames(columnName))) {
+            aggregatorHelper(inputColumnsNames(columnName))
+          } else {
+            true
           }
-          .filterNot(_._1)
-          .map(_._2)
+
+          Seq((result, msg))
+        }
       }
-      .collect()
+      .filterNot(_._1)
+      .map(_._2)
   }
 
   /**
@@ -346,33 +371,35 @@ object DataValidators extends Logging {
       dataValidationType: DataValidationType,
       inputColumnsNames: InputColumnsNames,
       featureSectionKeys: Set[FeatureShardId],
-      taskTypeOpt: Option[TaskType] = None): Unit = taskTypeOpt match {
-    case Some(taskType) =>
-      sanityCheckDataFrameForTraining(inputData, taskType, dataValidationType, inputColumnsNames, featureSectionKeys)
+      taskTypeOpt: Option[TaskType] = None): Unit =
 
-    case None =>
-      // Check the data properties
-      val dataErrors = dataValidationType match {
-        case DataValidationType.VALIDATE_FULL =>
-          validateDataFrame(
-            inputData,
-            dataFrameBaseValidators,
-            inputColumnsNames,
-            featureSectionKeys)
+    taskTypeOpt match {
+      case Some(taskType) =>
+        sanityCheckDataFrameForTraining(inputData, taskType, dataValidationType, inputColumnsNames, featureSectionKeys)
 
-        case DataValidationType.VALIDATE_SAMPLE =>
-          validateDataFrame(
-            inputData.sample(withReplacement = false, fraction = 0.10),
-            dataFrameBaseValidators,
-            inputColumnsNames,
-            featureSectionKeys)
+      case None =>
+        // Check the data properties
+        val dataErrors = dataValidationType match {
+          case DataValidationType.VALIDATE_FULL =>
+            validateDataFrame(
+              inputData,
+              dataFrameBaseValidators,
+              inputColumnsNames,
+              featureSectionKeys)
 
-        case DataValidationType.VALIDATE_DISABLED =>
-          Seq()
-      }
+          case DataValidationType.VALIDATE_SAMPLE =>
+            validateDataFrame(
+              inputData.sample(withReplacement = false, fraction = 0.10),
+              dataFrameBaseValidators,
+              inputColumnsNames,
+              featureSectionKeys)
 
-      if (dataErrors.nonEmpty) {
-        throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
-      }
-  }
+          case DataValidationType.VALIDATE_DISABLED =>
+            Seq()
+        }
+
+        if (dataErrors.nonEmpty) {
+          throw new IllegalArgumentException(s"Data Validation failed:\n${dataErrors.mkString("\n")}")
+        }
+    }
 }
