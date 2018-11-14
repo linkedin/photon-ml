@@ -18,7 +18,6 @@ apply from: '../build-scripts/integration-test.gradle'
 dependencies {
   compile(project(':photon-avro-schemas'))
   compile(project(":photon-core$scalaSuffix"))
-  compile(project(":photon-diagnostics$scalaSuffix"))
   compile('joda-time:joda-time:2.7')
   // Stub warnings without this
   compile('org.joda:joda-convert:1.8.1')

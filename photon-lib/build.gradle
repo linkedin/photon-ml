@@ -19,10 +19,6 @@ apply from: '../build-scripts/integration-test.gradle'
 def modifier = avroMapReduceModifier
 
 dependencies {
-  compile("org.apache.avro:avro-mapred:1.7.7$modifier" as String) {
-    // We don't need to import netty, and including it can cause version conflicts in downstream projects
-    exclude group: 'io.netty'
-  }
   compile("org.apache.spark:spark-core$scalaSuffix:$sparkVersion") {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
@@ -30,6 +26,11 @@ dependencies {
     exclude group: 'org.apache.avro', module: 'avro-mapred'
   }
   compile('org.slf4j:slf4j-api:1.7.9')
+
+  compile("org.apache.avro:avro-mapred:1.7.7$modifier" as String) {
+    // We don't need to import netty, and including it can cause version conflicts in downstream projects
+    exclude group: 'io.netty'
+  }
 
   testCompile(project(":photon-test-utils$scalaSuffix"))
   testCompile("org.mockito:mockito-core:1.+")

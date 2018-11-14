@@ -19,7 +19,6 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.PhotonOptionNames._
-import com.linkedin.photon.ml.diagnostics.DiagnosticMode
 import com.linkedin.photon.ml.io.deprecated.FieldNamesType
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.{OptimizerType, RegularizationType}
@@ -233,35 +232,6 @@ class PhotonMLCmdLineParserTest {
     )
     PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
   }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testDiagnosticModeBeingALLWhenNoValidateDirSpecified(): Unit = {
-    val args = Array(
-      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
-      DiagnosticMode.ALL.toString
-    )
-    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testDiagnosticModeBeingValidateWhenNoValidateDirSpecified(): Unit = {
-    val args = Array(
-      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
-      DiagnosticMode.VALIDATE.toString
-    )
-    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
-  }
-
-  @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testDiagnosticModeAndTrainDiagnosticsBothSpecified(): Unit = {
-    val args = Array(
-      CommonTestUtils.fromOptionNameToArg(DIAGNOSTIC_MODE),
-      DiagnosticMode.NONE.toString,
-      CommonTestUtils.fromOptionNameToArg(TRAINING_DIAGNOSTICS),
-      "false"
-    )
-    PhotonMLCmdLineParser.parseFromCommandLine(requiredArgs() ++ args)
-  }
 }
 
 object PhotonMLCmdLineParserTest {
@@ -284,8 +254,7 @@ object PhotonMLCmdLineParserTest {
     SUMMARIZATION_OUTPUT_DIR,
     NORMALIZATION_TYPE,
     COEFFICIENT_BOX_CONSTRAINTS,
-    TREE_AGGREGATE_DEPTH,
-    DIAGNOSTIC_MODE)
+    TREE_AGGREGATE_DEPTH)
 
   // Boolean options are unary instead of binary options
   private val BOOLEAN_OPTIONAL_OPTIONS = Array(
@@ -345,7 +314,6 @@ object PhotonMLCmdLineParserTest {
         case NORMALIZATION_TYPE => NormalizationType.NONE.toString
         case COEFFICIENT_BOX_CONSTRAINTS => constraintString
         case TREE_AGGREGATE_DEPTH => 2.toString
-        case DIAGNOSTIC_MODE => DiagnosticMode.NONE.toString
         case _ => "dummy-value"
       }
       i += 2

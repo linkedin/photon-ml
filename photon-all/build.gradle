@@ -24,6 +24,7 @@ dependencies {
 configurations {
   runtime {
     exclude group: 'log4j'
+    exclude group: 'org.apache.hadoop'
     exclude group: 'org.apache.spark'
     exclude group: 'org.scala-lang'
     exclude group: 'org.slf4j'
@@ -54,7 +55,10 @@ sourcesJar {
 
 configurations {
   all {
+    // Remove Snappy JAR which causes downstream issues
     exclude group: 'org.xerial.snappy'
+    // Remove JUnit testing dependencies that end up in the jar through Breeze
+    exclude group: 'junit'
   }
 }
 
