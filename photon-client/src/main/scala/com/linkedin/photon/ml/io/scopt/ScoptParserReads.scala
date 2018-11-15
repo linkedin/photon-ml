@@ -27,6 +27,8 @@ import com.linkedin.photon.ml.io.ModelOutputMode
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.util.{DateRange, DaysRange, Utils}
 
 /**
@@ -46,6 +48,8 @@ object ScoptParserReads {
   implicit val normalizationTypeRead: scopt.Read[NormalizationType] = scopt.Read.reads(NormalizationType.withName)
   implicit val pathRead: scopt.Read[Path] = scopt.Read.reads(parsePath)
   implicit val taskTypeRead: scopt.Read[TaskType] = scopt.Read.reads(TaskType.withName)
+  implicit val varianceComputationTypeRead: scopt.Read[VarianceComputationType] =
+    scopt.Read.reads(VarianceComputationType.withName)
 
   // For a list of valid timezone ids, see:
   // http://joda-time.sourceforge.net/timezones.html

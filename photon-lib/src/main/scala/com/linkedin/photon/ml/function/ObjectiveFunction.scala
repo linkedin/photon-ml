@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  * The base objective function class for an optimization problem.
  */
 abstract class ObjectiveFunction {
+
   type Data
   type Coefficients
 

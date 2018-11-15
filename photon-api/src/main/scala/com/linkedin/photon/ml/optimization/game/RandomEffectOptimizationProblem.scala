@@ -22,7 +22,8 @@ import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextRDD, NormalizationContextWrapper}
-import com.linkedin.photon.ml.optimization.SingleNodeOptimizationProblem
+import com.linkedin.photon.ml.optimization.{SingleNodeOptimizationProblem, VarianceComputationType}
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
@@ -137,7 +138,8 @@ object RandomEffectOptimizationProblem {
    * @param objectiveFunction The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContextWrapper The normalization context
-   * @param isComputingVariance Should coefficient variances be computed in addition to the means?
+   * @param varianceComputationType If an how to compute coefficient variances
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
    * @return A new RandomEffectOptimizationProblem
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
@@ -146,8 +148,8 @@ object RandomEffectOptimizationProblem {
       objectiveFunction: RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContextWrapper: NormalizationContextWrapper,
-      isTrackingState: Boolean = false,
-      isComputingVariance: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
 
     val optimizationProblems = normalizationContextWrapper match {
       case nCB: NormalizationContextBroadcast =>
@@ -159,8 +161,8 @@ object RandomEffectOptimizationProblem {
               objectiveFunction,
               glmConstructor,
               PhotonBroadcast(nCB.context),
-              isTrackingState,
-              isComputingVariance))
+              varianceComputationType,
+              isTrackingState))
 
       case nCR: NormalizationContextRDD =>
         nCR.contexts
@@ -170,8 +172,8 @@ object RandomEffectOptimizationProblem {
               objectiveFunction,
               glmConstructor,
               PhotonNonBroadcast(norm),
-              isTrackingState,
-              isComputingVariance)
+              varianceComputationType,
+              isTrackingState)
         }
     }
 

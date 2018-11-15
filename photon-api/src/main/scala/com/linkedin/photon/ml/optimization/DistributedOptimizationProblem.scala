@@ -19,10 +19,12 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
@@ -39,7 +41,7 @@ import com.linkedin.photon.ml.util.Linalg.choleskyInverse
  * @param samplerOption (Optional) A sampler to use for down-sampling the training data prior to optimization
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
  * @param regularizationContext The regularization context
- * @param isComputingVariances Should coefficient variances be computed in addition to the means?
+ * @param varianceComputation If an how to compute coefficient variances
  */
 protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization] (
     optimizer: Optimizer[Objective],
@@ -47,12 +49,12 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     samplerOption: Option[DownSampler],
     glmConstructor: Coefficients => GeneralizedLinearModel,
     regularizationContext: RegularizationContext,
-    isComputingVariances: Boolean)
+    varianceComputation: VarianceComputationType)
   extends GeneralizedLinearOptimizationProblem[Objective](
     optimizer,
     objectiveFunction,
     glmConstructor,
-    isComputingVariances) {
+    varianceComputation) {
 
   /**
    * Update the regularization weight for the optimization problem
@@ -73,26 +75,36 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
   }
 
   /**
-   * Compute coefficient variances
+   * Compute coefficient variances (if enabled).
    *
    * @param input The training data
    * @param coefficients The feature coefficients means
-   * @return The feature coefficient variances
+   * @return An optional feature coefficient variances vector
    */
   override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
-    (isComputingVariances, objectiveFunction) match {
-      case (true, twiceDiffFunc: TwiceDiffFunction) =>
-        val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
+
+    val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
+
+    val result = (objectiveFunction, varianceComputation) match {
+      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
+        Some(
+          twiceDiffFunc
+            .hessianDiagonal(input, broadcastCoefficients)
+            .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
+
+      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, broadcastCoefficients)
         val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
-
-        broadcastCoefficients.unpersist()
 
         Some(diag(invHessianMatrix))
 
       case _ =>
         None
     }
+
+    broadcastCoefficients.unpersist()
+
+    result
   }
 
   /**
@@ -120,13 +132,15 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
 
     modelTrackerBuilder.foreach { modelTrackerBuilder =>
+
       val tracker = optimizer.getStateTracker.get
       logger.info(s"History tracker information:\n $tracker")
-      val modelsPerIteration = tracker.getTrackedStates.map { x =>
-        val coefficients = x.coefficients
-        createModel(normalizationContext, coefficients, variances = None)
-      }
+
+      val modelsPerIteration = tracker
+        .getTrackedStates
+        .map(x => createModel(normalizationContext, x.coefficients, variances = None))
       logger.info(s"Number of iterations: ${modelsPerIteration.length}")
+
       modelTrackerBuilder += ModelTracker(tracker, modelsPerIteration)
     }
 
@@ -171,7 +185,7 @@ object DistributedOptimizationProblem {
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param isTrackingState Should the optimization problem record the internal optimizer states?
-   * @param isComputingVariance Should coefficient variances be computed in addition to the means?
+   * @param varianceComputation If and how coefficient variances should be computed
    * @return A new DistributedOptimizationProblem
    */
   def apply[Function <: DistributedObjectiveFunction](
@@ -180,8 +194,8 @@ object DistributedOptimizationProblem {
       samplerOption: Option[DownSampler],
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: BroadcastWrapper[NormalizationContext],
-      isTrackingState: Boolean,
-      isComputingVariance: Boolean): DistributedOptimizationProblem[Function] = {
+      varianceComputation: VarianceComputationType,
+      isTrackingState: Boolean): DistributedOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -198,6 +212,6 @@ object DistributedOptimizationProblem {
       samplerOption,
       glmConstructor,
       regularizationContext,
-      isComputingVariance)
+      varianceComputation)
   }
 }

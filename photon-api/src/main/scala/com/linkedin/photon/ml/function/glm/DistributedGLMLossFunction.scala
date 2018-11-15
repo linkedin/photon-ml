@@ -123,6 +123,18 @@ protected[ml] class DistributedGLMLossFunction private (
       treeAggregateDepth)
 
   /**
+   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed diagonal of the Hessian matrix
+   */
+  override protected[ml] def hessianDiagonal(
+      input: RDD[LabeledPoint],
+      coefficients: Broadcast[Vector[Double]]): Vector[Double] =
+    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction, treeAggregateDepth)
+
+  /**
    * Compute the Hessian matrix over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the diagonal of the Hessian matrix
@@ -133,7 +145,6 @@ protected[ml] class DistributedGLMLossFunction private (
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]]): DenseMatrix[Double] =
     HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction, treeAggregateDepth)
-
 }
 
 object DistributedGLMLossFunction {

@@ -161,7 +161,8 @@ object ScoptParserHelpers extends Logging {
     val shardName = input(FEATURE_SHARD_CONFIG_NAME)
     val shardConfig = FeatureShardConfiguration(
       input.get(FEATURE_SHARD_CONFIG_FEATURE_BAGS).map(_.split(SECONDARY_LIST_DELIMITER).toSet).getOrElse(Set()),
-      input.get(FEATURE_SHARD_CONFIG_INTERCEPT).map(_.toBoolean).getOrElse(true))
+      // Below line is equivalent to: Option.map(foo).getOrElse(true)
+      input.get(FEATURE_SHARD_CONFIG_INTERCEPT).forall(_.toBoolean))
 
     Map((shardName, shardConfig))
   }
@@ -222,11 +223,11 @@ object ScoptParserHelpers extends Logging {
 
     val regularizationWeightRange = input
       .get(COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE)
-      .map(parseDoubleRange(_))
+      .map(parseDoubleRange)
 
     val elasticNetParamRange = input
       .get(COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE)
-      .map(parseDoubleRange(_))
+      .map(parseDoubleRange)
 
     val reTypeOpt = input.get(COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE)
     val config = reTypeOpt match {
