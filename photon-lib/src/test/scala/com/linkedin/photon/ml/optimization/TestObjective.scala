@@ -26,6 +26,7 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
  * Test objective function used solely to exercise the optimizers.
  */
 class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
+
   type Data = Iterable[LabeledPoint]
   type Coefficients = Vector[Double]
 
@@ -35,6 +36,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
   override protected[ml] def convertToVector(coefficients: Vector[Double]): Vector[Double] = coefficients
 
   /**
+   * Compute the value of the function over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the objective value
    * @param coefficients The model coefficients used to compute the function's value
@@ -48,6 +50,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
     calculate(input, coefficients, normalizationContext)._1
 
   /**
+   * Compute the gradient of the function over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the gradient
    * @param coefficients The model coefficients used to compute the function's gradient
@@ -59,6 +62,8 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
     calculate(input, coefficients, normalizationContext)._2
 
   /**
+   * Compute both the value and the gradient of the function for the given model coefficients (computing value and
+   * gradient at once is sometimes more efficient than computing them sequentially).
    *
    * @param input The given data over which to compute the value and gradient
    * @param coefficients The model coefficients used to compute the function's value and gradient
@@ -85,6 +90,7 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
   }
 
   /**
+   * Compute (Hessian * d_i) over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the Hessian
    * @param coefficients The model coefficients used to compute the function's hessian, multiplied by a given vector
@@ -108,6 +114,14 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
       },
       combop = _ += _)
   }
+
+  /**
+   * Unused, only implemented as part of TwiceDiffFunction.
+   */
+  override protected[ml] def hessianDiagonal(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): Vector[Double] =
+    Coefficients.initializeZeroCoefficients(coefficients.length).means
 
   /**
    * Unused, only implemented as part of TwiceDiffFunction.

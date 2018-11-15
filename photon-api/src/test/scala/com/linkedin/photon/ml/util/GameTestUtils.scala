@@ -148,8 +148,8 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       None,
       LogisticRegressionModel.apply,
       PhotonBroadcast(sc.broadcast(NoNormalization())),
-      isTrackingState = false,
-      isComputingVariance = false)
+      VarianceComputationType.NONE,
+      isTrackingState = false)
   }
 
   /**

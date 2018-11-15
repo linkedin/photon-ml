@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
 import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{L1RegularizationContext, NoRegularizationContext, OptimizerConfig, OptimizerType}
+import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
@@ -66,7 +66,7 @@ class ScoptGameTrainingParametersParserTest {
     val hyperparameterTunerName = HyperparameterTunerName.DUMMY
     val hyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
     val hyperparameterTuningIter = 6
-    val computeVariance = true
+    val varianceComputation = VarianceComputationType.SIMPLE
     val ignoreThreshold = true
 
     val featureShard1 = "featureShard1"
@@ -172,7 +172,7 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.hyperParameterTunerName, hyperparameterTunerName)
       .put(GameTrainingDriver.hyperParameterTuning, hyperparameterTuningMode)
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
-      .put(GameTrainingDriver.computeVariance, computeVariance)
+      .put(GameTrainingDriver.varianceComputationType, varianceComputation)
       .put(GameTrainingDriver.ignoreThresholdForNewModels, ignoreThreshold)
 
     val finalParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(

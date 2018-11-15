@@ -27,6 +27,7 @@ import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNam
 import com.linkedin.photon.ml.evaluation.EvaluatorType.AUC
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
 
 /**
@@ -77,7 +78,7 @@ class GameEstimatorTest {
     val featureShardId = "id"
     val trainingTask = TaskType.LINEAR_REGRESSION
     val coordinateDescentIter = 1
-    val computeVariance = true
+    val varianceComputationType = VarianceComputationType.FULL
     val treeAggregateDepth = 2
     val validationEvaluators = Seq(AUC)
     val updateSeq = Seq(coordinateId1, coordinateId2)
@@ -98,7 +99,7 @@ class GameEstimatorTest {
       .setCoordinateNormalizationContexts(normalizationConfigs)
       .setInitialModel(mockPretrainedModel)
       .setPartialRetrainLockedCoordinates(lockedCoordinates)
-      .setComputeVariance(computeVariance)
+      .setVarianceComputation(varianceComputationType)
       .setTreeAggregateDepth(treeAggregateDepth)
       .setValidationEvaluators(validationEvaluators)
 
@@ -232,7 +233,7 @@ class GameEstimatorTest {
 
     estimator.getOrDefault(estimator.coordinateDescentIterations)
     estimator.getOrDefault(estimator.inputColumnNames)
-    estimator.getOrDefault(estimator.computeVariance)
+    estimator.getOrDefault(estimator.varianceComputationType)
     estimator.getOrDefault(estimator.treeAggregateDepth)
   }
 

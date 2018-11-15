@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.data.{FixedEffectDataset, LocalDataset, RandomEffe
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunctionHelper, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.normalization.NormalizationContextBroadcast
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType}
+import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType, VarianceComputationType}
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 
@@ -52,8 +52,8 @@ class CoordinateFactoryTest {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION_BROADCAST,
-      TRACK_STATE,
-      COMPUTE_VARIANCE)
+      VARIANCE_COMPUTATION_TYPE,
+      TRACK_STATE)
 
     coordinate match {
       case _: FixedEffectCoordinate[DistributedObjectiveFunction] =>
@@ -83,8 +83,8 @@ class CoordinateFactoryTest {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION_BROADCAST,
-      TRACK_STATE,
-      COMPUTE_VARIANCE)
+      VARIANCE_COMPUTATION_TYPE,
+      TRACK_STATE)
 
     coordinate match {
       case _: RandomEffectCoordinate[SingleNodeObjectiveFunction] =>
@@ -110,8 +110,8 @@ class CoordinateFactoryTest {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION_BROADCAST,
-      TRACK_STATE,
-      COMPUTE_VARIANCE)
+      VARIANCE_COMPUTATION_TYPE,
+      TRACK_STATE)
   }
 }
 
@@ -122,8 +122,8 @@ object CoordinateFactoryTest {
   private val MAX_ITER = 1
   private val TOLERANCE = 2E-2
   private val TREE_AGGREGATE_DEPTH = 1
+  private val VARIANCE_COMPUTATION_TYPE = VarianceComputationType.NONE
   private val TRACK_STATE = true
-  private val COMPUTE_VARIANCE = false
 
   private val OPTIMIZER_CONFIG = OptimizerConfig(OPTIMIZER_TYPE, MAX_ITER, TOLERANCE)
   private val MOCK_NORMALIZATION_BROADCAST = mock(classOf[NormalizationContextBroadcast])

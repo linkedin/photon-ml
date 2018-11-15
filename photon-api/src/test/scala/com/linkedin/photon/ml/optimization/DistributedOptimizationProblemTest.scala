@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. All rights reserved.
+ * Copyright 2018 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -25,9 +25,9 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
-import com.linkedin.photon.ml.function.glm.SingleNodeGLMLossFunction
-import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.DistributedObjectiveFunction
+import com.linkedin.photon.ml.function.glm.DistributedGLMLossFunction
+import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -36,9 +36,9 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
- * Unit tests for [[SingleNodeOptimizationProblem]].
+ * Unit tests for [[DistributedOptimizationProblem]].
  */
-class SingleNodeOptimizationProblemTest {
+class DistributedOptimizationProblemTest {
 
   private val DIMENSIONS: Int = 5
 
@@ -48,10 +48,10 @@ class SingleNodeOptimizationProblemTest {
   @DataProvider
   def varianceInput(): Array[Array[Any]] = {
 
-    val mockDiffFunction = mock(classOf[SingleNodeSmoothedHingeLossFunction])
-    val mockTwiceDiffFunction = mock(classOf[SingleNodeGLMLossFunction])
-    val mockOptimizerDiff = mock(classOf[Optimizer[SingleNodeSmoothedHingeLossFunction]])
-    val mockOptimizerTwiceDiff = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val mockDiffFunction = mock(classOf[DistributedSmoothedHingeLossFunction])
+    val mockTwiceDiffFunction = mock(classOf[DistributedGLMLossFunction])
+    val mockOptimizerDiff = mock(classOf[Optimizer[DistributedSmoothedHingeLossFunction]])
+    val mockOptimizerTwiceDiff = mock(classOf[Optimizer[DistributedGLMLossFunction]])
     val mockStatesTracker = mock(classOf[OptimizationStatesTracker])
 
     val hessianDiagonal = DenseVector(Array(1D, 0D, 2D))
@@ -91,19 +91,28 @@ class SingleNodeOptimizationProblemTest {
   @Test(dataProvider = "varianceInput")
   def testComputeVariances(
       varianceComputationType: VarianceComputationType,
-      optimizer: Optimizer[SingleNodeObjectiveFunction],
-      objectiveFunction: SingleNodeObjectiveFunction,
+      optimizer: Optimizer[DistributedObjectiveFunction],
+      objectiveFunction: DistributedObjectiveFunction,
       expected: Option[Vector[Double]]): Unit = {
 
-    val problem = new SingleNodeOptimizationProblem(
+    val mockSparkContext = mock(classOf[SparkContext])
+    val mockTrainingData = mock(classOf[RDD[LabeledPoint]])
+    val mockCoefficients = mock(classOf[Vector[Double]])
+    val mockBroadcast = mock(classOf[Broadcast[Vector[Double]]])
+
+    doReturn(mockSparkContext).when(mockTrainingData).sparkContext
+    doReturn(mockBroadcast).when(mockSparkContext).broadcast(mockCoefficients)
+    doReturn(mockCoefficients).when(mockBroadcast).value
+
+    val problem = new DistributedOptimizationProblem(
       optimizer,
       objectiveFunction,
+      samplerOption = None,
       LogisticRegressionModel.apply,
+      NoRegularizationContext,
       varianceComputationType)
-    val trainingData = mock(classOf[Iterable[LabeledPoint]])
-    val coefficients = mock(classOf[Vector[Double]])
 
-    assertEquals(problem.computeVariances(trainingData, coefficients), expected)
+    assertEquals(problem.computeVariances(mockTrainingData, mockCoefficients), expected)
   }
 
   /**
@@ -114,16 +123,20 @@ class SingleNodeOptimizationProblemTest {
 
     val normalization = NoNormalization()
 
-    val trainingData = mock(classOf[Iterable[LabeledPoint]])
-    val objectiveFunction = mock(classOf[SingleNodeGLMLossFunction])
-    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val sparkContext = mock(classOf[SparkContext])
+    val trainingData = mock(classOf[RDD[LabeledPoint]])
+    val objectiveFunction = mock(classOf[DistributedGLMLossFunction])
+    val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val state = mock(classOf[OptimizerState])
+    val broadcastCoefficients = mock(classOf[Broadcast[Vector[Double]]])
     val broadcastNormalization = mock(classOf[BroadcastWrapper[NormalizationContext]])
     val initialModel = mock(classOf[GeneralizedLinearModel])
     val coefficients = mock(classOf[Coefficients])
     val means = mock(classOf[Vector[Double]])
 
+    doReturn(sparkContext).when(trainingData).sparkContext
+    doReturn(broadcastCoefficients).when(sparkContext).broadcast(means)
     doReturn(broadcastNormalization).when(optimizer).getNormalizationContext
     doReturn(normalization).when(broadcastNormalization).value
     doReturn((means, None)).when(optimizer).optimize(objectiveFunction, means)(trainingData)
@@ -134,10 +147,12 @@ class SingleNodeOptimizationProblemTest {
     doReturn(coefficients).when(initialModel).coefficients
     doReturn(means).when(coefficients).means
 
-    val problem = new SingleNodeOptimizationProblem(
+    val problem = new DistributedOptimizationProblem(
       optimizer,
       objectiveFunction,
+      samplerOption = None,
       LogisticRegressionModel.apply,
+      NoRegularizationContext,
       VarianceComputationType.NONE)
 
     val model = problem.run(trainingData, initialModel)
