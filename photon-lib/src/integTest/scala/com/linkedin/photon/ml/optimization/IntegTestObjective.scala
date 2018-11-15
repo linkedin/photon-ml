@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 /**
  * Test function used solely to exercise the optimizers.
  *
- * This function has known minimum at {@link IntegTestObjective.CENTROID}.
+ * This function has known minimum at [[IntegTestObjective.CENTROID]].
  */
 class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends ObjectiveFunction with TwiceDiffFunction {
 
@@ -42,6 +42,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
   override protected[ml] def cleanupCoefficients(coefficients: Coefficients): Unit = coefficients.unpersist()
 
   /**
+   * Compute the value of the function over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the objective value
    * @param coefficients The model coefficients used to compute the function's value
@@ -55,6 +56,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
     calculate(input, coefficients, normalizationContext)._1
 
   /**
+   * Compute the gradient of the function over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the gradient
    * @param coefficients The model coefficients used to compute the function's gradient
@@ -68,6 +70,8 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
     calculate(input, coefficients, normalizationContext)._2
 
   /**
+   * Compute both the value and the gradient of the function for the given model coefficients (computing value and
+   * gradient at once is sometimes more efficient than computing them sequentially).
    *
    * @param input The given data over which to compute the value and gradient
    * @param coefficients The model coefficients used to compute the function's value and gradient
@@ -94,6 +98,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
   }
 
   /**
+   * Compute (Hessian * d_i) over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the Hessian
    * @param coefficients The model coefficients used to compute the function's hessian, multiplied by a given vector
@@ -122,6 +127,14 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
   /**
    * Unused, only implemented as part of TwiceDiffFunction.
    */
+  override protected[ml] def hessianDiagonal(
+      input: RDD[LabeledPoint],
+      coefficients: Broadcast[Vector[Double]]): Vector[Double] =
+    Coefficients.initializeZeroCoefficients(coefficients.value.size).means
+
+  /**
+   * Unused, only implemented as part of TwiceDiffFunction.
+   */
   override protected[ml] def hessianMatrix(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]]): DenseMatrix[Double] =
@@ -130,6 +143,7 @@ class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends Obje
 }
 
 object IntegTestObjective {
+
   val CENTROID = Math.PI
 
   /**
