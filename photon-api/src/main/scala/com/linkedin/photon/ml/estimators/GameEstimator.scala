@@ -36,6 +36,8 @@ import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.model.{GameModel, RandomEffectModel, RandomEffectModelInProjectedSpace}
 import com.linkedin.photon.ml.normalization._
+import com.linkedin.photon.ml.optimization.VarianceComputationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.projector.{IdentityProjection, IndexMapProjectorRDD, ProjectionMatrixBroadcast}
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
@@ -109,9 +111,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "partial retrain locked coordinates",
     "The set of coordinates present in the pre-trained model to reuse during partial retraining.")
 
-  val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
-    "compute variance",
-    "Whether to compute (approximate) coefficient variance.")
+  val varianceComputationType: Param[VarianceComputationType] = ParamUtils.createParam[VarianceComputationType](
+    "variance computation type",
+    "Whether to compute coefficient variances and, if so, how.")
 
   val treeAggregateDepth: Param[Int] = ParamUtils.createParam[Int](
     "tree aggregate depth",
@@ -158,7 +160,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   def setPartialRetrainLockedCoordinates(value: Set[CoordinateId]): this.type =
     set(partialRetrainLockedCoordinates, value)
 
-  def setComputeVariance(value: Boolean): this.type = set(computeVariance, value)
+  def setVarianceComputation(value: VarianceComputationType): this.type = set(varianceComputationType, value)
 
   def setTreeAggregateDepth(value: Int): this.type = set(treeAggregateDepth, value)
 
@@ -193,7 +195,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(inputColumnNames, InputColumnsNames())
     setDefault(coordinateDescentIterations, 1)
     setDefault(partialRetrainLockedCoordinates, Set.empty[CoordinateId])
-    setDefault(computeVariance, false)
+    setDefault(varianceComputationType, VarianceComputationType.NONE)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
     setDefault(ignoreThresholdForNewModels, false)
   }
@@ -708,7 +710,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     val task = getRequiredParam(trainingTask)
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
-    val variance = getOrDefault(computeVariance)
+    val variance = getOrDefault(varianceComputationType)
     val lossFunctionFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
     val glmConstructor = task match {
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
@@ -740,8 +742,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               glmConstructor,
               downSamplerFactory,
               normalizationContextsWrappers(coordinateId),
-              TRACK_STATE,
-              variance)
+              variance,
+              TRACK_STATE)
           }
 
           (coordinateId, coordinate)

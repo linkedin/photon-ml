@@ -16,11 +16,13 @@ package com.linkedin.photon.ml.optimization
 
 import scala.collection.mutable
 import scala.math.abs
+
 import breeze.linalg.{Vector, sum}
 
 import com.linkedin.photon.ml.function.{L2Regularization, ObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging}
 
@@ -32,13 +34,13 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging}
  * @param optimizer The underlying optimizer which iteratively solves the convex problem
  * @param objectiveFunction The objective function to optimize
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
- * @param isComputingVariances Should coefficient variances be computed in addition to the means?
+ * @param varianceComputation If an how to compute coefficient variances
  */
 protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: ObjectiveFunction](
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
-    isComputingVariances: Boolean) extends Logging {
+    varianceComputation: VarianceComputationType) extends Logging {
 
   protected val modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]] =
     if (optimizer.isTrackingState) Some(new mutable.ListBuffer[ModelTracker]()) else None

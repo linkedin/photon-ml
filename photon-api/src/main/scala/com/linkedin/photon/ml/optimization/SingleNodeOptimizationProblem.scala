@@ -21,6 +21,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
 import com.linkedin.photon.ml.util.BroadcastWrapper
@@ -34,30 +35,35 @@ import com.linkedin.photon.ml.util.Linalg.choleskyInverse
  * @param optimizer The underlying optimizer which iteratively solves the convex problem
  * @param objectiveFunction The objective function to optimize
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
- * @param isComputingVariances Should coefficient variances be computed in addition to the means?
+ * @param varianceComputationType If an how to compute coefficient variances
  */
 protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjectiveFunction] protected[optimization] (
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
-    isComputingVariances: Boolean)
+    varianceComputationType: VarianceComputationType)
   extends GeneralizedLinearOptimizationProblem[Objective](
     optimizer,
     objectiveFunction,
     glmConstructor,
-    isComputingVariances)
+    varianceComputationType)
   with Serializable {
 
   /**
-   * Compute coefficient variances
+   * Compute coefficient variances (if enabled).
    *
    * @param input The training data
    * @param coefficients The feature coefficients means
-   * @return The feature coefficient variances
+   * @return An optional feature coefficient variances vector
    */
-  override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
-    (isComputingVariances, objectiveFunction) match {
-      case (true, twiceDiffFunc: TwiceDiffFunction) =>
+  override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
+    (objectiveFunction, varianceComputationType) match {
+      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
+        Some(twiceDiffFunc
+          .hessianDiagonal(input, coefficients)
+          .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
+
+      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, coefficients)
         val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
 
@@ -66,7 +72,6 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
       case _ =>
         None
     }
-  }
 
   /**
    * Run the optimization algorithm on the input data, starting from an initial model of all-0 coefficients.
@@ -85,19 +90,22 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
    * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
    */
   override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+
     val normalizationContext = optimizer.getNormalizationContext
     val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
 
     modelTrackerBuilder.foreach { modelTrackerBuilder =>
+
       val tracker = optimizer.getStateTracker.get
       logger.info(s"History tracker information:\n $tracker")
-      val modelsPerIteration = tracker.getTrackedStates.map { x =>
-        val coefficients = x.coefficients
-        createModel(normalizationContext, coefficients, variances = None)
-      }
+
+      val modelsPerIteration = tracker
+        .getTrackedStates
+        .map(x => createModel(normalizationContext, x.coefficients, variances = None))
       logger.info(s"Number of iterations: ${modelsPerIteration.length}")
-      modelTrackerBuilder += new ModelTracker(tracker, modelsPerIteration)
+
+      modelTrackerBuilder += ModelTracker(tracker, modelsPerIteration)
     }
 
     createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
@@ -105,6 +113,7 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
 }
 
 object SingleNodeOptimizationProblem {
+
   /**
    * Factory method to create new SingleNodeOptimizationProblems.
    *
@@ -112,8 +121,8 @@ object SingleNodeOptimizationProblem {
    * @param objectiveFunction The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
+   * @param varianceComputationType If an how to compute coefficient variances
    * @param isTrackingState Should the optimization problem record the internal optimizer states?
-   * @param isComputingVariance Should coefficient variances be computed in addition to the means?
    * @return A new SingleNodeOptimizationProblem
    */
   def apply[Function <: SingleNodeObjectiveFunction](
@@ -121,8 +130,8 @@ object SingleNodeOptimizationProblem {
       objectiveFunction: Function,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: BroadcastWrapper[NormalizationContext],
-      isTrackingState: Boolean,
-      isComputingVariance: Boolean): SingleNodeOptimizationProblem[Function] = {
+      varianceComputationType: VarianceComputationType,
+      isTrackingState: Boolean): SingleNodeOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -137,6 +146,6 @@ object SingleNodeOptimizationProblem {
       optimizer,
       objectiveFunction,
       glmConstructor,
-      isComputingVariance)
+      varianceComputationType)
   }
 }

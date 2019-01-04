@@ -324,11 +324,11 @@ object NormalizationContextIntegTest {
     (normalizationContext.factorsOpt, normalizationContext.shiftsAndInterceptOpt) match {
       case (Some(fs), Some((ss, _))) =>
         require(fs.size == input.size, "Vector size and the scaling factor size are different.")
-        (input - ss) :* fs
+        (input - ss) *:* fs
 
       case (Some(fs), None) =>
         require(fs.size == input.size, "Vector size and the scaling factor size are different.")
-        input :* fs
+        input *:* fs
 
       case (None, Some((ss, _))) =>
         require(ss.size == input.size, "Vector size and the scaling factor size are different.")

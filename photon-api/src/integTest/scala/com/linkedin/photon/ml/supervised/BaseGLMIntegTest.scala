@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.supervised
 
 import breeze.linalg.Vector
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.testng.Assert.assertTrue
 import org.testng.annotations.{DataProvider, Test}
@@ -115,15 +114,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
     Array(
       Array(
         "Linear regression, easy problem",
-        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
+        (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(lbfgsConfig, SquaredLossFunction, treeAggregateDepth = 1),
             None,
             LinearRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.TRACK_STATES,
-            BaseGLMIntegTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
+            BaseGLMIntegTest.TRACK_STATES),
         linearRegressionData,
         new CompositeModelValidator[LinearRegressionModel](
           new PredictionFiniteValidator(),
@@ -131,15 +130,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
 
       Array(
         "Poisson regression, easy problem",
-        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
+        (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(lbfgsConfig, PoissonLossFunction, treeAggregateDepth = 1),
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.TRACK_STATES,
-            BaseGLMIntegTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
+            BaseGLMIntegTest.TRACK_STATES),
         poissonRegressionData,
         new CompositeModelValidator[PoissonRegressionModel](
           new PredictionFiniteValidator,
@@ -149,15 +148,15 @@ class BaseGLMIntegTest extends SparkTestUtils {
 
       Array(
         "Logistic regression, easy problem",
-        (sc: SparkContext, normalizationContext: BroadcastWrapper[NormalizationContext]) =>
+        (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
             DistributedGLMLossFunction(lbfgsConfig, LogisticLossFunction, treeAggregateDepth = 1),
             None,
             LogisticRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.TRACK_STATES,
-            BaseGLMIntegTest.COMPUTE_VARIANCES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
+            BaseGLMIntegTest.TRACK_STATES),
         logisticRegressionData,
         new CompositeModelValidator[LogisticRegressionModel](
           new PredictionFiniteValidator(),
@@ -174,7 +173,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
   @Test(dataProvider = "getGeneralizedLinearOptimizationProblems")
   def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
-      optimizationProblemBuilder: (SparkContext, BroadcastWrapper[NormalizationContext]) =>
+      optimizationProblemBuilder: (BroadcastWrapper[NormalizationContext]) =>
         DistributedOptimizationProblem[DistributedGLMLossFunction],
       data: Seq[LabeledPoint],
       validator: ModelValidator[GeneralizedLinearModel]): Unit = sparkTest(desc) {
@@ -183,7 +182,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
 
     // Step 1: Generate input RDD
     val trainingSet: RDD[LabeledPoint] = sc.parallelize(data).repartition(BaseGLMIntegTest.NUM_PARTITIONS)
-    val optimizationProblem = optimizationProblemBuilder(sc, normalizationContext)
+    val optimizationProblem = optimizationProblemBuilder(normalizationContext)
 
     // Step 2: Run optimization
     val models = BaseGLMIntegTest.LAMBDAS.map { lambda =>
@@ -225,8 +224,8 @@ object BaseGLMIntegTest {
   // Maximum allowable magnitude difference between predictions and labels for regression problems
   // (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)
   private val MAXIMUM_ERROR_MAGNITUDE: Double = 10 * SparkTestUtils.INLIER_STANDARD_DEVIATION
+  private val VARIANCE_COMPUTATION_TYPE = VarianceComputationType.NONE
   private val TRACK_STATES = true
-  private val COMPUTE_VARIANCES = false
 
   /**
    * Check that the loss value of the states in the [[OptimizationStatesTracker]] is monotonically decreasing.

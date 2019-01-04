@@ -30,8 +30,10 @@ import com.linkedin.photon.ml.io.scopt.{ScoptParameter, ScoptParserHelpers, Scop
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.util.{DateRange, DaysRange}
-import com.linkedin.photon.ml.{HyperparameterTunerName, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{HyperparameterTuningMode, TaskType}
 
 /**
  * Scopt command line argument parser for GAME training parameters.
@@ -138,8 +140,7 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
       // Hyper Parameter Tuner Name
       ScoptParameter[HyperparameterTunerName, HyperparameterTunerName](
         GameTrainingDriver.hyperParameterTunerName,
-        usageText = "<type>",
-        additionalDocs = Seq(s"output tuner: ${HyperparameterTunerName.values.map(_.toString).mkString(", ")}")),
+        usageText = "<type>"),
 
       // Hyper Parameter Tuning
       ScoptParameter[HyperparameterTuningMode, HyperparameterTuningMode](
@@ -153,8 +154,9 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
         usageText = "<value>"),
 
       // Compute Variance
-      ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.computeVariance),
+      ScoptParameter[VarianceComputationType, VarianceComputationType](
+        GameTrainingDriver.varianceComputationType,
+        additionalDocs = Seq(s"options: ${VarianceComputationType.values.map(_.toString).mkString(", ")}")),
 
       // Model Sparsity Threshold
       ScoptParameter[Double, Double](

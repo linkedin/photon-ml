@@ -168,8 +168,8 @@ object ModelTraining extends Logging {
       samplerOption = None,
       glmConstructor,
       broadcastNormalizationContext,
-      enableOptimizationStateTracker,
-      isComputingVariance = false)
+      VarianceComputationType.NONE,
+      enableOptimizationStateTracker)
 
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)

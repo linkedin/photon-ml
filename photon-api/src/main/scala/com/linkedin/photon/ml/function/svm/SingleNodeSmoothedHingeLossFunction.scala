@@ -43,9 +43,9 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
    * @return The computed value of the function
    */
   override protected[ml] def value(
-    input: Iterable[LabeledPoint],
-    coefficients: Vector[Double],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
   /**
@@ -57,9 +57,9 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
    * @return The computed gradient of the function
    */
   override protected[ml] def gradient(
-    input: Iterable[LabeledPoint],
-    coefficients: Vector[Double],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
   /**
@@ -72,9 +72,9 @@ protected[ml] class SingleNodeSmoothedHingeLossFunction extends SingleNodeObject
    * @return The computed value and gradient of the function
    */
   override protected[ml] def calculate(
-    input: Iterable[LabeledPoint],
-    coefficients: Vector[Double],
-    normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
     val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
 
     input.aggregate((0.0, initialCumGradient))(

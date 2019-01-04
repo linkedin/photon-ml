@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  * Trait for a differentiable function.
  */
 trait DiffFunction extends ObjectiveFunction {
+
   /**
    * Compute the gradient of the function over the given data for the given model coefficients.
    *

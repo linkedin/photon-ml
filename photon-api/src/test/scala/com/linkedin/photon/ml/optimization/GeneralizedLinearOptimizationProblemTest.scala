@@ -35,6 +35,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils.generateDenseVector
  * Test the base function in [[GeneralizedLinearOptimizationProblem]] common to all optimization problems.
  */
 class GeneralizedLinearOptimizationProblemTest {
+
   import GeneralizedLinearOptimizationProblemTest._
 
   @Test
@@ -209,7 +210,7 @@ object GeneralizedLinearOptimizationProblemTest {
       optimizer,
       objectiveFunction,
       glmConstructor,
-      false) {
+      VarianceComputationType.NONE) {
 
     private val mockGLM = mock(classOf[GeneralizedLinearModel])
 
@@ -218,17 +219,12 @@ object GeneralizedLinearOptimizationProblemTest {
     //
 
     /**
-     *
-     * @param dimension
-     * @return
+     * Public version of [[initializeZeroModel]].
      */
     def publicInitializeZeroModel(dimension: Int): GeneralizedLinearModel = initializeZeroModel(dimension)
 
     /**
-     *
-     * @param coefficients
-     * @param variances
-     * @return
+     * Publi version of [[createModel]]
      */
     def publicCreateModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GeneralizedLinearModel =
       createModel(coefficients, variances)
@@ -238,26 +234,18 @@ object GeneralizedLinearOptimizationProblemTest {
     //
 
     /**
-     *
-     * @param input The training data
-     * @param coefficients The feature coefficients means
-     * @return The feature coefficient variances
+     * Unused - needs definition for testing.
      */
     override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
       None
 
     /**
-     *
-     * @param input The training data
-     * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
+     * Unused - needs definition for testing.
      */
     override def run(input: Iterable[LabeledPoint]): GeneralizedLinearModel = mockGLM
 
     /**
-     *
-     * @param input The training data
-     * @param initialModel The initial model from which to begin optimization
-     * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
+     * Unused - needs definition for testing.
      */
     override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel =
       mockGLM

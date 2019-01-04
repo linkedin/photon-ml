@@ -29,6 +29,7 @@ import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfigura
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization.NormalizationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.util.{DateRange, PhotonLogger}
 
 /**
@@ -77,9 +78,10 @@ class GameTrainingDriverTest {
     val coordinateId2 = "id2"
     val featureShardId = "id"
 
-    val mockBoolean = true
-    val mockInt = 10
     val mockString = "text"
+    val mockInt = 10
+    val mockVarianceComputationType = VarianceComputationType.FULL
+    val mockBoolean = true
 
     val mockPath = mock(classOf[Path])
     val mockDateRange = mock(classOf[DateRange])
@@ -124,7 +126,7 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.hyperParameterTunerName, HyperparameterTunerName.DUMMY)
       .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
       .put(GameTrainingDriver.hyperParameterTuningIter, mockInt)
-      .put(GameTrainingDriver.computeVariance, mockBoolean)
+      .put(GameTrainingDriver.varianceComputationType, mockVarianceComputationType)
 
     GameTrainingDriver.validateParams(validParamMap)
   }
@@ -265,7 +267,7 @@ class GameTrainingDriverTest {
     GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTunerName)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.computeVariance)
+    GameTrainingDriver.getOrDefault(GameTrainingDriver.varianceComputationType)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.logLevel)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.applicationName)

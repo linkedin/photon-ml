@@ -23,8 +23,9 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  * Trait for twice differentiable function.
  */
 trait TwiceDiffFunction extends DiffFunction {
+
   /**
-   * Compute (Hessian * d_i) of the function over the given data for the given model coefficients.
+   * Compute (Hessian * d_i) over the given data for the given model coefficients.
    *
    * @note For more information, see [[http://www.csie.ntu.edu.tw/%7Ecjlin/papers/logistic.pdf]]
    *
@@ -42,6 +43,15 @@ trait TwiceDiffFunction extends DiffFunction {
     normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
 
   /**
+   * Compute the diagonal of the Hessian matrix over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed diagonal of the Hessian matrix
+   */
+  protected[ml] def hessianDiagonal(input: Data, coefficients: Coefficients): Vector[Double]
+
+  /**
    * Compute the Hessian matrix over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the diagonal of the Hessian matrix
@@ -49,5 +59,4 @@ trait TwiceDiffFunction extends DiffFunction {
    * @return The computed Hessian matrix
    */
   protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double]
-
 }

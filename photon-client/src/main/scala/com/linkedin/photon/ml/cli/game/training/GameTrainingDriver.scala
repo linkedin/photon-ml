@@ -40,6 +40,8 @@ import com.linkedin.photon.ml.io.scopt.game.ScoptGameTrainingParametersParser
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
+import com.linkedin.photon.ml.optimization.VarianceComputationType
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
 import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
@@ -156,9 +158,9 @@ object GameTrainingDriver extends GameDriver {
     "Number of iterations of hyperparameter tuning to perform (if enabled).",
     ParamValidators.gt[Int](0.0))
 
-  val computeVariance: Param[Boolean] = ParamUtils.createParam[Boolean](
-    "compute variance",
-    "Whether to compute the coefficient variances.")
+  val varianceComputationType: Param[VarianceComputationType] = ParamUtils.createParam[VarianceComputationType](
+    "variance computation type",
+    "Whether to compute coefficient variances and, if so, how.")
 
   val modelSparsityThreshold: Param[Double] = ParamUtils.createParam[Double](
     "model sparsity threshold",
@@ -208,7 +210,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(normalization, NormalizationType.NONE)
     setDefault(hyperParameterTunerName, HyperparameterTunerName.DUMMY)
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
-    setDefault(computeVariance, false)
+    setDefault(varianceComputationType, VarianceComputationType.NONE)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
     setDefault(logLevel, PhotonLogger.LogLevelInfo)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
@@ -448,7 +450,7 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateDataConfigurations(coordinateDataConfigs)
         .setCoordinateUpdateSequence(getRequiredParam(coordinateUpdateSequence))
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
-        .setComputeVariance(getOrDefault(computeVariance))
+        .setVarianceComputation(getOrDefault(varianceComputationType))
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)

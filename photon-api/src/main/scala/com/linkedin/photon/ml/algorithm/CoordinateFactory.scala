@@ -20,6 +20,7 @@ import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveF
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextWrapper}
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.sampling.DownSamplerHelper.DownSamplerFactory
@@ -44,7 +45,7 @@ object CoordinateFactory {
    * @param downSamplerFactory A factory function for the [[DownSampler]] (if down-sampling is enabled)
    * @param normalizationContextWrapper A wrapper for the [[com.linkedin.photon.ml.normalization.NormalizationContext]]
    * @param trackState Should the internal optimization states be recorded?
-   * @param computeVariance Should the trained coefficient variances be computed in addition to the means?
+   * @param varianceComputationType Should the trained coefficient variances be computed in addition to the means?
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
    */
   def build[D <: Dataset[D]](
@@ -54,8 +55,8 @@ object CoordinateFactory {
       glmConstructor: (Coefficients) => GeneralizedLinearModel,
       downSamplerFactory: DownSamplerFactory,
       normalizationContextWrapper: NormalizationContextWrapper,
-      trackState: Boolean,
-      computeVariance: Boolean): Coordinate[D] = {
+      varianceComputationType: VarianceComputationType,
+      trackState: Boolean): Coordinate[D] = {
 
     val lossFunction: ObjectiveFunction = lossFunctionConstructor(coordinateOptConfig)
 
@@ -80,8 +81,8 @@ object CoordinateFactory {
             downSamplerOpt,
             glmConstructor,
             PhotonBroadcast(normalizationContextBroadcast.context),
-            trackState,
-            computeVariance)).asInstanceOf[Coordinate[D]]
+            varianceComputationType,
+            trackState)).asInstanceOf[Coordinate[D]]
 
       case (
         rEDataset: RandomEffectDatasetInProjectedSpace,
@@ -97,8 +98,8 @@ object CoordinateFactory {
             singleNodeLossFunction,
             glmConstructor,
             normalizationContextWrapper,
-            trackState,
-            computeVariance)).asInstanceOf[Coordinate[D]]
+            varianceComputationType,
+            trackState)).asInstanceOf[Coordinate[D]]
 
       case _ =>
         throw new UnsupportedOperationException(
