@@ -31,8 +31,8 @@ class RandomEffectDatasetInProjectedSpace(
   extends RandomEffectDataset(
     randomEffectDatasetInProjectedSpace.activeData,
     randomEffectDatasetInProjectedSpace.uniqueIdToRandomEffectIds,
-    randomEffectDatasetInProjectedSpace.passiveDataOption,
-    randomEffectDatasetInProjectedSpace.passiveDataRandomEffectIdsOption,
+    randomEffectDatasetInProjectedSpace.passiveData,
+    randomEffectDatasetInProjectedSpace.passiveDataRandomEffectIds,
     randomEffectDatasetInProjectedSpace.randomEffectType,
     randomEffectDatasetInProjectedSpace.featureShardId) {
 
@@ -94,6 +94,7 @@ class RandomEffectDatasetInProjectedSpace(
 }
 
 object RandomEffectDatasetInProjectedSpace {
+
   /**
    * Build an instance of a random effect dataset in projected space with the given projector type.
    *

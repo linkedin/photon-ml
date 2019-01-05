@@ -360,7 +360,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * photon-ml. Hyperparameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
 //  @Test
-//  def c(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
+//  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
 //
 //    val hyperParameterTuningIter = 1
 //    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
