@@ -118,7 +118,7 @@ class NameAndTermFeatureBagsDriverTest {
   /**
    * Test that set parameters can be cleared correctly.
    */
-  @Test
+  @Test(dependsOnMethods = Array("testDefaultParams"))
   def testClear(): Unit = {
 
     val mockPath = mock(classOf[Path])

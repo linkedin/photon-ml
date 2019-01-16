@@ -166,11 +166,11 @@ protected[ml] class RandomEffectDataset(
   }
 
   /**
-   * Update the data set.
+   * Update the dataset.
    *
    * @param updatedActiveData Updated active data
    * @param updatedPassiveData Updated passive data
-   * @return A new updated data set
+   * @return A new updated dataset
    */
   def update(
       updatedActiveData: RDD[(REId, LocalDataset)],
@@ -396,7 +396,7 @@ object RandomEffectDataset {
   }
 
   /**
-   * Generate passive data set.
+   * Generate passive dataset.
    *
    * @param gameDataset The raw input dataset
    * @param activeData The active dataset
