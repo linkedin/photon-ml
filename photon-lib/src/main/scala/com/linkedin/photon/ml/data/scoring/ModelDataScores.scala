@@ -24,10 +24,10 @@ import com.linkedin.photon.ml.data.GameDatum
  * The class used to track scored data points throughout scoring and validation. The score objects are
  * [[ScoredGameDatum]], full data points with score information.
  *
- * @param scores Data point scores, as described above
+ * @param scoresRdd Data point scores, as described above
  */
-class ModelDataScores(override val scores: RDD[(UniqueSampleId, ScoredGameDatum)])
-  extends DataScores[ScoredGameDatum, ModelDataScores](scores) {
+class ModelDataScores(override val scoresRdd: RDD[(UniqueSampleId, ScoredGameDatum)])
+  extends DataScores[ScoredGameDatum, ModelDataScores](scoresRdd) {
 
   /**
    * Generic method to combine two [[ModelDataScores]] objects.
@@ -41,8 +41,8 @@ class ModelDataScores(override val scores: RDD[(UniqueSampleId, ScoredGameDatum)
       that: ModelDataScores): ModelDataScores =
     new ModelDataScores(
       this
-        .scores
-        .cogroup(that.scores)
+        .scoresRdd
+        .cogroup(that.scoresRdd)
         .mapValues {
           case (Seq(sd1), Seq(sd2)) => op(sd1, sd2)
           case (Seq(), Seq(sd2)) => op(sd2.getZeroScoreDatum, sd2)

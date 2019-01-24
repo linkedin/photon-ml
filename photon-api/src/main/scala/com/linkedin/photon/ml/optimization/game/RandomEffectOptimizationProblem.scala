@@ -18,6 +18,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
@@ -40,7 +41,7 @@ import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
  *                             optimization problem
  */
 protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjectiveFunction](
-    val optimizationProblems: RDD[(String, SingleNodeOptimizationProblem[Objective])],
+    val optimizationProblems: RDD[(REId, SingleNodeOptimizationProblem[Objective])],
     val isTrackingState: Boolean)
   extends RDDLike {
 
@@ -119,7 +120,7 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @param modelsRDD The trained models
    * @return The combined regularization term value
    */
-  def getRegularizationTermValue(modelsRDD: RDD[(String, GeneralizedLinearModel)]): Double =
+  def getRegularizationTermValue(modelsRDD: RDD[(REId, GeneralizedLinearModel)]): Double =
     optimizationProblems
       .join(modelsRDD)
       .map {

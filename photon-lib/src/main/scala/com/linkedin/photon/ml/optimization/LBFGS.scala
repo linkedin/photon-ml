@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.Vector
 import breeze.optimize.{FirstOrderMinimizer, DiffFunction => BreezeDiffFunction, LBFGS => BreezeLBFGS}
-import org.apache.spark.broadcast.Broadcast
+
 import com.linkedin.photon.ml.function.DiffFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.BroadcastWrapper

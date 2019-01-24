@@ -303,7 +303,7 @@ object CoordinateDescent {
     }
 
     Timed(s"Compute evaluation metrics") {
-      val results = evaluationSuite.evaluate(validatingScores.scores)
+      val results = evaluationSuite.evaluate(validatingScores.scoresRdd)
 
       results
         .evaluations

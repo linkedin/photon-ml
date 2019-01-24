@@ -24,10 +24,10 @@ import com.linkedin.photon.ml.data.GameDatum
  * The class used to track scored data points throughout training. The score objects are scores only, with no additional
  * information.
  *
- * @param scores The scores consist of (unique ID, score) pairs as explained above.
+ * @param scoresRdd The scores consist of (unique ID, score) pairs as explained above.
  */
-protected[ml] class CoordinateDataScores(override val scores: RDD[(UniqueSampleId, Double)])
-  extends DataScores[Double, CoordinateDataScores](scores) {
+protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSampleId, Double)])
+  extends DataScores[Double, CoordinateDataScores](scoresRdd) {
 
   /**
    * Generic method to combine two [[CoordinateDataScores]] objects.
@@ -39,8 +39,8 @@ protected[ml] class CoordinateDataScores(override val scores: RDD[(UniqueSampleI
   private def joinAndApply(op: (Double, Double) => Double, that: CoordinateDataScores): CoordinateDataScores =
     new CoordinateDataScores(
       this
-        .scores
-        .fullOuterJoin(that.scores)
+        .scoresRdd
+        .fullOuterJoin(that.scoresRdd)
         .mapValues { case (thisScore, thatScore) => op(thisScore.getOrElse(0.0), thatScore.getOrElse(0.0)) })
 
   /**

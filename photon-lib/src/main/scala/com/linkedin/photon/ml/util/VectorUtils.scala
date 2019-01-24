@@ -25,7 +25,7 @@ import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVec
  */
 object VectorUtils {
 
-  protected[ml] val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1.0 / 3
+  protected[ml] val SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO: Double = 1D / 3D
   protected[ml] val DEFAULT_SPARSITY_THRESHOLD: Double = 1e-4
 
   /**

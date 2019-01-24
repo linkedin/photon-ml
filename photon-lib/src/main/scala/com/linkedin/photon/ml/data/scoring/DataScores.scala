@@ -21,16 +21,17 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
  * A base class for tracking scored data points, where the scores are stored in an [[RDD]] which associates the unique
  * ID of a data point with a score object.
  *
- * @param scores Data point scores, as described above
+ * @param scoresRdd Data point scores, as described above
  */
 abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
-    val scores: RDD[(Long, T)])
+    val scoresRdd: RDD[(UniqueSampleId, T)])
   extends RDDLike {
 
   /**
@@ -56,54 +57,54 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    *
    * @return The Spark context
    */
-  override def sparkContext: SparkContext = scores.sparkContext
+  override def sparkContext: SparkContext = scoresRdd.sparkContext
 
   /**
-   * Set the name of [[scores]].
+   * Set the name of [[scoresRdd]].
    *
    * @param name The parent name for all [[RDD]]s in this class
-   * @return This object with the name of [[scores]] assigned
+   * @return This object with the name of [[scoresRdd]] assigned
    */
   override def setName(name: String): RDDLike = {
 
-    scores.setName(name)
+    scoresRdd.setName(name)
 
     this
   }
 
   /**
-   * Set the storage level of [[scores]].
+   * Set the storage level of [[scoresRdd]].
    *
    * @param storageLevel The storage level
-   * @return This object with the storage level of [[scores]] set
+   * @return This object with the storage level of [[scoresRdd]] set
    */
   override def persistRDD(storageLevel: StorageLevel): RDDLike = {
 
-    if (!scores.getStorageLevel.isValid) scores.persist(storageLevel)
+    if (!scoresRdd.getStorageLevel.isValid) scoresRdd.persist(storageLevel)
 
     this
   }
 
   /**
-   * Mark [[scores]] as non-persistent, and remove all blocks for them from memory and disk.
+   * Mark [[scoresRdd]] as non-persistent, and remove all blocks for them from memory and disk.
    *
-   * @return This object with [[scores]] marked non-persistent
+   * @return This object with [[scoresRdd]] marked non-persistent
    */
   override def unpersistRDD(): RDDLike = {
 
-    if (scores.getStorageLevel.isValid) scores.unpersist()
+    if (scoresRdd.getStorageLevel.isValid) scoresRdd.unpersist()
 
     this
   }
 
   /**
-   * Materialize [[scores]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
+   * Materialize [[scoresRdd]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
    *
-   * @return This object with [[scores]] materialized
+   * @return This object with [[scoresRdd]] materialized
    */
   override def materialize(): RDDLike = {
 
-    scores.count()
+    scoresRdd.count()
 
     this
   }
@@ -128,8 +129,8 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
       case that: DataScores[T, D] =>
         canEqual(that) &&
           this
-            .scores
-            .fullOuterJoin(that.scores)
+            .scoresRdd
+            .fullOuterJoin(that.scoresRdd)
             .mapPartitions(iterator =>
               Iterator.single(iterator.forall {
                 case (_, (Some(thisScore), Some(thatScore))) => thisScore.equals(thatScore)
@@ -146,5 +147,5 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    *
    * @return An [[Int]] hash code
    */
-  override def hashCode: Int = scores.hashCode()
+  override def hashCode: Int = scoresRdd.hashCode()
 }

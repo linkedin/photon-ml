@@ -41,7 +41,7 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
     // Score before model update
     val score = coordinate.score(model)
-    assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertTrue(score.scoresRdd.map(_._2).collect.forall(MathUtils.isAlmostZero))
 
     // Train models
     val (newModelWithoutInitial, _) = coordinate.trainModel()
@@ -54,12 +54,12 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
     val newScoreWithoutInitial = coordinate.score(newModelWithoutInitial)
     val newScoreWithInitial = coordinate.score(newModelWithInitial)
 
-    assertFalse(newScoreWithoutInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
-    assertFalse(newScoreWithInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertFalse(newScoreWithoutInitial.scoresRdd.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertFalse(newScoreWithInitial.scoresRdd.map(_._2).collect.forall(MathUtils.isAlmostZero))
 
     newScoreWithoutInitial
-      .scores
-      .join(newScoreWithInitial.scores)
+      .scoresRdd
+      .join(newScoreWithInitial.scoresRdd)
       .values
       .foreach { case (score1, score2) =>
         assertEquals(score1, score2, MathConst.EPSILON)
@@ -78,8 +78,8 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
       DIMENSIONALITY)
 
     val score = coordinate.score(model)
-    assertEquals(score.scores.count, NUM_TRAINING_SAMPLES)
-    assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertEquals(score.scoresRdd.count, NUM_TRAINING_SAMPLES)
+    assertTrue(score.scoresRdd.map(_._2).collect.forall(MathUtils.isAlmostZero))
   }
 }
 

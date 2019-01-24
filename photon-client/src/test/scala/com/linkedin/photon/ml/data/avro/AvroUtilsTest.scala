@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.data.avro
 
-import scala.collection.Map
-
 import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
