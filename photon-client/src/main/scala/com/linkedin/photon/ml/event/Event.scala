@@ -19,7 +19,8 @@ import org.slf4j.Logger
 
 import com.linkedin.photon.ml.evaluation.Evaluation.MetricsMap
 import com.linkedin.photon.ml.Params
-import com.linkedin.photon.ml.supervised.model.ModelTracker
+import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Base trait for all consumable events.
@@ -53,12 +54,12 @@ case class TrainingFinishEvent(time: Long) extends Event
  * Event containing log information for the full optimization of a single Photon model.
  *
  * @param regWeight The regularization weight of the trained model
- * @param modelTracker The optimization states and intermediate models
- * @param perIterationMetrics The validation metrics for the intermediate models during optimization
+ * @param optimizationStatesTracker The optimization states
+ * @param perIterationModelsAndMetrics The intermediate models during optimization and their validation metrics
  * @param finalMetrics The validation metrics for the trained model
  */
 case class PhotonOptimizationLogEvent(
     regWeight: Double,
-    modelTracker: ModelTracker,
-    perIterationMetrics: Option[Array[MetricsMap]] = None,
+    optimizationStatesTracker: Option[OptimizationStatesTracker] = None,
+    perIterationModelsAndMetrics: Option[Array[(GeneralizedLinearModel, MetricsMap)]] = None,
     finalMetrics: Option[MetricsMap] = None) extends Event

@@ -27,6 +27,7 @@ import org.joda.time.{DateTimeZone, Days}
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.index.IndexMapLoader
+import com.linkedin.photon.ml.optimization.OptimizationStatesTracker
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
@@ -240,11 +241,11 @@ object IOUtils {
    */
   def writeModelsInText(
       sc: SparkContext,
-      models: Iterable[(Double, GeneralizedLinearModel)],
+      models: Iterable[(Double, GeneralizedLinearModel, Option[OptimizationStatesTracker])],
       modelDir: String,
       indexMapLoader: IndexMapLoader): Unit = {
 
-    models.foreach{ case (lambda, m) => println(lambda + ": " + m.toString)}
+    models.foreach{ case (lambda, m, _) => println(lambda + ": " + m.toString)}
 
     sc.parallelize(models.toSeq, models.size)
       .mapPartitions({ iter =>

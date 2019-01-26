@@ -14,56 +14,72 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import scala.collection.Map
-
 import breeze.linalg.Vector
-import org.testng.Assert.assertEquals
+import org.testng.Assert.{assertEquals, assertTrue}
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.FunctionValuesConverged
+import com.linkedin.photon.ml.util.{DidNotConverge, FunctionValuesConverged, GradientConverged}
 
 /**
  * Integration tests for [[RandomEffectOptimizationTracker]].
  */
 class RandomEffectOptimizationTrackerIntegTest extends SparkTestUtils {
 
+  /**
+   *
+   */
   @Test
-  def testCountConvergenceReasons(): Unit = sparkTest("testCountConvergenceReasons") {
+  def testApply(): Unit = sparkTest("testApply") {
+
+    // Tracker #1:
+    // Convergence Reason = Function Values Converged
+    // # Optimization States = 1
     val optimizationStatesTracker1 = new OptimizationStatesTracker()
     optimizationStatesTracker1.convergenceReason = Some(FunctionValuesConverged)
+    RandomEffectOptimizationTrackerIntegTest
+      .getDummyOptimizerStates(1)
+      .foreach(optimizationStatesTracker1.track)
+
+    // Tracker #2:
+    // Convergence Reason = Gradient Converged
+    // # Optimization States = 2
     val optimizationStatesTracker2 = new OptimizationStatesTracker()
-    val optimizationStatesTrackerAsRDD = sc.parallelize(Seq(optimizationStatesTracker1, optimizationStatesTracker2))
-    val randomEffectOptimizationTracker = new RandomEffectOptimizationTracker(optimizationStatesTrackerAsRDD)
-    assertEquals(randomEffectOptimizationTracker.countConvergenceReasons,
-      Map(FunctionValuesConverged.reason -> 1, RandomEffectOptimizationTracker.NOT_CONVERGED ->1))
-  }
+    optimizationStatesTracker2.convergenceReason = Some(GradientConverged)
+    RandomEffectOptimizationTrackerIntegTest
+      .getDummyOptimizerStates(2)
+      .foreach(optimizationStatesTracker2.track)
 
-  @Test
-  def testGetNumIterationStats(): Unit = sparkTest("testGetNumIterationStats") {
-    val emptyOptimizationStatesTracker = new OptimizationStatesTracker()
-    val normalOptimizationStatesTracker = new OptimizationStatesTracker()
-    val numStates = 5
-    RandomEffectOptimizationTrackerIntegTest.getDummyOptimizerStates(numStates)
-        .foreach(normalOptimizationStatesTracker.track)
-    val optimizationStatesTrackerAsRDD =
-      sc.parallelize(Seq(emptyOptimizationStatesTracker, normalOptimizationStatesTracker))
-    val randomEffectOptimizationTracker = new RandomEffectOptimizationTracker(optimizationStatesTrackerAsRDD)
-    val statCounter = sc.parallelize(Seq(0, numStates)).stats()
-    assertEquals(randomEffectOptimizationTracker.getNumIterationStats.toString(), statCounter.toString())
-  }
+    // Tracker #3:
+    // Convergence Reason = None
+    // # Optimization States = 0
+    val optimizationStatesTracker3 = new OptimizationStatesTracker()
 
-  @Test
-  def testGetElapsedTimeStats(): Unit = sparkTest("testGetNumIterationStats") {
-    // here we only test the empty case that PR https://github.com/linkedin/photon-ml/pull/115 is trying to address
+    // Create RDD of OptimizationStateTrackers objects, and use it to create RandomEffectOptimizationStateTracker
+    val statesTrackerRdd =
+      sc.parallelize(Seq(optimizationStatesTracker1, optimizationStatesTracker2, optimizationStatesTracker3))
+    val randomEffectOptimizationTracker = RandomEffectOptimizationTracker(statesTrackerRdd)
 
-    val emptyOptimizationStatesTracker1 = new OptimizationStatesTracker()
-    val emptyOptimizationStatesTracker2 = new OptimizationStatesTracker()
-    val optimizationStatesTrackerAsRDD =
-      sc.parallelize(Seq(emptyOptimizationStatesTracker1, emptyOptimizationStatesTracker2))
-    val emptyRandomEffectOptimizationTracker = new RandomEffectOptimizationTracker(optimizationStatesTrackerAsRDD)
-    val statCounter = sc.parallelize(Seq(0d, 0d)).stats()
-    assertEquals(emptyRandomEffectOptimizationTracker.getNumIterationStats.toString(), statCounter.toString())
+    // Test RandomEffectOptimizationStateTracker members match manually computed values
+    val convergenceReasons = randomEffectOptimizationTracker.convergenceReasons
+    val iterationStats = randomEffectOptimizationTracker.iterationsStats
+    val timeElapsedStats = randomEffectOptimizationTracker.timeElapsedStats
+
+    assertEquals(convergenceReasons.size, 3)
+    assertTrue(convergenceReasons.contains(FunctionValuesConverged))
+    assertEquals(convergenceReasons(FunctionValuesConverged), 1)
+    assertTrue(convergenceReasons.contains(GradientConverged))
+    assertEquals(convergenceReasons(GradientConverged), 1)
+    assertTrue(convergenceReasons.contains(DidNotConverge))
+    assertEquals(convergenceReasons(DidNotConverge), 1)
+
+    assertEquals(iterationStats.count, 3)
+    assertEquals(iterationStats.min, 0D)
+    assertEquals(iterationStats.max, 2D)
+    assertEquals(iterationStats.mean, 1D)
+    assertEquals(iterationStats.sampleVariance, 1D)
+
+    assertEquals(timeElapsedStats.count, 2)
   }
 }
 
@@ -79,6 +95,6 @@ object RandomEffectOptimizationTrackerIntegTest {
     val coefficients = Vector.zeros[Double](0)
     val value = 0.0
     val gradient = Vector.zeros[Double](0)
-    (0 until numStates).map(iter => OptimizerState(coefficients, value, gradient, iter))
+    (1 to numStates).map(iter => OptimizerState(coefficients, value, gradient, iter))
   }
 }

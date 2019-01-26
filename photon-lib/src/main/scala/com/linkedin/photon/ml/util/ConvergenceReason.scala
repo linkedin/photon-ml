@@ -21,6 +21,10 @@ sealed trait ConvergenceReason {
   def reason: String
 }
 
+case object DidNotConverge extends ConvergenceReason {
+  override def reason: String = "did not converge"
+}
+
 case object MaxIterations extends ConvergenceReason {
   override def reason: String = "max iterations reached"
 }

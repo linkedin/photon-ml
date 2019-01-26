@@ -27,7 +27,7 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampling.DownSampler
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 import com.linkedin.photon.ml.util.Linalg.choleskyInverse
 
@@ -130,19 +130,6 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     val normalizationContext = optimizer.getNormalizationContext
     val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
-
-    modelTrackerBuilder.foreach { modelTrackerBuilder =>
-
-      val tracker = optimizer.getStateTracker.get
-      logger.info(s"History tracker information:\n $tracker")
-
-      val modelsPerIteration = tracker
-        .getTrackedStates
-        .map(x => createModel(normalizationContext, x.coefficients, variances = None))
-      logger.info(s"Number of iterations: ${modelsPerIteration.length}")
-
-      modelTrackerBuilder += ModelTracker(tracker, modelsPerIteration)
-    }
 
     createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
   }

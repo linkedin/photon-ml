@@ -95,7 +95,7 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
     val summary = FeatureDataStatistics(trainRDD, Some(DIMENSION))
     val normalizationContext = NormalizationContext(normalizationType, summary)
     val threshold = THRESHOLD
-    val (models, _) = ModelTraining.trainGeneralizedLinearModel(
+    val models = ModelTraining.trainGeneralizedLinearModel(
       trainRDD,
       TaskType.LOGISTIC_REGRESSION,
       OptimizerType.LBFGS,
@@ -113,7 +113,7 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
 
     val model = models.head._2.asInstanceOf[BinaryClassifier]
 
-    // For all types of normalization, the unregularized trained model should predictClass the same label.
+    // For all types of normalization, the un-regularized trained model should predictClass the same label.
     trainRDD.foreach { case LabeledPoint(label, vector, _, _) =>
       val prediction = model.predictClass(vector, threshold)
       assertEquals(prediction, label)
