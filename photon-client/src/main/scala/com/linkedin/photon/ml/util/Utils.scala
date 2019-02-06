@@ -135,9 +135,10 @@ object Utils {
           // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
           // equivalence failures downstream.
           case s@(_: Utf8 | _: JString) => s.toString
-          case _ => value
+          case x@(_: Number  | _: JBoolean) => x
+          case _ => null
         })
-      }.toMap
+      }.filter(_._2 != null).toMap
 
       case obj: JObject => throw new IllegalArgumentException(s"$obj is not map type.")
       case _ => if (isNullOK) null else throw new IllegalArgumentException(s"field $key is null")
