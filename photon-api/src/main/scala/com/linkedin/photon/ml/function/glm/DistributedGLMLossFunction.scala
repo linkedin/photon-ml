@@ -166,7 +166,7 @@ object DistributedGLMLossFunction {
     val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
-      case RegularizationType.L2 =>
+      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
           with L2RegularizationTwiceDiff {
 

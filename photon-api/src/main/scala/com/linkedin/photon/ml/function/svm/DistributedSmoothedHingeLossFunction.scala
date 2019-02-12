@@ -118,7 +118,7 @@ object DistributedSmoothedHingeLossFunction {
     val regularizationContext = configuration.regularizationContext
 
     regularizationContext.regularizationType match {
-      case RegularizationType.L2 =>
+      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new DistributedSmoothedHingeLossFunction(treeAggregateDepth) with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
         }
