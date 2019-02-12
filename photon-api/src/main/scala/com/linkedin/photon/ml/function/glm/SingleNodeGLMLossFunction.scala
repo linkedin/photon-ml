@@ -154,7 +154,7 @@ object SingleNodeGLMLossFunction {
     val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
-      case RegularizationType.L2 =>
+      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         }

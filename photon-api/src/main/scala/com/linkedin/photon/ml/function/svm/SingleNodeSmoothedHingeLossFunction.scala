@@ -105,7 +105,7 @@ object SingleNodeSmoothedHingeLossFunction {
     val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
-      case RegularizationType.L2 =>
+      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new SingleNodeSmoothedHingeLossFunction with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         }
