@@ -163,7 +163,7 @@ object AvroDataReaderTest {
   private val LongField = "longField"
   private val LongValue = 31L
   private val MapField = "mapField"
-  private val MapValue = Map("a" -> 5)
+  private val MapValue = Map("a" -> "5")
   private val UnionFieldIntString = "unionFieldIntString"
   private val UnionIntStringValue = 55
   private val UnionFieldIntBoolean = "UnionFieldIntBoolean"
@@ -173,7 +173,7 @@ object AvroDataReaderTest {
   private val UnionFieldFloatDouble = "unionFieldFloatDouble"
   private val UnionFloatDoubleValue = 43.5
   private val UnionFieldIntLongFloatDouble = "unionFieldIntLongFloatDouble"
-  private val UnionIntLongFloatDoubleValue = 5
+  private val UnionIntLongFloatDoubleValue = 5.0D
   private val NullableIntField = "nullableIntField"
   private val NullableBooleanField = "nullableBooleanField"
   private val NullableDoubleField = "nullableDoubleField"

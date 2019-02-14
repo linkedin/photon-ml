@@ -36,6 +36,19 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   import AvroDataReaderIntegTest._
 
   /**
+   * Test reading avro data with mixed value types in map
+   */
+  @Test
+  def testAvroWithVariousTypeMap(): Unit = sparkTest("avroMapTest") {
+    val dr = new AvroDataReader()
+    val dataPath = new Path(INPUT_DIR, "avroMap")
+    val featureConfigMap = Map("shard1" -> FeatureShardConfiguration(Set("xgboost_click"), hasIntercept = true))
+    val (df, _) = dr.readMerged(dataPath.toString, featureConfigMap, 1)
+
+    assertEquals(df.count(), 2)
+  }
+
+  /**
    * Test reading a [[DataFrame]].
    */
   @Test
