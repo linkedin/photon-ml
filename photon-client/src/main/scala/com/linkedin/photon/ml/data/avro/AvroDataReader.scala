@@ -450,7 +450,22 @@ object AvroDataReader {
           case DoubleType => checkNull(record, field).orElse(Some(Utils.getDoubleAvro(record, field.name)))
           case FloatType => checkNull(record, field).orElse(Some(Utils.getFloatAvro(record, field.name)))
           case LongType => checkNull(record, field).orElse(Some(Utils.getLongAvro(record, field.name)))
-          case MapType(_, _, _) => Some(Utils.getMapAvro(record, field.name, field.nullable))
+          case MapType(_, valueType, _) =>
+            val mapAvro = Utils.getMapAvro(record, field.name, field.nullable)
+            if (mapAvro == null) {
+              Some(null)
+            } else {
+              // If avro map has mixed value types, will cast the type to the expected type in schema
+              valueType match {
+                case IntegerType => Some(mapAvro.mapValues(_.asInstanceOf[Int]))
+                case StringType => Some(mapAvro.mapValues(_.toString))
+                case BooleanType => Some(mapAvro.mapValues(_.asInstanceOf[Boolean]))
+                case DoubleType => Some(mapAvro.mapValues(_.asInstanceOf[Double]))
+                case FloatType => Some(mapAvro.mapValues(_.asInstanceOf[Float]))
+                case LongType => Some(mapAvro.mapValues(_.asInstanceOf[Long]))
+                case _ => None
+              }
+            }
           case _ =>
             // Unsupported field type. Drop this for now.
             None
