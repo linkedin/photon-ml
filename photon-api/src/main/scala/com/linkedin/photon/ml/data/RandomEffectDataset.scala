@@ -209,7 +209,7 @@ protected[ml] class RandomEffectDataset(
     val numAllSamples = numActiveSamples + numPassiveSamples
     val numActiveSamplesStats = activeData.values.map(_.numDataPoints).stats()
     val activeSamplerResponseSumStats = activeData.values.map(_.getLabels.map(_._2).sum).stats()
-    val numFeaturesStats = activeData.values.map(_.numActiveFeatures).stats()
+    val numFeaturesStats = activeData.values.map(_.numFeatures).stats()
     val numIdsWithPassiveData =
       if (passiveDataRandomEffectIdsOption.isDefined) passiveDataRandomEffectIdsOption.get.value.size else 0
 

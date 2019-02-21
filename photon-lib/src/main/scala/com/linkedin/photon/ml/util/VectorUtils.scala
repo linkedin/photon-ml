@@ -260,15 +260,28 @@ object VectorUtils {
    * @param vector the input vector
    * @return the set of indices
    */
-  def getActiveIndices(vector: Vector[Double]): Set[Int] = vector match {
-    case vector: DenseVector[Double] => vector
+  def getActiveIndices(vector: Vector[Double]): mutable.Set[Int] = vector match {
+    case dense: DenseVector[Double] =>
+      val set: mutable.Set[Int] = mutable.Set.empty[Int]
+      var index: Int = 0
+
+      dense
         .valuesIterator
-        .zipWithIndex
-        .filter(x => !MathUtils.isAlmostZero(x._1))
-        .map(_._2)
-        .toSet
+        .foreach { value =>
+          if (!MathUtils.isAlmostZero(value)) {
+            set += index
+          }
 
-    case _ => vector.activeKeysIterator.toSet
+          index += 1
+        }
+
+      set
+
+    case sparse: SparseVector[Double] =>
+      val set: mutable.Set[Int] = mutable.Set.empty[Int]
+
+      sparse.activeKeysIterator.foreach(set += _)
+
+      set
   }
-
 }

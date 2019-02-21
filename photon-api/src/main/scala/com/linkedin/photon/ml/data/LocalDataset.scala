@@ -40,7 +40,6 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
 
   val numDataPoints: Int = dataPoints.length
   val numFeatures: Int = dataPoints.head._2.features.length
-  val numActiveFeatures: Int = dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size
 
   /**
    *
@@ -108,7 +107,10 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
    * @param numFeaturesToKeep The number of features to keep
    * @return The filtered dataset
    */
-  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataset =
+  def filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep: Int): LocalDataset = {
+
+    val numActiveFeatures: Int = dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size
+
     if (numFeaturesToKeep < numActiveFeatures) {
 
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
@@ -133,6 +135,7 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
     } else {
       this
     }
+  }
 }
 
 object LocalDataset {

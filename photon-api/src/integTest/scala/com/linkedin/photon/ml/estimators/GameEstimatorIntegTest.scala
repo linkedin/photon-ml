@@ -221,7 +221,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 33110)
 
-        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        val featureStats = ds.activeData.values.map(_.numFeatures).stats()
         assertEquals(featureStats.count, 33110)
         assertEquals(featureStats.mean, 24.12999093, CommonTestUtils.LOW_PRECISION_TOLERANCE)
         assertEquals(featureStats.stdev, 0.61119425, CommonTestUtils.LOW_PRECISION_TOLERANCE)
@@ -236,7 +236,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 23167)
 
-        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        val featureStats = ds.activeData.values.map(_.numFeatures).stats()
         assertEquals(featureStats.count, 23167)
         assertEquals(featureStats.mean, 21.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
         assertEquals(featureStats.stdev, 0.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
@@ -251,7 +251,7 @@ class GameEstimatorIntegTest extends SparkTestUtils with GameTestUtils {
       case ds: RandomEffectDataset =>
         assertEquals(ds.activeData.count(), 4471)
 
-        val featureStats = ds.activeData.values.map(_.numActiveFeatures).stats()
+        val featureStats = ds.activeData.values.map(_.numFeatures).stats()
         assertEquals(featureStats.count, 4471)
         assertEquals(featureStats.mean, 3.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
         assertEquals(featureStats.stdev, 0.0, CommonTestUtils.LOW_PRECISION_TOLERANCE)
