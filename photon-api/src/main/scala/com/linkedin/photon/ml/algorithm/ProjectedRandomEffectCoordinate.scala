@@ -30,10 +30,10 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.{RandomEffectOptimizationTracker, SingleNodeOptimizationProblem, VarianceComputationType}
 import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
-import com.linkedin.photon.ml.projector.dataset.{LinearSubspaceREDProjector, MatrixREDProjector}
-import com.linkedin.photon.ml.projector.{LinearSubspaceProjection, RandomProjection}
-import com.linkedin.photon.ml.projector.model.{LinearSubspaceREMProjector, MatrixREMProjector, RandomEffectModelProjector}
-import com.linkedin.photon.ml.projector.vector.{LinearSubspaceProjector, MatrixProjector}
+import com.linkedin.photon.ml.projector.dataset.LinearSubspaceREDProjector
+import com.linkedin.photon.ml.projector.LinearSubspaceProjection
+import com.linkedin.photon.ml.projector.model.{LinearSubspaceREMProjector, RandomEffectModelProjector}
+import com.linkedin.photon.ml.projector.vector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.{PhotonNonBroadcast, VectorUtils}
@@ -273,28 +273,6 @@ object ProjectedRandomEffectCoordinate {
 
         (projectedRandomEffectDataset, randomEffectOptimizationProblem, linearSubspaceREMProjector)
 
-      case RandomProjection(projectedSpaceDimension) =>
-        val randomMatrixProjectorBroadcast = buildMatrixProjector(
-          randomEffectDataset,
-          originalSpaceDimension,
-          projectedSpaceDimension)
-
-        // Generate parameters of ProjectedRandomEffectCoordinate
-        val projectedRandomEffectDataset =
-          new MatrixREDProjector(randomMatrixProjectorBroadcast).projectForward(randomEffectDataset)
-        val randomEffectOptimizationProblem = buildMatrixProjectionRandomEffectOptimizationProblem(
-          randomMatrixProjectorBroadcast,
-          randomEffectDataset,
-          configuration,
-          objectiveFunction,
-          glmConstructor,
-          normalizationContext,
-          varianceComputationType,
-          isTrackingState)
-        val matrixREMProjector = new MatrixREMProjector(randomMatrixProjectorBroadcast)
-
-        (projectedRandomEffectDataset, randomEffectOptimizationProblem, matrixREMProjector)
-
       case p =>
         throw new UnsupportedOperationException(s"Unsupported projection type '$p' encountered")
     }
@@ -382,81 +360,6 @@ object ProjectedRandomEffectCoordinate {
           .map { case (shifts, intercept) =>
             val newShifts = projector.projectForward(shifts)
             val newIntercept = projector.originalToProjectedSpaceMap(intercept)
-
-            (newShifts, newIntercept)
-          }
-        val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
-
-        SingleNodeOptimizationProblem(
-          configuration,
-          objectiveFunction,
-          glmConstructor,
-          PhotonNonBroadcast(projectedNormalizationContext),
-          varianceComputationType,
-          isTrackingState)
-      }
-
-    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor, isTrackingState)
-  }
-
-  /**
-   *
-   * @param randomEffectDataset
-   * @param originalSpaceDimension
-   * @param projectedSpaceDimension
-   * @return
-   */
-  private def buildMatrixProjector(
-      randomEffectDataset: RandomEffectDataset,
-      originalSpaceDimension: Int,
-      projectedSpaceDimension: Int): Broadcast[MatrixProjector] =
-    randomEffectDataset
-      .sparkContext
-      .broadcast(
-        MatrixProjector.buildGaussianRandomMatrixProjector(
-          originalSpaceDimension,
-          projectedSpaceDimension,
-          isKeepingInterceptTerm = true))
-
-  /**
-   *
-   * @param randomMatrixProjectorBroadcast
-   * @param randomEffectDataset
-   * @param configuration
-   * @param objectiveFunction
-   * @param glmConstructor
-   * @param normalizationContext
-   * @param varianceComputationType
-   * @param isTrackingState
-   * @tparam RandomEffectObjective
-   * @return
-   */
-  private def buildMatrixProjectionRandomEffectOptimizationProblem[RandomEffectObjective <: SingleNodeObjectiveFunction](
-    randomMatrixProjectorBroadcast: Broadcast[MatrixProjector],
-    randomEffectDataset: RandomEffectDataset,
-    configuration: RandomEffectOptimizationConfiguration,
-    objectiveFunction: RandomEffectObjective,
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    normalizationContext: NormalizationContext,
-    varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
-    isTrackingState: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
-
-    // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
-    val optimizationProblems = randomEffectDataset
-      .activeData
-      .mapValues { _ =>
-        val projector = randomMatrixProjectorBroadcast.value
-
-        val factors = normalizationContext
-          .factorsOpt
-          .map { factors =>
-            projector.projectForward(factors)
-          }
-        val shiftsAndIntercept = normalizationContext
-          .shiftsAndInterceptOpt
-          .map { case (shifts, _) =>
-            val newShifts = projector.projectForward(shifts)
-            val newIntercept = projector.projectedInterceptId
 
             (newShifts, newIntercept)
           }

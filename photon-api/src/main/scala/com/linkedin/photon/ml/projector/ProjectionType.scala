@@ -20,10 +20,8 @@ package com.linkedin.photon.ml.projector
 protected[ml] trait ProjectionType
 
 object ProjectionType extends Enumeration {
-  protected[ml] val IDENTITY, RANDOM, SUBSPACE = Value
+  protected[ml] val IDENTITY, SUBSPACE = Value
 }
-
-protected[ml] case class RandomProjection(projectedSpaceDimension: Int) extends ProjectionType
 
 case object LinearSubspaceProjection extends ProjectionType
 
