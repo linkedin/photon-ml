@@ -291,14 +291,14 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
 
     evaluator match {
       case se: SingleEvaluator =>
-        val scoresRDD = scores.scores.map { case (_, sGD) =>
+        val scoresRDD = scores.scoresRdd.map { case (_, sGD) =>
           (sGD.score + sGD.offset, sGD.response, sGD.weight)
         }
 
         se.evaluate(scoresRDD)
 
       case me: MultiEvaluator =>
-        val scoresRDD = scores.scores.mapValues(sGD => (sGD.score + sGD.offset, sGD.response, sGD.weight))
+        val scoresRDD = scores.scoresRdd.mapValues(sGD => (sGD.score + sGD.offset, sGD.response, sGD.weight))
 
         me.evaluate(scoresRDD)
 

@@ -25,7 +25,6 @@ import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfigura
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.RegularizationType._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, GLMOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DoubleRange, Logging}
 
 /**
@@ -237,8 +236,7 @@ object ScoptParserHelpers extends Logging {
           minPartitions,
           input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_LOWER_BOUND).map(_.toInt),
           input.get(COORDINATE_DATA_CONFIG_ACTIVE_DATA_UPPER_BOUND).map(_.toInt),
-          input.get(COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO).map(_.toDouble),
-          IndexMapProjection)
+          input.get(COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO).map(_.toDouble))
         val optConfig = RandomEffectOptimizationConfiguration(
           optimizerConfig,
           regularizationContext,

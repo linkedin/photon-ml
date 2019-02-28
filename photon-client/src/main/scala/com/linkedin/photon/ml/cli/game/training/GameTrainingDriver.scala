@@ -43,7 +43,6 @@ import com.linkedin.photon.ml.normalization.{NormalizationContext, Normalization
 import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
-import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.util.Implicits._
 import com.linkedin.photon.ml.util.Utils
@@ -396,10 +395,7 @@ object GameTrainingDriver extends GameDriver {
               FixedEffectDataConfiguration(fEM.featureShardId)
 
             case rEM: RandomEffectModel =>
-              RandomEffectDataConfiguration(
-                rEM.randomEffectType,
-                rEM.featureShardId,
-                projectorType = IdentityProjection)
+              RandomEffectDataConfiguration(rEM.randomEffectType, rEM.featureShardId)
 
             case other: DatumScoringModel =>
               throw new IllegalArgumentException(s"Encountered unknown model type '${other.getClass.getName}'")

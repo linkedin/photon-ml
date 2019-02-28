@@ -14,45 +14,28 @@
  */
 package com.linkedin.photon.ml.projector
 
-import breeze.linalg.Vector
-
 /**
- * A trait that performs two types of projections:
- * <ul>
- * <li>
- *   Project the feature vector from the original space to the projected space, usually during model training phase.
- * </li>
- * <li>
- *   Project the coefficients from the projected space back to the original space, usually after model training and
- *   during the model storing nad postprocessing phase.
- * </li>
- * </ul>
+ * Trait for an object which performs two types of projections:
+ *   1. Project an object from the original space to the projected space
+ *   2. Project an object from the projected space to the original space
+ *
+ * @tparam T Object type to project between spaces
  */
-protected[ml] trait Projector extends Serializable {
+protected[ml] trait Projector[T] extends Serializable {
 
   /**
-   * Dimension of the original space
-   */
-  val originalSpaceDimension: Int
-
-  /**
-   * Dimension of the projected space
-   */
-  val projectedSpaceDimension: Int
-
-  /**
-   * Project the feature vector from the original space to the projected space.
+   * Project an object from the original space to the projected space.
    *
-   * @param features The input feature vector in the original space
-   * @return The feature vector in the projected space
+   * @param input An input object in the original space
+   * @return The same object in the projected space
    */
-  def projectFeatures(features: Vector[Double]): Vector[Double]
+  def projectForward(input: T): T
 
   /**
-   * Project the coefficient vector from the projected space back to the original space.
+   * Project an object from the projected space back to the original space.
    *
-   * @param coefficients The input coefficient vector in the projected space
-   * @return The coefficient vector in the original space
+   * @param input An input object in the projected space
+   * @return The same object in the original space
    */
-  def projectCoefficients(coefficients: Vector[Double]): Vector[Double]
+  def projectBackward(input: T): T
 }

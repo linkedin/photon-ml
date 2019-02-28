@@ -22,7 +22,7 @@ import org.apache.spark.broadcast.Broadcast
 protected[ml] trait BroadcastLike {
 
   /**
-   * Asynchronously delete cached copies of internal [[Broadcast]]s on the executors.
+   * Asynchronously delete cached copies of internal [[Broadcast]] objects on all executors.
    *
    * @return This object with all of its broadcast variables unpersisted
    */

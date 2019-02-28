@@ -69,7 +69,7 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       input: Iterable[LabeledPoint],
       coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
-      calculate(input, coefficients, normalizationContext)._2
+    calculate(input, coefficients, normalizationContext)._2
 
   /**
    * Compute both the value and the gradient of the function for the given model coefficients (computing value and

@@ -15,6 +15,7 @@
 package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.projector.{LinearSubspaceProjection, ProjectionType}
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -23,7 +24,7 @@ import com.linkedin.photon.ml.util.DoubleRange
 sealed trait CoordinateOptimizationConfiguration
 
 /**
- * Configuration for GLM coordinate.
+ * Configuration for a GLM coordinate.
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
@@ -50,7 +51,7 @@ protected[ml] abstract class GLMOptimizationConfiguration(
 }
 
 /**
- * Configuration for a fixed effect GLM coordinate
+ * Configuration for a [[com.linkedin.photon.ml.algorithm.FixedEffectCoordinate]].
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
@@ -77,20 +78,23 @@ case class FixedEffectOptimizationConfiguration(
 }
 
 /**
- * Configuration for a random effect GLM coordinate
+ * Configuration for a [[com.linkedin.photon.ml.algorithm.RandomEffectCoordinate]].
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
  * @param regularizationWeight Regularization weight
  * @param regularizationWeightRange Regularization weight range
  * @param elasticNetParamRange Elastic net alpha range
+ * @param projectionType The type of projection to apply to training data during optimization (see
+ *                       [[com.linkedin.photon.ml.projector.ProjectionType]] for more information)
  */
 case class RandomEffectOptimizationConfiguration(
     override val optimizerConfig: OptimizerConfig,
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
     override val regularizationWeight: Double = 0D,
     override val regularizationWeightRange: Option[DoubleRange] = None,
-    override val elasticNetParamRange: Option[DoubleRange] = None)
+    override val elasticNetParamRange: Option[DoubleRange] = None,
+    projectionType: ProjectionType = LinearSubspaceProjection)
   extends GLMOptimizationConfiguration(
     optimizerConfig,
     regularizationContext,

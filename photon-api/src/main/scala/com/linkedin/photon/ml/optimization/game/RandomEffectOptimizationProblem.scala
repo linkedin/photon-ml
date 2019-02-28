@@ -19,15 +19,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.data.RandomEffectDataset
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextRDD, NormalizationContextWrapper}
-import com.linkedin.photon.ml.optimization.{SingleNodeOptimizationProblem, VarianceComputationType}
-import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
+import com.linkedin.photon.ml.optimization.SingleNodeOptimizationProblem
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
 
 /**
  * Representation for a random effect optimization problem.
@@ -42,8 +38,11 @@ import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
  */
 protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjectiveFunction](
     val optimizationProblems: RDD[(REId, SingleNodeOptimizationProblem[Objective])],
+    glmConstructor: Coefficients => GeneralizedLinearModel,
     val isTrackingState: Boolean)
   extends RDDLike {
+
+  // TODO: Need to refactor 'isTrackingState' out
 
   /**
    * Get the Spark context.
@@ -112,7 +111,7 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    * @return A model with zero coefficients
    */
   def initializeModel(dimension: Int): GeneralizedLinearModel =
-    optimizationProblems.first()._2.initializeZeroModel(dimension)
+    glmConstructor(Coefficients.initializeZeroCoefficients(dimension))
 
   /**
    * Compute the regularization term value
@@ -127,57 +126,4 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
         case (_, (optimizationProblem, model)) => optimizationProblem.getRegularizationTermValue(model)
       }
       .reduce(_ + _)
-}
-
-object RandomEffectOptimizationProblem {
-
-  /**
-   * Factory method to create new RandomEffectOptimizationProblems.
-   *
-   * @param randomEffectDataset The training data
-   * @param configuration The optimizer configuration
-   * @param objectiveFunction The objective function to optimize
-   * @param glmConstructor The function to use for producing GLMs from trained coefficients
-   * @param normalizationContextWrapper The normalization context
-   * @param varianceComputationType If an how to compute coefficient variances
-   * @param isTrackingState Should the optimization problem record the internal optimizer states?
-   * @return A new RandomEffectOptimizationProblem
-   */
-  protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      randomEffectDataset: RandomEffectDataset,
-      configuration: GLMOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
-      glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContextWrapper: NormalizationContextWrapper,
-      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
-      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
-
-    val optimizationProblems = normalizationContextWrapper match {
-      case nCB: NormalizationContextBroadcast =>
-        randomEffectDataset
-          .activeData
-          .mapValues(_ =>
-            SingleNodeOptimizationProblem(
-              configuration,
-              objectiveFunction,
-              glmConstructor,
-              PhotonBroadcast(nCB.context),
-              varianceComputationType,
-              isTrackingState))
-
-      case nCR: NormalizationContextRDD =>
-        nCR.contexts
-          .mapValues { norm =>
-            SingleNodeOptimizationProblem(
-              configuration,
-              objectiveFunction,
-              glmConstructor,
-              PhotonNonBroadcast(norm),
-              varianceComputationType,
-              isTrackingState)
-        }
-    }
-
-    new RandomEffectOptimizationProblem(optimizationProblems, isTrackingState)
-  }
 }

@@ -93,15 +93,14 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @param model The input model
    * @return The dataset scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
-    model match {
-      case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(dataset, fixedEffectModel)
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
-      case _ =>
-        throw new UnsupportedOperationException(
-          s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
-    }
+    case fixedEffectModel: FixedEffectModel =>
+      FixedEffectCoordinate.score(dataset, fixedEffectModel)
+
+    case _ =>
+      throw new UnsupportedOperationException(
+        s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
   }
 }
 
