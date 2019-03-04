@@ -40,7 +40,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
-    varianceComputation: VarianceComputationType) extends Logging {
+    varianceComputation: VarianceComputationType) extends Logging with Serializable{
 
   protected val modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]] =
     if (optimizer.isTrackingState) Some(new mutable.ListBuffer[ModelTracker]()) else None
