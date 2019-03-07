@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.projector.vector
+package com.linkedin.photon.ml.projector
 
 import breeze.linalg.Vector
 
@@ -33,8 +33,7 @@ import com.linkedin.photon.ml.util.VectorUtils
  *                        the subspace.
  * @param dimension The dimension of the original space
  */
-protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension: Int)
-  extends VectorProjector {
+protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension: Int) extends Serializable {
 
   import LinearSubspaceProjector._
 
@@ -53,7 +52,7 @@ protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension
    * @param input A [[Vector]] in the original space
    * @return The same [[Vector]] in the projected space
    */
-  override def projectForward(input: Vector[Double]): Vector[Double] =
+  def projectForward(input: Vector[Double]): Vector[Double] =
     remapVector(input, originalToProjectedSpaceMap, projectedSpaceDimension)
 
   /**
@@ -62,7 +61,7 @@ protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension
    * @param input A [[Vector]] in the projected space
    * @return The same [[Vector]] in the original space
    */
-  override def projectBackward(input: Vector[Double]): Vector[Double] =
+  def projectBackward(input: Vector[Double]): Vector[Double] =
     remapVector(input, projectedToOriginalSpaceMap, originalSpaceDimension)
 }
 

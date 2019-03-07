@@ -18,13 +18,19 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
-import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
-import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
-import com.linkedin.photon.ml.optimization.{OptimizationTracker, RandomEffectOptimizationTracker}
+import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.{OptimizationTracker, RandomEffectOptimizationTracker, SingleNodeOptimizationProblem, VarianceComputationType}
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.RDDLike
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.PhotonNonBroadcast
 
 /**
  * The optimization problem coordinate for a random effect model.
@@ -38,6 +44,70 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
     protected val optimizationProblem: RandomEffectOptimizationProblem[Objective])
   extends Coordinate[RandomEffectDataset](dataset)
     with RDDLike {
+
+  //
+  // RandomEffectCoordinate functions
+  //
+
+  /**
+   * Project a [[RandomEffectModel]] from the original space to the projected space.
+   *
+   * @param randomEffectModel The [[RandomEffectModel]] in the original space
+   * @return The same [[RandomEffectModel]] in the projected space
+   */
+  protected[algorithm] def projectModelForward(randomEffectModel: RandomEffectModel): RandomEffectModel = {
+
+    // Left join the models to projectors for cases where we have a prior model but no new model (and hence no
+    // projectors)
+    val linearSubspaceProjectorsRDD = dataset.projectors
+    val newModels = randomEffectModel
+      .modelsRDD
+      .leftOuterJoin(linearSubspaceProjectorsRDD)
+      .mapValues { case (model, projectorOpt) =>
+        projectorOpt
+          .map { projector =>
+            val oldCoefficients = model.coefficients
+            val newCoefficients = Coefficients(
+              projector.projectForward(oldCoefficients.means),
+              oldCoefficients.variancesOption.map(projector.projectForward))
+
+            model.updateCoefficients(newCoefficients)
+          }
+          .getOrElse(model)
+      }
+
+    randomEffectModel.update(newModels)
+  }
+
+  /**
+   * Project a [[RandomEffectModel]] from the projected space to the original space.
+   *
+   * @param randomEffectModel The [[RandomEffectModel]] in the projected space
+   * @return The same [[RandomEffectModel]] in the original space
+   */
+  protected[algorithm] def projectModelBackward(randomEffectModel: RandomEffectModel): RandomEffectModel = {
+
+    // Left join the models to projectors for cases where we have a prior model but no new model (and hence no
+    // projectors)
+    val linearSubspaceProjectorsRDD = dataset.projectors
+    val newModels = randomEffectModel
+      .modelsRDD
+      .leftOuterJoin(linearSubspaceProjectorsRDD)
+      .mapValues { case (model, projectorOpt) =>
+        projectorOpt
+          .map { projector =>
+            val oldCoefficients = model.coefficients
+            val newCoefficients = Coefficients(
+              projector.projectBackward(oldCoefficients.means),
+              oldCoefficients.variancesOption.map(projector.projectBackward))
+
+            model.updateCoefficients(newCoefficients)
+          }
+          .getOrElse(model)
+      }
+
+    randomEffectModel.update(newModels)
+  }
 
   //
   // Coordinate functions
@@ -58,8 +128,12 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    *
    * @return A (updated model, optional optimization tracking information) tuple
    */
-  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) =
-    RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
+  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) = {
+
+    val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
+
+    (projectModelBackward(newModel), optimizationTrackerOpt)
+  }
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -70,9 +144,15 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    */
   override protected[algorithm] def trainModel(
       model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.trainModel(dataset, optimizationProblem, Some(randomEffectModel))
+        val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(
+          dataset,
+          optimizationProblem,
+          Some(randomEffectModel))
+
+        (projectModelBackward(newModel), optimizationTrackerOpt)
 
       case _ =>
         throw new UnsupportedOperationException(
@@ -88,7 +168,7 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
     case randomEffectModel: RandomEffectModel =>
-      RandomEffectCoordinate.score(dataset, randomEffectModel)
+      RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
 
     case _ =>
       throw new UnsupportedOperationException(
@@ -162,6 +242,92 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
 object RandomEffectCoordinate {
 
   /**
+   * Helper function to construct [[RandomEffectCoordinate]] objects.
+   *
+   * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
+   *                               problems
+   * @param randomEffectDataset The data on which to run the optimization algorithm
+   * @param configuration The optimization problem configuration
+   * @param objectiveFunction The objective function to optimize
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param varianceComputationType If and how coefficient variances should be computed
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
+   * @return
+   */
+  protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
+    randomEffectDataset: RandomEffectDataset,
+    configuration: RandomEffectOptimizationConfiguration,
+    objectiveFunction: RandomEffectObjective,
+    glmConstructor: Coefficients => GeneralizedLinearModel,
+    normalizationContext: NormalizationContext,
+    varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+    isTrackingState: Boolean = false): RandomEffectCoordinate[RandomEffectObjective] = {
+
+    // Generate parameters of ProjectedRandomEffectCoordinate
+    val randomEffectOptimizationProblem = buildRandomEffectOptimizationProblem(
+      randomEffectDataset.projectors,
+      configuration,
+      objectiveFunction,
+      glmConstructor,
+      normalizationContext,
+      varianceComputationType,
+      isTrackingState)
+
+    new RandomEffectCoordinate(randomEffectDataset, randomEffectOptimizationProblem)
+  }
+
+  /**
+   * Build a new [[RandomEffectOptimizationProblem]] for a [[RandomEffectCoordinate]] to optimize.
+   *
+   * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
+   *                               problems
+   * @param linearSubspaceProjectorsRDD The per-entity [[LinearSubspaceProjector]] objects used to compress the
+   *                                    per-entity feature spaces
+   * @param configuration The optimization problem configuration
+   * @param objectiveFunction The objective function to optimize
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param varianceComputationType If and how coefficient variances should be computed
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
+   * @return
+   */
+  private def buildRandomEffectOptimizationProblem[RandomEffectObjective <: SingleNodeObjectiveFunction](
+    linearSubspaceProjectorsRDD: RDD[(REId, LinearSubspaceProjector)],
+    configuration: RandomEffectOptimizationConfiguration,
+    objectiveFunction: RandomEffectObjective,
+    glmConstructor: Coefficients => GeneralizedLinearModel,
+    normalizationContext: NormalizationContext,
+    varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+    isTrackingState: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
+
+    // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
+    val optimizationProblems = linearSubspaceProjectorsRDD
+      .mapValues { projector =>
+        val factors = normalizationContext.factorsOpt.map(factors => projector.projectForward(factors))
+        val shiftsAndIntercept = normalizationContext
+          .shiftsAndInterceptOpt
+          .map { case (shifts, intercept) =>
+            val newShifts = projector.projectForward(shifts)
+            val newIntercept = projector.originalToProjectedSpaceMap(intercept)
+
+            (newShifts, newIntercept)
+          }
+        val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
+
+        SingleNodeOptimizationProblem(
+          configuration,
+          objectiveFunction,
+          glmConstructor,
+          PhotonNonBroadcast(projectedNormalizationContext),
+          varianceComputationType,
+          isTrackingState)
+      }
+
+    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor, isTrackingState)
+  }
+
+  /**
    * Train a new [[RandomEffectModel]] (i.e. run model optimization for each entity).
    *
    * @tparam Function The type of objective function used to solve individual random effect optimization problems
@@ -172,10 +338,10 @@ object RandomEffectCoordinate {
    * @return A (new [[RandomEffectModel]], optional optimization stats) tuple
    */
   protected[algorithm] def trainModel[Function <: SingleNodeObjectiveFunction](
-      randomEffectDataset: RandomEffectDataset,
-      randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
-      initialRandomEffectModelOpt: Option[RandomEffectModel])
-    : (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
+    randomEffectDataset: RandomEffectDataset,
+    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
+    initialRandomEffectModelOpt: Option[RandomEffectModel])
+  : (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
     // All 3 RDDs involved in these joins use the same partitioner
     val dataAndOptimizationProblems = randomEffectDataset

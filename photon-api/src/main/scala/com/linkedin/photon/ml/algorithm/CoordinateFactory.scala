@@ -19,10 +19,9 @@ import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.ObjectiveFunction
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, SingleNodeOptimizationProblem}
+import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
-import com.linkedin.photon.ml.projector.IdentityProjection
+import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.sampling.DownSamplerHelper.DownSamplerFactory
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -63,9 +62,9 @@ object CoordinateFactory {
 
     (dataset, coordinateOptConfig, lossFunction) match {
       case (
-        fEDataset: FixedEffectDataset,
-        fEOptConfig: FixedEffectOptimizationConfiguration,
-        distributedLossFunction: DistributedObjectiveFunction) =>
+          fEDataset: FixedEffectDataset,
+          fEOptConfig: FixedEffectOptimizationConfiguration,
+          distributedLossFunction: DistributedObjectiveFunction) =>
 
         val downSamplerOpt = if (DownSampler.isValidDownSamplingRate(fEOptConfig.downSamplingRate)) {
           Some(downSamplerFactory(fEOptConfig.downSamplingRate))
@@ -86,41 +85,18 @@ object CoordinateFactory {
             trackState)).asInstanceOf[Coordinate[D]]
 
       case (
-        rEDataset: RandomEffectDataset,
-        rEOptConfig: RandomEffectOptimizationConfiguration,
-        singleNodeLossFunction: SingleNodeObjectiveFunction) =>
+          rEDataset: RandomEffectDataset,
+          rEOptConfig: RandomEffectOptimizationConfiguration,
+          singleNodeLossFunction: SingleNodeObjectiveFunction) =>
 
-        rEOptConfig.projectionType match {
-          case IdentityProjection =>
-            val normalizationPhotonBroadcast = PhotonBroadcast(rEDataset.sparkContext.broadcast(normalizationContext))
-
-            new RandomEffectCoordinate(
-              rEDataset,
-              new RandomEffectOptimizationProblem(
-                rEDataset
-                  .activeData
-                  .mapValues { _ =>
-                    SingleNodeOptimizationProblem(
-                      rEOptConfig,
-                      singleNodeLossFunction,
-                      glmConstructor,
-                      normalizationPhotonBroadcast,
-                      varianceComputationType,
-                      trackState)
-                  },
-                glmConstructor,
-                trackState)).asInstanceOf[Coordinate[D]]
-
-          case _ =>
-            ProjectedRandomEffectCoordinate(
-              rEDataset,
-              rEOptConfig,
-              singleNodeLossFunction,
-              glmConstructor,
-              normalizationContext,
-              varianceComputationType,
-              trackState).asInstanceOf[Coordinate[D]]
-        }
+        RandomEffectCoordinate(
+          rEDataset,
+          rEOptConfig,
+          singleNodeLossFunction,
+          glmConstructor,
+          normalizationContext,
+          varianceComputationType,
+          trackState).asInstanceOf[Coordinate[D]]
 
       case _ =>
         throw new UnsupportedOperationException(

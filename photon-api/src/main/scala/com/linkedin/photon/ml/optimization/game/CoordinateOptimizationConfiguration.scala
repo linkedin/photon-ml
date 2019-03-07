@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization.game
 
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.projector.{LinearSubspaceProjection, ProjectionType}
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -85,16 +84,13 @@ case class FixedEffectOptimizationConfiguration(
  * @param regularizationWeight Regularization weight
  * @param regularizationWeightRange Regularization weight range
  * @param elasticNetParamRange Elastic net alpha range
- * @param projectionType The type of projection to apply to training data during optimization (see
- *                       [[com.linkedin.photon.ml.projector.ProjectionType]] for more information)
  */
 case class RandomEffectOptimizationConfiguration(
     override val optimizerConfig: OptimizerConfig,
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
     override val regularizationWeight: Double = 0D,
     override val regularizationWeightRange: Option[DoubleRange] = None,
-    override val elasticNetParamRange: Option[DoubleRange] = None,
-    projectionType: ProjectionType = LinearSubspaceProjection)
+    override val elasticNetParamRange: Option[DoubleRange] = None)
   extends GLMOptimizationConfiguration(
     optimizerConfig,
     regularizationContext,

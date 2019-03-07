@@ -20,7 +20,6 @@ import breeze.linalg.Vector
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.projector.vector.VectorProjector
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -39,7 +38,11 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
     "Cannot create LocalDataset with empty data array")
 
   val numDataPoints: Int = dataPoints.length
-  val numFeatures: Int = dataPoints.head._2.features.length
+  val numFeatures: Int = dataPoints
+    .head
+    ._2
+    .features
+    .length
 
   /**
    *
@@ -89,36 +92,6 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
       }
 
     LocalDataset(updatedDataPoints)
-  }
-
-  /**
-   * Project the features of the underlying [[dataPoints]] from the original space to a projected space.
-   *
-   * @param projector A [[VectorProjector]] to project the feature data
-   * @return A new [[LocalDataset]] with features in the projected space
-   */
-  def projectForward(projector: VectorProjector): LocalDataset = {
-
-    val projectedDataPoints = dataPoints.map { case (uniqueId, LabeledPoint(label, features, offset, weight)) =>
-      (uniqueId, LabeledPoint(label, projector.projectForward(features), offset, weight))
-    }
-
-    LocalDataset(projectedDataPoints)
-  }
-
-  /**
-   * Project the features of the underlying [[dataPoints]] from the projected space to a original space.
-   *
-   * @param projector A [[VectorProjector]] to project the feature data
-   * @return A new [[LocalDataset]] with features in the original space
-   */
-  def projectBackward(projector: VectorProjector): LocalDataset = {
-
-    val projectedDataPoints = dataPoints.map { case (uniqueId, LabeledPoint(label, features, offset, weight)) =>
-      (uniqueId, LabeledPoint(label, projector.projectBackward(features), offset, weight))
-    }
-
-    LocalDataset(projectedDataPoints)
   }
 
   /**

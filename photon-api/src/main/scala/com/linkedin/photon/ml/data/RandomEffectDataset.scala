@@ -23,9 +23,10 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.data.RandomEffectDataset.{ActiveData, PassiveData}
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * Dataset implementation for random effect data.
@@ -42,13 +43,15 @@ import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
  * @param activeData Per-entity datasets used to train per-entity models and to compute residuals
  * @param passiveData Per-entity datasets used only to compute residuals
  * @param activeUniqueIdToRandomEffectIds Map of unique sample id to random effect id for active data samples
+ * @param projectors The per-entity [[LinearSubspaceProjector]] objects used to compress the per-entity feature spaces
  * @param randomEffectType The random effect type (e.g. "memberId")
  * @param featureShardId The ID of the data feature shard used by this dataset
  */
 protected[ml] class RandomEffectDataset(
-    val activeData: ActiveData,
-    val passiveData: PassiveData,
+    val activeData: RDD[(REId, LocalDataset)],
+    val passiveData: RDD[(UniqueSampleId, (REId, LabeledPoint))],
     val activeUniqueIdToRandomEffectIds: RDD[(UniqueSampleId, REId)],
+    val projectors: RDD[(REId, LinearSubspaceProjector)],
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
   extends Dataset[RandomEffectDataset]
@@ -62,26 +65,6 @@ protected[ml] class RandomEffectDataset(
     .broadcast(passiveData.map(_._2._1).distinct().collect().toSet)
   val randomEffectIdPartitioner: Partitioner = activeData.partitioner.get
   val uniqueIdPartitioner: Partitioner = passiveData.partitioner.get
-
-  //
-  // RandomEffectDataset functions
-  //
-
-  /**
-   * Create a new [[RandomEffectDataset]] with new active and passive data.
-   *
-   * @param newActiveData New active data [[RDD]]
-   * @param newPassiveData New passive data [[RDD]]
-   * @return A new [[RandomEffectDataset]]
-   */
-  def update(newActiveData: ActiveData, newPassiveData: PassiveData): RandomEffectDataset =
-    new RandomEffectDataset(
-      newActiveData,
-      newPassiveData,
-      // Need to clone RDD so that old dataset can be unpersisted
-      activeUniqueIdToRandomEffectIds.mapPartitions(identity, preservesPartitioning = true),
-      randomEffectType,
-      featureShardId)
 
   //
   // Dataset functions
@@ -113,6 +96,7 @@ protected[ml] class RandomEffectDataset(
       updatedActiveData,
       passiveData,
       activeUniqueIdToRandomEffectIds,
+      projectors,
       randomEffectType,
       featureShardId)
   }
@@ -253,76 +237,138 @@ protected[ml] class RandomEffectDataset(
 
 object RandomEffectDataset {
 
-  type ActiveData = RDD[(REId, LocalDataset)]
-  type PassiveData = RDD[(UniqueSampleId, (REId, LabeledPoint))]
-
   /**
    * Build a new [[RandomEffectDataset]] from the raw data using the given configuration.
    *
-   * @param gameDataset The RDD of [[GameDatum]] used to generate the random effect dataset
+   * @param gameDataset The [[RDD]] of [[GameDatum]] used to generate the random effect dataset
    * @param randomEffectDataConfiguration The data configuration for the random effect dataset
-   * @param randomEffectPartitioner The per random effect partitioner used to generated the grouped active data
+   * @param randomEffectPartitioner The per-entity partitioner used to split the grouped active data
    * @param existingModelKeysRddOpt Optional set of entities that have existing models
    * @return A new [[RandomEffectDataset]]
    */
   def apply(
       gameDataset: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner,
+      randomEffectPartitioner: RandomEffectDatasetPartitioner,
       existingModelKeysRddOpt: Option[RDD[REId]]): RandomEffectDataset = {
 
+    val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
+    val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
+    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors)
+
     val activeData = generateActiveData(
-      gameDataset,
+      projectedKeyedGameDataset,
       randomEffectDataConfiguration,
       randomEffectPartitioner,
       existingModelKeysRddOpt)
     val uniqueIdToRandomEffectIds = generateIdMap(activeData, gameDataset.partitioner.get)
-    val passiveData = generatePassiveData(gameDataset, uniqueIdToRandomEffectIds, randomEffectDataConfiguration)
+    val passiveData = generatePassiveData(keyedGameDataset, activeData)
 
     new RandomEffectDataset(
       activeData,
       passiveData,
       uniqueIdToRandomEffectIds,
+      projectors,
       randomEffectDataConfiguration.randomEffectType,
       randomEffectDataConfiguration.featureShardId)
   }
 
   /**
-   * Generate active data.
+   * Process the raw data to be keyed by the [[REId]]s for the given [[REType]], and filter the feature vector for only
+   * the given shard.
    *
-   * @param gameDataset The input dataset
-   * @param randomEffectDataConfiguration The random effect data configuration
-   * @param randomEffectPartitioner A random effect partitioner
-   * @return The active dataset
+   * @param gameDataset The [[RDD]] of [[GameDatum]] used to generate the random effect dataset
+   * @param randomEffectDataConfiguration The data configuration for the random effect dataset
+   * @return The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
    */
-  protected[data] def generateActiveData(
+  protected[data] def generateKeyedGameDataset(
       gameDataset: RDD[(UniqueSampleId, GameDatum)],
-      randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner,
-      existingModelKeysRddOpt: Option[RDD[REId]]): ActiveData = {
+      randomEffectDataConfiguration: RandomEffectDataConfiguration): RDD[(REId, (UniqueSampleId, LabeledPoint))] = {
 
     val randomEffectType = randomEffectDataConfiguration.randomEffectType
     val featureShardId = randomEffectDataConfiguration.featureShardId
 
-    // Generate random effect data from raw GAME data for selected shard
-    val keyedRandomEffectDataset = gameDataset.map { case (uniqueId, gameData) =>
-      val randomEffectId = gameData.idTagToValueMap(randomEffectType)
-      val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
+    gameDataset
+      .map { case (uniqueId, gameData) =>
+        val randomEffectId = gameData.idTagToValueMap(randomEffectType)
+        val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(featureShardId)
 
-      (randomEffectId, (uniqueId, labeledPoint))
-    }
+        (randomEffectId, (uniqueId, labeledPoint))
+      }
+      .persist(StorageLevel.MEMORY_ONLY_SER)
+  }
+
+  /**
+   * Generate the [[LinearSubspaceProjector]] objects used to compress the feature vectors for each per-entity dataset.
+   *
+   * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
+   * @param randomEffectPartitioner The per-entity partitioner used to split the grouped active data
+   * @return An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
+   */
+  protected[data] def generateLinearSubspaceProjectors(
+      keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      randomEffectPartitioner: RandomEffectDatasetPartitioner): RDD[(REId, LinearSubspaceProjector)] = {
+
+    val originalSpaceDimension = keyedGameDataset
+      .take(1)
+      .head
+      ._2
+      ._2
+      .features
+      .length
+
+    keyedGameDataset
+      .mapValues { case (_, labeledPoint) =>
+        VectorUtils.getActiveIndices(labeledPoint.features)
+      }
+      .foldByKey(Set[Int](), randomEffectPartitioner)(_.union(_))
+      .mapValues(new LinearSubspaceProjector(_, originalSpaceDimension))
+  }
+
+  /**
+   * Project the per-entity datasets to a linear subspace - thus reducing the size of their feature vectors (for faster
+   * optimization).
+   *
+   * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
+   * @param projectors An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
+   * @return The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]], with feature vectors
+   *         reduced to the smallest linear subspace possible without loss
+   */
+  protected[data] def generateProjectedDataset(
+      keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      projectors: RDD[(REId, LinearSubspaceProjector)]): RDD[(REId, (UniqueSampleId, LabeledPoint))] =
+    keyedGameDataset
+      .join(projectors)
+      .mapValues { case ((uid, LabeledPoint(label, features, offset, weight)), projector) =>
+        (uid, LabeledPoint(label, projector.projectForward(features), offset, weight))
+      }
+
+  /**
+   * Generate active data.
+   *
+   * @param projectedKeyedDataset The input dataset
+   * @param randomEffectDataConfiguration The random effect data configuration
+   * @param randomEffectPartitioner A random effect partitioner
+   * @param existingModelKeysRddOpt An optional set of entities which have existing models
+   * @return The active dataset
+   */
+  protected[data] def generateActiveData(
+      projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      randomEffectDataConfiguration: RandomEffectDataConfiguration,
+      randomEffectPartitioner: Partitioner,
+      existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, LocalDataset)] = {
 
     // Filter data using reservoir sampling if active data size is bounded
     val groupedRandomEffectDataset = randomEffectDataConfiguration
       .numActiveDataPointsUpperBound
       .map { activeDataUpperBound =>
         groupDataByKeyAndSample(
-          keyedRandomEffectDataset,
+          projectedKeyedDataset,
           randomEffectPartitioner,
           activeDataUpperBound,
-          randomEffectType)
+          randomEffectDataConfiguration.randomEffectType)
       }
-      .getOrElse(keyedRandomEffectDataset.groupByKey(randomEffectPartitioner))
+      .getOrElse(projectedKeyedDataset.groupByKey(randomEffectPartitioner))
 
     val filteredRandomEffectDataset = lowerBoundFilteringOnActiveData(
       groupedRandomEffectDataset,
@@ -344,14 +390,14 @@ object RandomEffectDataset {
    * 1. The exact sampling must be reproducible so that [[RDD]] partitions can be recovered
    * 2. The linear algorithm is non-trivial to combine in a distributed manner
    *
-   * @param rawKeyedDataset The raw dataset, with samples keyed by random effect ID
+   * @param projectedKeyedDataset The raw dataset, with samples keyed by random effect ID
    * @param partitioner The partitioner
    * @param sampleCap The sample cap
    * @param randomEffectType The type of random effect
    * @return An [[RDD]] of data grouped by individual ID
    */
   private def groupDataByKeyAndSample(
-      rawKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
       partitioner: Partitioner,
       sampleCap: Int,
       randomEffectType: REType): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = {
@@ -390,7 +436,7 @@ object RandomEffectDataset {
     // node failure. We attempt to maximize the likelihood of successful recovery through RDD replication, however there
     // is a non-zero possibility of massive failure. If this becomes an issue, we may need to resort to check-pointing
     // the raw data RDD after uniqueId assignment.
-    rawKeyedDataset
+    projectedKeyedDataset
       .mapValues { case (uniqueId, labeledPoint) =>
         val comparableKey = (byteswap64(randomEffectType.hashCode) ^ byteswap64(uniqueId)).hashCode()
         ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
@@ -456,7 +502,7 @@ object RandomEffectDataset {
    */
   private def featureSelectionOnActiveData(
       activeData: RDD[(REId, LocalDataset)],
-      numFeaturesToSamplesRatioUpperBoundOpt: Option[Double]): ActiveData =
+      numFeaturesToSamplesRatioUpperBoundOpt: Option[Double]): RDD[(REId, LocalDataset)] =
     numFeaturesToSamplesRatioUpperBoundOpt
       .map { numFeaturesToSamplesRatioUpperBound =>
         activeData.mapValues { localDataset =>
@@ -477,7 +523,9 @@ object RandomEffectDataset {
    * @param partitioner The [[Partitioner]] to use for the [[RDD]] of unique sample ID to random effect ID
    * @return A map of unique sample id to random effect id for active data samples
    */
-  protected[data] def generateIdMap(activeData: ActiveData, partitioner: Partitioner): RDD[(UniqueSampleId, REId)] =
+  protected[data] def generateIdMap(
+      activeData: RDD[(REId, LocalDataset)],
+      partitioner: Partitioner): RDD[(UniqueSampleId, REId)] =
     activeData
       .flatMap { case (individualId, localDataset) =>
         localDataset.getUniqueIds.map((_, individualId))
@@ -487,27 +535,21 @@ object RandomEffectDataset {
   /**
    * Generate passive dataset.
    *
-   * @param gameDataset The raw input data
-   * @param uniqueIdToRandomEffectIds A map of unique sample id to random effect id for active data samples
-   * @param randomEffectDataConfiguration  The random effect data configuration
+   * @param projectedKeyedDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
+   * @param activeData The active dataset
    * @return The passive dataset
    */
   protected[data] def generatePassiveData(
-      gameDataset: RDD[(UniqueSampleId, GameDatum)],
-      uniqueIdToRandomEffectIds: RDD[(UniqueSampleId, REId)],
-      randomEffectDataConfiguration: RandomEffectDataConfiguration): RDD[(UniqueSampleId, (REId, LabeledPoint))] = {
+      projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      activeData: RDD[(REId, LocalDataset)]): RDD[(UniqueSampleId, (REId, LabeledPoint))] = {
 
-    val rEType = randomEffectDataConfiguration.randomEffectType
-    val shardId = randomEffectDataConfiguration.featureShardId
+    val passiveDataPool = projectedKeyedDataset.map { case (rEID, (uniqueID, labeledPoint)) =>
+      (uniqueID, (rEID, labeledPoint))
+    }
+    val activeDataUIDs = activeData.flatMap { case (_, localDataset) =>
+      localDataset.dataPoints
+    }
 
-    // Once the active data is determined, the remaining data becomes passive data
-    gameDataset
-      .subtractByKey(uniqueIdToRandomEffectIds)
-      .mapValues { gameData =>
-        val randomEffectId = gameData.idTagToValueMap(rEType)
-        val labeledPoint = gameData.generateLabeledPointWithFeatureShardId(shardId)
-
-        (randomEffectId, labeledPoint)
-      }
+    passiveDataPool.subtractByKey(activeDataUIDs)
   }
 }
