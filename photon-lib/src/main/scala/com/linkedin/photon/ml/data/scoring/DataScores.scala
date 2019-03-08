@@ -103,7 +103,7 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    */
   override def materialize(): RDDLike = {
 
-    materializeOnce(scores)
+    scores.count()
 
     this
   }

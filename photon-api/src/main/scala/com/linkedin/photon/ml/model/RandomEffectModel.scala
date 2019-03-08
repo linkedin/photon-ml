@@ -180,7 +180,7 @@ class RandomEffectModel(
    */
   override protected[ml] def materialize(): RandomEffectModel = {
 
-    materializeOnce(modelsRDD)
+    modelsRDD.count()
 
     this
   }

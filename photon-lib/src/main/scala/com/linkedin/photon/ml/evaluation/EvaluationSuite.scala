@@ -143,7 +143,7 @@ class EvaluationSuite(
    */
   protected[ml] def materialize(): EvaluationSuite = {
 
-    materializeOnce(labelAndOffsetAndWeights)
+    labelAndOffsetAndWeights.count()
 
     this
   }

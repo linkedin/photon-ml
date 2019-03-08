@@ -107,7 +107,7 @@ protected[ml] class FixedEffectDataset(
    */
   override def materialize(): FixedEffectDataset = {
 
-    materializeOnce(labeledPoints)
+    labeledPoints.count()
 
     this
   }

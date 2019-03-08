@@ -87,7 +87,7 @@ protected[ml] class RandomEffectOptimizationTracker(val optimizationStatesTracke
    */
   override def materialize(): RandomEffectOptimizationTracker = {
 
-    materializeOnce(optimizationStatesTrackers)
+    optimizationStatesTrackers.count()
 
     this
   }

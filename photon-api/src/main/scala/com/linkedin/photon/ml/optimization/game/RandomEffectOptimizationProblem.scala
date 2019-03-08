@@ -99,7 +99,7 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    */
   override def materialize(): this.type = {
 
-    materializeOnce(optimizationProblems)
+    optimizationProblems.count()
 
     this
   }
