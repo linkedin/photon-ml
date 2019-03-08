@@ -19,6 +19,7 @@ import org.apache.spark.HashPartitioner
 import org.testng.Assert._
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.normalization.{NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
@@ -50,13 +51,13 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val projector = IndexMapProjectorRDD.buildIndexMapProjector(dataset1)
     val projected = projector.projectRandomEffectDataset(dataset2)
 
-    val projectedDimentions = projected
+    val projectedDimensions = projected
       .activeData
       .map { case (_, localDataset) => localDataset.dataPoints.head }
       .map { case (_, labeledPoint) => labeledPoint.features.length }
       .take(1)(0)
 
-    assertEquals(projectedDimentions, 4)
+    assertEquals(projectedDimensions, 4)
   }
 
   /**
@@ -87,9 +88,16 @@ class IndexMapProjectorRDDIntegTest extends SparkTestUtils with GameTestUtils {
     val uniqueIdToRandomEffectIds = sc.parallelize(
       randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
+    val passiveData = sc.emptyRDD[(UniqueSampleId, (REId, LabeledPoint))]
+    val passiveDataRandomEffectIds = sc.broadcast(Set[REId]())
 
     new RandomEffectDataset(
-      activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
+      activeData,
+      uniqueIdToRandomEffectIds,
+      passiveData,
+      passiveDataRandomEffectIds,
+      randomEffectType,
+      featureShardId)
   }
 
   /**

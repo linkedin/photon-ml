@@ -339,18 +339,6 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(globalModelPath, expectedNumCoefficients = 15019)
     assertTrue(AvroUtils.modelContainsIntercept(sc, globalModelPath))
 
-    assertTrue(fs.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 29, modelId = Some("1436929"))
-    assertTrue(AvroUtils.modelContainsIntercept(sc, userModelPath))
-
-    assertTrue(fs.exists(songModelPath))
-    assertModelSane(songModelPath, expectedNumCoefficients = 21)
-    assertTrue(AvroUtils.modelContainsIntercept(sc, songModelPath))
-
-    assertTrue(fs.exists(artistModelPath))
-    assertModelSane(artistModelPath, expectedNumCoefficients = 21)
-    assertTrue(AvroUtils.modelContainsIntercept(sc, artistModelPath))
-
     assertTrue(evaluateModel(new Path(outputDir, GameTrainingDriver.BEST_MODEL_DIR)) < errorThreshold)
   }
 
@@ -360,7 +348,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * photon-ml. Hyperparameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
 //  @Test
-//  def c(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
+//  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
 //
 //    val hyperParameterTuningIter = 1
 //    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
@@ -476,7 +464,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     assertModelSane(globalModelPath, expectedNumCoefficients = 0)
 
     assertTrue(fs.exists(userModelPath))
-    assertModelSane(userModelPath, expectedNumCoefficients = 0, modelId = Some("1436929"))
+    assertModelSane(userModelPath, expectedNumCoefficients = 0)
 
     assertTrue(fs.exists(songModelPath))
     assertModelSane(songModelPath, expectedNumCoefficients = 0)
@@ -569,22 +557,14 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * @param expectedNumCoefficients Expected number of non-zero coefficients
    * @return True if the model is sane
    */
-  private def assertModelSane(path: Path, expectedNumCoefficients: Int, modelId: Option[String] = None): Unit = {
+  private def assertModelSane(path: Path, expectedNumCoefficients: Int): Unit = {
 
     val modelAvro = AvroUtils.readFromSingleAvro[BayesianLinearModelAvro](
       sc,
       path.toString,
       BayesianLinearModelAvro.getClassSchema.toString)
 
-    val model = modelId match {
-      case Some(id) =>
-        val m = modelAvro.find { m => m.getModelId.toString == id }
-        assertTrue(m.isDefined, s"Model id $id not found.")
-        m.get
-      case _ => modelAvro.head
-    }
-
-    assertEquals(model.getMeans.count(x => x.getValue != 0), expectedNumCoefficients)
+    assertEquals(modelAvro.head.getMeans.count(x => x.getValue != 0), expectedNumCoefficients)
   }
 
   /**

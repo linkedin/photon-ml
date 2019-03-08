@@ -14,13 +14,11 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import scala.collection.Set
-
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.REId
+import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
@@ -180,20 +178,14 @@ object RandomEffectCoordinate {
       .setName("Active scores")
       .persist(StorageLevel.DISK_ONLY)
 
-    val passiveDataOption = randomEffectDataset.passiveDataOption
-    if (passiveDataOption.isDefined) {
-      val passiveDataRandomEffectIdsOption = randomEffectDataset.passiveDataRandomEffectIdsOption
-      val passiveScores = computePassiveScores(
-          passiveDataOption.get,
-          passiveDataRandomEffectIdsOption.get,
-          randomEffectModel.modelsRDD)
-        .setName("Passive scores")
-        .persist(StorageLevel.DISK_ONLY)
+    val passiveScores = computePassiveScores(
+        randomEffectDataset.passiveData,
+        randomEffectDataset.passiveDataRandomEffectIds,
+        randomEffectModel.modelsRDD)
+      .setName("Passive scores")
+      .persist(StorageLevel.DISK_ONLY)
 
-      new CoordinateDataScores(activeScores ++ passiveScores)
-    } else {
-      new CoordinateDataScores(activeScores)
-    }
+    new CoordinateDataScores(activeScores ++ passiveScores)
   }
 
   /**
@@ -208,8 +200,8 @@ object RandomEffectCoordinate {
    * @return The scores computed using the models
    */
   private def computePassiveScores(
-      passiveData: RDD[(Long, (String, LabeledPoint))],
-      passiveDataRandomEffectIds: Broadcast[Set[String]],
+      passiveData: RDD[(UniqueSampleId, (REId, LabeledPoint))],
+      passiveDataRandomEffectIds: Broadcast[Set[REId]],
       modelsRDD: RDD[(REId, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
 
     val modelsForPassiveData = modelsRDD
@@ -218,14 +210,14 @@ object RandomEffectCoordinate {
       }
       .collectAsMap()
 
-    // TODO: Need a better design that properly unpersists the broadcasted variables and persists the computed RDD
     val modelsForPassiveDataBroadcast = passiveData.sparkContext.broadcast(modelsForPassiveData)
     val passiveScores = passiveData.mapValues { case (randomEffectId, labeledPoint) =>
       modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features)
     }
 
-    passiveScores.setName("Passive scores").persist(StorageLevel.DISK_ONLY).count()
-    modelsForPassiveDataBroadcast.unpersist()
+    // TODO: Need a better design that properly unpersists the broadcast variables and persists the computed RDD
+//    passiveScores.setName("Passive scores").persist(StorageLevel.DISK_ONLY).count()
+//    modelsForPassiveDataBroadcast.unpersist()
 
     passiveScores
   }

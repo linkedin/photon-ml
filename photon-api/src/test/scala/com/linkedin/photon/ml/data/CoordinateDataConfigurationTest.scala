@@ -26,12 +26,11 @@ class CoordinateDataConfigurationTest {
 
   @DataProvider
   def invalidInput(): Array[Array[Any]] = Array(
-    Array(-1, 1, 1, 1, 1D),
-    Array(1, -1, 1, 1, 1D),
-    Array(1, 1, -1, 1, 1D),
-    Array(1, 1, 1, -1, 1D),
-    Array(1, 1, 1, 1, -1D),
-    Array(1, 2, 1, 1, 1D))
+    Array(-1, 1, 1, 1D),
+    Array(1, -1, 1, 1D),
+    Array(1, 1, -1, 1D),
+    Array(1, 1, 1, -1D),
+    Array(1, 2, 1, 1D))
 
   /**
    * Test that invalid input will be rejected.
@@ -39,7 +38,6 @@ class CoordinateDataConfigurationTest {
    * @param minPartitions The minimum number of data partitions
    * @param activeLowerBound The lower bound on number of active data samples
    * @param activeUpperBound The upper bound on number of active data samples
-   * @param passiveLowerBound The lower bound on number of passive data samples
    * @param featuresToSamplesRatio The upper bound on the ratio between data samples and features
    */
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
@@ -47,7 +45,6 @@ class CoordinateDataConfigurationTest {
       minPartitions: Int,
       activeLowerBound: Int,
       activeUpperBound: Int,
-      passiveLowerBound: Int,
       featuresToSamplesRatio: Double): Unit = {
 
     val mockREType = "reType"
@@ -60,15 +57,14 @@ class CoordinateDataConfigurationTest {
       minPartitions,
       Some(activeLowerBound),
       Some(activeUpperBound),
-      Some(passiveLowerBound),
       Some(featuresToSamplesRatio),
       mockProjector)
   }
 
   @DataProvider
   def validInput(): Array[Array[Any]] = Array(
-    Array(1, 1, 1, 1, 1D),
-    Array(1, 2, 3, 4, 5D))
+    Array(1, 1, 1, 1D),
+    Array(1, 2, 3, 5D))
 
   /**
    * Test that valid input will not be rejected.
@@ -76,7 +72,6 @@ class CoordinateDataConfigurationTest {
    * @param minPartitions The minimum number of data partitions
    * @param activeLowerBound The lower bound on number of active data samples
    * @param activeUpperBound The upper bound on number of active data samples
-   * @param passiveLowerBound The lower bound on number of passive data samples
    * @param featuresToSamplesRatio The upper bound on the ratio between data samples and features
    */
   @Test(dataProvider = "validInput")
@@ -84,7 +79,6 @@ class CoordinateDataConfigurationTest {
       minPartitions: Int,
       activeLowerBound: Int,
       activeUpperBound: Int,
-      passiveLowerBound: Int,
       featuresToSamplesRatio: Double): Unit = {
 
     val mockREType = "reType"
@@ -97,7 +91,6 @@ class CoordinateDataConfigurationTest {
       minPartitions,
       Some(activeLowerBound),
       Some(activeUpperBound),
-      Some(passiveLowerBound),
       Some(featuresToSamplesRatio),
       mockProjector)
   }

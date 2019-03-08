@@ -21,6 +21,7 @@ import org.apache.spark.{HashPartitioner, SparkConf}
 import org.testng.annotations.DataProvider
 
 import com.linkedin.photon.ml.SparkSessionConfiguration
+import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
@@ -220,8 +221,16 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
     val uniqueIdToRandomEffectIds = sc.parallelize(
       randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
     val activeData = sc.parallelize(datasets).partitionBy(partitioner)
+    val passiveData = sc.emptyRDD[(UniqueSampleId, (REId, LabeledPoint))]
+    val passiveDataRandomEffectIds = sc.broadcast(Set[REId]())
 
-    new RandomEffectDataset(activeData, uniqueIdToRandomEffectIds, None, None, randomEffectType, featureShardId)
+    new RandomEffectDataset(
+      activeData,
+      uniqueIdToRandomEffectIds,
+      passiveData,
+      passiveDataRandomEffectIds,
+      randomEffectType,
+      featureShardId)
   }
 
   /**

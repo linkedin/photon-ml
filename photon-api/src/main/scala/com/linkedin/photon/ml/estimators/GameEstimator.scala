@@ -534,7 +534,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
                 case _ =>
                   rawRandomEffectDataset.activeData.unpersist()
-                  rawRandomEffectDataset.passiveDataOption.foreach(_.unpersist())
+                  rawRandomEffectDataset.passiveData.unpersist()
               }
 
               randomEffectDatasetInProjectedSpace

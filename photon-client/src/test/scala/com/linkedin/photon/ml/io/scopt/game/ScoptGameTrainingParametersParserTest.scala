@@ -103,7 +103,6 @@ class ScoptGameTrainingParametersParserTest {
     val randomEffectPartitions = 10
     val randomEffectActiveLowerBound = Some(11)
     val randomEffectActiveUpperBound = Some(11)
-    val randomEffectPassiveLowerBound = Some(12)
     val randomEffectFeatureRatio = Some(13.0)
     val randomEffectDataConfiguration = RandomEffectDataConfiguration(
       randomEffectType,
@@ -111,7 +110,6 @@ class ScoptGameTrainingParametersParserTest {
       randomEffectPartitions,
       randomEffectActiveLowerBound,
       randomEffectActiveUpperBound,
-      randomEffectPassiveLowerBound,
       randomEffectFeatureRatio,
       IndexMapProjection)
     val randomEffectOptimizerType = OptimizerType.TRON
@@ -229,7 +227,6 @@ class ScoptGameTrainingParametersParserTest {
     assertEquals(finalRandomDataCoordinateConfig.minNumPartitions, randomEffectPartitions)
     assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsLowerBound, randomEffectActiveLowerBound)
     assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsUpperBound, randomEffectActiveUpperBound)
-    assertEquals(finalRandomDataCoordinateConfig.numPassiveDataPointsLowerBound, randomEffectPassiveLowerBound)
     assertEquals(finalRandomDataCoordinateConfig.numFeaturesToSamplesRatioUpperBound, randomEffectFeatureRatio)
     assertEquals(finalRandomDataCoordinateConfig.projectorType, IndexMapProjection)
 

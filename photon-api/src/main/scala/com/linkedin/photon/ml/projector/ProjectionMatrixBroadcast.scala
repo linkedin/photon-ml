@@ -45,17 +45,12 @@ protected[ml] class ProjectionMatrixBroadcast(projectionMatrixBroadcast: Broadca
   override def projectRandomEffectDataset(randomEffectDataset: RandomEffectDataset): RandomEffectDataset = {
 
     val activeData = randomEffectDataset.activeData
-    val passiveDataOption = randomEffectDataset.passiveDataOption
+    val passiveData = randomEffectDataset.passiveData
     val projectedActiveData = activeData.mapValues(_.projectFeatures(projectionMatrixBroadcast.value))
-
-    val projectedPassiveData = if (passiveDataOption.isDefined) {
-      passiveDataOption.map(_.mapValues { case (shardId, LabeledPoint(response, features, offset, weight)) =>
-        val projectedFeatures = projectionMatrixBroadcast.value.projectFeatures(features)
-        (shardId, LabeledPoint(response, projectedFeatures, offset, weight))
-      })
-    } else {
-      None
-    }
+    val projectedPassiveData =
+      passiveData.mapValues { case (shardId, LabeledPoint(response, features, offset, weight)) =>
+        (shardId, LabeledPoint(response, projectionMatrixBroadcast.value.projectFeatures(features), offset, weight))
+      }
 
     randomEffectDataset.update(projectedActiveData, projectedPassiveData)
   }
