@@ -144,7 +144,7 @@ protected[ml] class RandomEffectModelInProjectedSpace(
   override def materialize(): RandomEffectModelInProjectedSpace = {
 
     super.materialize()
-    materializeOnce(modelsInProjectedSpaceRDD)
+    modelsInProjectedSpaceRDD.count()
 
     this
   }

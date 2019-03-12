@@ -84,11 +84,14 @@ class RandomEffectDatasetInProjectedSpace(
    * @return This object with all its RDDs materialized
    */
   override def materialize(): this.type = {
+
     super.materialize()
+
     randomEffectProjector match {
       case rddLike: RDDLike => rddLike.materialize()
       case _ =>
     }
+
     this
   }
 }

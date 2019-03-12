@@ -201,7 +201,7 @@ protected[ml] class IndexMapProjectorRDD private (indexMapProjectorRDD: RDD[(Str
    */
   override def materialize(): IndexMapProjectorRDD = {
 
-    materializeOnce(indexMapProjectorRDD)
+    indexMapProjectorRDD.count()
 
     this
   }
@@ -238,9 +238,9 @@ object IndexMapProjectorRDD {
     val passiveIndices = randomEffectDataset
       .passiveData
       .map { case (_, (reId, labeledPoint)) =>
-        (reId, VectorUtils.getActiveIndices(labeledPoint.features))
+        (reId, labeledPoint.features)
       }
-      .partitionBy(randomEffectDataset.randomEffectIdPartitioner)
+      .mapValues(VectorUtils.getActiveIndices)
 
     // Union them, and fold the results into (reId, indices) tuples
     val indices = if (!passiveIndices.isEmpty()) {

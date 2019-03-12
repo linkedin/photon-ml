@@ -148,7 +148,9 @@ protected[ml] class RandomEffectDataset(
    */
   override def materialize(): RandomEffectDataset = {
 
-    materializeOnce(activeData, uniqueIdToRandomEffectIds, passiveData)
+    activeData.count()
+    uniqueIdToRandomEffectIds.count()
+    passiveData.count()
 
     this
   }
