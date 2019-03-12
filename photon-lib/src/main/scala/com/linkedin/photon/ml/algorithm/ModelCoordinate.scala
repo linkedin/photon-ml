@@ -63,12 +63,4 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
   override protected[algorithm] def updateModel(
       model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
     throw new UnsupportedOperationException("Attempted to update model coordinate.")
-
-  /**
-   * Compute the regularization term value of the coordinate for a given model.
-   *
-   * @param model The model
-   * @return The regularization term value
-   */
-  override protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double = 0D
 }

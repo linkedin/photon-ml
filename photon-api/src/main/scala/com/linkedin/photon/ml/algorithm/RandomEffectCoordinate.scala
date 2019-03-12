@@ -71,21 +71,6 @@ protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjec
         throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} " +
             s"in ${this.getClass} is not supported")
     }
-
-  /**
-   * Compute the regularization term value of the coordinate for a given model.
-   *
-   * @param model The model
-   * @return The regularization term value
-   */
-  override protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double = model match {
-    case randomEffectModel: RandomEffectModel =>
-      optimizationProblem.getRegularizationTermValue(randomEffectModel.modelsRDD)
-
-    case _ =>
-      throw new UnsupportedOperationException(s"Compute the regularization term value with model of " +
-          s"type ${model.getClass} in ${this.getClass} is not supported")
-  }
 }
 
 object RandomEffectCoordinate {
