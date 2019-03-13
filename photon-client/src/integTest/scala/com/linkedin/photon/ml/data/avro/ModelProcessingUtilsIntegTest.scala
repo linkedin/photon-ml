@@ -559,12 +559,12 @@ object ModelProcessingUtilsIntegTest {
     gameModel
       .toMap
       .map {
-        case (fixedEffect: String, model: FixedEffectModel) =>
+        case (coordinate: CoordinateId, model: FixedEffectModel) =>
           val featureIndex = featureIndexLoaders(model.featureShardId).indexMapForDriver()
 
-          (fixedEffect, Map((fixedEffect, extractGLMFeatures(model.model, featureIndex))))
+          (coordinate, Map((coordinate, extractGLMFeatures(model.model, featureIndex))))
 
-        case (randomEffect: String, model: RandomEffectModel) =>
+        case (coordinate: CoordinateId, model: RandomEffectModel) =>
           // Each random effect has a feature space, referred to by a shard id
           val featureShardId = model.featureShardId
           val featureIndexLoader = featureIndexLoaders(featureShardId)
@@ -577,10 +577,10 @@ object ModelProcessingUtilsIntegTest {
             }
           }
 
-        (randomEffect, featuresMapRDD.collect().toMap)
+        (coordinate, featuresMapRDD.collect().toMap)
 
-        case (modelType, _) =>
-          throw new RuntimeException(s"Unknown model type: $modelType")
+        case (coordinate, _) =>
+          throw new RuntimeException(s"Unknown model type for coordinate '$coordinate'")
       }
 
   /**
