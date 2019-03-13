@@ -70,12 +70,4 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
    * @return A tuple of the updated model and the optimization states tracker
    */
   protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
-
-  /**
-   * Compute the regularization term value of the coordinate for a given model.
-   *
-   * @param model The model
-   * @return The regularization term value
-   */
-  protected[algorithm] def computeRegularizationTermValue(model: DatumScoringModel): Double
 }
