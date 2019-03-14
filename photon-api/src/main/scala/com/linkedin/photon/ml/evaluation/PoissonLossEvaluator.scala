@@ -31,7 +31,7 @@ object PoissonLossEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The Poisson loss
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
     scoresAndLabelsAndWeights
       .map { case (score, label, weight) =>
         weight * PoissonLossFunction.lossAndDzLoss(score, label)._1

@@ -30,7 +30,7 @@ object AreaUnderROCCurveEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The AUROC
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
 
     val scoreAndLabels = scoresAndLabelsAndWeights.map { case (score, label, _) => (score, label) }
 

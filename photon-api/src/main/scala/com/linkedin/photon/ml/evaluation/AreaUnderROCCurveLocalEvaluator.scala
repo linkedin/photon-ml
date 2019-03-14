@@ -30,7 +30,7 @@ protected[evaluation] object AreaUnderROCCurveLocalEvaluator extends LocalEvalua
    * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
    * @return The AUROC
    */
-  protected[evaluation] override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
+  override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
 
     //Directly calling scoresAndLabelAndWeight.sort would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {

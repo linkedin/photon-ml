@@ -36,7 +36,7 @@ protected[evaluation] class PrecisionAtKLocalEvaluator(protected val k: Int) ext
    * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
    * @return The precision @ k
    */
-  protected[evaluation] override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
+  override def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double = {
 
     // Directly calling scoresAndLabelAndWeight.sort in Scala would cause some performance issue with large arrays
     val comparator = new JComparator[(Double, Double, Double)]() {

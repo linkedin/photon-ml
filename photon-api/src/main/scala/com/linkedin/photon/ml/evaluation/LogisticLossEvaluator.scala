@@ -31,7 +31,7 @@ object LogisticLossEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The logistic loss
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
     scoresAndLabelsAndWeights
       .map { case (score, label, weight) =>
         weight * LogisticLossFunction.lossAndDzLoss(score, label)._1

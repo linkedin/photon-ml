@@ -55,26 +55,42 @@ class PrecisionAtKLocalEvaluatorTest {
     // Two case adopted from Metronome
     val labelsM1 = Array[Double](0, 0, 1, 0)
     val scoresM1 = Array(1, 0.75, 0.5, 0.25)
+    val scoresAndLabelsAndWeightsM1 = getScoreLabelAndWeights(scoresM1, labelsM1)
     val metronomeCase1 = Array(
-      Array (1, getScoreLabelAndWeights(scoresM1, labelsM1), 0.0),
-      Array (2, getScoreLabelAndWeights(scoresM1, labelsM1), 0.0),
-      Array (3, getScoreLabelAndWeights(scoresM1, labelsM1), 1.0 / 3),
-      Array (4, getScoreLabelAndWeights(scoresM1, labelsM1), 1.0 / 4),
-      Array (10, getScoreLabelAndWeights(scoresM1, labelsM1), 1.0 / 10)
+      Array(1, scoresAndLabelsAndWeightsM1, 0.0),
+      Array(2, scoresAndLabelsAndWeightsM1, 0.0),
+      Array(3, scoresAndLabelsAndWeightsM1, 1.0 / 3),
+      Array(4, scoresAndLabelsAndWeightsM1, 1.0 / 4),
+      Array(10, scoresAndLabelsAndWeightsM1, 1.0 / 10)
     )
 
     val labelsM2 = Array[Double](1, 0, 0, 1, 1, 0)
     val scoresM2 = Array(1, 0.75, 0.5, 0.25, 0.2, 0.1)
+    val scoresAndLabelsAndWeightsM2 = getScoreLabelAndWeights(scoresM2, labelsM2)
     val metronomeCase2 = Array(
-      Array (1, getScoreLabelAndWeights(scoresM2, labelsM2), 1.0),
-      Array (2, getScoreLabelAndWeights(scoresM2, labelsM2), 1.0 / 2),
-      Array (3, getScoreLabelAndWeights(scoresM2, labelsM2), 1.0 / 3),
-      Array (4, getScoreLabelAndWeights(scoresM2, labelsM2), 2.0 / 4),
-      Array (5, getScoreLabelAndWeights(scoresM2, labelsM2), 3.0 / 5),
-      Array (100, getScoreLabelAndWeights(scoresM2, labelsM2), 3.0 / 100)
+      Array(1, scoresAndLabelsAndWeightsM2, 1.0),
+      Array(2, scoresAndLabelsAndWeightsM2, 1.0 / 2),
+      Array(3, scoresAndLabelsAndWeightsM2, 1.0 / 3),
+      Array(4, scoresAndLabelsAndWeightsM2, 2.0 / 4),
+      Array(5, scoresAndLabelsAndWeightsM2, 3.0 / 5),
+      Array(100, scoresAndLabelsAndWeightsM2, 3.0 / 100)
     )
 
-    trivialCase1 ++ trivialCase2 ++ trivialCase3 ++ trivialCase4 ++ metronomeCase1 ++ metronomeCase2
+    // Identical to the second Metronome test, but the order of the scores and labels is shifted (this tests that the
+    // evaluator correctly sorts by score)
+    val labelsM3 = Array[Double](1, 0, 1, 0, 1, 0)
+    val scoresM3 = Array(0.2, 0.1, 1, 0.5, 0.25, 0.75)
+    val scoresAndLabelsAndWeightsM3 = getScoreLabelAndWeights(scoresM3, labelsM3)
+    val metronomeCase3 = Array(
+      Array(1, scoresAndLabelsAndWeightsM3, 1.0),
+      Array(2, scoresAndLabelsAndWeightsM3, 1.0 / 2),
+      Array(3, scoresAndLabelsAndWeightsM3, 1.0 / 3),
+      Array(4, scoresAndLabelsAndWeightsM3, 2.0 / 4),
+      Array(5, scoresAndLabelsAndWeightsM3, 3.0 / 5),
+      Array(100, scoresAndLabelsAndWeightsM3, 3.0 / 100)
+    )
+
+    trivialCase1 ++ trivialCase2 ++ trivialCase3 ++ trivialCase4 ++ metronomeCase1 ++ metronomeCase2 ++ metronomeCase3
   }
 
   /**

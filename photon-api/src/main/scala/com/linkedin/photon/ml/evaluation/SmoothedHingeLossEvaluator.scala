@@ -31,7 +31,7 @@ object SmoothedHingeLossEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The smoothed hinge loss
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
     scoresAndLabelsAndWeights
       .map { case (score, label, weight) =>
         weight * SmoothedHingeLossFunction.lossAndDzLoss(score, label)._1

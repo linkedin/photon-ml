@@ -42,7 +42,7 @@ trait Evaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The evaluation metric
    */
-  protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[ScoredData]): Double
+  def evaluate(scoresAndLabelsAndWeights: RDD[ScoredData]): Double
 
   //
   // Object functions

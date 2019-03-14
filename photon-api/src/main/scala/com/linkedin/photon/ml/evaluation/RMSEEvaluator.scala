@@ -29,7 +29,7 @@ object RMSEEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The RMSE
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
 
     val squaredLoss = SquaredLossEvaluator.evaluate(scoresAndLabelsAndWeights)
 
