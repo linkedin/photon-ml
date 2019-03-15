@@ -30,7 +30,7 @@ object AreaUnderPRCurveEvaluator extends SingleEvaluator {
    * @param scoresAndLabelsAndWeights A [[RDD]] of scored data
    * @return The AUPR
    */
-  override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
+  override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double = {
 
     val scoreAndLabels = scoresAndLabelsAndWeights.map { case (score, label, _) => (score, label) }
 

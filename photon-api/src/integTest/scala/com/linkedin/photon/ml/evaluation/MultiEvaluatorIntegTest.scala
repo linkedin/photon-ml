@@ -74,7 +74,7 @@ class MultiEvaluatorIntegTest extends SparkTestUtils {
 object MultiEvaluatorIntegTest {
 
   class MockLocalEvaluator extends LocalEvaluator {
-    override protected[ml] def evaluate(scoreLabelAndWeight: Array[(Double, Double, Double)]): Double =
+    override def evaluate(scoreLabelAndWeight: Array[(Double, Double, Double)]): Double =
       math.pow(scoreLabelAndWeight.map(_._1).sum, 2)
   }
 

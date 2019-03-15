@@ -100,7 +100,7 @@ object EvaluationSuiteTest {
 
     type ScoredData = Double
 
-    override protected[ml] def evaluate(scoresAndLabelsAndWeights: RDD[Double]): Double =
+    override def evaluate(scoresAndLabelsAndWeights: RDD[Double]): Double =
       scoresAndLabelsAndWeights.sum()
   }
 }

@@ -25,5 +25,5 @@ trait LocalEvaluator extends Serializable {
    * @param scoresAndLabelsAndWeights An [[Array]] of (score, label, weight) tuples
    * @return The evaluation metric
    */
-  protected[evaluation] def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double
+  def evaluate(scoresAndLabelsAndWeights: Array[(Double, Double, Double)]): Double
 }

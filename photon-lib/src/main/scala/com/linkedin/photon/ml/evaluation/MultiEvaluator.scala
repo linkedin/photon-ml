@@ -46,7 +46,7 @@ abstract class MultiEvaluator(
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight))
    * @return Evaluation metric value
    */
-  override protected[ml] def evaluate(
+  override def evaluate(
       scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): Double = {
 
     // Create a local copy of the localEvaluator, so that the underlying object won't get shipped to the executor nodes
