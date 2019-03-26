@@ -34,7 +34,9 @@ object SquaredLossEvaluator extends SingleEvaluator {
   override def evaluate(scoresAndLabelsAndWeights: RDD[(Double, Double, Double)]): Double =
     scoresAndLabelsAndWeights
       .map { case (score, label, weight) =>
-        weight * SquaredLossFunction.lossAndDzLoss(score, label)._1
+        // Squared loss function is calculated as 1/2 (z - y)^2 for mathematical convenience.
+        // However, RMSE should be using (z - y)^2 for calculation, hence the multiplying by 2 here:
+        2 * weight * SquaredLossFunction.lossAndDzLoss(score, label)._1
       }
       .reduce(_ + _)
 }

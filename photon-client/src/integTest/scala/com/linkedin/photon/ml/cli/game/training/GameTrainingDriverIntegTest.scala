@@ -77,7 +77,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 1.2
+    val errorThreshold = 2.4
     val outputDir = new Path(getTmpDir, "fixedEffects")
 
     runDriver(
@@ -113,7 +113,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testFixedEffectsWithAdditionalOpts(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 1.2
+    val errorThreshold = 2.4
     val outputDir = new Path(getTmpDir, "fixedEffectsAdditionalOpts")
     val newArgs = fixedEffectSeriousRunArgs
       .copy
@@ -146,7 +146,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testFixedEffectsWithoutIntercept(): Unit = sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 1.2
+    val errorThreshold = 2.4
     val outputDir = new Path(getTmpDir, "fixedEffectsNoIntercept")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
@@ -244,7 +244,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 2.34
+    val errorThreshold = 4.68
     val outputDir = new Path(getTmpDir, "randomEffects")
 
     runDriver(randomEffectSeriousRunArgs
@@ -270,7 +270,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testRandomEffectsWithoutAnyIntercept(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 2.34
+    val errorThreshold = 4.68
     val outputDir = new Path(getTmpDir, "randomEffectsNoIntercept")
     val modifiedFeatureShardConfigs = randomEffectFeatureShardConfigs
       .mapValues(_.copy(hasIntercept = false))
@@ -300,7 +300,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   def testRandomEffectWithNormalization(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 2.34
+    val errorThreshold = 4.68
     val outputDir = new Path(getTmpDir, "randomEffectsNormalization")
     runDriver(
       randomEffectSeriousRunArgs
@@ -325,8 +325,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 03/29/2019
-    val errorThreshold = 1.05
+    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
+    val errorThreshold = 1.9
     val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
 
     runDriver(mixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
@@ -434,7 +434,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     runDriver(args.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
-    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.005)
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.007)
   }
 
   /**
