@@ -26,21 +26,6 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
  * @param dataset The training dataset
  */
 protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
-  /**
-   * Score the effect-specific dataset in the coordinate with the input model.
-   *
-   * @param model The input model
-   * @return The output scores
-   */
-  protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
-
-  /**
-   * Initialize a basic model for scoring GAME data.
-   *
-   * @param seed A random seed
-   * @return The basic model
-   */
-  protected[ml] def initializeModel(seed: Long): DatumScoringModel
 
   /**
    * Update the coordinate with a new dataset.
@@ -51,16 +36,20 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
   protected[algorithm] def updateCoordinateWithDataset(dataset: D): Coordinate[D]
 
   /**
-   * Optimize an existing model for the new scores of the other coordinates.
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @param model The existing model
-   * @param score The combined scores of the other coordinates for each record
    * @return A tuple of the updated model and the optimization states tracker
    */
-  protected[algorithm] def updateModel(
-      model: DatumScoringModel,
-      score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
-    updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).updateModel(model)
+  protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker])
+
+  /**
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
+   *
+   * @param score The combined scores for each record of the other coordinates
+   * @return A tuple of the updated model and the optimization states tracker
+   */
+  protected[algorithm] def trainModel(score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
+    updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).trainModel()
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -69,5 +58,26 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
    * @param model The model to use as a starting point
    * @return A tuple of the updated model and the optimization states tracker
    */
-  protected[algorithm] def updateModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
+  protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
+
+  /**
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
+   * a starting point and with residuals from other coordinates.
+   *
+   * @param model The existing model
+   * @param score The combined scores for each record of the other coordinates
+   * @return A tuple of the updated model and the optimization states tracker
+   */
+  protected[algorithm] def trainModel(
+      model: DatumScoringModel,
+      score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
+    updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).trainModel(model)
+
+  /**
+   * Score the effect-specific dataset in the coordinate with the input model.
+   *
+   * @param model The input model
+   * @return The output scores
+   */
+  protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
 }

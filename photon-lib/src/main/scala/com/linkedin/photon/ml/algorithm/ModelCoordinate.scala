@@ -28,23 +28,6 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
 abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(dataset) {
 
   /**
-   * Score the effect-specific dataset in the coordinate with the input model.
-   *
-   * @param model The input model
-   * @return The output scores
-   */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
-
-  /**
-   * Initialize a basic model for scoring GAME data.
-   *
-   * @param seed A random seed
-   * @return The basic model
-   */
-  override protected[ml] def initializeModel(seed: Long): DatumScoringModel =
-    throw new UnsupportedOperationException("Attempted to initialize model using pre-trained coordinate.")
-
-  /**
    * Update the coordinate with a new dataset.
    *
    * @param dataset The updated dataset
@@ -54,13 +37,28 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
     throw new UnsupportedOperationException("Attempted to update model coordinate.")
 
   /**
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
+   *
+   * @return A tuple of the updated model and the optimization states tracker
+   */
+  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) =
+    throw new UnsupportedOperationException("Attempted to train model coordinate.")
+
+  /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
    * a starting point.
    *
    * @param model The model to use as a starting point
    * @return A tuple of the updated model and the optimization states tracker
    */
-  override protected[algorithm] def updateModel(
-      model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
-    throw new UnsupportedOperationException("Attempted to update model coordinate.")
+  override protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+    throw new UnsupportedOperationException("Attempted to train model coordinate.")
+
+  /**
+   * Score the effect-specific dataset in the coordinate with the input model.
+   *
+   * @param model The input model
+   * @return The output scores
+   */
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
 }

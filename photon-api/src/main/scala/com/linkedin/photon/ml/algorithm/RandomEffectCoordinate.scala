@@ -40,19 +40,12 @@ protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjec
   extends Coordinate[RandomEffectDataset](dataset) {
 
   /**
-   * Score the effect-specific dataset in the coordinate with the input model.
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @param model The input model
-   * @return The output scores
+   * @return A tuple of the updated model and the optimization states tracker
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
-    model match {
-      case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(dataset, randomEffectModel)
-
-      case _ => throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-          s"in ${this.getClass} is not supported")
-    }
-  }
+  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) =
+    RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -61,87 +54,113 @@ protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjec
    * @param model The model to use as a starting point
    * @return A tuple of the updated model and the optimization states tracker
    */
-  override protected[algorithm] def updateModel(
+  override protected[algorithm] def trainModel(
       model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.updateModel(dataset, optimizationProblem, randomEffectModel)
+        RandomEffectCoordinate.trainModel(dataset, optimizationProblem, Some(randomEffectModel))
 
       case _ =>
         throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} " +
             s"in ${this.getClass} is not supported")
+    }
+
+  /**
+   * Score the effect-specific dataset in the coordinate with the input model.
+   *
+   * @param model The input model
+   * @return The output scores
+   */
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores =
+    model match {
+      case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(dataset, randomEffectModel)
+
+      case _ => throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
+        s"in ${this.getClass} is not supported")
     }
 }
 
 object RandomEffectCoordinate {
 
   /**
-   * Update the model (i.e. run the coordinate optimizer).
+   * Train a new [[RandomEffectModel]] (i.e. run model optimization for each entity).
    *
    * @tparam Function The type of objective function used to solve individual random effect optimization problems
    * @param randomEffectDataset The training dataset
-   * @param randomEffectOptimizationProblem The random effect optimization problem
-   * @param randomEffectModel The current model, used as a starting point
-   * @return A tuple of optimized model and optimization tracker
+   * @param randomEffectOptimizationProblem The per-entity optimization problems
+   * @param initialRandomEffectModelOpt An optional existing [[RandomEffectModel]] to use as a starting point for
+   *                                    optimization
+   * @return A (new [[RandomEffectModel]], optional optimization stats) tuple
    */
-  protected[algorithm] def updateModel[Function <: SingleNodeObjectiveFunction](
+  protected[algorithm] def trainModel[Function <: SingleNodeObjectiveFunction](
       randomEffectDataset: RandomEffectDataset,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
-      randomEffectModel: RandomEffectModel): (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
+      initialRandomEffectModelOpt: Option[RandomEffectModel])
+    : (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
     val dataAndOptimizationProblems = randomEffectDataset
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
 
     // Left join the models to data and optimization problems for cases where we have a prior model but no new data
-    val updatedModelsAndTrackers = randomEffectModel
-      .modelsRDD
-      .leftOuterJoin(dataAndOptimizationProblems)
-      .mapValues {
-        case (localModel, Some((localDataset, optimizationProblem))) =>
+    val newModelsAndTrackers = initialRandomEffectModelOpt
+      .map { randomEffectModel =>
+        randomEffectModel
+          .modelsRDD
+          .leftOuterJoin(dataAndOptimizationProblems)
+          .mapValues {
+            case (localModel, Some((localDataset, optimizationProblem))) =>
+              val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
+              val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
+              val stateTrackers = optimizationProblem.getStatesTracker
+
+              (updatedModel, stateTrackers)
+
+            case (localModel, _) =>
+              (localModel, None)
+          }
+      }
+      .getOrElse {
+        dataAndOptimizationProblems.mapValues { case (localDataset, optimizationProblem) =>
           val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-          val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
+          val newModel = optimizationProblem.run(trainingLabeledPoints)
           val stateTrackers = optimizationProblem.getStatesTracker
 
-          (updatedModel, stateTrackers)
-
-        case (localModel, _) =>
-          (localModel, None)
+          (newModel, stateTrackers)
+        }
       }
       .setName(s"Updated models and state trackers for random effect ${randomEffectDataset.randomEffectType}")
       .persist(StorageLevel.MEMORY_ONLY)
 
-    val updatedRandomEffectModel = randomEffectModel
-      .update(updatedModelsAndTrackers.mapValues(_._1))
-      .setName(s"Updated models for random effect ${randomEffectDataset.randomEffectType}")
-      .persistRDD(StorageLevel.DISK_ONLY)
-      .materialize()
+    val newRandomEffectModel = new RandomEffectModel(
+      newModelsAndTrackers.mapValues(_._1),
+      randomEffectDataset.randomEffectType,
+      randomEffectDataset.featureShardId)
 
     val optimizationTracker: Option[RandomEffectOptimizationTracker] =
       if (randomEffectOptimizationProblem.isTrackingState) {
-        val stateTrackers = updatedModelsAndTrackers.flatMap(_._2._2)
+        val stateTrackers = newModelsAndTrackers.flatMap(_._2._2)
         val randomEffectTracker = RandomEffectOptimizationTracker(stateTrackers)
 
         Some(randomEffectTracker)
+
       } else {
         None
       }
 
-    updatedModelsAndTrackers.unpersist()
-
-    (updatedRandomEffectModel, optimizationTracker)
+    (newRandomEffectModel, optimizationTracker)
   }
 
   /**
-   * Score a dataset using a given model.
+   * Score a [[RandomEffectDataset]] using a given [[RandomEffectModel]].
    *
    * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
    * documentation.
    *
-   * @note The score is the dot product of the model coefficients with the feature values (in particular, does not go
-   *       through non-linear link function in logistic regression!).
-   * @param randomEffectDataset The active dataset to score
-   * @param randomEffectModel The model to score the dataset with
+   * @note The score is the dot product of the model coefficients with the feature values (i.e., it does not go
+   *       through a non-linear link function).
+   * @param randomEffectDataset The dataset to score
+   * @param randomEffectModel The model used to score the dataset
    * @return The computed scores
    */
   protected[algorithm] def score(
@@ -157,15 +176,11 @@ object RandomEffectCoordinate {
         }
       }
       .partitionBy(randomEffectDataset.uniqueIdPartitioner)
-      .setName("Active scores")
-      .persist(StorageLevel.DISK_ONLY)
 
     val passiveScores = computePassiveScores(
         randomEffectDataset.passiveData,
         randomEffectDataset.passiveDataRandomEffectIds,
         randomEffectModel.modelsRDD)
-      .setName("Passive scores")
-      .persist(StorageLevel.DISK_ONLY)
 
     new CoordinateDataScores(activeScores ++ passiveScores)
   }
@@ -177,9 +192,9 @@ object RandomEffectCoordinate {
    * documentation.
    *
    * @param passiveData The passive dataset to score
-   * @param passiveDataRandomEffectIds The set of random effect ids
-   * @param modelsRDD The models for each individual id
-   * @return The scores computed using the models
+   * @param passiveDataRandomEffectIds The set of random effect ids with passive data
+   * @param modelsRDD The per-entity models
+   * @return The computed scores for passive data
    */
   private def computePassiveScores(
       passiveData: RDD[(UniqueSampleId, (REId, LabeledPoint))],

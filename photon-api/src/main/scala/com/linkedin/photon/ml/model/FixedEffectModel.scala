@@ -18,6 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.BroadcastLike
@@ -43,15 +44,6 @@ class FixedEffectModel(
    * @return The broadcast [[GeneralizedLinearModel]]
    */
   def model: GeneralizedLinearModel = modelBroadcast.value
-
-  /**
-   * Create an updated model with the coefficients.
-   *
-   * @param updatedModelBroadcast New coefficients
-   * @return Updated model
-   */
-  protected[ml] def update(updatedModelBroadcast: Broadcast[GeneralizedLinearModel]): FixedEffectModel =
-    new FixedEffectModel(updatedModelBroadcast, featureShardId)
 
   /**
    * Compute the scores for the dataset.
@@ -131,11 +123,11 @@ object FixedEffectModel {
    * @return The scores
    */
   private def score[T, V](
-      dataPoints: RDD[(Long, GameDatum)],
+      dataPoints: RDD[(UniqueSampleId, GameDatum)],
       modelBroadcast: Broadcast[GeneralizedLinearModel],
       featureShardId: String,
       toScore: (GameDatum, Double) => T,
-      toResult: (RDD[(Long, T)]) => V): V = {
+      toResult: RDD[(UniqueSampleId, T)] => V): V = {
 
     val scores = dataPoints.mapValues { gameDatum =>
       toScore(gameDatum, modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId)))

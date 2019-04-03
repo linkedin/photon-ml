@@ -112,7 +112,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * (cold start in iterations over the regularization weights for hyperparameter tuning).
    *
    * @param input The training data
-   * @return The learned generalized linear models of each regularization weight and iteration.
+   * @return The learned [[GeneralizedLinearModel]]
    */
   override def run(input: RDD[LabeledPoint]): GeneralizedLinearModel =
     run(input, initializeZeroModel(input.first.features.size))
@@ -123,7 +123,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    *
    * @param input The training data
    * @param initialModel The initial model from which to begin optimization
-   * @return The learned generalized linear models of each regularization weight and iteration.
+   * @return The learned [[GeneralizedLinearModel]]
    */
   override def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
 
@@ -134,6 +134,15 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
     createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
   }
 
+  /**
+   * Run the algorithm with the configured parameters, starting from an initial model of all-0 coefficients, and
+   * down-sample the input training data first.
+   *
+   * @param input The training data
+   * @return The learned [[GeneralizedLinearModel]]
+   */
+  def runWithSampling(input: RDD[(UniqueSampleId, LabeledPoint)]): GeneralizedLinearModel =
+    runWithSampling(input, initializeZeroModel(input.first._2.features.size))
 
   /**
    * Run the algorithm with the configured parameters, starting from the initial model provided, and down-sample the
@@ -141,7 +150,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    *
    * @param input The training data
    * @param initialModel The initial model from which to begin optimization
-   * @return The learned generalized linear models of each regularization weight and iteration.
+   * @return The learned [[GeneralizedLinearModel]]
    */
   def runWithSampling(
       input: RDD[(UniqueSampleId, LabeledPoint)],
