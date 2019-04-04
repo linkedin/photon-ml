@@ -15,17 +15,18 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import org.mockito.Matchers
 import org.mockito.Mockito._
-import org.testng.Assert.assertEquals
+import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
-import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
-import com.linkedin.photon.ml.optimization.OptimizationTracker
+import com.linkedin.photon.ml.model.DatumScoringModel
+import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.util.PhotonLogger
 
 /**
@@ -35,7 +36,6 @@ class CoordinateDescentTest {
 
   import CoordinateDescentTest._
 
-  abstract class MockDataset extends Dataset[MockDataset] {}
   type CoordinateType = Coordinate[MockDataset]
 
   @DataProvider
@@ -58,7 +58,9 @@ class CoordinateDescentTest {
       // Negative iterations
       Array(goodUpdateSequence, -1, goodLockedCoordinates),
       // Locked coordinates missing from update sequence
-      Array(goodUpdateSequence, goodIter, badLockedCoordinates))
+      Array(goodUpdateSequence, goodIter, badLockedCoordinates),
+      // All coordinates locked
+      Array(goodUpdateSequence, goodIter, goodUpdateSequence.toSet))
   }
 
   /**
@@ -84,8 +86,6 @@ class CoordinateDescentTest {
   def invalidRunInput: Array[Array[Any]] = {
 
     // Mocks
-    val goodGameModel = mock(classOf[GameModel])
-    val badGameModel = mock(classOf[GameModel])
     val datumScoringModel = mock(classOf[DatumScoringModel])
     val coordinate = mock(classOf[CoordinateType])
 
@@ -95,15 +95,8 @@ class CoordinateDescentTest {
     val descentIterations = 1
     val goodCoordinates = Map("a" -> coordinate, "b" -> coordinate,"c" -> coordinate, "d" -> coordinate)
     val badCoordinates = Map("a" -> coordinate, "b" -> coordinate, "d" -> coordinate)
-
-    doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("a")
-    doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("b")
-    doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("c")
-    doReturn(Some(datumScoringModel)).when(goodGameModel).getModel("d")
-    doReturn(Some(datumScoringModel)).when(badGameModel).getModel("a")
-    doReturn(Some(datumScoringModel)).when(badGameModel).getModel("b")
-    doReturn(Some(datumScoringModel)).when(badGameModel).getModel("c")
-    doReturn(None).when(badGameModel).getModel("d")
+    val goodInitialModels = Some(lockedCoordinates.map((_, datumScoringModel)).toMap)
+    val badInitialModels = Some(Map[CoordinateId, DatumScoringModel]("a" -> datumScoringModel))
 
     val coordinateDescent = new CoordinateDescent(
       updateSequence,
@@ -114,9 +107,11 @@ class CoordinateDescentTest {
 
     Array(
       // Coordinates to train are missing from the coordinates map
-      Array(coordinateDescent, badCoordinates, goodGameModel),
-      // Update sequence coordinates missing from the gameModel
-      Array(coordinateDescent, goodCoordinates, badGameModel))
+      Array(coordinateDescent, badCoordinates, goodInitialModels),
+      // No initial models provided
+      Array(coordinateDescent, goodCoordinates, None),
+      // Locked coordinate without initial model
+      Array(coordinateDescent, goodCoordinates, badInitialModels))
   }
 
   /**
@@ -124,165 +119,201 @@ class CoordinateDescentTest {
    *
    * @param coordinateDescent A pre-built [[CoordinateDescent]] object to attempt to run
    * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
-   * @param gameModel The initial GAME model to use as a starting point
+   * @param initialModelsOpt
    */
   @Test(dataProvider = "invalidRunInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidRun(
       coordinateDescent: CoordinateDescent,
       coordinates: Map[CoordinateId, CoordinateType],
-      gameModel: GameModel): Unit = coordinateDescent.run(coordinates, gameModel)
+      initialModelsOpt: Option[Map[CoordinateId, DatumScoringModel]]): Unit =
+    coordinateDescent.run(coordinates, initialModelsOpt)
 
   @DataProvider
-  def coordinateCountProvider(): Array[Array[Integer]] = (1 to 5).map(x => Array(Int.box(x))).toArray
+  def trainCoordinateModelInput(): Array[Array[Any]] = {
 
-  /**
-   * Tests for [[CoordinateDescent]] without validation.
-   *
-   * @param coordinateCount Number of coordinates to generate for test
-   */
-  @Test(dataProvider = "coordinateCountProvider")
-  def testRun(coordinateCount: Int): Unit = {
+    val mockCoordinate = mock(classOf[CoordinateType])
+    val mockInitialModel = mock(classOf[DatumScoringModel])
+    val mockResiduals = mock(classOf[CoordinateDataScores])
 
-    val numIterations = 10
+    val mockNewModel1 = mock(classOf[DatumScoringModel])
+    val mockNewModel2 = mock(classOf[DatumScoringModel])
+    val mockNewModel3 = mock(classOf[DatumScoringModel])
+    val mockNewModel4 = mock(classOf[DatumScoringModel])
 
-    // Create Coordinate and model mocks
-    val coordinateIds = (0 until coordinateCount).map("coordinate" + _)
-    val coordinatesAndModels: Seq[(CoordinateId, CoordinateType, DatumScoringModel)] =
-      coordinateIds.map { coordinateId =>
-        (coordinateId, mock(classOf[CoordinateType]), mock(classOf[DatumScoringModel]))
-      }
-    val coordinates = coordinatesAndModels
-      .map { case (coordinateId, coordinate, _) =>
-        (coordinateId, coordinate)
-      }
-      .toMap
+    doReturn((mockNewModel1, None)).when(mockCoordinate).trainModel(mockInitialModel, mockResiduals)
+    doReturn((mockNewModel2, None)).when(mockCoordinate).trainModel(mockInitialModel)
+    doReturn((mockNewModel3, None)).when(mockCoordinate).trainModel(mockResiduals)
+    doReturn((mockNewModel4, None)).when(mockCoordinate).trainModel()
 
-    // Other mocks
-    val gameModel = mock(classOf[GameModel])
-    val tracker = mock(classOf[OptimizationTracker])
-    val score = mock(classOf[CoordinateDataScores])
-
-    // Scores mock setup
-    when(score + score).thenReturn(score)
-    when(score - score).thenReturn(score)
-    doReturn(score).when(score).setName(Matchers.any(classOf[String]))
-    doReturn(score).when(score).persistRDD(Matchers.any())
-
-    // Per-coordinate mock setup
-    coordinatesAndModels.foreach { case (coordinateId, coordinate, model) =>
-
-      // Coordinate mock setup
-      doReturn(score).when(coordinate).score(model)
-      doReturn((model, Some(tracker))).when(coordinate).updateModel(model)
-      doReturn((model, Some(tracker))).when(coordinate).updateModel(model, score)
-
-      // GameModel mock setup
-      doReturn(Map[CoordinateId, DatumScoringModel]()).when(gameModel).toMap
-      doReturn(gameModel).when(gameModel).updateModel(coordinateId, model)
-      doReturn(Some(model)).when(gameModel).getModel(coordinateId)
-    }
-
-    // Run coordinate descent - None = no validation
-    val coordinateDescent = new CoordinateDescent(
-      coordinateIds,
-      numIterations,
-      validationDataAndEvaluationSuiteOpt = None,
-      lockedCoordinates = Set(),
-      MOCK_LOGGER)
-    coordinateDescent.run(coordinates, gameModel)
-
-    // Verify the calls to updateModel
-    coordinatesAndModels.foreach { case (_, coordinate, model) =>
-      if (coordinates.size == 1) {
-        verify(coordinate, times(numIterations)).updateModel(model)
-      } else {
-        verify(coordinate, times(numIterations)).updateModel(model, score)
-      }
-    }
+    Array(
+      Array(mockCoordinate, Some(mockInitialModel), Some(mockResiduals), mockNewModel1),
+      Array(mockCoordinate, Some(mockInitialModel), None, mockNewModel2),
+      Array(mockCoordinate, None, Some(mockResiduals), mockNewModel3),
+      Array(mockCoordinate, None, None, mockNewModel4))
   }
 
   /**
-   * Test [[CoordinateDescent]] with validation.
+   * Test that a new [[DatumScoringModel]] can be trained correctly.
+   *
+   * @param coordinate The coordinate for which to train a new model
+   * @param initialModelOpt An optional initial model from whose coefficients to begin optimization
+   * @param residualsOpt Optional residual scores from previous coordinates
+   * @param expectedResult Expected model to be returned based on input
+   */
+  @Test(dataProvider = "trainCoordinateModelInput")
+  def testTrainCoordinateModel(
+      coordinate: CoordinateType,
+      initialModelOpt: Option[DatumScoringModel],
+      residualsOpt: Option[CoordinateDataScores],
+      expectedResult: DatumScoringModel): Unit = {
+
+    val coordinateId = "mockCoordinateId"
+    val iteration = 1
+
+    val result = CoordinateDescent.trainCoordinateModel(
+      coordinateId,
+      coordinate,
+      iteration,
+      initialModelOpt,
+      residualsOpt)(
+      MOCK_LOGGER)
+
+    assertTrue(result.eq(expectedResult))
+  }
+
+  /**
+   * Test that locked coordinates will not have a new model trained.
+   */
+  @Test(dependsOnMethods = Array("testTrainCoordinateModel"))
+  def testTrainOrFetchCoordinateModel(): Unit = {
+
+    val mockCoordinate = mock(classOf[CoordinateType])
+    val mockInitialModel = mock(classOf[DatumScoringModel])
+    val mockNewModel = mock(classOf[DatumScoringModel])
+
+    val trainingCoordinateId = "trainingCoordinateId"
+    val lockedCoordinateId = "lockedCoordinateId"
+    val coordinatesToTrain = Seq(trainingCoordinateId)
+    val iteration = 1
+
+    doReturn((mockNewModel, None)).when(mockCoordinate).trainModel(mockInitialModel)
+
+    val newModel = CoordinateDescent.trainOrFetchCoordinateModel(
+      trainingCoordinateId,
+      mockCoordinate,
+      coordinatesToTrain,
+      iteration,
+      Some(mockInitialModel),
+      None)(
+      MOCK_LOGGER)
+    val lockedModel = CoordinateDescent.trainOrFetchCoordinateModel(
+      lockedCoordinateId,
+      mockCoordinate,
+      coordinatesToTrain,
+      iteration,
+      Some(mockInitialModel),
+      None)(
+      MOCK_LOGGER)
+
+    assertTrue(newModel.eq(mockNewModel))
+    assertTrue(lockedModel.eq(mockInitialModel))
+  }
+
+  /**
+   * Test that trained models are evaluated on validation data correctly.
    */
   @Test
-  def testBestModel(): Unit = {
+  def testEvaluateModel(): Unit = {
 
-    val iterationCount = 3
+    val mockModel = mock(classOf[DatumScoringModel])
+    val mockValidationData = mock(classOf[RDD[(UniqueSampleId, GameDatum)]])
+    val mockValidationScores = mock(classOf[CoordinateDataScores])
+    val mockRawScores = mock(classOf[RDD[(UniqueSampleId, Double)]])
+    val mockEvaluationSuite = mock(classOf[EvaluationSuite])
+    val mockEvaluationResults = mock(classOf[EvaluationResults])
 
-    val coordinate = mock(classOf[CoordinateType])
-    val coordinateIds = Seq("Coordinate0")
-    val coordinates: Map[CoordinateId, CoordinateType] = Map(coordinateIds.head -> coordinate)
+    val evaluatorType = EvaluatorType.AUC
+    val evaluation = 1D
+    val evaluations = Map(evaluatorType -> evaluation)
 
-    val tracker = mock(classOf[OptimizationTracker])
-    val (score, validationScore) = (mock(classOf[CoordinateDataScores]), mock(classOf[CoordinateDataScores]))
-    val coordinateModel = mock(classOf[DatumScoringModel])
-    val modelScores = mock(classOf[RDD[(UniqueSampleId, Double)]])
-    val validationData = mock(classOf[RDD[(UniqueSampleId, GameDatum)]])
+    doReturn(mockValidationScores).when(mockModel).scoreForCoordinateDescent(mockValidationData)
+    doReturn(mockRawScores).when(mockValidationScores).scores
+    doReturn(mockEvaluationResults).when(mockEvaluationSuite).evaluate(mockRawScores)
+    doReturn(evaluations).when(mockEvaluationResults).evaluations
 
-    val mockEvaluatorType1 = mock(classOf[EvaluatorType])
-    val mockEvaluatorType2 = mock(classOf[EvaluatorType])
-    val evaluationResults = EvaluationResults(
-      Map(mockEvaluatorType1 -> 0D, mockEvaluatorType2 -> 0D),
-      mockEvaluatorType1)
-    val evaluationSuite = mock(classOf[EvaluationSuite])
+    val result = CoordinateDescent.evaluateModel(mockModel, mockValidationData, mockEvaluationSuite)(MOCK_LOGGER)
 
-    when(score + score).thenReturn(score)
-    when(score - score).thenReturn(score)
-    when(score.setName(Matchers.any())).thenReturn(score)
-    when(score.persistRDD(Matchers.any())).thenReturn(score)
+    assertTrue(result.eq(mockEvaluationResults))
+  }
 
-    when(validationScore + validationScore).thenReturn(validationScore)
-    when(validationScore - validationScore).thenReturn(validationScore)
-    when(validationScore.scores).thenReturn(modelScores)
-    when(validationScore.setName(Matchers.any())).thenReturn(validationScore)
-    when(validationScore.persistRDD(Matchers.any())).thenReturn(validationScore)
-    when(validationScore.materialize()).thenReturn(validationScore)
+  /**
+   * Test that [[RDDLike]] [[DatumScoringModel]] objects
+   */
+  @Test
+  def testPersistModel(): Unit = {
 
-    when(evaluationSuite.evaluate(modelScores)).thenReturn(evaluationResults)
-    // The evaluators are called iterationCount - 1 times, since on the first iteration
-    // there is nothing to compare the model against
-    when(mockEvaluatorType1.betterThan(Matchers.any(), Matchers.any()))
-      .thenReturn(true)
-      .thenReturn(false)
-    when(mockEvaluatorType2.betterThan(Matchers.any(), Matchers.any()))
-      .thenReturn(false)
-      .thenReturn(false)
+    val mockBroadcastLike = mock(classOf[MockBroadcastModel])
+    val mockRDDLike = mock(classOf[MockRDDModel])
 
-    // The very first GAME model will give rise to GAME model #1 via update,
-    // and GAME model #1 will be the first one to go through best model selection
-    val gameModels = (0 to iterationCount + 1).map { _ => mock(classOf[GameModel]) }
-    (0 until iterationCount).map { i =>
-      when(gameModels(i).toMap).thenReturn(Map[CoordinateId, DatumScoringModel]())
-      when(gameModels(i).getModel(Matchers.any())).thenReturn(Some(coordinateModel))
-      when(gameModels(i).updateModel(Matchers.any(), Matchers.any())).thenReturn(gameModels(i + 1))
-    }
+    val coordinateId = "mockCoordinate"
+    val iteration = 1
 
-    when(coordinateModel.scoreForCoordinateDescent(Matchers.any())).thenReturn(validationScore)
-    when(coordinate.score(Matchers.any())).thenReturn(score)
-    when(coordinate.updateModel(coordinateModel)).thenReturn((coordinateModel, Some(tracker)))
-    when(coordinate.updateModel(coordinateModel, score)).thenReturn((coordinateModel, Some(tracker)))
+    doReturn(mockRDDLike).when(mockRDDLike).setName(Matchers.any(classOf[String]))
+    doReturn(mockRDDLike).when(mockRDDLike).persistRDD(StorageLevel.DISK_ONLY)
+    doReturn(mockRDDLike).when(mockRDDLike).materialize()
 
-    // Run coordinate descent
-    val validationDataAndEvaluationSuite = (validationData, evaluationSuite)
-    val coordinateDescent = new CoordinateDescent(
-      coordinateIds,
-      iterationCount,
-      Some(validationDataAndEvaluationSuite),
-      lockedCoordinates = Set(),
-      MOCK_LOGGER)
-    val (returnedModel, _) = coordinateDescent.run(coordinates, gameModels.head)
+    CoordinateDescent.persistModel(mockBroadcastLike, coordinateId, iteration)
+    CoordinateDescent.persistModel(mockRDDLike, coordinateId, iteration)
 
-    assertEquals(returnedModel.hashCode(), gameModels(2).hashCode())
+    verify(mockRDDLike, times(1)).setName(Matchers.any(classOf[String]))
+    verify(mockRDDLike, times(1)).persistRDD(StorageLevel.DISK_ONLY)
+    verify(mockRDDLike, times(1)).materialize()
+  }
 
-    // Verify the calls to updateModel
-    verify(coordinate, times(iterationCount)).updateModel(coordinateModel)
+  /**
+   * Test that [[CoordinateDataScores]] containing summed [[Coordinate]] scores are persisted correctly.
+   */
+  @Test
+  def testPersistSummedScores(): Unit = {
 
-    // Verify the calls to the validation evaluator set
-    verify(validationDataAndEvaluationSuite._2, times(iterationCount)).evaluate(modelScores)
+    val mockScores = mock(classOf[CoordinateDataScores])
+
+    doReturn(mockScores).when(mockScores).setName(Matchers.any(classOf[String]))
+    doReturn(mockScores).when(mockScores).persistRDD(StorageLevel.MEMORY_AND_DISK_SER)
+    doReturn(mockScores).when(mockScores).materialize()
+
+    CoordinateDescent.persistSummedScores(mockScores)
+
+    verify(mockScores, times(1)).setName(Matchers.any(classOf[String]))
+    verify(mockScores, times(1)).persistRDD(StorageLevel.MEMORY_AND_DISK_SER)
+    verify(mockScores, times(1)).materialize()
+  }
+
+  /**
+   * Test that models are unpersisted correctly.
+   */
+  @Test
+  def testUnpersistModel(): Unit = {
+
+    val mockBroadcastLike = mock(classOf[MockBroadcastModel])
+    val mockRDDLike = mock(classOf[MockRDDModel])
+
+    doReturn(mockBroadcastLike).when(mockBroadcastLike).unpersistBroadcast()
+    doReturn(mockRDDLike).when(mockRDDLike).unpersistRDD()
+
+    CoordinateDescent.unpersistModel(mockBroadcastLike.asInstanceOf[DatumScoringModel])
+    CoordinateDescent.unpersistModel(mockRDDLike.asInstanceOf[DatumScoringModel])
+
+    verify(mockBroadcastLike, times(1)).unpersistBroadcast()
+    verify(mockRDDLike, times(1)).unpersistRDD()
   }
 }
 
 object CoordinateDescentTest {
+
+  abstract class MockDataset extends Dataset[MockDataset]
+  abstract class MockBroadcastModel extends DatumScoringModel with BroadcastLike
+  abstract class MockRDDModel extends DatumScoringModel with RDDLike
 
   val MOCK_LOGGER: PhotonLogger = mock(classOf[PhotonLogger])
 }
