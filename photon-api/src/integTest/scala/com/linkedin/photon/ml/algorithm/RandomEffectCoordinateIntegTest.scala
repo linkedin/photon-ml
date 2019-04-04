@@ -17,24 +17,28 @@ package com.linkedin.photon.ml.algorithm
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
- * Integration tests for the [[RandomEffectCoordinate]] implementation.
+ * Integration tests for [[RandomEffectCoordinate]].
  */
 class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
   import RandomEffectCoordinateIntegTest._
 
   @DataProvider
-  def numEntitiesDataProvider(): Array[Array[Integer]] = {
-    Array(Array(1), Array(2), Array(10))
-  }
+  def numEntitiesDataProvider(): Array[Array[Any]] = Array(Array(1), Array(2), Array(10))
 
-  @Test(dataProvider = "numEntitiesDataProvider")
-  def testUpdateModel(numEntities: Int): Unit = sparkTest("testUpdateModel") {
+  /**
+   * Test that a [[RandomEffectCoordinate]] can train a new model.
+   *
+   * @param numEntities The number of unique per-entity models to train
+   */
+  @Test(dataProvider = "numEntitiesDataProvider", dependsOnMethods = Array("testScore"))
+  def testTrainModel(numEntities: Int): Unit = sparkTest("testUpdateModel") {
 
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
       RANDOM_EFFECT_TYPE,
@@ -47,40 +51,65 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
     val score = coordinate.score(model)
     assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
 
-    // Update model
-    val (newModel, _) = coordinate.updateModel(model)
-    assertNotEquals(newModel, model)
+    // Train models
+    val (newModelWithoutInitial, _) = coordinate.trainModel()
+    val (newModelWithInitial, _) = coordinate.trainModel(model)
+
+    assertNotEquals(newModelWithoutInitial, model)
+    assertNotEquals(newModelWithInitial, model)
 
     // Score after model update
-    val newScore = coordinate.score(newModel)
-    assertFalse(newScore.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    val newScoreWithoutInitial = coordinate.score(newModelWithoutInitial)
+    val newScoreWithInitial = coordinate.score(newModelWithInitial)
+
+    assertFalse(newScoreWithoutInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertFalse(newScoreWithInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+
+    newScoreWithoutInitial
+      .scores
+      .join(newScoreWithInitial.scores)
+      .values
+      .foreach { case (score1, score2) =>
+        assertEquals(score1, score2, MathConst.EPSILON)
+      }
   }
 
-  @Test(dataProvider = "numEntitiesDataProvider")
-  def testUpdateInitialModel(numEntities: Int): Unit = sparkTest("testUpdateInitialModel") {
+  /**
+   * Test that a [[RandomEffectCoordinate]] can train a new model, using an existing [[RandomEffectModel]] as a starting
+   * point for optimization, and retain existing models for which new data does not exist.
+   */
+  @Test
+  def testTrainWithExtraModel(): Unit = sparkTest("testUpdateInitialModel") {
 
+    val extraREID = "reExtra"
     val (coordinate, baseModel) = generateRandomEffectCoordinateAndModel(
       RANDOM_EFFECT_TYPE,
       FEATURE_SHARD_ID,
-      numEntities,
+      numEntities = 1,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
 
     // Add in an item that exists in the prior model, but not the data
-    val randomEffectIds = baseModel.modelsRDD.keys.collect() :+ "reExtra"
-    val model = baseModel.update(sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, DIMENSIONALITY)))
-    val (newModel, _) = coordinate.updateModel(model)
+    val randomEffectIds = baseModel.modelsRDD.keys.collect() :+ extraREID
+    val extraModel =
+      baseModel.update(sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, DIMENSIONALITY)))
+    val (newModel, _) = coordinate.trainModel(extraModel)
 
     newModel match {
-      case m: RandomEffectModel =>
+      case randomEffectModel: RandomEffectModel =>
         // Make sure that the prior model items are still there
-        assertEquals(m.modelsRDD.map(_._1).collect.toSet, randomEffectIds.toSet)
+        assertEquals(randomEffectModel.modelsRDD.map(_._1).collect.toSet, randomEffectIds.toSet)
 
       case other =>
         fail(s"Unexpected model type: ${other.getClass.getName}")
     }
   }
 
+  /**
+   * Test that a [[RandomEffectCoordinate]] can score data using a [[RandomEffectModel]].
+   *
+   * @param numEntities The number of unique per-entity models to train
+   */
   @Test(dataProvider = "numEntitiesDataProvider")
   def testScore(numEntities: Int): Unit = sparkTest("testScore") {
 

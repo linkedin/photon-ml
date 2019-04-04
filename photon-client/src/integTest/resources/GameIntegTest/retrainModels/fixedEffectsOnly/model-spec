@@ -1,3 +1,9 @@
 global:
-FixedEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),com.linkedin.photon.ml.optimization.L2RegularizationContext$@66c45436,10.0,1.0)
+FixedEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),RegularizationContext(L2,None),10.0,None,None,1.0)
+per-artist:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),RegularizationContext(L2,None),1.0,None,None)
+per-song:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),RegularizationContext(L2,None),1.0,None,None)
+per-user:
+RandomEffectOptimizationConfiguration(OptimizerConfig(TRON,10,1.0E-5,None),RegularizationContext(L2,None),1.0,None,None)
 

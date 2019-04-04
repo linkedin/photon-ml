@@ -27,19 +27,20 @@ class RandomEffectModelCoordinateIntegTest extends SparkTestUtils with GameTestU
 
   import RandomEffectModelCoordinateIntegTest._
 
-  private val randomEffectType = "random-effect-1"
-  private val featureShardId = "shard1"
-
   @DataProvider
-  def numEntitiesDataProvider(): Array[Array[Integer]] = {
-    Array(Array(1), Array(2), Array(10))
-  }
+  def numEntitiesDataProvider(): Array[Array[Any]] = Array(Array(1), Array(2), Array(10))
 
+  /**
+   * Test that a [[RandomEffectModelCoordinate]] can score data using a [[com.linkedin.photon.ml.model.RandomEffectModel]].
+   *
+   * @param numEntities The number of unique per-entity models to train
+   */
   @Test(dataProvider = "numEntitiesDataProvider")
   def testScore(numEntities: Int): Unit = sparkTest("testScore") {
+
     val (coordinate, model) = generateRandomEffectCoordinateAndModel(
-      randomEffectType,
-      featureShardId,
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_ID,
       numEntities,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
@@ -52,6 +53,9 @@ class RandomEffectModelCoordinateIntegTest extends SparkTestUtils with GameTestU
 }
 
 object RandomEffectModelCoordinateIntegTest {
+
+  private val RANDOM_EFFECT_TYPE = "random-effect-1"
+  private val FEATURE_SHARD_ID = "shard1"
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }

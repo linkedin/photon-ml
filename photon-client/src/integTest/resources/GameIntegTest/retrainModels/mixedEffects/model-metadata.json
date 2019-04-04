@@ -24,7 +24,7 @@
 },
 
 {
-  "name": "per-user",
+  "name": "per-artist",
   "configuration": 
 {
   "optimizerConfig": {
@@ -58,7 +58,7 @@
 },
 
 {
-  "name": "per-artist",
+  "name": "per-user",
   "configuration": 
 {
   "optimizerConfig": {
