@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType, REId}
 import com.linkedin.photon.ml.projector.RandomEffectProjector
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -45,39 +44,18 @@ protected[ml] class RandomEffectModelInProjectedSpace(
    *
    * @return A [[RandomEffectModel]]
    */
-  def toRandomEffectModel: RandomEffectModel = {
-
-    val currType = this.modelType
-
-    new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectType, featureShardId) {
-
-      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-      override lazy val modelType: TaskType = currType
-    }
-  }
+  def toRandomEffectModel: RandomEffectModel =
+    new RandomEffectModel(modelsInProjectedSpaceRDD, randomEffectType, featureShardId)
 
   /**
    * Update the random effect model in projected space with new sub-models (one per random effect ID).
    *
-   * @param updatedModelsRDDInProjectedSpace The new sub-models with coefficients in projected space, one per random
+   * @param updatedModelsRdd The new sub-models with coefficients in projected space, one per random
    *                                         effect ID
    * @return The updated random effect model in projected space
    */
-  override def update(
-      updatedModelsRDDInProjectedSpace: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace = {
-
-    val currType = this.modelType
-
-    new RandomEffectModelInProjectedSpace(
-        updatedModelsRDDInProjectedSpace,
-        randomEffectProjector,
-        randomEffectType,
-        featureShardId) {
-
-      // TODO: The model types don't necessarily match, but checking each time is slow so copy the type for now
-      override lazy val modelType: TaskType = currType
-    }
-  }
+  override def update(updatedModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModelInProjectedSpace =
+    new RandomEffectModelInProjectedSpace(updatedModelsRdd, randomEffectProjector, randomEffectType, featureShardId)
 
   /**
    * Summarize this model in text format.

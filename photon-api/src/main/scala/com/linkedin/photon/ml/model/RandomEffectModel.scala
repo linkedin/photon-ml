@@ -40,11 +40,7 @@ class RandomEffectModel(
   extends DatumScoringModel
   with RDDLike {
 
-  // The model type should be consistent at construction time. However, copies of this object shouldn't need to call the
-  // check again. Thus the value is lazy, so that anonymous classes can overwrite it without triggering a call to
-  // determineModelType, but it's called immediately so that it's evaluated at construction time.
-  override lazy val modelType: TaskType = RandomEffectModel.determineModelType(randomEffectType, modelsRDD)
-  modelType
+  override val modelType: TaskType = RandomEffectModel.determineModelType(modelsRDD)
 
   /**
    * Update the random effect model with new underlying models.
@@ -52,25 +48,8 @@ class RandomEffectModel(
    * @param updatedModelsRdd The new underlying models, one per individual
    * @return The updated random effect model
    */
-  def update(updatedModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel = {
-
-    val currType = this.modelType
-
-    // TODO: Should verify that each update retains the model type, however this is slow and materializes the RDD early
-//    val isMatch = updatedModelsRdd
-//      .mapPartitions { iter =>
-//        Array(iter.forall(_._2.modelType == currType)).iterator
-//      }
-//      .fold(true) { case (result, nextVal) =>
-//        result && nextVal
-//      }
-//    require(isMatch, s"One or more models in updated RDD do not match model type '$currType'")
-
-    // Since model type matches, override explicit check using anonymous class
-    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId) {
-      override lazy val modelType: TaskType = currType
-    }
-  }
+  def update(updatedModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel =
+    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId)
 
   /**
    * Compute the score for the dataset.
@@ -234,19 +213,16 @@ object RandomEffectModel {
    *       that type - it will be faster for large numbers of random effect models. Note that it may still be a
    *       bottleneck if we check each time a new RandomEffectModel is created.
    *
-   * @param randomEffectType The random effect type
    * @param modelsRDD The random effect models
    * @return The GAME model type
    */
-  protected def determineModelType(
-      randomEffectType: REType,
-      modelsRDD: RDD[(REId, GeneralizedLinearModel)]): TaskType = {
+  protected def determineModelType(modelsRDD: RDD[(REId, GeneralizedLinearModel)]): TaskType = {
 
     val modelTypes = modelsRDD.values.map(_.modelType).distinct().collect()
 
     require(
       modelTypes.length == 1,
-      s"Random effect model $randomEffectType has multiple model types:\n${modelTypes.mkString(", ")}")
+      s"${modelsRDD.name} has multiple model types:\n${modelTypes.mkString(", ")}")
 
     modelTypes.head
   }
