@@ -29,11 +29,12 @@ import com.linkedin.photon.ml.data.{DataValidators, LabeledPoint}
 import com.linkedin.photon.ml.evaluation.Evaluation
 import com.linkedin.photon.ml.event._
 import com.linkedin.photon.ml.io.deprecated.{InputDataFormat, InputFormatFactory}
+import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
-import com.linkedin.photon.ml.optimization.RegularizationContext
+import com.linkedin.photon.ml.optimization.{OptimizationStatesTracker, RegularizationContext}
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.{IOUtils, PhotonLogger, Utils}
 
@@ -76,15 +77,15 @@ protected[ml] class Driver(
   private[this] var validationData: RDD[LabeledPoint] = null
 
   private[this] val regularizationContext: RegularizationContext =
-    new RegularizationContext(params.regularizationType, params.elasticNetAlpha)
+    RegularizationContext(params.regularizationType, params.elasticNetAlpha)
   private[this] var featureNum: Int = -1
   private[this] var trainingDataNum: Int = -1
 
   private[this] var summaryOption: Option[FeatureDataStatistics] = None
   private[this] var normalizationContext: NormalizationContext = NoNormalization()
 
-  private[this] var lambdaModelTuples: List[(Double, _ <: GeneralizedLinearModel)] = List.empty
-  private[this] var lambdaModelTrackerTuplesOption: Option[List[(Double, ModelTracker)]] = None
+  private[this] var lambdaModelAndTrackers: List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
+    List.empty
 
   protected var perModelMetrics: Map[Double, Evaluation.MetricsMap] = Map()
 
@@ -168,10 +169,8 @@ protected[ml] class Driver(
         updateStage(DriverStage.VALIDATED)
 
       case _ =>
-        lambdaModelTrackerTuplesOption.foreach { lambdaModelTrackerTuples =>
-          lambdaModelTrackerTuples.foreach { case (regWeight, tracker) =>
-            sendEvent(PhotonOptimizationLogEvent(regWeight, tracker))
-          }
+        lambdaModelAndTrackers.foreach { case (regWeight, _, trackerOpt) =>
+            sendEvent(PhotonOptimizationLogEvent(regWeight, trackerOpt))
         }
     }
 
@@ -181,13 +180,13 @@ protected[ml] class Driver(
       validationData.unpersist()
     }
 
-    /* Store all the learned models and log messages to their corresponding directories */
+    // Store all the learned models and log messages to their corresponding directories
     val elapsed = (System.currentTimeMillis() - startTime) * 0.001
     logger.info(f"total time elapsed: $elapsed%.3f(s)")
 
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
     val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT)
-    IOUtils.writeModelsInText(sc, lambdaModelTuples, finalModelsDir.toString, inputDataFormat.indexMapLoader())
+    IOUtils.writeModelsInText(sc, lambdaModelAndTrackers, finalModelsDir.toString, inputDataFormat.indexMapLoader())
 
     logger.info(s"Final models are written to: $finalModelsDir")
 
@@ -314,7 +313,7 @@ protected[ml] class Driver(
 
     // The sole purpose of optimizationStateTrackersMapOption is used for logging. When we have better logging support,
     // we should remove stop returning optimizationStateTrackerMapOption
-    val (_lambdaModelTuples, _lambdaModelTrackerTuplesOption) = ModelTraining.trainGeneralizedLinearModel(
+    lambdaModelAndTrackers = ModelTraining.trainGeneralizedLinearModel(
       trainingData = trainingData,
       taskType = params.taskType,
       optimizerType = params.optimizerType,
@@ -328,17 +327,14 @@ protected[ml] class Driver(
       treeAggregateDepth = params.treeAggregateDepth,
       useWarmStart = params.useWarmStart)
 
-    lambdaModelTuples = _lambdaModelTuples
-    lambdaModelTrackerTuplesOption = _lambdaModelTrackerTuplesOption
-
     val trainingTime = (System.currentTimeMillis() - startTimeForTraining) * 0.001
     logger.info(f"model training finished, time elapsed: $trainingTime%.3f(s)")
 
-    lambdaModelTrackerTuplesOption.foreach { modelTrackersMap =>
+    if (params.enableOptimizationStateTracker) {
       logger.info(s"optimization state tracker information:")
 
-      modelTrackersMap.foreach { case (regularizationWeight, modelTracker) =>
-        logger.info(s"model with regularization weight $regularizationWeight: ${modelTracker.optimizationStateTracker}")
+      lambdaModelAndTrackers.foreach { abc =>
+        logger.info(s"model with regularization weight ${abc._1}: ${abc._3.get.toSummaryString}")
       }
     }
   }
@@ -346,51 +342,62 @@ protected[ml] class Driver(
   /**
    *
    */
-  protected def computeAndLogModelMetrics(): Unit = {
-    (params.validatePerIteration, lambdaModelTrackerTuplesOption) match {
-      case (true, Some(lambdaModelTrackerTuples)) =>
-        // Calculate metrics for all (models, iterations)
-        lambdaModelTrackerTuples.foreach { case (lambda, modelTracker) =>
-          val perIterationMetrics = modelTracker.models.map(Evaluation.evaluate(_, validationData))
+  protected def computeAndLogModelMetrics(): Unit =
+    if (params.validatePerIteration) {
+      lambdaModelAndTrackers.foreach { case (regularizationWeight: Double, glm: GeneralizedLinearModel, optimizationStatesTrackerOpt: Option[OptimizationStatesTracker]) =>
+        require(
+          optimizationStatesTrackerOpt.isDefined,
+          s"Missing optimization state information for model with regularization weight $regularizationWeight")
 
-          logger.info(s"Model with lambda = $lambda:")
-          perIterationMetrics
-            .zipWithIndex
-            .foreach { case (metrics, index) =>
-              metrics
-                .keys
-                .toSeq
-                .sorted
-                .foreach(m => logger.info(f"Iteration: [$index%6d] Metric: [$m] value: ${metrics(m)}"))
-            }
+        logger.info(s"Model with lambda = $regularizationWeight:")
 
-          val finalMetrics = perIterationMetrics.last
-          perModelMetrics += (lambda -> finalMetrics)
-          sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, Some(perIterationMetrics), Some(finalMetrics)))
-        }
+        val tracker = optimizationStatesTrackerOpt.get
+        val perIterationMetrics = tracker
+          .getTrackedStates
+          .map { optimizerState =>
+            val model = glm.updateCoefficients(Coefficients(optimizerState.coefficients, None))
+            val metrics = Evaluation.evaluate(model, validationData)
 
-      case _ =>
-        // Calculate metrics for all models
-        val perLambdaValidationMetrics = lambdaModelTuples.map { case (lambda: Double, model: GeneralizedLinearModel) =>
-          val metrics = Evaluation.evaluate(model, validationData)
-          val msg = metrics.keys
-            .toSeq
-            .sorted
-            .map(m => f"    Metric: [$m] value: ${metrics(m)}")
-            .mkString("\n")
-          perModelMetrics += (lambda -> metrics)
+            metrics
+              .keys
+              .toSeq
+              .sorted
+              .foreach { metric =>
+                logger.info(f"Iteration: [${optimizerState.iter}%6d] Metric: [$metric] value: ${metrics(metric)}")
+              }
 
-          logger.info(s"Model with lambda = $lambda:\n$msg")
-
-          metrics
-        }
-        lambdaModelTrackerTuplesOption.foreach { list =>
-          list.zip(perLambdaValidationMetrics).foreach { case ((lambda, modelTracker), finalMetrics) =>
-            sendEvent(PhotonOptimizationLogEvent(lambda, modelTracker, perIterationMetrics = None, Some(finalMetrics)))
+            (model, metrics)
           }
-        }
+
+          val finalMetrics = perIterationMetrics.last._2
+
+          perModelMetrics += (regularizationWeight -> finalMetrics)
+          sendEvent(
+            PhotonOptimizationLogEvent(
+              regularizationWeight,
+              optimizationStatesTrackerOpt,
+              Some(perIterationMetrics),
+              Some(finalMetrics)))
+      }
+    } else {
+      lambdaModelAndTrackers.foreach { case (regularizationWeight: Double, glm: GeneralizedLinearModel, optimizationStatesTrackerOpt: Option[OptimizationStatesTracker]) =>
+        logger.info(s"Model with lambda = $regularizationWeight:")
+
+        val finalMetrics = Evaluation.evaluate(glm, validationData)
+
+        finalMetrics
+          .keys
+          .toSeq
+          .sorted
+          .foreach { metric =>
+            logger.info(f"Metric: [$metric] value: ${finalMetrics(metric)}")
+          }
+
+        perModelMetrics += (regularizationWeight -> finalMetrics)
+        sendEvent(
+          PhotonOptimizationLogEvent(regularizationWeight, optimizationStatesTrackerOpt, None, Some(finalMetrics)))
+      }
     }
-  }
 
   /**
    *
@@ -402,26 +409,28 @@ protected[ml] class Driver(
     /* Select the best model using the validating dataset and stores the best model as text file */
     val (bestModelWeight, bestModel: GeneralizedLinearModel) = params.taskType match {
       case TaskType.LINEAR_REGRESSION =>
-        val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
+        val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[LinearRegressionModel]))
         ModelSelection.selectBestLinearRegressionModel(models, perModelMetrics)
       case TaskType.POISSON_REGRESSION =>
-        val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
+        val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[PoissonRegressionModel]))
         ModelSelection.selectBestPoissonRegressionModel(models, perModelMetrics)
       case TaskType.LOGISTIC_REGRESSION =>
-        val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
+        val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
         ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val models = lambdaModelTuples.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
+        val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
         ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
     }
-
-    logger.info(s"Regularization weight of the best model is: $bestModelWeight")
     val bestModelDir = new Path(params.outputDir, BEST_MODEL_TEXT).toString
-    IOUtils.writeModelsInText(sc,
-      List((bestModelWeight, bestModel)),
+
+    IOUtils.writeModelsInText(
+      sc,
+      List((bestModelWeight, bestModel, None)),
       bestModelDir.toString,
       inputDataFormat.indexMapLoader()
     )
+
+    logger.info(s"Regularization weight of the best model is: $bestModelWeight")
     logger.info(s"The best model is written to: $bestModelDir")
   }
 
@@ -430,13 +439,14 @@ protected[ml] class Driver(
    */
   protected def validate(): Unit = {
     /* Validating the learned models using the validating dataset */
-    logger.info("\nStart to validate the learned models with validating data")
+    logger.info("Start to validate the learned models with validating data")
     val startTimeForValidating = System.currentTimeMillis()
+
     computeAndLogModelMetrics()
     modelSelection()
 
     val validatingTime = (System.currentTimeMillis() - startTimeForValidating) * 0.001
-    logger.info(f"Model validating finished, time elapsed $validatingTime%.3f(s)")
+    logger.info(f"Model validating finished, time elapsed: $validatingTime%.3f(s)")
   }
 
   /**
@@ -445,9 +455,9 @@ protected[ml] class Driver(
    * @param y
    * @return
    */
-  protected def trainFunc(x: RDD[LabeledPoint], y: Map[Double, GeneralizedLinearModel])
-  : List[(Double, _ <: GeneralizedLinearModel)] = {
-
+  protected def trainFunc(
+      x: RDD[LabeledPoint],
+      y: Map[Double, GeneralizedLinearModel]): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
     ModelTraining.trainGeneralizedLinearModel(
       trainingData = x,
       taskType = params.taskType,
@@ -461,9 +471,7 @@ protected[ml] class Driver(
       constraintMap = inputDataFormat.constraintFeatureMap(),
       warmStartModels = y,
       treeAggregateDepth = params.treeAggregateDepth,
-      params.useWarmStart)._1
-  }
-
+      params.useWarmStart)
 
   /**
    *

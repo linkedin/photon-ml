@@ -30,7 +30,7 @@ import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.projector.{IndexMapProjector, ProjectionMatrix, Projector}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
 /**
@@ -60,7 +60,6 @@ object SparkSessionConfiguration {
     classOf[LocalDataset],
     classOf[LogisticRegressionModel],
     classOf[Matrix[Double]],
-    classOf[ModelTracker],
     classOf[NormalizationContext],
     classOf[ObjectiveFunction],
     classOf[OptimizationStatesTracker],

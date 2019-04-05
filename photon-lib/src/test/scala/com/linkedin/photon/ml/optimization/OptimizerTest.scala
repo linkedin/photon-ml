@@ -24,7 +24,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.TwiceDiffFunction
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
-import com.linkedin.photon.ml.util.{BroadcastWrapper, FunctionValuesConverged, GradientConverged, Logging}
+import com.linkedin.photon.ml.util._
 
 /**
  * Verify that core optimizers do reasonable things on small test problems.
@@ -34,7 +34,7 @@ class OptimizerTest extends Logging {
   import OptimizerTest._
 
   @DataProvider(parallel = true)
-  def optimzersUsingInitialValue(): Array[Array[Object]] = {
+  def optimizersUsingInitialValue(): Array[Array[Object]] = {
     Array(
       Array(new LBFGS(
         tolerance = CONVERGENCE_TOLERANCE,
@@ -49,7 +49,7 @@ class OptimizerTest extends Logging {
   }
 
   @DataProvider(parallel = true)
-  def optimzersNotUsingInitialValue(): Array[Array[Object]] = {
+  def optimizersNotUsingInitialValue(): Array[Array[Object]] = {
     Array(
       Array(new LBFGS(
         tolerance = CONVERGENCE_TOLERANCE,
@@ -66,7 +66,7 @@ class OptimizerTest extends Logging {
   // TODO: Currently the test objective function used by this test ignores weights, so testing points with varying
   //       weights is pointless
 
-  @Test(dataProvider = "optimzersUsingInitialValue")
+  @Test(dataProvider = "optimizersUsingInitialValue")
   def checkEasyTestFunctionLocalNoInitialValue(optimizer: Optimizer[TwiceDiffFunction]) : Unit = {
     val features = new SparseVector[Double](Array(), Array(), PROBLEM_DIMENSION)
     val objective = new TestObjective
@@ -83,7 +83,7 @@ class OptimizerTest extends Logging {
     easyOptimizationStatesChecks(optimizer.getStateTracker.get)
   }
 
-  @Test(dataProvider = "optimzersNotUsingInitialValue")
+  @Test(dataProvider = "optimizersNotUsingInitialValue")
   def checkEasyTestFunctionLocalInitialValue(optimizer: Optimizer[TwiceDiffFunction]): Unit = {
     val features = new SparseVector[Double](Array(), Array(), PROBLEM_DIMENSION)
     val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
@@ -128,19 +128,29 @@ object OptimizerTest extends Logging {
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
 
   /**
+   * Check if optimization ended because either the objective function value or gradient converged.
+   *
+   * @return True if either the function values or gradient converged, false otherwise
+   */
+  protected[optimization] def checkConvergence(convergenceReasonOpt: Option[ConvergenceReason]): Unit =
+    assertTrue(
+      convergenceReasonOpt.exists { convergenceReason =>
+        convergenceReason == FunctionValuesConverged || convergenceReason == GradientConverged
+      })
+
+  /**
    *
    * @param history
    */
-  def checkConvergence(history: OptimizationStatesTracker) {
-    var lastValue: Double = Double.MaxValue
-
-    history.getTrackedStates.foreach { state =>
+  protected[optimization] def checkMonotonicConvergence(history: OptimizationStatesTracker): Unit = history
+    .getTrackedStates
+    .foldLeft(Double.MaxValue) { case (lastValue: Double, state: OptimizerState) =>
       assertTrue(
         lastValue >= state.loss,
         s"Objective should be monotonically decreasing (current=[${state.loss}], previous=[$lastValue])")
-      lastValue = state.loss
+
+      state.loss
     }
-  }
 
   /**
    * Common checks for the easy test function:
@@ -157,7 +167,8 @@ object OptimizerTest extends Logging {
     logger.info(s"Optimizer state: $optimizerStatesTracker")
 
     // The optimizer should be converged
-    assertTrue(optimizerStatesTracker.converged)
+    checkConvergence(optimizerStatesTracker.convergenceReason)
+
     assertFalse(optimizerStatesTracker.getTrackedTimeHistory.isEmpty)
     assertFalse(optimizerStatesTracker.getTrackedStates.isEmpty)
     assertEquals(optimizerStatesTracker.getTrackedStates.length, optimizerStatesTracker.getTrackedTimeHistory.length)
@@ -192,6 +203,6 @@ object OptimizerTest extends Logging {
     }
 
     // Monotonic convergence
-    checkConvergence(optimizerStatesTracker)
+    checkMonotonicConvergence(optimizerStatesTracker)
   }
 }

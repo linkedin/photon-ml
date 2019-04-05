@@ -27,5 +27,5 @@ protected[ml] class FixedEffectOptimizationTracker(optimizationStateTracker: Opt
    *
    * @return string representation
    */
-  override def toSummaryString: String = optimizationStateTracker.toString()
+  override def toSummaryString: String = optimizationStateTracker.toSummaryString
 }

@@ -120,10 +120,7 @@ object RandomEffectCoordinate {
     val optimizationTracker: Option[RandomEffectOptimizationTracker] =
       if (randomEffectOptimizationProblem.isTrackingState) {
         val stateTrackers = updatedModelsAndTrackers.flatMap(_._2._2)
-        val randomEffectTracker = new RandomEffectOptimizationTracker(stateTrackers)
-          .setName(s"State trackers for random effect ${randomEffectDataset.randomEffectType}")
-          .persistRDD(StorageLevel.DISK_ONLY)
-          .materialize()
+        val randomEffectTracker = RandomEffectOptimizationTracker(stateTrackers)
 
         Some(randomEffectTracker)
       } else {

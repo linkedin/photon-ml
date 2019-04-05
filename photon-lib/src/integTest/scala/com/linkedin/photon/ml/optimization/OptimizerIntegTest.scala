@@ -118,6 +118,8 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
 
 object OptimizerIntegTest extends Logging {
 
+  import OptimizerTest.{checkConvergence, checkMonotonicConvergence}
+
   private val PROBLEM_DIMENSION: Int = 10
   private val MAX_ITERATIONS: Int = 1000 * PROBLEM_DIMENSION
   private val CONVERGENCE_TOLERANCE: Double = 1e-13
@@ -131,21 +133,6 @@ object OptimizerIntegTest extends Logging {
   private val NORMALIZATION_MOCK = mock(classOf[BroadcastWrapper[NormalizationContext]])
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
-
-  /**
-   *
-   * @param history
-   */
-  def checkConvergence(history: OptimizationStatesTracker) {
-    var lastValue: Double = Double.MaxValue
-
-    history.getTrackedStates.foreach { state =>
-      assertTrue(
-        lastValue >= state.loss,
-        s"Objective should be monotonically decreasing (current=[${state.loss}], previous=[$lastValue])")
-      lastValue = state.loss
-    }
-  }
 
   /**
    * Common checks:
@@ -162,7 +149,8 @@ object OptimizerIntegTest extends Logging {
     logger.info(s"Optimizer state: $optimizerStatesTracker")
 
     // The optimizer should be converged
-    assertTrue(optimizerStatesTracker.converged)
+    checkConvergence(optimizerStatesTracker.convergenceReason)
+
     assertFalse(optimizerStatesTracker.getTrackedTimeHistory.isEmpty)
     assertFalse(optimizerStatesTracker.getTrackedStates.isEmpty)
     assertEquals(optimizerStatesTracker.getTrackedStates.length, optimizerStatesTracker.getTrackedTimeHistory.length)
@@ -197,6 +185,6 @@ object OptimizerIntegTest extends Logging {
     }
 
     // Monotonic convergence
-    checkConvergence(optimizerStatesTracker)
+    checkMonotonicConvergence(optimizerStatesTracker)
   }
 }

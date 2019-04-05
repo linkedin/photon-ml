@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import scala.collection.mutable
 import scala.math.abs
 
 import breeze.linalg.{Vector, sum}
@@ -23,7 +22,7 @@ import com.linkedin.photon.ml.function.{L2Regularization, ObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging}
 
 /**
@@ -42,22 +41,12 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     glmConstructor: Coefficients => GeneralizedLinearModel,
     varianceComputation: VarianceComputationType) extends Logging {
 
-  protected val modelTrackerBuilder: Option[mutable.ListBuffer[ModelTracker]] =
-    if (optimizer.isTrackingState) Some(new mutable.ListBuffer[ModelTracker]()) else None
-
   /**
    * Get the optimization state trackers for the optimization problems solved
    *
    * @return Some(OptimizationStatesTracker) if optimization states were tracked, otherwise None
    */
   def getStatesTracker: Option[OptimizationStatesTracker] = optimizer.getStateTracker
-
-  /**
-   * Get models for the intermediate optimization states of the optimization problems solved
-   *
-   * @return Some(List[ModelTrackers]) if optimization states were tracked, otherwise None
-   */
-  def getModelTracker: Option[List[ModelTracker]] = modelTrackerBuilder.map(_.toList)
 
   /**
    * Create a default generalized linear model with 0-valued coefficients

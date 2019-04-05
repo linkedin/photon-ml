@@ -143,6 +143,5 @@ class SingleNodeOptimizationProblemTest {
     val model = problem.run(trainingData, initialModel)
 
     assertTrue(means.eq(model.coefficients.means))
-    assertEquals(problem.getModelTracker.get.length, 1)
   }
 }

@@ -240,12 +240,7 @@ class CoordinateDescent(
 
                 // If optimization tracking is enabled, log the optimization summary
                 optimizationTrackerOption.foreach { optimizationTracker =>
-                  logger.debug(s"OptimizationTracker:\n${optimizationTracker.toSummaryString}")
-
-                  optimizationTracker match {
-                    case rddLike: RDDLike => rddLike.unpersistRDD()
-                    case _ =>
-                  }
+                  logger.debug(s"Summary of optimization:\n${optimizationTracker.toSummaryString}")
                 }
               }
 

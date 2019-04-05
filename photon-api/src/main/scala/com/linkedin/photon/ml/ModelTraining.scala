@@ -24,7 +24,7 @@ import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
-import com.linkedin.photon.ml.supervised.model.{GeneralizedLinearModel, ModelTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.{Logging, PhotonBroadcast}
 
@@ -64,7 +64,7 @@ object ModelTraining extends Logging {
       enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
       treeAggregateDepth: Int,
-      useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) =
+      useWarmStart: Boolean): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
     trainGeneralizedLinearModel(
       trainingData,
       taskType,
@@ -116,7 +116,7 @@ object ModelTraining extends Logging {
       constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels: Map[Double, GeneralizedLinearModel],
       treeAggregateDepth: Int,
-      useWarmStart: Boolean): (List[(Double, _ <: GeneralizedLinearModel)], Option[List[(Double, ModelTracker)]]) = {
+      useWarmStart: Boolean): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] = {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
@@ -183,47 +183,54 @@ object ModelTraining extends Logging {
       s"${warmStartModels.keys.mkString(", ")}")
 
     // Hyperparameter tuning
-    val initWeightsAndModels = List[(Double, GeneralizedLinearModel)]()
-    val finalWeightsAndModels = sortedRegularizationWeights
+    val initWeightsAndModels = List[(Double, GeneralizedLinearModel, Option[OptimizationStatesTracker])]()
+    val finalWeightsModelsAndTrackers = sortedRegularizationWeights
       .foldLeft(initWeightsAndModels) {
         case (List(), currentWeight) =>
+
           // Initialize the list with the result from the first regularization weight
           optimizationProblem.updateRegularizationWeight(currentWeight)
 
-          if (numWarmStartModels == 0) {
+          val glm = if (numWarmStartModels == 0) {
+
             logger.info(s"No warm start model found; beginning training with a 0-coefficients model")
-            List((currentWeight, optimizationProblem.run(trainingData)))
+
+            optimizationProblem.run(trainingData)
+
           } else {
+
             val maxLambda = warmStartModels.keys.max
+
             logger.info(s"Starting training using warm-start model with lambda = $maxLambda")
-            List((currentWeight, optimizationProblem.run(trainingData, warmStartModels(maxLambda))))
+
+            optimizationProblem.run(trainingData, warmStartModels(maxLambda))
           }
 
-        case (latestWeightsAndModels, currentWeight) =>
+          List((currentWeight, glm, optimizationProblem.getStatesTracker))
+
+        case (latestWeightsModelsAndTrackers, currentWeight) =>
+
+          optimizationProblem.updateRegularizationWeight(currentWeight)
 
           // Train the rest of the models
-          if (useWarmStart) {
+          val glm = if (useWarmStart) {
+            val previousModel = latestWeightsModelsAndTrackers.head._2
 
-            val previousModel = latestWeightsAndModels.head._2
-
-            optimizationProblem.updateRegularizationWeight(currentWeight)
             logger.info(s"Training model with regularization weight $currentWeight started (warm start)")
 
-            (currentWeight, optimizationProblem.run(trainingData, previousModel)) +: latestWeightsAndModels
+            optimizationProblem.run(trainingData, previousModel)
 
           } else {
-
-            optimizationProblem.updateRegularizationWeight(currentWeight)
             logger.info(s"Training model with regularization weight $currentWeight started (no warm start)")
 
-            (currentWeight, optimizationProblem.run(trainingData)) +: latestWeightsAndModels
+            optimizationProblem.run(trainingData)
           }
-      }
 
-    val finalWeightsAndModelTrackers = optimizationProblem.getModelTracker.map(sortedRegularizationWeights.zip(_))
+          (currentWeight, glm, optimizationProblem.getStatesTracker) +: latestWeightsModelsAndTrackers
+      }
 
     broadcastNormalizationContext.unpersist()
 
-    (finalWeightsAndModels.reverse, finalWeightsAndModelTrackers)
+    finalWeightsModelsAndTrackers
   }
 }

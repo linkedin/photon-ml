@@ -18,7 +18,7 @@ import scala.collection.immutable.Queue
 
 import breeze.linalg.norm
 
-import com.linkedin.photon.ml.util.{ConvergenceReason, FunctionValuesConverged, GradientConverged, Logging}
+import com.linkedin.photon.ml.util.{ConvergenceReason, Summarizable}
 
 /**
  * Class to track the history of an optimizer's states and wall-clock time elapsed per iteration.
@@ -28,21 +28,29 @@ import com.linkedin.photon.ml.util.{ConvergenceReason, FunctionValuesConverged, 
  * @note  DO NOT USE this class outside of Photon-ML. It is intended as an internal utility, and is likely to be
  *        changed or removed in future releases.
  */
-protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable with Logging {
+protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends Serializable with Summarizable {
+
+  import OptimizationStatesTracker._
 
   private val _startTime = System.currentTimeMillis()
+
   private var _times = Queue[Long]()
   private var _states = Queue[OptimizerState]()
-  private var numStates = 0
-  var convergenceReason: Option[ConvergenceReason] = None
+  private var _convergenceReason: Option[ConvergenceReason] = None
 
   /**
-   * Check if optimization ended because either the objective function value or gradient converged.
+   * Getter method for [[_convergenceReason]].
    *
-   * @return True if either the function values or gradient converged, false otherwise
+   * @return Value of [[_convergenceReason]]
    */
-  def converged: Boolean =
-    convergenceReason.exists(_ == FunctionValuesConverged) || convergenceReason.exists(_ == GradientConverged)
+  def convergenceReason: Option[ConvergenceReason] = _convergenceReason
+
+  /**
+   * Setter method for [[_convergenceReason]].
+   *
+   * @param value New value of [[_convergenceReason]]
+   */
+  def convergenceReason_=(value: Option[ConvergenceReason]): Unit = _convergenceReason = value
 
   /**
    * Add the most recent state to the list of tracked states. If the limit of cached states is reached, remove the
@@ -51,13 +59,13 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
    * @param state The most recent state
    */
   def track(state: OptimizerState): Unit = {
+
     _times = _times.enqueue(System.currentTimeMillis() - _startTime)
     _states = _states.enqueue(state)
-    numStates += 1
-    if (numStates == maxNumStates) {
+
+    while (_times.length > maxNumStates) {
       _times = _times.dequeue._2
       _states = _states.dequeue._2
-      numStates -= 1
     }
   }
 
@@ -79,24 +87,35 @@ protected[ml] class OptimizationStatesTracker(maxNumStates: Int = 100) extends S
    *
    * @return
    */
-  override def toString: String = {
+  override def toSummaryString: String = {
+
     val stringBuilder = new StringBuilder
+
     val convergenceReasonStr = convergenceReason match {
       case Some(reason) => reason.reason
       case None => "Optimizer is not converged properly, please check the log for more information"
     }
     val timeElapsed = getTrackedTimeHistory
     val states = getTrackedStates
+
     stringBuilder ++= s"Convergence reason: $convergenceReasonStr\n"
-    val strIter = "Iter"
-    val strTime = "Time(s)"
-    val strValue = "Value"
-    val strGradient = "|Gradient|"
-    stringBuilder ++= f"$strIter%10s$strTime%10s$strValue%25s$strGradient%15s\n"
-    stringBuilder ++= states.zip(timeElapsed).map { case (OptimizerState(_, value, gradient, iter), time) =>
-      f"$iter%10d${time * 0.001}%10.3f$value%25.8f${norm(gradient, 2)}%15.2e"
-    }.mkString("\n")
+    stringBuilder ++= f"$ITERATIONS%10s$TIME%10s$VALUE%25s$GRADIENT_NORM%15s\n"
+    stringBuilder ++= states
+      .zip(timeElapsed)
+      .map { case (OptimizerState(_, value, gradient, iter), time) =>
+        f"$iter%10d${time * 0.001}%10.3f$value%25.8f${norm(gradient, 2)}%15.2e"
+      }
+      .mkString("\n")
     stringBuilder ++= "\n"
+
     stringBuilder.result()
   }
+}
+
+object OptimizationStatesTracker {
+
+  val ITERATIONS = "Iter"
+  val TIME = "Time(s)"
+  val VALUE = "Value"
+  val GRADIENT_NORM = "|Gradient|"
 }
