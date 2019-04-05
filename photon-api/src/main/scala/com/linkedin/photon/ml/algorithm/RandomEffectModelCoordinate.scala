@@ -23,7 +23,9 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
  *
  * @param dataset The training dataset
  */
-class RandomEffectModelCoordinate(dataset: RandomEffectDataset) extends ModelCoordinate(dataset) {
+class RandomEffectModelCoordinate(dataset: RandomEffectDataset)
+  extends ModelCoordinate(dataset)
+  with ModelProjection {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -34,7 +36,7 @@ class RandomEffectModelCoordinate(dataset: RandomEffectDataset) extends ModelCoo
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.score(dataset, randomEffectModel)
+        RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
 
       case _ =>
         throw new UnsupportedOperationException(

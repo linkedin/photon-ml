@@ -31,7 +31,7 @@ import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, Fixe
  * @param optimizationProblem The fixed effect optimization problem
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
-    dataset: FixedEffectDataset,
+    override protected val dataset: FixedEffectDataset,
     optimizationProblem: DistributedOptimizationProblem[Objective])
   extends Coordinate[FixedEffectDataset](dataset) {
 

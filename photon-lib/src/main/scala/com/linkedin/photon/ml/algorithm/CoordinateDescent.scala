@@ -251,12 +251,29 @@ object CoordinateDescent {
   }
 
   /**
+   * Cache a newly trained [[Coordinate]] model to disk.
+   *
+   * @param model The model to cache
+   * @param coordinateId The ID of the coordinate for which the model was trained (for logging purposes)
+   * @param iteration The current iteration of coordinate descent (for logging purposes)
+   */
+  protected[algorithm] def persistModel(model: DatumScoringModel, coordinateId: CoordinateId, iteration: Int): Unit =
+    model match {
+      case rddModel: RDDLike =>
+        rddModel
+          .setName(s"Model for coordinate '$coordinateId', iteration $iteration")
+          .persistRDD(StorageLevel.DISK_ONLY)
+          .materialize()
+
+      case _ =>
+  }
+
+  /**
    * Train a new [[DatumScoringModel]] for a [[Coordinate]] if it's not locked. Otherwise, return the locked model.
    *
    * @param coordinateId The ID of the coordinate for which to train a new model
    * @param coordinate The coordinate for which to train a new model
    * @param coordinatesToTrain A list of coordinates for which to train new models
-   * @param iteration The current iteration of coordinate descent (for logging purposes)
    * @param initialModelOpt An optional initial model whose coefficients should be used as a starting point for
    *                        optimization
    * @param residualsOpt Optional residual scores to add to the training data offsets
@@ -267,17 +284,20 @@ object CoordinateDescent {
       coordinateId: CoordinateId,
       coordinate: Coordinate[_],
       coordinatesToTrain: Seq[CoordinateId],
-      iteration: Int,
       initialModelOpt: Option[DatumScoringModel],
       residualsOpt: Option[CoordinateDataScores])(
       implicit logger: Logger): DatumScoringModel =
 
     if (coordinatesToTrain.contains(coordinateId)) {
 
-      trainCoordinateModel(coordinateId, coordinate, iteration, initialModelOpt, residualsOpt)
+      val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, residualsOpt)
+
+      persistModel(newModel, coordinateId, iteration = 1)
+
+      newModel
 
     } else {
-      logger.info(s"Skipping optimization for locked coordinate '$coordinateId', iteration $iteration")
+      logger.info(s"Skipping optimization for locked coordinate '$coordinateId', iteration 1")
 
       initialModelOpt.get
     }
@@ -313,23 +333,6 @@ object CoordinateDescent {
 
       results
     }
-  }
-
-  /**
-   * Cache a newly trained [[Coordinate]] model to disk.
-   *
-   * @param model The model to cache
-   * @param coordinateId The ID of the coordinate for which the model was trained (for logging purposes)
-   * @param iteration The current iteration of coordinate descent (for logging purposes)
-   */
-  protected[algorithm] def persistModel(model: DatumScoringModel, coordinateId: CoordinateId, iteration: Int): Unit = model match {
-    case rddModel: RDDLike =>
-      rddModel
-        .setName(s"Model for coordinate '$coordinateId', iteration $iteration")
-        .persistRDD(StorageLevel.DISK_ONLY)
-        .materialize()
-
-    case _ =>
   }
 
   /**
@@ -390,11 +393,8 @@ object CoordinateDescent {
       firstCoordinateId,
       firstCoordinate,
       coordinatesToTrain,
-      iteration = 1,
       initialModels.get(firstCoordinateId),
       residualsOpt = None)
-
-    persistModel(firstCoordinateModel, firstCoordinateId, iteration = 1)
 
     var previousScores = firstCoordinate.score(firstCoordinateModel)
     var summedScores: CoordinateDataScores =
@@ -422,11 +422,8 @@ object CoordinateDescent {
         coordinateId,
         coordinate,
         coordinatesToTrain,
-        iteration = 1,
         initialModels.get(coordinateId),
         Some(summedScores))
-
-      persistModel(newModel, coordinateId, iteration = 1)
 
       val scores = coordinate.score(newModel)
       scores.persistRDD(StorageLevel.DISK_ONLY)
@@ -520,11 +517,8 @@ object CoordinateDescent {
       firstCoordinateId,
       firstCoordinate,
       coordinatesToTrain,
-      iteration = 1,
       initialModels.get(firstCoordinateId),
       residualsOpt = None)
-
-    persistModel(firstCoordinateModel, firstCoordinateId, iteration = 1)
 
     var previousScores = firstCoordinate.score(firstCoordinateModel)
     var summedScores: CoordinateDataScores =
@@ -557,11 +551,8 @@ object CoordinateDescent {
         coordinateId,
         coordinate,
         coordinatesToTrain,
-        iteration = 1,
         initialModels.get(coordinateId),
         Some(summedScores))
-
-      persistModel(newModel, coordinateId, iteration = 1)
 
       val scores = coordinate.score(newModel)
       scores.persistRDD(StorageLevel.DISK_ONLY)

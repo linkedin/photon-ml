@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.data
 
+import scala.collection.mutable
 import scala.util.hashing.byteswap64
 
 import org.apache.spark.broadcast.Broadcast
@@ -141,6 +142,7 @@ protected[ml] class RandomEffectDataset(
     activeData.setName(s"$name - Active Data")
     passiveData.setName(s"$name - Passive Data")
     activeUniqueIdToRandomEffectIds.setName(s"$name - UID to REID")
+    projectors.setName(s"$name - Projectors")
 
     this
   }
@@ -158,6 +160,7 @@ protected[ml] class RandomEffectDataset(
     if (!activeData.getStorageLevel.isValid) activeData.persist(storageLevel)
     if (!passiveData.getStorageLevel.isValid) passiveData.persist(storageLevel)
     if (!activeUniqueIdToRandomEffectIds.getStorageLevel.isValid) activeUniqueIdToRandomEffectIds.persist(storageLevel)
+    if (!projectors.getStorageLevel.isValid) projectors.persist(storageLevel)
 
     this
   }
@@ -174,6 +177,7 @@ protected[ml] class RandomEffectDataset(
     if (activeData.getStorageLevel.isValid) activeData.unpersist()
     if (passiveData.getStorageLevel.isValid) passiveData.unpersist()
     if (activeUniqueIdToRandomEffectIds.getStorageLevel.isValid) activeUniqueIdToRandomEffectIds.unpersist()
+    if (projectors.getStorageLevel.isValid) projectors.unpersist()
 
     this
   }
@@ -189,6 +193,7 @@ protected[ml] class RandomEffectDataset(
     activeData.count()
     passiveData.count()
     activeUniqueIdToRandomEffectIds.count()
+    projectors.count()
 
     this
   }
@@ -250,19 +255,47 @@ object RandomEffectDataset {
       gameDataset: RDD[(UniqueSampleId, GameDatum)],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: RandomEffectDatasetPartitioner,
-      existingModelKeysRddOpt: Option[RDD[REId]]): RandomEffectDataset = {
+      existingModelKeysRddOpt: Option[RDD[REId]],
+      storageLevel: StorageLevel): RandomEffectDataset = {
+
+    val uniqueIdPartitioner = gameDataset.partitioner.get
+
+    //
+    // Generate RDDs
+    //
 
     val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
+    keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
+
     val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
+    projectors.persist(storageLevel).count
+
     val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors)
+    projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
     val activeData = generateActiveData(
       projectedKeyedGameDataset,
       randomEffectDataConfiguration,
       randomEffectPartitioner,
       existingModelKeysRddOpt)
-    val uniqueIdToRandomEffectIds = generateIdMap(activeData, gameDataset.partitioner.get)
-    val passiveData = generatePassiveData(keyedGameDataset, activeData)
+    activeData.persist(storageLevel).count
+
+    val uniqueIdToRandomEffectIds = generateIdMap(activeData, uniqueIdPartitioner)
+    uniqueIdToRandomEffectIds.persist(storageLevel).count
+
+    val passiveData = generatePassiveData(projectedKeyedGameDataset, uniqueIdToRandomEffectIds)
+    passiveData.persist(storageLevel).count
+
+    //
+    // Unpersist component RDDs
+    //
+
+    keyedGameDataset.unpersist()
+    projectedKeyedGameDataset.unpersist()
+
+    //
+    // Return new dataset
+    //
 
     new RandomEffectDataset(
       activeData,
@@ -295,7 +328,6 @@ object RandomEffectDataset {
 
         (randomEffectId, (uniqueId, labeledPoint))
       }
-      .persist(StorageLevel.MEMORY_ONLY_SER)
   }
 
   /**
@@ -321,8 +353,8 @@ object RandomEffectDataset {
       .mapValues { case (_, labeledPoint) =>
         VectorUtils.getActiveIndices(labeledPoint.features)
       }
-      .foldByKey(Set[Int](), randomEffectPartitioner)(_.union(_))
-      .mapValues(new LinearSubspaceProjector(_, originalSpaceDimension))
+      .foldByKey(mutable.Set[Int](), randomEffectPartitioner)(_.union(_))
+      .mapValues(activeIndices => new LinearSubspaceProjector(activeIndices.toSet, originalSpaceDimension))
   }
 
   /**
@@ -536,20 +568,17 @@ object RandomEffectDataset {
    * Generate passive dataset.
    *
    * @param projectedKeyedDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
-   * @param activeData The active dataset
+   * @param activeUniqueIDs The unique IDs of the active dataset
    * @return The passive dataset
    */
   protected[data] def generatePassiveData(
       projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      activeData: RDD[(REId, LocalDataset)]): RDD[(UniqueSampleId, (REId, LabeledPoint))] = {
+      activeUniqueIDs: RDD[(UniqueSampleId, REId)]): RDD[(UniqueSampleId, (REId, LabeledPoint))] = {
 
     val passiveDataPool = projectedKeyedDataset.map { case (rEID, (uniqueID, labeledPoint)) =>
       (uniqueID, (rEID, labeledPoint))
     }
-    val activeDataUIDs = activeData.flatMap { case (_, localDataset) =>
-      localDataset.dataPoints
-    }
 
-    passiveDataPool.subtractByKey(activeDataUIDs)
+    passiveDataPool.subtractByKey(activeUniqueIDs)
   }
 }

@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
  * @tparam D The training dataset type
  * @param dataset The training dataset
  */
-protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
+protected[ml] abstract class Coordinate[D <: Dataset[D]](protected val dataset: D) {
 
   /**
    * Update the coordinate with a new dataset.

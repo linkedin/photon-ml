@@ -33,7 +33,7 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
    * @param dataset The updated dataset
    * @return A new coordinate with the updated dataset
    */
-  override protected def updateCoordinateWithDataset(dataset: D): Coordinate[D] =
+  override protected[algorithm] def updateCoordinateWithDataset(dataset: D): Coordinate[D] =
     throw new UnsupportedOperationException("Attempted to update model coordinate.")
 
   /**

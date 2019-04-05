@@ -257,7 +257,7 @@ object RandomEffectModel {
       randomEffectType: REType,
       featureShardId: FeatureShardId,
       toScore: (GameDatum, Double) => T,
-      toResult: (RDD[(UniqueSampleId, T)]) => V): V = {
+      toResult: RDD[(UniqueSampleId, T)] => V): V = {
 
     val hashPartitioner = new HashPartitioner(dataPoints.getNumPartitions)
 

@@ -440,7 +440,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         getOrDefault(inputColumnNames))
       .partitionBy(new LongHashPartitioner(data.rdd.getNumPartitions))
       .setName("GAME training data")
-      .persist(StorageLevel.DISK_ONLY_2)
+      .persist(StorageLevel.DISK_ONLY)
 
   /**
    * Construct one or more [[Dataset]]s from an [[RDD]] of samples.
@@ -488,9 +488,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val randomEffectDataset = RandomEffectDataset(gameDataset, reConfig, rePartitioner, existingModelKeysRddOpt)
-            .setName(s"Random Effect Data Set: $coordinateId")
-            .persistRDD(StorageLevel.DISK_ONLY_2)
+          val randomEffectDataset = RandomEffectDataset(
+            gameDataset,
+            reConfig,
+            rePartitioner,
+            existingModelKeysRddOpt,
+            StorageLevel.DISK_ONLY)
+          randomEffectDataset.setName(s"Random Effect Data Set: $coordinateId")
 
           if (logger.isDebugEnabled) {
             // Eval this only in debug mode, because the call to "toSummaryString" can be very expensive
