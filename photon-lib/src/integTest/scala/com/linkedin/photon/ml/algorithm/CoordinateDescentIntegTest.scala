@@ -20,7 +20,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.mockito.Matchers
 import org.mockito.Mockito._
-import org.testng.Assert.assertEquals
+import org.testng.Assert.{assertEquals, assertNotEquals}
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
@@ -138,16 +138,17 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
   }
 
   /**
-   * Test [[CoordinateDescent]] with validation.
+   * Test [[CoordinateDescent]] with validation. The model selected should not be the best, but the one after each
+   * coordinate is trained at least once.
    */
   @Test
-  def testBestModel(): Unit = sparkTest("testBestModel") {
-
-    val coordinateCount = 5
+  def testBestModelOneIteration(): Unit = sparkTest("testBestModelOneIteration") {
 
     val evaluatorType = EvaluatorType.RMSE
-    val evaluations = (0 until coordinateCount).map(_ => Random.nextDouble())
+    val coordinateCount = 5
 
+    val finalEvaluation = 2D
+    val evaluations = (0 until (coordinateCount - 1)).map(_ => Random.nextDouble()) :+ finalEvaluation
     val bestEvaluation = evaluations.min
     val evaluationResults = evaluations.map { evaluation =>
       EvaluationResults(Map(evaluatorType -> evaluation), evaluatorType)
@@ -243,8 +244,11 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
     // Verify results
     //
 
-    assertEquals(result.get.evaluations(evaluatorType), bestEvaluation, MathConst.EPSILON)
+    assertEquals(result.get.evaluations(evaluatorType), finalEvaluation, MathConst.EPSILON)
+    assertNotEquals(result.get.evaluations(evaluatorType), bestEvaluation)
   }
+
+  // TODO: Need integration test for model selection when more than one iteration (non-trivial task)
 }
 
 object CoordinateDescentIntegTest {

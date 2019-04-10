@@ -63,7 +63,7 @@ if [[ "$1" == "integration" ]]; then
   # Run integration tests, redirect output to tmp file
   ./gradlew integTest -Pexclude=ml/DriverTest,deprecated/GLMSuiteIntegTest &> ${BUILD_OUTPUT} -Pv=${SCALA_SUFFIX}
 
-  # Kill ping process, output final
+  # Kill ping process, output logs
   clean_up
 
 elif [[ "$1" == "unit" ]]; then

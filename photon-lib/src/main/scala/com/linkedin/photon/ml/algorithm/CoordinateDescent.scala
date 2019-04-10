@@ -573,16 +573,19 @@ object CoordinateDescent {
       val evaluationModel = new GameModel(currentModels.toMap)
       val evaluationResults = evaluateModel(evaluationModel, validationData, evaluationSuite)
 
-      if (evaluatorType.betterThan(evaluationResults.primaryEvaluation, bestEvaluationResults.primaryEvaluation)) {
-        bestEvaluationResults = evaluationResults
-
-        bestModels = currentModels.toMap
+      // Log warning if adding a coordinate reduces the overall model performance
+      if (evaluatorType.betterThan(bestEvaluationResults.primaryEvaluation, evaluationResults.primaryEvaluation)) {
+        logger.info(s"Warning: adding model for coordinate '$coordinateId' reduces overall model performance")
       }
+
+      bestEvaluationResults = evaluationResults
     }
 
     //
     // Subsequent coordinates, subsequent iterations
     //
+
+    bestModels = currentModels.toMap
 
     while (i <= iterations) {
 
