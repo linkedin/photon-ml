@@ -6,7 +6,25 @@
   "values": [
     
 {
-  "name": "per-user",
+  "name": "global",
+  "configuration": 
+{
+  "optimizerConfig": {
+  "optimizerType": "TRON",
+  "maximumIterations": 10,
+  "tolerance": 1.0E-5
+},
+  "regularizationContext": {
+  "regularizationType": "L2",
+  "elasticNetParam": null
+},
+  "regularizationWeight": 10.0,
+  "downSamplingRate": 1.0
+}
+},
+
+{
+  "name": "per-artist",
   "configuration": 
 {
   "optimizerConfig": {
@@ -40,7 +58,7 @@
 },
 
 {
-  "name": "per-artist",
+  "name": "per-user",
   "configuration": 
 {
   "optimizerConfig": {

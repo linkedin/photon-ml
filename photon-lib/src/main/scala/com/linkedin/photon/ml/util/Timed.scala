@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LinkedIn Corp. All rights reserved.
+ * Copyright 2019 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -31,6 +31,7 @@ import org.slf4j.Logger
  * gets to define what is a meaningful block of code to "profile").
  */
 object Timed {
+
   /**
    * This version of applies requires an explicit logger, msg and f to time.
    *
@@ -66,12 +67,17 @@ object Timed {
    * @tparam T The type returned by f
    * @return The value returned by f, of type T
    */
-  private def measureDuration[T](msg: String, units: TimeUnit, f: => T, logger: Logger): T = {
+  protected[util] def measureDuration[T](msg: String, units: TimeUnit, f: => T, logger: Logger): T = {
+
+    logger.info(s"$msg: begin execution")
+
     val t0 = System.nanoTime()
     val res = f
     val t1 = System.nanoTime()
     val duration = FiniteDuration(t1 - t0, TimeUnit.NANOSECONDS).toUnit(units)
+
     logger.info(s"$msg: executed in $duration $units")
+
     res
   }
 }

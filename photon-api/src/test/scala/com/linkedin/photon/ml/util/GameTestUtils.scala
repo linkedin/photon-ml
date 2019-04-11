@@ -293,14 +293,18 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       size,
       dimensions,
       seed)
-    val dataset = RandomEffectDatasetInProjectedSpace.buildWithProjectorType(randomEffectDataset, IndexMapProjection)
+    val projectedRandomEffectDataset = RandomEffectDatasetInProjectedSpace.buildWithProjectorType(
+      randomEffectDataset,
+      IndexMapProjection)
+    val optimizationProblem = generateRandomEffectOptimizationProblem(projectedRandomEffectDataset)
+    val coordinate = new RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction](
+      projectedRandomEffectDataset,
+      optimizationProblem)
 
-    val optimizationProblem = generateRandomEffectOptimizationProblem(dataset)
-    val coordinate = new RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction](dataset, optimizationProblem)
     val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
     val model = new RandomEffectModelInProjectedSpace(
       models,
-      dataset.randomEffectProjector,
+      projectedRandomEffectDataset.randomEffectProjector,
       randomEffectType,
       featureShardId)
 

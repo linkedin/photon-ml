@@ -247,7 +247,9 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     val errorThreshold = 2.34
     val outputDir = new Path(getTmpDir, "randomEffects")
 
-    runDriver(randomEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
+    runDriver(randomEffectSeriousRunArgs
+      .put(GameTrainingDriver.rootOutputDirectory, outputDir)
+      .put(GameTrainingDriver.modelSparsityThreshold, 0.00001))
 
     val modelPaths = randomEffectCoordinateIds.map(bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, _))
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
@@ -323,8 +325,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   @Test
   def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
 
-    // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
-    val errorThreshold = 0.95
+    // This is a baseline RMSE capture from an assumed-correct implementation on 03/29/2019
+    val errorThreshold = 1.05
     val outputDir = new Path(getTmpDir, "fixedAndRandomEffects")
 
     runDriver(mixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
@@ -405,15 +407,9 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   /**
    * Test GAME partial retraining using a pre-trained random effects model.
    */
-  @Test(enabled = false)
+  @Test
   def testPartialRetrainWithRandomBase(): Unit = sparkTest("testPartialRetrainWithRandomBase", useKryo = true) {
 
-    // TODO: Currently this test fails because in a full re-training scenario, the scores for a coordinate start out
-    // TODO: assuming all-zero models for each coordinate, and updated scores are added as the coordinates are trained.
-    // TODO: However, with the current partial re-training code, the scores for the pre-trained coordinates are
-    // TODO: immediately calculated and used, thus changing the offsets that coordinates are trained with. Need to
-    // TODO: evaluate whether this is an issue or not. Can this degrade the training performance? The assumption of
-    // TODO: coordinate descent is that doing this actually improves performance, but order does matter.
     val outputDir = new Path(getTmpDir, "testPartialRetrainWithRandomBase")
 
     runDriver(partialRetrainWithRandomBaseArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
@@ -736,9 +732,9 @@ object GameTrainingDriverIntegTest {
     fixedEffectOptConfig,
     fixedEffectRegularizationWeights)
 
-  private val randomEffectCoordinateIds = Seq("per-user", "per-song", "per-artist")
-  private val randomEffectTypes = Seq("userId", "songId", "artistId")
-  private val randomEffectFeatureShardIds = Seq("shard2", "shard3", "shard3")
+  private val randomEffectCoordinateIds = Seq("per-artist", "per-song", "per-user")
+  private val randomEffectTypes = Seq("artistId", "songId", "userId")
+  private val randomEffectFeatureShardIds = Seq("shard2", "shard2", "shard3")
   private val randomEffectFeatureShardConfigs = Map(
     ("shard2", FeatureShardConfiguration(Set("userFeatures"), hasIntercept = true)),
     ("shard3", FeatureShardConfiguration(Set("songFeatures"), hasIntercept = true)))
@@ -795,7 +791,7 @@ object GameTrainingDriverIntegTest {
     ParamMap
       .empty
       .put(GameTrainingDriver.inputDataDirectories, Set(trainPath))
-      .put(GameTrainingDriver.validationDataDirectories, Set(testPath))
+//      .put(GameTrainingDriver.validationDataDirectories, Set(testPath))
       .put(GameTrainingDriver.featureBagsDirectory, featurePath)
       .put(GameTrainingDriver.trainingTask, TaskType.LINEAR_REGRESSION)
       .put(GameTrainingDriver.coordinateDescentIterations, numIterations)

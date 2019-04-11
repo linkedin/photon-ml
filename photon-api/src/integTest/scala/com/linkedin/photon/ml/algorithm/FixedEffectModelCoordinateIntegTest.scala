@@ -21,28 +21,33 @@ import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
- * Integration tests for the [[FixedEffectModelCoordinate]] implementation.
+ * Integration tests for [[FixedEffectModelCoordinate]].
  */
 class FixedEffectModelCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
   import FixedEffectModelCoordinateIntegTest._
 
-  private val featureShardId = "shard1"
-
+  /**
+   * Test that a [[FixedEffectModelCoordinate]] can score data using a [[com.linkedin.photon.ml.model.FixedEffectModel]].
+   */
   @Test
   def testScore(): Unit = sparkTest("testScore") {
+
     val (coordinate, model) = generateFixedEffectCoordinateAndModel(
-      featureShardId,
+      FEATURE_SHARD_ID,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
 
     val score = coordinate.score(model)
+
     assertEquals(score.scores.count, NUM_TRAINING_SAMPLES)
     assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
   }
 }
 
 object FixedEffectModelCoordinateIntegTest {
+
+  private val FEATURE_SHARD_ID = "shard1"
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }

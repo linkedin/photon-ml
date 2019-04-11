@@ -19,7 +19,7 @@ import scala.collection.SortedMap
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.CoordinateId
+import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.ClassUtils
@@ -96,11 +96,11 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores = {
+  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
   }
 
-  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores = {
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores = {
     gameModels.values.map(_.scoreForCoordinateDescent(dataPoints)).reduce(_ + _)
   }
 

@@ -29,7 +29,6 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
@@ -57,8 +56,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   import GameEstimator._
 
   // 2 types that make the code more readable
-  type SingleNodeLossFunctionConstructor = (PointwiseLossFunction) => SingleNodeGLMLossFunction
-  type DistributedLossFunctionConstructor = (PointwiseLossFunction) => DistributedGLMLossFunction
+  type SingleNodeLossFunctionConstructor = PointwiseLossFunction => SingleNodeGLMLossFunction
+  type DistributedLossFunctionConstructor = PointwiseLossFunction => DistributedGLMLossFunction
 
   private implicit val parent: Identifiable = this
   private val defaultNormalizationContext: NormalizationContextWrapper =
@@ -750,34 +749,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         }
         .toMap
 
-    // Create the base model to optimize, using a combination of existing coordinates (if provided) and new ones
-    val model = updateSequence
-      .map { coordinateId =>
-
-        val initializedModel = initialModelOpt
-          .flatMap(_.getModel(coordinateId))
-          .getOrElse(coordinates(coordinateId).initializeModel(MathConst.RANDOM_SEED))
-
-        initializedModel match {
-          case rddLike: RDDLike =>
-            rddLike
-              .setName(s"Initialized model with coordinate id $coordinateId")
-              .persistRDD(StorageLevel.DISK_ONLY)
-
-          case _ =>
-        }
-
-        if (logger.isDebugEnabled) {
-          logger.debug(
-            s"Summary of model (${initializedModel.getClass}) initialized for coordinate with ID $coordinateId:" +
-              s"\n${initializedModel.toSummaryString}")
-        }
-
-        (coordinateId, initializedModel)
-      }
-      .toMap
-
-    coordinateDescent.run(coordinates, new GameModel(model))
+    coordinateDescent.run(coordinates, initialModelOpt.map(_.toMap))
   }
 }
 

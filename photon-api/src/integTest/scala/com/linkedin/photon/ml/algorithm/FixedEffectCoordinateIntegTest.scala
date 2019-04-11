@@ -17,22 +17,25 @@ package com.linkedin.photon.ml.algorithm
 import org.testng.Assert._
 import org.testng.annotations.Test
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.test.SparkTestUtils
 import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 
 /**
- * Integration tests for the [[FixedEffectCoordinate]] implementation.
+ * Integration tests for [[FixedEffectCoordinate]].
  */
 class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
   import FixedEffectCoordinateIntegTest._
 
-  private val featureShardId = "shard1"
+  /**
+   * Test that a [[FixedEffectCoordinate]] can train a new model.
+   */
+  @Test(dependsOnMethods = Array("testScore"))
+  def testTrainModel(): Unit = sparkTest("testUpdateModel") {
 
-  @Test
-  def testUpdateModel(): Unit = sparkTest("testUpdateModel") {
     val (coordinate, model) = generateFixedEffectCoordinateAndModel(
-      featureShardId,
+      FEATURE_SHARD_ID,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
 
@@ -40,19 +43,37 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
     val score = coordinate.score(model)
     assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
 
-    // Update model
-    val (newModel, _) = coordinate.updateModel(model)
-    assertNotEquals(newModel, model)
+    // Train models
+    val (newModelWithoutInitial, _) = coordinate.trainModel()
+    val (newModelWithInitial, _) = coordinate.trainModel(model)
+
+    assertNotEquals(newModelWithoutInitial, model)
+    assertNotEquals(newModelWithInitial, model)
 
     // Score after model update
-    val newScore = coordinate.score(newModel)
-    assertFalse(newScore.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    val newScoreWithoutInitial = coordinate.score(newModelWithoutInitial)
+    val newScoreWithInitial = coordinate.score(newModelWithInitial)
+
+    assertFalse(newScoreWithoutInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertFalse(newScoreWithInitial.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+
+    newScoreWithoutInitial
+      .scores
+      .join(newScoreWithInitial.scores)
+      .values
+      .foreach { case (score1, score2) =>
+        assertEquals(score1, score2, MathConst.EPSILON)
+      }
   }
 
+  /**
+   * Test that a [[FixedEffectCoordinate]] can score data using a [[com.linkedin.photon.ml.model.FixedEffectModel]].
+   */
   @Test
   def testScore(): Unit = sparkTest("testScore") {
+
     val (coordinate, model) = generateFixedEffectCoordinateAndModel(
-      featureShardId,
+      FEATURE_SHARD_ID,
       NUM_TRAINING_SAMPLES,
       DIMENSIONALITY)
 
@@ -63,6 +84,8 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 }
 
 object FixedEffectCoordinateIntegTest {
+
+  private val FEATURE_SHARD_ID = "shard1"
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10
 }
