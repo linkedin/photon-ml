@@ -7,14 +7,14 @@
 Photon ML is a machine learning library based on Apache Spark. It was originally developed by the LinkedIn Machine Learning Algorithms Team. Currently, Photon ML supports training different types of [Generalized Linear Models](https://en.wikipedia.org/wiki/Generalized_linear_model)(GLMs) and [Generalized Linear Mixed Models](https://en.wikipedia.org/wiki/Generalized_linear_mixed_model)(GLMMs/GLMix model): logistic, linear, and Poisson.
 
 - [Features](#features)
-  - [Generalized Linear Models](#generalize-linear-models)
-  - [GAME - Generalized Additive Mixed Effects](#game---generalized-additive-mixed-models)
+  - [Generalized Linear Models](#generalized-linear-models)
+  - [GAME - Generalized Additive Mixed Effects](#game---generalized-additive-mixed-effects)
   - [Configurable Optimizers](#configurable-optimizers)
   - [Regularization](#regularization)
   - [Feature scaling and normalization](#feature-scaling-and-normalization)
   - [Offset training](#offset-training)
   - [Feature summarization](#feature-summarization)
-  - [Model validation](#model-evaluation)
+  - [Model validation](#model-validation)
   - [Warm-start training](#warm-start-training)
   - [Partial re-training](#partial-re-training)
 - [Experimental Features](#experimental-features)
