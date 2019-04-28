@@ -114,7 +114,7 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
     if (numFeaturesToKeep < numActiveFeatures) {
 
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
-      val pearsonScores = LocalDataset.computePearsonCorrelationScore(labelAndFeatures)
+      val pearsonScores = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
 
       val filteredFeaturesIndexSet = pearsonScores
         .toArray
@@ -131,7 +131,6 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
       }
 
       LocalDataset(filteredActivities)
-
     } else {
       this
     }
@@ -180,13 +179,92 @@ object LocalDataset {
   }
 
   /**
+   * Compute Pearson correlation scores using a numerically stable algorithm.
+   *
+   * @param labelAndFeatures An array of (label, feature) tuples
+   * @return The Pearson correlation scores for each tuple
+   */
+  protected[ml] def stableComputePearsonCorrelationScore(
+    labelAndFeatures: Array[(Double, Vector[Double])]): Map[Int, Double] = {
+
+    val featureMeans = mutable.Map[Int, Double]()
+    val featureUnscaledVars = mutable.Map[Int, Double]()
+    var labelMean = 0.0
+    var labelUnscaledVariance = 0.0
+    val unscaledCovariances = mutable.Map[Int, Double]()
+    var interceptAdded = false
+    var numSamples = 0
+
+    labelAndFeatures.foreach { case (label, features) =>
+      numSamples += 1
+
+      val deltaLabel = label - labelMean
+      labelMean += deltaLabel / numSamples
+      labelUnscaledVariance += deltaLabel * (label - labelMean)
+
+      // Note that, if there is duplicated keys in the feature vector, then the following Pearson correlation scores
+      // calculation will screw up
+      features.iterator.foreach { case (key, value) =>
+        val prevFeatureMean = featureMeans.getOrElse(key, 0.0)
+        val deltaFeature = value - prevFeatureMean
+        val featureMean = prevFeatureMean + deltaFeature / numSamples
+
+        val prevFeatureUnscaledVar = featureUnscaledVars.getOrElse(key, 0.0)
+        val featureUnscaledVar = prevFeatureUnscaledVar + deltaFeature * (value - featureMean)
+
+        val prevCovariance = unscaledCovariances.getOrElse(key, 0.0)
+        val unscaledCovariance = prevCovariance + deltaFeature * deltaLabel * (numSamples - 1) / numSamples
+
+        featureMeans.update(key, featureMean)
+        featureUnscaledVars.update(key, featureUnscaledVar)
+        unscaledCovariances.update(key, unscaledCovariance)
+      }
+    }
+
+    val labelStd = math.sqrt(labelUnscaledVariance)
+
+    featureMeans
+      .iterator
+      .map { case (key, featureMean) =>
+        val featureStd = math.sqrt(featureUnscaledVars(key))
+        val covariance = unscaledCovariances(key)
+
+        // When the standard deviation of the feature is close to 0 we treat it as the intercept term.
+        val score = if (featureStd < math.sqrt(numSamples) * MathConst.EPSILON) {
+          // Note that if the mean and standard deviation are equal to zero, it either means that the feature is constant
+          if (featureMean == 1.0 && !interceptAdded) {
+            interceptAdded = true
+            1.0
+          } else {
+            0.0
+          }
+        } else {
+          covariance / (labelStd * featureStd + MathConst.EPSILON)
+        }
+
+        require(math.abs(score) <= 1 + MathConst.EPSILON,
+          s"Computed pearson correlation score is $score, while the score's magnitude should be less than 1. " +
+            s"(Diagnosis:\n" +
+            s"featureKey=$key\n" +
+            s"featureStd=$featureStd\n" +
+            s"labelStd=$labelStd\n" +
+            s"covariance=$covariance\n" +
+            s"numSamples=$numSamples\n" +
+            s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
+
+        (key, score)
+      }
+      .toMap
+  }
+
+  /**
    * Compute Pearson correlation scores.
    *
    * @param labelAndFeatures An array of (label, feature) tuples
    * @return The Pearson correlation scores for each tuple
    */
   protected[ml] def computePearsonCorrelationScore(
-      labelAndFeatures: Array[(Double, Vector[Double])]): Map[Int, Double] = {
+    labelAndFeatures: Array[(Double, Vector[Double])]): Map[Int, Double] = {
 
     val featureLabelProductSums = mutable.Map[Int, Double]()
     val featureFirstOrderSums = mutable.Map[Int, Double]()
@@ -233,16 +311,16 @@ object LocalDataset {
 
         require(math.abs(score) <= 1 + MathConst.EPSILON,
           s"Computed pearson correlation score is $score, while the score's magnitude should be less than 1. " +
-          s"(Diagnosis:\n" +
-          s"numerator=$numerator\n" +
-          s"denominator=$denominator\n" +
-          s"numSamples=$numSamples\n" +
-          s"featureFirstOrderSum=$featureFirstOrderSum\n" +
-          s"featureSecondOrderSum=$featureSecondOrderSum\n" +
-          s"featureLabelProductSum=$featureLabelProductSum\n" +
-          s"labelFirstOrderSum=$labelFirstOrderSum\n" +
-          s"labelSecondOrderSum=$labelSecondOrderSum\n" +
-          s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
+            s"(Diagnosis:\n" +
+            s"numerator=$numerator\n" +
+            s"denominator=$denominator\n" +
+            s"numSamples=$numSamples\n" +
+            s"featureFirstOrderSum=$featureFirstOrderSum\n" +
+            s"featureSecondOrderSum=$featureSecondOrderSum\n" +
+            s"featureLabelProductSum=$featureLabelProductSum\n" +
+            s"labelFirstOrderSum=$labelFirstOrderSum\n" +
+            s"labelSecondOrderSum=$labelSecondOrderSum\n" +
+            s"labelAndFeatures used to compute Pearson correlation score:\n${labelAndFeatures.mkString("\n")}})")
 
         (key, score)
       }

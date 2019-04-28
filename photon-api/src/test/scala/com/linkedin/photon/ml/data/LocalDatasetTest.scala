@@ -29,7 +29,7 @@ import com.linkedin.photon.ml.test.CommonTestUtils
 class LocalDatasetTest {
 
   /**
-   * Test the Pearson correlation score computation.
+   * Test the stable Pearson correlation score computation.
    */
   @Test(groups = Array[String]("testPearsonCorrelationScore", "testCore"))
   def testPearsonCorrelationScore(): Unit = {
@@ -38,9 +38,9 @@ class LocalDatasetTest {
     val labels = Array(1.0, 4.0, 6.0, 9.0)
     val features = Array(
       Vector(0.0, 0.0, 2.0), Vector(5.0, 0.0, -3.0), Vector(7.0, 0.0, -8.0), Vector(0.0, 0.0, -1.0))
-    val expected = Map(0 -> 0.05564149, 1 -> 1.0, 2 -> -0.40047142)
+    val expected = Map(0 -> 0.05564149, 1 -> 0.0, 2 -> -0.40047142)
     val labelAndFeatures = labels.zip(features)
-    val computed = LocalDataset.computePearsonCorrelationScore(labelAndFeatures)
+    val computed = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
 
     computed.foreach { case (key, value) =>
       assertEquals(
@@ -52,7 +52,91 @@ class LocalDatasetTest {
   }
 
   /**
-   * Test feature filtering using Pearson correlation score.
+   * Test the stable Pearson correlation score computation on sparse feature vectors.
+   */
+  @Test(groups = Array[String]("testPearsonCorrelationScore", "testCore"))
+  def testStablePearsonCorrelationScoreOnSparseVector(): Unit = {
+
+    // Test input data
+    val labels = Array(1.0, 4.0, 6.0, 9.0)
+    val numFeatures = 3
+
+    val features = Array[Vector[Double]](
+      new SparseVector[Double](Array(2), Array(2.0), numFeatures),
+      new SparseVector[Double](Array(0, 2), Array(5.0, -3.0), numFeatures),
+      new SparseVector[Double](Array(0, 2), Array(7.0, -8.0), numFeatures),
+      new SparseVector[Double](Array(2), Array(-1.0), numFeatures)
+    )
+
+    val expected = Map(0 -> 0.05564149, 1 -> 0.0, 2 -> -0.40047142)
+
+    val labelAndFeatures = labels.zip(features)
+
+    val computed = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
+
+    computed.foreach { case (key, value) =>
+      assertEquals(
+        expected(key),
+        value,
+        CommonTestUtils.LOW_PRECISION_TOLERANCE,
+        s"Computed Pearson correlation score is $value, while the expected value is ${expected(key)}.")
+    }
+  }
+
+  /**
+   * Test that the stable Pearson correlation score computation properly recognizes an intercept column.
+   */
+  @Test(groups = Array[String]("testPearsonCorrelationScore", "testCore"))
+  def testPearsonCorrelationScoreForIntercept(): Unit = {
+
+    // Test input data
+    val labels = Array(1.0, 4.0, 6.0, 9.0)
+    val features = Array(
+      Vector(0.0, 0.0, 1.0, 2.0),
+      Vector(5.0, 0.0, 1.0, -3.0),
+      Vector(7.0, 0.0, 1.0, -8.0),
+      Vector(0.0, 0.0, 1.0, -1.0)
+    )
+    val expected = Map(0 -> 0.05564149, 1 -> 0.0, 2 -> 1.0, 3 -> -0.40047142)
+    val labelAndFeatures = labels.zip(features)
+    val computed = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
+
+    computed.foreach { case (key, value) =>
+      assertEquals(
+        expected(key),
+        value,
+        CommonTestUtils.LOW_PRECISION_TOLERANCE,
+        s"Computed Pearson correlation score is $value, while the expected value is ${expected(key)}.")
+    }
+  }
+
+  /**
+   * Test the stable Pearson correlation score numerical stability.
+   */
+  @Test(groups = Array[String]("testPearsonCorrelationScore", "testCore"))
+  def testStablePearsonCorrelationScoreStability(): Unit = {
+
+    // Test input data: this is a pathological example in which a naive algorithm would fail due to numerical
+    // unstability.
+    val labels = Array(10000000.0, 10000000.1, 10000000.2)
+    val features = Array(Vector(0.0), Vector(0.1), Vector(0.2))
+
+    val expected = Map(0 -> 1.0)
+
+    val labelAndFeatures = labels.zip(features)
+    val computed = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
+
+    computed.foreach { case (key, value) =>
+      assertEquals(
+        expected(key),
+        value,
+        CommonTestUtils.LOW_PRECISION_TOLERANCE,
+        s"Computed Pearson correlation score is $value, while the expected value is ${expected(key)}.")
+    }
+  }
+
+  /**
+   * Test feature filtering using the stable Pearson correlation score.
    */
   @Test(dependsOnGroups = Array[String]("testPearsonCorrelationScore", "testCore"))
   def testFilterFeaturesByPearsonCorrelationScore(): Unit = {
