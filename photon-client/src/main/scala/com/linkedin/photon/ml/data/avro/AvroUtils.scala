@@ -257,18 +257,16 @@ object AvroUtils {
   }
 
   /**
-   * Parse a set of nameAndTerm of type [[NameAndTerm]] from a RDD of Avro record of type [[GenericRecord]] with the
-   * user specified feature section keys.
+   * Parse [[NameAndTerm]] objects from Avro [[GenericRecord]] objects in a [[RDD]] for a specified feature bag.
    *
    * @param genericRecords The input Avro records
    * @param featureSectionKey The user specified feature section keys
-   * @return A set of nameAndTerms parsed from the input Avro records
+   * @return A [[RDD]] of [[NameAndTerm]]s parsed from the input Avro records
    */
-  protected[avro] def readNameAndTermSetFromGenericRecords(
+  protected[avro] def readNameAndTermsFromGenericRecords(
       genericRecords: RDD[GenericRecord],
       featureSectionKey: String,
-      numPartitions: Int): Set[NameAndTerm] = {
-
+      numPartitions: Int): RDD[NameAndTerm] =
     genericRecords
       .flatMap {
         _.get(featureSectionKey) match {
@@ -290,34 +288,27 @@ object AvroUtils {
         }
       }
       .distinct(numPartitions)
-      .collect()
-      .toSet
-  }
 
   /**
-   * Generate the [[NameAndTermFeatureSetContainer]] from a [[RDD]] of [[GenericRecord]]s.
+   * Generate a [[Map]] of feature section key to [[NameAndTerm]] feature [[RDD]] from a [[RDD]] of [[GenericRecord]]s.
    *
    * @param genericRecords The input [[RDD]] of [[GenericRecord]]s.
    * @param featureSectionKeys The set of feature section keys of interest in the input generic records
-   * @return The generated [[NameAndTermFeatureSetContainer]]
+   * @return The generated [[Map]] of feature section key to [[NameAndTerm]] feature [[RDD]]
    */
-  protected[avro] def readNameAndTermFeatureSetContainerFromGenericRecords(
+  protected[avro] def readNameAndTermFeatureMapFromGenericRecords(
       genericRecords: RDD[GenericRecord],
       featureSectionKeys: Set[String],
-      numPartitions: Int): NameAndTermFeatureSetContainer = {
-
-    val nameAndTermFeatureSets = featureSectionKeys
+      numPartitions: Int): Map[String, RDD[NameAndTerm]] =
+    featureSectionKeys
       .map { featureSectionKey =>
         (featureSectionKey,
-          AvroUtils.readNameAndTermSetFromGenericRecords(
+          AvroUtils.readNameAndTermsFromGenericRecords(
             genericRecords,
             featureSectionKey,
             numPartitions))
       }
       .toMap
-
-    new NameAndTermFeatureSetContainer(nameAndTermFeatureSets)
-  }
 
   /**
    * Check whether a model contains an intercept term or not.

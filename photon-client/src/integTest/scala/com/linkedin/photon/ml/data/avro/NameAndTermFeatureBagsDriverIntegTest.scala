@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.data.avro
 
 /**
- * Integration tests for the [[NameAndTermFeatureSetContainer]].
+ * Integration tests for the [[NameAndTermFeatureBagsDriver]].
  */
 class NameAndTermFeatureBagsDriverIntegTest {
   // TODO

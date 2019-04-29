@@ -36,7 +36,7 @@ protected[ml] case class NameAndTerm(name: String, term: String) extends Summari
    *
    * @return A string representation of the name-term pair
    */
-  override def toString: String = s"$name\t$term"
+  override def toString: String = s"$name${NameAndTerm.STRING_DELIMITER}$term"
 
   /**
    * Compares two [[NameAndTerm]] objects.
@@ -60,6 +60,7 @@ protected[ml] case class NameAndTerm(name: String, term: String) extends Summari
 object NameAndTerm {
 
   private val DELIMITER = "\u0000"
+  val STRING_DELIMITER = "\t"
 
   protected[ml] val INTERCEPT_NAME_AND_TERM = NameAndTerm("(INTERCEPT)", "")
 }

@@ -696,7 +696,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
 object GameTrainingDriverIntegTest {
 
-  private val TOLERANCE = 1E-6
+  private val TOLERANCE = 2E-5
 
   // This is the Yahoo! Music dataset:
   // photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
