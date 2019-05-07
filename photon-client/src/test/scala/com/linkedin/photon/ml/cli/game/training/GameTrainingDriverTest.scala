@@ -180,8 +180,6 @@ class GameTrainingDriverTest {
       Array(validParamMap.copy.remove(GameTrainingDriver.inputDataDirectories)),
       // No root output directory
       Array(validParamMap.copy.remove(GameTrainingDriver.rootOutputDirectory)),
-      // No feature bags directory
-      Array(validParamMap.copy.remove(GameTrainingDriver.featureBagsDirectory)),
       // No feature shard configurations
       Array(validParamMap.copy.remove(GameTrainingDriver.featureShardConfigurations)),
       // Off-heap map dir without partitions
@@ -351,11 +349,11 @@ class GameTrainingDriverTest {
    */
   @Test(dataProvider = "modelOutputModes")
   def testSelectModels(
-    outputMode: ModelOutputMode,
-    explicitModels: Seq[GameEstimator.GameResult],
-    tunedModels: Seq[GameEstimator.GameResult],
-    resultOutputModels: Seq[GameEstimator.GameResult],
-    resultBestModel: Boolean): Unit = {
+      outputMode: ModelOutputMode,
+      explicitModels: Seq[GameEstimator.GameResult],
+      tunedModels: Seq[GameEstimator.GameResult],
+      resultOutputModels: Seq[GameEstimator.GameResult],
+      resultBestModel: Boolean): Unit = {
 
     val mockLogger = mock(classOf[PhotonLogger])
 

@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.cli.game
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
 import org.apache.spark.ml.util.Identifiable
 import org.joda.time.DateTimeZone
 import org.slf4j.Logger
@@ -41,7 +41,7 @@ trait GameDriver extends PhotonParams {
   // Members
   //
 
-  protected val LOGS = "logs"
+  val LOGS_FILE_NAME = "logs.txt"
 
   override val uid = "GAME_Driver"
 

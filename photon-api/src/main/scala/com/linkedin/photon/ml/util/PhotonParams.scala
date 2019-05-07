@@ -30,7 +30,7 @@ trait PhotonParams extends Params {
    * @return The value associated with the parameter
    * @throws MissingArgumentException if no value is associated with the given parameter
    */
-  protected def getRequiredParam[T](param: Param[T]): T =
+  def getRequiredParam[T](param: Param[T]): T =
     get(param).getOrElse(throw new MissingArgumentException(s"Missing required parameter ${param.name}"))
 
   /**
