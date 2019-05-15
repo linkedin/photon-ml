@@ -49,10 +49,10 @@ object ScoptParserHelpers extends Logging {
   val FEATURE_SHARD_CONFIG_FEATURE_BAGS = "feature.bags"
   val FEATURE_SHARD_CONFIG_INTERCEPT = "intercept"
 
-  val FEATURE_SHARD_CONFIG_REQUIRED_ARGS = Map(
-    (FEATURE_SHARD_CONFIG_NAME, "<name>"),
-    (FEATURE_SHARD_CONFIG_FEATURE_BAGS, "<list of bags>"))
-  val FEATURE_SHARD_CONFIG_OPTIONAL_ARGS = Map((FEATURE_SHARD_CONFIG_INTERCEPT, "<bool>"))
+  val FEATURE_SHARD_CONFIG_REQUIRED_ARGS = Map((FEATURE_SHARD_CONFIG_NAME, "<name>"))
+  val FEATURE_SHARD_CONFIG_OPTIONAL_ARGS = Map(
+    (FEATURE_SHARD_CONFIG_FEATURE_BAGS, "<list of bags>"),
+    (FEATURE_SHARD_CONFIG_INTERCEPT, "<bool>"))
 
   // Coordinate configuration parameters
   val COORDINATE_CONFIG_NAME = "name"
@@ -371,13 +371,15 @@ object ScoptParserHelpers extends Logging {
       //
 
       argsMap += (FEATURE_SHARD_CONFIG_NAME -> featureShardName)
-      argsMap +=
-        (FEATURE_SHARD_CONFIG_FEATURE_BAGS -> featureShardConfig.featureBags.mkString(SECONDARY_LIST_DELIMITER.toString))
 
       //
       // Append optional args
       //
 
+      if (featureShardConfig.featureBags.nonEmpty) {
+        argsMap +=
+          (FEATURE_SHARD_CONFIG_FEATURE_BAGS -> featureShardConfig.featureBags.mkString(SECONDARY_LIST_DELIMITER.toString))
+      }
       if (!featureShardConfig.hasIntercept) {
         argsMap += (FEATURE_SHARD_CONFIG_INTERCEPT -> featureShardConfig.hasIntercept.toString)
       }

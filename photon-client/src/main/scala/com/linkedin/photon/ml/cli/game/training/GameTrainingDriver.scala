@@ -17,8 +17,8 @@ package com.linkedin.photon.ml.cli.game.training
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
@@ -837,7 +837,7 @@ object GameTrainingDriver extends GameDriver {
     params.toSeq.foreach(set)
 
     sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
-    logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS), sc)
+    logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS_FILE_NAME), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 
     try {

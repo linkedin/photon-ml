@@ -17,7 +17,9 @@ package com.linkedin.photon.ml.io.scopt.game
 import scala.language.existentials
 
 import org.apache.hadoop.fs.Path
+import org.apache.spark.ml.param.ParamMap
 import org.joda.time.DateTimeZone
+import scopt.OptionParser
 
 import com.linkedin.photon.ml.DataValidationType
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
@@ -143,4 +145,35 @@ trait ScoptGameParametersParser extends ScoptParser {
         driver.timeZone,
         usageText = "<time zone>",
         additionalDocs = Seq("For a list of valid timezone ids, see: http://joda-time.sourceforge.net/timezones.html")))
+
+  // Parser for reading command line input into a ParamMap
+  protected def parser: OptionParser[ParamMap]
+
+  /**
+   * Parse command line arguments for GAME training into a [[org.apache.spark.ml.param.ParamMap]].
+   *
+   * @param args [[Array]] of command line arguments
+   * @return An initialized [[ParamMap]]
+   */
+  def parseFromCommandLine(args: Array[String]): ParamMap =
+    parser.parse(args, ParamMap.empty) match {
+      case Some(params) => params
+
+      case None =>
+        val errMsg = args
+          .grouped(2)
+          .map(_.mkString(" "))
+          .mkString("\n")
+
+        throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString}")
+    }
+
+  /**
+   * Convert parameters stored in a valid [[ParamMap]] object to [[String]] format for output to the command line, in a
+   * format which can be parsed back into a valid [[ParamMap]].
+   *
+   * @param paramMap A valid [[ParamMap]]
+   * @return A [[Seq]] of [[String]] representations of the parameters, in a format that can be parsed by Scopt
+   */
+  def printForCommandLine(paramMap: ParamMap): Seq[String]
 }

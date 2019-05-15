@@ -266,7 +266,7 @@ object GameScoringDriver extends GameDriver {
     params.toSeq.foreach(set)
 
     sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
-    logger = new PhotonLogger(getRequiredParam(rootOutputDirectory), sc)
+    logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS_FILE_NAME), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 
     try {

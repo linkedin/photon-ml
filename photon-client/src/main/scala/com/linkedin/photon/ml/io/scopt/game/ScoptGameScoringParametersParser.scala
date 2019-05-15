@@ -52,47 +52,34 @@ object ScoptGameScoringParametersParser extends ScoptGameParametersParser {
       ScoptParameter[Boolean, Boolean](
         GameScoringDriver.spillScoresToDisk))
 
-  /**
-   * Parse command line arguments for GAME scoring into a [[ParamMap]].
-   *
-   * @param args [[Array]] of command line arguments
-   * @return An initialized [[ParamMap]]
-   */
-  def parseFromCommandLine(args: Array[String]): ParamMap = {
+  override protected val parser: OptionParser[ParamMap] = new OptionParser[ParamMap]("GAME-Scoring") {
 
-    val parser = new OptionParser[ParamMap]("GAME-Scoring") {
+    /**
+     * Helper method to convert a [[ScoptParameter]] object to a defined Scopt parameter object.
+     *
+     * @tparam In The type of the command line argument when parsed by Scopt
+     * @param scoptParameter A Scopt wrapper for a [[org.apache.spark.ml.param.Param]] which contains extra information
+     *                       to define how to parse/print it from/to the command line
+     * @return A Scopt [[OptionDef]]
+     */
+    private def optHelper[In](scoptParameter: ScoptParameter[In, _]): OptionDef[In, ParamMap] = {
 
-      private def optHelper[In](scoptParameter: ScoptParameter[In, _]): OptionDef[In, ParamMap] = {
+      implicit val read: Read[In] = scoptParameter.read
 
-        implicit val read: Read[In] = scoptParameter.read
-
-        scoptParameter.toOptionDef(opt[In])
-      }
-
-      scoptGameScoringParams.foreach { optHelper(_) }
+      scoptParameter.toOptionDef(opt[In])
     }
 
-    parser.parse(args, ParamMap.empty) match {
-      case Some(params) => params
-
-      case None =>
-        val errMsg = args
-          .grouped(2)
-          .map(_.mkString(" "))
-          .mkString("\n")
-
-        throw new IllegalArgumentException(s"Parsing the following command line arguments failed:\n${errMsg.toString()}")
-    }
+    scoptGameScoringParams.foreach { optHelper(_) }
   }
 
   /**
-   * Given a [[ParamMap]] of valid parameters, convert them into a [[Seq]] of [[String]] representations which can be
-   * parsed by Scopt.
+   * Convert parameters stored in a valid [[ParamMap]] object to [[String]] format for output to the command line, in a
+   * format which can be parsed back into a valid [[ParamMap]].
    *
-   * @param paramMap Valid GAME scoring parameters
+   * @param paramMap A valid [[ParamMap]]
    * @return A [[Seq]] of [[String]] representations of the parameters, in a format that can be parsed by Scopt
    */
-  def printForCommandLine(paramMap: ParamMap): Seq[String] = {
+  override def printForCommandLine(paramMap: ParamMap): Seq[String] = {
 
     GameScoringDriver.validateParams(paramMap)
 
