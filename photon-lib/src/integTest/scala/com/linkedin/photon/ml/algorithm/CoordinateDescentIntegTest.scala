@@ -208,7 +208,7 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
       doReturn(validationScores).when(model).scoreForCoordinateDescent(validationData)
 
       // Evaluation results mock setup
-      doReturn(rawValidationScores).when(validationScores).scores
+      doReturn(rawValidationScores).when(validationScores).scoresRdd
       doReturn(evaluationResultsIterator.next()).when(evaluationSuite).evaluate(rawValidationScores)
     }
 

@@ -47,8 +47,8 @@ class RandomEffectModelCoordinateIntegTest extends SparkTestUtils with GameTestU
 
     val score = coordinate.score(model)
 
-    assertEquals(score.scores.count, numEntities * NUM_TRAINING_SAMPLES)
-    assertTrue(score.scores.map(_._2).collect.forall(MathUtils.isAlmostZero))
+    assertEquals(score.scoresRdd.count, numEntities * NUM_TRAINING_SAMPLES)
+    assertTrue(score.scoresRdd.map(_._2).collect.forall(MathUtils.isAlmostZero))
   }
 }
 
