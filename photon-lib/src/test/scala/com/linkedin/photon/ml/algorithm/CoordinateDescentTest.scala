@@ -202,7 +202,6 @@ class CoordinateDescentTest {
       trainingCoordinateId,
       mockCoordinate,
       coordinatesToTrain,
-      iteration,
       Some(mockInitialModel),
       None)(
       MOCK_LOGGER)
@@ -210,7 +209,6 @@ class CoordinateDescentTest {
       lockedCoordinateId,
       mockCoordinate,
       coordinatesToTrain,
-      iteration,
       Some(mockInitialModel),
       None)(
       MOCK_LOGGER)

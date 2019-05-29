@@ -153,7 +153,7 @@ object TestObjective {
 
     val delta = coefficients - CENTROID
     val deltaSq = delta.mapValues { x => x * x }
-    cumGradient += delta :* 2.0
+    cumGradient += delta *:* 2.0
     sum(deltaSq)
   }
 
@@ -169,5 +169,5 @@ object TestObjective {
     dataPoint: LabeledPoint,
     coefficients: Vector[Double],
     vector: Vector[Double],
-    cumHessianVector: Vector[Double]): Unit = cumHessianVector += vector :* 2.0
+    cumHessianVector: Vector[Double]): Unit = cumHessianVector += vector *:* 2.0
 }

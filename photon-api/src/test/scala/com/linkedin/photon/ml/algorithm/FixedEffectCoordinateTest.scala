@@ -145,7 +145,7 @@ class FixedEffectCoordinateTest {
     val coordinate = new FixedEffectCoordinate(dataset, optimizationProblem)
     val coordinateDataScores = coordinate.score(fixedEffectModel)
 
-    assertTrue(coordinateDataScores.scores.eq(scores))
+    assertTrue(coordinateDataScores.scoresRdd.eq(scores))
   }
 }
 

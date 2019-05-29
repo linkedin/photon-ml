@@ -14,10 +14,7 @@
  */
 package com.linkedin.photon.ml.data
 
-import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
-
-import com.linkedin.photon.ml.projector.ProjectorType
 
 /**
  * Tests for [[CoordinateDataConfiguration]].
@@ -49,7 +46,6 @@ class CoordinateDataConfigurationTest {
 
     val mockREType = "reType"
     val mockFeatureShardId = "featureShardId"
-    val mockProjector = mock(classOf[ProjectorType])
 
     RandomEffectDataConfiguration(
       mockREType,
@@ -57,8 +53,7 @@ class CoordinateDataConfigurationTest {
       minPartitions,
       Some(activeLowerBound),
       Some(activeUpperBound),
-      Some(featuresToSamplesRatio),
-      mockProjector)
+      Some(featuresToSamplesRatio))
   }
 
   @DataProvider
@@ -83,7 +78,6 @@ class CoordinateDataConfigurationTest {
 
     val mockREType = "reType"
     val mockFeatureShardId = "featureShardId"
-    val mockProjector = mock(classOf[ProjectorType])
 
     RandomEffectDataConfiguration(
       mockREType,
@@ -91,7 +85,6 @@ class CoordinateDataConfigurationTest {
       minPartitions,
       Some(activeLowerBound),
       Some(activeUpperBound),
-      Some(featuresToSamplesRatio),
-      mockProjector)
+      Some(featuresToSamplesRatio))
   }
 }

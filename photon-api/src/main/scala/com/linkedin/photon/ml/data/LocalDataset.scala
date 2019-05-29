@@ -130,6 +130,7 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
 }
 
 object LocalDataset {
+
   /**
    * Factory method for LocalDataset.
    *

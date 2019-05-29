@@ -26,7 +26,6 @@ import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, InputColumnsNa
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, FixedEffectCoordinateConfiguration, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.projector.IdentityProjection
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -456,8 +455,7 @@ class ScoptParserHelpersTest {
       minPartitions,
       None,
       None,
-      None,
-      IdentityProjection)
+      None)
     val optConfig3 = RandomEffectOptimizationConfiguration(optimizerConfig)
     val coordinateConfig3 = RandomEffectCoordinateConfiguration(dataConfig3, optConfig3)
 
@@ -468,8 +466,7 @@ class ScoptParserHelpersTest {
       minPartitions,
       Some(activeDataLowerBound),
       Some(activeDataUpperBound),
-      Some(featuresSamplesRatio),
-      IdentityProjection)
+      Some(featuresSamplesRatio))
     val optConfig4 = RandomEffectOptimizationConfiguration(
       optimizerConfig,
       ElasticNetRegularizationContext(regularizationAlpha))
