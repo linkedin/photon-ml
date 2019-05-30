@@ -222,7 +222,7 @@ object IOUtils {
     val stream = fs.create(outputPath, forceOverwrite)
     val writer = new PrintWriter(
       new BufferedWriter(
-        new OutputStreamWriter(stream)
+        new OutputStreamWriter(stream, "UTF-8")
       )
     )
     try {
