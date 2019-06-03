@@ -23,7 +23,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.util.DateRange
 
 /**
- * Unit tests for the [[NameAndTermFeatureSetContainer]].
+ * Unit tests for the [[NameAndTermFeatureBagsDriver]].
  */
 class NameAndTermFeatureBagsDriverTest {
 

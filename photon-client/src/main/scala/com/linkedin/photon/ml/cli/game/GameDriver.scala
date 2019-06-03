@@ -19,13 +19,14 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
 import org.apache.spark.ml.util.Identifiable
+import org.apache.spark.storage.StorageLevel
 import org.joda.time.DateTimeZone
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.DataValidationType.DataValidationType
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.data.InputColumnsNames
-import com.linkedin.photon.ml.data.avro.NameAndTermFeatureSetContainer
+import com.linkedin.photon.ml.data.avro.NameAndTermFeatureMapUtils
 import com.linkedin.photon.ml.evaluation.EvaluatorType
 import com.linkedin.photon.ml.index.{DefaultIndexMapLoader, IndexMapLoader, PalDBIndexMapLoader}
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
@@ -46,7 +47,9 @@ trait GameDriver extends PhotonParams {
   override val uid = "GAME_Driver"
 
   protected def sc: SparkContext
+
   protected def logger: Logger
+
   protected implicit val parent: Identifiable = this
 
   //
@@ -121,7 +124,7 @@ trait GameDriver extends PhotonParams {
   val logLevel: Param[Int] = ParamUtils.createParam[Int](
     "logging level",
     "The logging level for the output Photon-ML logs.",
-    {level: Int => PhotonLogger.logLevelNames.values.toSet.contains(level)})
+    { level: Int => PhotonLogger.logLevelNames.values.toSet.contains(level) })
 
   val applicationName: Param[String] = ParamUtils.createParam[String](
     "application name",
@@ -154,10 +157,12 @@ trait GameDriver extends PhotonParams {
 
     (paramMap.get(offHeapIndexMapDirectory), paramMap.get(offHeapIndexMapPartitions)) match {
       case (Some(_), None) =>
-        throw new IllegalArgumentException("Off-heap index map directory provided without off-heap index map partitions.")
+        throw new IllegalArgumentException(
+          "Off-heap index map directory provided without off-heap index map partitions.")
 
       case (None, Some(_)) =>
-        throw new IllegalArgumentException("Off-heap index map partitions provided without off-heap index map directory.")
+        throw new IllegalArgumentException(
+          "Off-heap index map partitions provided without off-heap index map directory.")
 
       case _ =>
     }
@@ -185,19 +190,23 @@ trait GameDriver extends PhotonParams {
   protected[game] def prepareFeatureMapsDefault(): Map[FeatureShardId, IndexMapLoader] = {
 
     val shardConfigs = getRequiredParam(featureShardConfigurations)
-    val allFeatureSectionKeys = shardConfigs.values.map(_.featureBags).reduce(_ ++ _)
-    val nameAndTermFeatureSetContainer = NameAndTermFeatureSetContainer.readNameAndTermFeatureSetContainerFromTextFiles(
+    val allFeatureBagKeys = shardConfigs.values.map(_.featureBags).reduce(_ ++ _)
+    val nameAndTermFeatureMap = NameAndTermFeatureMapUtils.readNameAndTermFeatureMapFromTextFiles(
       getRequiredParam(featureBagsDirectory),
-      allFeatureSectionKeys,
-      sc.hadoopConfiguration)
+      allFeatureBagKeys,
+      sc)
+    // persist [[NameAndTerm]] feature [[RDD]]'s as they may be used multiple times below
+    nameAndTermFeatureMap.foreach { case (_, v) => v.persist(StorageLevel.MEMORY_ONLY_SER) }
     val featureShardIdToFeatureMapLoader = shardConfigs.map { case (shardId, featureShardConfig) =>
-      val featureMap = nameAndTermFeatureSetContainer
-        .getFeatureNameAndTermToIndexMap(featureShardConfig.featureBags, featureShardConfig.hasIntercept)
+      val featureMap = NameAndTermFeatureMapUtils
+        .getFeatureNameAndTermToIndexMap(
+          nameAndTermFeatureMap, featureShardConfig.featureBags, featureShardConfig.hasIntercept, sc)
         .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
       val indexMapLoader = new DefaultIndexMapLoader(sc, featureMap)
 
       (shardId, indexMapLoader)
     }
+    nameAndTermFeatureMap.foreach { case (_, v) => v.unpersist() }
 
     featureShardIdToFeatureMapLoader.tap { case (shardId, featureMapLoader) =>
       logger.debug(s"Feature shard ID: $shardId, number of features: ${featureMapLoader.indexMapForDriver().size}")
