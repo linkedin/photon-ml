@@ -440,7 +440,7 @@ object GameTrainingDriver extends GameDriver {
       val coordinateDataConfigs = getRequiredParam(coordinateConfigurations).mapValues(_.dataConfiguration) ++
         partialRetrainingDataConfigsOpt.getOrElse(Map())
 
-      // Set estimator parameters
+      // Set estimator parameters and always use warm start by default
       val estimator = new GameEstimator(sc, logger)
         .setTrainingTask(getRequiredParam(trainingTask))
         .setCoordinateDataConfigurations(coordinateDataConfigs)
@@ -448,6 +448,7 @@ object GameTrainingDriver extends GameDriver {
         .setCoordinateDescentIterations(getRequiredParam(coordinateDescentIterations))
         .setVarianceComputation(getOrDefault(varianceComputationType))
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
+        .setUseWarmStart(true)
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)
@@ -464,6 +465,8 @@ object GameTrainingDriver extends GameDriver {
     }
 
     val tunedModels = Timed("Tune hyperparameters") {
+      // Disable warm start for autotuning
+      gameEstimator.setUseWarmStart(false)
       runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
     }
 
