@@ -229,7 +229,7 @@ object GameScoringDriver extends GameDriver {
   protected def saveScoresToHDFS(scores: ModelDataScores): Unit = {
 
     // Take the offset information into account when writing the scores to HDFS
-    val scoredItems = scores.scores.map { case (_, scoredGameDatum) =>
+    val scoredItems = scores.scoresRdd.map { case (_, scoredGameDatum) =>
       ScoredItem(
         scoredGameDatum.score + scoredGameDatum.offset,
         Some(scoredGameDatum.response),

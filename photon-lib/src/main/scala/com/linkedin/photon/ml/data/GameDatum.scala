@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.data
 
-import scala.collection.Map
-
 import breeze.linalg.Vector
 
 import com.linkedin.photon.ml.data.scoring.ScoredGameDatum

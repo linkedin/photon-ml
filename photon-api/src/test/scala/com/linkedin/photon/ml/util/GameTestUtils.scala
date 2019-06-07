@@ -16,31 +16,34 @@ package com.linkedin.photon.ml.util
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.{HashPartitioner, SparkConf}
+import breeze.linalg.DenseVector
 import org.testng.annotations.DataProvider
 
-import com.linkedin.photon.ml.SparkSessionConfiguration
-import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
-import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinateInProjectedSpace}
+import com.linkedin.photon.ml.{SparkSessionConfiguration, TaskType}
+import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
+import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinate}
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
-import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModelInProjectedSpace}
-import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContextBroadcast}
+import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModel}
+import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
-import com.linkedin.photon.ml.projector.IndexMapProjection
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
+import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
  * A set of utility functions for GAME unit and integration tests.
  */
-trait GameTestUtils extends TestTemplateWithTmpDir {
+trait GameTestUtils extends SparkTestUtils {
 
-  self: SparkTestUtils =>
+  /**
+   *
+   */
+  val defaultTaskType = TaskType.LOGISTIC_REGRESSION
 
   /**
    * Default random seed
@@ -66,18 +69,19 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A single set of 10 vectors of 2 features and a label.
    */
   @DataProvider
-  def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] =
-    Array(Array(Seq(
-      LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
-      LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
-      LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
-      LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
+  def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] = Array(
+    Array(
+      Seq(
+        LabeledPoint(0.0, DenseVector(-0.7306653538519616, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.6750417712898752, -0.4232874171873786)),
+        LabeledPoint(1.0, DenseVector(0.1863463229359709, -0.8163423997075965)),
+        LabeledPoint(0.0, DenseVector(-0.6719842051493347, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.9699938346531928, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.22759406190283604, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.9688721028330911, 0.0)),
+        LabeledPoint(0.0, DenseVector(0.5993795346650845, 0.0)),
+        LabeledPoint(0.0, DenseVector(0.9219423508390701, -0.8972778242305388)),
+        LabeledPoint(0.0, DenseVector(0.7006904841584055, -0.5607635619919824)))))
 
   /**
    * Generates an optimizer configuration.
@@ -102,9 +106,9 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A set of newly generated labeled points
    */
   def generateLabeledPoints(
-    size: Int,
-    dimensions: Int,
-    seed: Int = DefaultSeed): Iterator[LabeledPoint] = {
+      size: Int,
+      dimensions: Int,
+      seed: Int = DefaultSeed): Iterator[LabeledPoint] = {
 
     val data = drawBalancedSampleFromNumericallyBenignDenseFeaturesForBinaryClassifierLocal(
       seed, size, dimensions)
@@ -124,10 +128,10 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated fixed effect dataset
    */
   def generateFixedEffectDataset(
-    featureShardId: String,
-    size: Int,
-    dimensions: Int,
-    seed: Int = DefaultSeed): FixedEffectDataset = {
+      featureShardId: FeatureShardId,
+      size: Int,
+      dimensions: Int,
+      seed: Int = DefaultSeed): FixedEffectDataset = {
 
     val data = sc.parallelize(generateLabeledPoints(size, dimensions, seed).map(addUniqueId).toSeq)
 
@@ -160,7 +164,7 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @param dimensions The model dimension
    * @return The newly generated fixed effect model
    */
-  def generateFixedEffectModel(featureShardId: String, dimensions: Int): FixedEffectModel =
+  def generateFixedEffectModel(featureShardId: FeatureShardId, dimensions: Int): FixedEffectModel =
     new FixedEffectModel(
       sc.broadcast(LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))),
       featureShardId)
@@ -175,11 +179,10 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A fixed effect problem coordinate and model
    */
   def generateFixedEffectCoordinateAndModel(
-      featureShardId: String,
+      featureShardId: FeatureShardId,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed)
-    : (FixedEffectCoordinate[DistributedGLMLossFunction], FixedEffectModel) = {
+      seed: Int = DefaultSeed): (FixedEffectCoordinate[DistributedGLMLossFunction], FixedEffectModel) = {
 
     val dataset = generateFixedEffectDataset(featureShardId, size, dimensions, seed)
     val optimizationProblem = generateFixedEffectOptimizationProblem
@@ -203,32 +206,43 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated random effect dataset
    */
   def generateRandomEffectDataset(
-      randomEffectIds: Seq[String],
-      randomEffectType: String,
-      featureShardId: String,
+      randomEffectIds: Seq[REId],
+      randomEffectType: REType,
+      featureShardId: FeatureShardId,
       size: Int,
       dimensions: Int,
       seed: Int = DefaultSeed,
       numPartitions: Int = 4): RandomEffectDataset = {
 
-    val datasets = randomEffectIds.map((_,
-      new LocalDataset(
-        generateLabeledPoints(size, dimensions, seed)
-          .map(addUniqueId)
-          .toArray)))
+    val projectedDimensions: Int = dimensions / 2
+    val indices = (0 until dimensions by 2).toSet
+    val subspaceProjector = new LinearSubspaceProjector(indices, dimensions)
 
-    val partitioner = new HashPartitioner(numPartitions)
-    val uniqueIdToRandomEffectIds = sc.parallelize(
-      randomEffectIds.map(addUniqueId)).partitionBy(partitioner)
-    val activeData = sc.parallelize(datasets).partitionBy(partitioner)
-    val passiveData = sc.emptyRDD[(UniqueSampleId, (REId, LabeledPoint))]
-    val passiveDataRandomEffectIds = sc.broadcast(Set[REId]())
+    val datasets = randomEffectIds.map { rEID =>
+      (rEID, new LocalDataset(generateLabeledPoints(size, projectedDimensions, seed).map(addUniqueId).toArray))
+    }
+    val projectors = datasets.map { case (rEID, _) =>
+      (rEID, subspaceProjector)
+    }
+
+    val partitionMap = randomEffectIds
+      .zipWithIndex
+      .map { case (rEId, index) =>
+        (rEId, index % numPartitions)
+      }
+      .toMap
+    val rEPartitioner = new RandomEffectDatasetPartitioner(numPartitions, sc.broadcast(partitionMap))
+    val hashPartitioner = new HashPartitioner(numPartitions)
+    val activeData = sc.parallelize(datasets).partitionBy(rEPartitioner)
+    val passiveData = sc.emptyRDD[(UniqueSampleId, (REId, LabeledPoint))].partitionBy(hashPartitioner)
+    val uniqueIdToRandomEffectIds = sc.parallelize(randomEffectIds.map(addUniqueId)).partitionBy(hashPartitioner)
+    val projectorsRDD = sc.parallelize(projectors).partitionBy(hashPartitioner)
 
     new RandomEffectDataset(
       activeData,
-      uniqueIdToRandomEffectIds,
       passiveData,
-      passiveDataRandomEffectIds,
+      uniqueIdToRandomEffectIds,
+      projectorsRDD,
       randomEffectType,
       featureShardId)
   }
@@ -241,8 +255,8 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated random effect model
    */
   def generateLinearModelsForRandomEffects(
-      randomEffectIds: Seq[String],
-      dimensions: Int): Seq[(String, GeneralizedLinearModel)] =
+      randomEffectIds: Seq[REId],
+      dimensions: Int): Seq[(REId, GeneralizedLinearModel)] =
     randomEffectIds.map((_, LogisticRegressionModel(Coefficients.initializeZeroCoefficients(dimensions))))
 
   /**
@@ -252,16 +266,24 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A newly generated random effect optimization problem
    */
   def generateRandomEffectOptimizationProblem(
-    dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
+      dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
 
+    val isTrackingState = false
     val configuration = RandomEffectOptimizationConfiguration(generateOptimizerConfig())
+    val normalizationBroadcast = sc.broadcast(NoNormalization())
+    val randomEffectOptimizationProblems = dataset
+      .activeData
+      .mapValues { _ =>
+        SingleNodeOptimizationProblem(
+          configuration,
+          SingleNodeGLMLossFunction(configuration, LogisticLossFunction),
+          LogisticRegressionModel.apply,
+          PhotonBroadcast(normalizationBroadcast),
+          VarianceComputationType.NONE,
+          isTrackingState)
+      }
 
-    RandomEffectOptimizationProblem(
-      dataset,
-      configuration,
-      SingleNodeGLMLossFunction(configuration, LogisticLossFunction),
-      LogisticRegressionModel.apply,
-      NormalizationContextBroadcast(sc.broadcast(NoNormalization())))
+    new RandomEffectOptimizationProblem(randomEffectOptimizationProblems, LogisticRegressionModel.apply, isTrackingState)
   }
 
   /**
@@ -276,13 +298,12 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @return A random effect problem coordinate and model
    */
   def generateRandomEffectCoordinateAndModel(
-      randomEffectType: String,
-      featureShardId: String,
+      randomEffectType: REType,
+      featureShardId: FeatureShardId,
       numEntities: Int,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed)
-    : (RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction], RandomEffectModelInProjectedSpace) = {
+      seed: Int = DefaultSeed): (RandomEffectCoordinate[SingleNodeGLMLossFunction], RandomEffectModel) = {
 
     val randomEffectIds = (1 to numEntities).map("re" + _)
 
@@ -293,18 +314,12 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
       size,
       dimensions,
       seed)
-    val projectedRandomEffectDataset = RandomEffectDatasetInProjectedSpace.buildWithProjectorType(
-      randomEffectDataset,
-      IndexMapProjection)
-    val optimizationProblem = generateRandomEffectOptimizationProblem(projectedRandomEffectDataset)
-    val coordinate = new RandomEffectCoordinateInProjectedSpace[SingleNodeGLMLossFunction](
-      projectedRandomEffectDataset,
-      optimizationProblem)
 
+    val optimizationProblem = generateRandomEffectOptimizationProblem(randomEffectDataset)
+    val coordinate = new RandomEffectCoordinate[SingleNodeGLMLossFunction](randomEffectDataset, optimizationProblem)
     val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
-    val model = new RandomEffectModelInProjectedSpace(
+    val model = new RandomEffectModel(
       models,
-      projectedRandomEffectDataset.randomEffectProjector,
       randomEffectType,
       featureShardId)
 
@@ -317,10 +332,10 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
    * @param name the test job name
    * @param body the execution closure
    */
-  def sparkTest(name: String, useKryo: Boolean)(body: => Unit) {
+  override def sparkTest(name: String)(body: => Unit): Unit =
     SparkTestUtils.SPARK_LOCAL_CONFIG.synchronized {
       sc = SparkSessionConfiguration
-        .asYarnClient(new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo)
+        .asYarnClient(new SparkConf().setMaster(SparkTestUtils.SPARK_LOCAL_CONFIG), name, useKryo = true)
         .sparkContext
 
       try {
@@ -331,5 +346,4 @@ trait GameTestUtils extends TestTemplateWithTmpDir {
         System.clearProperty("spark.hostPort")
       }
     }
-  }
 }

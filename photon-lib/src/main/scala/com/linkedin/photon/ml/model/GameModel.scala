@@ -96,13 +96,11 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
+  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
-  }
 
-  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores = {
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
     gameModels.values.map(_.scoreForCoordinateDescent(dataPoints)).reduce(_ + _)
-  }
 
   /**
    * Summarize this GAME model.

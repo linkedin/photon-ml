@@ -14,8 +14,6 @@
  */
 package com.linkedin.photon.ml.data.scoring
 
-import scala.collection.Map
-
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
 
@@ -42,7 +40,8 @@ case class ScoredGameDatum(
     offset: Double = 0.0,
     weight: Double = 1.0,
     score: Double = ScoredGameDatum.ZERO_SCORE,
-    idTagToValueMap: Map[String, String] = Map()) extends Serializable {
+    idTagToValueMap: Map[String, String] = Map())
+  extends Serializable {
 
   /**
    * Get a copy of the current instance with a score of [[ScoredGameDatum.ZERO_SCORE]]

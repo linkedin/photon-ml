@@ -26,7 +26,6 @@ import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordina
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.projector.IndexMapProjection
 import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
 import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
 
@@ -110,8 +109,7 @@ class ScoptGameTrainingParametersParserTest {
       randomEffectPartitions,
       randomEffectActiveLowerBound,
       randomEffectActiveUpperBound,
-      randomEffectFeatureRatio,
-      IndexMapProjection)
+      randomEffectFeatureRatio)
     val randomEffectOptimizerType = OptimizerType.TRON
     val randomEffectMaxIter = 14
     val randomEffectTolerance = 15.0
@@ -228,7 +226,6 @@ class ScoptGameTrainingParametersParserTest {
     assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsLowerBound, randomEffectActiveLowerBound)
     assertEquals(finalRandomDataCoordinateConfig.numActiveDataPointsUpperBound, randomEffectActiveUpperBound)
     assertEquals(finalRandomDataCoordinateConfig.numFeaturesToSamplesRatioUpperBound, randomEffectFeatureRatio)
-    assertEquals(finalRandomDataCoordinateConfig.projectorType, IndexMapProjection)
 
     assertEquals(finalRandomOptimizationConfig.optimizerType, randomEffectOptimizerType)
     assertEquals(finalRandomOptimizationConfig.tolerance, randomEffectTolerance)

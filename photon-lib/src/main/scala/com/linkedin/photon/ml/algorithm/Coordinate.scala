@@ -25,7 +25,7 @@ import com.linkedin.photon.ml.optimization.OptimizationTracker
  * @tparam D The training dataset type
  * @param dataset The training dataset
  */
-protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
+protected[ml] abstract class Coordinate[D <: Dataset[D]](protected val dataset: D) {
 
   /**
    * Update the coordinate with a new dataset.
@@ -43,7 +43,8 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
   protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker])
 
   /**
-   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset with residuals from other
+   * coordinates.
    *
    * @param score The combined scores for each record of the other coordinates
    * @return A tuple of the updated model and the optimization states tracker
@@ -56,7 +57,7 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
    * a starting point.
    *
    * @param model The model to use as a starting point
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optional optimization tracking information) tuple
    */
   protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
 
@@ -74,10 +75,10 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](dataset: D) {
     updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).trainModel(model)
 
   /**
-   * Score the effect-specific dataset in the coordinate with the input model.
+   * Compute scores for the coordinate data using a given model.
    *
    * @param model The input model
-   * @return The output scores
+   * @return The dataset scores
    */
   protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
 }

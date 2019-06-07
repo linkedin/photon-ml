@@ -39,8 +39,7 @@ protected[ml] object OptimizerFactory {
       normalizationContext: BroadcastWrapper[NormalizationContext],
       regularizationContext: RegularizationContext,
       regularizationWeight: Double = 0,
-      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
-    : Optimizer[TwiceDiffFunction] =
+      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE): Optimizer[TwiceDiffFunction] =
 
     (config.optimizerType, regularizationContext.regularizationType) match {
       case (OptimizerType.LBFGS, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>

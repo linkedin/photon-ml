@@ -14,14 +14,14 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.{Dataset, FixedEffectDataset, RandomEffectDatasetInProjectedSpace}
+import com.linkedin.photon.ml.data.{Dataset, FixedEffectDataset, RandomEffectDataset}
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.ObjectiveFunctionFactory
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunction, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.{NormalizationContextBroadcast, NormalizationContextWrapper}
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.sampling.DownSamplerHelper.DownSamplerFactory
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -43,8 +43,8 @@ object CoordinateFactory {
    * @param lossFunctionConstructor A constructor for the loss function used for training
    * @param glmConstructor A constructor for the type of [[GeneralizedLinearModel]] being trained
    * @param downSamplerFactory A factory function for the [[DownSampler]] (if down-sampling is enabled)
-   * @param normalizationContextWrapper A wrapper for the [[com.linkedin.photon.ml.normalization.NormalizationContext]]
    * @param trackState Should the internal optimization states be recorded?
+   * @param normalizationContext The [[NormalizationContext]]
    * @param varianceComputationType Should the trained coefficient variances be computed in addition to the means?
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
    */
@@ -54,24 +54,24 @@ object CoordinateFactory {
       lossFunctionConstructor: ObjectiveFunctionFactory,
       glmConstructor: (Coefficients) => GeneralizedLinearModel,
       downSamplerFactory: DownSamplerFactory,
-      normalizationContextWrapper: NormalizationContextWrapper,
+      normalizationContext: NormalizationContext,
       varianceComputationType: VarianceComputationType,
       trackState: Boolean): Coordinate[D] = {
 
     val lossFunction: ObjectiveFunction = lossFunctionConstructor(coordinateOptConfig)
 
-    (dataset, coordinateOptConfig, lossFunction, normalizationContextWrapper) match {
+    (dataset, coordinateOptConfig, lossFunction) match {
       case (
-        fEDataset: FixedEffectDataset,
-        fEOptConfig: FixedEffectOptimizationConfiguration,
-        distributedLossFunction: DistributedObjectiveFunction,
-        normalizationContextBroadcast: NormalizationContextBroadcast) =>
+          fEDataset: FixedEffectDataset,
+          fEOptConfig: FixedEffectOptimizationConfiguration,
+          distributedLossFunction: DistributedObjectiveFunction) =>
 
         val downSamplerOpt = if (DownSampler.isValidDownSamplingRate(fEOptConfig.downSamplingRate)) {
           Some(downSamplerFactory(fEOptConfig.downSamplingRate))
         } else {
           None
         }
+        val normalizationPhotonBroadcast = PhotonBroadcast(fEDataset.sparkContext.broadcast(normalizationContext))
 
         new FixedEffectCoordinate(
           fEDataset,
@@ -80,34 +80,30 @@ object CoordinateFactory {
             distributedLossFunction,
             downSamplerOpt,
             glmConstructor,
-            PhotonBroadcast(normalizationContextBroadcast.context),
+            normalizationPhotonBroadcast,
             varianceComputationType,
             trackState)).asInstanceOf[Coordinate[D]]
 
       case (
-        rEDataset: RandomEffectDatasetInProjectedSpace,
-        rEOptConfig: RandomEffectOptimizationConfiguration,
-        singleNodeLossFunction: SingleNodeObjectiveFunction,
-        _) =>
+          rEDataset: RandomEffectDataset,
+          rEOptConfig: RandomEffectOptimizationConfiguration,
+          singleNodeLossFunction: SingleNodeObjectiveFunction) =>
 
-        new RandomEffectCoordinateInProjectedSpace(
+        RandomEffectCoordinate(
           rEDataset,
-          RandomEffectOptimizationProblem(
-            rEDataset,
-            rEOptConfig,
-            singleNodeLossFunction,
-            glmConstructor,
-            normalizationContextWrapper,
-            varianceComputationType,
-            trackState)).asInstanceOf[Coordinate[D]]
+          rEOptConfig,
+          singleNodeLossFunction,
+          glmConstructor,
+          normalizationContext,
+          varianceComputationType,
+          trackState).asInstanceOf[Coordinate[D]]
 
       case _ =>
         throw new UnsupportedOperationException(
           s"""Cannot build coordinate for the following input class combination:
           |  ${dataset.getClass.getName}
           |  ${coordinateOptConfig.getClass.getName}
-          |  ${lossFunction.getClass.getName}
-          |  ${normalizationContextWrapper.getClass.getName}""".stripMargin)
+          |  ${lossFunction.getClass.getName}""".stripMargin)
     }
   }
 }

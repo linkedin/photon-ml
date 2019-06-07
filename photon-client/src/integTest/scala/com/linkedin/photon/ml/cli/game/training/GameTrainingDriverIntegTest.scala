@@ -28,7 +28,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.avro.generated.BayesianLinearModelAvro
 import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, TaskType}
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
@@ -39,7 +39,6 @@ import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordina
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.projector.{IndexMapProjection, RandomProjection}
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 import com.linkedin.photon.ml.util._
 
@@ -74,7 +73,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    *       happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
    */
   @Test
-  def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
+  def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 1.2
@@ -110,7 +109,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    *       happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
    */
   @Test
-  def testFixedEffectsWithAdditionalOpts(): Unit = sparkTest("testFixedEffectsWithIntercept", useKryo = true) {
+  def testFixedEffectsWithAdditionalOpts(): Unit = sparkTest("testFixedEffectsWithIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 1.2
@@ -143,7 +142,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * @note Since intercept terms are ON by default, they need to be explicitly disabled for this test.
    */
   @Test
-  def testFixedEffectsWithoutIntercept(): Unit = sparkTest("testFixedEffectsWithoutIntercept", useKryo = true) {
+  def testFixedEffectsWithoutIntercept(): Unit = sparkTest("testFixedEffectsWithoutIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 1.2
@@ -180,7 +179,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Check that it's possible to train an intercept-only model.
    */
   @Test
-  def testFixedEffectInterceptOnly(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
+  def testFixedEffectInterceptOnly(): Unit = sparkTest("testFixedEffectInterceptOnly") {
 
     val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnly")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
@@ -211,7 +210,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Check that it's possible to train an intercept-only model with feature whitelists.
    */
   @Test
-  def testFixedEffectInterceptOnlyFeatureBagsDir(): Unit = sparkTest("testFixedEffectInterceptOnly", useKryo = true) {
+  def testFixedEffectInterceptOnlyFeatureBagsDir(): Unit = sparkTest("testFixedEffectInterceptOnly") {
 
     val outputDir = new Path(getTmpDir, "fixedEffectsInterceptOnlyBags")
     val modifiedFeatureShardConfigs = fixedEffectFeatureShardConfigs
@@ -241,7 +240,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a random effect models only, and intercepts.
    */
   @Test
-  def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept", useKryo = true) {
+  def testRandomEffectsWithIntercept(): Unit = sparkTest("testRandomEffectsWithIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
@@ -267,7 +266,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a random effect models only, and no intercepts.
    */
   @Test
-  def testRandomEffectsWithoutAnyIntercept(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
+  def testRandomEffectsWithoutAnyIntercept(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
@@ -297,7 +296,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a random effect models with normalization and index-map projection
    */
   @Test
-  def testRandomEffectWithNormalization(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept", useKryo = true) {
+  def testRandomEffectWithNormalization(): Unit = sparkTest("testRandomEffectsWithoutAnyIntercept") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 01/24/2018
     val errorThreshold = 2.34
@@ -323,7 +322,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a both fixed and random effect models.
    */
   @Test
-  def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects", useKryo = true) {
+  def testFixedAndRandomEffects(): Unit = sparkTest("fixedAndRandomEffects") {
 
     // This is a baseline RMSE capture from an assumed-correct implementation on 03/29/2019
     val errorThreshold = 1.05
@@ -350,7 +349,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * photon-ml. Hyperparameter tuning is still available in LinkedIn internal library li-photon-ml.)
    */
 //  @Test
-//  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning", useKryo = true) {
+//  def testHyperParameterTuning(): Unit = sparkTest("testHyperParameterTuning") {
 //
 //    val hyperParameterTuningIter = 1
 //    val outputDir = new Path(getTmpDir, "hyperParameterTuning")
@@ -395,7 +394,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME partial retraining using a pre-trained fixed effect model.
    */
   @Test
-  def testPartialRetrainWithFixedBase(): Unit = sparkTest("testPartialRetrainWithFixedBase", useKryo = true) {
+  def testPartialRetrainWithFixedBase(): Unit = sparkTest("testPartialRetrainWithFixedBase") {
 
     val outputDir = new Path(getTmpDir, "testPartialRetrainWithFixedBase")
 
@@ -408,7 +407,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME partial retraining using a pre-trained random effects model.
    */
   @Test
-  def testPartialRetrainWithRandomBase(): Unit = sparkTest("testPartialRetrainWithRandomBase", useKryo = true) {
+  def testPartialRetrainWithRandomBase(): Unit = sparkTest("testPartialRetrainWithRandomBase") {
 
     val outputDir = new Path(getTmpDir, "testPartialRetrainWithRandomBase")
 
@@ -421,7 +420,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME warm-start with initial model
    */
   @Test
-  def testWarmStartWithInitialModel(): Unit = sparkTest("testWarmStartWithInitialModel", useKryo = true) {
+  def testWarmStartWithInitialModel(): Unit = sparkTest("testWarmStartWithInitialModel") {
     // TODO This is really not much more than a quick sanity check. At some point we need to split the data in 2 sets,
     // and check that incremental training works as expected.
     val outputDir = new Path(getTmpDir, "testInitialModel")
@@ -441,7 +440,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a custom model sparsity threshold.
    */
   @Test
-  def testModelSparsityThreshold(): Unit = sparkTest("testModelSparsityThreshold", useKryo = true) {
+  def testModelSparsityThreshold(): Unit = sparkTest("testModelSparsityThreshold") {
 
     val outputDir = new Path(getTmpDir, "testModelSparsityThreshold")
 
@@ -473,7 +472,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training, loading an off-heap index map.
    */
   @Test
-  def testOffHeapIndexMap(): Unit = sparkTest("testOffHeapIndexMap", useKryo = true) {
+  def testOffHeapIndexMap(): Unit = sparkTest("testOffHeapIndexMap") {
 
     val outputDir = new Path(getTmpDir, "testOffHeapIndexMap")
     val indexMapPath = new Path(getClass.getClassLoader.getResource("GameIntegTest/input/feature-indexes").getPath)
@@ -501,7 +500,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test that we can calculate feature shard statistics correctly.
    */
   @Test
-  def testCalculateFeatureShardStats(): Unit = sparkTest("calculateFeatureShardStats", useKryo = true) {
+  def testCalculateFeatureShardStats(): Unit = sparkTest("calculateFeatureShardStats") {
 
     val outputDir = new Path(getTmpDir, "output")
     val summarizationDir = new Path(outputDir, "summary")
@@ -622,8 +621,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores1 = gameModel1.scoreForCoordinateDescent(gameDataset).scores
-    val scores2 = gameModel2.scoreForCoordinateDescent(gameDataset).scores
+    val scores1 = gameModel1.scoreForCoordinateDescent(gameDataset).scoresRdd
+    val scores2 = gameModel2.scoreForCoordinateDescent(gameDataset).scoresRdd
 
     val rmse1 = RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores1))
     val rmse2 = RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores2))
@@ -668,7 +667,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       StorageLevel.DISK_ONLY,
       indexMapLoaders)
 
-    val scores = gameModel.scoreForCoordinateDescent(gameDataset).scores
+    val scores = gameModel.scoreForCoordinateDescent(gameDataset).scoresRdd
 
     RMSEEvaluator.evaluate(prepareEvaluationData(validatingLabelsAndOffsetsAndWeights, scores))
   }
@@ -696,7 +695,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
 object GameTrainingDriverIntegTest {
 
-  private val TOLERANCE = 2E-5
+  private val TOLERANCE = 1E-4
 
   // This is the Yahoo! Music dataset:
   // photon-ml/photon-client/src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro
@@ -738,13 +737,11 @@ object GameTrainingDriverIntegTest {
   private val randomEffectFeatureShardConfigs = Map(
     ("shard2", FeatureShardConfiguration(Set("userFeatures"), hasIntercept = true)),
     ("shard3", FeatureShardConfiguration(Set("songFeatures"), hasIntercept = true)))
-  private val randomEffectProjectors = Seq(IndexMapProjection, IndexMapProjection, RandomProjection(2))
   private val randomEffectMinPartitions = numExecutors * 2
   private val randomEffectDataConfigs = randomEffectTypes
     .zip(randomEffectFeatureShardIds)
-    .zip(randomEffectProjectors)
-    .map { case ((reType, reShardId), reProjector) =>
-      RandomEffectDataConfiguration(reType, reShardId, randomEffectMinPartitions, projectorType = reProjector)
+    .map { case (reType, reShardId) =>
+      RandomEffectDataConfiguration(reType, reShardId, randomEffectMinPartitions)
     }
   private val randomEffectOptimizerConfig = OptimizerConfig(
     OptimizerType.TRON,

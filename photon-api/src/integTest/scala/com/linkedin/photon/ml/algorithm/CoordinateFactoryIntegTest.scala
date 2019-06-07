@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. All rights reserved.
+ * Copyright 2019 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -21,29 +21,33 @@ import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.Types.REId
-import com.linkedin.photon.ml.data.{FixedEffectDataset, LocalDataset, RandomEffectDataset, RandomEffectDatasetInProjectedSpace}
+import com.linkedin.photon.ml.data.{FixedEffectDataset, LocalDataset, RandomEffectDataset}
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunctionHelper, SingleNodeObjectiveFunction}
-import com.linkedin.photon.ml.normalization.NormalizationContextBroadcast
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
-import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType, VarianceComputationType}
+import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType, SingleNodeOptimizationProblem, VarianceComputationType}
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
 import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
+import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
  * Unit tests for the [[CoordinateFactory]].
  */
-class CoordinateFactoryTest {
+class CoordinateFactoryIntegTest extends SparkTestUtils {
 
-  import CoordinateFactoryTest._
+  import CoordinateFactoryIntegTest._
 
   /**
    * Test that the [[CoordinateFactory]] can correctly build a [[FixedEffectCoordinate]].
    */
   @Test
-  def testBuildFixedEffectCoordinate(): Unit = {
+  def testBuildFixedEffectCoordinate(): Unit = sparkTest("testBuildFixedEffectCoordinate") {
 
     val mockDataset = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = FixedEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
+
+    doReturn(sc).when(mockDataset).sparkContext
 
     val coordinate = CoordinateFactory.build(
       mockDataset,
@@ -51,7 +55,7 @@ class CoordinateFactoryTest {
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
-      MOCK_NORMALIZATION_BROADCAST,
+      MOCK_NORMALIZATION,
       VARIANCE_COMPUTATION_TYPE,
       TRACK_STATE)
 
@@ -67,14 +71,23 @@ class CoordinateFactoryTest {
    * Test that the [[CoordinateFactory]] can correctly build a [[RandomEffectCoordinate]].
    */
   @Test
-  def testBuildRandomEffectCoordinate(): Unit = {
+  def testBuildRandomEffectCoordinate(): Unit = sparkTest("testBuildRandomEffectCoordinate") {
 
-    val mockDataset: RandomEffectDataset = mock(classOf[RandomEffectDatasetInProjectedSpace])
-    val mockRDD = mock(classOf[RDD[(REId, LocalDataset)]])
+    val mockDataset: RandomEffectDataset = mock(classOf[RandomEffectDataset])
+    val mockDataRDD = mock(classOf[RDD[(REId, LocalDataset)]])
+    val mockProjectorsRDD = mock(classOf[RDD[(REId, LinearSubspaceProjector)]])
+    val mockProblemsRDD = mock(classOf[RDD[(REId, SingleNodeOptimizationProblem[SingleNodeObjectiveFunction])]])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
 
-    doReturn(mockRDD).when(mockDataset).activeData
-    doReturn(mockRDD).when(mockRDD).mapValues(Matchers.any(classOf[Function1[LocalDataset, SingleNodeObjectiveFunction]]))
+    doReturn(sc).when(mockDataset).sparkContext
+    doReturn(mockDataRDD).when(mockDataset).activeData
+    doReturn(mockDataRDD)
+      .when(mockDataRDD)
+      .mapValues(Matchers.any(classOf[Function1[LocalDataset, SingleNodeObjectiveFunction]]))
+    doReturn(mockProjectorsRDD).when(mockDataset).projectors
+    doReturn(mockProblemsRDD)
+      .when(mockProjectorsRDD)
+      .mapValues(Matchers.any(classOf[Function1[LinearSubspaceProjector, SingleNodeOptimizationProblem[SingleNodeObjectiveFunction]]]))
 
     val coordinate = CoordinateFactory.build(
       mockDataset,
@@ -82,7 +95,7 @@ class CoordinateFactoryTest {
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
-      MOCK_NORMALIZATION_BROADCAST,
+      MOCK_NORMALIZATION,
       VARIANCE_COMPUTATION_TYPE,
       TRACK_STATE)
 
@@ -98,7 +111,7 @@ class CoordinateFactoryTest {
    * Test that the [[CoordinateFactory]] will reject invalid combinations of inputs.
    */
   @Test(expectedExceptions = Array(classOf[UnsupportedOperationException]))
-  def testBuildInvalidCoordinate(): Unit = {
+  def testBuildInvalidCoordinate(): Unit = sparkTest("testBuildInvalidCoordinate") {
 
     val mockDataset = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
@@ -109,13 +122,13 @@ class CoordinateFactoryTest {
       LOSS_FUNCTION_FACTORY,
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
-      MOCK_NORMALIZATION_BROADCAST,
+      MOCK_NORMALIZATION,
       VARIANCE_COMPUTATION_TYPE,
       TRACK_STATE)
   }
 }
 
-object CoordinateFactoryTest {
+object CoordinateFactoryIntegTest {
 
   private val TRAINING_TASK = TaskType.LOGISTIC_REGRESSION
   private val OPTIMIZER_TYPE = OptimizerType.LBFGS
@@ -126,7 +139,7 @@ object CoordinateFactoryTest {
   private val TRACK_STATE = true
 
   private val OPTIMIZER_CONFIG = OptimizerConfig(OPTIMIZER_TYPE, MAX_ITER, TOLERANCE)
-  private val MOCK_NORMALIZATION_BROADCAST = mock(classOf[NormalizationContextBroadcast])
+  private val MOCK_NORMALIZATION = mock(classOf[NormalizationContext])
   private val GLM_CONSTRUCTOR = LogisticRegressionModel.apply _
   private val LOSS_FUNCTION_FACTORY = ObjectiveFunctionHelper.buildFactory(TRAINING_TASK, TREE_AGGREGATE_DEPTH)
   private val DOWN_SAMPLER_FACTORY = DownSamplerHelper.buildFactory(TRAINING_TASK)

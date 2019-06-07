@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.projector.{IndexMapProjector, ProjectionMatrix, Projector}
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -53,7 +53,7 @@ object SparkSessionConfiguration {
     classOf[GeneralizedLinearOptimizationProblem[_]],
     classOf[GLMOptimizationConfiguration],
     classOf[HessianVectorAggregator],
-    classOf[IndexMapProjector],
+    classOf[LinearSubspaceProjector],
     classOf[LabeledPoint],
     classOf[LBFGS],
     classOf[LinearRegressionModel],
@@ -66,8 +66,6 @@ object SparkSessionConfiguration {
     classOf[Option[_]],
     classOf[OWLQN],
     classOf[PoissonRegressionModel],
-    classOf[Projector],
-    classOf[ProjectionMatrix],
     classOf[RegularizationContext],
     classOf[Set[Int]],
     classOf[SingleNodeObjectiveFunction],

@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.util.DoubleRange
 sealed trait CoordinateOptimizationConfiguration
 
 /**
- * Configuration for GLM coordinate.
+ * Configuration for a GLM coordinate.
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
@@ -50,7 +50,7 @@ protected[ml] abstract class GLMOptimizationConfiguration(
 }
 
 /**
- * Configuration for a fixed effect GLM coordinate
+ * Configuration for a [[com.linkedin.photon.ml.algorithm.FixedEffectCoordinate]].
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context
@@ -77,7 +77,7 @@ case class FixedEffectOptimizationConfiguration(
 }
 
 /**
- * Configuration for a random effect GLM coordinate
+ * Configuration for a [[com.linkedin.photon.ml.algorithm.RandomEffectCoordinate]].
  *
  * @param optimizerConfig Optimizer configuration
  * @param regularizationContext Regularization context

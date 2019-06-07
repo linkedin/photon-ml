@@ -202,7 +202,6 @@ class CoordinateDescentTest {
       trainingCoordinateId,
       mockCoordinate,
       coordinatesToTrain,
-      iteration,
       Some(mockInitialModel),
       None)(
       MOCK_LOGGER)
@@ -210,7 +209,6 @@ class CoordinateDescentTest {
       lockedCoordinateId,
       mockCoordinate,
       coordinatesToTrain,
-      iteration,
       Some(mockInitialModel),
       None)(
       MOCK_LOGGER)
@@ -237,7 +235,7 @@ class CoordinateDescentTest {
     val evaluations = Map(evaluatorType -> evaluation)
 
     doReturn(mockValidationScores).when(mockModel).scoreForCoordinateDescent(mockValidationData)
-    doReturn(mockRawScores).when(mockValidationScores).scores
+    doReturn(mockRawScores).when(mockValidationScores).scoresRdd
     doReturn(mockEvaluationResults).when(mockEvaluationSuite).evaluate(mockRawScores)
     doReturn(evaluations).when(mockEvaluationResults).evaluations
 

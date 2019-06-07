@@ -18,7 +18,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.spark.BroadcastLike
@@ -49,22 +49,20 @@ class FixedEffectModel(
    * Compute the scores for the dataset.
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
-   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(Long, GameDatum)]): ModelDataScores =
+  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
     FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, ModelDataScores.toScore, ModelDataScores.apply)
 
   /**
    * Compute the scores for the GAME dataset, and store the scores only.
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
-   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(Long, GameDatum)]): CoordinateDataScores =
+  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
     FixedEffectModel.score(
       dataPoints,
       modelBroadcast,
@@ -125,7 +123,7 @@ object FixedEffectModel {
   private def score[T, V](
       dataPoints: RDD[(UniqueSampleId, GameDatum)],
       modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: String,
+      featureShardId: FeatureShardId,
       toScore: (GameDatum, Double) => T,
       toResult: RDD[(UniqueSampleId, T)] => V): V = {
 

@@ -15,10 +15,9 @@
 package com.linkedin.photon.ml.data
 
 import com.linkedin.photon.ml.Types._
-import com.linkedin.photon.ml.projector.{IndexMapProjection, ProjectorType}
 
 /**
- * Generic trait for a configuration to define a coordinate dataset.
+ * Generic trait for a configuration to define a dataset.
  */
 sealed trait CoordinateDataConfiguration {
 
@@ -40,7 +39,7 @@ case class FixedEffectDataConfiguration(
   extends CoordinateDataConfiguration
 
 /**
- * Configurations needed in order to generate a [[com.linkedin.photon.ml.data.RandomEffectDataset]]
+ * Configurations needed in order to generate a [[com.linkedin.photon.ml.data.RandomEffectDataset]].
  *
  * @param randomEffectType The corresponding random effect type of the dataset
  * @param featureShardId Key of the feature shard used to generate the dataset
@@ -48,13 +47,11 @@ case class FixedEffectDataConfiguration(
  * @param numActiveDataPointsLowerBound The lower bound on the number of samples required to train a random effect model
  *                                      for an entity. If this bound is not met, the data is discarded.
  * @param numActiveDataPointsUpperBound The upper bound on the number of samples to keep (via reservoir sampling) as
- *                                      "active" for each individual-id level local dataset. The remaining samples will
+ *                                      "active" for each per-entity local dataset. The remaining samples will
  *                                      be kept as "passive" data. "Active" data is used for model training and residual
  *                                      computation. "Passive" data is used only for residual computation.
  * @param numFeaturesToSamplesRatioUpperBound The upper bound on the ratio between number of features and number of
  *                                            samples. Used for dimensionality reduction for IDs with very few samples.
- * @param projectorType The projector type, which is used to project the feature space of the random effect dataset
- *                      into a different space, usually one with lower dimension.
  */
 case class RandomEffectDataConfiguration(
     randomEffectType: REType,
@@ -62,8 +59,7 @@ case class RandomEffectDataConfiguration(
     minNumPartitions: Int = 1,
     numActiveDataPointsLowerBound: Option[Int] = None,
     numActiveDataPointsUpperBound: Option[Int] = None,
-    numFeaturesToSamplesRatioUpperBound: Option[Double] = None,
-    projectorType: ProjectorType = IndexMapProjection)
+    numFeaturesToSamplesRatioUpperBound: Option[Double] = None)
   extends CoordinateDataConfiguration {
 
   require(

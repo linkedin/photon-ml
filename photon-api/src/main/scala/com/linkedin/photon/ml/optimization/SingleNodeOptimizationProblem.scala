@@ -108,7 +108,7 @@ object SingleNodeOptimizationProblem {
    * @param objectiveFunction The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
-   * @param varianceComputationType If an how to compute coefficient variances
+   * @param varianceComputationType Whether to compute coefficient variances, and if so how
    * @param isTrackingState Should the optimization problem record the internal optimizer states?
    * @return A new SingleNodeOptimizationProblem
    */

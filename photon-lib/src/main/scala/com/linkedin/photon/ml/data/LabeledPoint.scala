@@ -16,9 +16,7 @@ package com.linkedin.photon.ml.data
 
 import breeze.linalg.Vector
 
-import com.linkedin.photon.ml.Types.SparkVector
-import com.linkedin.photon.ml.data
-import com.linkedin.photon.ml.util.{Summarizable, VectorUtils}
+import com.linkedin.photon.ml.util.Summarizable
 
 /**
  * Class that represents a labeled data point used for supervised learning in GAME. It has a couple fields more than
@@ -30,10 +28,12 @@ import com.linkedin.photon.ml.util.{Summarizable, VectorUtils}
  * @param weight The weight of this data point
  */
 class LabeledPoint(
-  val label: Double,
-  override val features: Vector[Double],
-  val offset: Double = 0.0,
-  override val weight: Double = 1.0) extends DataPoint(features, weight) with Summarizable {
+    val label: Double,
+    override val features: Vector[Double],
+    val offset: Double = 0.0,
+    override val weight: Double = 1.0)
+  extends DataPoint(features, weight)
+    with Summarizable {
 
   /**
    * A human-readable string for this labeled point.
@@ -62,10 +62,8 @@ class LabeledPoint(
   override def computeMargin(coefficients: Vector[Double]): Double = features.dot(coefficients) + offset
 }
 
-/**
- * Companion object of [[data.LabeledPoint]] for factories and pattern matching purposes
- */
 object LabeledPoint {
+
   /**
    * Build a GAME LabeledPoint from a breeze Vector.
    *
@@ -75,26 +73,8 @@ object LabeledPoint {
    * @param weight The weight of this data point
    * @return
    */
-  def apply(label: Double, features: Vector[Double], offset: Double, weight: Double): LabeledPoint = {
+  def apply(label: Double, features: Vector[Double], offset: Double = 0.0, weight: Double = 1.0): LabeledPoint =
     new LabeledPoint(label, features, offset, weight)
-  }
-
-  /**
-   * Build a GAME LabeledPoint from a spark.ml Vector.
-   *
-   * @param label The label for this data point
-   * @param features A vector (could be either dense or sparse) representing the features for this data point
-   * @param offset The offset of this data point (e.g., is used in warm start training)
-   * @param weight The weight of this data point
-   * @return
-   */
-  def apply(
-      label: Double,
-      features: SparkVector,
-      offset: Double = 0.0,
-      weight: Double = 1.0): LabeledPoint = {
-    new LabeledPoint(label, VectorUtils.mlToBreeze(features), offset, weight)
-  }
 
   /**
    * The extractor, for pattern matching

@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param featureShardId The feature shard id
  */
 class RandomEffectModel(
-    val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+    protected[ml] val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
   extends DatumScoringModel
@@ -42,14 +42,22 @@ class RandomEffectModel(
 
   override val modelType: TaskType = RandomEffectModel.determineModelType(modelsRDD)
 
+  //
+  // RandomEffectModel functions
+  //
+
   /**
-   * Update the random effect model with new underlying models.
+   * Create a new [[RandomEffectModel]] with new underlying models.
    *
-   * @param updatedModelsRdd The new underlying models, one per individual
-   * @return The updated random effect model
+   * @param newModelsRdd The new underlying models, one per entity
+   * @return A new [[RandomEffectModel]]
    */
-  def update(updatedModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel =
-    new RandomEffectModel(updatedModelsRdd, randomEffectType, featureShardId)
+  def update(newModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel =
+    new RandomEffectModel(newModelsRdd, randomEffectType, featureShardId)
+
+  //
+  // DatumScoringModel functions
+  //
 
   /**
    * Compute the score for the dataset.
@@ -60,7 +68,6 @@ class RandomEffectModel(
    * @return The computed scores
    */
   override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
-
     RandomEffectModel.score(
       dataPoints,
       modelsRDD,
@@ -78,7 +85,6 @@ class RandomEffectModel(
    * @return The computed scores
    */
   override def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
-
     RandomEffectModel.score(
       dataPoints,
       modelsRDD,
@@ -87,6 +93,10 @@ class RandomEffectModel(
       CoordinateDataScores.toScore,
       CoordinateDataScores.apply)
 
+  //
+  // Summarizable functions
+  //
+
   /**
    * Summarize this model in text format.
    *
@@ -94,16 +104,22 @@ class RandomEffectModel(
    */
   override def toSummaryString: String = {
 
-    val stringBuilder = new StringBuilder(
-      s"Random effect model of randomEffectType '$randomEffectType', featureShardId '$featureShardId' summary:")
+    val stringBuilder = new StringBuilder("Random Effect Model:")
+
+    stringBuilder.append(s"\nRandom Effect Type: '$randomEffectType'")
+    stringBuilder.append(s"\nFeature Shard ID: '$featureShardId'")
     stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
     stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
     if (modelsRDD.first()._2.coefficients.variancesOption.isDefined) {
-      stringBuilder.append(s"\nvariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
+      stringBuilder.append(s"\nVariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
     }
 
     stringBuilder.toString()
   }
+
+  //
+  // RDDLike functions
+  //
 
   /**
    * Get the Spark context.
@@ -171,27 +187,26 @@ class RandomEffectModel(
    * @return True if the models have the same types and the same underlying models for each random effect ID, false
    *         otherwise
    */
-  override def equals(that: Any): Boolean =
-    that match {
-      case other: RandomEffectModel =>
-        val sameMetaData =
-          this.randomEffectType == other.randomEffectType &&
-          this.featureShardId == other.featureShardId
-        lazy val sameCoefficientsRDD = this
-          .modelsRDD
-          .fullOuterJoin(other.modelsRDD)
-          .mapPartitions { iterator =>
-            Iterator.single(iterator.forall { case (_, (modelOpt1, modelOpt2)) =>
-              modelOpt1.isDefined && modelOpt2.isDefined && modelOpt1.get.equals(modelOpt2.get)
-            })
-          }
-          .filter(!_)
-          .count() == 0
+  override def equals(that: Any): Boolean = that match {
 
-        sameMetaData && sameCoefficientsRDD
+    case other: RandomEffectModel =>
+      val sameMetaData = this.randomEffectType == other.randomEffectType && this.featureShardId == other.featureShardId
 
-      case _ => false
-    }
+      lazy val sameCoefficientsRDD = this
+        .modelsRDD
+        .fullOuterJoin(other.modelsRDD)
+        .mapPartitions { iterator =>
+          Iterator.single(iterator.forall { case (_, (modelOpt1, modelOpt2)) =>
+            modelOpt1.isDefined && modelOpt2.isDefined && modelOpt1.get.equals(modelOpt2.get)
+          })
+        }
+        .filter(!_)
+        .count() == 0
+
+      sameMetaData && sameCoefficientsRDD
+
+    case _ => false
+  }
 
   /**
    * Returns a hash code value for the object.
@@ -242,7 +257,7 @@ object RandomEffectModel {
       randomEffectType: REType,
       featureShardId: FeatureShardId,
       toScore: (GameDatum, Double) => T,
-      toResult: (RDD[(UniqueSampleId, T)]) => V): V = {
+      toResult: RDD[(UniqueSampleId, T)] => V): V = {
 
     val hashPartitioner = new HashPartitioner(dataPoints.getNumPartitions)
 
@@ -257,8 +272,7 @@ object RandomEffectModel {
      */
     val scores = dataPoints
       .map { case (uniqueId, gameDatum) =>
-        val randomEffectId = gameDatum.idTagToValueMap(randomEffectType)
-        (randomEffectId, (uniqueId, gameDatum))
+        (gameDatum.idTagToValueMap(randomEffectType), (uniqueId, gameDatum))
       }
       .partitionBy(hashPartitioner)
       .zipPartitions(modelsRDD.partitionBy(hashPartitioner)) { (dataIt, modelIt) =>

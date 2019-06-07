@@ -20,7 +20,6 @@ import breeze.linalg.Vector
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
-import com.linkedin.photon.ml.projector.Projector
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -39,25 +38,35 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
     "Cannot create LocalDataset with empty data array")
 
   val numDataPoints: Int = dataPoints.length
-  val numFeatures: Int = dataPoints.head._2.features.length
+  val numFeatures: Int = dataPoints
+    .head
+    ._2
+    .features
+    .length
 
   /**
    *
    * @return
    */
-  def getLabels: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.label) }
+  def getLabels: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) =>
+    (uid, labeledPoint.label)
+  }
 
   /**
    *
    * @return
    */
-  def getWeights: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.weight) }
+  def getWeights: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) =>
+    (uid, labeledPoint.weight)
+  }
 
   /**
    *
    * @return
    */
-  def getOffsets: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) => (uid, labeledPoint.offset) }
+  def getOffsets: Array[(UniqueSampleId, Double)] = dataPoints.map { case (uid, labeledPoint) =>
+    (uid, labeledPoint.offset)
+  }
 
   /**
    *
@@ -86,22 +95,6 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
   }
 
   /**
-   * Project the features of the underlying [[dataPoints]] from the original space to the projected
-   * (usually with lower dimension) space.
-   *
-   * @param projector The projector
-   * @return The [[LocalDataset]] with projected features
-   */
-  def projectFeatures(projector: Projector): LocalDataset = {
-
-    val projectedDataPoints = dataPoints.map { case (uniqueId, LabeledPoint(label, features, offset, weight)) =>
-      (uniqueId, LabeledPoint(label, projector.projectFeatures(features), offset, weight))
-    }
-
-    LocalDataset(projectedDataPoints)
-  }
-
-  /**
    * Filter features by Pearson correlation score.
    *
    * @param numFeaturesToKeep The number of features to keep
@@ -112,7 +105,6 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
     val numActiveFeatures: Int = dataPoints.flatMap(_._2.features.activeKeysIterator).toSet.size
 
     if (numFeaturesToKeep < numActiveFeatures) {
-
       val labelAndFeatures = dataPoints.map { case (_, labeledPoint) => (labeledPoint.label, labeledPoint.features) }
       val pearsonScores = LocalDataset.stableComputePearsonCorrelationScore(labelAndFeatures)
 
@@ -138,6 +130,7 @@ protected[ml] case class LocalDataset(dataPoints: Array[(UniqueSampleId, Labeled
 }
 
 object LocalDataset {
+
   /**
    * Factory method for LocalDataset.
    *

@@ -14,18 +14,23 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.{REId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
-import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
-import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
-import com.linkedin.photon.ml.optimization.{OptimizationTracker, RandomEffectOptimizationTracker}
+import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
+import com.linkedin.photon.ml.projector.LinearSubspaceProjector
+import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.PhotonNonBroadcast
 
 /**
  * The optimization problem coordinate for a random effect model.
@@ -34,53 +39,232 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param dataset The training dataset
  * @param optimizationProblem The random effect optimization problem
  */
-protected[ml] abstract class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
-    dataset: RandomEffectDataset,
-    optimizationProblem: RandomEffectOptimizationProblem[Objective])
-  extends Coordinate[RandomEffectDataset](dataset) {
+protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
+    override protected val  dataset: RandomEffectDataset,
+    protected val optimizationProblem: RandomEffectOptimizationProblem[Objective])
+  extends Coordinate[RandomEffectDataset](dataset)
+    with ModelProjection
+    with RDDLike {
+
+  //
+  // Coordinate functions
+  //
+
+  /**
+   * Update the coordinate with a new [[RandomEffectDataset]].
+   *
+   * @param dataset The updated [[RandomEffectDataset]]
+   * @return A new coordinate with the updated [[RandomEffectDataset]]
+   */
+  override protected[algorithm] def updateCoordinateWithDataset(
+      dataset: RandomEffectDataset): RandomEffectCoordinate[Objective] =
+    new RandomEffectCoordinate(dataset, optimizationProblem)
+
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optional optimization tracking information) tuple
    */
-  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) =
-    RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
+  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) = {
+
+    val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
+
+    (projectModelBackward(newModel), optimizationTrackerOpt)
+  }
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
    * a starting point.
    *
    * @param model The model to use as a starting point
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optional optimization tracking information) tuple
    */
   override protected[algorithm] def trainModel(
       model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.trainModel(dataset, optimizationProblem, Some(randomEffectModel))
+        val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(
+          dataset,
+          optimizationProblem,
+          Some(projectModelForward(randomEffectModel)))
+
+        (projectModelBackward(newModel), optimizationTrackerOpt)
 
       case _ =>
-        throw new UnsupportedOperationException(s"Updating model of type ${model.getClass} " +
-            s"in ${this.getClass} is not supported")
+        throw new UnsupportedOperationException(
+          s"Updating model of type ${model.getClass} in ${this.getClass} is not supported")
     }
 
   /**
-   * Score the effect-specific dataset in the coordinate with the input model.
+   * Compute scores for the coordinate data using a given model.
    *
    * @param model The input model
-   * @return The output scores
+   * @return The dataset scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores =
-    model match {
-      case randomEffectModel: RandomEffectModel => RandomEffectCoordinate.score(dataset, randomEffectModel)
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
-      case _ => throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-        s"in ${this.getClass} is not supported")
-    }
+    case randomEffectModel: RandomEffectModel =>
+      RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
+
+    case _ =>
+      throw new UnsupportedOperationException(
+        s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
+  }
+
+  //
+  // RDDLike Functions
+  //
+
+  /**
+   * Get the Spark context.
+   *
+   * @return The Spark context
+   */
+  override def sparkContext: SparkContext = optimizationProblem.sparkContext
+
+  /**
+   * Assign a given name to the [[optimizationProblem]] [[RDD]].
+   *
+   * @param name The parent name for all [[RDD]] objects in this class
+   * @return This object with the name of the [[optimizationProblem]] [[RDD]] assigned
+   */
+  override def setName(name: String): RandomEffectCoordinate[Objective] = {
+
+    optimizationProblem.setName(name)
+
+    this
+  }
+
+  /**
+   * Set the persistence storage level of the [[optimizationProblem]] [[RDD]].
+   *
+   * @param storageLevel The storage level
+   * @return This object with the storage level of the [[optimizationProblem]] [[RDD]] set
+   */
+  override def persistRDD(storageLevel: StorageLevel): RandomEffectCoordinate[Objective] = {
+
+    optimizationProblem.persistRDD(storageLevel)
+
+    this
+  }
+
+  /**
+   * Mark the [[optimizationProblem]] [[RDD]] as unused, and asynchronously remove all blocks for it from memory and
+   * disk.
+   *
+   * @return This object with the [[optimizationProblem]] [[RDD]] unpersisted
+   */
+  override def unpersistRDD(): RandomEffectCoordinate[Objective] = {
+
+    optimizationProblem.unpersistRDD()
+
+    this
+  }
+
+  /**
+   * Materialize the [[optimizationProblem]] [[RDD]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be
+   * evaluated).
+   *
+   * @return This object with the [[optimizationProblem]] [[RDD]] materialized
+   */
+  override def materialize(): RandomEffectCoordinate[Objective] = {
+
+    optimizationProblem.materialize()
+
+    this
+  }
 }
 
 object RandomEffectCoordinate {
+
+  /**
+   * Helper function to construct [[RandomEffectCoordinate]] objects.
+   *
+   * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
+   *                               problems
+   * @param randomEffectDataset The data on which to run the optimization algorithm
+   * @param configuration The optimization problem configuration
+   * @param objectiveFunction The objective function to optimize
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param varianceComputationType If and how coefficient variances should be computed
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
+   * @return
+   */
+  protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
+      randomEffectDataset: RandomEffectDataset,
+      configuration: RandomEffectOptimizationConfiguration,
+      objectiveFunction: RandomEffectObjective,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: NormalizationContext,
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      isTrackingState: Boolean = false): RandomEffectCoordinate[RandomEffectObjective] = {
+
+    // Generate parameters of ProjectedRandomEffectCoordinate
+    val randomEffectOptimizationProblem = buildRandomEffectOptimizationProblem(
+      randomEffectDataset.projectors,
+      configuration,
+      objectiveFunction,
+      glmConstructor,
+      normalizationContext,
+      varianceComputationType,
+      isTrackingState)
+
+    new RandomEffectCoordinate(randomEffectDataset, randomEffectOptimizationProblem)
+  }
+
+  /**
+   * Build a new [[RandomEffectOptimizationProblem]] for a [[RandomEffectCoordinate]] to optimize.
+   *
+   * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
+   *                               problems
+   * @param linearSubspaceProjectorsRDD The per-entity [[LinearSubspaceProjector]] objects used to compress the
+   *                                    per-entity feature spaces
+   * @param configuration The optimization problem configuration
+   * @param objectiveFunction The objective function to optimize
+   * @param glmConstructor The function to use for producing GLMs from trained coefficients
+   * @param normalizationContext The normalization context
+   * @param varianceComputationType If and how coefficient variances should be computed
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
+   * @return
+   */
+  private def buildRandomEffectOptimizationProblem[RandomEffectObjective <: SingleNodeObjectiveFunction](
+      linearSubspaceProjectorsRDD: RDD[(REId, LinearSubspaceProjector)],
+      configuration: RandomEffectOptimizationConfiguration,
+      objectiveFunction: RandomEffectObjective,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
+      normalizationContext: NormalizationContext,
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[RandomEffectObjective] = {
+
+    // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
+    val optimizationProblems = linearSubspaceProjectorsRDD
+      .mapValues { projector =>
+        val factors = normalizationContext.factorsOpt.map(factors => projector.projectForward(factors))
+        val shiftsAndIntercept = normalizationContext
+          .shiftsAndInterceptOpt
+          .map { case (shifts, intercept) =>
+            val newShifts = projector.projectForward(shifts)
+            val newIntercept = projector.originalToProjectedSpaceMap(intercept)
+
+            (newShifts, newIntercept)
+          }
+        val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
+
+        // TODO: Broadcast arguments to SingleNodeOptimizationProblem?
+        SingleNodeOptimizationProblem(
+          configuration,
+          objectiveFunction,
+          glmConstructor,
+          PhotonNonBroadcast(projectedNormalizationContext),
+          varianceComputationType,
+          isTrackingState)
+      }
+
+    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor, isTrackingState)
+  }
 
   /**
    * Train a new [[RandomEffectModel]] (i.e. run model optimization for each entity).
@@ -98,6 +282,7 @@ object RandomEffectCoordinate {
       initialRandomEffectModelOpt: Option[RandomEffectModel])
     : (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
+    // All 3 RDDs involved in these joins use the same partitioner
     val dataAndOptimizationProblems = randomEffectDataset
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
@@ -140,9 +325,8 @@ object RandomEffectCoordinate {
     val optimizationTracker: Option[RandomEffectOptimizationTracker] =
       if (randomEffectOptimizationProblem.isTrackingState) {
         val stateTrackers = newModelsAndTrackers.flatMap(_._2._2)
-        val randomEffectTracker = RandomEffectOptimizationTracker(stateTrackers)
 
-        Some(randomEffectTracker)
+        Some(RandomEffectOptimizationTracker(stateTrackers))
 
       } else {
         None
@@ -157,16 +341,17 @@ object RandomEffectCoordinate {
    * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
    * documentation.
    *
-   * @note The score is the dot product of the model coefficients with the feature values (i.e., it does not go
-   *       through a non-linear link function).
-   * @param randomEffectDataset The dataset to score
-   * @param randomEffectModel The model used to score the dataset
+   * @note The score is the raw dot product of the model coefficients and the feature values - it does not go through a
+   *       non-linear link function.
+   * @param randomEffectDataset The [[RandomEffectDataset]] to score
+   * @param randomEffectModel The [[RandomEffectModel]] with which to score
    * @return The computed scores
    */
   protected[algorithm] def score(
-    randomEffectDataset: RandomEffectDataset,
-    randomEffectModel: RandomEffectModel): CoordinateDataScores = {
+      randomEffectDataset: RandomEffectDataset,
+      randomEffectModel: RandomEffectModel): CoordinateDataScores = {
 
+    // Active data and models use the same partitioner, but scores need to use GameDatum partitioner
     val activeScores = randomEffectDataset
       .activeData
       .join(randomEffectModel.modelsRDD)
@@ -177,45 +362,21 @@ object RandomEffectCoordinate {
       }
       .partitionBy(randomEffectDataset.uniqueIdPartitioner)
 
-    val passiveScores = computePassiveScores(
-        randomEffectDataset.passiveData,
-        randomEffectDataset.passiveDataRandomEffectIds,
-        randomEffectModel.modelsRDD)
-
-    new CoordinateDataScores(activeScores ++ passiveScores)
-  }
-
-  /**
-   * Computes passive scores.
-   *
-   * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
-   * documentation.
-   *
-   * @param passiveData The passive dataset to score
-   * @param passiveDataRandomEffectIds The set of random effect ids with passive data
-   * @param modelsRDD The per-entity models
-   * @return The computed scores for passive data
-   */
-  private def computePassiveScores(
-      passiveData: RDD[(UniqueSampleId, (REId, LabeledPoint))],
-      passiveDataRandomEffectIds: Broadcast[Set[REId]],
-      modelsRDD: RDD[(REId, GeneralizedLinearModel)]): RDD[(Long, Double)] = {
-
-    val modelsForPassiveData = modelsRDD
-      .filter { case (shardId, _) =>
-        passiveDataRandomEffectIds.value.contains(shardId)
+    // Passive data already uses the GameDatum partitioner. Note that this code assumes few (if any) entities have a
+    // passive dataset.
+    val passiveDataREIds = randomEffectDataset.passiveDataREIds
+    val modelsForPassiveData = randomEffectModel
+      .modelsRDD
+      .filter { case (reId, _) =>
+        passiveDataREIds.value.contains(reId)
       }
       .collectAsMap()
+    val passiveScores = randomEffectDataset
+      .passiveData
+      .mapValues { case (randomEffectId, labeledPoint) =>
+        modelsForPassiveData(randomEffectId).computeScore(labeledPoint.features)
+      }
 
-    val modelsForPassiveDataBroadcast = passiveData.sparkContext.broadcast(modelsForPassiveData)
-    val passiveScores = passiveData.mapValues { case (randomEffectId, labeledPoint) =>
-      modelsForPassiveDataBroadcast.value(randomEffectId).computeScore(labeledPoint.features)
-    }
-
-    // TODO: Need a better design that properly unpersists the broadcast variables and persists the computed RDD
-//    passiveScores.setName("Passive scores").persist(StorageLevel.DISK_ONLY).count()
-//    modelsForPassiveDataBroadcast.unpersist()
-
-    passiveScores
+    new CoordinateDataScores(activeScores ++ passiveScores)
   }
 }

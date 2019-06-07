@@ -14,9 +14,9 @@
  */
 package com.linkedin.photon.ml.stat
 
-import breeze.linalg.{DenseMatrix, max => Bmax, min => Bmin, norm => Bnorm}
+import breeze.linalg.{DenseMatrix, DenseVector, max => Bmax, min => Bmin, norm => Bnorm}
 import breeze.stats.{MeanAndVariance, meanAndVariance}
-import org.apache.spark.ml.linalg.{Vector, Vectors}
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.DataFrame
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
@@ -39,18 +39,19 @@ class FeatureDataStatisticsIntegTest extends SparkTestUtils {
    * @return A single set of 10 vectors of 2 features and a label
    */
   @DataProvider
-  def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] =
-    Array(Array(Seq(
-      LabeledPoint(0.0, Vectors.dense(-0.7306653538519616, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.6750417712898752, -0.4232874171873786)),
-      LabeledPoint(1.0, Vectors.dense(0.1863463229359709, -0.8163423997075965)),
-      LabeledPoint(0.0, Vectors.dense(-0.6719842051493347, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.9699938346531928, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.22759406190283604, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.9688721028330911, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.5993795346650845, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.9219423508390701, -0.8972778242305388)),
-      LabeledPoint(0.0, Vectors.dense(0.7006904841584055, -0.5607635619919824)))))
+  def trivialLabeledPoints(): Array[Array[Seq[LabeledPoint]]] = Array(
+    Array(
+      Seq(
+        LabeledPoint(0.0, DenseVector(-0.7306653538519616, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.6750417712898752, -0.4232874171873786)),
+        LabeledPoint(1.0, DenseVector(0.1863463229359709, -0.8163423997075965)),
+        LabeledPoint(0.0, DenseVector(-0.6719842051493347, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.9699938346531928, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.22759406190283604, 0.0)),
+        LabeledPoint(1.0, DenseVector(0.9688721028330911, 0.0)),
+        LabeledPoint(0.0, DenseVector(0.5993795346650845, 0.0)),
+        LabeledPoint(0.0, DenseVector(0.9219423508390701, -0.8972778242305388)),
+        LabeledPoint(0.0, DenseVector(0.7006904841584055, -0.5607635619919824)))))
 
   /**
    * Test the Photon ML wrapper against known results from

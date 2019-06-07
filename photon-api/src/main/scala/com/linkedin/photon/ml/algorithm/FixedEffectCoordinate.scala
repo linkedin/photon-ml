@@ -31,12 +31,12 @@ import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, Fixe
  * @param optimizationProblem The fixed effect optimization problem
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
-    dataset: FixedEffectDataset,
+    override protected val dataset: FixedEffectDataset,
     optimizationProblem: DistributedOptimizationProblem[Objective])
   extends Coordinate[FixedEffectDataset](dataset) {
 
   /**
-   * Update a coordinate with a new dataset.
+   * Update the coordinate with a new dataset.
    *
    * @param dataset The updated dataset
    * @return A new coordinate with the updated dataset
@@ -67,7 +67,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * a starting point.
    *
    * @param model The model to use as a starting point
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optional optimization tracking information) tuple
    */
   override protected[algorithm] def trainModel(
       model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
@@ -88,20 +88,19 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
     }
 
   /**
-   * Score the effect-specific dataset in the coordinate with the input model.
+   * Compute scores for the coordinate dataset using the given model.
    *
    * @param model The input model
-   * @return The output scores
+   * @return The dataset scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
-    model match {
-      case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(dataset, fixedEffectModel)
+  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
-      case _ =>
-        throw new UnsupportedOperationException(s"Updating scores with model of type ${model.getClass} " +
-          s"in ${this.getClass} is not supported")
-    }
+    case fixedEffectModel: FixedEffectModel =>
+      FixedEffectCoordinate.score(dataset, fixedEffectModel)
+
+    case _ =>
+      throw new UnsupportedOperationException(
+        s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
   }
 }
 
