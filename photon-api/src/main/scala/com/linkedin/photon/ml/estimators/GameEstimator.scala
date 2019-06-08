@@ -127,6 +127,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an existing " +
       "model during warm-start training.")
 
+  val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "use warm start",
+    "Whether to train the current model with coefficients initialized by the previous model.")
+
   //
   // Initialize object
   //
@@ -164,6 +168,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setIgnoreThresholdForNewModels(value: Boolean): this.type = set(ignoreThresholdForNewModels, value)
 
+  def setUseWarmStart(value: Boolean): this.type = set(useWarmStart, value)
+
   //
   // Params trait extensions
   //
@@ -194,6 +200,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(varianceComputationType, VarianceComputationType.NONE)
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
     setDefault(ignoreThresholdForNewModels, false)
+    setDefault(useWarmStart, true)
   }
 
   /**
@@ -347,7 +354,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     // Train GAME models on training data
     val results = Timed("Training models:") {
-      var prevGameModel: Option[GameModel] = get(initialModel)
+      var prevGameModel: Option[GameModel] = if (getOrDefault(useWarmStart)) {
+        get(initialModel)
+      } else {
+        None
+      }
 
       optimizationConfigurations.map { optimizationConfiguration =>
         val (gameModel, evaluations) = train(
@@ -356,7 +367,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           coordinateDescent,
           prevGameModel)
 
-        prevGameModel = Some(gameModel)
+        if (getOrDefault(useWarmStart)) prevGameModel = Some(gameModel)
 
         (gameModel, optimizationConfiguration, evaluations)
       }

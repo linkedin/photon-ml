@@ -167,7 +167,10 @@ class GameDriverTest {
    *
    * @param params A [[ParamMap]] with one or more flaws
    */
-  @Test(dataProvider = "invalidParamMaps", expectedExceptions = Array(classOf[IllegalArgumentException]))
+  @Test(
+    dataProvider = "invalidParamMaps",
+    expectedExceptions = Array(classOf[IllegalArgumentException]),
+    dependsOnMethods = Array("testGetRequiredParam"))
   def testValidateParams(params: ParamMap): Unit = {
 
     MockGameDriver.clear()
