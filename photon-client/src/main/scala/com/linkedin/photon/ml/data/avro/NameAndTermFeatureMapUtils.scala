@@ -34,7 +34,7 @@ object NameAndTermFeatureMapUtils {
    * @param sc The Spark context
    * @return The generated map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    */
-  def getFeatureNameAndTermToIndexMap(
+  protected[ml] def getFeatureNameAndTermToIndexMap(
       nameAndTermFeatureMap: Map[String, RDD[NameAndTerm]],
       featureBagKeys: Set[String],
       isAddingIntercept: Boolean,
@@ -63,7 +63,7 @@ object NameAndTermFeatureMapUtils {
    * @param outputDir The HDFS directory to write the [[NameAndTerm]] feature [[RDD]]s as text files
    * @param sc The Spark context
    */
-  def saveAsTextFiles(
+  protected[ml] def saveAsTextFiles(
       nameAndTermFeatureMap: Map[String, RDD[NameAndTerm]],
       outputDir: String,
       sc: SparkContext): Unit =
@@ -79,7 +79,7 @@ object NameAndTermFeatureMapUtils {
    * @param outputPath The HDFS path to which write the [[NameAndTerm]] feature [[RDD]]
    * @param sc The Spark context
    */
-  private def saveNameAndTermsAsTextFiles(
+  protected[ml] def saveNameAndTermsAsTextFiles(
       nameAndTermRDD: RDD[NameAndTerm],
       outputPath: Path,
       sc: SparkContext): Unit = {
@@ -133,20 +133,19 @@ object NameAndTermFeatureMapUtils {
    * @param sc The Spark context
    * @return The [[RDD]] of [[NameAndTerm]] read from the text files of the given input path
    */
-  private def readNameAndTermRDDFromTextFiles(inputPath: Path, sc: SparkContext): RDD[NameAndTerm] =
-    sc.textFile(inputPath.toString)
-      .map { string =>
-        string.split(NameAndTerm.STRING_DELIMITER) match {
-          case Array(name, term) =>
-            NameAndTerm(name, term)
+  protected[ml] def readNameAndTermRDDFromTextFiles(inputPath: Path, sc: SparkContext): RDD[NameAndTerm] = sc
+    .textFile(inputPath.toString)
+    .map { string =>
+      string.split(NameAndTerm.STRING_DELIMITER) match {
+        case Array(name, term) =>
+          NameAndTerm(name, term)
 
-          case Array(name) =>
-            NameAndTerm(name, "")
+        case Array(name) =>
+          NameAndTerm(name, "")
 
-          case other =>
-            throw new UnsupportedOperationException(
-              s"Unexpected entry $string when parsing it to NameAndTerm, the expected number of tokens is 1 or 2, " +
-                s"but found ${other.length}}.")
-        }
+        case other =>
+          throw new UnsupportedOperationException(
+            s"Could not parse '$string' to NameAndTerm: expected 1 or 2 tokens but found ${other.length}")
       }
+    }
 }

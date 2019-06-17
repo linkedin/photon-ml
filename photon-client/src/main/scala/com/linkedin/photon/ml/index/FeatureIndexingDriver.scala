@@ -26,6 +26,7 @@ import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{HashPartitioner, SparkContext}
 import org.joda.time.DateTimeZone
+import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.data.avro._
@@ -300,7 +301,7 @@ object FeatureIndexingDriver extends PhotonParams with Logging {
     val params: ParamMap = ScoptFeatureIndexingParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
 
-    implicit val log = logger
+    implicit val log: Logger = logger
     sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
 
     try {

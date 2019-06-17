@@ -35,6 +35,7 @@ class ScoptNameAndTermFeatureBagsParametersParserTest {
 
     val inputPaths = Set(new Path("/some/input/path"))
     val inputDateRange = DateRange.fromDateString("20170101-20181231")
+    val minInputPartitions = 11
     val outputPath = new Path("/some/output/path")
     val overrideOutputDir = true
     val featureBagKeys = Set("bag1", "bag2")
@@ -44,6 +45,7 @@ class ScoptNameAndTermFeatureBagsParametersParserTest {
       .empty
       .put(NameAndTermFeatureBagsDriver.inputDataDirectories, inputPaths)
       .put(NameAndTermFeatureBagsDriver.inputDataDateRange, inputDateRange)
+      .put(NameAndTermFeatureBagsDriver.minInputPartitions, minInputPartitions)
       .put(NameAndTermFeatureBagsDriver.rootOutputDirectory, outputPath)
       .put(NameAndTermFeatureBagsDriver.overrideOutputDirectory, overrideOutputDir)
       .put(NameAndTermFeatureBagsDriver.featureBagsKeys, featureBagKeys)
