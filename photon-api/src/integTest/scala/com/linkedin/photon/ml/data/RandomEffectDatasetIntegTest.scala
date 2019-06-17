@@ -213,22 +213,37 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
     val featuresVector1 = DenseVector[Double](1D, 2D, 3D, 4D)
     val featuresVector2 = DenseVector[Double](5D, 6D, 7D, 8D)
 
+    val partitionMap: Map[REId, Int] = Map(rEId1 -> 0, rEId2 -> 0)
+    val rEPartitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
+
     val keyedGameDataset: Seq[(REId, (UniqueSampleId, LabeledPoint))] = Seq(
       (rEId1, (uid1, LabeledPoint(1D, featuresVector1))),
       (rEId2, (uid2, LabeledPoint(1D, featuresVector2))))
     val keyedGameDatasetRDD = sc.parallelize(keyedGameDataset, NUM_PARTITIONS)
 
     val evenIndices = Set[Int](0, 2)
-    val linearSubspaceProjector = new LinearSubspaceProjector(evenIndices, featuresVector1.length)
-    val linearSubspaceProjectorsRDD = sc.parallelize(Seq((rEId1, linearSubspaceProjector)))
+    val oddIndices = Set[Int](1, 3)
+    val linearSubspaceProjectorEven = new LinearSubspaceProjector(evenIndices, featuresVector1.length)
+    val linearSubspaceProjectorOdd = new LinearSubspaceProjector(oddIndices, featuresVector2.length)
+    val linearSubspaceProjectorsRDD = sc.parallelize(
+      Seq((rEId1, linearSubspaceProjectorEven), (rEId2, linearSubspaceProjectorOdd)),
+      NUM_PARTITIONS)
 
-    val projectedDataset = RandomEffectDataset.generateProjectedDataset(keyedGameDatasetRDD, linearSubspaceProjectorsRDD)
-    val (actualREID, (actualUniqueID, actualLabeledPoint)) = projectedDataset.collect.head
+    val projectedDataset = RandomEffectDataset.generateProjectedDataset(
+      keyedGameDatasetRDD,
+      linearSubspaceProjectorsRDD,
+      rEPartitioner)
+    val projectedArray = projectedDataset.collect
+    val (evenREID, (evenUID, evenLabeledPoint)) = projectedArray(0)
+    val (oddREID, (oddUID, oddLabeledPoint)) = projectedArray(1)
 
-    assertEquals(projectedDataset.count, 1)
-    assertEquals(actualREID, rEId1)
-    assertEquals(actualUniqueID, uid1)
-    assertEquals(actualLabeledPoint.features, DenseVector[Double](1D, 3D))
+    assertEquals(projectedDataset.count, 2)
+    assertEquals(evenREID, rEId1)
+    assertEquals(evenUID, uid1)
+    assertEquals(evenLabeledPoint.features, DenseVector[Double](1D, 3D))
+    assertEquals(oddREID, rEId2)
+    assertEquals(oddUID, uid2)
+    assertEquals(oddLabeledPoint.features, DenseVector[Double](6D, 8D))
   }
 
   @Test(dataProvider = "activeDataProvider")

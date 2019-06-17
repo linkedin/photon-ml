@@ -247,7 +247,8 @@ object RandomEffectDataset {
    *
    * @param gameDataset The [[RDD]] of [[GameDatum]] used to generate the random effect dataset
    * @param randomEffectDataConfiguration The data configuration for the random effect dataset
-   * @param randomEffectPartitioner The per-entity partitioner used to split the grouped active data
+   * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
+   *                                the data distribution equal amongst partitions
    * @param existingModelKeysRddOpt Optional set of entities that have existing models
    * @return A new [[RandomEffectDataset]]
    */
@@ -270,7 +271,7 @@ object RandomEffectDataset {
     val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
     projectors.persist(storageLevel).count
 
-    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors)
+    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors, randomEffectPartitioner)
     projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
     val activeData = generateActiveData(
@@ -334,7 +335,8 @@ object RandomEffectDataset {
    * Generate the [[LinearSubspaceProjector]] objects used to compress the feature vectors for each per-entity dataset.
    *
    * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
-   * @param randomEffectPartitioner The per-entity partitioner used to split the grouped active data
+   * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
+   *                                the data distribution equal amongst partitions
    * @return An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
    */
   protected[data] def generateLinearSubspaceProjectors(
@@ -363,16 +365,29 @@ object RandomEffectDataset {
    *
    * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
    * @param projectors An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
+   * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
+   *                                the data distribution equal amongst partitions
    * @return The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]], with feature vectors
    *         reduced to the smallest linear subspace possible without loss
    */
   protected[data] def generateProjectedDataset(
       keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      projectors: RDD[(REId, LinearSubspaceProjector)]): RDD[(REId, (UniqueSampleId, LabeledPoint))] =
+      projectors: RDD[(REId, LinearSubspaceProjector)],
+      randomEffectPartitioner: RandomEffectDatasetPartitioner): RDD[(REId, (UniqueSampleId, LabeledPoint))] =
+
     keyedGameDataset
-      .join(projectors)
-      .mapValues { case ((uid, LabeledPoint(label, features, offset, weight)), projector) =>
-        (uid, LabeledPoint(label, projector.projectForward(features), offset, weight))
+      .partitionBy(randomEffectPartitioner)
+      .zipPartitions(projectors) { case (dataIt, projectorsIt) =>
+
+        val projectorLookupTable = projectorsIt.toMap
+
+        dataIt.map { case (rEID, (uID, LabeledPoint(label, features, offset, weight))) =>
+
+          val projector = projectorLookupTable(rEID)
+          val projectedFeatures = projector.projectForward(features)
+
+          (rEID, (uID, LabeledPoint(label, projectedFeatures, offset, weight)))
+        }
       }
 
   /**
@@ -380,7 +395,8 @@ object RandomEffectDataset {
    *
    * @param projectedKeyedDataset The input dataset
    * @param randomEffectDataConfiguration The random effect data configuration
-   * @param randomEffectPartitioner A random effect partitioner
+   * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
+   *                                the data distribution equal amongst partitions
    * @param existingModelKeysRddOpt An optional set of entities which have existing models
    * @return The active dataset
    */
