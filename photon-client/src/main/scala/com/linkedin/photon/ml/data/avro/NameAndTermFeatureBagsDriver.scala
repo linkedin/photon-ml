@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.data.avro
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, Params}
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.ml.util.Identifiable
 import org.joda.time.DateTimeZone
 
@@ -35,7 +35,6 @@ object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {
   protected implicit val parent: Identifiable = this
 
   private val DEFAULT_APPLICATION_NAME = "Name-And-Term-Feature-Bags-Job"
-  private val PARALLELISM_MODIFIER = 5
 
   protected[avro] var sc: SparkContext = _
 
@@ -57,6 +56,11 @@ object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {
     "input data days range",
     "Inclusive date range for input data, computed from a range of days prior to today.  If specified, the input " +
       "directories are expected to be in the daily format structure (i.e. trainDir/2017/01/20/[input data files]).")
+
+  val minInputPartitions: Param[Int] = ParamUtils.createParam[Int](
+    "minimum input partitions",
+    "Minimum number of partitions for the input data.",
+    ParamValidators.gt[Int](0.0))
 
   val rootOutputDirectory: Param[Path] = ParamUtils.createParam[Path](
     "root output directory",
@@ -110,6 +114,7 @@ object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {
    */
   override protected def setDefaultParams(): Unit = {
 
+    setDefault(minInputPartitions, 1)
     setDefault(overrideOutputDirectory, false)
     setDefault(applicationName, DEFAULT_APPLICATION_NAME)
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
@@ -160,21 +165,15 @@ object NameAndTermFeatureBagsDriver extends PhotonParams with Logging {
 
     logger.info(s"inputRecordsPath:\n${inputPathsWithRanges.mkString("\n")}")
 
-    val numExecutors = sc.getExecutorStorageStatus.length
-    val minPartitions = if (sc.getConf.contains("spark.default.parallelism")) {
-      sc.defaultParallelism
-    } else {
-      numExecutors * PARALLELISM_MODIFIER
-    }
-    val records = AvroUtils.readAvroFiles(sc, inputPathsWithRanges, minPartitions)
-    // numExecutors * 5 is too much for the distinct operation when the data is huge; use numExecutors instead.
+    val records = AvroUtils.readAvroFiles(sc, inputPathsWithRanges, getOrDefault(minInputPartitions))
     val nameAndTermFeatureMap = AvroUtils.readNameAndTermFeatureMapFromGenericRecords(
       records,
-      getRequiredParam(featureBagsKeys),
-      numExecutors)
+      getRequiredParam(featureBagsKeys))
 
     NameAndTermFeatureMapUtils.saveAsTextFiles(
-      nameAndTermFeatureMap, getRequiredParam(rootOutputDirectory).toString, sc)
+      nameAndTermFeatureMap,
+      getRequiredParam(rootOutputDirectory).toString,
+      sc)
   }
 
   /**

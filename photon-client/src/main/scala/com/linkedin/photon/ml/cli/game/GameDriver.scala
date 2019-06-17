@@ -200,7 +200,10 @@ trait GameDriver extends PhotonParams {
     val featureShardIdToFeatureMapLoader = shardConfigs.map { case (shardId, featureShardConfig) =>
       val featureMap = NameAndTermFeatureMapUtils
         .getFeatureNameAndTermToIndexMap(
-          nameAndTermFeatureMap, featureShardConfig.featureBags, featureShardConfig.hasIntercept, sc)
+          nameAndTermFeatureMap,
+          featureShardConfig.featureBags,
+          featureShardConfig.hasIntercept,
+          sc)
         .map { case (k, v) => Utils.getFeatureKey(k.name, k.term) -> v }
       val indexMapLoader = new DefaultIndexMapLoader(sc, featureMap)
 

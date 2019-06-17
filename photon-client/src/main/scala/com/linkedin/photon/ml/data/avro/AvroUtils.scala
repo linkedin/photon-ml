@@ -265,8 +265,7 @@ object AvroUtils {
    */
   protected[avro] def readNameAndTermsFromGenericRecords(
       genericRecords: RDD[GenericRecord],
-      featureSectionKey: String,
-      numPartitions: Int): RDD[NameAndTerm] =
+      featureSectionKey: String): RDD[NameAndTerm] =
     genericRecords
       .flatMap {
         _.get(featureSectionKey) match {
@@ -287,7 +286,7 @@ object AvroUtils {
                 s"name and a term for each feature.")
         }
       }
-      .distinct(numPartitions)
+      .distinct
 
   /**
    * Generate a [[Map]] of feature section key to [[NameAndTerm]] feature [[RDD]] from a [[RDD]] of [[GenericRecord]]s.
@@ -298,15 +297,10 @@ object AvroUtils {
    */
   protected[avro] def readNameAndTermFeatureMapFromGenericRecords(
       genericRecords: RDD[GenericRecord],
-      featureSectionKeys: Set[String],
-      numPartitions: Int): Map[String, RDD[NameAndTerm]] =
+      featureSectionKeys: Set[String]): Map[String, RDD[NameAndTerm]] =
     featureSectionKeys
       .map { featureSectionKey =>
-        (featureSectionKey,
-          AvroUtils.readNameAndTermsFromGenericRecords(
-            genericRecords,
-            featureSectionKey,
-            numPartitions))
+        (featureSectionKey, AvroUtils.readNameAndTermsFromGenericRecords(genericRecords, featureSectionKey))
       }
       .toMap
 

@@ -52,6 +52,11 @@ object ScoptNameAndTermFeatureBagsParametersParser extends ScoptParser {
       NameAndTermFeatureBagsDriver.inputDataDaysRange,
       usageText = s"xx${DaysRange.DEFAULT_DELIMITER}xx"),
 
+    // Minimum Input Partitions
+    ScoptParameter[Int, Int](
+      NameAndTermFeatureBagsDriver.minInputPartitions,
+      usageText = "<value>"),
+
     // Root Output Directory
     ScoptParameter[Path, Path](
       NameAndTermFeatureBagsDriver.rootOutputDirectory,
