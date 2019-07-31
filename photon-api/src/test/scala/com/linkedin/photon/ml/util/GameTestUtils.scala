@@ -20,6 +20,7 @@ import org.apache.spark.{HashPartitioner, SparkConf}
 import breeze.linalg.DenseVector
 import org.testng.annotations.DataProvider
 
+import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.{SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinate}
@@ -43,7 +44,7 @@ trait GameTestUtils extends SparkTestUtils {
   /**
    *
    */
-  val defaultTaskType = TaskType.LOGISTIC_REGRESSION
+  val defaultTaskType: TaskType = TaskType.LOGISTIC_REGRESSION
 
   /**
    * Default random seed
@@ -153,8 +154,7 @@ trait GameTestUtils extends SparkTestUtils {
       None,
       LogisticRegressionModel.apply,
       PhotonBroadcast(sc.broadcast(NoNormalization())),
-      VarianceComputationType.NONE,
-      isTrackingState = false)
+      VarianceComputationType.NONE)
   }
 
   /**
@@ -268,7 +268,6 @@ trait GameTestUtils extends SparkTestUtils {
   def generateRandomEffectOptimizationProblem(
       dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
 
-    val isTrackingState = false
     val configuration = RandomEffectOptimizationConfiguration(generateOptimizerConfig())
     val normalizationBroadcast = sc.broadcast(NoNormalization())
     val randomEffectOptimizationProblems = dataset
@@ -279,11 +278,10 @@ trait GameTestUtils extends SparkTestUtils {
           SingleNodeGLMLossFunction(configuration, LogisticLossFunction),
           LogisticRegressionModel.apply,
           PhotonBroadcast(normalizationBroadcast),
-          VarianceComputationType.NONE,
-          isTrackingState)
+          VarianceComputationType.NONE)
       }
 
-    new RandomEffectOptimizationProblem(randomEffectOptimizationProblems, LogisticRegressionModel.apply, isTrackingState)
+    new RandomEffectOptimizationProblem(randomEffectOptimizationProblems, LogisticRegressionModel.apply)
   }
 
   /**
