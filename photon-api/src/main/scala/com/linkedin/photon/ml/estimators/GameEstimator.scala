@@ -661,8 +661,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               glmConstructor,
               downSamplerFactory,
               normalizationContexts.getOrElse(coordinateId, NoNormalization()),
-              variance,
-              TRACK_STATE)
+              variance)
           }
 
           (coordinateId, coordinate)
@@ -702,5 +701,4 @@ object GameEstimator {
   private val GAME_ESTIMATOR_PREFIX = "GameEstimator"
 
   val DEFAULT_TREE_AGGREGATE_DEPTH = 1
-  val TRACK_STATE = true
 }

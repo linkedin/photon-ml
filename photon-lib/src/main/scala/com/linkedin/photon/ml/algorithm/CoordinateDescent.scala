@@ -192,7 +192,7 @@ object CoordinateDescent {
 
       logger.debug(s"Updating coordinate of class ${coordinate.getClass}")
 
-      val (model, trackerOpt) = (initialModelOpt, residualsOpt) match {
+      val (model, tracker) = (initialModelOpt, residualsOpt) match {
         case (Some(initialModel), Some(residuals)) =>
           Timed(s"Train new model with residuals using existing model as starting point") {
             coordinate.trainModel(initialModel, residuals)
@@ -214,7 +214,7 @@ object CoordinateDescent {
           }
       }
 
-      logOptimizationSummary(logger, coordinateId, model, trackerOpt)
+      logOptimizationSummary(logger, coordinateId, model, tracker)
 
       model
   }
@@ -225,28 +225,25 @@ object CoordinateDescent {
    * @param logger The logger to which to send debug messages
    * @param coordinateId The ID of the coordinate for which to train a new model
    * @param datumScoringModel A newly trained model
-   * @param optimizationTrackerOpt An optional tracker of optimization states
+   * @param optimizationTracker Optimization state tracking information
    */
   protected[algorithm] def logOptimizationSummary(
       logger: Logger,
       coordinateId: CoordinateId,
       datumScoringModel: DatumScoringModel,
-      optimizationTrackerOpt: Option[OptimizationTracker]): Unit = if (logger.isDebugEnabled) {
+      optimizationTracker: OptimizationTracker): Unit = if (logger.isDebugEnabled) {
 
     logger.debug(s"Summary of coordinate optimization for coordinate $coordinateId:")
 
     logger.debug(s"Summary of the new model:")
     logger.debug(datumScoringModel.toSummaryString)
 
-    // If optimization tracking is enabled, log the optimization summary
-    optimizationTrackerOpt.foreach { optimizationTracker =>
-      logger.debug(s"Summary of optimization for the new model:")
-      logger.debug(optimizationTracker.toSummaryString)
+    logger.debug(s"Summary of optimization for the new model:")
+    logger.debug(optimizationTracker.toSummaryString)
 
-      optimizationTracker match {
-        case rddLike: RDDLike => rddLike.unpersistRDD()
-        case _ =>
-      }
+    optimizationTracker match {
+      case rddLike: RDDLike => rddLike.unpersistRDD()
+      case _ =>
     }
   }
 

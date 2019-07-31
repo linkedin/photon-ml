@@ -268,8 +268,7 @@ object FeatureIndexingDriver extends PhotonParams with Logging {
       // NOTE PalDB writer within the same JVM might stomp on each other and generate corrupted data, it's safer to
       // lock the write. This will only block writing operations within the same JVM
       PalDBIndexMapBuilder.WRITER_LOCK.synchronized {
-        val mapBuilder =
-          new PalDBIndexMapBuilder().init(outputDir, idx, featureShardId)
+        val mapBuilder = new PalDBIndexMapBuilder().init(outputDir, idx, featureShardId)
 
         while (iter.hasNext) {
           val tuple = iter.next()
@@ -282,6 +281,7 @@ object FeatureIndexingDriver extends PhotonParams with Logging {
 
         mapBuilder.close()
       }
+
       Array[Int](i).toIterator
     }
 

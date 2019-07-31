@@ -34,21 +34,18 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  *                       Recommended:  3 < numCorrections < 10
  *                       Restriction:  numCorrections > 0
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
- * @param isTrackingState Whether to track intermediate states during optimization
  */
 class LBFGS(
     normalizationContext: BroadcastWrapper[NormalizationContext],
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
-    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
-    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
+    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP)
   extends Optimizer[DiffFunction](
     tolerance,
     maxNumIterations,
     normalizationContext,
-    constraintMap,
-    isTrackingState) {
+    constraintMap) {
 
   /**
    * Under the hood, this adaptor uses an LBFGS

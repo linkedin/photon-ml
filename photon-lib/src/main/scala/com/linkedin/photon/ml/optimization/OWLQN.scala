@@ -35,7 +35,6 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  * @param tolerance The tolerance threshold for improvement between iterations as a percentage of the initial loss
  * @param maxNumIterations The cut-off for number of optimization iterations to perform.
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
- * @param isTrackingState Whether to track intermediate states during optimization
  */
 class OWLQN(
     l1RegWeight: Double,
@@ -43,15 +42,13 @@ class OWLQN(
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
     maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
-    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP,
-    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
+    constraintMap: Option[Map[Int, (Double, Double)]] = Optimizer.DEFAULT_CONSTRAINT_MAP)
   extends LBFGS(
     normalizationContext,
     numCorrections,
     tolerance,
     maxNumIterations,
-    constraintMap,
-    isTrackingState) {
+    constraintMap) {
 
   protected var regularizationWeight: Double = l1RegWeight
 

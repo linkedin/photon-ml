@@ -84,7 +84,7 @@ protected[ml] class Driver(
   private[this] var summaryOption: Option[FeatureDataStatistics] = None
   private[this] var normalizationContext: NormalizationContext = NoNormalization()
 
-  private[this] var lambdaModelAndTrackers: List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
+  private[this] var lambdaModelAndTrackers: List[(Double, GeneralizedLinearModel, OptimizationStatesTracker)] =
     List.empty
 
   protected var perModelMetrics: Map[Double, Evaluation.MetricsMap] = Map()
@@ -169,8 +169,14 @@ protected[ml] class Driver(
         updateStage(DriverStage.VALIDATED)
 
       case _ =>
-        lambdaModelAndTrackers.foreach { case (regWeight, _, trackerOpt) =>
-            sendEvent(PhotonOptimizationLogEvent(regWeight, trackerOpt))
+        lambdaModelAndTrackers.foreach { case (regWeight, _, tracker) =>
+          val trackerOpt = if (params.enableOptimizationStateTracker) {
+            Some(tracker)
+          } else {
+            None
+          }
+
+          sendEvent(PhotonOptimizationLogEvent(regWeight, trackerOpt))
         }
     }
 
@@ -186,7 +192,11 @@ protected[ml] class Driver(
 
     Utils.createHDFSDir(params.outputDir, sc.hadoopConfiguration)
     val finalModelsDir = new Path(params.outputDir, LEARNED_MODELS_TEXT)
-    IOUtils.writeModelsInText(sc, lambdaModelAndTrackers, finalModelsDir.toString, inputDataFormat.indexMapLoader())
+
+    val lambdaAndModels = lambdaModelAndTrackers.map { case (lambda, model, _) =>
+      (lambda, model)
+    }
+    IOUtils.writeModelsInText(sc, lambdaAndModels, finalModelsDir.toString, inputDataFormat.indexMapLoader())
 
     logger.info(s"Final models are written to: $finalModelsDir")
 
@@ -322,7 +332,6 @@ protected[ml] class Driver(
       normalizationContext = normalizationContext,
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
-      enableOptimizationStateTracker = params.enableOptimizationStateTracker,
       constraintMap = inputDataFormat.constraintFeatureMap(),
       treeAggregateDepth = params.treeAggregateDepth,
       useWarmStart = params.useWarmStart)
@@ -333,8 +342,8 @@ protected[ml] class Driver(
     if (params.enableOptimizationStateTracker) {
       logger.info(s"optimization state tracker information:")
 
-      lambdaModelAndTrackers.foreach { abc =>
-        logger.info(s"model with regularization weight ${abc._1}: ${abc._3.get.toSummaryString}")
+      lambdaModelAndTrackers.foreach { case (lambda, _, tracker) =>
+        logger.info(s"model with regularization weight $lambda: ${tracker.toSummaryString}")
       }
     }
   }
@@ -344,58 +353,60 @@ protected[ml] class Driver(
    */
   protected def computeAndLogModelMetrics(): Unit =
     if (params.validatePerIteration) {
-      lambdaModelAndTrackers.foreach { case (regularizationWeight: Double, glm: GeneralizedLinearModel, optimizationStatesTrackerOpt: Option[OptimizationStatesTracker]) =>
-        require(
-          optimizationStatesTrackerOpt.isDefined,
-          s"Missing optimization state information for model with regularization weight $regularizationWeight")
+      lambdaModelAndTrackers.foreach {
+        case (regularizationWeight: Double, glm: GeneralizedLinearModel, optimizationStatesTracker: OptimizationStatesTracker) =>
 
-        logger.info(s"Model with lambda = $regularizationWeight:")
+          logger.info(s"Model with lambda = $regularizationWeight:")
 
-        val tracker = optimizationStatesTrackerOpt.get
-        val perIterationMetrics = tracker
-          .getTrackedStates
-          .map { optimizerState =>
-            val model = glm.updateCoefficients(Coefficients(optimizerState.coefficients, None))
-            val metrics = Evaluation.evaluate(model, validationData)
+          val perIterationMetrics = optimizationStatesTracker
+            .getTrackedStates
+            .map { optimizerState =>
+              val model = glm.updateCoefficients(Coefficients(optimizerState.coefficients, None))
+              val metrics = Evaluation.evaluate(model, validationData)
 
-            metrics
-              .keys
-              .toSeq
-              .sorted
-              .foreach { metric =>
-                logger.info(f"Iteration: [${optimizerState.iter}%6d] Metric: [$metric] value: ${metrics(metric)}")
-              }
+              metrics
+                .keys
+                .toSeq
+                .sorted
+                .foreach { metric =>
+                  logger.info(f"Iteration: [${optimizerState.iter}%6d] Metric: [$metric] value: ${metrics(metric)}")
+                }
 
-            (model, metrics)
-          }
+              (model, metrics)
+            }
 
-          val finalMetrics = perIterationMetrics.last._2
+            val finalMetrics = perIterationMetrics.last._2
 
-          perModelMetrics += (regularizationWeight -> finalMetrics)
-          sendEvent(
-            PhotonOptimizationLogEvent(
-              regularizationWeight,
-              optimizationStatesTrackerOpt,
-              Some(perIterationMetrics),
-              Some(finalMetrics)))
+            perModelMetrics += (regularizationWeight -> finalMetrics)
+            sendEvent(
+              PhotonOptimizationLogEvent(
+                regularizationWeight,
+                Some(optimizationStatesTracker),
+                Some(perIterationMetrics),
+                Some(finalMetrics)))
       }
     } else {
-      lambdaModelAndTrackers.foreach { case (regularizationWeight: Double, glm: GeneralizedLinearModel, optimizationStatesTrackerOpt: Option[OptimizationStatesTracker]) =>
-        logger.info(s"Model with lambda = $regularizationWeight:")
+      lambdaModelAndTrackers.foreach { case (lambda, model, tracker) =>
 
-        val finalMetrics = Evaluation.evaluate(glm, validationData)
+          logger.info(s"Model with lambda = $lambda:")
 
-        finalMetrics
-          .keys
-          .toSeq
-          .sorted
-          .foreach { metric =>
-            logger.info(f"Metric: [$metric] value: ${finalMetrics(metric)}")
+          val trackerOpt = if(params.enableOptimizationStateTracker) {
+            Some(tracker)
+          } else {
+            None
           }
+          val finalMetrics = Evaluation.evaluate(model, validationData)
 
-        perModelMetrics += (regularizationWeight -> finalMetrics)
-        sendEvent(
-          PhotonOptimizationLogEvent(regularizationWeight, optimizationStatesTrackerOpt, None, Some(finalMetrics)))
+          finalMetrics
+            .keys
+            .toSeq
+            .sorted
+            .foreach { metric =>
+              logger.info(f"Metric: [$metric] value: ${finalMetrics(metric)}")
+            }
+
+          perModelMetrics += (lambda -> finalMetrics)
+          sendEvent(PhotonOptimizationLogEvent(lambda, trackerOpt, None, Some(finalMetrics)))
       }
     }
 
@@ -425,7 +436,7 @@ protected[ml] class Driver(
 
     IOUtils.writeModelsInText(
       sc,
-      List((bestModelWeight, bestModel, None)),
+      List((bestModelWeight, bestModel)),
       bestModelDir.toString,
       inputDataFormat.indexMapLoader()
     )
@@ -457,7 +468,7 @@ protected[ml] class Driver(
    */
   protected def trainFunc(
       x: RDD[LabeledPoint],
-      y: Map[Double, GeneralizedLinearModel]): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
+      y: Map[Double, GeneralizedLinearModel]): List[(Double, _ <: GeneralizedLinearModel, OptimizationStatesTracker)] =
     ModelTraining.trainGeneralizedLinearModel(
       trainingData = x,
       taskType = params.taskType,
@@ -467,7 +478,6 @@ protected[ml] class Driver(
       normalizationContext = normalizationContext,
       maxNumIter = params.maxNumIter,
       tolerance = params.tolerance,
-      enableOptimizationStateTracker = params.enableOptimizationStateTracker,
       constraintMap = inputDataFormat.constraintFeatureMap(),
       warmStartModels = y,
       treeAggregateDepth = params.treeAggregateDepth,

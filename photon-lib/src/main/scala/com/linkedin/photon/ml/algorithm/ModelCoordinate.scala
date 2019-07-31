@@ -39,9 +39,9 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) =
+  override protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker) =
     throw new UnsupportedOperationException("Attempted to train model coordinate.")
 
   /**
@@ -49,9 +49,9 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
    * a starting point.
    *
    * @param model The model to use as a starting point
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  override protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+  override protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
     throw new UnsupportedOperationException("Attempted to train model coordinate.")
 
   /**

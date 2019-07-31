@@ -38,18 +38,18 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](protected val dataset: 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker])
+  protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset with residuals from other
    * coordinates.
    *
    * @param score The combined scores for each record of the other coordinates
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  protected[algorithm] def trainModel(score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
+  protected[algorithm] def trainModel(score: CoordinateDataScores): (DatumScoringModel, OptimizationTracker) =
     updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).trainModel()
 
   /**
@@ -57,9 +57,9 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](protected val dataset: 
    * a starting point.
    *
    * @param model The model to use as a starting point
-   * @return A (updated model, optional optimization tracking information) tuple
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker])
+  protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker)
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -67,11 +67,11 @@ protected[ml] abstract class Coordinate[D <: Dataset[D]](protected val dataset: 
    *
    * @param model The existing model
    * @param score The combined scores for each record of the other coordinates
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
   protected[algorithm] def trainModel(
       model: DatumScoringModel,
-      score: CoordinateDataScores): (DatumScoringModel, Option[OptimizationTracker]) =
+      score: CoordinateDataScores): (DatumScoringModel, OptimizationTracker) =
     updateCoordinateWithDataset(dataset.addScoresToOffsets(score)).trainModel(model)
 
   /**

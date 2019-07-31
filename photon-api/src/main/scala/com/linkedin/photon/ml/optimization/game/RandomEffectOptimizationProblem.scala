@@ -35,14 +35,13 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @tparam Objective The objective function to optimize
  * @param optimizationProblems The component optimization problems (one per individual) for a random effect
  *                             optimization problem
+ * @param glmConstructor The function to use for producing [[GeneralizedLinearModel]] objects from trained
+ *                       [[Coefficients]]
  */
 protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjectiveFunction](
     val optimizationProblems: RDD[(REId, SingleNodeOptimizationProblem[Objective])],
-    glmConstructor: Coefficients => GeneralizedLinearModel,
-    val isTrackingState: Boolean)
+    glmConstructor: Coefficients => GeneralizedLinearModel)
   extends RDDLike {
-
-  // TODO: Need to refactor 'isTrackingState' out
 
   /**
    * Get the Spark context.

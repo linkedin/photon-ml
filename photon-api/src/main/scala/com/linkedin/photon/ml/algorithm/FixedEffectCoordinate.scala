@@ -48,16 +48,16 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
-   * @return A tuple of the updated model and the optimization states tracker
+   * @return A (updated model, optimization state tracking information) tuple
    */
-  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) = {
+  override protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker) = {
 
     val updatedFixedEffectModel = FixedEffectCoordinate.trainModel(
       dataset.labeledPoints,
       optimizationProblem,
       dataset.featureShardId,
       None)
-    val optimizationTracker = optimizationProblem.getStatesTracker.map(new FixedEffectOptimizationTracker(_))
+    val optimizationTracker = new FixedEffectOptimizationTracker(optimizationProblem.getStatesTracker)
 
     (updatedFixedEffectModel, optimizationTracker)
   }
@@ -69,8 +69,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    * @param model The model to use as a starting point
    * @return A (updated model, optional optimization tracking information) tuple
    */
-  override protected[algorithm] def trainModel(
-      model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
+  override protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
     model match {
       case fixedEffectModel: FixedEffectModel =>
         val updatedFixedEffectModel = FixedEffectCoordinate.trainModel(
@@ -78,7 +77,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
           optimizationProblem,
           dataset.featureShardId,
           Some(fixedEffectModel))
-        val optimizationTracker = optimizationProblem.getStatesTracker.map(new FixedEffectOptimizationTracker(_))
+        val optimizationTracker = new FixedEffectOptimizationTracker(optimizationProblem.getStatesTracker)
 
         (updatedFixedEffectModel, optimizationTracker)
 
