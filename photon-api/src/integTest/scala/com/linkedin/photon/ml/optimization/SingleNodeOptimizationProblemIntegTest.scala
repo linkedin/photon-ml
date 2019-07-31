@@ -152,7 +152,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
       regularizationWeight: Double,
       inputData: Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      DzzLossFunction: (Vector[Double]) => (LabeledPoint) => Double): Unit = {
+      DzzLossFunction: Vector[Double] => (LabeledPoint => Double)): Unit = {
 
     val coefficients = generateDenseVector(OptimizationProblemIntegTestUtils.DIMENSIONS)
 
@@ -161,7 +161,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(regularizationWeight).when(optConfig).regularizationWeight
     doReturn(RegularizationType.L2).when(regContext).regularizationType
@@ -200,7 +200,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
       regularizationWeight: Double,
       inputData: Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      DzzLossFunction: (Vector[Double]) => (LabeledPoint) => Double): Unit = {
+      DzzLossFunction: Vector[Double] => (LabeledPoint => Double)): Unit = {
 
     val dimensions = OptimizationProblemIntegTestUtils.DIMENSIONS
     val coefficients = generateDenseVector(dimensions)
@@ -210,7 +210,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(regularizationWeight).when(optConfig).regularizationWeight
     doReturn(RegularizationType.L2).when(regContext).regularizationType
@@ -258,7 +258,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(RegularizationType.NONE).when(regContext).regularizationType
 

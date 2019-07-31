@@ -162,7 +162,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val objectiveFunction = mock(classOf[DistributedSmoothedHingeLossFunction])
 
     doReturn(normalization).when(normalizationMock).value
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
 
     val optimizerL1 = new OWLQN(initL1Weight, normalizationMock)
     val objectiveFunctionL2 = new L2LossFunction(sc)
@@ -234,7 +234,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       regularizationWeight: Double,
       dataGenerationFunction: () => Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      DzzLossFunction: (Vector[Double]) => (LabeledPoint) => Double): Unit = sparkTest("testComputeVariancesSimple") {
+      DzzLossFunction: Vector[Double] => (LabeledPoint => Double)): Unit = sparkTest("testComputeVariancesSimple") {
 
     val input = sc.parallelize(dataGenerationFunction())
     val coefficients = generateDenseVector(OptimizationProblemIntegTestUtils.DIMENSIONS)
@@ -244,7 +244,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(regularizationWeight).when(optConfig).regularizationWeight
     doReturn(RegularizationType.L2).when(regContext).regularizationType
@@ -286,7 +286,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       regularizationWeight: Double,
       dataGenerationFunction: () => Seq[LabeledPoint],
       lossFunction: PointwiseLossFunction,
-      DzzLossFunction: (Vector[Double]) => (LabeledPoint) => Double): Unit = sparkTest("testComputeVariancesFull") {
+      DzzLossFunction: Vector[Double] => (LabeledPoint => Double)): Unit = sparkTest("testComputeVariancesFull") {
 
     val input = sc.parallelize(dataGenerationFunction())
     val dimensions = OptimizationProblemIntegTestUtils.DIMENSIONS
@@ -297,7 +297,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(regularizationWeight).when(optConfig).regularizationWeight
     doReturn(RegularizationType.L2).when(regContext).regularizationType
@@ -350,7 +350,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(RegularizationType.NONE).when(regContext).regularizationType
 
