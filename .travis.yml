@@ -6,6 +6,7 @@ scala:
 sudo: required
 jdk:
   - oraclejdk8
+dist: trusty
 before_cache:
   - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
 cache:
