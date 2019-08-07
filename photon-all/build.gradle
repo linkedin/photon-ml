@@ -16,7 +16,9 @@ apply plugin: 'scala'
 apply plugin: 'com.github.johnrengelman.shadow' // See doc at: http://imperceptiblethoughts.com/shadow/.
 
 dependencies {
-  compile project(":photon-ml$scalaSuffix")
+  compile project(":photon-lib$scalaSuffix")
+  compile project(":photon-api$scalaSuffix")
+  compile project(":photon-client$scalaSuffix")
 }
 
 // Configure the shadow plugin to contain all the runtime dependencies except
