@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.function
 
 import breeze.linalg.{DenseMatrix, Vector}
 import org.apache.spark.broadcast.Broadcast
+import scala.math.pow
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.BroadcastWrapper
@@ -26,6 +27,9 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
 trait L2Regularization extends ObjectiveFunction {
 
   protected var l2RegWeight: Double = 0D
+  protected var interceptIndexOpt: Option[Int] = None
+
+  require(interceptIndexOpt.isEmpty || interceptIndexOpt.forall(_ >= 0), "Intercept index is negative.")
 
   /**
    * Getter.
@@ -67,8 +71,21 @@ trait L2Regularization extends ObjectiveFunction {
    * @param coefficients The model coefficients
    * @return The L2 regularization value
    */
-  protected def l2RegValue(coefficients: Vector[Double]): Double =
-    l2RegWeight * coefficients.dot(coefficients) / 2
+  protected def l2RegValue(coefficients: Vector[Double]): Double = {
+
+    val coefSquaredMagnitude = coefficients.dot(coefficients)
+
+    val unweightedL2Regularization = interceptIndexOpt match {
+      case None => coefSquaredMagnitude
+      case Some(interceptIndex) =>
+        val coefLength = coefficients.length
+
+        require(interceptIndex < coefLength, s"Intercept index out of bounds: $interceptIndex > $coefLength")
+        coefSquaredMagnitude - pow(coefficients(interceptIndex), 2)
+    }
+
+    l2RegWeight * unweightedL2Regularization / 2
+  }
 }
 
 /**

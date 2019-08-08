@@ -45,7 +45,7 @@ class GeneralizedLinearOptimizationProblemTest {
     val objective = mock(classOf[SingleNodeSmoothedHingeLossFunction])
     val regularization = NoRegularizationContext
 
-    doReturn(statesTracker).when(optimizer).getStateTracker
+    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
@@ -93,7 +93,7 @@ class GeneralizedLinearOptimizationProblemTest {
     val objective = mock(classOf[SingleNodeSmoothedHingeLossFunction])
     val regularization = NoRegularizationContext
 
-    doReturn(statesTracker).when(optimizer).getStateTracker
+    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
 
     val logisticProblem = new MockOptimizationProblem(
       optimizer,
@@ -153,8 +153,8 @@ class GeneralizedLinearOptimizationProblemTest {
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val initialModel = mock(classOf[GeneralizedLinearModel])
 
-    doReturn(statesTracker).when(optimizerNoReg).getStateTracker
-    doReturn(statesTracker).when(optimizerL1Reg).getStateTracker
+    doReturn(Some(statesTracker)).when(optimizerNoReg).getStateTracker
+    doReturn(Some(statesTracker)).when(optimizerL1Reg).getStateTracker
 
     val problemNone = new MockOptimizationProblem(
       optimizerNoReg,

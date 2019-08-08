@@ -31,19 +31,21 @@ import com.linkedin.photon.ml.util._
  * @param maxNumIterations The max number of iterations to perform
  * @param normalizationContext The normalization context
  * @param constraintMap (Optional) The map of constraints on the feature coefficients
+ * @param isTrackingState Whether to track intermediate states during optimization
  */
 abstract class Optimizer[-Function <: ObjectiveFunction](
     relTolerance: Double,
     maxNumIterations: Int,
     normalizationContext: BroadcastWrapper[NormalizationContext],
-    constraintMap: Option[Map[Int, (Double, Double)]])
+    constraintMap: Option[Map[Int, (Double, Double)]],
+    val isTrackingState: Boolean)
   extends Serializable
   with Logging {
 
   /**
-   * Tracks all the intermediate states of the optimizer and times the optimization.
+   * OptimizationStatesTracker optionally tracks all the states of the optimizer and times the optimization.
    */
-  private var statesTracker: OptimizationStatesTracker = _
+  private var statesTracker: Option[OptimizationStatesTracker] = None
 
   /**
    * The absolute tolerances for the optimization problem.
@@ -62,8 +64,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    *
    * @param state The initial state
    */
-  private def setAbsTolerances(state: OptimizerState): Unit = {
-
+  private def setAbsTolerances(state: OptimizerState) = {
     lossAbsTolerance = state.loss * relTolerance
     gradientAbsTolerance = norm(state.gradient, 2) * relTolerance
   }
@@ -73,21 +74,29 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    *
    * @param state The current state
    */
-  private def updateCurrentState(state: OptimizerState): Unit = {
+  private def updateCurrentState(state: OptimizerState) = {
+    statesTracker match {
+      case Some(tracker) =>
+        currentState match {
+          case Some(currState) =>
+            // Only tracks the state if it is different from the previous state (e.g., different objects)
+            if (state != currState) {
+              tracker.track(state)
+            }
 
-    currentState match {
-      case Some(currState) =>
-        // Only tracks the state if it is different from the previous state (e.g., different objects)
-        if (state != currState) {
-          statesTracker.track(state)
+          case None => tracker.track(state)
         }
-
-      case None => statesTracker.track(state)
+      case _ =>
     }
-
     previousState = currentState
     currentState = Some(state)
   }
+
+  /**
+   * Clear the [[OptimizationStatesTracker]].
+   */
+  private def initStateTracker(): Option[OptimizationStatesTracker] =
+    if (isTrackingState) Some(new OptimizationStatesTracker()) else None
 
   /**
    * Get the normalization context.
@@ -97,7 +106,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   /**
    * Get the state tracker.
    */
-  def getStateTracker: OptimizationStatesTracker = statesTracker
+  def getStateTracker: Option[OptimizationStatesTracker] = statesTracker
 
   /**
    * Get the current state of the optimizer.
@@ -123,7 +132,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    *
    * @return The convergence reason
    */
-  def getConvergenceReason: Option[ConvergenceReason] =
+  def getConvergenceReason: Option[ConvergenceReason] = {
     if (currentState.isEmpty) {
       None
     } else if (currentState.get.iter >= maxNumIterations) {
@@ -137,6 +146,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
     } else {
       None
     }
+  }
 
   /**
    * Check whether optimization has completed.
@@ -179,7 +189,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
       updateCurrentState(runOneIteration(objectiveFunction, getCurrentState.get)(data))
     } while (!isDone)
 
-    statesTracker.convergenceReason = getConvergenceReason
+    statesTracker.foreach(_.convergenceReason = getConvergenceReason)
     val currState = getCurrentState.get
     (currState.coefficients, currState.loss)
   }
@@ -217,7 +227,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
 
     currentState = None
     previousState = None
-    statesTracker = new OptimizationStatesTracker()
+    statesTracker = initStateTracker()
   }
 
   /**
@@ -235,4 +245,5 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
 
 object Optimizer {
   val DEFAULT_CONSTRAINT_MAP = None
+  val DEFAULT_TRACKING_STATE = true
 }

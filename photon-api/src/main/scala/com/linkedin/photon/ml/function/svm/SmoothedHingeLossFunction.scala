@@ -94,19 +94,21 @@ object SmoothedHingeLossFunction {
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(treeAggregateDepth: Int): (CoordinateOptimizationConfiguration) => ObjectiveFunction =
-    (config: CoordinateOptimizationConfiguration) => {
-      config match {
-        case fEOptConfig: FixedEffectOptimizationConfiguration =>
+  def buildFactory(treeAggregateDepth: Int)(config: CoordinateOptimizationConfiguration)
+    : Option[Int] => ObjectiveFunction =
+
+    config match {
+      case fEOptConfig: FixedEffectOptimizationConfiguration =>
+        (interceptIndexOption: Option[Int]) =>
           DistributedSmoothedHingeLossFunction(fEOptConfig, treeAggregateDepth)
 
-        case rEOptConfig: RandomEffectOptimizationConfiguration =>
+      case rEOptConfig: RandomEffectOptimizationConfiguration =>
+        (interceptIndexOption: Option[Int]) =>
           SingleNodeSmoothedHingeLossFunction(rEOptConfig)
 
-        case _ =>
-          throw new UnsupportedOperationException(
-            s"Cannot create a smoothed hinge loss linear SVM loss function from a coordinate configuration with class " +
-              s"'${config.getClass.getName}'")
-      }
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Cannot create a smoothed hinge loss linear SVM loss function from a coordinate configuration with class " +
+            s"'${config.getClass.getName}'")
     }
 }

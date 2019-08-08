@@ -51,10 +51,10 @@ class SmoothedHingeLossFunctionTest {
 
     coordinateOptConfig match {
       case _: FixedEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedSmoothedHingeLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedSmoothedHingeLossFunction])
 
       case _: RandomEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[SingleNodeSmoothedHingeLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => SingleNodeSmoothedHingeLossFunction])
 
       case _ =>
         assertTrue(false)

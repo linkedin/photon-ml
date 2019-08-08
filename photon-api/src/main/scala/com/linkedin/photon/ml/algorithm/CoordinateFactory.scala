@@ -15,8 +15,8 @@
 package com.linkedin.photon.ml.algorithm
 
 import com.linkedin.photon.ml.data.{Dataset, FixedEffectDataset, RandomEffectDataset}
-import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.ObjectiveFunctionFactory
-import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunction, SingleNodeObjectiveFunction}
+import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.{DistributedObjectiveFunctionFactory, ObjectiveFunctionFactoryFactory, SingleNodeObjectiveFunctionFactory}
+import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
@@ -40,9 +40,10 @@ object CoordinateFactory {
    * @tparam D Some type of [[Dataset]]
    * @param dataset The input data to use for training
    * @param coordinateOptConfig The optimization settings for training
-   * @param lossFunctionConstructor A constructor for the loss function used for training
+   * @param lossFunctionFactoryConstructor A constructor for the loss function used for training
    * @param glmConstructor A constructor for the type of [[GeneralizedLinearModel]] being trained
    * @param downSamplerFactory A factory function for the [[DownSampler]] (if down-sampling is enabled)
+   * @param trackState Should the internal optimization states be recorded?
    * @param normalizationContext The [[NormalizationContext]]
    * @param varianceComputationType Should the trained coefficient variances be computed in addition to the means?
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
@@ -50,19 +51,21 @@ object CoordinateFactory {
   def build[D <: Dataset[D]](
       dataset: D,
       coordinateOptConfig: CoordinateOptimizationConfiguration,
-      lossFunctionConstructor: ObjectiveFunctionFactory,
-      glmConstructor: Coefficients => GeneralizedLinearModel,
+      lossFunctionFactoryConstructor: ObjectiveFunctionFactoryFactory,
+      glmConstructor: (Coefficients) => GeneralizedLinearModel,
       downSamplerFactory: DownSamplerFactory,
       normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType): Coordinate[D] = {
+      varianceComputationType: VarianceComputationType,
+      interceptIndexOpt: Option[Int],
+      trackState: Boolean): Coordinate[D] = {
 
-    val lossFunction: ObjectiveFunction = lossFunctionConstructor(coordinateOptConfig)
+    val lossFunctionFactory = lossFunctionFactoryConstructor(coordinateOptConfig)
 
-    (dataset, coordinateOptConfig, lossFunction) match {
+    (dataset, coordinateOptConfig, lossFunctionFactory) match {
       case (
           fEDataset: FixedEffectDataset,
           fEOptConfig: FixedEffectOptimizationConfiguration,
-          distributedLossFunction: DistributedObjectiveFunction) =>
+          distributedLossFunctionFactory: DistributedObjectiveFunctionFactory) =>
 
         val downSamplerOpt = if (DownSampler.isValidDownSamplingRate(fEOptConfig.downSamplingRate)) {
           Some(downSamplerFactory(fEOptConfig.downSamplingRate))
@@ -75,31 +78,34 @@ object CoordinateFactory {
           fEDataset,
           DistributedOptimizationProblem(
             fEOptConfig,
-            distributedLossFunction,
+            distributedLossFunctionFactory(interceptIndexOpt),
             downSamplerOpt,
             glmConstructor,
             normalizationPhotonBroadcast,
-            varianceComputationType)).asInstanceOf[Coordinate[D]]
+            varianceComputationType,
+            trackState)).asInstanceOf[Coordinate[D]]
 
       case (
           rEDataset: RandomEffectDataset,
           rEOptConfig: RandomEffectOptimizationConfiguration,
-          singleNodeLossFunction: SingleNodeObjectiveFunction) =>
+          singleNodeLossFunctionFactory: SingleNodeObjectiveFunctionFactory) =>
 
         RandomEffectCoordinate(
           rEDataset,
           rEOptConfig,
-          singleNodeLossFunction,
+          singleNodeLossFunctionFactory,
           glmConstructor,
           normalizationContext,
-          varianceComputationType).asInstanceOf[Coordinate[D]]
+          varianceComputationType,
+          interceptIndexOpt,
+          trackState).asInstanceOf[Coordinate[D]]
 
       case _ =>
         throw new UnsupportedOperationException(
           s"""Cannot build coordinate for the following input class combination:
           |  ${dataset.getClass.getName}
           |  ${coordinateOptConfig.getClass.getName}
-          |  ${lossFunction.getClass.getName}""".stripMargin)
+          |  ${lossFunctionFactory.getClass.getName}""".stripMargin)
     }
   }
 }

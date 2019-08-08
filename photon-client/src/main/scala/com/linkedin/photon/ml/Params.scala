@@ -99,7 +99,6 @@ class Params extends PalDBIndexMapParams {
   /**
    * Whether to enable the optimization tracker, which stores the per-iteration log information of the running optimizer
    */
-  @Deprecated
   var enableOptimizationStateTracker: Boolean = true
 
   /**

@@ -45,6 +45,8 @@ object ModelTraining extends Logging {
    * @param maxNumIter Maximum number of iterations to run
    * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost
    *                  of more iterations
+   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
+   *                                       per-iteration log information of the running optimizer
    * @param constraintMap An optional mapping of feature indices to box constraints
    * @param treeAggregateDepth The depth for tree aggregation
    * @return The trained models in the form of Map(key -> model), where key is the String typed corresponding
@@ -59,9 +61,10 @@ object ModelTraining extends Logging {
       normalizationContext: NormalizationContext,
       maxNumIter: Int,
       tolerance: Double,
+      enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
       treeAggregateDepth: Int,
-      useWarmStart: Boolean): List[(Double, GeneralizedLinearModel, OptimizationStatesTracker)] =
+      useWarmStart: Boolean): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] =
     trainGeneralizedLinearModel(
       trainingData,
       taskType,
@@ -71,6 +74,7 @@ object ModelTraining extends Logging {
       normalizationContext,
       maxNumIter,
       tolerance,
+      enableOptimizationStateTracker,
       constraintMap,
       Map.empty,
       treeAggregateDepth,
@@ -90,6 +94,8 @@ object ModelTraining extends Logging {
    * @param maxNumIter Maximum number of iterations to run
    * @param tolerance The optimizer's convergence tolerance, smaller value will lead to higher accuracy with the cost
    *                  of more iterations
+   * @param enableOptimizationStateTracker Whether to enable the optimization state tracker, which stores the
+   *                                       per-iteration log information of the running optimizer
    * @param constraintMap An optional mapping of feature indices to box constraints
    * @param warmStartModels Map of (lambda -> model) to use for warm start training
    * @param treeAggregateDepth The depth for tree aggregation
@@ -106,10 +112,11 @@ object ModelTraining extends Logging {
       normalizationContext: NormalizationContext,
       maxNumIter: Int,
       tolerance: Double,
+      enableOptimizationStateTracker: Boolean,
       constraintMap: Option[Map[Int, (Double, Double)]],
       warmStartModels: Map[Double, GeneralizedLinearModel],
       treeAggregateDepth: Int,
-      useWarmStart: Boolean): List[(Double, GeneralizedLinearModel, OptimizationStatesTracker)] = {
+      useWarmStart: Boolean): List[(Double, _ <: GeneralizedLinearModel, Option[OptimizationStatesTracker])] = {
 
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
@@ -161,7 +168,8 @@ object ModelTraining extends Logging {
       samplerOption = None,
       glmConstructor,
       broadcastNormalizationContext,
-      VarianceComputationType.NONE)
+      VarianceComputationType.NONE,
+      enableOptimizationStateTracker)
 
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time
     val sortedRegularizationWeights = regularizationWeights.sortWith(_ >= _)
@@ -175,7 +183,7 @@ object ModelTraining extends Logging {
       s"${warmStartModels.keys.mkString(", ")}")
 
     // Hyperparameter tuning
-    val initWeightsAndModels = List[(Double, GeneralizedLinearModel, OptimizationStatesTracker)]()
+    val initWeightsAndModels = List[(Double, GeneralizedLinearModel, Option[OptimizationStatesTracker])]()
     val finalWeightsModelsAndTrackers = sortedRegularizationWeights
       .foldLeft(initWeightsAndModels) {
         case (List(), currentWeight) =>

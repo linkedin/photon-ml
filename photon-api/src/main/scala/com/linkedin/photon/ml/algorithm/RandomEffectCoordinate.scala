@@ -17,10 +17,10 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
 import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.SingleNodeObjectiveFunctionFactory
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -66,11 +66,11 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    *
    * @return A (updated model, optional optimization tracking information) tuple
    */
-  override protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker) = {
+  override protected[algorithm] def trainModel(): (DatumScoringModel, Option[OptimizationTracker]) = {
 
-    val (newModel, optimizationTracker) = RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
+    val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(dataset, optimizationProblem, None)
 
-    (projectModelBackward(newModel), optimizationTracker)
+    (projectModelBackward(newModel), optimizationTrackerOpt)
   }
 
   /**
@@ -81,16 +81,16 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    * @return A (updated model, optional optimization tracking information) tuple
    */
   override protected[algorithm] def trainModel(
-      model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
+      model: DatumScoringModel): (DatumScoringModel, Option[OptimizationTracker]) =
 
     model match {
       case randomEffectModel: RandomEffectModel =>
-        val (newModel, optimizationTracker) = RandomEffectCoordinate.trainModel(
+        val (newModel, optimizationTrackerOpt) = RandomEffectCoordinate.trainModel(
           dataset,
           optimizationProblem,
           Some(projectModelForward(randomEffectModel)))
 
-        (projectModelBackward(newModel), optimizationTracker)
+        (projectModelBackward(newModel), optimizationTrackerOpt)
 
       case _ =>
         throw new UnsupportedOperationException(
@@ -186,28 +186,33 @@ object RandomEffectCoordinate {
    *                               problems
    * @param randomEffectDataset The data on which to run the optimization algorithm
    * @param configuration The optimization problem configuration
-   * @param objectiveFunction The objective function to optimize
+   * @param objectiveFunctionFactory The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param varianceComputationType If and how coefficient variances should be computed
-   * @return A new [[RandomEffectCoordinate]] object
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
+   * @return
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
       randomEffectDataset: RandomEffectDataset,
       configuration: RandomEffectOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
+      objectiveFunctionFactory: SingleNodeObjectiveFunctionFactory,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE): RandomEffectCoordinate[RandomEffectObjective] = {
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      interceptIndexOpt: Option[Int] = None,
+      isTrackingState: Boolean = false): RandomEffectCoordinate[SingleNodeObjectiveFunction] = {
 
     // Generate parameters of ProjectedRandomEffectCoordinate
     val randomEffectOptimizationProblem = buildRandomEffectOptimizationProblem(
       randomEffectDataset.projectors,
       configuration,
-      objectiveFunction,
+      objectiveFunctionFactory,
       glmConstructor,
       normalizationContext,
-      varianceComputationType)
+      varianceComputationType,
+      interceptIndexOpt,
+      isTrackingState)
 
     new RandomEffectCoordinate(randomEffectDataset, randomEffectOptimizationProblem)
   }
@@ -220,19 +225,22 @@ object RandomEffectCoordinate {
    * @param linearSubspaceProjectorsRDD The per-entity [[LinearSubspaceProjector]] objects used to compress the
    *                                    per-entity feature spaces
    * @param configuration The optimization problem configuration
-   * @param objectiveFunction The objective function to optimize
+   * @param objectiveFunctionFactory The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param varianceComputationType If and how coefficient variances should be computed
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
    * @return
    */
   private def buildRandomEffectOptimizationProblem[RandomEffectObjective <: SingleNodeObjectiveFunction](
       linearSubspaceProjectorsRDD: RDD[(REId, LinearSubspaceProjector)],
       configuration: RandomEffectOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
+      objectiveFunctionFactory: SingleNodeObjectiveFunctionFactory,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE): RandomEffectOptimizationProblem[RandomEffectObjective] = {
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      interceptIndexOpt: Option[Int],
+      isTrackingState: Boolean = false): RandomEffectOptimizationProblem[SingleNodeObjectiveFunction] = {
 
     // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
     val optimizationProblems = linearSubspaceProjectorsRDD
@@ -247,17 +255,21 @@ object RandomEffectCoordinate {
             (newShifts, newIntercept)
           }
         val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
+        val projectedInterceptOpt = interceptIndexOpt.map { interceptIndex =>
+          projector.originalToProjectedSpaceMap(interceptIndex)
+        }
 
         // TODO: Broadcast arguments to SingleNodeOptimizationProblem?
         SingleNodeOptimizationProblem(
           configuration,
-          objectiveFunction,
+          objectiveFunctionFactory(projectedInterceptOpt),
           glmConstructor,
           PhotonNonBroadcast(projectedNormalizationContext),
-          varianceComputationType)
+          varianceComputationType,
+          isTrackingState)
       }
 
-    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor)
+    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor, isTrackingState)
   }
 
   /**
@@ -273,7 +285,8 @@ object RandomEffectCoordinate {
   protected[algorithm] def trainModel[Function <: SingleNodeObjectiveFunction](
       randomEffectDataset: RandomEffectDataset,
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
-      initialRandomEffectModelOpt: Option[RandomEffectModel]): (RandomEffectModel, RandomEffectOptimizationTracker) = {
+      initialRandomEffectModelOpt: Option[RandomEffectModel])
+    : (RandomEffectModel, Option[RandomEffectOptimizationTracker]) = {
 
     // All 3 RDDs involved in these joins use the same partitioner
     val dataAndOptimizationProblems = randomEffectDataset
@@ -281,9 +294,9 @@ object RandomEffectCoordinate {
       .join(randomEffectOptimizationProblem.optimizationProblems)
 
     // Left join the models to data and optimization problems for cases where we have a prior model but no new data
-    val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
+    val newModelsAndTrackers = initialRandomEffectModelOpt
       .map { randomEffectModel =>
-        val modelsAndTrackers = randomEffectModel
+        randomEffectModel
           .modelsRDD
           .leftOuterJoin(dataAndOptimizationProblems)
           .mapValues {
@@ -292,40 +305,40 @@ object RandomEffectCoordinate {
               val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
               val stateTrackers = optimizationProblem.getStatesTracker
 
-              (updatedModel, Some(stateTrackers))
+              (updatedModel, stateTrackers)
 
             case (localModel, _) =>
               (localModel, None)
           }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
-
-        val models = modelsAndTrackers.mapValues(_._1)
-        val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.flatMap(_._2._2))
-
-        (models, optimizationTracker)
       }
       .getOrElse {
-        val modelsAndTrackers = dataAndOptimizationProblems.mapValues { case (localDataset, optimizationProblem) =>
+        dataAndOptimizationProblems.mapValues { case (localDataset, optimizationProblem) =>
           val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
           val newModel = optimizationProblem.run(trainingLabeledPoints)
           val stateTrackers = optimizationProblem.getStatesTracker
 
           (newModel, stateTrackers)
         }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
-
-        val models = modelsAndTrackers.mapValues(_._1)
-        val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.map(_._2._2))
-
-        (models, optimizationTracker)
       }
+      .setName(s"Updated models and state trackers for random effect ${randomEffectDataset.randomEffectType}")
+      .persist(StorageLevel.MEMORY_ONLY)
 
     val newRandomEffectModel = new RandomEffectModel(
-      newModels,
+      newModelsAndTrackers.mapValues(_._1),
       randomEffectDataset.randomEffectType,
       randomEffectDataset.featureShardId)
 
-    (newRandomEffectModel, randomEffectOptimizationTracker)
+    val optimizationTracker: Option[RandomEffectOptimizationTracker] =
+      if (randomEffectOptimizationProblem.isTrackingState) {
+        val stateTrackers = newModelsAndTrackers.flatMap(_._2._2)
+
+        Some(RandomEffectOptimizationTracker(stateTrackers))
+
+      } else {
+        None
+      }
+
+    (newRandomEffectModel, optimizationTracker)
   }
 
   /**

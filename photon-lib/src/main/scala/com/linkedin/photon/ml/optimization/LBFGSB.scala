@@ -35,6 +35,7 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  *                       time.
  *                       Recommended:  3 < numCorrections < 10
  *                       Restriction:  numCorrections > 0
+ * @param isTrackingState Whether to track intermediate states during optimization
  */
 class LBFGSB (
     lowerBounds: DenseVector[Double],
@@ -42,13 +43,15 @@ class LBFGSB (
     normalizationContext: BroadcastWrapper[NormalizationContext],
     numCorrections: Int = LBFGS.DEFAULT_NUM_CORRECTIONS,
     tolerance: Double = LBFGS.DEFAULT_TOLERANCE,
-    maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER)
+    maxNumIterations: Int = LBFGS.DEFAULT_MAX_ITER,
+    isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE)
   extends LBFGS(
     normalizationContext,
     numCorrections,
     tolerance,
     maxNumIterations,
-    Optimizer.DEFAULT_CONSTRAINT_MAP) {
+    Optimizer.DEFAULT_CONSTRAINT_MAP,
+    isTrackingState) {
 
   /**
    * Under the hood, this adaptor uses an LBFGSB optimizer from Breeze to optimize functions.

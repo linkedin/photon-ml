@@ -48,10 +48,7 @@ class SingleNodeGLMLossFunctionTest {
     val singleNodeGLMLossFunction = SingleNodeGLMLossFunction(
       randomEffectOptimizationConfiguration,
       LogisticLossFunction)
-    val value = singleNodeGLMLossFunction.value(
-      labeledPoints,
-      coefficients,
-      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+    val value = singleNodeGLMLossFunction.value(labeledPoints, coefficients, PhotonNonBroadcast(NORMALIZATION_CONTEXT))
 
     // expectValue = log(1 + exp(3)) + log(1 + exp(2)) = 5.1755
     assertEquals(value, 5.1755, EPSILON)
@@ -74,10 +71,7 @@ class SingleNodeGLMLossFunctionTest {
     val singleNodeGLMLossFunction = SingleNodeGLMLossFunction(
       randomEffectOptimizationConfiguration,
       LogisticLossFunction)
-    val value = singleNodeGLMLossFunction.value(
-      labeledPoints,
-      coefficients,
-      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+    val value = singleNodeGLMLossFunction.value(labeledPoints, coefficients, PhotonNonBroadcast(NORMALIZATION_CONTEXT))
 
     // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + 1 * ((-2)^2 + 3^2) / 2 = 11.6755
     assertEquals(value, 11.6755, EPSILON)
@@ -100,10 +94,7 @@ class SingleNodeGLMLossFunctionTest {
     val singleNodeGLMLossFunction = SingleNodeGLMLossFunction(
       randomEffectOptimizationConfiguration,
       LogisticLossFunction)
-    val value = singleNodeGLMLossFunction.value(
-      labeledPoints,
-      coefficients,
-      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+    val value = singleNodeGLMLossFunction.value(labeledPoints, coefficients, PhotonNonBroadcast(NORMALIZATION_CONTEXT))
 
     // L1 is computed by the optimizer.
     // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + (1 - 0.4) * 1 * ((-2)^2 + 3^2) / 2 = 9.0755

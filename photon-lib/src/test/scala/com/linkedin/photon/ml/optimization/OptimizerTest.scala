@@ -39,11 +39,13 @@ class OptimizerTest extends Logging {
       Array(new LBFGS(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
-        normalizationContext = NORMALIZATION_MOCK)),
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)),
       Array(new TRON(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
-        normalizationContext = NORMALIZATION_MOCK)))
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)))
   }
 
   @DataProvider(parallel = true)
@@ -52,11 +54,13 @@ class OptimizerTest extends Logging {
       Array(new LBFGS(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
-        normalizationContext = NORMALIZATION_MOCK)),
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)),
       Array(new TRON(
         tolerance = CONVERGENCE_TOLERANCE,
         maxNumIterations = MAX_ITERATIONS,
-        normalizationContext = NORMALIZATION_MOCK)))
+        normalizationContext = NORMALIZATION_MOCK,
+        isTrackingState = ENABLE_TRACKING)))
   }
 
   // TODO: Currently the test objective function used by this test ignores weights, so testing points with varying
@@ -71,12 +75,12 @@ class OptimizerTest extends Logging {
     val pt1 = Seq(new LabeledPoint(label = 1, features, offset = 0, weight = 1))
     val zero = Vector.zeros[Double](objective.domainDimension(pt1))
     optimizer.optimize(objective, zero)(pt1)
-    easyOptimizationStatesChecks(optimizer.getStateTracker)
+    easyOptimizationStatesChecks(optimizer.getStateTracker.get)
 
     // Test weighted sample
     val pt2 = new LabeledPoint(label = 1, features, offset = 0, weight = 1.5)
     optimizer.optimize(objective, zero)(Seq(pt2))
-    easyOptimizationStatesChecks(optimizer.getStateTracker)
+    easyOptimizationStatesChecks(optimizer.getStateTracker.get)
   }
 
   @Test(dataProvider = "optimizersNotUsingInitialValue")
@@ -92,8 +96,9 @@ class OptimizerTest extends Logging {
       val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(objective, initParam)(Seq(pt))
 
+      assertTrue(optimizer.getStateTracker.isDefined)
       assertTrue(optimizer.isDone)
-      easyOptimizationStatesChecks(optimizer.getStateTracker)
+      easyOptimizationStatesChecks(optimizer.getStateTracker.get)
     }
 
     // Test weighted sample
@@ -101,7 +106,7 @@ class OptimizerTest extends Logging {
       val initParam = DenseVector.fill[Double](PROBLEM_DIMENSION)(r.nextDouble())
       optimizer.optimize(objective, initParam)(Seq(pt2))
 
-      easyOptimizationStatesChecks(optimizer.getStateTracker)
+      easyOptimizationStatesChecks(optimizer.getStateTracker.get)
     }
   }
 }
@@ -116,6 +121,7 @@ object OptimizerTest extends Logging {
   private val PARAMETER_TOLERANCE: Double = 1e-4
   private val RANDOM_SEED: Long = 314159265359L
   private val RANDOM_SAMPLES: Int = 100
+  private val ENABLE_TRACKING: Boolean = true
   private val NORMALIZATION = NoNormalization()
   private val NORMALIZATION_MOCK = mock(classOf[BroadcastWrapper[NormalizationContext]])
 

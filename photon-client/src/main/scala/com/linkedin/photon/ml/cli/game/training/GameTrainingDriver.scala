@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
 import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
 import com.linkedin.photon.ml.hyperparameter.tuner.HyperparameterTunerFactory
-import com.linkedin.photon.ml.index.IndexMapLoader
+import com.linkedin.photon.ml.index.{IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameTrainingParametersParser
@@ -363,6 +363,15 @@ object GameTrainingDriver extends GameDriver {
       readValidationData(avroDataReader, featureIndexMapLoaders)
     }
 
+    val interceptIndices = featureIndexMapLoaders
+      .flatMap { case (coordinateId, indexMap) =>
+        indexMap.indexMapForDriver().getIndex(Constants.INTERCEPT_KEY) match {
+          case IndexMap.NULL_KEY => None
+          case i if i >= 0 => Some(coordinateId, i)
+          case _ => throw new IndexOutOfBoundsException("Intercept Index should not be negative.")
+        }
+      }
+
     trainingData.persist(StorageLevel.DISK_ONLY)
     validationData.map(_.persist(StorageLevel.DISK_ONLY))
 
@@ -449,6 +458,7 @@ object GameTrainingDriver extends GameDriver {
         .setVarianceComputation(getOrDefault(varianceComputationType))
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
         .setUseWarmStart(true)
+        .setCoordinateInterceptIndices(interceptIndices)
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)

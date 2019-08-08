@@ -56,7 +56,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX,
+      TRACK_STATE)
 
     coordinate match {
       case _: FixedEffectCoordinate[DistributedObjectiveFunction] =>
@@ -95,7 +97,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX,
+      TRACK_STATE)
 
     coordinate match {
       case _: RandomEffectCoordinate[SingleNodeObjectiveFunction] =>
@@ -121,7 +125,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX,
+      TRACK_STATE)
   }
 }
 
@@ -133,10 +139,12 @@ object CoordinateFactoryIntegTest {
   private val TOLERANCE = 2E-2
   private val TREE_AGGREGATE_DEPTH = 1
   private val VARIANCE_COMPUTATION_TYPE = VarianceComputationType.NONE
+  private val TRACK_STATE = true
 
   private val OPTIMIZER_CONFIG = OptimizerConfig(OPTIMIZER_TYPE, MAX_ITER, TOLERANCE)
   private val MOCK_NORMALIZATION = mock(classOf[NormalizationContext])
   private val GLM_CONSTRUCTOR = LogisticRegressionModel.apply _
   private val LOSS_FUNCTION_FACTORY = ObjectiveFunctionHelper.buildFactory(TRAINING_TASK, TREE_AGGREGATE_DEPTH)
   private val DOWN_SAMPLER_FACTORY = DownSamplerHelper.buildFactory(TRAINING_TASK)
+  private val INTERCEPT_INDEX = None
 }

@@ -88,8 +88,8 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
 
       // Coordinate mock setup
       doReturn(score).when(coordinate).score(model)
-      doReturn((model, tracker)).when(coordinate).trainModel(model)
-      doReturn((model, tracker)).when(coordinate).trainModel(model, score)
+      doReturn((model, Some(tracker))).when(coordinate).trainModel(model)
+      doReturn((model, Some(tracker))).when(coordinate).trainModel(model, score)
 
       doReturn(model).when(model).setName(Matchers.any(classOf[String]))
       doReturn(model).when(model).persistRDD(Matchers.any(classOf[StorageLevel]))
@@ -197,8 +197,8 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
 
       // Coordinate mock setup
       doReturn(trainingScore).when(coordinate).score(model)
-      doReturn((model, tracker)).when(coordinate).trainModel()
-      doReturn((model, tracker)).when(coordinate).trainModel(trainingScore)
+      doReturn((model, Some(tracker))).when(coordinate).trainModel()
+      doReturn((model, Some(tracker))).when(coordinate).trainModel(trainingScore)
 
       // Model mock setup
       doReturn(model).when(model).setName(Matchers.any(classOf[String]))

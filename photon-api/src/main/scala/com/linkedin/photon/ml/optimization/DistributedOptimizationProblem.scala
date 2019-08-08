@@ -180,8 +180,9 @@ object DistributedOptimizationProblem {
    * @param samplerOption (Optional) A sampler to use for down-sampling the training data prior to optimization
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
+   * @param isTrackingState Should the optimization problem record the internal optimizer states?
    * @param varianceComputation If and how coefficient variances should be computed
-   * @return A new [[DistributedOptimizationProblem]]
+   * @return A new DistributedOptimizationProblem
    */
   def apply[Function <: DistributedObjectiveFunction](
       configuration: GLMOptimizationConfiguration,
@@ -189,7 +190,8 @@ object DistributedOptimizationProblem {
       samplerOption: Option[DownSampler],
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: BroadcastWrapper[NormalizationContext],
-      varianceComputation: VarianceComputationType): DistributedOptimizationProblem[Function] = {
+      varianceComputation: VarianceComputationType,
+      isTrackingState: Boolean): DistributedOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -197,7 +199,7 @@ object DistributedOptimizationProblem {
     // Will result in a runtime error if created Optimizer cannot be cast to an Optimizer that can handle the given
     // objective function.
     val optimizer = OptimizerFactory
-      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight)
+      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
       .asInstanceOf[Optimizer[Function]]
 
     new DistributedOptimizationProblem(
