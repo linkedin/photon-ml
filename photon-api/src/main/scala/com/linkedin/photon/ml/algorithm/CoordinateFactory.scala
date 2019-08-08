@@ -43,7 +43,6 @@ object CoordinateFactory {
    * @param lossFunctionConstructor A constructor for the loss function used for training
    * @param glmConstructor A constructor for the type of [[GeneralizedLinearModel]] being trained
    * @param downSamplerFactory A factory function for the [[DownSampler]] (if down-sampling is enabled)
-   * @param trackState Should the internal optimization states be recorded?
    * @param normalizationContext The [[NormalizationContext]]
    * @param varianceComputationType Should the trained coefficient variances be computed in addition to the means?
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
@@ -52,11 +51,10 @@ object CoordinateFactory {
       dataset: D,
       coordinateOptConfig: CoordinateOptimizationConfiguration,
       lossFunctionConstructor: ObjectiveFunctionFactory,
-      glmConstructor: (Coefficients) => GeneralizedLinearModel,
+      glmConstructor: Coefficients => GeneralizedLinearModel,
       downSamplerFactory: DownSamplerFactory,
       normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType,
-      trackState: Boolean): Coordinate[D] = {
+      varianceComputationType: VarianceComputationType): Coordinate[D] = {
 
     val lossFunction: ObjectiveFunction = lossFunctionConstructor(coordinateOptConfig)
 
@@ -81,8 +79,7 @@ object CoordinateFactory {
             downSamplerOpt,
             glmConstructor,
             normalizationPhotonBroadcast,
-            varianceComputationType,
-            trackState)).asInstanceOf[Coordinate[D]]
+            varianceComputationType)).asInstanceOf[Coordinate[D]]
 
       case (
           rEDataset: RandomEffectDataset,
@@ -95,8 +92,7 @@ object CoordinateFactory {
           singleNodeLossFunction,
           glmConstructor,
           normalizationContext,
-          varianceComputationType,
-          trackState).asInstanceOf[Coordinate[D]]
+          varianceComputationType).asInstanceOf[Coordinate[D]]
 
       case _ =>
         throw new UnsupportedOperationException(

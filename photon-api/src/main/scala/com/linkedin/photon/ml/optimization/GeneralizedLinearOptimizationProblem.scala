@@ -46,7 +46,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    *
    * @return Some(OptimizationStatesTracker) if optimization states were tracked, otherwise None
    */
-  def getStatesTracker: Option[OptimizationStatesTracker] = optimizer.getStateTracker
+  def getStatesTracker: OptimizationStatesTracker = optimizer.getStateTracker
 
   /**
    * Create a default generalized linear model with 0-valued coefficients

@@ -121,8 +121,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
             None,
             LinearRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
-            BaseGLMIntegTest.TRACK_STATES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE),
         linearRegressionData,
         new CompositeModelValidator[LinearRegressionModel](
           new PredictionFiniteValidator(),
@@ -137,8 +136,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
-            BaseGLMIntegTest.TRACK_STATES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE),
         poissonRegressionData,
         new CompositeModelValidator[PoissonRegressionModel](
           new PredictionFiniteValidator,
@@ -155,8 +153,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
             None,
             LogisticRegressionModel.apply,
             normalizationContext,
-            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE,
-            BaseGLMIntegTest.TRACK_STATES),
+            BaseGLMIntegTest.VARIANCE_COMPUTATION_TYPE),
         logisticRegressionData,
         new CompositeModelValidator[LogisticRegressionModel](
           new PredictionFiniteValidator(),
@@ -173,8 +170,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
   @Test(dataProvider = "getGeneralizedLinearOptimizationProblems")
   def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
-      optimizationProblemBuilder: (BroadcastWrapper[NormalizationContext]) =>
-        DistributedOptimizationProblem[DistributedGLMLossFunction],
+      optimizationProblemBuilder: BroadcastWrapper[NormalizationContext] => DistributedOptimizationProblem[DistributedGLMLossFunction],
       data: Seq[LabeledPoint],
       validator: ModelValidator[GeneralizedLinearModel]): Unit = sparkTest(desc) {
 
@@ -191,8 +187,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
       val statesTracker = optimizationProblem.getStatesTracker
 
       // Step 3: Check convergence
-      assertTrue(statesTracker.isDefined, "State tracking was enabled")
-      BaseGLMIntegTest.checkConvergence(statesTracker.get)
+      BaseGLMIntegTest.checkConvergence(statesTracker)
 
       result
     }
@@ -225,7 +220,6 @@ object BaseGLMIntegTest {
   // (this corresponds to 10 sigma, i.e. events that should occur at most once in the lifespan of our solar system)
   private val MAXIMUM_ERROR_MAGNITUDE: Double = 10 * SparkTestUtils.INLIER_STANDARD_DEVIATION
   private val VARIANCE_COMPUTATION_TYPE = VarianceComputationType.NONE
-  private val TRACK_STATES = true
 
   /**
    * Check that the loss value of the states in the [[OptimizationStatesTracker]] is monotonically decreasing.

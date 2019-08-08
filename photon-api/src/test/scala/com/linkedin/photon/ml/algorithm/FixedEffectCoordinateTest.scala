@@ -90,7 +90,7 @@ class FixedEffectCoordinateTest {
     doReturn(featureShardId).when(dataset).featureShardId
 
     // Optimization problem
-    doReturn(Some(statesTracker)).when(optimizationProblem).getStatesTracker
+    doReturn(statesTracker).when(optimizationProblem).getStatesTracker
 
     // New model
     doReturn(TaskType.LOGISTIC_REGRESSION).when(updatedModel).modelType

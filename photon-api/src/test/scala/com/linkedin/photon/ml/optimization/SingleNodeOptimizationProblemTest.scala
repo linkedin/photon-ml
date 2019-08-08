@@ -15,9 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{DenseMatrix, DenseVector, Vector}
-import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
 import org.mockito.Matchers
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -57,8 +54,8 @@ class SingleNodeOptimizationProblemTest {
     val hessianDiagonal = DenseVector(Array(1D, 0D, 2D))
     val hessianMatrix = DenseMatrix.eye[Double](DIMENSIONS)
 
-    doReturn(Some(mockStatesTracker)).when(mockOptimizerDiff).getStateTracker
-    doReturn(Some(mockStatesTracker)).when(mockOptimizerTwiceDiff).getStateTracker
+    doReturn(mockStatesTracker).when(mockOptimizerDiff).getStateTracker
+    doReturn(mockStatesTracker).when(mockOptimizerTwiceDiff).getStateTracker
     doReturn(hessianDiagonal)
       .when(mockTwiceDiffFunction)
       .hessianDiagonal(Matchers.any(), Matchers.any())
@@ -127,8 +124,7 @@ class SingleNodeOptimizationProblemTest {
     doReturn(broadcastNormalization).when(optimizer).getNormalizationContext
     doReturn(normalization).when(broadcastNormalization).value
     doReturn((means, None)).when(optimizer).optimize(objectiveFunction, means)(trainingData)
-    doReturn(true).when(optimizer).isTrackingState
-    doReturn(Some(statesTracker)).when(optimizer).getStateTracker
+    doReturn(statesTracker).when(optimizer).getStateTracker
     doReturn(Array(state)).when(statesTracker).getTrackedStates
     doReturn(means).when(state).coefficients
     doReturn(coefficients).when(initialModel).coefficients

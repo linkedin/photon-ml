@@ -109,16 +109,14 @@ object SingleNodeOptimizationProblem {
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param varianceComputationType Whether to compute coefficient variances, and if so how
-   * @param isTrackingState Should the optimization problem record the internal optimizer states?
-   * @return A new SingleNodeOptimizationProblem
+   * @return A new [[SingleNodeOptimizationProblem]]
    */
   def apply[Function <: SingleNodeObjectiveFunction](
       configuration: GLMOptimizationConfiguration,
       objectiveFunction: Function,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: BroadcastWrapper[NormalizationContext],
-      varianceComputationType: VarianceComputationType,
-      isTrackingState: Boolean): SingleNodeOptimizationProblem[Function] = {
+      varianceComputationType: VarianceComputationType): SingleNodeOptimizationProblem[Function] = {
 
     val optimizerConfig = configuration.optimizerConfig
     val regularizationContext = configuration.regularizationContext
@@ -126,7 +124,7 @@ object SingleNodeOptimizationProblem {
     // Will result in a runtime error if created Optimizer cannot be cast to an Optimizer that can handle the given
     // objective function.
     val optimizer = OptimizerFactory
-      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight, isTrackingState)
+      .build(optimizerConfig, normalizationContext, regularizationContext, regularizationWeight)
       .asInstanceOf[Optimizer[Function]]
 
     new SingleNodeOptimizationProblem(

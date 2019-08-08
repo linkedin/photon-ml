@@ -31,15 +31,13 @@ protected[ml] object OptimizerFactory {
    * @param normalizationContext The normalization context
    * @param regularizationContext The regularization context
    * @param regularizationWeight The regularization weight
-   * @param isTrackingState Should the Optimizer track intermediate states during optimization?
-   * @return A new Optimizer
+   * @return A new [[Optimizer]]
    */
   def build(
       config: OptimizerConfig,
       normalizationContext: BroadcastWrapper[NormalizationContext],
       regularizationContext: RegularizationContext,
-      regularizationWeight: Double = 0,
-      isTrackingState: Boolean = Optimizer.DEFAULT_TRACKING_STATE): Optimizer[TwiceDiffFunction] =
+      regularizationWeight: Double = 0): Optimizer[TwiceDiffFunction] =
 
     (config.optimizerType, regularizationContext.regularizationType) match {
       case (OptimizerType.LBFGS, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>
@@ -48,24 +46,21 @@ protected[ml] object OptimizerFactory {
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState)
+          constraintMap = config.constraintMap)
 
       case (OptimizerType.LBFGS, RegularizationType.L2 | RegularizationType.NONE) =>
         new LBFGS(
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState)
+          constraintMap = config.constraintMap)
 
       case (OptimizerType.TRON, RegularizationType.L2 | RegularizationType.NONE) =>
         new TRON(
           normalizationContext = normalizationContext,
           tolerance = config.tolerance,
           maxNumIterations = config.maximumIterations,
-          constraintMap = config.constraintMap,
-          isTrackingState = isTrackingState)
+          constraintMap = config.constraintMap)
 
       case (OptimizerType.TRON, RegularizationType.L1 | RegularizationType.ELASTIC_NET) =>
         throw new IllegalArgumentException("TRON optimizer incompatible with L1 regularization")

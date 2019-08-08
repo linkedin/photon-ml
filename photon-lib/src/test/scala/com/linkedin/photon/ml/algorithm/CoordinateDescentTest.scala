@@ -26,6 +26,7 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
 import com.linkedin.photon.ml.model.DatumScoringModel
+import com.linkedin.photon.ml.optimization.OptimizationTracker
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.util.PhotonLogger
 
@@ -119,7 +120,7 @@ class CoordinateDescentTest {
    *
    * @param coordinateDescent A pre-built [[CoordinateDescent]] object to attempt to run
    * @param coordinates A map of optimization problem coordinates (optimization sub-problems)
-   * @param initialModelsOpt
+   * @param initialModelsOpt An optional [[Map]] of existing prior models
    */
   @Test(dataProvider = "invalidRunInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInvalidRun(
@@ -134,16 +135,17 @@ class CoordinateDescentTest {
     val mockCoordinate = mock(classOf[CoordinateType])
     val mockInitialModel = mock(classOf[DatumScoringModel])
     val mockResiduals = mock(classOf[CoordinateDataScores])
+    val mockStatesTracker = mock(classOf[OptimizationTracker])
 
     val mockNewModel1 = mock(classOf[DatumScoringModel])
     val mockNewModel2 = mock(classOf[DatumScoringModel])
     val mockNewModel3 = mock(classOf[DatumScoringModel])
     val mockNewModel4 = mock(classOf[DatumScoringModel])
 
-    doReturn((mockNewModel1, None)).when(mockCoordinate).trainModel(mockInitialModel, mockResiduals)
-    doReturn((mockNewModel2, None)).when(mockCoordinate).trainModel(mockInitialModel)
-    doReturn((mockNewModel3, None)).when(mockCoordinate).trainModel(mockResiduals)
-    doReturn((mockNewModel4, None)).when(mockCoordinate).trainModel()
+    doReturn((mockNewModel1, mockStatesTracker)).when(mockCoordinate).trainModel(mockInitialModel, mockResiduals)
+    doReturn((mockNewModel2, mockStatesTracker)).when(mockCoordinate).trainModel(mockInitialModel)
+    doReturn((mockNewModel3, mockStatesTracker)).when(mockCoordinate).trainModel(mockResiduals)
+    doReturn((mockNewModel4, mockStatesTracker)).when(mockCoordinate).trainModel()
 
     Array(
       Array(mockCoordinate, Some(mockInitialModel), Some(mockResiduals), mockNewModel1),
@@ -190,13 +192,13 @@ class CoordinateDescentTest {
     val mockCoordinate = mock(classOf[CoordinateType])
     val mockInitialModel = mock(classOf[DatumScoringModel])
     val mockNewModel = mock(classOf[DatumScoringModel])
+    val mockStatesTracker = mock(classOf[OptimizationTracker])
 
     val trainingCoordinateId = "trainingCoordinateId"
     val lockedCoordinateId = "lockedCoordinateId"
     val coordinatesToTrain = Seq(trainingCoordinateId)
-    val iteration = 1
 
-    doReturn((mockNewModel, None)).when(mockCoordinate).trainModel(mockInitialModel)
+    doReturn((mockNewModel, mockStatesTracker)).when(mockCoordinate).trainModel(mockInitialModel)
 
     val newModel = CoordinateDescent.trainOrFetchCoordinateModel(
       trainingCoordinateId,
