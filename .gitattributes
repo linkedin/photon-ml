@@ -1,2 +1,4 @@
-photon-ml/src/integTest/resources/* linguist-vendored
-photon-ml/src/test/resources/* linguist-vendored
+photon-api/src/integTest/resources/* linguist-vendored
+photon-api/src/test/resources/* linguist-vendored
+photon-client/src/integTest/resources/* linguist-vendored
+photon-client/src/test/resources/* linguist-vendored

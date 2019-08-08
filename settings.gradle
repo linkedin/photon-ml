@@ -24,9 +24,7 @@ scalaCrossBuild {
     'photon-all',
     'photon-api',
     'photon-client',
-    'photon-core',
     'photon-lib',
-    'photon-ml',
     'photon-test-utils'
   )
 
