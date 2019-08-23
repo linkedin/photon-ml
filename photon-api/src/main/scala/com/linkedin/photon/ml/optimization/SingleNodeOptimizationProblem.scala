@@ -37,7 +37,7 @@ import com.linkedin.photon.ml.util.Linalg.choleskyInverse
  * @param glmConstructor The function to use for producing GLMs from trained coefficients
  * @param varianceComputationType If an how to compute coefficient variances
  */
-protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjectiveFunction] protected[optimization] (
+protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjectiveFunction] protected[optimization](
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     glmConstructor: Coefficients => GeneralizedLinearModel,
@@ -59,9 +59,10 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
   override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
     (objectiveFunction, varianceComputationType) match {
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
-        Some(twiceDiffFunc
-          .hessianDiagonal(input, coefficients)
-          .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
+        Some(
+          twiceDiffFunc
+            .hessianDiagonal(input, coefficients)
+            .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
 
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, coefficients)

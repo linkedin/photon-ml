@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.function.glm
 import com.linkedin.photon.ml.algorithm.Coordinate
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Helper for generalized linear model loss function related tasks.
@@ -28,23 +29,34 @@ object GLMLossFunction {
    *
    * @param lossFunction A [[PointwiseLossFunction]] for training a generalized linear model
    * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @param config
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(
-      lossFunction: PointwiseLossFunction,
-      treeAggregateDepth: Int): (CoordinateOptimizationConfiguration) => ObjectiveFunction =
-    (config: CoordinateOptimizationConfiguration) => {
-      config match {
-        case fEOptConfig: FixedEffectOptimizationConfiguration =>
-          DistributedGLMLossFunction(fEOptConfig, lossFunction, treeAggregateDepth)
+  def buildFactory
+      (lossFunction: PointwiseLossFunction, treeAggregateDepth: Int)
+      (config: CoordinateOptimizationConfiguration, isIncrementalTraining: Boolean = false)
+    : Option[GeneralizedLinearModel] => ObjectiveFunction =
+    config match {
+      case fEOptConfig: FixedEffectOptimizationConfiguration =>
+        (generalizedLinearModelOpt: Option[GeneralizedLinearModel]) =>
+          DistributedGLMLossFunction(
+            fEOptConfig,
+            lossFunction,
+            treeAggregateDepth,
+            generalizedLinearModelOpt,
+            isIncrementalTraining)
 
-        case rEOptConfig: RandomEffectOptimizationConfiguration =>
-          SingleNodeGLMLossFunction(rEOptConfig, lossFunction)
+      case rEOptConfig: RandomEffectOptimizationConfiguration =>
+        (generalizedLinearModelOpt: Option[GeneralizedLinearModel]) =>
+          SingleNodeGLMLossFunction(
+            rEOptConfig,
+            lossFunction,
+            generalizedLinearModelOpt,
+            isIncrementalTraining)
 
-        case _ =>
-          throw new UnsupportedOperationException(
-            s"Cannot create a GLM loss function from a coordinate configuration with class '${config.getClass.getName}'")
-      }
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Cannot create a GLM loss function from a coordinate configuration with class '${config.getClass.getName}'")
     }
 }

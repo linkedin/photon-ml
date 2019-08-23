@@ -27,13 +27,13 @@ import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, REId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.model.{GameModel, RandomEffectModel}
+import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -41,6 +41,7 @@ import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
 
@@ -131,6 +132,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "use warm start",
     "Whether to train the current model with coefficients initialized by the previous model.")
 
+  val enableIncrementalTraining: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "enable incremental traning",
+    "A boolean flag that indicates whether incremental training should be preformed")
+
   //
   // Initialize object
   //
@@ -170,6 +175,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setUseWarmStart(value: Boolean): this.type = set(useWarmStart, value)
 
+  def setEnableIncrementalTraining(value: Boolean): this.type = set(enableIncrementalTraining, value)
+
   //
   // Params trait extensions
   //
@@ -190,8 +197,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   //
 
   /**
-   * Set the default parameters.
-   */
+    * Set the default parameters.
+    */
   override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
@@ -201,18 +208,19 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(useWarmStart, true)
+    setDefault(enableIncrementalTraining, false)
   }
 
   /**
-   * Check that all required parameters have been set and validate interactions between parameters.
-   *
-   * @note In Spark, interactions between parameters are checked by
-   *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
-   *       Photon-ML, we need to have this function to check the interactions between parameters.
-   * @throws MissingArgumentException if a required parameter is missing
-   * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
-   * @param paramMap The parameters to validate
-   */
+    * Check that all required parameters have been set and validate interactions between parameters.
+    *
+    * @note In Spark, interactions between parameters are checked by
+    *       [[org.apache.spark.ml.PipelineStage.transformSchema()]]. Since we do not use the Spark pipeline API in
+    *       Photon-ML, we need to have this function to check the interactions between parameters.
+    * @throws MissingArgumentException if a required parameter is missing
+    * @throws IllegalArgumentException if a required parameter is missing or a validation check fails
+    * @param paramMap The parameters to validate
+    */
   override def validateParams(paramMap: ParamMap = extractParamMap): Unit = {
 
     // Just need to check that the training task has been explicitly set
@@ -225,6 +233,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val ignoreThreshold = getOrDefault(ignoreThresholdForNewModels)
     val numUniqueCoordinates = updateSequence.toSet.size
+    val isIncrementalTrainingEnabled = getOrDefault(enableIncrementalTraining)
 
     // Cannot have coordinates repeat in the update sequence
     require(
@@ -284,6 +293,65 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         normalizationContextsOpt.forall(normalizationContexts => normalizationContexts.contains(coordinate)),
         s"Coordinate $coordinate in the update sequence is missing normalization context")
     }
+
+    //    todo: how to verify that existing models contain variance information and match the input variance type
+    if (isIncrementalTrainingEnabled) {
+      require(
+        initialModelOpt.isDefined,
+        "Incremental training is enabled, but the model is missing")
+
+      val updateSequenceSet = updateSequence.toSet
+
+      initialModelOpt match {
+        case Some(gameModel) => gameModel.toMap.foreach {
+          case (coordinateId: CoordinateId, priorModel: DatumScoringModel) =>
+            require(
+              updateSequenceSet.contains(coordinateId),
+              s"$coordinateId is not in coordinate update sequence."
+            )
+            val coordinateType = dataConfigs.get(coordinateId).get
+            val featureShardId: FeatureShardId = coordinateType.featureShardId
+
+            priorModel match {
+              case fixedEffectModel: FixedEffectModel =>
+                require(
+                  coordinateType.isInstanceOf[FixedEffectDataConfiguration],
+                  s"Coordinate Id $coordinateId, fixed effect model should have a fixed effect data configuration."
+                )
+                require(
+                  featureShardId.equals(fixedEffectModel.featureShardId),
+                  s"Fixed effect model's feature shard id of current coordinate id $coordinateId " +
+                    s"and prior model coordinate do not align."
+                )
+                require(
+                  fixedEffectModel.model.coefficients.variancesOption.isDefined,
+                  s"Incremental training enabled, but fixed effect model missing variance info " +
+                    s"for coordinate $coordinateId"
+                )
+              case randomEffectModel: RandomEffectModel =>
+                require(
+                  coordinateType.isInstanceOf[RandomEffectDataConfiguration],
+                  s"Coordinate Id $coordinateId, random effect model should have a random effect data configuration."
+                )
+                require(
+                  featureShardId.equals(randomEffectModel.featureShardId),
+                  s"Random effect model's feature shard id of current coordinate id $coordinateId " +
+                    s"and prior model coordinate do not align."
+                )
+                val hasVarianceInfo = randomEffectModel
+                  .modelsRDD
+                  .mapPartitions { iter: Iterator[(REId, GeneralizedLinearModel)] =>
+                    Seq(iter.forall(_._2.coefficients.variancesOption.isDefined)).iterator
+                  }
+                  .treeReduce(_ && _)
+                require(
+                  hasVarianceInfo,
+                  s"Incremental training enabled, but some or all random effect models missing variance info " +
+                    s"for coordinate $coordinateId")
+            }
+        }
+      }
+    }
   }
 
   //
@@ -291,18 +359,18 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   //
 
   /**
-   * Fits a GAME model to the training dataset, once per configuration.
-   *
-   * @param data The training set
-   * @param validationData Optional validation set for per-iteration validation
-   * @param optimizationConfigurations A set of GAME optimization configurations
-   * @return A set of (trained GAME model, optional evaluation results, GAME model configuration) tuples, one for each
-   *         configuration
-   */
+    * Fits a GAME model to the training dataset, once per configuration.
+    *
+    * @param data The training set
+    * @param validationData Optional validation set for per-iteration validation
+    * @param optimizationConfigurations A set of GAME optimization configurations
+    * @return A set of (trained GAME model, optional evaluation results, GAME model configuration) tuples, one for each
+    *         configuration
+    */
   def fit(
-      data: DataFrame,
-      validationData: Option[DataFrame],
-      optimizationConfigurations: Seq[GameOptimizationConfiguration]): Seq[GameResult] = {
+    data: DataFrame,
+    validationData: Option[DataFrame],
+    optimizationConfigurations: Seq[GameOptimizationConfiguration]): Seq[GameResult] = {
 
     // Verify valid GameEstimator settings
     validateParams()
@@ -396,10 +464,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Verify that the input to which we're fitting a model is valid.
-   *
-   * @param optimizationConfigurations A set of GAME optimization configurations
-   */
+    * Verify that the input to which we're fitting a model is valid.
+    *
+    * @param optimizationConfigurations A set of GAME optimization configurations
+    */
   protected def validateInput(optimizationConfigurations: Seq[GameOptimizationConfiguration]): Unit = {
 
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
@@ -431,17 +499,17 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Construct a [[RDD]] of data processed into GAME format from a raw [[DataFrame]].
-   *
-   * @param data The raw [[DataFrame]]
-   * @param featureShards The IDs of the feature shards to keep
-   * @param additionalCols The names of fields containing information necessary for random effects or evaluation
-   * @return A [[RDD]] of data processed into GAME format
-   */
+    * Construct a [[RDD]] of data processed into GAME format from a raw [[DataFrame]].
+    *
+    * @param data The raw [[DataFrame]]
+    * @param featureShards The IDs of the feature shards to keep
+    * @param additionalCols The names of fields containing information necessary for random effects or evaluation
+    * @return A [[RDD]] of data processed into GAME format
+    */
   protected def prepareGameDataset(
-      data: DataFrame,
-      featureShards: Set[FeatureShardId],
-      additionalCols: Set[String]): RDD[(UniqueSampleId, GameDatum)] =
+    data: DataFrame,
+    featureShards: Set[FeatureShardId],
+    additionalCols: Set[String]): RDD[(UniqueSampleId, GameDatum)] =
     GameConverters
       .getGameDatasetFromDataFrame(
         data,
@@ -454,13 +522,13 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       .persist(StorageLevel.DISK_ONLY)
 
   /**
-   * Construct one or more [[Dataset]]s from an [[RDD]] of samples.
-   *
-   * @param gameDataset The training data samples
-   * @return A map of coordinate ID to training [[Dataset]]
-   */
+    * Construct one or more [[Dataset]]s from an [[RDD]] of samples.
+    *
+    * @param gameDataset The training data samples
+    * @return A map of coordinate ID to training [[Dataset]]
+    */
   protected def prepareTrainingDatasets(
-      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
+    gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
 
     val coordinateDataConfigs = getRequiredParam(coordinateDataConfigurations)
 
@@ -522,18 +590,18 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Optionally construct an [[RDD]] of validation data samples, and an [[EvaluationSuite]] to compute evaluation metrics
-   * over the validation data.
-   *
-   * @param dataOpt Optional [[DataFrame]] of validation data
-   * @param featureShards The feature shard columns to import from the [[DataFrame]]
-   * @param additionalCols A set of additional columns whose values should be maintained for validation evaluation
-   * @return An optional ([[RDD]] of validation data, validation metric [[EvaluationSuite]]) tuple
-   */
+    * Optionally construct an [[RDD]] of validation data samples, and an [[EvaluationSuite]] to compute evaluation metrics
+    * over the validation data.
+    *
+    * @param dataOpt Optional [[DataFrame]] of validation data
+    * @param featureShards The feature shard columns to import from the [[DataFrame]]
+    * @param additionalCols A set of additional columns whose values should be maintained for validation evaluation
+    * @return An optional ([[RDD]] of validation data, validation metric [[EvaluationSuite]]) tuple
+    */
   protected def prepareValidationDatasetAndEvaluators(
-      dataOpt: Option[DataFrame],
-      featureShards: Set[FeatureShardId],
-      additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)] =
+    dataOpt: Option[DataFrame],
+    featureShards: Set[FeatureShardId],
+    additionalCols: Set[String]): Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)] =
 
     dataOpt.map { data =>
       val partitioner = new LongHashPartitioner(data.rdd.partitions.length)
@@ -557,11 +625,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     }
 
   /**
-   * Construct the validation [[EvaluationSuite]].
-   *
-   * @param gameDataset An [[RDD]] of validation data samples
-   * @return [[EvaluationSuite]] containing one or more validation metric [[Evaluator]] objects
-   */
+    * Construct the validation [[EvaluationSuite]].
+    *
+    * @param gameDataset An [[RDD]] of validation data samples
+    * @return [[EvaluationSuite]] containing one or more validation metric [[Evaluator]] objects
+    */
   protected def prepareValidationEvaluators(gameDataset: RDD[(UniqueSampleId, GameDatum)]): EvaluationSuite = {
 
     val validatingLabelsAndOffsetsAndWeights = gameDataset.mapValues { gameData =>
@@ -603,20 +671,20 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   }
 
   /**
-   * Fit a GAME model with the given configuration to the given training data.
-   *
-   * The configuration is used to define one or more 'coordinates' of various types (i.e. fixed effect, random effect,
-   * matrix factorization) which together for the complete mixed effect optimization problem. The coordinates are
-   * updated in a given order, a given number of times. For optimum performance, the update order should start
-   * with the most general 'coordinates' and end with the least general - each successive update learning the residuals
-   * of the previous 'coordinates'.
-   *
-   * @param configuration The configuration for the GAME optimization problem
-   * @param trainingDatasets The training datasets for each coordinate of the GAME optimization problem
-   * @param coordinateDescent The coordinate descent driver
-   * @param initialModelOpt An optional existing GAME model who's components should be used to warm-start training
-   * @return A trained GAME model
-   */
+    * Fit a GAME model with the given configuration to the given training data.
+    *
+    * The configuration is used to define one or more 'coordinates' of various types (i.e. fixed effect, random effect,
+    * matrix factorization) which together for the complete mixed effect optimization problem. The coordinates are
+    * updated in a given order, a given number of times. For optimum performance, the update order should start
+    * with the most general 'coordinates' and end with the least general - each successive update learning the residuals
+    * of the previous 'coordinates'.
+    *
+    * @param configuration The configuration for the GAME optimization problem
+    * @param trainingDatasets The training datasets for each coordinate of the GAME optimization problem
+    * @param coordinateDescent The coordinate descent driver
+    * @param initialModelOpt An optional existing GAME model who's components should be used to warm-start training
+    * @return A trained GAME model
+    */
   protected def train(
       configuration: GameOptimizationConfiguration,
       trainingDatasets: Map[CoordinateId, D forSome { type D <: Dataset[D] }],
@@ -632,7 +700,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val normalizationContexts = get(coordinateNormalizationContexts).getOrElse(Map())
     val variance = getOrDefault(varianceComputationType)
-    val lossFunctionFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
+    val lossFunctionFactoryFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
     val glmConstructor = task match {
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
       case TaskType.LINEAR_REGRESSION => LinearRegressionModel.apply _
@@ -642,6 +710,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     }
     val downSamplerFactory = DownSamplerHelper.buildFactory(task)
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
+    val isIncrementalTrainingEnabled = getOrDefault(enableIncrementalTraining)
 
     // Create the optimization coordinates for each component model
     val coordinates: Map[CoordinateId, C forSome { type C <: Coordinate[_] }] =
@@ -654,14 +723,20 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               case dataset => throw new UnsupportedOperationException(s"Unsupported dataset type: ${dataset.getClass}")
             }
           } else {
+            val priorModelOpt = initialModelOpt match {
+              case Some(gameModel) => gameModel.getModel(coordinateId)
+              case None => None
+            }
             CoordinateFactory.build(
               trainingDatasets(coordinateId),
               configuration(coordinateId),
-              lossFunctionFactory,
+              lossFunctionFactoryFactory,
               glmConstructor,
               downSamplerFactory,
               normalizationContexts.getOrElse(coordinateId, NoNormalization()),
-              variance)
+              variance,
+              priorModelOpt,
+              isIncrementalTrainingEnabled)
           }
 
           (coordinateId, coordinate)

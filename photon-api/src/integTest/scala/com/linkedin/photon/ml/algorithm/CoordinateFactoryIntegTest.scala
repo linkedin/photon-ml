@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data.{FixedEffectDataset, LocalDataset, RandomEffectDataset}
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunctionHelper, SingleNodeObjectiveFunction}
+import com.linkedin.photon.ml.model.{FixedEffectModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType, SingleNodeOptimizationProblem, VarianceComputationType}
@@ -46,6 +47,7 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
 
     val mockDataset = mock(classOf[FixedEffectDataset])
     val optimizationConfiguration = FixedEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
+    val mockPriorModel = mock(classOf[FixedEffectModel])
 
     doReturn(sc).when(mockDataset).sparkContext
 
@@ -56,7 +58,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      Some(mockPriorModel),
+      ENABLE_INCREMENTAL_TRAINING)
 
     coordinate match {
       case _: FixedEffectCoordinate[DistributedObjectiveFunction] =>
@@ -77,8 +81,10 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
     val mockProjectorsRDD = mock(classOf[RDD[(REId, LinearSubspaceProjector)]])
     val mockProblemsRDD = mock(classOf[RDD[(REId, SingleNodeOptimizationProblem[SingleNodeObjectiveFunction])]])
     val optimizationConfiguration = RandomEffectOptimizationConfiguration(OPTIMIZER_CONFIG)
+    val mockPriorModel = mock(classOf[RandomEffectModel])
 
     doReturn(sc).when(mockDataset).sparkContext
+    doReturn(sc).when(mockProjectorsRDD).sparkContext
     doReturn(mockDataRDD).when(mockDataset).activeData
     doReturn(mockDataRDD)
       .when(mockDataRDD)
@@ -95,7 +101,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      Some(mockPriorModel),
+      ENABLE_INCREMENTAL_TRAINING)
 
     coordinate match {
       case _: RandomEffectCoordinate[SingleNodeObjectiveFunction] =>
@@ -121,7 +129,9 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      None,
+      ENABLE_INCREMENTAL_TRAINING)
   }
 }
 
@@ -133,6 +143,7 @@ object CoordinateFactoryIntegTest {
   private val TOLERANCE = 2E-2
   private val TREE_AGGREGATE_DEPTH = 1
   private val VARIANCE_COMPUTATION_TYPE = VarianceComputationType.NONE
+  private val ENABLE_INCREMENTAL_TRAINING = false
 
   private val OPTIMIZER_CONFIG = OptimizerConfig(OPTIMIZER_TYPE, MAX_ITER, TOLERANCE)
   private val MOCK_NORMALIZATION = mock(classOf[NormalizationContext])

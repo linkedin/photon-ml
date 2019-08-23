@@ -21,6 +21,7 @@ import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -55,7 +56,7 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       input: Iterable[LabeledPoint],
       coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
-      calculate(input, coefficients, normalizationContext)._1
+    calculate(input, coefficients, normalizationContext)._1
 
   /**
    * Compute the gradient of the function over the given data for the given model coefficients.
@@ -148,18 +149,36 @@ object SingleNodeGLMLossFunction {
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
-      singleLossFunction: PointwiseLossFunction): SingleNodeGLMLossFunction = {
+      singleLossFunction: PointwiseLossFunction,
+      priorGeneralizedLinearModelOpt: Option[GeneralizedLinearModel] = None,
+      isIncrementalTrainingEnabled: Boolean = false): SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
-        }
+    (priorGeneralizedLinearModelOpt, isIncrementalTrainingEnabled) match {
+      case (_, false) =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+            }
 
-      case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+          case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+        }
+      case (Some(generalizedLinearModel), true) =>
+        val l1RegWeight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
+        val l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val previousCoefficients = generalizedLinearModel.coefficients
+
+        new SingleNodeGLMLossFunction(singleLossFunction) with PriorDistributionTwiceDiff {
+          _l1RegWeight = l1RegWeight
+          _l2RegWeight = l2RegWeight
+          _previousCoefficients = _previousCoefficients
+        }
+      case (None, true) =>
+        throw new IllegalArgumentException(
+          s"Incremental training is enabled, but prior model is missing")
     }
   }
 }

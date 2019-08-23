@@ -20,13 +20,16 @@ import com.linkedin.photon.ml.algorithm.Coordinate
 import com.linkedin.photon.ml.function.glm.{GLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Helper for [[ObjectiveFunction]] related tasks.
  */
 object ObjectiveFunctionHelper {
 
-  type ObjectiveFunctionFactory = (CoordinateOptimizationConfiguration) => ObjectiveFunction
+  type ObjectiveFunctionFactoryFactory = (CoordinateOptimizationConfiguration, Boolean) => Option[GeneralizedLinearModel] => ObjectiveFunction
+  type DistributedObjectiveFunctionFactory = Option[GeneralizedLinearModel] => DistributedObjectiveFunction
+  type SingleNodeObjectiveFunctionFactory = Option[GeneralizedLinearModel] => SingleNodeObjectiveFunction
 
   /**
    * Construct a factory function for building [[ObjectiveFunction]] objects.
@@ -36,7 +39,7 @@ object ObjectiveFunctionHelper {
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(taskType: TaskType, treeAggregateDepth: Int): ObjectiveFunctionFactory =
+  def buildFactory(taskType: TaskType, treeAggregateDepth: Int): ObjectiveFunctionFactoryFactory =
     taskType match {
       case TaskType.LOGISTIC_REGRESSION => GLMLossFunction.buildFactory(LogisticLossFunction, treeAggregateDepth)
       case TaskType.LINEAR_REGRESSION => GLMLossFunction.buildFactory(SquaredLossFunction, treeAggregateDepth)

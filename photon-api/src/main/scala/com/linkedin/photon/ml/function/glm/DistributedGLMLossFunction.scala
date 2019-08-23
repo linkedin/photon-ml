@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -109,7 +110,7 @@ protected[ml] class DistributedGLMLossFunction private (
    * @param normalizationContext The normalization context
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-    override protected[ml] def hessianVector(
+  override protected[ml] def hessianVector(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
       multiplyVector: Broadcast[Vector[Double]],
@@ -160,20 +161,38 @@ object DistributedGLMLossFunction {
   def apply(
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
-      treeAggregateDepth: Int): DistributedGLMLossFunction = {
+      treeAggregateDepth: Int,
+      priorGeneralizedLinearModelOpt: Option[GeneralizedLinearModel] = None,
+      isIncrementalTrainingEnabled: Boolean = false): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
-          with L2RegularizationTwiceDiff {
+    (priorGeneralizedLinearModelOpt, isIncrementalTrainingEnabled) match {
+      case (_, false) =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+              with L2RegularizationTwiceDiff {
 
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+            }
+
+          case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
         }
+      case (Some(generalizedLinearModel), true) =>
+        val l1RegWeight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
+        val l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val previousCoefficients = generalizedLinearModel.coefficients
 
-      case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with PriorDistributionTwiceDiff {
+          _l1RegWeight = l1RegWeight
+          _l2RegWeight = l2RegWeight
+          _previousCoefficients = _previousCoefficients
+        }
+      case (None, true) =>
+        throw new IllegalArgumentException(
+          s"Incremental training is enabled, but prior model is missing")
     }
   }
 }

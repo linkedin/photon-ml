@@ -43,7 +43,7 @@ import com.linkedin.photon.ml.util.Linalg.choleskyInverse
  * @param regularizationContext The regularization context
  * @param varianceComputation If an how to compute coefficient variances
  */
-protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization] (
+protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization](
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     samplerOption: Option[DownSampler],
@@ -62,6 +62,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param regularizationWeight The new regularization weight
    */
   def updateRegularizationWeight(regularizationWeight: Double): Unit = {
+
     optimizer match {
       case owlqn: OWLQN =>
         owlqn.l1RegularizationWeight = regularizationContext.getL1RegularizationWeight(regularizationWeight)

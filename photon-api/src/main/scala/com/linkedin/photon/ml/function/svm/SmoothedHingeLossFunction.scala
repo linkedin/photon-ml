@@ -21,6 +21,7 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
@@ -91,22 +92,26 @@ object SmoothedHingeLossFunction {
    * Construct a factory function for building distributed and non-distributed smoothed hinge loss functions.
    *
    * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @param config
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(treeAggregateDepth: Int): (CoordinateOptimizationConfiguration) => ObjectiveFunction =
-    (config: CoordinateOptimizationConfiguration) => {
-      config match {
-        case fEOptConfig: FixedEffectOptimizationConfiguration =>
+  def buildFactory
+      (treeAggregateDepth: Int)
+      (config: CoordinateOptimizationConfiguration, isIncrementalTrainingEnabled: Boolean = false)
+    : Option[GeneralizedLinearModel] => ObjectiveFunction =
+    config match {
+      case fEOptConfig: FixedEffectOptimizationConfiguration =>
+        (generalizedLinearModel: Option[GeneralizedLinearModel]) =>
           DistributedSmoothedHingeLossFunction(fEOptConfig, treeAggregateDepth)
 
-        case rEOptConfig: RandomEffectOptimizationConfiguration =>
+      case rEOptConfig: RandomEffectOptimizationConfiguration =>
+        (generalizedLinearModel: Option[GeneralizedLinearModel]) =>
           SingleNodeSmoothedHingeLossFunction(rEOptConfig)
 
-        case _ =>
-          throw new UnsupportedOperationException(
-            s"Cannot create a smoothed hinge loss linear SVM loss function from a coordinate configuration with class " +
-              s"'${config.getClass.getName}'")
-      }
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Cannot create a smoothed hinge loss linear SVM loss function from a coordinate configuration with class " +
+            s"'${config.getClass.getName}'")
     }
 }

@@ -20,6 +20,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType}
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Unit tests for [[SmoothedHingeLossFunction]].
@@ -51,10 +52,10 @@ class SmoothedHingeLossFunctionTest {
 
     coordinateOptConfig match {
       case _: FixedEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedSmoothedHingeLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[GeneralizedLinearModel] => DistributedSmoothedHingeLossFunction])
 
       case _: RandomEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[SingleNodeSmoothedHingeLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[GeneralizedLinearModel] => SingleNodeSmoothedHingeLossFunction])
 
       case _ =>
         assertTrue(false)
