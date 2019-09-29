@@ -101,15 +101,15 @@ object IOUtils {
   }
 
   /**
-    * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
-    * behavior can be changed with the "errorOnMissing" parameter.
-    *
-    * @param inputDirs The base paths for input files
-    * @param dateRange Date range for finding input files
-    * @param configuration Hadoop configuration
-    * @param errorOnMissing If true, the method will throw when a date has no corresponding input file
-    * @return A sequence of matching file paths
-    */
+   * Returns file paths matching the given date range. This method filters out invalid paths by default, but this
+   * behavior can be changed with the "errorOnMissing" parameter.
+   *
+   * @param inputDirs The base paths for input files
+   * @param dateRange Date range for finding input files
+   * @param configuration Hadoop configuration
+   * @param errorOnMissing If true, the method will throw when a date has no corresponding input file
+   * @return A sequence of matching file paths
+   */
   def getInputPathsWithinDateRange(
       inputDirs: Set[Path],
       dateRange: DateRange,

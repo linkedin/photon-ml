@@ -22,6 +22,8 @@ import org.testng.Assert.assertEquals
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
+import scala.math.pow
+
 /**
  * Unit tests for [[L2Regularization]], [[L2RegularizationDiff]], and [[L2RegularizationTwiceDiff]].
  */
@@ -40,13 +42,21 @@ class L2RegularizationTest {
     val regularizationWeight = 10D
     val coefficients = DenseVector.ones[Double](DIMENSION)
     val multiplyVector = coefficients * 2D
+    val mockInterceptIndexOpt = Some(INTERCEPT_INDEX)
 
     val mockObjectiveFunction = new MockObjectiveFunction with L2RegularizationTwiceDiff {
       l2RegWeight = regularizationWeight
     }
 
+    val mockObjectiveFunctionWithInterceptIndex = new MockObjectiveFunction with L2Regularization {
+      l2RegWeight = regularizationWeight
+      interceptIndexOpt = mockInterceptIndexOpt
+    }
+
     // Assume that coefficients = 1-vector, multiply = 2-vector for all expected values below
     val expectedValue = MockObjectiveFunction.VALUE + (regularizationWeight * DIMENSION / 2)
+    val expectedValueWithoutIntercept = MockObjectiveFunction.VALUE +
+      (regularizationWeight * (DIMENSION - pow(coefficients(INTERCEPT_INDEX), 2)) / 2)
     val expectedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT + regularizationWeight))
     val expectedVector =
       DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_VECTOR + (2D * regularizationWeight)))
@@ -56,6 +66,9 @@ class L2RegularizationTest {
       diag(DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_MATRIX + regularizationWeight)))
 
     assertEquals(mockObjectiveFunction.value(Unit, coefficients, mockNormalization), expectedValue)
+    assertEquals(
+      mockObjectiveFunctionWithInterceptIndex.value(Unit, coefficients, mockNormalization),
+      expectedValueWithoutIntercept)
     assertEquals(mockObjectiveFunction.gradient(Unit, coefficients, mockNormalization), expectedGradient)
     assertEquals(
       mockObjectiveFunction.hessianVector(Unit, coefficients, multiplyVector, mockNormalization),
@@ -68,6 +81,7 @@ class L2RegularizationTest {
 object L2RegularizationTest {
 
   private val DIMENSION = 4
+  private val INTERCEPT_INDEX = 1
 
   /**
    * Mock [[ObjectiveFunction]] for testing [[L2Regularization]].

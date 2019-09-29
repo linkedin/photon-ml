@@ -97,9 +97,12 @@ object SingleNodeSmoothedHingeLossFunction {
    * function.
    *
    * @param configuration The optimization problem configuration
+   * @param indexOpt The index of intercept
    * @return A new SingleNodeSmoothedHingeLossFunction
    */
-  def apply(configuration: GLMOptimizationConfiguration): SingleNodeSmoothedHingeLossFunction = {
+  def apply(
+      configuration: GLMOptimizationConfiguration,
+      indexOpt: Option[Int] = None): SingleNodeSmoothedHingeLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
@@ -108,6 +111,7 @@ object SingleNodeSmoothedHingeLossFunction {
       case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new SingleNodeSmoothedHingeLossFunction with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+          interceptIndexOpt = indexOpt
         }
 
       case _ => new SingleNodeSmoothedHingeLossFunction

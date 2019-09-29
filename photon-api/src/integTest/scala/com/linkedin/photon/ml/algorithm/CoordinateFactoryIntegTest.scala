@@ -56,7 +56,8 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX)
 
     coordinate match {
       case _: FixedEffectCoordinate[DistributedObjectiveFunction] =>
@@ -95,7 +96,8 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX)
 
     coordinate match {
       case _: RandomEffectCoordinate[SingleNodeObjectiveFunction] =>
@@ -121,7 +123,8 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
       GLM_CONSTRUCTOR,
       DOWN_SAMPLER_FACTORY,
       MOCK_NORMALIZATION,
-      VARIANCE_COMPUTATION_TYPE)
+      VARIANCE_COMPUTATION_TYPE,
+      INTERCEPT_INDEX)
   }
 }
 
@@ -139,4 +142,5 @@ object CoordinateFactoryIntegTest {
   private val GLM_CONSTRUCTOR = LogisticRegressionModel.apply _
   private val LOSS_FUNCTION_FACTORY = ObjectiveFunctionHelper.buildFactory(TRAINING_TASK, TREE_AGGREGATE_DEPTH)
   private val DOWN_SAMPLER_FACTORY = DownSamplerHelper.buildFactory(TRAINING_TASK)
+  private val INTERCEPT_INDEX = None
 }

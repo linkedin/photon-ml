@@ -26,7 +26,9 @@ import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfigurat
  */
 object ObjectiveFunctionHelper {
 
-  type ObjectiveFunctionFactory = (CoordinateOptimizationConfiguration) => ObjectiveFunction
+  type ObjectiveFunctionFactoryFactory = (CoordinateOptimizationConfiguration) => Option[Int] => ObjectiveFunction
+  type DistributedObjectiveFunctionFactory = Option[Int] => DistributedObjectiveFunction
+  type SingleNodeObjectiveFunctionFactory = Option[Int] => SingleNodeObjectiveFunction
 
   /**
    * Construct a factory function for building [[ObjectiveFunction]] objects.
@@ -36,7 +38,7 @@ object ObjectiveFunctionHelper {
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(taskType: TaskType, treeAggregateDepth: Int): ObjectiveFunctionFactory =
+  def buildFactory(taskType: TaskType, treeAggregateDepth: Int): ObjectiveFunctionFactoryFactory =
     taskType match {
       case TaskType.LOGISTIC_REGRESSION => GLMLossFunction.buildFactory(LogisticLossFunction, treeAggregateDepth)
       case TaskType.LINEAR_REGRESSION => GLMLossFunction.buildFactory(SquaredLossFunction, treeAggregateDepth)

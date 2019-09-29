@@ -53,10 +53,10 @@ class ObjectiveFunctionHelperTest {
 
     trainingTask match {
       case TaskType.LOGISTIC_REGRESSION | TaskType.LINEAR_REGRESSION | TaskType.POISSON_REGRESSION =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedGLMLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedGLMLossFunction])
 
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedSmoothedHingeLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedSmoothedHingeLossFunction])
     }
   }
 }

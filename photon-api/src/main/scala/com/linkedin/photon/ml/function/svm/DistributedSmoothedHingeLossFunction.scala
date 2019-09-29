@@ -109,11 +109,13 @@ object DistributedSmoothedHingeLossFunction {
    *
    * @param configuration The optimization problem configuration
    * @param treeAggregateDepth The tree aggregation depth
+   * @param indexOpt The index of intercept
    * @return A new DistributedSmoothedHingeLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
-      treeAggregateDepth: Int): DistributedSmoothedHingeLossFunction = {
+      treeAggregateDepth: Int,
+      indexOpt: Option[Int] = None): DistributedSmoothedHingeLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
 
@@ -121,6 +123,7 @@ object DistributedSmoothedHingeLossFunction {
       case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new DistributedSmoothedHingeLossFunction(treeAggregateDepth) with L2RegularizationDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(configuration.regularizationWeight)
+          interceptIndexOpt = indexOpt
         }
 
       case _ =>

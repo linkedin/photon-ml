@@ -131,6 +131,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "use warm start",
     "Whether to train the current model with coefficients initialized by the previous model.")
 
+  val coordinateInterceptIndices: Param[Map[CoordinateId, Int]] =
+    ParamUtils.createParam[Map[CoordinateId, Int]](
+    "coordinate intercept indices",
+    "A map of coordinate ID to intercept index"
+  )
+
   //
   // Initialize object
   //
@@ -170,6 +176,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setUseWarmStart(value: Boolean): this.type = set(useWarmStart, value)
 
+  def setCoordinateInterceptIndices(value: Map[CoordinateId, Int]): this.type =
+    set(coordinateInterceptIndices, value)
   //
   // Params trait extensions
   //
@@ -201,6 +209,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(useWarmStart, true)
+    setDefault(coordinateInterceptIndices, Map.empty[CoordinateId, Int])
   }
 
   /**
@@ -225,6 +234,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val ignoreThreshold = getOrDefault(ignoreThresholdForNewModels)
     val numUniqueCoordinates = updateSequence.toSet.size
+    val indices = get(coordinateInterceptIndices)
 
     // Cannot have coordinates repeat in the update sequence
     require(
@@ -632,7 +642,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val normalizationContexts = get(coordinateNormalizationContexts).getOrElse(Map())
     val variance = getOrDefault(varianceComputationType)
-    val lossFunctionFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
+    val lossFunctionFactoryFactory = ObjectiveFunctionHelper.buildFactory(task, getOrDefault(treeAggregateDepth))
     val glmConstructor = task match {
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
       case TaskType.LINEAR_REGRESSION => LinearRegressionModel.apply _
@@ -642,6 +652,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     }
     val downSamplerFactory = DownSamplerHelper.buildFactory(task)
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
+    val interceptsIndices = getOrDefault(coordinateInterceptIndices)
 
     // Create the optimization coordinates for each component model
     val coordinates: Map[CoordinateId, C forSome { type C <: Coordinate[_] }] =
@@ -657,11 +668,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             CoordinateFactory.build(
               trainingDatasets(coordinateId),
               configuration(coordinateId),
-              lossFunctionFactory,
+              lossFunctionFactoryFactory,
               glmConstructor,
               downSamplerFactory,
               normalizationContexts.getOrElse(coordinateId, NoNormalization()),
-              variance)
+              variance,
+              interceptsIndices.get(coordinateId))
           }
 
           (coordinateId, coordinate)
