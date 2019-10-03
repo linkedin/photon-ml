@@ -36,12 +36,12 @@ class DistributedObjectiveFunctionTest {
    */
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testSetupWithInvalidInput(treeAggregateDepth: Int): Unit =
-    new MockDistributedObjectiveFunction(treeAggregateDepth)
+    new MockDistributedObjectiveFunctionFactory(treeAggregateDepth)
 }
 
 object DistributedObjectiveFunctionTest {
 
-  class MockDistributedObjectiveFunction(treeAggregateDepth: Int)
+  class MockDistributedObjectiveFunctionFactory(treeAggregateDepth: Int)
     extends DistributedObjectiveFunction(treeAggregateDepth) {
 
     override protected[ml] def value(

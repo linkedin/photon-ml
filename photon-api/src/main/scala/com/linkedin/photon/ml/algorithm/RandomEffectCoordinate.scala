@@ -18,19 +18,17 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.REId
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.SingleNodeObjectiveFunctionFactory
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.PhotonNonBroadcast
 
 /**
  * The optimization problem coordinate for a random effect model.
@@ -186,78 +184,33 @@ object RandomEffectCoordinate {
    *                               problems
    * @param randomEffectDataset The data on which to run the optimization algorithm
    * @param configuration The optimization problem configuration
-   * @param objectiveFunction The objective function to optimize
+   * @param objectiveFunctionFactory The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param varianceComputationType If and how coefficient variances should be computed
+   * @param interceptIndexOpt The index of the intercept, if there is one
    * @return A new [[RandomEffectCoordinate]] object
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
       randomEffectDataset: RandomEffectDataset,
       configuration: RandomEffectOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
+      objectiveFunctionFactory: Option[Int] => RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE): RandomEffectCoordinate[RandomEffectObjective] = {
+      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
+      interceptIndexOpt: Option[Int] = None): RandomEffectCoordinate[RandomEffectObjective] = {
 
     // Generate parameters of ProjectedRandomEffectCoordinate
-    val randomEffectOptimizationProblem = buildRandomEffectOptimizationProblem(
+    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem(
       randomEffectDataset.projectors,
       configuration,
-      objectiveFunction,
+      objectiveFunctionFactory,
       glmConstructor,
       normalizationContext,
-      varianceComputationType)
+      varianceComputationType,
+      interceptIndexOpt)
 
     new RandomEffectCoordinate(randomEffectDataset, randomEffectOptimizationProblem)
-  }
-
-  /**
-   * Build a new [[RandomEffectOptimizationProblem]] for a [[RandomEffectCoordinate]] to optimize.
-   *
-   * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
-   *                               problems
-   * @param linearSubspaceProjectorsRDD The per-entity [[LinearSubspaceProjector]] objects used to compress the
-   *                                    per-entity feature spaces
-   * @param configuration The optimization problem configuration
-   * @param objectiveFunction The objective function to optimize
-   * @param glmConstructor The function to use for producing GLMs from trained coefficients
-   * @param normalizationContext The normalization context
-   * @param varianceComputationType If and how coefficient variances should be computed
-   * @return
-   */
-  private def buildRandomEffectOptimizationProblem[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      linearSubspaceProjectorsRDD: RDD[(REId, LinearSubspaceProjector)],
-      configuration: RandomEffectOptimizationConfiguration,
-      objectiveFunction: RandomEffectObjective,
-      glmConstructor: Coefficients => GeneralizedLinearModel,
-      normalizationContext: NormalizationContext,
-      varianceComputationType: VarianceComputationType = VarianceComputationType.NONE): RandomEffectOptimizationProblem[RandomEffectObjective] = {
-
-    // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
-    val optimizationProblems = linearSubspaceProjectorsRDD
-      .mapValues { projector =>
-        val factors = normalizationContext.factorsOpt.map(factors => projector.projectForward(factors))
-        val shiftsAndIntercept = normalizationContext
-          .shiftsAndInterceptOpt
-          .map { case (shifts, intercept) =>
-            val newShifts = projector.projectForward(shifts)
-            val newIntercept = projector.originalToProjectedSpaceMap(intercept)
-
-            (newShifts, newIntercept)
-          }
-        val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
-
-        // TODO: Broadcast arguments to SingleNodeOptimizationProblem?
-        SingleNodeOptimizationProblem(
-          configuration,
-          objectiveFunction,
-          glmConstructor,
-          PhotonNonBroadcast(projectedNormalizationContext),
-          varianceComputationType)
-      }
-
-    new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor)
   }
 
   /**

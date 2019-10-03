@@ -155,22 +155,24 @@ object DistributedGLMLossFunction {
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
    * @param treeAggregateDepth The tree aggregation depth
+   * @param interceptIndexOpt The index of the intercept, if there is one
    * @return A new DistributedGLMLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
-      treeAggregateDepth: Int): DistributedGLMLossFunction = {
+      treeAggregateDepth: Int,
+      interceptIndexOpt: Option[Int] = None): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
     regularizationContext.regularizationType match {
       case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
-          with L2RegularizationTwiceDiff {
-
+        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with L2RegularizationTwiceDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+          override def interceptOpt: Option[Int] = interceptIndexOpt
         }
 
       case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)

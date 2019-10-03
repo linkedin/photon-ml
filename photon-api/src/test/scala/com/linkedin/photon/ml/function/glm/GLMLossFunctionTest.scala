@@ -52,10 +52,10 @@ class GLMLossFunctionTest {
 
     coordinateOptConfig match {
       case _: FixedEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedGLMLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedGLMLossFunction])
 
       case _: RandomEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[SingleNodeGLMLossFunction])
+        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => SingleNodeGLMLossFunction])
 
       case _ =>
         assertTrue(false)

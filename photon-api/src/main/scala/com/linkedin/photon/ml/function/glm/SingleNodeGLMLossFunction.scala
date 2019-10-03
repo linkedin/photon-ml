@@ -144,11 +144,13 @@ object SingleNodeGLMLossFunction {
    *
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
+   * @param interceptIndexOpt The index of the intercept, if there is one
    * @return A new SingleNodeGLMLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
-      singleLossFunction: PointwiseLossFunction): SingleNodeGLMLossFunction = {
+      singleLossFunction: PointwiseLossFunction,
+      interceptIndexOpt: Option[Int] = None): SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
@@ -157,6 +159,8 @@ object SingleNodeGLMLossFunction {
       case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
         new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
           l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+          override def interceptOpt: Option[Int] = interceptIndexOpt
         }
 
       case _ => new SingleNodeGLMLossFunction(singleLossFunction)
