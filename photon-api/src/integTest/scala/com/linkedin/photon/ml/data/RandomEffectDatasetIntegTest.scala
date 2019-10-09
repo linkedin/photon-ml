@@ -35,10 +35,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
   import RandomEffectDatasetIntegTest._
 
   @DataProvider
-  def activeDataProvider(): Array[Array[Any]] = {
-
-    val dummyResponse: Double = 1.0
-    val dummyFeatureVector: Vector[Double] = DenseVector(1, 2, 3)
+  def rawDataProvider(): Array[Array[Any]] = {
 
     val reId1: REId = "1"
     val reId2: REId = "2"
@@ -49,7 +46,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
     val data: Seq[(REId, (UniqueSampleId, LabeledPoint))] = dataIds
       .zipWithIndex
       .map { case (rEID, uID) =>
-        val point = new LabeledPoint(dummyResponse, dummyFeatureVector)
+        val point = new LabeledPoint(DUMMY_RESPONSE, DUMMY_FEATURE_VECTOR)
 
         (rEID, (uID.toLong, point))
       }
@@ -74,46 +71,6 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
         Some(existingIds),
         3L),
 
-      // Lower bound on # samples, no existing models
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(1)),
-        None,
-        3L),
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(2)),
-        None,
-        2L),
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(3)),
-        None,
-        1L),
-
-      // Lower bound on # samples, existing models
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(1)),
-        Some(existingIds),
-        3L),
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(2)),
-        Some(existingIds),
-        2L),
-      Array(
-        data,
-        partitionMap,
-        randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(3)),
-        Some(existingIds),
-        2L),
-
       // Upper bound on # samples
       Array(
         data,
@@ -127,6 +84,46 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
         randomEffectDataConfiguration.copy(numActiveDataPointsLowerBound = Some(1)),
         None,
         3L))
+  }
+
+
+  @DataProvider
+  def activeDataProvider(): Array[Array[Any]] = {
+
+    val reId1: REId = "1"
+    val reId2: REId = "2"
+
+    val dataArray1: Array[(UniqueSampleId, LabeledPoint)] = Array(
+      (1, LabeledPoint(DUMMY_RESPONSE, DUMMY_FEATURE_VECTOR)))
+    val dataArray2: Array[(UniqueSampleId, LabeledPoint)] = Array(
+      (2, LabeledPoint(DUMMY_RESPONSE, DUMMY_FEATURE_VECTOR)),
+      (3, LabeledPoint(DUMMY_RESPONSE, DUMMY_FEATURE_VECTOR)))
+    val data: Seq[(REId, LocalDataset)] = Seq(
+      (reId1, LocalDataset(dataArray1)),
+      (reId2, LocalDataset(dataArray2)))
+
+    val rePartitionMap: Map[REId, Int] = Map(reId1 -> 0, reId2 -> 0)
+
+    val activeDataLowerBound = 2
+
+    val existingIds = Seq(reId2)
+
+    Array(
+      // No existing models
+      Array(
+        data,
+        rePartitionMap,
+        activeDataLowerBound,
+        None,
+        Set(reId2)),
+
+      // Some existing models
+      Array(
+        data,
+        rePartitionMap,
+        activeDataLowerBound,
+        Some(existingIds),
+        Set(reId1, reId2)))
   }
 
   @Test
@@ -246,19 +243,18 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
     assertEquals(oddLabeledPoint.features, DenseVector[Double](6D, 8D))
   }
 
-  @Test(dataProvider = "activeDataProvider")
-  def testGenerateActiveData(
+  @Test(dataProvider = "rawDataProvider")
+  def testGenerateGroupedActiveData(
       data: Seq[(REId, (UniqueSampleId, LabeledPoint))],
       partitionMap: Map[REId, Int],
       config: RandomEffectDataConfiguration,
       existingIdsOpt: Option[Seq[REId]],
-      expectedUniqueRandomEffects: Long): Unit = sparkTest("testGenerateActiveData") {
+      expectedUniqueRandomEffects: Long): Unit = sparkTest("testGenerateGroupedActiveData") {
 
     val rdd = sc.parallelize(data, NUM_PARTITIONS)
-    val existingIdsRDDOpt = existingIdsOpt.map(existingIds => sc.parallelize(existingIds, NUM_PARTITIONS))
     val partitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
-    val activeData = RandomEffectDataset.generateActiveData(rdd, config, partitioner, existingIdsRDDOpt)
+    val activeData = RandomEffectDataset.generateGroupedActiveData(rdd, config, partitioner)
 
     assertEquals(activeData.keys.count(), expectedUniqueRandomEffects)
     assertTrue(
@@ -271,6 +267,29 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
               localDataset.dataPoints.length <= upperBound
             }
         })
+  }
+
+  @Test(dataProvider = "activeDataProvider")
+  def testFilterActiveData(
+    data: Seq[(REId, LocalDataset)],
+    partitionMap: Map[REId, Int],
+    activeDataLowerBound: Int,
+    existingIdsOpt: Option[Seq[REId]],
+    expectedKeys: Set[REId]): Unit = sparkTest("testFilterActiveData") {
+
+    val rePartitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
+    val dataRDD = sc.parallelize(data, NUM_PARTITIONS).partitionBy(rePartitioner)
+    val existingIdsRDDOpt = existingIdsOpt.map { existingIds =>
+      sc.parallelize(existingIds, NUM_PARTITIONS)
+    }
+
+    val activeDataLowerBound = 2
+
+    val filteredActiveData = RandomEffectDataset.filterActiveData(dataRDD, activeDataLowerBound, existingIdsRDDOpt)
+    val filteredKeys = filteredActiveData.keys.collect().toSet
+
+    // Check that entities that do not meet the data threshold are filtered
+    assertEquals(filteredKeys, expectedKeys)
   }
 
   @Test
@@ -332,12 +351,6 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
   @Test
   def testAddScoresToOffsets(): Unit = sparkTest("testAddScoresToOffsets") {
 
-    val dummyResponse: Double = 1.0
-    val dummyOffset: Option[Double] = None
-    val dummyWeight: Option[Double] = None
-    val dummyFeatureVector: Vector[Double] = DenseVector(1, 2, 3)
-    val dummyFeatures: Map[FeatureShardId, Vector[Double]] = Map(FEATURE_SHARD_NAME -> dummyFeatureVector)
-
     val reId1: REId = "1"
     val reId2: REId = "2"
     val reId3: REId = "3"
@@ -348,10 +361,10 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       .zipWithIndex
       .map { case (reId, uid) =>
         val datum = new GameDatum(
-          dummyResponse,
-          dummyOffset,
-          dummyWeight,
-          dummyFeatures,
+          DUMMY_RESPONSE,
+          DUMMY_OFFSET,
+          DUMMY_WEIGHT,
+          DUMMY_FEATURES,
           Map(RANDOM_EFFECT_TYPE -> reId))
 
         (uid.toLong, datum)
@@ -392,6 +405,53 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
 
     assertTrue(modifiedData.zip(scores.map(_._2)).forall { case (labeledPoint, score) => labeledPoint.offset == score})
   }
+
+  @Test
+  def testLowerBoundSamplesNotInPassiveData(): Unit = sparkTest("testLowerBoundSamplesNotInPassiveData") {
+
+    val reId1: REId = "1"
+    val reId2: REId = "2"
+    // Counts: 1 * reId1, 2 * reId2
+    val dataIds: Seq[REId] = Seq(reId1, reId2, reId2)
+    val activeDataLowerBound = 2
+
+    val data: Seq[(UniqueSampleId, GameDatum)] = dataIds
+      .zipWithIndex
+      .map { case (reId, uid) =>
+        val datum = new GameDatum(
+          DUMMY_RESPONSE,
+          DUMMY_OFFSET,
+          DUMMY_WEIGHT,
+          DUMMY_FEATURES,
+          Map(RANDOM_EFFECT_TYPE -> reId))
+
+        (uid.toLong, datum)
+      }
+    val hashPartitioner = new LongHashPartitioner(NUM_PARTITIONS)
+    val dataRDD = sc.parallelize(data, NUM_PARTITIONS).partitionBy(hashPartitioner)
+
+    val rePartitionMap: Map[REId, Int] = Map(reId1 -> 0, reId2 -> 0)
+    val rePartitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(rePartitionMap))
+
+    val randomEffectDataConfig = RandomEffectDataConfiguration(
+      RANDOM_EFFECT_TYPE,
+      FEATURE_SHARD_NAME,
+      NUM_PARTITIONS,
+      Some(activeDataLowerBound))
+    val randomEffectDataset = RandomEffectDataset(
+      dataRDD,
+      randomEffectDataConfig,
+      rePartitioner,
+      None,
+      StorageLevel.DISK_ONLY)
+    val activeDataREIDs = randomEffectDataset.activeData.keys.collect().toSet
+
+    // Check that active data lower bound filtering worked
+    assertFalse(activeDataREIDs.contains(reId1))
+    assertTrue(activeDataREIDs.contains(reId2))
+    // Check that active data filtered due to lower bound did not end up in the passive data
+    assertFalse(randomEffectDataset.passiveDataREIds.value.contains(reId1))
+  }
 }
 
 object RandomEffectDatasetIntegTest {
@@ -399,4 +459,10 @@ object RandomEffectDatasetIntegTest {
   private val NUM_PARTITIONS = 1
   private val FEATURE_SHARD_NAME = "shard"
   private val RANDOM_EFFECT_TYPE = "reId"
+
+  private val DUMMY_RESPONSE: Double = 1.0
+  private val DUMMY_OFFSET: Option[Double] = None
+  private val DUMMY_WEIGHT: Option[Double] = None
+  private val DUMMY_FEATURE_VECTOR: Vector[Double] = DenseVector(1, 2, 3)
+  private val DUMMY_FEATURES: Map[FeatureShardId, Vector[Double]] = Map(FEATURE_SHARD_NAME -> DUMMY_FEATURE_VECTOR)
 }

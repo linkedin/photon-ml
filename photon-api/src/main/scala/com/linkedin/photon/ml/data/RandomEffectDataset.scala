@@ -274,18 +274,49 @@ object RandomEffectDataset {
     val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors, randomEffectPartitioner)
     projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
-    val activeData = generateActiveData(
+    val unfilteredActiveData = generateGroupedActiveData(
       projectedKeyedGameDataset,
       randomEffectDataConfiguration,
-      randomEffectPartitioner,
-      existingModelKeysRddOpt)
-    activeData.persist(storageLevel).count
+      randomEffectPartitioner)
 
-    val uniqueIdToRandomEffectIds = generateIdMap(activeData, uniqueIdPartitioner)
-    uniqueIdToRandomEffectIds.persist(storageLevel).count
+    val (activeData, passiveData, uniqueIdToRandomEffectIds) =
+      randomEffectDataConfiguration.numActiveDataPointsLowerBound match {
 
-    val passiveData = generatePassiveData(projectedKeyedGameDataset, uniqueIdToRandomEffectIds)
-    passiveData.persist(storageLevel).count
+        case Some(activeDataLowerBound) =>
+
+          unfilteredActiveData.persist(StorageLevel.MEMORY_ONLY_SER)
+
+          // Filter entities which do not meet active data lower bound threshold
+          val filteredActiveData = filterActiveData(
+            unfilteredActiveData,
+            activeDataLowerBound,
+            existingModelKeysRddOpt)
+          filteredActiveData.persist(storageLevel).count
+
+          val passiveData = generatePassiveData(
+            projectedKeyedGameDataset,
+            generateIdMap(unfilteredActiveData, uniqueIdPartitioner))
+          passiveData.persist(storageLevel).count
+
+          val uniqueIdToRandomEffectIds = generateIdMap(filteredActiveData, uniqueIdPartitioner)
+          uniqueIdToRandomEffectIds.persist(storageLevel).count
+
+          unfilteredActiveData.unpersist()
+
+          (filteredActiveData, passiveData, uniqueIdToRandomEffectIds)
+
+        case None =>
+
+          unfilteredActiveData.persist(storageLevel).count
+
+          val uniqueIdToRandomEffectIds = generateIdMap(unfilteredActiveData, uniqueIdPartitioner)
+          uniqueIdToRandomEffectIds.persist(storageLevel).count
+
+          val passiveData = generatePassiveData(projectedKeyedGameDataset, uniqueIdToRandomEffectIds)
+          passiveData.persist(storageLevel).count
+
+          (unfilteredActiveData, passiveData, uniqueIdToRandomEffectIds)
+    }
 
     //
     // Unpersist component RDDs
@@ -391,23 +422,21 @@ object RandomEffectDataset {
       }
 
   /**
-   * Generate active data.
+   * Generate active data, down-sampling using reservoir sampling if the data for any entity exceeds the upper bound.
    *
-   * @param projectedKeyedDataset The input dataset
+   * @param projectedKeyedDataset The input data, keyed by entity ID
    * @param randomEffectDataConfiguration The random effect data configuration
    * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
    *                                the data distribution equal amongst partitions
-   * @param existingModelKeysRddOpt An optional set of entities which have existing models
-   * @return The active dataset
+   * @return The input data, grouped by entity ID, and down-sampled if necessary
    */
-  protected[data] def generateActiveData(
+  protected[data] def generateGroupedActiveData(
       projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner,
-      existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, LocalDataset)] = {
+      randomEffectPartitioner: Partitioner): RDD[(REId, LocalDataset)] = {
 
     // Filter data using reservoir sampling if active data size is bounded
-    val groupedRandomEffectDataset = randomEffectDataConfiguration
+    val groupedActiveData = randomEffectDataConfiguration
       .numActiveDataPointsUpperBound
       .map { activeDataUpperBound =>
         groupDataByKeyAndSample(
@@ -417,17 +446,12 @@ object RandomEffectDataset {
           randomEffectDataConfiguration.randomEffectType)
       }
       .getOrElse(projectedKeyedDataset.groupByKey(randomEffectPartitioner))
-
-    val filteredRandomEffectDataset = lowerBoundFilteringOnActiveData(
-      groupedRandomEffectDataset,
-      randomEffectDataConfiguration.numActiveDataPointsLowerBound,
-      existingModelKeysRddOpt)
-    val rawActiveData = filteredRandomEffectDataset.mapValues { iterable =>
-      LocalDataset(iterable.toArray, isSortedByFirstIndex = false)
-    }
+      .mapValues { iterable =>
+        LocalDataset(iterable.toArray, isSortedByFirstIndex = false)
+      }
 
     // Filter features if feature dimension of active data is bounded
-    featureSelectionOnActiveData(rawActiveData, randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound)
+    featureSelectionOnActiveData(groupedActiveData, randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound)
   }
 
   /**
@@ -508,45 +532,42 @@ object RandomEffectDataset {
   /**
    * Filter entities with less data than a given threshold.
    *
-   * @param groupedData An [[RDD]] of data grouped by individual ID
-   * @param numActiveDataPointsLowerBoundOpt Optional threshold for number of data points require to receive a
-   *                                         per-entity model
+   * @param groupedActiveData An [[RDD]] of data grouped by entity ID
+   * @param numActiveDataPointsLowerBound Threshold for number of data points require to receive a per-entity model
    * @param existingModelKeysRddOpt Optional set of entities that have existing models
-   * @return An [[RDD]] of data grouped by individual ID with IDs that do not meet the minimum threshold removed
+   * @return The input data with entities that did not meet the minimum sample threshold removed
    */
-  private def lowerBoundFilteringOnActiveData(
-      groupedData: RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])],
-      numActiveDataPointsLowerBoundOpt: Option[Int],
-      existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] =
-    numActiveDataPointsLowerBoundOpt
-      .map { activeDataLowerBound =>
-        existingModelKeysRddOpt match {
-          case Some(existingModelKeysRdd) =>
-            groupedData.zipPartitions(existingModelKeysRdd, preservesPartitioning = true) { (dataIt, existingKeysIt) =>
+  protected[data] def filterActiveData(
+      groupedActiveData: RDD[(REId, LocalDataset)],
+      numActiveDataPointsLowerBound: Int,
+      existingModelKeysRddOpt: Option[RDD[REId]]): RDD[(REId, LocalDataset)] =
 
-              val lookupTable = existingKeysIt.toSet
+    existingModelKeysRddOpt match {
+      case Some(existingModelKeysRdd) =>
+        groupedActiveData.zipPartitions(existingModelKeysRdd, preservesPartitioning = true) { (dataIt, existingKeysIt) =>
 
-              dataIt.filter { case (key, data) =>
-                (data.size >= activeDataLowerBound) || !lookupTable.contains(key)
-              }
-            }
+          val lookupTable = existingKeysIt.toSet
 
-          case None =>
-            groupedData.filter { case (_, data) =>
-              data.size >= activeDataLowerBound
-            }
+          dataIt.filter { case (key, data) =>
+            (data.numDataPoints >= numActiveDataPointsLowerBound) || !lookupTable.contains(key)
+          }
         }
-      }
-      .getOrElse(groupedData)
+
+      case None =>
+        groupedActiveData.filter { case (_, data) =>
+          data.numDataPoints >= numActiveDataPointsLowerBound
+        }
+    }
 
   /**
    * Reduce active data feature dimension for entities with few samples. The maximum feature dimension is limited to
    * the number of samples multiplied by the feature dimension ratio. Features are chosen by greatest Pearson
    * correlation score.
    *
-   * @param activeData The active dataset
+   * @param activeData An [[RDD]] of data grouped by entity ID
    * @param numFeaturesToSamplesRatioUpperBoundOpt Optional ratio of samples to feature dimension
-   * @return The active data with the feature dimension reduced
+   * @return The input data with feature dimension reduced for entities whose feature dimension greatly exceeded the
+   *         number of available samples
    */
   private def featureSelectionOnActiveData(
       activeData: RDD[(REId, LocalDataset)],
