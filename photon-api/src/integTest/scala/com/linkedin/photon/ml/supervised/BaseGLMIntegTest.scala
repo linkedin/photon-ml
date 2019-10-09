@@ -170,7 +170,8 @@ class BaseGLMIntegTest extends SparkTestUtils {
   @Test(dataProvider = "getGeneralizedLinearOptimizationProblems")
   def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
-      optimizationProblemBuilder: BroadcastWrapper[NormalizationContext] => DistributedOptimizationProblem[DistributedGLMLossFunction],
+      optimizationProblemBuilder: BroadcastWrapper[NormalizationContext] =>
+        DistributedOptimizationProblem[DistributedGLMLossFunction],
       data: Seq[LabeledPoint],
       validator: ModelValidator[GeneralizedLinearModel]): Unit = sparkTest(desc) {
 

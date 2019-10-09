@@ -31,20 +31,21 @@ object GLMLossFunction {
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory(
-      lossFunction: PointwiseLossFunction,
-      treeAggregateDepth: Int): (CoordinateOptimizationConfiguration) => ObjectiveFunction =
-    (config: CoordinateOptimizationConfiguration) => {
-      config match {
-        case fEOptConfig: FixedEffectOptimizationConfiguration =>
-          DistributedGLMLossFunction(fEOptConfig, lossFunction, treeAggregateDepth)
+  def buildFactory
+      (lossFunction: PointwiseLossFunction, treeAggregateDepth: Int)
+      (config: CoordinateOptimizationConfiguration): Option[Int] => ObjectiveFunction =
 
-        case rEOptConfig: RandomEffectOptimizationConfiguration =>
-          SingleNodeGLMLossFunction(rEOptConfig, lossFunction)
+    config match {
+      case fEOptConfig: FixedEffectOptimizationConfiguration =>
+        (interceptIndexOpt: Option[Int]) =>
+          DistributedGLMLossFunction(fEOptConfig, lossFunction, treeAggregateDepth, interceptIndexOpt)
 
-        case _ =>
-          throw new UnsupportedOperationException(
-            s"Cannot create a GLM loss function from a coordinate configuration with class '${config.getClass.getName}'")
-      }
+      case rEOptConfig: RandomEffectOptimizationConfiguration =>
+        (interceptIndexOpt: Option[Int]) =>
+          SingleNodeGLMLossFunction(rEOptConfig, lossFunction, interceptIndexOpt)
+
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Cannot create a GLM loss function from a coordinate configuration with class '${config.getClass.getName}'")
     }
 }

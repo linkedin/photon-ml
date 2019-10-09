@@ -47,14 +47,14 @@ class SmoothedHingeLossFunctionTest {
   @Test(dataProvider = "coordinateOptimizationProblemProvider")
   def testBuildFactory(coordinateOptConfig: CoordinateOptimizationConfiguration): Unit = {
 
-    val objectiveFunction = SmoothedHingeLossFunction.buildFactory(TREE_AGGREGATE_DEPTH)(coordinateOptConfig)
+    val objectiveFunctionFactory = SmoothedHingeLossFunction.buildFactory(TREE_AGGREGATE_DEPTH)(coordinateOptConfig)
 
     coordinateOptConfig match {
       case _: FixedEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[DistributedSmoothedHingeLossFunction])
+        assertTrue(objectiveFunctionFactory.isInstanceOf[Option[Int] => DistributedSmoothedHingeLossFunction])
 
       case _: RandomEffectOptimizationConfiguration =>
-        assertTrue(objectiveFunction.isInstanceOf[SingleNodeSmoothedHingeLossFunction])
+        assertTrue(objectiveFunctionFactory.isInstanceOf[Option[Int] => SingleNodeSmoothedHingeLossFunction])
 
       case _ =>
         assertTrue(false)
