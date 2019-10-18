@@ -16,6 +16,7 @@ package com.linkedin.photon.ml.data
 
 import breeze.linalg.Vector
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.scoring.ScoredGameDatum
 
 /**
@@ -61,7 +62,7 @@ protected[ml] class GameDatum(
    * @param score The score for this data point
    * @return A new [[ScoredGameDatum]] instance
    */
-  def toScoredGameDatum(score: Double = ScoredGameDatum.ZERO_SCORE): ScoredGameDatum = {
+  def toScoredGameDatum(score: Double = MathConst.DEFAULT_SCORE): ScoredGameDatum = {
     ScoredGameDatum(response, offset, weight, score, idTagToValueMap)
   }
 }

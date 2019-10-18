@@ -52,6 +52,8 @@ abstract class MultiEvaluator(
     // Create a local copy of the localEvaluator, so that the underlying object won't get shipped to the executor nodes
     val localEvaluator = this.localEvaluator
 
+    // EvaluationSuite guarantees that all validation data is in scoresAndLabelsAndWeights RDD, and ids RDD is directly
+    // mapped from validation data. Thus, inner join should be guaranteed to not lose any data.
     scoresAndLabelsAndWeights
       .join(ids)
       .map { case (_, (scoreLabelAndWeight, id)) => (id, scoreLabelAndWeight) }

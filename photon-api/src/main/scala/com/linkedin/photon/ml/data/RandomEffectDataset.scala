@@ -24,6 +24,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
@@ -79,15 +80,19 @@ protected[ml] class RandomEffectDataset(
    */
   override def addScoresToOffsets(scores: CoordinateDataScores): RandomEffectDataset = {
 
-    // Add scores to active data offsets
-    val scoresGroupedByRandomEffectId = scores
-      .scoresRdd
-      .join(activeUniqueIdToRandomEffectIds, uniqueIdPartitioner)
-      .map { case (uniqueId, (score, reId)) => (reId, (uniqueId, score)) }
+    // It's possible that other coordinates did not score some data. Since we're trying to add scores to the offset and
+    // the default score is 0, the result of a left join vs. an inner join is the same. However, an inner join will drop
+    // data which does not have a score. Thus, we need a left join.
+    val scoresGroupedByRandomEffectId = activeUniqueIdToRandomEffectIds
+      .leftOuterJoin(scores.scoresRdd, uniqueIdPartitioner)
+      .map { case (uniqueId, (reId, scoreOpt)) =>
+        (reId, (uniqueId, scoreOpt.getOrElse(MathConst.DEFAULT_SCORE)))
+      }
       .groupByKey(randomEffectIdPartitioner)
       .mapValues(_.toArray.sortBy(_._1))
 
-    // Both RDDs use the same partitioner
+    // Since we use a left join above, we're guaranteed to have each random effect entity from the active data present
+    // and thus use an inner join
     val updatedActiveData = activeData
       .join(scoresGroupedByRandomEffectId, randomEffectIdPartitioner)
       .mapValues { case (localData, localScore) => localData.addScoresToOffsets(localScore) }
@@ -268,10 +273,11 @@ object RandomEffectDataset {
     val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
     keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
-    val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
-    projectors.persist(storageLevel).count
+    // In this RDD, there is a projector for every entity (even those which may later be filtered by the lower bound)
+    val unfilteredProjectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
+    unfilteredProjectors.persist(storageLevel).count
 
-    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors, randomEffectPartitioner)
+    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, unfilteredProjectors, randomEffectPartitioner)
     projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
     val unfilteredActiveData = generateGroupedActiveData(
@@ -279,7 +285,7 @@ object RandomEffectDataset {
       randomEffectDataConfiguration,
       randomEffectPartitioner)
 
-    val (activeData, passiveData, uniqueIdToRandomEffectIds) =
+    val (activeData, passiveData, uniqueIdToRandomEffectIds, projectors) =
       randomEffectDataConfiguration.numActiveDataPointsLowerBound match {
 
         case Some(activeDataLowerBound) =>
@@ -301,9 +307,13 @@ object RandomEffectDataset {
           val uniqueIdToRandomEffectIds = generateIdMap(filteredActiveData, uniqueIdPartitioner)
           uniqueIdToRandomEffectIds.persist(storageLevel).count
 
-          unfilteredActiveData.unpersist()
+          val filteredProjectors = filterProjectors(unfilteredProjectors, filteredActiveData)
+          filteredProjectors.persist(storageLevel).count
 
-          (filteredActiveData, passiveData, uniqueIdToRandomEffectIds)
+          unfilteredActiveData.unpersist()
+          unfilteredProjectors.unpersist()
+
+          (filteredActiveData, passiveData, uniqueIdToRandomEffectIds, filteredProjectors)
 
         case None =>
 
@@ -315,7 +325,7 @@ object RandomEffectDataset {
           val passiveData = generatePassiveData(projectedKeyedGameDataset, uniqueIdToRandomEffectIds)
           passiveData.persist(storageLevel).count
 
-          (unfilteredActiveData, passiveData, uniqueIdToRandomEffectIds)
+          (unfilteredActiveData, passiveData, uniqueIdToRandomEffectIds, unfilteredProjectors)
     }
 
     //
@@ -530,7 +540,7 @@ object RandomEffectDataset {
   }
 
   /**
-   * Filter entities with less data than a given threshold.
+   * Filter out entities with less data than a given threshold.
    *
    * @param groupedActiveData An [[RDD]] of data grouped by entity ID
    * @param numActiveDataPointsLowerBound Threshold for number of data points require to receive a per-entity model
@@ -618,4 +628,20 @@ object RandomEffectDataset {
 
     passiveDataPool.subtractByKey(activeUniqueIDs)
   }
+
+  /**
+   * Filter out projectors for entities which were filtered out.
+   *
+   * @param unfilteredProjectors The unfiltered projectors
+   * @param filteredActiveData The filtered active data
+   * @return [[unfilteredProjectors]] with all projectors for entities not in [[filteredActiveData]] removed
+   */
+  protected[data] def filterProjectors(
+      unfilteredProjectors: RDD[(REId, LinearSubspaceProjector)],
+      filteredActiveData: RDD[(REId, LocalDataset)]): RDD[(REId, LinearSubspaceProjector)] =
+    // Both RDDs use the same partitioner, thus there should be no shuffle. Use inner join to drop projectors for
+    // filtered entities.
+    filteredActiveData
+      .join(unfilteredProjectors)
+      .map { case (rEId, (_, projector)) => (rEId, projector) }
 }

@@ -23,4 +23,5 @@ object MathConst {
   protected[ml] val POSITIVE_RESPONSE_THRESHOLD = 0.5
   protected[ml] val DEFAULT_WEIGHT = 1.0
   protected[ml] val DEFAULT_OFFSET = 0.0
+  protected[ml] val DEFAULT_SCORE = 0.0
 }

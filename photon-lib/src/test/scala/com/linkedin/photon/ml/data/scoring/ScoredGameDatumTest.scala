@@ -54,14 +54,6 @@ class ScoredGameDatumTest {
     s"[response=$label, offset=$offset, weight=$weight, score=$score, idTagToValueMap=$mapStr]"
 
   @Test
-  def testZeroScoreDatum(): Unit = {
-    val copy = customDatum.getZeroScoreDatum
-
-    assertTrue(isAlmostZero(copy.score))
-    assertFalse(copy.equals(customDatum))
-  }
-
-  @Test
   def testEquals(): Unit = {
     assertTrue(customDatum.copy().equals(customDatum))
     assertTrue(customDatum.equals(similarCustomDatum))

@@ -18,6 +18,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.GameDatum
 
 /**
@@ -37,11 +38,14 @@ protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSamp
    * @return A merged [[CoordinateDataScores]]
    */
   private def joinAndApply(op: (Double, Double) => Double, that: CoordinateDataScores): CoordinateDataScores =
+    // Use fullOuterJoin: it's possible for some data to not be scored by a model
     new CoordinateDataScores(
       this
         .scoresRdd
         .fullOuterJoin(that.scoresRdd)
-        .mapValues { case (thisScore, thatScore) => op(thisScore.getOrElse(0.0), thatScore.getOrElse(0.0)) })
+        .mapValues { case (thisScoreOpt, thatScoreOpt) =>
+          op(thisScoreOpt.getOrElse(MathConst.DEFAULT_SCORE), thatScoreOpt.getOrElse(MathConst.DEFAULT_SCORE))
+        })
 
   /**
    * The addition operation for [[CoordinateDataScores]].
@@ -79,7 +83,7 @@ object CoordinateDataScores {
    * @param scores The scores, consisting of (unique ID, score) pairs.
    * @return A new [[CoordinateDataScores]] object
    */
-  def apply(scores: RDD[(Long, Double)]): CoordinateDataScores = new CoordinateDataScores(scores)
+  def apply(scores: RDD[(UniqueSampleId, Double)]): CoordinateDataScores = new CoordinateDataScores(scores)
 
   /**
    * Convert a [[GameDatum]] and a raw score into a score object. For [[CoordinateDataScores]] this is the raw score.

@@ -18,6 +18,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.GameDatum
 
 /**
@@ -39,14 +40,19 @@ class ModelDataScores(override val scoresRdd: RDD[(UniqueSampleId, ScoredGameDat
   private def joinAndApply(
       op: (ScoredGameDatum, ScoredGameDatum) => ScoredGameDatum,
       that: ModelDataScores): ModelDataScores =
+    // Use fullOuterJoin: it's possible for some data to not be scored by a model
     new ModelDataScores(
       this
         .scoresRdd
-        .cogroup(that.scoresRdd)
-        .mapValues {
-          case (Seq(sd1), Seq(sd2)) => op(sd1, sd2)
-          case (Seq(), Seq(sd2)) => op(sd2.getZeroScoreDatum, sd2)
-          case (Seq(sd1), Seq()) => op(sd1, sd1.getZeroScoreDatum)
+        .fullOuterJoin(that.scoresRdd)
+        .mapValues { case (thisScoreOpt, thatScoreOpt) =>
+          // Currently acceptable to drop op if one value is missing, since the currently existing operations are
+          // commutative and the default value is the 0 value
+          (thisScoreOpt, thatScoreOpt) match {
+            case (Some(thisScore), Some(thatScore)) => op(thisScore, thatScore)
+            case (Some(thisScore), None) => op(thisScore, thisScore.copy(score = MathConst.DEFAULT_SCORE))
+            case (None, Some(thatScore)) => op(thatScore.copy(score = MathConst.DEFAULT_SCORE), thatScore)
+          }
         })
 
   /**

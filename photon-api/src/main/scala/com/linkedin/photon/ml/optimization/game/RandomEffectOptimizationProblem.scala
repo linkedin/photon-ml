@@ -115,20 +115,6 @@ protected[ml] class RandomEffectOptimizationProblem[Objective <: SingleNodeObjec
    */
   def initializeModel(dimension: Int): GeneralizedLinearModel =
     glmConstructor(Coefficients.initializeZeroCoefficients(dimension))
-
-  /**
-   * Compute the regularization term value
-   *
-   * @param modelsRDD The trained models
-   * @return The combined regularization term value
-   */
-  def getRegularizationTermValue(modelsRDD: RDD[(REId, GeneralizedLinearModel)]): Double =
-    optimizationProblems
-      .join(modelsRDD)
-      .map {
-        case (_, (optimizationProblem, model)) => optimizationProblem.getRegularizationTermValue(model)
-      }
-      .reduce(_ + _)
 }
 
 object RandomEffectOptimizationProblem {

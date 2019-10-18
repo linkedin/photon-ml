@@ -20,7 +20,6 @@ import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
-import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.SingleNodeObjectiveFunctionFactory
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -228,12 +227,16 @@ object RandomEffectCoordinate {
       randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
       initialRandomEffectModelOpt: Option[RandomEffectModel]): (RandomEffectModel, RandomEffectOptimizationTracker) = {
 
-    // All 3 RDDs involved in these joins use the same partitioner
+    // All 3 RDDs involved in the joins below use the same partitioner
+
+    // Optimization problems are created for each entity with a projector, and thus guaranteed to match active data
+    // exactly (see RandomEffectDataset.apply)
     val dataAndOptimizationProblems = randomEffectDataset
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
 
-    // Left join the models to data and optimization problems for cases where we have a prior model but no new data
+    // Left join the models to the (data, optimization problem) tuple for cases where we have a prior model but no new
+    // data
     val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
       .map { randomEffectModel =>
         val modelsAndTrackers = randomEffectModel
@@ -297,7 +300,9 @@ object RandomEffectCoordinate {
       randomEffectDataset: RandomEffectDataset,
       randomEffectModel: RandomEffectModel): CoordinateDataScores = {
 
-    // Active data and models use the same partitioner, but scores need to use GameDatum partitioner
+    // There may be more models than active data. However, since we're computing residuals for future coordinates, no
+    // data means no residual. Therefore, we use an inner join. Note that the active data and models use the same
+    // partitioner, but scores need to use GameDatum partitioner.
     val activeScores = randomEffectDataset
       .activeData
       .join(randomEffectModel.modelsRDD)

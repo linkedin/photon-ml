@@ -19,6 +19,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.spark.RDDLike
 
 /**
@@ -55,10 +56,12 @@ class EvaluationSuite(
    */
   protected[ml] def evaluate(scores: RDD[(UniqueSampleId, Double)]): EvaluationResults = {
 
-    val scoresAndLabelsAndWeights = scores
-      .join(labelAndOffsetAndWeights)
-      .mapValues { case (score, (label, offset, weight)) =>
-        (score + offset, label, weight)
+    // Possible for all models to be missing a score for some datum, meaning the score for a datum is missing even after
+    // summing scores from all models. Thus, need a leftOuterJoin.
+    val scoresAndLabelsAndWeights = labelAndOffsetAndWeights
+      .leftOuterJoin(scores)
+      .mapValues { case ((label, offset, weight), scoreOpt) =>
+        (scoreOpt.getOrElse(MathConst.DEFAULT_SCORE) + offset, label, weight)
       }
       .persist()
 

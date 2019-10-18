@@ -19,6 +19,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
 
@@ -44,10 +45,13 @@ protected[ml] class FixedEffectDataset(
    */
   override def addScoresToOffsets(scores: CoordinateDataScores): FixedEffectDataset = {
 
+    // It's possible that other coordinates did not score some data. Since we're trying to add scores to the offset and
+    // the default score is 0, the result of a left join vs. an inner join is the same. However, an inner join will drop
+    // data which does not have a score. Thus, we need a left join.
     val updatedLabeledPoints = labeledPoints
       .leftOuterJoin(scores.scoresRdd)
-      .mapValues { case (LabeledPoint(label, features, offset, weight), scoredDatumOption) =>
-        LabeledPoint(label, features, offset + scoredDatumOption.getOrElse(0.0), weight)
+      .mapValues { case (LabeledPoint(label, features, offset, weight), scoreOpt) =>
+        LabeledPoint(label, features, offset + scoreOpt.getOrElse(MathConst.DEFAULT_SCORE), weight)
       }
 
     new FixedEffectDataset(updatedLabeledPoints, featureShardId)
