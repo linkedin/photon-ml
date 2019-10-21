@@ -433,7 +433,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
 
     runDriver(args.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
-    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.007)
+    compareModelEvaluation(new Path(outputDir, "best"), trainedMixedModelPath, 0.005)
   }
 
   /**
