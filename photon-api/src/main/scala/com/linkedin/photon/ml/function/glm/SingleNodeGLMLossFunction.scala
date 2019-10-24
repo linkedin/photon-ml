@@ -18,9 +18,11 @@ import breeze.linalg._
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
+import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -55,7 +57,7 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       input: Iterable[LabeledPoint],
       coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
-      calculate(input, coefficients, normalizationContext)._1
+    calculate(input, coefficients, normalizationContext)._1
 
   /**
    * Compute the gradient of the function over the given data for the given model coefficients.
@@ -144,26 +146,42 @@ object SingleNodeGLMLossFunction {
    *
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
+   * @param priorModelOpt Optional prior model, required if this is an objective function for incremental training
    * @param interceptIndexOpt The index of the intercept, if there is one
    * @return A new SingleNodeGLMLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
+      priorModelOpt: Option[GeneralizedLinearModel] = None,
       interceptIndexOpt: Option[Int] = None): SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+    priorModelOpt match {
+      case Some(priorModel) =>
+        val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val priorModelCoefficients = priorModel.coefficients
 
-          override def interceptOpt: Option[Int] = interceptIndexOpt
+        new SingleNodeGLMLossFunction(singleLossFunction) with PriorDistributionTwiceDiff {
+          override val priorCoefficients: ModelCoefficients = priorModelCoefficients
+          l2RegWeight = l2Weight
+          incrementalWeight = configuration.incrementalWeight.getOrElse(1.0D)
         }
 
-      case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+      case None =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
+
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+              override def interceptOpt: Option[Int] = interceptIndexOpt
+            }
+
+          case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+        }
     }
   }
 }

@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.estimators
 
+import java.security.InvalidParameterException
+
 import scala.language.existentials
 
 import org.apache.commons.cli.MissingArgumentException
@@ -33,7 +35,7 @@ import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.model.{GameModel, RandomEffectModel}
+import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -122,14 +124,18 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   val validationEvaluators: Param[Seq[EvaluatorType]] = ParamUtils.createParam(
     "validation evaluators",
-    "A list of evaluators used to validate computed scores (Note: the first evaluator in the list is the one used " +
-      "for model selection)",
+    "A list of evaluators used to validate computed scores (Note: the first evaluator in the list is the one " +
+      "used for model selection)",
     PhotonParamValidators.nonEmpty[Seq, EvaluatorType])
 
   val ignoreThresholdForNewModels: Param[Boolean] = ParamUtils.createParam[Boolean](
     "ignore threshold for new models",
-    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an existing " +
-      "model during warm-start training.")
+    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an " +
+      "existing model during warm-start training.")
+
+  val incrementalTraining: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "incremental training",
+    "Flag to enable incremental training.")
 
   val useWarmStart: Param[Boolean] = ParamUtils.createParam[Boolean](
     "use warm start",
@@ -177,6 +183,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setUseWarmStart(value: Boolean): this.type = set(useWarmStart, value)
 
+  def setIncrementalTraining(value: Boolean): this.type = set(incrementalTraining, value)
+
   //
   // Params trait extensions
   //
@@ -209,6 +217,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(treeAggregateDepth, DEFAULT_TREE_AGGREGATE_DEPTH)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(useWarmStart, true)
+    setDefault(incrementalTraining, false)
   }
 
   /**
@@ -229,10 +238,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val updateSequence = getRequiredParam(coordinateUpdateSequence)
     val dataConfigs = getRequiredParam(coordinateDataConfigurations)
     val initialModelOpt = get(initialModel)
-    val retrainModelCoordsOpt = get(partialRetrainLockedCoordinates)
+    val lockedModelCoordsOpt = get(partialRetrainLockedCoordinates)
     val normalizationContextsOpt = get(coordinateNormalizationContexts)
     val ignoreThreshold = getOrDefault(ignoreThresholdForNewModels)
     val numUniqueCoordinates = updateSequence.toSet.size
+    val isIncrementalTraining = getOrDefault(incrementalTraining)
 
     // Cannot have coordinates repeat in the update sequence
     require(
@@ -244,39 +254,104 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       !ignoreThreshold || initialModelOpt.isDefined,
       "'Ignore threshold for new models' flag set but no initial model provided for warm-start")
 
-    // Partial retraining and warm-start training require an initial GAME model to be provided as input
-    val coordinatesToTrain = (initialModelOpt, retrainModelCoordsOpt) match {
-      case (Some(initModel), Some(retrainModelCoords)) =>
+    // Warm-start, partial re-training, and incremental training are mutually exclusive.
+    val coordinatesToTrain = (isIncrementalTraining, lockedModelCoordsOpt, initialModelOpt) match {
+      case (true, None, None) =>
+        throw new InvalidParameterException(s"'${incrementalTraining.name}' is enabled but no initial model provided.")
 
-        val newCoordinates = updateSequence.filterNot(retrainModelCoords.contains)
+      case (true, None, Some(initModel)) =>
+        // The set of coordinates being trained and the set of coordinates trained previously must be identical
+        require(
+          updateSequence.toSet == initModel.toMap.keySet,
+          s"Coordinate sets don't match for incremental training; missing coordinates: " +
+            s"${MathUtils.symmetricDifference(updateSequence.toSet, initModel.toMap.keySet).mkString(", ")}")
+
+        updateSequence.foreach { coordinateId =>
+          val coordinateConfig = dataConfigs(coordinateId)
+          val coordinateModel = initModel(coordinateId)
+
+          // TODO: Do the feature shards and random effect types need to match? It's possible for them to match
+          // TODO: perfectly with different names (if the initial model is sufficiently old).
+          (coordinateConfig, coordinateModel) match {
+            case (fEC: FixedEffectDataConfiguration, fEM: FixedEffectModel) =>
+
+              // Model and coordinate must be trained on the same feature shard
+              require(
+                fEC.featureShardId == fEM.featureShardId,
+                s"Incremental training error: feature shard ID mismatch for coordinate '$coordinateId' " +
+                  s"('${fEC.featureShardId}' vs. '${fEM.featureShardId}').")
+
+              // Model must contain variance info
+              require(
+                fEM.model.coefficients.variancesOption.isDefined,
+                s"Incremental training error: coordinate '$coordinateId' missing variance information.")
+
+            case (rEC: RandomEffectDataConfiguration, rEM: RandomEffectModel) =>
+
+              // Model and coordinate must be trained on the same feature shard
+              require(
+                rEC.featureShardId == rEM.featureShardId,
+                s"Incremental training error: feature shard ID mismatch for coordinate '$coordinateId' " +
+                  s"('${rEC.featureShardId}' vs. '${rEM.featureShardId}').")
+
+              // Random effect types must match between coordinate and model
+              require(
+                rEC.randomEffectType == rEM.randomEffectType,
+                s"Incremental training error: random effect type mismatch for coordinate '$coordinateId' " +
+                  s"('${rEC.randomEffectType}' vs. '${rEM.randomEffectType}').")
+
+              // Model must contain variance info
+              require(
+                rEM
+                  .modelsRDD
+                  .mapPartitions(
+                    iter => Seq(iter.forall(_._2.coefficients.variancesOption.isDefined)).iterator,
+                    preservesPartitioning = true)
+                  .fold(true)(_ && _),
+                s"Incremental training error: one or more models in coordinate '$coordinateId' missing variance information.")
+
+            case (_, _) =>
+              throw new IllegalArgumentException(
+                "Incremental training error: mismatch between coordinate and model types.")
+          }
+        }
+
+        updateSequence
+
+      case (true, Some(_), None) =>
+        throw new InvalidParameterException("No initial model is provided when partial retraining is turned on.")
+
+      case (false, None, _) =>
+        updateSequence
+
+      case (false, Some(_), None) =>
+        throw new InvalidParameterException("Partial model re-training is enabled but no initial model provided.")
+
+      case (_, Some(lockedModelCoords), Some(initModel)) =>
+
+        val newCoordinates = updateSequence.filterNot(lockedModelCoords.contains)
 
         // Locked coordinates cannot be empty
         require(
-          retrainModelCoords.nonEmpty,
-          "Set of locked coordinates is empty.")
+          lockedModelCoords.nonEmpty,
+          "Empty set of locked coordinates is invalid.")
 
         // No point in training if every coordinate is being reused
         require(
           newCoordinates.nonEmpty,
-          "All coordinates in the update sequence are re-used from the initial model: no new coordinates to train.")
+          "All coordinates in the update sequence are re-used from the initial model; no new coordinates to train.")
 
         // All locked coordinates must be used by the update sequence
         require(
-          retrainModelCoords.forall(updateSequence.contains),
+          lockedModelCoords.forall(updateSequence.contains),
           "One or more locked coordinates for partial retraining are missing from the update sequence.")
 
         // All locked coordinates must be present in the initial model
         require(
-          retrainModelCoords.forall(initModel.toMap.contains),
+          lockedModelCoords.forall(initModel.toMap.contains),
           "One or more locked coordinates for partial retraining are missing from the initial model.")
 
         newCoordinates
-
-      case (Some(_), None) | (None, None) =>
-        updateSequence
-
-      case (None, Some(_)) =>
-        throw new IllegalArgumentException("Partial retraining enabled, but no base model provided.")
     }
 
     // All coordinates (including locked coordinates) should have a data configuration
@@ -362,7 +437,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     // Train GAME models on training data
     val results = Timed("Training models:") {
-      var prevGameModel: Option[GameModel] = if (getOrDefault(useWarmStart)) {
+      var prevGameModel: Option[GameModel] = if (getOrDefault(useWarmStart) || getOrDefault(incrementalTraining)) {
         get(initialModel)
       } else {
         None
@@ -468,7 +543,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    * @return A map of coordinate ID to training [[Dataset]]
    */
   protected def prepareTrainingDatasets(
-      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
+      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome {type D <: Dataset[D]}] = {
 
     val coordinateDataConfigs = getRequiredParam(coordinateDataConfigurations)
     val initialModelOpt = get(initialModel)
@@ -546,7 +621,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
           (coordinateId, randomEffectDataset)
       }
 
-      result.asInstanceOf[(CoordinateId, D forSome { type D <: Dataset[D] })]
+      result.asInstanceOf[(CoordinateId, D forSome {type D <: Dataset[D]})]
     }
   }
 
@@ -648,7 +723,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
    */
   protected def train(
       configuration: GameOptimizationConfiguration,
-      trainingDatasets: Map[CoordinateId, D forSome { type D <: Dataset[D] }],
+      trainingDatasets: Map[CoordinateId, D forSome {type D <: Dataset[D]}],
       coordinateDescent: CoordinateDescent,
       initialModelOpt: Option[GameModel] = None): (GameModel, Option[EvaluationResults]) = Timed(s"Train model:") {
 
@@ -672,18 +747,25 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val downSamplerFactory = DownSamplerHelper.buildFactory(task)
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
     val interceptIndices = getOrDefault(coordinateInterceptIndices)
+    val isIncrementalTraining = getOrDefault(incrementalTraining)
 
     // Create the optimization coordinates for each component model
-    val coordinates: Map[CoordinateId, C forSome { type C <: Coordinate[_] }] =
+    val coordinates: Map[CoordinateId, C forSome {type C <: Coordinate[_]}] =
       updateSequence
         .map { coordinateId =>
-          val coordinate: C forSome { type C <: Coordinate[_] } = if (lockedCoordinates.contains(coordinateId)) {
+          val coordinate: C forSome {type C <: Coordinate[_]} = if (lockedCoordinates.contains(coordinateId)) {
             trainingDatasets(coordinateId) match {
               case feDataset: FixedEffectDataset => new FixedEffectModelCoordinate(feDataset)
               case reDataset: RandomEffectDataset => new RandomEffectModelCoordinate(reDataset)
               case dataset => throw new UnsupportedOperationException(s"Unsupported dataset type: ${dataset.getClass}")
             }
           } else {
+            val priorModelOpt = if (getOrDefault(incrementalTraining)) {
+              Some(initialModelOpt.get(coordinateId))
+            } else {
+              None
+            }
+
             CoordinateFactory.build(
               trainingDatasets(coordinateId),
               configuration(coordinateId),
@@ -692,6 +774,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               downSamplerFactory,
               normalizationContexts.getOrElse(coordinateId, NoNormalization()),
               variance,
+              priorModelOpt,
               interceptIndices.get(coordinateId))
           }
 
@@ -699,7 +782,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         }
         .toMap
 
-    val result = coordinateDescent.run(coordinates, initialModelOpt.map(_.toMap))
+    val warmStartModelOpt = if (getOrDefault(useWarmStart)) initialModelOpt else None
+    val result = coordinateDescent.run(coordinates, warmStartModelOpt.map(_.toMap))
 
     coordinates.foreach { case (_, coordinate) =>
       coordinate match {

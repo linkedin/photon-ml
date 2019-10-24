@@ -68,7 +68,7 @@ object AvroUtils {
 
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
 
-    sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) } )
+    sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) })
   }
 
   /**
@@ -251,8 +251,10 @@ object AvroUtils {
    * @return The nameAndTerm parsed from the Avro record
    */
   protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
+
     val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
     val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
+
     NameAndTerm(name, term)
   }
 
@@ -269,6 +271,7 @@ object AvroUtils {
     genericRecords
       .flatMap {
         _.get(featureSectionKey) match {
+
           case recordList: JList[_] =>
             recordList.asScala.map {
               case record: GenericRecord =>
@@ -278,8 +281,8 @@ object AvroUtils {
                 throw new IllegalArgumentException(
                   s"$any in features list is not a record. It needs to be an Avro record containingg a name and term for " +
                     s"each feature.")
-
             }
+
           case _ =>
             throw new IllegalArgumentException(
               s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records containing a " +
@@ -364,26 +367,16 @@ object AvroUtils {
       featureMap: IndexMap): GeneralizedLinearModel = {
 
     val meansAvros = bayesianLinearModelAvro.getMeans
+    val variancesAvros = bayesianLinearModelAvro.getVariances
     val modelClass = bayesianLinearModelAvro.getModelClass.toString
-    val indexAndValueArrayBuffer = new mutable.ArrayBuffer[(Int, Double)]
 
-    val iterator = meansAvros.iterator()
-    while (iterator.hasNext) {
-      val feature = iterator.next()
-      val name = feature.getName.toString
-      val term = feature.getTerm.toString
-      val featureKey = Utils.getFeatureKey(name, term)
-      if (featureMap.contains(featureKey)) {
-        val value = feature.getValue
-        val index = featureMap.getOrElse(featureKey,
-          throw new NoSuchElementException(s"nameAndTerm $featureKey not found in the feature map"))
-        indexAndValueArrayBuffer += ((index, value))
-      }
+    val means = convertNameTermValueAvroList(meansAvros, featureMap)
+    val coefficients = if (variancesAvros == null) {
+      Coefficients(means)
+    } else {
+      val variances = convertNameTermValueAvroList(variancesAvros, featureMap)
+      Coefficients(means, Some(variances))
     }
-
-    val length = featureMap.featureDimension
-    val coefficients = Coefficients(
-      VectorUtils.toVector(indexAndValueArrayBuffer.toArray, length))
 
     // Load and instantiate the model
     try {
@@ -397,6 +390,36 @@ object AvroUtils {
         throw new IllegalArgumentException(
           s"Error loading model: model class $modelClass couldn't be loaded. You may need to retrain the model.", e)
     }
+  }
+
+  /**
+   * Convert the NameTermValueAvro List of the type [[JList[NameTermValue]]] to Breeze vector of type [[Vector[Double]]].
+   *
+   * @param nameTermValueAvroList List of the type [[JList[NameTermValue]]]
+   * @param featureMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
+   * @return Breeze vector of type [[Vector[Double]]]
+   */
+  protected[avro] def convertNameTermValueAvroList(
+      nameTermValueAvroList: JList[NameTermValueAvro],
+      featureMap: IndexMap): Vector[Double] = {
+
+    val iterator = nameTermValueAvroList.iterator()
+    val indexAndValueArrayBuffer = new mutable.ArrayBuffer[(Int, Double)]
+    val length = featureMap.featureDimension
+
+    while (iterator.hasNext) {
+      val feature = iterator.next()
+      val name = feature.getName.toString
+      val term = feature.getTerm.toString
+      val featureKey = Utils.getFeatureKey(name, term)
+      if (featureMap.contains(featureKey)) {
+        val value = feature.getValue
+        val index = featureMap.getOrElse(featureKey,
+          throw new NoSuchElementException(s"nameAndTerm $featureKey not found in the feature map"))
+        indexAndValueArrayBuffer += ((index, value))
+      }
+    }
+    VectorUtils.toVector(indexAndValueArrayBuffer.toArray, length)
   }
 
   /**

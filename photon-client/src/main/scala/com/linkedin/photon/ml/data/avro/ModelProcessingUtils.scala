@@ -323,8 +323,6 @@ object ModelProcessingUtils {
   /**
    * Load a single GLM from HDFS.
    *
-   * TODO: Currently only the means of the coefficients are loaded, the variances are discarded
-   *
    * @param inputDir The directory from which to load the model
    * @param indexMap A feature to index map
    * @param sc The Spark Context

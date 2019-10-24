@@ -63,4 +63,14 @@ object MathUtils {
    * @return True if x1 is greater than x2, false otherwise
    */
   def greaterThan(x1: Double, x2: Double): Boolean = x1 > x2
+
+  /**
+   * Compute the symmetrical difference of two sets (i.e. A ∆ B = (A ⋃ B) - (A ⋂ B))
+   *
+   * @tparam T Some type
+   * @param a The first set
+   * @param b The second set
+   * @return A set containing of elements that are in the first set or the second set but not both sets
+   */
+  def symmetricDifference[T](a: Set[T], b: Set[T]): Set[T] = a.diff(b).union(b.diff(a))
 }

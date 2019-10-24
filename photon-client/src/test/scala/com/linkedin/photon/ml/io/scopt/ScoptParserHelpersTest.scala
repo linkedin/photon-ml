@@ -116,6 +116,7 @@ class ScoptParserHelpersTest {
     val regWeights2Str =
       Seq("1", "10", "100", "100", "10").mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)
     val regWeights2 = Set(1, 10, 100)
+    val incrementalWeight = Some(1.1D)
     val activeDataLowerBound1 = None
     val activeDataLowerBound2 = Some(5)
     val activeDataUpperBound1 = None
@@ -146,7 +147,8 @@ class ScoptParserHelpersTest {
       ScoptParserHelpers.COORDINATE_DATA_CONFIG_FEATURES_TO_SAMPLES_RATIO -> featuresSamplesRatio2.get.toString,
       ScoptParserHelpers.COORDINATE_OPT_CONFIG_REGULARIZATION -> regularizationType.toString,
       ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_WEIGHTS -> regWeights2Str,
-      ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_ALPHA -> alpha.toString)
+      ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_ALPHA -> alpha.toString,
+      ScoptParserHelpers.COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT -> incrementalWeight.get.toString)
 
     val coordinateConfig1 = ScoptParserHelpers.parseCoordinateConfiguration(inputMap1)(coordinateId)
     coordinateConfig1 match {
@@ -202,6 +204,7 @@ class ScoptParserHelpersTest {
         assertEquals(reConfig.dataConfiguration.numFeaturesToSamplesRatioUpperBound, featuresSamplesRatio2)
         assertEquals(reConfig.optimizationConfiguration.regularizationContext, regularization2)
         assertEquals(reConfig.regularizationWeights, regWeights2)
+        assertEquals(reConfig.optimizationConfiguration.incrementalWeight, incrementalWeight)
 
       case _ =>
         throw new IllegalArgumentException("Expected random effect coordinate configuration.")
@@ -434,6 +437,7 @@ class ScoptParserHelpersTest {
     val featuresSamplesRatio = 6.0
     val regularizationType = RegularizationType.ELASTIC_NET
     val regularizationAlpha = 0.7
+    val incrementalWeight = 1.1
     val regularizationWeights = SortedSet[Double](8.8, 9.9).asInstanceOf[Set[Double]]
 
     val feDataConfig = FixedEffectDataConfiguration(featureShardId, minPartitions)
@@ -469,7 +473,8 @@ class ScoptParserHelpersTest {
       Some(featuresSamplesRatio))
     val optConfig4 = RandomEffectOptimizationConfiguration(
       optimizerConfig,
-      ElasticNetRegularizationContext(regularizationAlpha))
+      ElasticNetRegularizationContext(regularizationAlpha),
+      incrementalWeight = Some(incrementalWeight))
     val coordinateConfig4 = RandomEffectCoordinateConfiguration(dataConfig4, optConfig4, regularizationWeights)
 
     val coordinateConfigurations = ListMap[CoordinateId, CoordinateConfiguration](
@@ -512,7 +517,8 @@ class ScoptParserHelpersTest {
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REGULARIZATION -> regularizationType.toString,
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_ALPHA -> regularizationAlpha.toString,
         ScoptParserHelpers.COORDINATE_OPT_CONFIG_REG_WEIGHTS ->
-          regularizationWeights.mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString)))
+          regularizationWeights.mkString(ScoptParserHelpers.SECONDARY_LIST_DELIMITER.toString),
+        ScoptParserHelpers.COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT -> incrementalWeight.toString))
       .map { case (arg, value) =>
         s"$arg${ScoptParserHelpers.KV_DELIMITER}$value"
       }
