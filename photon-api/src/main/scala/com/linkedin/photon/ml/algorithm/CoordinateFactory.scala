@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import com.linkedin.photon.ml.data.{Dataset, FixedEffectDataset, RandomEffectDataset}
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper.{DistributedObjectiveFunctionFactory, ObjectiveFunctionFactoryFactory, SingleNodeObjectiveFunctionFactory}
 import com.linkedin.photon.ml.function.ObjectiveFunction
-import com.linkedin.photon.ml.model.Coefficients
+import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, FixedEffectModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.DistributedOptimizationProblem
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -45,6 +45,7 @@ object CoordinateFactory {
    * @param downSamplerFactory A factory function for the [[DownSampler]] (if down-sampling is enabled)
    * @param normalizationContext The [[NormalizationContext]]
    * @param varianceComputationType Should the trained coefficient variances be computed in addition to the means?
+   * @param priorModelOpt The prior model for warm-start and incremental training
    * @param interceptIndexOpt The index of the intercept, if one is present
    * @return A [[Coordinate]] for the [[Dataset]] of type [[D]]
    */
@@ -56,15 +57,17 @@ object CoordinateFactory {
       downSamplerFactory: DownSamplerFactory,
       normalizationContext: NormalizationContext,
       varianceComputationType: VarianceComputationType,
+      priorModelOpt: Option[DatumScoringModel],
       interceptIndexOpt: Option[Int]): Coordinate[D] = {
 
     val lossFunctionFactory = lossFunctionFactoryConstructor(coordinateOptConfig)
 
-    (dataset, coordinateOptConfig, lossFunctionFactory) match {
+    (dataset, coordinateOptConfig, lossFunctionFactory, priorModelOpt) match {
       case (
-          fEDataset: FixedEffectDataset,
-          fEOptConfig: FixedEffectOptimizationConfiguration,
-          distributedLossFunctionFactory: DistributedObjectiveFunctionFactory) =>
+        fEDataset: FixedEffectDataset,
+        fEOptConfig: FixedEffectOptimizationConfiguration,
+        distributedLossFunctionFactory: DistributedObjectiveFunctionFactory,
+        fixedEffectModelOpt: Option[FixedEffectModel]) =>
 
         val downSamplerOpt = if (DownSampler.isValidDownSamplingRate(fEOptConfig.downSamplingRate)) {
           Some(downSamplerFactory(fEOptConfig.downSamplingRate))
@@ -77,21 +80,23 @@ object CoordinateFactory {
           fEDataset,
           DistributedOptimizationProblem(
             fEOptConfig,
-            distributedLossFunctionFactory(interceptIndexOpt),
+            distributedLossFunctionFactory(fixedEffectModelOpt.map(_.model), interceptIndexOpt),
             downSamplerOpt,
             glmConstructor,
             normalizationPhotonBroadcast,
             varianceComputationType)).asInstanceOf[Coordinate[D]]
 
       case (
-          rEDataset: RandomEffectDataset,
-          rEOptConfig: RandomEffectOptimizationConfiguration,
-          singleNodeLossFunctionFactory: SingleNodeObjectiveFunctionFactory) =>
+        rEDataset: RandomEffectDataset,
+        rEOptConfig: RandomEffectOptimizationConfiguration,
+        singleNodeLossFunctionFactory: SingleNodeObjectiveFunctionFactory,
+        randomEffectModelOpt: Option[RandomEffectModel]) =>
 
         RandomEffectCoordinate(
           rEDataset,
           rEOptConfig,
           singleNodeLossFunctionFactory,
+          randomEffectModelOpt,
           glmConstructor,
           normalizationContext,
           varianceComputationType,
@@ -100,9 +105,10 @@ object CoordinateFactory {
       case _ =>
         throw new UnsupportedOperationException(
           s"""Cannot build coordinate for the following input class combination:
-          |  ${dataset.getClass.getName}
-          |  ${coordinateOptConfig.getClass.getName}
-          |  ${lossFunctionFactory.getClass.getName}""".stripMargin)
+             |  ${dataset.getClass.getName}
+             |  ${coordinateOptConfig.getClass.getName}
+             |  ${lossFunctionFactory.getClass.getName}
+             |  ${priorModelOpt.getClass.getName}""".stripMargin)
     }
   }
 }

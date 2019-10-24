@@ -164,7 +164,11 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
       // Ignore Threshold for New Models
       ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.ignoreThresholdForNewModels))
+        GameTrainingDriver.ignoreThresholdForNewModels),
+
+      // Incremental training
+      ScoptParameter[Boolean, Boolean](
+        GameTrainingDriver.incrementalTraining))
 
   override protected val parser: OptionParser[ParamMap] = new OptionParser[ParamMap]("GAME-Training") {
 

@@ -24,12 +24,13 @@ class CoordinateOptimizationConfigurationTest {
 
   @DataProvider
   def invalidInput(): Array[Array[Any]] = Array(
-    Array(-1D, 1D, None, None),
-    Array(1D, -1D, None, None),
-    Array(1D, 0D, None, None),
-    Array(1D, 2D, None, None),
-    Array(1D, 1D, Some(DoubleRange(-1D, 10D)), None),
-    Array(1D, 1D, None, Some(DoubleRange(0D, 1.1))))
+    Array(-1D, 1D, None, None, None),
+    Array(1D, -1D, None, None, None),
+    Array(1D, 0D, None, None, None),
+    Array(1D, 2D, None, None, None),
+    Array(1D, 1D, Some(DoubleRange(-1D, 10D)), None, None),
+    Array(1D, 1D, None, Some(DoubleRange(0D, 1.1)), None),
+    Array(-1D, 1D, None, None, Some(-1D)))
 
   /**
    * Test that [[FixedEffectOptimizationConfiguration]] will reject invalid input.
@@ -42,7 +43,8 @@ class CoordinateOptimizationConfigurationTest {
       regularizationWeight: Double,
       downSamplingRate: Double,
       regularizationWeightRange: Option[DoubleRange],
-      elasticNetParamRange: Option[DoubleRange]): Unit = {
+      elasticNetParamRange: Option[DoubleRange],
+      incrementalWeight: Option[Double]): Unit = {
 
     val mockOptimizerConfig = mock(classOf[OptimizerConfig])
     val mockRegularizationContext = mock(classOf[RegularizationContext])
@@ -53,6 +55,7 @@ class CoordinateOptimizationConfigurationTest {
       regularizationWeight,
       regularizationWeightRange,
       elasticNetParamRange,
+      incrementalWeight,
       downSamplingRate)
   }
 }

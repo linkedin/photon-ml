@@ -30,13 +30,16 @@ sealed trait CoordinateOptimizationConfiguration
  * @param regularizationWeight Regularization weight
  * @param regularizationWeightRange Regularization weight range
  * @param elasticNetParamRange Elastic net alpha range
+ * @param incrementalWeight Optional weight to balance the prior model and the current data in the incremental learning,
+ *                          the larger the weight is, the more important the prior model is.
  */
 protected[ml] abstract class GLMOptimizationConfiguration(
     val optimizerConfig: OptimizerConfig,
     val regularizationContext: RegularizationContext,
     val regularizationWeight: Double,
     val regularizationWeightRange: Option[DoubleRange] = None,
-    val elasticNetParamRange: Option[DoubleRange] = None)
+    val elasticNetParamRange: Option[DoubleRange] = None,
+    val incrementalWeight: Option[Double] = None)
   extends CoordinateOptimizationConfiguration
   with Serializable {
 
@@ -46,6 +49,9 @@ protected[ml] abstract class GLMOptimizationConfiguration(
   }
   elasticNetParamRange.foreach { case DoubleRange(start, end) =>
     require(start >= 0.0 && end <= 1.0, "Elastic net alpha ranges must lie within [0, 1]")
+  }
+  incrementalWeight.foreach { weight =>
+    require(0 <= weight, s"Negative incremental weight: $weight")
   }
 }
 
@@ -57,6 +63,8 @@ protected[ml] abstract class GLMOptimizationConfiguration(
  * @param regularizationWeight Regularization weight
  * @param regularizationWeightRange Regularization weight range
  * @param elasticNetParamRange Elastic net alpha range
+ * @param incrementalWeight Optional weight to balance the prior model and the current data in the incremental learning,
+ *                          the larger the weight is, the more important the prior model is.
  * @param downSamplingRate Down-sampling rate
  */
 case class FixedEffectOptimizationConfiguration(
@@ -65,13 +73,15 @@ case class FixedEffectOptimizationConfiguration(
     override val regularizationWeight: Double = 0D,
     override val regularizationWeightRange: Option[DoubleRange] = None,
     override val elasticNetParamRange: Option[DoubleRange] = None,
+    override val incrementalWeight: Option[Double] = None,
     downSamplingRate: Double = 1D)
   extends GLMOptimizationConfiguration(
     optimizerConfig,
     regularizationContext,
     regularizationWeight,
     regularizationWeightRange,
-    elasticNetParamRange) {
+    elasticNetParamRange,
+    incrementalWeight) {
 
   require(downSamplingRate > 0.0 && downSamplingRate <= 1.0, s"Unexpected downSamplingRate: $downSamplingRate")
 }
@@ -84,16 +94,20 @@ case class FixedEffectOptimizationConfiguration(
  * @param regularizationWeight Regularization weight
  * @param regularizationWeightRange Regularization weight range
  * @param elasticNetParamRange Elastic net alpha range
+ * @param incrementalWeight The weight to balance the prior model and the current data in the incremental learning,
+ *                          the larger the weight is, the more important the prior model is. The default value is 1.
  */
 case class RandomEffectOptimizationConfiguration(
     override val optimizerConfig: OptimizerConfig,
     override val regularizationContext: RegularizationContext = NoRegularizationContext,
     override val regularizationWeight: Double = 0D,
     override val regularizationWeightRange: Option[DoubleRange] = None,
-    override val elasticNetParamRange: Option[DoubleRange] = None)
+    override val elasticNetParamRange: Option[DoubleRange] = None,
+    override val incrementalWeight: Option[Double] = None)
   extends GLMOptimizationConfiguration(
     optimizerConfig,
     regularizationContext,
     regularizationWeight,
     regularizationWeightRange,
-    elasticNetParamRange)
+    elasticNetParamRange,
+    incrementalWeight)

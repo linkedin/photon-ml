@@ -20,6 +20,8 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.{DenseVector => SparkMLDenseVector, SparseVector => SparkMLSparseVector, Vector => SparkMLVector}
 import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
+import com.linkedin.photon.ml.constants.MathConst
+
 /**
  * A utility object that contains operations to create, copy, compare, and convert [[Vector]] objects.
  */
@@ -284,4 +286,15 @@ object VectorUtils {
 
       set
   }
+
+  /**
+   * Element-wise inversion of a [[Vector]], if an element is smaller than MathConst.EPSILON, the inversion will be
+   * replaced by zeroReplacedVal.
+   *
+   * @param vector The [[Vector]] to invert
+   * @param zeroReplacedVal The replaced value when inverting an element close to 0
+   * @return The inverted [[Vector]]
+   */
+  def invertVectorWithZeroHandler(vector: Vector[Double], zeroReplacedVal: Double): Vector[Double] =
+    vector.map(v => if (v > MathConst.EPSILON) 1.0 / v else zeroReplacedVal)
 }

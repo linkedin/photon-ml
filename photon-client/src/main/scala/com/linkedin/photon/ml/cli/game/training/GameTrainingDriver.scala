@@ -168,8 +168,12 @@ object GameTrainingDriver extends GameDriver {
 
   val ignoreThresholdForNewModels: Param[Boolean] = ParamUtils.createParam[Boolean](
     "ignore threshold for new models",
-    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an existing " +
-      "model during warm-start training.")
+    "Flag to ignore the random effect samples lower bound when encountering a random effect ID without an " +
+      "existing model during warm-start training.")
+
+  val incrementalTraining: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "incremental training",
+    "Flag to enable incremental training.")
 
   //
   // Initialize object
@@ -216,6 +220,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(modelSparsityThreshold, VectorUtils.DEFAULT_SPARSITY_THRESHOLD)
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
     setDefault(ignoreThresholdForNewModels, false)
+    setDefault(incrementalTraining, false)
   }
 
   /**
@@ -245,11 +250,7 @@ object GameTrainingDriver extends GameDriver {
     val normalizationType = paramMap.getOrElse(normalization, getDefault(normalization).get)
     val hyperParameterTuningMode = paramMap.getOrElse(hyperParameterTuning, getDefault(hyperParameterTuning).get)
     val ignoreThreshold = paramMap.getOrElse(ignoreThresholdForNewModels, getDefault(ignoreThresholdForNewModels).get)
-
-    // Warm-start must be enabled to ignore threshold
-    require(
-      !ignoreThreshold || baseModelDirOpt.isDefined,
-      "'Ignore threshold for new models' flag set but no initial model provided for warm-start")
+    val isIncrementalTraining = paramMap.getOrElse(incrementalTraining, getDefault(incrementalTraining).get)
 
     // Partial retraining and warm-start training require an initial GAME model to be provided as input
     val coordinatesToTrain = (baseModelDirOpt, retrainModelCoordsOpt) match {
@@ -330,6 +331,16 @@ object GameTrainingDriver extends GameDriver {
 
       case _ =>
     }
+
+    // Warm-start must be enabled to ignore threshold
+    require(
+      !ignoreThreshold || baseModelDirOpt.isDefined,
+      s"'${ignoreThresholdForNewModels.name}' set but no initial model provided (warm-start not enabled).")
+
+    // If incremental training is enabled, prior model must be defined.
+    require(
+      !isIncrementalTraining || baseModelDirOpt.isDefined,
+      s"'${incrementalTraining.name}' set but no initial model provided.")
   }
 
   //
@@ -375,7 +386,7 @@ object GameTrainingDriver extends GameDriver {
     validationData.map(_.persist(StorageLevel.DISK_ONLY))
 
     val modelOpt = get(modelInputDirectory).map { modelDir =>
-      Timed("Load model for warm-start training") {
+      Timed("Load model for warm-start training / incremental learning") {
         ModelProcessingUtils.loadGameModelFromHDFS(
           sc,
           modelDir,
@@ -458,6 +469,7 @@ object GameTrainingDriver extends GameDriver {
         .setVarianceComputation(getOrDefault(varianceComputationType))
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
         .setUseWarmStart(true)
+        .setIncrementalTraining(getOrDefault(incrementalTraining))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)

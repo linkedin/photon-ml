@@ -77,8 +77,7 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    * @param model The model to use as a starting point
    * @return A (updated model, optional optimization tracking information) tuple
    */
-  override protected[algorithm] def trainModel(
-      model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
+  override protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
 
     model match {
       case randomEffectModel: RandomEffectModel =>
@@ -183,17 +182,19 @@ object RandomEffectCoordinate {
    *                               problems
    * @param randomEffectDataset The data on which to run the optimization algorithm
    * @param configuration The optimization problem configuration
-   * @param objectiveFunctionFactory The objective function to optimize
+   * @param objectiveFunctionFactory The objective function factory option
+   * @param priorRandomEffectModelOpt The prior randomEffectModel option
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
    * @param normalizationContext The normalization context
    * @param varianceComputationType If and how coefficient variances should be computed
    * @param interceptIndexOpt The index of the intercept, if there is one
-   * @return A new [[RandomEffectCoordinate]] object
+   * @return A new [[RandomEffectCoordinate]]
    */
   protected[ml] def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
       randomEffectDataset: RandomEffectDataset,
       configuration: RandomEffectOptimizationConfiguration,
-      objectiveFunctionFactory: Option[Int] => RandomEffectObjective,
+      objectiveFunctionFactory: (Option[GeneralizedLinearModel], Option[Int]) => RandomEffectObjective,
+      priorRandomEffectModelOpt: Option[RandomEffectModel],
       glmConstructor: Coefficients => GeneralizedLinearModel,
       normalizationContext: NormalizationContext,
       varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
@@ -204,6 +205,7 @@ object RandomEffectCoordinate {
       randomEffectDataset.projectors,
       configuration,
       objectiveFunctionFactory,
+      priorRandomEffectModelOpt,
       glmConstructor,
       normalizationContext,
       varianceComputationType,
@@ -262,7 +264,7 @@ object RandomEffectCoordinate {
             case _ =>
               throw new IllegalStateException("Either a initial random effect model or data should be present!")
           }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.flatMap(_._2._2))
@@ -277,7 +279,7 @@ object RandomEffectCoordinate {
 
           (newModel, stateTrackers)
         }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.map(_._2._2))
