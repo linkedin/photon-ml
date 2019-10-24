@@ -40,8 +40,17 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
   /**
    * Get a sub-model by name.
    *
-   * @param name The model name
-   * @return An [[Option]] containing the sub-model associated with `name` in the GAME model, or `None` if none exists.
+   * @throws NoSuchElementException if no sub-model with key [[name]] exists
+   * @param name The sub-model name
+   * @return The sub-model associated with [[name]] in the GAME model
+   */
+  def apply(name: CoordinateId): DatumScoringModel = gameModels(name)
+
+  /**
+   * Get a sub-model by name.
+   *
+   * @param name The sub-model name
+   * @return [[Some]] sub-model associated with [[name]] in the GAME model, or [[None]] if none exists.
    */
   def getModel(name: CoordinateId): Option[DatumScoringModel] = gameModels.get(name)
 

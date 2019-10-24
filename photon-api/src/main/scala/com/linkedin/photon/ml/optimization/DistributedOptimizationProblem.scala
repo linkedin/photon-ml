@@ -28,7 +28,7 @@ import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceCompu
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 import com.linkedin.photon.ml.util.Linalg.choleskyInverse
 
 /**
@@ -43,7 +43,7 @@ import com.linkedin.photon.ml.util.Linalg.choleskyInverse
  * @param regularizationContext The regularization context
  * @param varianceComputation If an how to compute coefficient variances
  */
-protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization] (
+protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjectiveFunction] protected[optimization](
     optimizer: Optimizer[Objective],
     objectiveFunction: Objective,
     samplerOption: Option[DownSampler],
@@ -62,11 +62,13 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param regularizationWeight The new regularization weight
    */
   def updateRegularizationWeight(regularizationWeight: Double): Unit = {
+
     optimizer match {
       case owlqn: OWLQN =>
         owlqn.l1RegularizationWeight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
       case _ =>
     }
+
     objectiveFunction match {
       case l2RegFunc: DistributedObjectiveFunction with L2Regularization =>
         l2RegFunc.l2RegularizationWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
@@ -87,10 +89,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
 
     val result = (objectiveFunction, varianceComputation) match {
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
-        Some(
-          twiceDiffFunc
-            .hessianDiagonal(input, broadcastCoefficients)
-            .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
+        Some(VectorUtils.invertVector(twiceDiffFunc.hessianDiagonal(input, broadcastCoefficients)))
 
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, broadcastCoefficients)

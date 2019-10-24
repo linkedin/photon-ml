@@ -20,9 +20,11 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
+import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -109,7 +111,7 @@ protected[ml] class DistributedGLMLossFunction private (
    * @param normalizationContext The normalization context
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-    override protected[ml] def hessianVector(
+  override protected[ml] def hessianVector(
       input: RDD[LabeledPoint],
       coefficients: Broadcast[Vector[Double]],
       multiplyVector: Broadcast[Vector[Double]],
@@ -155,27 +157,50 @@ object DistributedGLMLossFunction {
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
    * @param treeAggregateDepth The tree aggregation depth
+   * @param priorModelOpt Optional prior model, required if this is an objective function for incremental training
    * @param interceptIndexOpt The index of the intercept, if there is one
+   * @param isIncrementalTrainingEnabled Is this an objective function for incremental training?
    * @return A new DistributedGLMLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
       treeAggregateDepth: Int,
-      interceptIndexOpt: Option[Int] = None): DistributedGLMLossFunction = {
+      priorModelOpt: Option[GeneralizedLinearModel] = None,
+      interceptIndexOpt: Option[Int] = None,
+      isIncrementalTrainingEnabled: Boolean = false): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with L2RegularizationTwiceDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+    (priorModelOpt, isIncrementalTrainingEnabled) match {
+      case (_, false) =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+              with L2RegularizationTwiceDiff {
 
-          override def interceptOpt: Option[Int] = interceptIndexOpt
+                l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+                override def interceptOpt: Option[Int] = interceptIndexOpt
+              }
+
+          case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
         }
 
-      case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+      case (Some(priorModel), true) =>
+        val l1Weight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
+        val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val priorModelCoefficients = priorModel.coefficients
+
+        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with PriorDistributionTwiceDiff {
+          override val priorCoefficients: ModelCoefficients = priorModelCoefficients
+          l1RegWeight = l1Weight
+          l2RegWeight = l2Weight
+        }
+
+      case (None, true) =>
+        throw new IllegalArgumentException("Incremental training is enabled, but prior model is missing")
     }
   }
 }

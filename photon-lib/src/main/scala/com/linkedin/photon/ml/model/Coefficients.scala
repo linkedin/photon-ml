@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
+import breeze.linalg.{Vector, norm}
 import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst
@@ -33,13 +33,16 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
 
   // Force means and variances to be of the same type (dense or sparse). This seems reasonable
   // and greatly reduces the number of combinations to check in unit testing.
-  require(variancesOption.isEmpty || variancesOption.get.getClass == means.getClass,
+  require(
+    variancesOption.isEmpty || variancesOption.get.getClass == means.getClass,
     "Coefficients: If variances are provided, must be of the same vector type as means")
   // GAME over if variances are given but don't have the same length as the vector of means
-  require(variancesOption.isEmpty || variancesOption.get.length == means.length,
+  require(
+    variancesOption.isEmpty || variancesOption.get.length == means.length,
     "Coefficients: Means and variances have different lengths")
 
   def length: Int = means.length
+
   lazy val meansL2Norm: Double = norm(means, 2)
   lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
 
@@ -51,6 +54,7 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
    * @return The score
    */
   def computeScore(features: Vector[Double]): Double = {
+
     require(
       means.length == features.length,
       s"Coefficients length (${means.length}) != features length (${features.length})")
@@ -64,6 +68,7 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
    * @return A summary of the object in string representation
    */
   override def toSummaryString: String = {
+
     val sb = new StringBuilder()
     val isDense = means.getClass.getName.contains("Dense")
     val meanAndVar = meanAndVariance(means)
@@ -100,22 +105,22 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
    * @param that The other Coefficients to compare to
    * @return True if the Coefficients are equal, false otherwise
    */
-  override def equals(that: Any): Boolean =
-    that match {
-      case other: Coefficients =>
-        val (m1, v1, m2, v2) = (this.means, this.variancesOption, other.means, other.variancesOption)
-        val sameType = m1.getClass == m2.getClass && v1.map(_.getClass) == v2.map(_.getClass)
-        lazy val sameMeans = VectorUtils.areAlmostEqual(m1, m2)
-        lazy val sameVariance = (v1, v2) match {
-          case (None, None) => true
-          case (Some(val1), Some(val2)) => VectorUtils.areAlmostEqual(val1, val2)
-          case (_, _) => false
-        }
+  override def equals(that: Any): Boolean = that match {
+    case other: Coefficients =>
+      val (m1, v1, m2, v2) = (this.means, this.variancesOption, other.means, other.variancesOption)
+      val sameType = (m1.getClass == m2.getClass) && (v1.map(_.getClass) == v2.map(_.getClass))
+      lazy val sameMeans = VectorUtils.areAlmostEqual(m1, m2)
+      lazy val sameVariance = (v1, v2) match {
+        case (None, None) => true
 
-        sameType && sameMeans && sameVariance
+        case (Some(val1), Some(val2)) => VectorUtils.areAlmostEqual(val1, val2)
+        case (_, _) => false
+      }
 
-      case _ => false
-    }
+      sameType && sameMeans && sameVariance
+
+    case _ => false
+  }
 
   /**
    * Returns a hash code value for the object.
@@ -135,7 +140,6 @@ protected[ml] object Coefficients {
    * @param dimension Dimensionality of the coefficient vector
    * @return Zero coefficient vector
    */
-  def initializeZeroCoefficients(dimension: Int): Coefficients = {
+  def initializeZeroCoefficients(dimension: Int): Coefficients =
     Coefficients(Vector.zeros[Double](dimension), variancesOption = None)
-  }
 }

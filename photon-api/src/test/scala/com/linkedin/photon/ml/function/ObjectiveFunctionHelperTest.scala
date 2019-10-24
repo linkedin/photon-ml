@@ -23,6 +23,7 @@ import com.linkedin.photon.ml.function.glm.DistributedGLMLossFunction
 import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 import com.linkedin.photon.ml.optimization.{OptimizerConfig, OptimizerType}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Unit tests for [[ObjectiveFunctionHelper]].
@@ -48,15 +49,21 @@ class ObjectiveFunctionHelperTest {
   @Test(dataProvider = "trainingTaskProvider")
   def testBuildFactory(trainingTask: TaskType): Unit = {
 
-    val objectiveFunction =
-      ObjectiveFunctionHelper.buildFactory(trainingTask, TREE_AGGREGATE_DEPTH)(COORDINATE_OPT_CONFIG)
+    val objectiveFunction = ObjectiveFunctionHelper.buildFactory(
+      trainingTask,
+      TREE_AGGREGATE_DEPTH)(
+      COORDINATE_OPT_CONFIG,
+      ENABLE_INCREMENTAL_TRAINING)
 
     trainingTask match {
       case TaskType.LOGISTIC_REGRESSION | TaskType.LINEAR_REGRESSION | TaskType.POISSON_REGRESSION =>
-        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedGLMLossFunction])
+        assertTrue(
+          objectiveFunction.isInstanceOf[(Option[GeneralizedLinearModel], Option[Int]) => DistributedGLMLossFunction])
 
       case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        assertTrue(objectiveFunction.isInstanceOf[Option[Int] => DistributedSmoothedHingeLossFunction])
+        assertTrue(
+          objectiveFunction
+            .isInstanceOf[(Option[GeneralizedLinearModel], Option[Int]) => DistributedSmoothedHingeLossFunction])
     }
   }
 }
@@ -64,6 +71,7 @@ class ObjectiveFunctionHelperTest {
 object ObjectiveFunctionHelperTest {
 
   val COORDINATE_OPT_CONFIG = FixedEffectOptimizationConfiguration(OptimizerConfig(OptimizerType.LBFGS, 1, 2e-2))
+  val ENABLE_INCREMENTAL_TRAINING = false
   val MAXIMUM_ITERATIONS = 1
   val TOLERANCE = 2e-2
   val TREE_AGGREGATE_DEPTH = 3

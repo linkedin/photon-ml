@@ -18,9 +18,11 @@ import breeze.linalg._
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
+import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -55,7 +57,7 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       input: Iterable[LabeledPoint],
       coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
-      calculate(input, coefficients, normalizationContext)._1
+    calculate(input, coefficients, normalizationContext)._1
 
   /**
    * Compute the gradient of the function over the given data for the given model coefficients.
@@ -144,26 +146,49 @@ object SingleNodeGLMLossFunction {
    *
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
+   * @param priorModelOpt Optional prior model, required if this is an objective function for incremental training
    * @param interceptIndexOpt The index of the intercept, if there is one
+   * @param isIncrementalTrainingEnabled Is this an objective function for incremental training?
    * @return A new SingleNodeGLMLossFunction
    */
   def apply(
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
-      interceptIndexOpt: Option[Int] = None): SingleNodeGLMLossFunction = {
+      priorModelOpt: Option[GeneralizedLinearModel] = None,
+      interceptIndexOpt: Option[Int] = None,
+      isIncrementalTrainingEnabled: Boolean = false): SingleNodeGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+    (priorModelOpt, isIncrementalTrainingEnabled) match {
+      case (_, false) =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
 
-          override def interceptOpt: Option[Int] = interceptIndexOpt
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+              override def interceptOpt: Option[Int] = interceptIndexOpt
+            }
+
+          case _ => new SingleNodeGLMLossFunction(singleLossFunction)
         }
 
-      case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+      case (Some(priorModel), true) =>
+        val l1Weight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
+        val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val priorModelCoefficients = priorModel.coefficients
+
+        new SingleNodeGLMLossFunction(singleLossFunction) with PriorDistributionTwiceDiff {
+          override val priorCoefficients: ModelCoefficients = priorModelCoefficients
+          l1RegWeight = l1Weight
+          l2RegWeight = l2Weight
+        }
+
+      case (None, true) =>
+        throw new IllegalArgumentException(
+          s"Incremental training is enabled, but prior model is missing")
     }
   }
 }

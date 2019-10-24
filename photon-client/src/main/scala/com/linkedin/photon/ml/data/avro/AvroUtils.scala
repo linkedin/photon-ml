@@ -68,7 +68,7 @@ object AvroUtils {
 
     val minPartitionsPerPath = math.ceil(1.0 * minPartitions / inputPaths.length).toInt
 
-    sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) } )
+    sc.union(inputPaths.map { path => readAvroFilesInDir[GenericRecord](sc, path, minPartitionsPerPath) })
   }
 
   /**
@@ -251,8 +251,10 @@ object AvroUtils {
    * @return The nameAndTerm parsed from the Avro record
    */
   protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
+
     val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
     val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
+
     NameAndTerm(name, term)
   }
 
@@ -269,6 +271,7 @@ object AvroUtils {
     genericRecords
       .flatMap {
         _.get(featureSectionKey) match {
+
           case recordList: JList[_] =>
             recordList.asScala.map {
               case record: GenericRecord =>
@@ -278,8 +281,8 @@ object AvroUtils {
                 throw new IllegalArgumentException(
                   s"$any in features list is not a record. It needs to be an Avro record containingg a name and term for " +
                     s"each feature.")
-
             }
+
           case _ =>
             throw new IllegalArgumentException(
               s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records containing a " +
@@ -422,7 +425,7 @@ object AvroUtils {
    * @return The (effectId, latentFactor) pair converted from the input Avro record
    */
   protected[avro] def convertLatentFactorAvroToLatentFactor(
-      latentFactorAvro: LatentFactorAvro): (String, Vector[Double]) = {
+    latentFactorAvro: LatentFactorAvro): (String, Vector[Double]) = {
 
     val effectId = latentFactorAvro.getEffectId.toString
     val latentFactor = new DenseVector[Double](latentFactorAvro.getLatentFactor.toArray().map(_.asInstanceOf[Double]))

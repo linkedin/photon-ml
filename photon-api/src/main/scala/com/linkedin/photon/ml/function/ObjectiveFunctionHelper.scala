@@ -20,15 +20,16 @@ import com.linkedin.photon.ml.algorithm.Coordinate
 import com.linkedin.photon.ml.function.glm.{GLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
 import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Helper for [[ObjectiveFunction]] related tasks.
  */
 object ObjectiveFunctionHelper {
 
-  type ObjectiveFunctionFactoryFactory = CoordinateOptimizationConfiguration => Option[Int] => ObjectiveFunction
-  type DistributedObjectiveFunctionFactory = Option[Int] => DistributedObjectiveFunction
-  type SingleNodeObjectiveFunctionFactory = Option[Int] => SingleNodeObjectiveFunction
+  type ObjectiveFunctionFactoryFactory = (CoordinateOptimizationConfiguration, Boolean) => (Option[GeneralizedLinearModel], Option[Int]) => ObjectiveFunction
+  type DistributedObjectiveFunctionFactory = (Option[GeneralizedLinearModel], Option[Int]) => DistributedObjectiveFunction
+  type SingleNodeObjectiveFunctionFactory = (Option[GeneralizedLinearModel], Option[Int]) => SingleNodeObjectiveFunction
 
   /**
    * Construct a factory function for building [[ObjectiveFunction]] objects.

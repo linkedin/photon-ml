@@ -21,6 +21,7 @@ import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Implement Rennie's smoothed hinge loss function (http://qwone.com/~jason/writing/smoothHinge.pdf) as an
@@ -91,20 +92,22 @@ object SmoothedHingeLossFunction {
    * Construct a factory function for building distributed and non-distributed smoothed hinge loss functions.
    *
    * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @param config Optimization problem configuration
+   * @param isIncrementalTraining Is this an objective function for incremental training?
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory
-      (treeAggregateDepth: Int)
-      (config: CoordinateOptimizationConfiguration): Option[Int] => ObjectiveFunction =
-
+  def buildFactory(
+      treeAggregateDepth: Int)(
+      config: CoordinateOptimizationConfiguration,
+      isIncrementalTraining: Boolean = false): (Option[GeneralizedLinearModel], Option[Int]) => ObjectiveFunction =
     config match {
       case fEOptConfig: FixedEffectOptimizationConfiguration =>
-        (interceptIndexOpt: Option[Int]) =>
+        (_: Option[GeneralizedLinearModel], _: Option[Int]) =>
           DistributedSmoothedHingeLossFunction(fEOptConfig, treeAggregateDepth)
 
       case rEOptConfig: RandomEffectOptimizationConfiguration =>
-        (interceptIndexOpt: Option[Int]) =>
+        (_: Option[GeneralizedLinearModel], _: Option[Int]) =>
           SingleNodeSmoothedHingeLossFunction(rEOptConfig)
 
       case _ =>

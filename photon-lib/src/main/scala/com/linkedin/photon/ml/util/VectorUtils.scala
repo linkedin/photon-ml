@@ -20,6 +20,8 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.spark.ml.linalg.{DenseVector => SparkMLDenseVector, SparseVector => SparkMLSparseVector, Vector => SparkMLVector}
 import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
+import com.linkedin.photon.ml.constants.MathConst
+
 /**
  * A utility object that contains operations to create, copy, compare, and convert [[Vector]] objects.
  */
@@ -284,4 +286,12 @@ object VectorUtils {
 
       set
   }
+
+  /**
+   * Element-wise inversion of a [[Vector]].
+   *
+   * @param vector The [[Vector]] to invert
+   * @return The inverted [[Vector]]
+   */
+  def invertVector(vector: Vector[Double]): Vector[Double] = vector.map(v => 1.0 / math.max(v, MathConst.EPSILON))
 }

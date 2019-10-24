@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.function.glm
 import com.linkedin.photon.ml.algorithm.Coordinate
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
  * Helper for generalized linear model loss function related tasks.
@@ -28,21 +29,35 @@ object GLMLossFunction {
    *
    * @param lossFunction A [[PointwiseLossFunction]] for training a generalized linear model
    * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @param config Optimization problem configuration
+   * @param isIncrementalTraining Is this an objective function for incremental training?
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */
-  def buildFactory
-      (lossFunction: PointwiseLossFunction, treeAggregateDepth: Int)
-      (config: CoordinateOptimizationConfiguration): Option[Int] => ObjectiveFunction =
-
+  def buildFactory(
+      lossFunction: PointwiseLossFunction,
+      treeAggregateDepth: Int)(
+      config: CoordinateOptimizationConfiguration,
+      isIncrementalTraining: Boolean = false): (Option[GeneralizedLinearModel], Option[Int]) => ObjectiveFunction =
     config match {
       case fEOptConfig: FixedEffectOptimizationConfiguration =>
-        (interceptIndexOpt: Option[Int]) =>
-          DistributedGLMLossFunction(fEOptConfig, lossFunction, treeAggregateDepth, interceptIndexOpt)
+        (generalizedLinearModelOpt: Option[GeneralizedLinearModel], interceptIndexOpt: Option[Int]) =>
+          DistributedGLMLossFunction(
+            fEOptConfig,
+            lossFunction,
+            treeAggregateDepth,
+            generalizedLinearModelOpt,
+            interceptIndexOpt,
+            isIncrementalTraining)
 
       case rEOptConfig: RandomEffectOptimizationConfiguration =>
-        (interceptIndexOpt: Option[Int]) =>
-          SingleNodeGLMLossFunction(rEOptConfig, lossFunction, interceptIndexOpt)
+        (generalizedLinearModelOpt: Option[GeneralizedLinearModel], interceptIndexOpt: Option[Int]) =>
+          SingleNodeGLMLossFunction(
+            rEOptConfig,
+            lossFunction,
+            generalizedLinearModelOpt,
+            interceptIndexOpt,
+            isIncrementalTraining)
 
       case _ =>
         throw new UnsupportedOperationException(
