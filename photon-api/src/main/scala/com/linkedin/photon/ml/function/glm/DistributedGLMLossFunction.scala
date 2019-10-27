@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.function.glm
 
 import breeze.linalg._
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -61,7 +60,7 @@ protected[ml] class DistributedGLMLossFunction private (
    */
   override protected[ml] def value(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
@@ -75,7 +74,7 @@ protected[ml] class DistributedGLMLossFunction private (
    */
   override protected[ml] def gradient(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
@@ -90,7 +89,7 @@ protected[ml] class DistributedGLMLossFunction private (
    */
   override protected[ml] def calculate(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) =
     ValueAndGradientAggregator.calculateValueAndGradient(
       input,
@@ -98,6 +97,26 @@ protected[ml] class DistributedGLMLossFunction private (
       singlePointLossFunction,
       normalizationContext,
       treeAggregateDepth)
+
+  /**
+   * Compute the Hessian matrix over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed Hessian matrix
+   */
+  override protected[ml] def hessianMatrix(input: RDD[LabeledPoint], coefficients: Vector[Double]): DenseMatrix[Double] =
+    HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction, treeAggregateDepth)
+
+  /**
+   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed diagonal of the Hessian matrix
+   */
+  override protected[ml] def hessianDiagonal(input: RDD[LabeledPoint], coefficients: Vector[Double]): Vector[Double] =
+    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction, treeAggregateDepth)
 
   /**
    * Compute the Hessian of the function over the given data for the given model coefficients.
@@ -109,10 +128,10 @@ protected[ml] class DistributedGLMLossFunction private (
    * @param normalizationContext The normalization context
    * @return The computed Hessian multiplied by the given multiplyVector
    */
-    override protected[ml] def hessianVector(
+  override protected[ml] def hessianVector(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
-      multiplyVector: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
+      multiplyVector: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     HessianVectorAggregator.calcHessianVector(
       input,
@@ -121,30 +140,6 @@ protected[ml] class DistributedGLMLossFunction private (
       singlePointLossFunction,
       normalizationContext,
       treeAggregateDepth)
-
-  /**
-   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
-   *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
-   */
-  override protected[ml] def hessianDiagonal(
-      input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]]): Vector[Double] =
-    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction, treeAggregateDepth)
-
-  /**
-   * Compute the Hessian matrix over the given data for the given model coefficients.
-   *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed Hessian matrix
-   */
-  override protected[ml] def hessianMatrix(
-      input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]]): DenseMatrix[Double] =
-    HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction, treeAggregateDepth)
 }
 
 object DistributedGLMLossFunction {

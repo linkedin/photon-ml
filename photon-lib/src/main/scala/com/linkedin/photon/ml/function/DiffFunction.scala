@@ -34,7 +34,7 @@ trait DiffFunction extends ObjectiveFunction {
    */
   protected[ml] def gradient(
     input: Data,
-    coefficients: Coefficients,
+    coefficients: Vector[Double],
     normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
 
   /**
@@ -48,6 +48,6 @@ trait DiffFunction extends ObjectiveFunction {
    */
   protected[ml] def calculate(
     input: Data,
-    coefficients: Coefficients,
+    coefficients: Vector[Double],
     normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double])
 }

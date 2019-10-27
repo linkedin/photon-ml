@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.function.svm
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DiffFunction, L2RegularizationDiff, SingleNodeObjectiveFunction}

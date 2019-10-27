@@ -15,100 +15,204 @@
 package com.linkedin.photon.ml.function.glm
 
 import breeze.linalg.{Vector, axpy}
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast, PhotonNonBroadcast}
 
-// TODO: Better document this algorithm, especially normalization.
 /**
- * An aggregator to perform calculation of Hessian vector multiplication for generalized linear model loss functions,
- * especially in the context of normalization. Both Iterable and RDD data share the same logic for data aggregation.
+ * An aggregator to calculate the value of a multiplication between the Hessian matrix of a generalized linear model
+ * loss function (possibly with normalization) on a dataset and some vector d.
  *
- * Some logic of Hessian vector multiplication is the same for gradient aggregation, so this class inherits
- * ValueAndGradientAggregator.
+ * This class is implemented as a convenience to more efficiently compute this value, rather than computing the entire
+ * Hessian matrix and performing a multiplication operation with vector d afterwards.
  *
- * @param func A single loss function for the generalized linear model
- * @param dim The dimension (number of features) of the aggregator
+ * @param lossFunction The GLM loss function
+ * @param coefficients The coefficients for the GLM
+ * @param dVector The vector d to multiply with the Hessian matrix
+ * @param normalizationContext The feature normalization information
  */
-@SerialVersionUID(2L)
-protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: Int)
-  extends ValueAndGradientAggregator(func, dim) {
-
-  // effectiveMultiplyVector_j = factor_j * multiplyVector
-  // This intermediate vector helps to facilitate calculating
-  //    \sum_k (x_{ki} - shift_k) * factor_k * multiplyVector_k
-  //  = \sum_k (x_{ki} - shift_k) * effectiveMultiplyVector_k
-  // This vector is data point independent.
-  @transient var effectiveMultiplyVector: Vector[Double] = _
-
-  // featureVectorProductShift = \sum_k shift_k * effectiveMultiplyVector_k
-  // This intermediate value helps to facilitate calculating
-  //     \sum_k (x_{ki} - shift_k) * factor_k * multiplyVector_k
-  //   = \sum_k x_{ki} * effectiveMultiplyVector_k - featureVectorProductShift
-  // This value is data point independent.
-  @transient var featureVectorProductShift: Double = _
+@SerialVersionUID(3L)
+protected[ml] class HessianVectorAggregator(
+    lossFunction: PointwiseLossFunction,
+    coefficients: BroadcastWrapper[Vector[Double]],
+    dVector: BroadcastWrapper[Vector[Double]],
+    normalizationContext: BroadcastWrapper[NormalizationContext])
+  extends ValueAndGradientAggregator(lossFunction, coefficients, normalizationContext) {
 
   /**
-   * Initialize the aggregator with proper multiply vector and product shifts if normalization is used.
+   * Expanding upon the documentation in the [[ValueAndGradientAggregator]], the equation for computing the Hessian
+   * matrix for a particular set of coefficients over a dataset is as follows:
    *
-   * @param coef The current model coefficients
-   * @param multiplyVector The Hessian multiplication vector
-   * @param normalizationContext The normalization context
+   * H_jk = ∂^2^ L(w, X, y, u, o) / (∂ w_j)(∂ w_k)
+   *      = \sum_i ∂^2^ (u_i * l(z_i, y_i)) / (∂ w_j)(∂ w_k)
+   *      = \sum_i (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * X_i_k
+   *
+   * Let v = H * d, where d is some vector. Then v_j = H_j * d, where:
+   *
+   * H_j = /sum_i H_i_j         =>
+   *
+   * v_j = (/sum_i H_i_j) * d
+   *     = /sum_i H_i_j * d
+   *     = /sum_i v_i_j
+   *
+   * v_i_j = H_i_j * d          =>
+   *
+   * v_i = H_i * d
+   *
+   *
+   * Returning to the above Hessian equation:
+   *
+   * H_jk = \sum_i (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * X_i_k              =>
+   *
+   * H_i_jk = (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * X_i_k                   =>
+   *
+   * v_i_j = \sum_k H_i_jk * d_k
+   *       = \sum_k (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * X_i_k * d_k
+   *       = (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * (\sum_k X_i_k * d_k)
+   *       = (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * (X_i * d)
+   *       = (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d) * X_i_j
+   *
+   * Therefore:
+   *
+   * v_i = e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d), m) *:* X_i
+   *
+   * v = /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d), m) *:* X_i
+   *
+   *
+   * When the features are normalized, the above equation is modified:
+   *
+   * v = /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (((X_i -:- s) *:* f) * d), m) *:* ((X_i -:- s) *:* f)
+   *     /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i -:- s) * (f *:* d)), m) *:* ((X_i -:- s) *:* f)
+   *     /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i * (f *:* d)) - (s * (f *:* d))), m) *:* ((X_i -:- s) *:* f)
+   *
+   * In the above equation, there are two terms that are identical for all i:
+   *
+   * ed = f *:* d
+   *
+   * eds = s * ed
+   *
+   * where:
+   *
+   * ed = The effective multiplication vector
+   * eds = The total shift of the multiplication vector
+   *
+   * In addition, let us also define:
+   *
+   * g_i = e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i * ed) - eds), m)
+   *
+   * Therefore:
+   *
+   * v = /sum_i g_i *:* ((X_i -:- s) *:* f)
+   *   = /sum_i g_i *:* ((X_i *:* f) -:- (s *:* f))
+   *   = /sum_i (g_i *:* X_i *:* f) -:- (g_i *:* s *:* f)
+   *   = f *:* (/sum_i (g_i *:* X_i) -:- (g_i *:* s))
+   *   = f *:* ((/sum_i g_i *:* X_i) -:- (/sum_i g_i *:* s))
+   *   = f *:* ((/sum_i g_i *:* X_i) -:- (s *:* /sum_i g_i))
    */
-  def init(coef: Vector[Double], multiplyVector: Vector[Double], normalizationContext: NormalizationContext): Unit = {
 
-    require(multiplyVector.size == dim, s"Size mismatch. Multiply vector size ${multiplyVector.size} != $dim.")
+  /**
+   * Corresponds to the ed vector in the above equations
+   */
+  @transient lazy private val effectiveMultiplyVector: Vector[Double] = normalizationContext.value.factorsOpt match {
+    case Some(factors) => dVector.value *:* factors
+    case None => dVector.value
+  }
 
-    super.init(coef, normalizationContext)
+  /**
+   * Corresponds to the eds value in the above equations
+   */
+  @transient lazy private val featureVectorProductShift: Double = normalizationContext.value.shiftsAndInterceptOpt match {
+    case Some((shifts, _)) => effectiveMultiplyVector.dot(shifts)
+    case None => 0.0
+  }
 
-    val NormalizationContext(factorsOpt, shiftsAndInterceptOpt) = normalizationContext
+  /**
+   * Invariants that must hold for every instance of [[HessianVectorAggregator]].
+   */
+  override protected def checkInvariants(): Unit = {
 
-    effectiveMultiplyVector = factorsOpt match {
-      case Some(factors) => multiplyVector :* factors
-      case None => multiplyVector
-    }
-    featureVectorProductShift = shiftsAndInterceptOpt match {
-      case Some((shifts, _)) => effectiveMultiplyVector.dot(shifts)
-      case None => 0.0
+    super.checkInvariants()
+
+    require(
+      dVector.value.length == coefficients.value.length,
+      s"Length mismatch between coefficients and d vector:" +
+        s"coefficients = ${coefficients.value.length}, d = ${dVector.value.length}")
+  }
+
+  /**
+   * Getter for the objective value. Not used in [[HessianVectorAggregator]].
+   *
+   * @return The objective value
+   */
+  override def value: Double =
+    throw new IllegalAccessException(s"Function 'value' called for ${this.getClass.getSimpleName}")
+
+  /**
+   * Getter for the cumulative gradient. Not used in [[HessianVectorAggregator]].
+   *
+   * @return The cumulative gradient
+   */
+  override def gradient: Vector[Double] =
+    throw new IllegalAccessException(s"Function 'gradient' called for ${this.getClass.getSimpleName}")
+
+  /**
+   * Getter for the multiplication between the Hessian matrix and the vector d.
+   *
+   * The vectorSum and shiftFactor members of the [[ValueAndGradientAggregator]] are reused. Using the terminology of
+   * the documentation above:
+   *
+   * vectorSum = /sum_i g_i *:* X_i
+   * shiftFactor = /sum_i g_i
+   *
+   * @return The multiplication between the Hessian matrix and the vector d
+   */
+  def hessianD: Vector[Double] = {
+
+    val NormalizationContext(factorsOpt, shiftsAndInterceptOpt) = normalizationContext.value
+
+    (factorsOpt, shiftsAndInterceptOpt) match {
+      case (Some(factors), Some((shifts, _))) =>
+        (vectorSum -:- (shifts * shiftFactor)) *:* factors
+
+      case (Some(factors), None) =>
+        vectorSum *:* factors
+
+      case (None, Some((shifts, _))) =>
+        vectorSum -:- (shifts * shiftFactor)
+
+      case (None, None) =>
+        vectorSum
     }
   }
 
   /**
    * Add a data point to the aggregator.
    *
+   * The vectorSum and shiftFactor members of the [[ValueAndGradientAggregator]] are reused. Using the terminology of
+   * the documentation above:
+   *
+   * vectorSum = /sum_i g_i *:* X_i
+   * shiftFactor = /sum_i g_i
+   *
    * @param datum The data point
-   * @param coef The current model coefficients
-   * @param multiplyVector The Hessian multiplication vector
-   * @param normalizationContext The normalization context
-   * @return The aggregator itself
+   * @return This aggregator object itself
    */
-  def add(
-      datum: LabeledPoint,
-      coef: Vector[Double],
-      multiplyVector: Vector[Double],
-      normalizationContext: NormalizationContext): this.type = {
-
-    if (!initialized) {
-      this.synchronized {
-        init(coef, multiplyVector, normalizationContext)
-        initialized = true
-      }
-    }
+  override def add(datum: LabeledPoint): this.type = {
 
     val LabeledPoint(label, features, _, weight) = datum
 
-    require(features.size == dim, s"Size mismatch. Coefficient size: $dim, features size: ${features.size}")
+    require(
+      features.size == effectiveCoefficients.size,
+      s"Size mismatch: coefficients size = ${effectiveCoefficients.size}, features size = ${features.size}")
 
-    val margin = datum.computeMargin(effectiveCoefficients) + marginShift
-    val dzzLoss = func.DzzLoss(margin, label)
-    // l'' * (\sum_k x_{ki} * effectiveMultiplyVector_k - featureVectorProductShift)
+    val margin = datum.computeMargin(effectiveCoefficients) + totalShift
+    val dzzLoss = lossFunction.DzzLoss(margin, label)
     val effectiveWeight = weight * dzzLoss * (features.dot(effectiveMultiplyVector) - featureVectorProductShift)
 
     totalCnt += 1
-    vectorShiftPrefactorSum += effectiveWeight
+    shiftFactor += effectiveWeight
     axpy(effectiveWeight, features, vectorSum)
 
     this
@@ -116,58 +220,71 @@ protected[ml] class HessianVectorAggregator(func: PointwiseLossFunction, dim: In
 }
 
 object HessianVectorAggregator {
+
   /**
-   * Calculate the Hessian vector for an objective function in Spark.
+   * Calculate the multiplication between the Hessian matrix for an objective function and some vector d in Spark.
    *
    * @param input An RDD of data points
-   * @param coef The current model coefficients
-   * @param multiplyVector The Hessian multiplication vector
+   * @param coefficients The current model coefficients
+   * @param dVector The Hessian multiplication vector
    * @param singleLossFunction The function used to compute loss for predictions
    * @param normalizationContext The normalization context
    * @param treeAggregateDepth The tree aggregate depth
-   * @return The Hessian vector
+   * @return The multiplication between the Hessian matrix and some vector d
    */
   def calcHessianVector(
       input: RDD[LabeledPoint],
-      coef: Broadcast[Vector[Double]],
-      multiplyVector: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
+      dVector: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
       normalizationContext: BroadcastWrapper[NormalizationContext],
       treeAggregateDepth: Int): Vector[Double] = {
 
-    val aggregator = new HessianVectorAggregator(singleLossFunction, coef.value.size)
+    val coefficientsBroadcast = input.sparkContext.broadcast(coefficients)
+    val dVectorBroadcast = input.sparkContext.broadcast(dVector)
+    val aggregator = new HessianVectorAggregator(
+      singleLossFunction,
+      PhotonBroadcast(coefficientsBroadcast),
+      PhotonBroadcast(dVectorBroadcast),
+      normalizationContext)
     val resultAggregator = input.treeAggregate(aggregator)(
-      seqOp = (ag, datum) => ag.add(datum, coef.value, multiplyVector.value, normalizationContext.value),
+      seqOp = (ag, datum) => ag.add(datum),
       combOp = (ag1, ag2) => ag1.merge(ag2),
       depth = treeAggregateDepth
     )
 
-    resultAggregator.getVector(normalizationContext.value)
+    coefficientsBroadcast.unpersist()
+    dVectorBroadcast.unpersist()
+
+    resultAggregator.hessianD
   }
 
   /**
-   * Calculate the Hessian vector for an objective function locally.
+   * Calculate the multiplication between the Hessian matrix for an objective function and some vector d locally.
    *
    * @param input An iterable set of points
-   * @param coef The current model coefficients
-   * @param multiplyVector The Hessian multiplication vector
+   * @param coefficients The current model coefficients
+   * @param dVector The Hessian multiplication vector
    * @param singleLossFunction The function used to compute loss for predictions
    * @param normalizationContext The normalization context
-   * @return The Hessian vector
+   * @return The multiplication between the Hessian matrix and some vector d
    */
   def calcHessianVector(
       input: Iterable[LabeledPoint],
-      coef: Vector[Double],
-      multiplyVector: Vector[Double],
+      coefficients: Vector[Double],
+      dVector: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] = {
 
-    val aggregator = new HessianVectorAggregator(singleLossFunction, coef.size)
+    val aggregator = new HessianVectorAggregator(
+      singleLossFunction,
+      PhotonNonBroadcast(coefficients),
+      PhotonNonBroadcast(dVector),
+      normalizationContext)
     val resultAggregator = input.aggregate(aggregator)(
-      seqop = (ag, datum) => ag.add(datum, coef, multiplyVector, normalizationContext.value),
-      combop = (ag1, ag2) => ag1.merge(ag2)
-    )
+      seqop = (ag, datum) => ag.add(datum),
+      combop = (ag1, ag2) => ag1.merge(ag2))
 
-    resultAggregator.getVector(normalizationContext.value)
+    resultAggregator.hessianD
   }
 }

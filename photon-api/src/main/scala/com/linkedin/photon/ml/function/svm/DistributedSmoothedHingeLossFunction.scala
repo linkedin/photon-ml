@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.function.svm
 
 import breeze.linalg.Vector
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -52,7 +51,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(treeAggregateDepth: Int
    */
   override protected[ml] def value(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     calculate(input, coefficients, normalizationContext)._1
 
@@ -66,7 +65,7 @@ protected[ml] class DistributedSmoothedHingeLossFunction(treeAggregateDepth: Int
    */
   override protected[ml] def gradient(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
     calculate(input, coefficients, normalizationContext)._2
 
@@ -81,14 +80,14 @@ protected[ml] class DistributedSmoothedHingeLossFunction(treeAggregateDepth: Int
    */
   override protected[ml] def calculate(
       input: RDD[LabeledPoint],
-      coefficients: Broadcast[Vector[Double]],
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
-    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients.value)
+    val initialCumGradient = VectorUtils.zeroOfSameType(coefficients)
     val result = input.treeAggregate((0.0, initialCumGradient))(
       seqOp = {
         case ((loss, cumGradient), datum) =>
-          val v = SmoothedHingeLossFunction.calculateAt(datum, coefficients.value, cumGradient)
+          val v = SmoothedHingeLossFunction.calculateAt(datum, coefficients, cumGradient)
           (loss + v, cumGradient)
       },
       combOp = {

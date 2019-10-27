@@ -43,10 +43,14 @@ protected[ml] class NormalizationContext(
     case (Some(factors), None) =>
       factors.length
 
-    case (None, Some((shifts, _))) =>
+    case (None, Some((shifts, intercept))) =>
+      require(shifts(intercept) == 0D, s"The intercept should not be shifted: ${shifts(intercept)} != 0")
+
       shifts.length
 
-    case (Some(factors), Some((shifts, _))) =>
+    case (Some(factors), Some((shifts, intercept))) =>
+      require(shifts(intercept) == 0D, s"The intercept should not be shifted: ${shifts(intercept)} != 0")
+      require(factors(intercept) == 1D, s"The intercept should not be scaled: ${factors(intercept)} != 1")
       require(factors.size == shifts.size, "Factors and shifts vectors should have the same size")
 
       factors.length

@@ -117,14 +117,14 @@ class TRON(
    * @param data The training data
    * @return The current optimizer state
    */
-  protected def calculateState
-    (objectiveFunction: TwiceDiffFunction, coefficients: Vector[Double], iter: Int = 0)
-    (data: objectiveFunction.Data): OptimizerState = {
+  protected def calculateState(
+      objectiveFunction: TwiceDiffFunction,
+      coefficients: Vector[Double],
+      iter: Int = 0)(
+      data: objectiveFunction.Data): OptimizerState = {
 
-    val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
-    val (value, gradient) = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
+    val (value, gradient) = objectiveFunction.calculate(data, coefficients, normalizationContext)
 
-    objectiveFunction.cleanupCoefficients(convertedCoefficients)
     OptimizerState(coefficients, value, gradient, iter)
   }
 
@@ -145,12 +145,12 @@ class TRON(
    * @param data The training data
    * @return The updated state of the optimizer
    */
-  protected def runOneIteration
-    (objectiveFunction: TwiceDiffFunction, currState: OptimizerState)
-    (data: objectiveFunction.Data): OptimizerState = {
+  protected def runOneIteration(
+      objectiveFunction: TwiceDiffFunction,
+      currState: OptimizerState)(
+      data: objectiveFunction.Data): OptimizerState = {
 
     val prevCoefficients = currState.coefficients
-    val convertedPrevCoefficients = objectiveFunction.convertFromVector(prevCoefficients)
     val prevFunctionValue = currState.loss
     val prevFunctionGradient = currState.gradient
     val prevIter = currState.iter
@@ -165,22 +165,21 @@ class TRON(
       // 2. The maximum number of improvement failures reached.
       val (cgIter, step, residual) = TRON.truncatedConjugateGradientMethod(
         objectiveFunction,
+        prevCoefficients,
         prevFunctionGradient,
         normalizationContext,
-        delta)(data, convertedPrevCoefficients)
+        delta)(
+        data)
 
       val updatedCoefficients = prevCoefficients + step
-      val convertedUpdatedCoefficients = objectiveFunction.convertFromVector(updatedCoefficients)
       val gs = prevFunctionGradient.dot(step)
       // Compute the predicted reduction
       val predictedReduction = -0.5 * (gs - step.dot(residual))
       // Function value
       val (updatedFunctionValue, updatedFunctionGradient) = objectiveFunction.calculate(
         data,
-        convertedUpdatedCoefficients,
+        updatedCoefficients,
         normalizationContext)
-
-      objectiveFunction.cleanupCoefficients(convertedUpdatedCoefficients)
 
       // Compute the actual reduction.
       val actualReduction = prevFunctionValue - updatedFunctionValue
@@ -243,13 +242,12 @@ class TRON(
       }
     } while (!improved && numImprovementFailure < maxNumImprovementFailures)
 
-    objectiveFunction.cleanupCoefficients(convertedPrevCoefficients)
-
     finalState
   }
 }
 
 object TRON extends Logging {
+
   val DEFAULT_MAX_NUM_FAILURE = 5
   val DEFAULT_TOLERANCE = 1.0E-5
   val DEFAULT_MAX_ITER = 15
@@ -272,12 +270,12 @@ object TRON extends Logging {
    * @return Tuple3(number of CG iterations, solution, residual)
    */
   private def truncatedConjugateGradientMethod(
-    objectiveFunction: TwiceDiffFunction,
-    gradient: Vector[Double],
-    normalizationContext: BroadcastWrapper[NormalizationContext],
-    truncationBoundary: Double)
-    (data: objectiveFunction.Data,
-    coefficients: objectiveFunction.Coefficients): (Int, Vector[Double], Vector[Double]) = {
+      objectiveFunction: TwiceDiffFunction,
+      coefficients: Vector[Double],
+      gradient: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext],
+      truncationBoundary: Double)
+      (data: objectiveFunction.Data): (Int, Vector[Double], Vector[Double]) = {
 
     val step = VectorUtils.zeroOfSameType(gradient)
     val residual = gradient * -1.0
@@ -292,11 +290,8 @@ object TRON extends Logging {
       } else {
         iteration += 1
         // Compute the hessianVector
-        val convertedDirection = objectiveFunction.convertFromVector(direction)
-        val Hd = objectiveFunction.hessianVector(data, coefficients, convertedDirection, normalizationContext)
+        val Hd = objectiveFunction.hessianVector(data, coefficients, direction, normalizationContext)
         var alpha = rTr / direction.dot(Hd)
-
-        objectiveFunction.cleanupCoefficients(convertedDirection)
 
         step += direction * alpha
         if (norm(step, 2) > truncationBoundary) {

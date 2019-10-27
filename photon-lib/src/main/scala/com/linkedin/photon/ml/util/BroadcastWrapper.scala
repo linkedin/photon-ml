@@ -18,22 +18,85 @@ import org.apache.spark.broadcast.Broadcast
 
 /**
  * Wrapper to support both Spark [[Broadcast]] and non-broadcast objects.
+ *
+ * @tparam T Some object type
  */
 sealed trait BroadcastWrapper[T] {
 
+  /**
+   * Getter for the wrapped object.
+   *
+   * @return The object
+   */
   def value: T
 
-  def unpersist(): Unit
+  /**
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
+   *
+   * @param other Some other object
+   * @return True if the object can be compared to this object, false otherwise
+   */
+  def canEqual(other: Any): Boolean
+
+  /**
+   * Compare two objects.
+   *
+   * @param other Some other object
+   * @return True if the object and this object are effectively equivalent, false otherwise
+   */
+  override def equals(other: Any): Boolean = other match {
+    case that: BroadcastWrapper[T] => canEqual(that) && value.equals(that.value)
+    case _ => false
+  }
+
+  /**
+   * Get a hash code for this object.
+   *
+   * @return The hash code of the wrapped object
+   */
+  override def hashCode: Int = value.hashCode
 }
 
+/**
+ * Wrapper around an object that has been broadcast to the Spark executors.
+ *
+ * @tparam T Some object type
+ * @param bv A value in a Spark [[Broadcast]]
+ */
 case class PhotonBroadcast[T](bv: Broadcast[T]) extends BroadcastWrapper[T] {
 
+  /**
+   * Getter for the wrapped object.
+   *
+   * @return The broadcast object
+   */
   def value: T = bv.value
 
-  def unpersist(): Unit = bv.unpersist()
+  /**
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
+   *
+   * @param other Some other object
+   * @return True if the object can be compared to this object, false otherwise
+   */
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[PhotonBroadcast[T]]
 }
 
+/**
+ * Wrapper around a non-broadcast object.
+ *
+ * @tparam T Some object type
+ * @param value A non-broadcast object
+ */
 case class PhotonNonBroadcast[T](value: T) extends BroadcastWrapper[T] {
 
-  def unpersist(): Unit = {}
+  /**
+   * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
+   * what circumstances this class can equal another class.
+   *
+   * @param other Some other object
+   * @return True if the object can be compared to this object, false otherwise
+   */
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[PhotonNonBroadcast[T]]
 }

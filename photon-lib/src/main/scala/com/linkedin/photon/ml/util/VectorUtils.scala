@@ -148,7 +148,7 @@ object VectorUtils {
    * @param breezeVector The Breeze vector
    * @return The mllib vector
    */
-  @deprecated
+  @deprecated("Photon ML is moving off of spark.mlllib.Vector to spark.ml.Vector", "")
   def breezeToMllib(breezeVector: Vector[Double]): SparkVector = {
 
     breezeVector match {
