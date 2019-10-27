@@ -69,7 +69,7 @@ class OptimizerTest extends Logging {
 
     // Test unweighted sample
     val pt1 = Seq(new LabeledPoint(label = 1, features, offset = 0, weight = 1))
-    val zero = Vector.zeros[Double](objective.domainDimension(pt1))
+    val zero = Vector.zeros[Double](PROBLEM_DIMENSION)
     optimizer.optimize(objective, zero)(pt1)
     easyOptimizationStatesChecks(optimizer.getStateTracker)
 

@@ -40,7 +40,7 @@ class DistributedGLMLossFunctionIntegTest extends SparkTestUtils {
   def testValueNoRegularization(): Unit = sparkTest("testValueNoRegularization") {
 
     val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
-    val coefficients = sc.broadcast(COEFFICIENT_VECTOR)
+    val coefficients = COEFFICIENT_VECTOR
 
     val fixedEffectRegularizationContext = NoRegularizationContext
     val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(
@@ -66,7 +66,7 @@ class DistributedGLMLossFunctionIntegTest extends SparkTestUtils {
   def testValueWithL2Regularization(): Unit = sparkTest("testValueWithL2Regularization") {
 
     val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
-    val coefficients = sc.broadcast(COEFFICIENT_VECTOR)
+    val coefficients = COEFFICIENT_VECTOR
 
     val fixedEffectRegularizationContext = L2RegularizationContext
     val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(
@@ -93,7 +93,7 @@ class DistributedGLMLossFunctionIntegTest extends SparkTestUtils {
   def testValueWithElasticNetRegularization(): Unit = sparkTest("testValueWithElasticNetRegularization") {
 
     val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
-    val coefficients = sc.broadcast(COEFFICIENT_VECTOR)
+    val coefficients = COEFFICIENT_VECTOR
 
     val fixedEffectRegularizationContext = ElasticNetRegularizationContext(ALPHA)
     val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(

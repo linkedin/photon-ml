@@ -28,12 +28,6 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
 
   type Data = Iterable[LabeledPoint]
-  type Coefficients = Vector[Double]
-
-  // These 3 methods are copied directly from the SingleNodeObjectiveFunction from photon-api.
-  override protected[ml] def domainDimension(input: Iterable[LabeledPoint]): Int = input.head.features.size
-  override protected[ml] def convertFromVector(coefficients: Vector[Double]): Coefficients = coefficients
-  override protected[ml] def convertToVector(coefficients: Vector[Double]): Vector[Double] = coefficients
 
   /**
    * Compute the value of the function over the given data for the given model coefficients.

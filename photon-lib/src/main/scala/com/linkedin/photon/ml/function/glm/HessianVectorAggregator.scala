@@ -51,11 +51,11 @@ protected[ml] class HessianVectorAggregator(
    *
    * Let v = H * d, where d is some vector. Then v_j = H_j * d, where:
    *
-   * H_j = /sum_i H_i_j         =>
+   * H_j = \sum_i H_i_j         =>
    *
-   * v_j = (/sum_i H_i_j) * d
-   *     = /sum_i H_i_j * d
-   *     = /sum_i v_i_j
+   * v_j = (\sum_i H_i_j) * d
+   *     = \sum_i H_i_j * d
+   *     = \sum_i v_i_j
    *
    * v_i_j = H_i_j * d          =>
    *
@@ -78,14 +78,14 @@ protected[ml] class HessianVectorAggregator(
    *
    * v_i = e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d), m) *:* X_i
    *
-   * v = /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d), m) *:* X_i
+   * v = \sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (X_i * d), m) *:* X_i
    *
    *
    * When the features are normalized, the above equation is modified:
    *
-   * v = /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (((X_i -:- s) *:* f) * d), m) *:* ((X_i -:- s) *:* f)
-   *     /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i -:- s) * (f *:* d)), m) *:* ((X_i -:- s) *:* f)
-   *     /sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i * (f *:* d)) - (s * (f *:* d))), m) *:* ((X_i -:- s) *:* f)
+   * v = \sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * (((X_i -:- s) *:* f) * d), m) *:* ((X_i -:- s) *:* f)
+   *     \sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i -:- s) * (f *:* d)), m) *:* ((X_i -:- s) *:* f)
+   *     \sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * ((X_i * (f *:* d)) - (s * (f *:* d))), m) *:* ((X_i -:- s) *:* f)
    *
    * In the above equation, there are two terms that are identical for all i:
    *
@@ -104,12 +104,12 @@ protected[ml] class HessianVectorAggregator(
    *
    * Therefore:
    *
-   * v = /sum_i g_i *:* ((X_i -:- s) *:* f)
-   *   = /sum_i g_i *:* ((X_i *:* f) -:- (s *:* f))
-   *   = /sum_i (g_i *:* X_i *:* f) -:- (g_i *:* s *:* f)
-   *   = f *:* (/sum_i (g_i *:* X_i) -:- (g_i *:* s))
-   *   = f *:* ((/sum_i g_i *:* X_i) -:- (/sum_i g_i *:* s))
-   *   = f *:* ((/sum_i g_i *:* X_i) -:- (s *:* /sum_i g_i))
+   * v = \sum_i g_i *:* ((X_i -:- s) *:* f)
+   *   = \sum_i g_i *:* ((X_i *:* f) -:- (s *:* f))
+   *   = \sum_i (g_i *:* X_i *:* f) -:- (g_i *:* s *:* f)
+   *   = f *:* (\sum_i (g_i *:* X_i) -:- (g_i *:* s))
+   *   = f *:* ((\sum_i g_i *:* X_i) -:- (\sum_i g_i *:* s))
+   *   = f *:* ((\sum_i g_i *:* X_i) -:- (s *:* \sum_i g_i))
    */
 
   /**
@@ -163,8 +163,8 @@ protected[ml] class HessianVectorAggregator(
    * The vectorSum and shiftFactor members of the [[ValueAndGradientAggregator]] are reused. Using the terminology of
    * the documentation above:
    *
-   * vectorSum = /sum_i g_i *:* X_i
-   * shiftFactor = /sum_i g_i
+   * vectorSum = \sum_i g_i *:* X_i
+   * shiftFactor = \sum_i g_i
    *
    * @return The multiplication between the Hessian matrix and the vector d
    */
@@ -193,8 +193,8 @@ protected[ml] class HessianVectorAggregator(
    * The vectorSum and shiftFactor members of the [[ValueAndGradientAggregator]] are reused. Using the terminology of
    * the documentation above:
    *
-   * vectorSum = /sum_i g_i *:* X_i
-   * shiftFactor = /sum_i g_i
+   * vectorSum = \sum_i g_i *:* X_i
+   * shiftFactor = \sum_i g_i
    *
    * @param datum The data point
    * @return This aggregator object itself
