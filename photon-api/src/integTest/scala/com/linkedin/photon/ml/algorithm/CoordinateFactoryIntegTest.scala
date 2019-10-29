@@ -84,6 +84,7 @@ class CoordinateFactoryIntegTest extends SparkTestUtils {
     val priorModelOpt: Option[RandomEffectModel] = None
 
     doReturn(sc).when(mockDataset).sparkContext
+    doReturn(sc).when(mockProjectorsRDD).sparkContext
     doReturn(mockDataRDD).when(mockDataset).activeData
     doReturn(mockDataRDD)
       .when(mockDataRDD)
@@ -145,7 +146,7 @@ object CoordinateFactoryIntegTest {
   private val INTERCEPT_INDEX = None
 
   private val OPTIMIZER_CONFIG = OptimizerConfig(OPTIMIZER_TYPE, MAX_ITER, TOLERANCE)
-  private val MOCK_NORMALIZATION = mock(classOf[NormalizationContext])
+  private val MOCK_NORMALIZATION = mock(classOf[NormalizationContext], withSettings().serializable())
   private val GLM_CONSTRUCTOR = LogisticRegressionModel.apply _
   private val LOSS_FUNCTION_FACTORY = ObjectiveFunctionHelper.buildFactory(TRAINING_TASK, TREE_AGGREGATE_DEPTH)
   private val DOWN_SAMPLER_FACTORY = DownSamplerHelper.buildFactory(TRAINING_TASK)

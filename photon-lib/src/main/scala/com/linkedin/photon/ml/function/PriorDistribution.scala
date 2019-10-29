@@ -71,7 +71,8 @@ trait PriorDistribution extends ObjectiveFunction {
       l2RegValue(convertToVector(coefficients))
 
   /**
-   * Compute the Laplace regularization term for the given model coefficients.
+   * Compute the Laplace regularization term for the given model coefficients. L1 regularization term is
+   * l1RegWeight * sum(abs(coefficients - priorMeans) :/ sqrt(priorVariance)).
    *
    * @param coefficients The model coefficients
    * @return The Laplace regularization term value
@@ -84,7 +85,8 @@ trait PriorDistribution extends ObjectiveFunction {
   }
 
   /**
-   * Compute the Gaussian regularization term for the given model coefficients.
+   * Compute the Gaussian regularization term for the given model coefficients. L2 regularization term is
+   * l2RegWeight * sum(pow(coefficients - priorMeans, 2) :/ priorVariance) / 2.
    *
    * @param coefficients The model coefficients
    * @return The Gaussian regularization term value
@@ -154,7 +156,9 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
   }
 
   /**
-   * Compute the gradient of the Laplace term for the given model coefficients.
+   * Compute the gradient of the Laplace term for the given model coefficients. Gradient is
+   * l1RegWeight :/ sqrt(priorVariance) if coefficients >= priorMeans;
+   * - l1RegWeight :/ sqrt(priorVariance) if coefficients < priorMeans.
    *
    * @param coefficients The model coefficients
    * @return The gradient of the Laplace regularization term
@@ -167,7 +171,8 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
   }
 
   /**
-   * Compute the gradient of the Gaussian regularization term for the given model coefficients.
+   * Compute the gradient of the Gaussian regularization term for the given model coefficients. Gradient is
+   * l2RegWeight * (coefficients - priorMeans) :/ priorVariance.
    *
    * @param coefficients The model coefficients
    * @return The gradient of the Gaussian regularization term
@@ -235,7 +240,8 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
     l2RegWeight * (multiplyVector /:/ priorVariances)
 
   /**
-   * Compute the Hessian diagonal of the Gaussian regularization term for the given model coefficients.
+   * Compute the Hessian diagonal of the Gaussian regularization term for the given model coefficients. Hessian
+   * diagonal is l2RegWeight :/ priorVariance.
    *
    * @return The Hessian diagonal of the Gaussian regularization term
    */

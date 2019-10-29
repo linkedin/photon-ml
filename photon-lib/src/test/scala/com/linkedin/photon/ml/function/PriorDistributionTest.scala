@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. All rights reserved.
+ * Copyright 2019 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -54,7 +54,15 @@ class PriorDistributionTest {
       l2RegWeight = l2Weight
     }
 
-    // Assume that coefficients = 1-vector, prior mean = 2-vector, multiply = 3-vector, prior variance = 4-vector for all expected values below
+    /**
+     * Assume that coefficients = 1-vector, prior mean = 2-vector, multiply = 3-vector, prior variance = 4-vector for all expected values below
+     * l2RegValue = pow(1 - 2, 2) / 4 * l2Weight * DIMENSION / 2 = 0.25 * l2Weight * DIMENSION / 2;
+     * l1RegValue = abs(1 - 2) / 2 * l2Weight * DIMENSION = 0.5 * l2Weight * DIMENSION;
+     * l2RegGradient = (1 - 2) / 4 * l2Weight = (-0.25) * l2Weight;
+     * l1RegGradient = -1 / 2 * l1Weight = (-0.5) * l1Weight;
+     * l2RegHessianDiagonal = 1 / 4 * l2Weight = 0.25 * l2Weight;
+     * l2RegHessianVector = 3 / 4 * l2Weight = 0.75 * l2Weight.
+     */
     val expectedValue = MockObjectiveFunction.VALUE + 0.25 * l2Weight * DIMENSION / 2 + 0.5 * l1Weight * DIMENSION
     val expectedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT +
       (-0.25) * l2Weight +

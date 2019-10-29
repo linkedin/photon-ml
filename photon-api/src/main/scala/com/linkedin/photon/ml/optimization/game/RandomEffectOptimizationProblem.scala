@@ -192,6 +192,11 @@ object RandomEffectOptimizationProblem {
           varianceComputationType)
       }
 
+    configurationBroadcast.unpersist()
+    objectiveFunctionBuilderBroadcast.unpersist()
+    glmConstructorBroadcast.unpersist()
+    normalizationContextBroadcast.unpersist()
+
     new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor)
   }
 }
