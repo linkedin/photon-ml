@@ -34,7 +34,7 @@ import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
  * @param featureShardId The feature shard id
  */
 class RandomEffectModel(
-    protected[ml] val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+    val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
   extends DatumScoringModel
