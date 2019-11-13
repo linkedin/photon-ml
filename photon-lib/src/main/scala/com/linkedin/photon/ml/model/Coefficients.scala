@@ -31,11 +31,6 @@ import com.linkedin.photon.ml.util.{MathUtils, Summarizable, VectorUtils}
 case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
   extends Summarizable {
 
-  // Force means and variances to be of the same type (dense or sparse). This seems reasonable
-  // and greatly reduces the number of combinations to check in unit testing.
-  require(
-    variancesOption.isEmpty || variancesOption.get.getClass == means.getClass,
-    "Coefficients: If variances are provided, must be of the same vector type as means")
   // GAME over if variances are given but don't have the same length as the vector of means
   require(
     variancesOption.isEmpty || variancesOption.get.length == means.length,

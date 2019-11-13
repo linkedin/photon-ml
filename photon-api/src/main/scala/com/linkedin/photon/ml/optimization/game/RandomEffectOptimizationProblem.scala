@@ -184,9 +184,20 @@ object RandomEffectOptimizationProblem {
           projector.originalToProjectedSpaceMap(interceptIndex)
         }
 
+        // Project prior model coefficients
+        val projectedPriorModelOpt = priorModelOpt.map{
+          model =>
+            val oldCoefficients = model.coefficients
+            val newCoefficients = Coefficients(
+              projector.projectForward(oldCoefficients.means),
+              oldCoefficients.variancesOption.map(projector.projectForward))
+
+            model.updateCoefficients(newCoefficients)
+        }
+
         SingleNodeOptimizationProblem(
           configurationBroadcast.value,
-          objectiveFunctionBuilder(priorModelOpt, projectedInterceptOpt),
+          objectiveFunctionBuilder(projectedPriorModelOpt, projectedInterceptOpt),
           glmConstructorBroadcast.value,
           PhotonNonBroadcast(projectedNormalizationContext),
           varianceComputationType)

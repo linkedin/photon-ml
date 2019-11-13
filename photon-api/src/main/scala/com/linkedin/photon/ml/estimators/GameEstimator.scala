@@ -318,10 +318,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         updateSequence
 
-      case (true, Some(_), _) =>
-        throw new InvalidParameterException(
-          "Both incremental training and partial model re-training enabled; these two training options are mutually " +
-            "exclusive")
+      case (true, Some(_), None) =>
+        throw new InvalidParameterException("No initial model is provided when partial retraining is turned on.")
 
       case (false, None, _) =>
         updateSequence
@@ -329,7 +327,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       case (false, Some(_), None) =>
         throw new InvalidParameterException("Partial model re-training is enabled but no initial model provided.")
 
-      case (false, Some(lockedModelCoords), Some(initModel)) =>
+      case (_, Some(lockedModelCoords), Some(initModel)) =>
 
         val newCoordinates = updateSequence.filterNot(lockedModelCoords.contains)
 

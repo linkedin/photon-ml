@@ -337,7 +337,7 @@ object GameTrainingDriver extends GameDriver {
       !ignoreThreshold || baseModelDirOpt.isDefined,
       s"'${ignoreThresholdForNewModels.name}' set but no initial model provided (warm-start not enabled).")
 
-    // Warm-start must be enabled to ignore threshold
+    // If incremental training is enabled, prior model must be defined.
     require(
       !isIncrementalTraining || baseModelDirOpt.isDefined,
       s"'${incrementalTraining.name}' set but no initial model provided.")
@@ -386,7 +386,7 @@ object GameTrainingDriver extends GameDriver {
     validationData.map(_.persist(StorageLevel.DISK_ONLY))
 
     val modelOpt = get(modelInputDirectory).map { modelDir =>
-      Timed("Load model for warm-start training") {
+      Timed("Load model for warm-start training / incremental learning") {
         ModelProcessingUtils.loadGameModelFromHDFS(
           sc,
           modelDir,

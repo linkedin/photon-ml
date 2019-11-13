@@ -162,19 +162,6 @@ object SingleNodeGLMLossFunction {
     val regularizationWeight = configuration.regularizationWeight
 
     (priorModelOpt, isIncrementalTrainingEnabled) match {
-      case (_, false) =>
-        regularizationContext.regularizationType match {
-          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-            new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
-
-              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
-
-              override def interceptOpt: Option[Int] = interceptIndexOpt
-            }
-
-          case _ => new SingleNodeGLMLossFunction(singleLossFunction)
-        }
-
       case (Some(priorModel), true) =>
         val l1Weight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
         val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
@@ -186,9 +173,18 @@ object SingleNodeGLMLossFunction {
           l2RegWeight = l2Weight
         }
 
-      case (None, true) =>
-        throw new IllegalArgumentException(
-          s"Incremental training is enabled, but prior model is missing")
+      case _ =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new SingleNodeGLMLossFunction(singleLossFunction) with L2RegularizationTwiceDiff {
+
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+              override def interceptOpt: Option[Int] = interceptIndexOpt
+            }
+
+          case _ => new SingleNodeGLMLossFunction(singleLossFunction)
+        }
     }
   }
 }

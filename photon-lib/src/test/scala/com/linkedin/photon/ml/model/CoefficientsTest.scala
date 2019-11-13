@@ -27,19 +27,6 @@ class CoefficientsTest {
 
   import CoefficientsTest._
 
-  @DataProvider(name = "invalidVectorProvider")
-  def makeInvalidVectors(): Array[Array[Vector[Double]]] =
-    Array(
-      Array(dense(0,0,3,0), sparse(4)(0,2)(0,3)),
-      Array(sparse(4)(0,2)(0,3), dense(0,0,3,0)),
-      Array(dense(1,2,3), dense(1,2)),
-      Array(sparse(2)(1,3)(0,2), sparse(3)(4,5)(0,2))
-    )
-
-  @Test(dataProvider = "invalidVectorProvider", expectedExceptions = Array(classOf[IllegalArgumentException]))
-  def testPreconditions(v1: Vector[Double], v2: Vector[Double]): Unit =
-    new Coefficients(v1, Some(v2))
-
   @Test
   def testEquals(): Unit = {
 

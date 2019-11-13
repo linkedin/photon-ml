@@ -79,7 +79,7 @@ trait PriorDistribution extends ObjectiveFunction {
    */
   protected def l1RegValue(coefficients: Vector[Double]): Double = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) :/ sqrt(priorVariances)
+    val normalizedCoefficients = (coefficients - priorMeans) *:* sqrt(inversePriorVariances)
 
     l1RegWeight * sum(abs(normalizedCoefficients))
   }
@@ -93,7 +93,7 @@ trait PriorDistribution extends ObjectiveFunction {
    */
   protected def l2RegValue(coefficients: Vector[Double]): Double = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) :/ sqrt(priorVariances)
+    val normalizedCoefficients = (coefficients - priorMeans) *:* sqrt(inversePriorVariances)
 
     l2RegWeight * normalizedCoefficients.dot(normalizedCoefficients) / 2
   }
@@ -167,7 +167,7 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
 
     val coefficientsMask = (coefficients - priorMeans).map(coefficient => if (coefficient > 0) 1.0 else -1.0)
 
-    l1RegWeight * (coefficientsMask :/ sqrt(priorVariances))
+    l1RegWeight * (coefficientsMask *:* sqrt(inversePriorVariances))
   }
 
   /**
@@ -179,7 +179,7 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
    */
   protected def l2RegGradient(coefficients: Vector[Double]): Vector[Double] = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) :/ priorVariances
+    val normalizedCoefficients = (coefficients - priorMeans) *:* inversePriorVariances
 
     l2RegWeight * normalizedCoefficients
   }
@@ -237,7 +237,7 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
    * @return The Hessian diagonal of the Gaussian regularization term, with gradient direction vector
    */
   protected def l2RegHessianVector(multiplyVector: Vector[Double]): Vector[Double] =
-    l2RegWeight * (multiplyVector /:/ priorVariances)
+    l2RegWeight * (multiplyVector *:* inversePriorVariances)
 
   /**
    * Compute the Hessian diagonal of the Gaussian regularization term for the given model coefficients. Hessian
