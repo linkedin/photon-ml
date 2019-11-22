@@ -14,10 +14,9 @@
  */
 package com.linkedin.photon.ml.data.avro
 
-import breeze.stats._
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkException
-import org.apache.spark.ml.linalg.{SparseVector, Vectors}
+import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.testng.Assert._
@@ -26,7 +25,7 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.index.{IndexMap, PalDBIndexMapLoader}
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
-import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
+import com.linkedin.photon.ml.test.SparkTestUtils
 
 /**
  * Unit tests for AvroDataReader
@@ -57,6 +56,24 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     val (df, _) = dr.readMerged(TRAIN_INPUT_PATH.toString, FEATURE_SHARD_CONFIGS_MAP, NUM_PARTITIONS)
 
     verifyDataFrame(df, expectedRows = 34810)
+  }
+
+  /**
+   * Test reading a [[DataFrame]].
+   */
+  @Test(dependsOnMethods = Array("testRead"))
+  def testRepartition(): Unit = sparkTest("testRepartition") {
+
+    val dr = new AvroDataReader()
+
+    val (df1, indexMaps) = dr.readMerged(TRAIN_INPUT_PATH.toString, FEATURE_SHARD_CONFIGS_MAP, 1)
+    val numPartitions = df1.rdd.getNumPartitions
+    val expectedNumPartitions = numPartitions * 2
+    val (df2, _) = dr.readMerged(TRAIN_INPUT_PATH.toString, FEATURE_SHARD_CONFIGS_MAP, expectedNumPartitions)
+    val df3 = dr.readMerged(TRAIN_INPUT_PATH.toString, indexMaps, FEATURE_SHARD_CONFIGS_MAP, expectedNumPartitions)
+
+    assertEquals(df2.rdd.getNumPartitions, expectedNumPartitions)
+    assertEquals(df3.rdd.getNumPartitions, expectedNumPartitions)
   }
 
   /**
@@ -190,28 +207,8 @@ object AvroDataReaderIntegTest {
 
     // Columns have the expected number of features and summary stats look right
     assertTrue(df.columns.contains("shard1"))
-    val vector1 = df.select(col("shard1")).take(1)(0).getAs[SparseVector](0)
-    assertEquals(vector1.numActives, 61)
-    assertEquals(Vectors.norm(vector1, 2), 3.2298996752519407, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    val (mu1: Double, _, var1: Double) = DescriptiveStats.meanAndCov(vector1.values, vector1.values)
-    assertEquals(mu1, 0.044020727910406766, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(var1, 0.17190074364268512, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-
     assertTrue(df.columns.contains("shard2"))
-    val vector2 = df.select(col("shard2")).take(1)(0).getAs[SparseVector](0)
-    assertEquals(vector2.numActives, 31)
-    assertEquals(Vectors.norm(vector2, 2), 2.509607963949448, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    val (mu2: Double, _, var2: Double) = DescriptiveStats.meanAndCov(vector2.values, vector2.values)
-    assertEquals(mu2, 0.05196838235602745, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(var2, 0.20714700123375754, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-
     assertTrue(df.columns.contains("shard3"))
-    val vector3 = df.select(col("shard3")).take(1)(0).getAs[SparseVector](0)
-    assertEquals(vector3.numActives, 31)
-    assertEquals(Vectors.norm(vector3, 2), 2.265859611598675, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    val (mu3: Double, _, var3: Double) = DescriptiveStats.meanAndCov(vector3.values, vector3.values)
-    assertEquals(mu3, 0.06691111449993427, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(var3, 0.16651099216405915, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
 
     // Relationship between columns is the same across the entire dataframe
     df.foreach { row =>
