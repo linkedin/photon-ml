@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{DenseMatrix, Vector}
+import breeze.linalg.{DenseMatrix, DenseVector, SparseVector, Vector, diag}
 import scala.math.pow
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -140,7 +140,7 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
 
     val (baseValue, baseGradient) = super.calculate(input, coefficients, normalizationContext)
     val valueWithRegularization = baseValue + l2RegValue(convertToVector(coefficients))
-    val gradientWithRegularization = baseGradient + l2RegGradient(convertToVector(coefficients))
+    val gradientWithRegularization = baseGradient +:+ l2RegGradient(convertToVector(coefficients))
 
     (valueWithRegularization, gradientWithRegularization)
   }
@@ -151,7 +151,19 @@ trait L2RegularizationDiff extends DiffFunction with L2Regularization {
    * @param coefficients The model coefficients
    * @return The gradient of the L2 regularization term
    */
-  protected def l2RegGradient(coefficients: Vector[Double]): Vector[Double] = coefficients * l2RegWeight
+  protected def l2RegGradient(coefficients: Vector[Double]): Vector[Double] = {
+
+    val l2Gradient = coefficients * l2RegWeight
+
+    interceptOpt match {
+      case Some(interceptIndex) =>
+        l2Gradient -= SparseVector[Double](coefficients.length)((interceptIndex, l2Gradient(interceptIndex)))
+
+      case None =>
+    }
+
+    l2Gradient
+  }
 }
 
 /**
@@ -174,7 +186,7 @@ trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationD
       coefficients: Coefficients,
       multiplyVector: Coefficients,
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
-    super.hessianVector(input, coefficients, multiplyVector, normalizationContext) +
+    super.hessianVector(input, coefficients, multiplyVector, normalizationContext) +:+
       l2RegHessianVector(convertToVector(multiplyVector))
 
   /**
@@ -186,7 +198,7 @@ trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationD
    * @return The computed diagonal of the Hessian matrix
    */
   abstract override protected[ml] def hessianDiagonal(input: Data, coefficients: Coefficients): Vector[Double] =
-    super.hessianDiagonal(input, coefficients) + l2RegHessianDiagonal
+    super.hessianDiagonal(input, coefficients) +:+ l2RegHessianDiagonal(convertToVector(coefficients).length)
 
   /**
    * Compute the Hessian matrix for the function with L2 regularization over the given data for the given model
@@ -196,25 +208,54 @@ trait L2RegularizationTwiceDiff extends TwiceDiffFunction with L2RegularizationD
    * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
    * @return The computed Hessian matrix
    */
-  abstract override protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double] = {
-
-    val hessianMatrix = super.hessianMatrix(input, coefficients)
-
-    hessianMatrix + l2RegHessianDiagonal * DenseMatrix.eye[Double](hessianMatrix.rows)
-  }
+  abstract override protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double] =
+    super.hessianMatrix(input, coefficients) +:+ l2RegHessianMatrix(convertToVector(coefficients).length)
 
   /**
    * Compute the Hessian vector of the L2 regularization term for the given Hessian multiplication vector.
    *
    * @param multiplyVector The Hessian multiplication vector
-   * @return The Heassian vector of the L2 regularization term
+   * @return The Hessian vector of the L2 regularization term
    */
-  protected def l2RegHessianVector(multiplyVector: Vector[Double]): Vector[Double] = multiplyVector * l2RegWeight
+  protected def l2RegHessianVector(multiplyVector: Vector[Double]): Vector[Double] = {
+
+    val l2HessianVector = multiplyVector * l2RegWeight
+
+    interceptOpt match {
+      case Some(interceptIndex) =>
+        l2HessianVector -= SparseVector[Double](multiplyVector.length)((interceptIndex, l2HessianVector(interceptIndex)))
+
+      case None =>
+    }
+
+    l2HessianVector
+  }
 
   /**
    * Compute the Hessian diagonal of the L2 regularization term.
    *
+   * @param dimension The dimension of the Hessian matrix (only one number since Hessian matrix is square)
    * @return The Hessian diagonal of the L2 regularization term
    */
-  protected def l2RegHessianDiagonal: Double = l2RegWeight
+  protected def l2RegHessianDiagonal(dimension: Int): DenseVector[Double] = {
+
+    val l2HessianDiagonal = DenseVector.fill(dimension, l2RegWeight)
+
+    interceptOpt match {
+      case Some(interceptIndex) =>
+        l2HessianDiagonal -= SparseVector[Double](dimension)((interceptIndex, l2RegWeight))
+
+      case None =>
+    }
+
+    l2HessianDiagonal
+  }
+
+  /**
+   * Compute the Hessian matrix of the L2 regularization term.
+   *
+   * @param dimension The dimension of the Hessian matrix (only one number since Hessian matrix is square)
+   * @return The Hessian matrix of the L2 regularization term
+   */
+  protected def l2RegHessianMatrix(dimension: Int): DenseMatrix[Double] = diag(l2RegHessianDiagonal(dimension))
 }
