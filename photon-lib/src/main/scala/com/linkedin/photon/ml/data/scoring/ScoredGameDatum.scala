@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.data.scoring
 
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.util.MathUtils.isAlmostZero
 
@@ -39,16 +40,9 @@ case class ScoredGameDatum(
     response: Double = 1.0,
     offset: Double = 0.0,
     weight: Double = 1.0,
-    score: Double = ScoredGameDatum.ZERO_SCORE,
+    score: Double = MathConst.DEFAULT_SCORE,
     idTagToValueMap: Map[String, String] = Map())
   extends Serializable {
-
-  /**
-   * Get a copy of the current instance with a score of [[ScoredGameDatum.ZERO_SCORE]]
-   *
-   * @return Copy of the current scored datum instance with zero score
-   */
-  def getZeroScoreDatum: ScoredGameDatum = this.copy(score = ScoredGameDatum.ZERO_SCORE)
 
   /**
    * Compare two [[ScoredGameDatum]]s objects.
@@ -78,7 +72,6 @@ case class ScoredGameDatum(
 }
 
 object ScoredGameDatum {
-  val ZERO_SCORE = 0.0
 
   /**
    * A factory method to create [[ScoredGameDatum]] from [[LabeledPoint]] objects.

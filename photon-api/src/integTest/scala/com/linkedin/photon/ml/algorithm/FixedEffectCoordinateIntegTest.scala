@@ -62,7 +62,7 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
       .join(newScoreWithInitial.scoresRdd)
       .values
       .foreach { case (score1, score2) =>
-        assertEquals(score1, score2, MathConst.EPSILON)
+        assertEquals(score1, score2, EPSILON)
       }
   }
 
@@ -85,6 +85,7 @@ class FixedEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
 object FixedEffectCoordinateIntegTest {
 
+  private val EPSILON = 1E-11
   private val FEATURE_SHARD_ID = "shard1"
   private val NUM_TRAINING_SAMPLES = 1000
   private val DIMENSIONALITY = 10

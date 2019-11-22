@@ -124,23 +124,30 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    * @param other Some other object
    * @return True if the both [[DataScores]] objects have identical scores for each unique ID, false otherwise
    */
-  override def equals(other: Any): Boolean =
-    other match {
-      case that: DataScores[T, D] =>
-        canEqual(that) &&
-          this
-            .scoresRdd
-            .fullOuterJoin(that.scoresRdd)
-            .mapPartitions(iterator =>
-              Iterator.single(iterator.forall {
-                case (_, (Some(thisScore), Some(thatScore))) => thisScore.equals(thatScore)
-                case _ => false
-              }))
-            .filter(!_)
-            .count() == 0
+  override def equals(other: Any): Boolean = other match {
 
-      case _ => false
-    }
+    case that: DataScores[T, D] =>
+
+      val canEqual = this.canEqual(that)
+      lazy val areEqual = this
+        .scoresRdd
+        .fullOuterJoin(that.scoresRdd)
+        .mapPartitions { iterator =>
+
+          val areScoresEqual = iterator.forall {
+            case (_, (Some(thisScore), Some(thatScore))) => thisScore.equals(thatScore)
+            case _ => false
+          }
+
+          Iterator.single(areScoresEqual)
+        }
+        .fold(true)(_ && _)
+
+      canEqual && areEqual
+
+    case _ =>
+      false
+  }
 
   /**
    * Returns a hash code value for the object.

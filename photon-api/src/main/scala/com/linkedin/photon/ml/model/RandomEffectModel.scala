@@ -190,22 +190,27 @@ class RandomEffectModel(
   override def equals(that: Any): Boolean = that match {
 
     case other: RandomEffectModel =>
-      val sameMetaData = this.randomEffectType == other.randomEffectType && this.featureShardId == other.featureShardId
 
-      lazy val sameCoefficientsRDD = this
+      val areTypesEqual = this.randomEffectType == other.randomEffectType
+      val areShardsEqual = this.featureShardId == other.featureShardId
+      lazy val areAllModelsEqual = this
         .modelsRDD
         .fullOuterJoin(other.modelsRDD)
         .mapPartitions { iterator =>
-          Iterator.single(iterator.forall { case (_, (modelOpt1, modelOpt2)) =>
-            modelOpt1.isDefined && modelOpt2.isDefined && modelOpt1.get.equals(modelOpt2.get)
-          })
+
+          val areModelsEqual = iterator.forall {
+            case (_, (Some(model1), Some(model2))) => model1.equals(model2)
+            case _ => false
+          }
+
+          Iterator.single(areModelsEqual)
         }
-        .filter(!_)
-        .count() == 0
+        .fold(true)(_ && _)
 
-      sameMetaData && sameCoefficientsRDD
+      areTypesEqual && areShardsEqual && areAllModelsEqual
 
-    case _ => false
+    case _ =>
+      false
   }
 
   /**
