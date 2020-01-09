@@ -114,7 +114,8 @@ object ModelTraining extends Logging {
     val optimizerConfig = OptimizerConfig(optimizerType, maxNumIter, tolerance, constraintMap)
     val optimizationConfig = FixedEffectOptimizationConfiguration(optimizerConfig, regularizationContext)
     // Initialize the broadcast normalization context
-    val broadcastNormalizationContext = PhotonBroadcast(trainingData.sparkContext.broadcast(normalizationContext))
+    val broadcastNormalizationContext = trainingData.sparkContext.broadcast(normalizationContext)
+    val wrappedBroadcastNormalizationContext = PhotonBroadcast(broadcastNormalizationContext)
 
     // Construct the generalized linear optimization problem
     val (glmConstructor, objectiveFunction) = taskType match {
@@ -160,7 +161,7 @@ object ModelTraining extends Logging {
       objectiveFunction,
       samplerOption = None,
       glmConstructor,
-      broadcastNormalizationContext,
+      wrappedBroadcastNormalizationContext,
       VarianceComputationType.NONE)
 
     // Sort the regularization weights from high to low, which would potentially speed up the overall convergence time

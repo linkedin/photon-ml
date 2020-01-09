@@ -155,12 +155,14 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    *       regularization weight.
    *
    * @param objectiveFunction The objective function to be optimized
+   * @param initialCoefficients The initial coefficients from which to begin optimization
    * @param data The training data
    * @return Optimized model coefficients and corresponding objective function's value
    */
-  protected[ml] def optimize
-      (objectiveFunction: Function, initialCoefficients: Vector[Double])
-      (data: objectiveFunction.Data): (Vector[Double], Double) = {
+  protected[ml] def optimize(
+      objectiveFunction: Function,
+      initialCoefficients: Vector[Double])(
+      data: objectiveFunction.Data): (Vector[Double], Double) = {
 
     val normalizedInitialCoefficients = normalizationContext.value.modelToTransformedSpace(initialCoefficients)
 
@@ -204,9 +206,11 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * @param data The training data
    * @return The current optimizer state
    */
-  protected def calculateState
-    (objectiveFunction: Function, coefficients: Vector[Double], iter: Int = 0)
-    (data: objectiveFunction.Data): OptimizerState
+  protected def calculateState(
+      objectiveFunction: Function,
+      coefficients: Vector[Double],
+      iter: Int = 0)(
+      data: objectiveFunction.Data): OptimizerState
 
   /**
    * Clear the optimizer (e.g. the history of LBFGS; the trust region size of TRON; etc.).
@@ -228,11 +232,13 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
    * @param data The training data
    * @return The updated state of the optimizer
    */
-  protected def runOneIteration
-      (objectiveFunction: Function, currState: OptimizerState)
-      (data: objectiveFunction.Data): OptimizerState
+  protected def runOneIteration(
+      objectiveFunction: Function,
+      currState: OptimizerState)(
+      data: objectiveFunction.Data): OptimizerState
 }
 
 object Optimizer {
-  val DEFAULT_CONSTRAINT_MAP = None
+
+  val DEFAULT_CONSTRAINT_MAP: Option[Map[Int, (Double, Double)]] = None
 }

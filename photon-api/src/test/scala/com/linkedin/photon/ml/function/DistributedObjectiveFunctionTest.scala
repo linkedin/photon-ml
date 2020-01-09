@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.function
 
+import breeze.linalg.Vector
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -46,7 +47,7 @@ object DistributedObjectiveFunctionTest {
 
     override protected[ml] def value(
         input: Data,
-        coefficients: Coefficients,
+        coefficients: Vector[Double],
         normalizationContext: BroadcastWrapper[NormalizationContext]): Double = 0D
   }
 }

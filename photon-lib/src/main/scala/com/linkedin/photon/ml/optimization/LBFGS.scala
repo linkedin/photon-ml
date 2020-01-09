@@ -94,10 +94,8 @@ class LBFGS(
     val breezeDiffFunction = new BreezeDiffFunction[Vector[Double]]() {
         // Calculating the gradient and value of the objective function
         def calculate(coefficients: Vector[Double]): (Double, Vector[Double]) = {
-          val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
-          val result = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
+          val result = objectiveFunction.calculate(data, coefficients, normalizationContext)
 
-          objectiveFunction.cleanupCoefficients(convertedCoefficients)
           result
         }
       }
@@ -113,14 +111,14 @@ class LBFGS(
    * @param data The training data
    * @return The current optimizer state
    */
-  protected def calculateState
-    (objectiveFunction: DiffFunction, coefficients: Vector[Double], iter: Int = 0)
-    (data: objectiveFunction.Data) : OptimizerState = {
+  protected def calculateState(
+      objectiveFunction: DiffFunction,
+      coefficients: Vector[Double],
+      iter: Int = 0)(
+      data: objectiveFunction.Data) : OptimizerState = {
 
-    val convertedCoefficients = objectiveFunction.convertFromVector(coefficients)
-    val (value, gradient) = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
+    val (value, gradient) = objectiveFunction.calculate(data, coefficients, normalizationContext)
 
-    objectiveFunction.cleanupCoefficients(convertedCoefficients)
     OptimizerState(coefficients, value, gradient, iter)
   }
 
@@ -141,12 +139,14 @@ class LBFGS(
    * @param data The training data
    * @return The updated state of the optimizer
    */
-  protected def runOneIteration
-    (objectiveFunction: DiffFunction, currState: OptimizerState)
-    (data: objectiveFunction.Data): OptimizerState = breezeOptimization.next(currState)
+  protected def runOneIteration(
+      objectiveFunction: DiffFunction,
+      currState: OptimizerState)(
+      data: objectiveFunction.Data): OptimizerState = breezeOptimization.next(currState)
 }
 
 object LBFGS {
+
   // TODO: Default tolerance and max # iterations should be in GameParams or GLMOptimizationConfiguration defaults
   val DEFAULT_MAX_ITER = 100
   val DEFAULT_NUM_CORRECTIONS = 10

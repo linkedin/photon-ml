@@ -91,6 +91,30 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       normalizationContext)
 
   /**
+   * Compute the Hessian matrix over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed Hessian matrix
+   */
+  override protected[ml] def hessianMatrix(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): DenseMatrix[Double] =
+    HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction)
+
+  /**
+   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed diagonal of the Hessian matrix
+   */
+  override protected[ml] def hessianDiagonal(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): Vector[Double] =
+    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction)
+
+  /**
    * Compute the Hessian of the function over the given data for the given model coefficients.
    *
    * @param input The given data over which to compute the Hessian
@@ -111,30 +135,6 @@ protected[ml] class SingleNodeGLMLossFunction private (singlePointLossFunction: 
       multiplyVector,
       singlePointLossFunction,
       normalizationContext)
-
-  /**
-   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
-   *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed diagonal of the Hessian matrix
-   */
-  override protected[ml] def hessianDiagonal(
-      input: Iterable[LabeledPoint],
-      coefficients: Vector[Double]): Vector[Double] =
-    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction)
-
-  /**
-   * Compute the Hessian matrix over the given data for the given model coefficients.
-   *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed Hessian matrix
-   */
-  override protected[ml] def hessianMatrix(
-      input: Iterable[LabeledPoint],
-      coefficients: Vector[Double]): DenseMatrix[Double] =
-    HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction)
 }
 
 object SingleNodeGLMLossFunction {

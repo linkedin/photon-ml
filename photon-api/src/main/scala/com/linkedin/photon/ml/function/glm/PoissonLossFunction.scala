@@ -29,13 +29,14 @@ package com.linkedin.photon.ml.function.glm
  */
 @SerialVersionUID(1L)
 object PoissonLossFunction extends PointwiseLossFunction {
+
   /**
    * l(z, y) = exp(z) - y * z
    * dl/dz   = exp(z) - y
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 1st derivative
+   * @return The value and the 1st derivative with respect to z
    */
   override def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
     val prediction = math.exp(margin)
@@ -47,7 +48,7 @@ object PoissonLossFunction extends PointwiseLossFunction {
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 2st derivative with respect to z
+   * @return The 2nd derivative with respect to z
    */
   override def DzzLoss(margin: Double, label: Double): Double = math.exp(margin)
 }

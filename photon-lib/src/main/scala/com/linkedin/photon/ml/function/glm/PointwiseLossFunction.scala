@@ -15,31 +15,34 @@
 package com.linkedin.photon.ml.function.glm
 
 /**
- * The function to calculate l(z, y) with:
+ * The l(z, y) function for a generalized linear model, where:
  *
- *    z = theta^T^x + offset
- *
- * for generalized linear model loss functions, where:
- *
+ *  - z = theta^T^x + offset
  *  - theta is the coefficient vector
  *  - x is the feature vector
- *  - z is the margin
  *  - y is the label
  *
- * It is the negative of the log-likelihood for one data point, except for an irrelevant constant term.
+ * l(z, y) is the negative of the log-likelihood (discounting the irrelevant constant term).
  *
- * For example, for linear regression, l(z, y) = 1/2 (z - y)^2^.
+ * For example:
+ *
+ *    l(z, y) = 1/2 (z - y)^2^.
+ *
+ * for linear regression.
+ *
+ * Supports computing the value, first derivative, and second derivative at a single point.
  *
  * @note Function names follow the differentiation notation found here:
  *       [[http://www.wikiwand.com/en/Notation_for_differentiation#/Euler.27s_notation]]
  */
 trait PointwiseLossFunction extends Serializable {
+
   /**
    * Calculate the loss function value and 1st derivative with respect to z.
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 1st derivative
+   * @return The value and the 1st derivative with respect to z
    */
   def lossAndDzLoss(margin: Double, label: Double): (Double, Double)
 
@@ -48,7 +51,7 @@ trait PointwiseLossFunction extends Serializable {
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 2st derivative with respect to z
+   * @return The 2nd derivative with respect to z
    */
   def DzzLoss(margin: Double, label: Double): Double
 }

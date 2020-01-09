@@ -484,24 +484,18 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           0
         }
       }
-      val broadcastedInitParam = sc.broadcast(initParam)
-      val computed = objective.gradient(trainingData, broadcastedInitParam, normalizationContextBroadcast)
+      val computed = objective.gradient(trainingData, initParam, normalizationContextBroadcast)
 
       // Element-wise numerical differentiation to get the gradient
       for (idx <- 0 until PROBLEM_DIMENSION) {
         val before = initParam.copy
         before(idx) -= DERIVATIVE_DELTA
-        val broadcastedBefore = sc.broadcast(before)
 
         val after = initParam.copy
         after(idx) += DERIVATIVE_DELTA
-        val broadcastedAfter = sc.broadcast(after)
 
-        val objBefore = objective.value(trainingData, broadcastedBefore, normalizationContextBroadcast)
-        val objAfter = objective.value(trainingData, broadcastedAfter, normalizationContextBroadcast)
-
-        broadcastedBefore.unpersist()
-        broadcastedAfter.unpersist()
+        val objBefore = objective.value(trainingData, before, normalizationContextBroadcast)
+        val objAfter = objective.value(trainingData, after, normalizationContextBroadcast)
 
         checkDerivativeError(
           "Checking Gradient",
@@ -511,11 +505,9 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           computed(idx),
           GRADIENT_TOLERANCE)
       }
-
-      broadcastedInitParam.unpersist()
     }
 
-    normalizationContextBroadcast.unpersist()
+    normalizationContextBroadcast.bv.unpersist()
   }
 
   /**
@@ -542,7 +534,6 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           0
         }
       }
-      val broadcastedInitParam = sc.broadcast(initParam)
 
       // Loop over basis vectors. This will give us H*e_i = H(:,i) (so one column of H at a time)
       for (basis <- 0 until PROBLEM_DIMENSION) {
@@ -551,28 +542,22 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
           Array[Double](1.0),
           1,
           PROBLEM_DIMENSION)
-        val broadcastedBasis = sc.broadcast(basisVector)
         val hessianVector = objective.hessianVector(
           trainingData,
-          broadcastedInitParam,
-          broadcastedBasis,
+          initParam,
+          basisVector,
           normalizationContextBroadcast)
 
         // Element-wise numerical differentiation to get the Hessian
         for (idx <- 0 until PROBLEM_DIMENSION) {
           val before = initParam.copy
           before(idx) -= DERIVATIVE_DELTA
-          val broadcastedBefore = sc.broadcast(before)
 
           val after = initParam.copy
           after(idx) += DERIVATIVE_DELTA
-          val broadcastedAfter = sc.broadcast(after)
 
-          val gradBefore = objective.gradient(trainingData, broadcastedBefore, normalizationContextBroadcast)
-          val gradAfter = objective.gradient(trainingData, broadcastedAfter, normalizationContextBroadcast)
-
-          broadcastedBefore.unpersist()
-          broadcastedAfter.unpersist()
+          val gradBefore = objective.gradient(trainingData, before, normalizationContextBroadcast)
+          val gradAfter = objective.gradient(trainingData, after, normalizationContextBroadcast)
 
           checkDerivativeError(
             "Checking Hessian",
@@ -583,14 +568,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
             hessianVector(idx),
             HESSIAN_TOLERANCE)
         }
-
-        broadcastedBasis.unpersist()
       }
-
-      broadcastedInitParam.unpersist()
     }
 
-    normalizationContextBroadcast.unpersist()
+    normalizationContextBroadcast.bv.unpersist()
   }
 }
 

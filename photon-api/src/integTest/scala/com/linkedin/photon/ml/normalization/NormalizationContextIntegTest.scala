@@ -288,7 +288,7 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
     }
 
     // Train the original data with a loss function binding normalization
-    val zero = Vector.zeros[Double](objectiveFunction.domainDimension(heartDataRDD))
+    val zero = Vector.zeros[Double](heartDataRDD.first.features.length)
     val (model1, objective1) = optimizerNorm.optimize(objectiveFunction, zero)(heartDataRDD)
     // Train the transformed data with a normal loss function
     val (model2, objective2) = optimizerNoNorm.optimize(objectiveFunction, zero)(transformedRDD)

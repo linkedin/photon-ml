@@ -83,17 +83,15 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    */
   override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
 
-    val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
-
     val result = (objectiveFunction, varianceComputation) match {
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
         Some(
           twiceDiffFunc
-            .hessianDiagonal(input, broadcastCoefficients)
+            .hessianDiagonal(input, coefficients)
             .map(v => 1.0 / math.max(v, MathConst.EPSILON)))
 
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
-        val hessianMatrix = twiceDiffFunc.hessianMatrix(input, broadcastCoefficients)
+        val hessianMatrix = twiceDiffFunc.hessianMatrix(input, coefficients)
         val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
 
         Some(diag(invHessianMatrix))
@@ -101,8 +99,6 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
       case _ =>
         None
     }
-
-    broadcastCoefficients.unpersist()
 
     result
   }

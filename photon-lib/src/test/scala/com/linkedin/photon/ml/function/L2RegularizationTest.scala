@@ -114,43 +114,37 @@ object L2RegularizationTest {
     import MockObjectiveFunction._
 
     type Data = Unit
-    type Coefficients = Vector[Double]
-
-    override protected[ml] def domainDimension(input: Unit): Int = 0
 
     override protected[ml] def value(
         input: Data,
-        coefficients: Coefficients,
-        normalizationContext: BroadcastWrapper[NormalizationContext]): Double = VALUE
+        coefficients: Vector[Double],
+        normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
+      VALUE
 
     override protected[ml] def gradient(
         input: Data,
-        coefficients: Coefficients,
+        coefficients: Vector[Double],
         normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
       DenseVector.fill(coefficients.length)(GRADIENT)
 
     override protected[ml] def calculate(
         input: Data,
-        coefficients: Coefficients,
+        coefficients: Vector[Double],
         normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) =
       (VALUE, DenseVector.fill(coefficients.length)(GRADIENT))
 
     override protected[ml] def hessianVector(
         input: Data,
-        coefficients: Coefficients,
-        multiplyVector: Coefficients,
+        coefficients: Vector[Double],
+        multiplyVector: Vector[Double],
         normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
       DenseVector.fill(coefficients.length)(HESSIAN_VECTOR)
 
-    override protected[ml] def hessianDiagonal(input: Data, coefficients: Coefficients): Vector[Double] =
+    override protected[ml] def hessianDiagonal(input: Data, coefficients: Vector[Double]): Vector[Double] =
       DenseVector.fill(coefficients.length)(HESSIAN_DIAGONAL)
 
-    override protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double] =
+    override protected[ml] def hessianMatrix(input: Data, coefficients: Vector[Double]): DenseMatrix[Double] =
       diag(DenseVector.fill(coefficients.length)(HESSIAN_MATRIX))
-
-    override protected[ml] def convertToVector(coefficients: Coefficients): Vector[Double] = coefficients
-
-    override protected[ml] def convertFromVector(coefficients: Vector[Double]): Coefficients = coefficients
   }
 
   object MockObjectiveFunction {

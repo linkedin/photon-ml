@@ -25,7 +25,6 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
 abstract class ObjectiveFunction {
 
   type Data
-  type Coefficients
 
   /**
    * Compute the value of the function over the given data for the given model coefficients.
@@ -37,38 +36,6 @@ abstract class ObjectiveFunction {
    */
   protected[ml] def value(
       input: Data,
-      coefficients: Coefficients,
+      coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double
-
-  /**
-   * Compute the size of the domain for the given input data (i.e. the number of features, including the intercept if
-   * there is one).
-   *
-   * @param input The given data for which to compute the domain dimension
-   * @return The domain dimension
-   */
-  protected[ml] def domainDimension(input: Data): Int
-
-  /**
-   * Convert a coefficients Vector to an object of the type used by the function.
-   *
-   * @param coefficients A coefficients Vector to convert
-   * @return The given coefficients Vector as an object of the type expected by the function
-   */
-  protected[ml] def convertFromVector(coefficients: Vector[Double]): Coefficients
-
-  /**
-   * Convert a coefficients object of the type used by the function to a Vector.
-   *
-   * @param coefficients A coefficients object to convert
-   * @return The given coefficients object as a Vector
-   */
-  protected[ml] def convertToVector(coefficients: Coefficients): Vector[Double]
-
-  /**
-   * Cleanup the coefficients object created by a call to convertFromVector, if necessary.
-   *
-   * @param coefficients A coefficients object to cleanup
-   */
-  protected[ml] def cleanupCoefficients(coefficients: Coefficients): Unit = {}
 }

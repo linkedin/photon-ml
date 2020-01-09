@@ -25,22 +25,13 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
 trait TwiceDiffFunction extends DiffFunction {
 
   /**
-   * Compute (Hessian * d_i) over the given data for the given model coefficients.
+   * Compute the Hessian matrix over the given data for the given model coefficients.
    *
-   * @note For more information, see [[http://www.csie.ntu.edu.tw/%7Ecjlin/papers/logistic.pdf]]
-   *
-   * @param input The given data over which to compute the Hessian
-   * @param coefficients The model coefficients used to compute the function's hessian, multiplied by a given vector
-   * @param multiplyVector The given vector to be dot-multiplied with the Hessian. For example, in conjugate
-   *                       gradient method this would correspond to the gradient multiplyVector.
-   * @param normalizationContext The normalization context
-   * @return The computed Hessian multiplied by the given multiplyVector
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed Hessian matrix
    */
-  protected[ml] def hessianVector(
-    input: Data,
-    coefficients: Coefficients,
-    multiplyVector: Coefficients,
-    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
+  protected[ml] def hessianMatrix(input: Data, coefficients: Vector[Double]): DenseMatrix[Double]
 
   /**
    * Compute the diagonal of the Hessian matrix over the given data for the given model coefficients.
@@ -49,14 +40,26 @@ trait TwiceDiffFunction extends DiffFunction {
    * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
    * @return The computed diagonal of the Hessian matrix
    */
-  protected[ml] def hessianDiagonal(input: Data, coefficients: Coefficients): Vector[Double]
+  protected[ml] def hessianDiagonal(input: Data, coefficients: Vector[Double]): Vector[Double]
 
   /**
-   * Compute the Hessian matrix over the given data for the given model coefficients.
+   * Compute H * d (where H is the Hessian matrix and d is some vector) over the given data for the given model
+   * coefficients. This is a special helper function which computes H * d more efficiently than computing the entire
+   * Hessian matrix and then multiplying it with d.
    *
-   * @param input The given data over which to compute the diagonal of the Hessian matrix
-   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
-   * @return The computed Hessian matrix
+   * @note For more information, see equation 7 and algorithm 2 of
+   *       [[http://www.csie.ntu.edu.tw/%7Ecjlin/papers/logistic.pdf]].
+   *
+   * @param input The given data over which to compute the Hessian matrix
+   * @param coefficients The model coefficients used to compute the Hessian matrix
+   * @param multiplyVector The vector d to be dot-multiplied with the Hessian matrix (e.g. for a conjugate
+   *                       gradient method this would correspond to the Newton gradient direction)
+   * @param normalizationContext The normalization context
+   * @return The vector d multiplied by the Hessian matrix
    */
-  protected[ml] def hessianMatrix(input: Data, coefficients: Coefficients): DenseMatrix[Double]
+  protected[ml] def hessianVector(
+      input: Data,
+      coefficients: Vector[Double],
+      multiplyVector: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double]
 }

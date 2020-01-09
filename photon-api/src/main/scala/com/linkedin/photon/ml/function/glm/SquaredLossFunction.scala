@@ -30,6 +30,7 @@ package com.linkedin.photon.ml.function.glm
  */
 @SerialVersionUID(1L)
 object SquaredLossFunction extends PointwiseLossFunction {
+
   /**
    * l(z, y) = 1/2 (z - y)^2^
    *
@@ -37,7 +38,7 @@ object SquaredLossFunction extends PointwiseLossFunction {
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 1st derivative
+   * @return The value and 1st derivative with respect to z
    */
   override def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = {
     val delta = margin - label
@@ -49,7 +50,7 @@ object SquaredLossFunction extends PointwiseLossFunction {
    *
    * @param margin The margin, i.e. z in l(z, y)
    * @param label The label, i.e. y in l(z, y)
-   * @return The value and the 2st derivative with respect to z
+   * @return The 2nd derivative with respect to z
    */
-  override def DzzLoss(margin: Double, label: Double): Double = 1d
+  override def DzzLoss(margin: Double, label: Double): Double = 1D
 }

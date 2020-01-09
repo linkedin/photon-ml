@@ -71,7 +71,7 @@ class OptimizerIntegTest extends SparkTestUtils with Logging {
       val pt = new LabeledPoint(label = 1, features, offset = 0, weight = 1)
       val data = sc.parallelize(Seq(pt))
       val objective: IntegTestObjective = new IntegTestObjective(sc, treeAggregateDepth = 1)
-      val zero = Vector.zeros[Double](objective.domainDimension(data))
+      val zero = Vector.zeros[Double](PROBLEM_DIMENSION)
       optimizer.optimize(objective, zero)(data)
       easyOptimizationStatesChecks(optimizer.getStateTracker)
 

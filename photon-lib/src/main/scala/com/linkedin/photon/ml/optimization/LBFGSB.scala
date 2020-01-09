@@ -72,9 +72,9 @@ class LBFGSB (
    */
   override def init(objectiveFunction: DiffFunction, initState: OptimizerState)(data: objectiveFunction.Data): Unit = {
     val breezeDiffFunction: BreezeDiffFunction[DenseVector[Double]] = new BreezeDiffFunction[DenseVector[Double]] {
-      override def calculate(x: DenseVector[Double]): (Double, DenseVector[Double]) = {
-        var convertedCoefficients: objectiveFunction.Coefficients = objectiveFunction.convertFromVector(x)
-        var result = objectiveFunction.calculate(data, convertedCoefficients, normalizationContext)
+      override def calculate(coefficients: DenseVector[Double]): (Double, DenseVector[Double]) = {
+        val result = objectiveFunction.calculate(data, coefficients, normalizationContext)
+
         (result._1, result._2.toDenseVector)
       }
     }
