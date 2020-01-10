@@ -184,7 +184,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
     val partitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
 
     val projectorsMap = RandomEffectDataset
-      .generateLinearSubspaceProjectors(keyedGameDatasetRDD, partitioner)
+      .generateLinearSubspaceProjectors(keyedGameDatasetRDD, partitioner, None)
       .collect
       .toMap
 
@@ -381,6 +381,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       NUM_PARTITIONS)
     val randomEffectDataset = RandomEffectDataset(
       dataRDD,
+      None,
       randomEffectDataConfig,
       rePartitioner,
       None,
@@ -440,6 +441,7 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       Some(activeDataLowerBound))
     val randomEffectDataset = RandomEffectDataset(
       dataRDD,
+      None,
       randomEffectDataConfig,
       rePartitioner,
       None,

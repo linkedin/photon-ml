@@ -546,6 +546,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome {type D <: Dataset[D]}] = {
 
     val coordinateDataConfigs = getRequiredParam(coordinateDataConfigurations)
+    val isIncrementalTraining = getOrDefault(incrementalTraining)
 
     coordinateDataConfigs.map { case (coordinateId, config) =>
 
@@ -582,12 +583,32 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val randomEffectDataset = RandomEffectDataset(
-            gameDataset,
-            reConfig,
-            rePartitioner,
-            existingModelKeysRddOpt,
-            StorageLevel.DISK_ONLY)
+          val randomEffectDataset = if(isIncrementalTraining) {
+            val reModels = getRequiredParam(initialModel).getModel(coordinateId).map {
+              case rem: RandomEffectModel =>
+                rem
+
+              case other =>
+                throw new IllegalArgumentException(
+                  s"Model type mismatch: expected Random Effect Model but found '${other.getClass}'")
+            }
+
+            RandomEffectDataset(
+              gameDataset,
+              reModels,
+              reConfig,
+              rePartitioner,
+              existingModelKeysRddOpt,
+              StorageLevel.DISK_ONLY)
+          } else {
+            RandomEffectDataset(
+              gameDataset,
+              None,
+              reConfig,
+              rePartitioner,
+              existingModelKeysRddOpt,
+              StorageLevel.DISK_ONLY)
+          }
           randomEffectDataset.setName(s"Random Effect Data Set: $coordinateId")
 
           if (logger.isDebugEnabled) {
@@ -740,9 +761,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             }
 
           } else {
-            val priorModelOpt = initialModelOpt match {
-              case Some(gameModel) => gameModel.getModel(coordinateId)
-              case None => None
+            val priorModelOpt = if (getOrDefault(incrementalTraining)) {
+              Some(get(initialModel).get(coordinateId))
+            } else {
+              None
             }
 
             CoordinateFactory.build(

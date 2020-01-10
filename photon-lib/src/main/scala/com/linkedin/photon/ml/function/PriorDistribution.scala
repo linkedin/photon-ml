@@ -16,10 +16,10 @@ package com.linkedin.photon.ml.function
 
 import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag, sum}
 import breeze.numerics.{abs, sqrt}
-
+import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
-import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * Trait for an incremental training objective function. It is assumed that the prior is a product of Gaussian and
@@ -32,7 +32,7 @@ trait PriorDistribution extends ObjectiveFunction {
 
   lazy protected val priorMeans: Vector[Double] = priorCoefficients.means
   lazy protected val priorVariances: Vector[Double] = priorCoefficients.variancesOption.get
-  lazy protected val inversePriorVariances: DenseVector[Double] = VectorUtils.invertVector(priorVariances).toDenseVector
+  lazy protected val inversePriorVariances: DenseVector[Double] = priorVariances.map(v => if (v > MathConst.EPSILON) 1.0 / v else 1.0).toDenseVector
   protected var l1RegWeight: Double = 0D
   protected var l2RegWeight: Double = 0D
 

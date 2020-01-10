@@ -56,8 +56,9 @@ class PriorDistributionTest {
 
     /**
      * Assume that coefficients = 1-vector, prior mean = 2-vector, multiply = 3-vector, prior variance = 4-vector for all expected values below
-     * l2RegValue = pow(1 - 2, 2) / 4 * l2Weight * DIMENSION / 2 = 0.25 * l2Weight * DIMENSION / 2;
-     * l1RegValue = abs(1 - 2) / 2 * l2Weight * DIMENSION = 0.5 * l2Weight * DIMENSION;
+     *
+     * l2RegValue = sum(DenseVector.fill(DIMENSION){pow(1 - 2, 2) / 4)}) * l2Weight / 2 = 0.25 * l2Weight * DIMENSION / 2;
+     * l1RegValue = sum(DenseVector.fill(DIMENSION){abs(1 - 2) / 2}) * l1Weight = 0.5 * l1Weight * DIMENSION;
      * l2RegGradient = (1 - 2) / 4 * l2Weight = (-0.25) * l2Weight;
      * l1RegGradient = -1 / 2 * l1Weight = (-0.5) * l1Weight;
      * l2RegHessianDiagonal = 1 / 4 * l2Weight = 0.25 * l2Weight;

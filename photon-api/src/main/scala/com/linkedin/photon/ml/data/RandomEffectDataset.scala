@@ -25,8 +25,10 @@ import org.apache.spark.{Partitioner, SparkContext}
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -254,6 +256,7 @@ object RandomEffectDataset {
    */
   def apply(
       gameDataset: RDD[(UniqueSampleId, GameDatum)],
+      priorRandomEffectModelOpt: Option[RandomEffectModel],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: RandomEffectDatasetPartitioner,
       existingModelKeysRddOpt: Option[RDD[REId]],
@@ -268,7 +271,7 @@ object RandomEffectDataset {
     val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
     keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
-    val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
+    val projectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner, priorRandomEffectModelOpt)
     projectors.persist(storageLevel).count
 
     val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, projectors, randomEffectPartitioner)
@@ -372,7 +375,8 @@ object RandomEffectDataset {
    */
   protected[data] def generateLinearSubspaceProjectors(
       keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      randomEffectPartitioner: RandomEffectDatasetPartitioner): RDD[(REId, LinearSubspaceProjector)] = {
+      randomEffectPartitioner: RandomEffectDatasetPartitioner,
+      priorRandomEffectModelOpt: Option[RandomEffectModel]): RDD[(REId, LinearSubspaceProjector)] = {
 
     val originalSpaceDimension = keyedGameDataset
       .take(1)
@@ -382,12 +386,26 @@ object RandomEffectDataset {
       .features
       .length
 
-    keyedGameDataset
+    val dataProjectors = keyedGameDataset
       .mapValues { case (_, labeledPoint) =>
         VectorUtils.getActiveIndices(labeledPoint.features)
       }
       .foldByKey(mutable.Set[Int](), randomEffectPartitioner)(_.union(_))
       .mapValues(activeIndices => new LinearSubspaceProjector(activeIndices.toSet, originalSpaceDimension))
+
+    val sc = dataProjectors.sparkContext
+    dataProjectors
+      .leftOuterJoin(priorRandomEffectModelOpt.map(_.modelsRDD).getOrElse(sc.emptyRDD[(REId, GeneralizedLinearModel)]))
+      .mapValues { case (projector: LinearSubspaceProjector, priorModelOpt: Option[GeneralizedLinearModel]) =>
+        val activeCoef = priorModelOpt.map {
+            model =>
+              val means = model.coefficients.means
+              VectorUtils.getActiveIndices(means)
+        }.getOrElse(Set[Int]())
+        val projectedKeySet = projector.originalToProjectedSpaceMap.keySet
+
+        new LinearSubspaceProjector(activeCoef.union(projectedKeySet).toSet, originalSpaceDimension)
+      }
   }
 
   /**

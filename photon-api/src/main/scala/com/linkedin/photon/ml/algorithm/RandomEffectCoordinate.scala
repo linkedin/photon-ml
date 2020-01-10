@@ -252,7 +252,7 @@ object RandomEffectCoordinate {
             case (localModel, _) =>
               (localModel, None)
           }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.flatMap(_._2._2))
@@ -267,7 +267,7 @@ object RandomEffectCoordinate {
 
           (newModel, stateTrackers)
         }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.map(_._2._2))
