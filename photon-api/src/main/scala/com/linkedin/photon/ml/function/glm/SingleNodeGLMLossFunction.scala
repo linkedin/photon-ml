@@ -163,13 +163,11 @@ object SingleNodeGLMLossFunction {
 
     (priorModelOpt, isIncrementalTrainingEnabled) match {
       case (Some(priorModel), true) =>
-        val l1Weight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
         val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         val priorModelCoefficients = priorModel.coefficients
 
         new SingleNodeGLMLossFunction(singleLossFunction) with PriorDistributionTwiceDiff {
           override val priorCoefficients: ModelCoefficients = priorModelCoefficients
-          l1RegWeight = l1Weight
           l2RegWeight = l2Weight
         }
 

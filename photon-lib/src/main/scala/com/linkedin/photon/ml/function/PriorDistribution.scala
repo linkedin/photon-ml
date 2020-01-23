@@ -14,8 +14,8 @@
  */
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag, sum}
-import breeze.numerics.{abs, sqrt}
+import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag}
+import breeze.numerics.sqrt
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
@@ -33,18 +33,9 @@ trait PriorDistribution extends ObjectiveFunction {
   lazy protected val priorMeans: Vector[Double] = priorCoefficients.means
   lazy protected val priorVariances: Vector[Double] = priorCoefficients.variancesOption.get
   lazy protected val inversePriorVariances: DenseVector[Double] = priorVariances.map(v => if (v > MathConst.EPSILON) 1.0 / v else 1.0).toDenseVector
-  protected var l1RegWeight: Double = 0D
   protected var l2RegWeight: Double = 0D
 
-  require(l1RegWeight >= 0D, s"Invalid regularization weight '$l1RegWeight")
   require(l2RegWeight >= 0D, s"Invalid regularization weight '$l2RegWeight")
-
-  /**
-   * Getter for the Laplace weight of the prior.
-   *
-   * @return The L1 regularization weight
-   */
-  def l1RegularizationWeight: Double = l1RegWeight
 
   /**
    * Getter for the Gaussian weight of the prior.
@@ -67,22 +58,7 @@ trait PriorDistribution extends ObjectiveFunction {
       coefficients: Coefficients,
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
     super.value(input, coefficients, normalizationContext) +
-      l1RegValue(convertToVector(coefficients)) +
       l2RegValue(convertToVector(coefficients))
-
-  /**
-   * Compute the Laplace regularization term for the given model coefficients. L1 regularization term is
-   * l1RegWeight * sum(abs(coefficients - priorMeans) :/ sqrt(priorVariance)).
-   *
-   * @param coefficients The model coefficients
-   * @return The Laplace regularization term value
-   */
-  protected def l1RegValue(coefficients: Vector[Double]): Double = {
-
-    val normalizedCoefficients = (coefficients - priorMeans) *:* sqrt(inversePriorVariances)
-
-    l1RegWeight * sum(abs(normalizedCoefficients))
-  }
 
   /**
    * Compute the Gaussian regularization term for the given model coefficients. L2 regularization term is
@@ -147,27 +123,10 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
       normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val (baseValue, baseGradient) = super.calculate(input, coefficients, normalizationContext)
-    val valueWithRegularization = baseValue + l1RegValue(convertToVector(coefficients)) +
-      l2RegValue(convertToVector(coefficients))
-    val gradientWithRegularization = baseGradient + l1RegGradient(convertToVector(coefficients)) +
-      l2RegGradient(convertToVector(coefficients))
+    val valueWithRegularization = baseValue + l2RegValue(convertToVector(coefficients))
+    val gradientWithRegularization = baseGradient + l2RegGradient(convertToVector(coefficients))
 
     (valueWithRegularization, gradientWithRegularization)
-  }
-
-  /**
-   * Compute the gradient of the Laplace term for the given model coefficients. Gradient is
-   * l1RegWeight :/ sqrt(priorVariance) if coefficients >= priorMeans;
-   * - l1RegWeight :/ sqrt(priorVariance) if coefficients < priorMeans.
-   *
-   * @param coefficients The model coefficients
-   * @return The gradient of the Laplace regularization term
-   */
-  protected def l1RegGradient(coefficients: Vector[Double]): Vector[Double] = {
-
-    val coefficientsMask = (coefficients - priorMeans).map(coefficient => if (coefficient > 0) 1.0 else -1.0)
-
-    l1RegWeight * (coefficientsMask *:* sqrt(inversePriorVariances))
   }
 
   /**

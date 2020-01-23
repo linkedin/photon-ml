@@ -437,7 +437,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     // Train GAME models on training data
     val results = Timed("Training models:") {
-      var prevGameModel: Option[GameModel] = if (getOrDefault(useWarmStart)) {
+      var prevGameModel: Option[GameModel] = if (getOrDefault(useWarmStart) || getOrDefault(incrementalTraining)) {
         get(initialModel)
       } else {
         None
@@ -762,7 +762,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
           } else {
             val priorModelOpt = if (getOrDefault(incrementalTraining)) {
-              Some(get(initialModel).get(coordinateId))
+              Some(initialModelOpt.get(coordinateId))
             } else {
               None
             }
@@ -784,7 +784,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         }
         .toMap
 
-    val result = coordinateDescent.run(coordinates, initialModelOpt.map(_.toMap))
+    val warmStartModelOpt = if (getOrDefault(useWarmStart)) initialModelOpt else None
+    val result = coordinateDescent.run(coordinates, warmStartModelOpt.map(_.toMap))
 
     coordinates.foreach { case (_, coordinate) =>
       coordinate match {

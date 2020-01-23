@@ -45,12 +45,10 @@ class PriorDistributionTest {
     val multiplyVector = coefficients * 3D
     val priorVar = coefficients :* 4D
 
-    val l1Weight = 10D
     val l2Weight = 10D
 
     val mockObjectiveFunction = new MockObjectiveFunction with PriorDistributionTwiceDiff {
       override val priorCoefficients = ModelCoefficients(priorMean, Option(priorVar))
-      l1RegWeight = l1Weight
       l2RegWeight = l2Weight
     }
 
@@ -58,22 +56,15 @@ class PriorDistributionTest {
      * Assume that coefficients = 1-vector, prior mean = 2-vector, multiply = 3-vector, prior variance = 4-vector for all expected values below
      *
      * l2RegValue = sum(DenseVector.fill(DIMENSION){pow(1 - 2, 2) / 4)}) * l2Weight / 2 = 0.25 * l2Weight * DIMENSION / 2;
-     * l1RegValue = sum(DenseVector.fill(DIMENSION){abs(1 - 2) / 2}) * l1Weight = 0.5 * l1Weight * DIMENSION;
      * l2RegGradient = (1 - 2) / 4 * l2Weight = (-0.25) * l2Weight;
-     * l1RegGradient = -1 / 2 * l1Weight = (-0.5) * l1Weight;
      * l2RegHessianDiagonal = 1 / 4 * l2Weight = 0.25 * l2Weight;
      * l2RegHessianVector = 3 / 4 * l2Weight = 0.75 * l2Weight.
      */
-    val expectedValue = MockObjectiveFunction.VALUE + 0.25 * l2Weight * DIMENSION / 2 + 0.5 * l1Weight * DIMENSION
-    val expectedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT +
-      (-0.25) * l2Weight +
-      (-0.5) * l1Weight))
-    val expectedVector = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_VECTOR +
-      0.75 * l2Weight))
-    val expectedDiagonal = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_DIAGONAL +
-      0.25 * l2Weight))
-    val expectedMatrix =
-      diag(DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_MATRIX + 0.25 * l2Weight)))
+    val expectedValue = MockObjectiveFunction.VALUE + 0.25 * l2Weight * DIMENSION / 2
+    val expectedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT + (-0.25) * l2Weight))
+    val expectedVector = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_VECTOR + 0.75 * l2Weight))
+    val expectedDiagonal = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_DIAGONAL + 0.25 * l2Weight))
+    val expectedMatrix = diag(DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_MATRIX + 0.25 * l2Weight)))
 
     assertEquals(mockObjectiveFunction.value(Unit, coefficients, mockNormalization), expectedValue)
     assertEquals(mockObjectiveFunction.gradient(Unit, coefficients, mockNormalization), expectedGradient)

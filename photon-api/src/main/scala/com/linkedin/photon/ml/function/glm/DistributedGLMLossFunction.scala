@@ -189,13 +189,11 @@ object DistributedGLMLossFunction {
         }
 
       case (Some(priorModel), true) =>
-        val l1Weight = regularizationContext.getL1RegularizationWeight(regularizationWeight)
         val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
         val priorModelCoefficients = priorModel.coefficients
 
         new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with PriorDistributionTwiceDiff {
           override val priorCoefficients: ModelCoefficients = priorModelCoefficients
-          l1RegWeight = l1Weight
           l2RegWeight = l2Weight
         }
 
