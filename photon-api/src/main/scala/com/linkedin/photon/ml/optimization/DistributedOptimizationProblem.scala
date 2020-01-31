@@ -14,12 +14,11 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, cholesky, diag}
+import breeze.linalg.{Matrix, Vector, cholesky}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
@@ -28,7 +27,7 @@ import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceCompu
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.sampling.DownSampler
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
+import com.linkedin.photon.ml.util.BroadcastWrapper
 import com.linkedin.photon.ml.util.Linalg.choleskyInverse
 
 /**
@@ -77,25 +76,22 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
   }
 
   /**
-   * Compute coefficient variances (if enabled).
+   * Compute coefficient variances (if enabled). Full Hessian matrix will be output if variance computation type is
+   * set to be FULL. For other variance computation type, NONE will be output.
    *
    * @param input The training data
    * @param coefficients The feature coefficients means
    * @return An optional feature coefficient variances vector
    */
-  override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
+  override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Matrix[Double]] = {
 
     val broadcastCoefficients = input.sparkContext.broadcast(coefficients)
 
     val result = (objectiveFunction, varianceComputation) match {
-      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
-        Some(VectorUtils.invertVector(twiceDiffFunc.hessianDiagonal(input, broadcastCoefficients)))
 
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, broadcastCoefficients)
-        val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
-
-        Some(diag(invHessianMatrix))
+        Some(hessianMatrix)
 
       case _ =>
         None

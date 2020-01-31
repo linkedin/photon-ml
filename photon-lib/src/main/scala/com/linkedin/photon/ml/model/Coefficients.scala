@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import breeze.linalg.{Vector, norm}
+import breeze.linalg.{Vector, Matrix, norm}
 import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst
@@ -28,18 +28,17 @@ import com.linkedin.photon.ml.util.{MathUtils, Summarizable, VectorUtils}
  * @param means The mean of the model coefficients
  * @param variancesOption Optional variance of the model coefficients
  */
-case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Double]] = None)
+case class Coefficients(means: Vector[Double], variancesOption: Option[Matrix[Double]] = None)
   extends Summarizable {
 
   // GAME over if variances are given but don't have the same length as the vector of means
   require(
-    variancesOption.isEmpty || variancesOption.get.length == means.length,
+    variancesOption.isEmpty || variancesOption.get.rows == means.length || variancesOption.get.cols == means.length,
     "Coefficients: Means and variances have different lengths")
 
   def length: Int = means.length
 
   lazy val meansL2Norm: Double = norm(means, 2)
-  lazy val variancesL2NormOption: Option[Double] = variancesOption.map(variances => norm(variances, 2))
 
   /**
    * Compute the score for the given features.
@@ -78,7 +77,6 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
     }
     sb.append(s"Mean and stddev of the mean: ${meanAndVar.mean} ${meanAndVar.stdDev}\n")
     sb.append(s"l2 norm of the mean: $meansL2Norm\n")
-    variancesL2NormOption.map(norm => sb.append(s"l2 norm of the variance $norm"))
 
     sb.toString()
   }
@@ -108,7 +106,7 @@ case class Coefficients(means: Vector[Double], variancesOption: Option[Vector[Do
       lazy val sameVariance = (v1, v2) match {
         case (None, None) => true
 
-        case (Some(val1), Some(val2)) => VectorUtils.areAlmostEqual(val1, val2)
+        case (Some(val1), Some(val2)) => VectorUtils.matrixAlmostEqual(val1, val2)
         case (_, _) => false
       }
 

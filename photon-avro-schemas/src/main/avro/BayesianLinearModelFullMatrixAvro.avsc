@@ -1,0 +1,48 @@
+{
+    "name": "BayesianLinearModelFullMatrixAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "a generic schema to describe a Bayesian linear model with means and variances",
+    "fields": [
+        {
+            "name": "modelId",
+            "type": "string"
+        },
+        {
+            "default": null,
+            "name": "modelClass",
+            "type": [
+                "null",
+                "string"
+            ],
+            "doc": "The fully-qualified class name of enclosing GLM model class. E.g.: com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel"
+        },
+        {
+            "name": "means",
+            "type": {
+                "items": "NameTermValueAvro",
+                "type": "array"
+            }
+        },
+        {
+            "default": null,
+            "name": "variances",
+            "type" : [
+                "null",
+                {
+                    "items" : "DoubleNameTermValueAvro",
+                    "type"  : "array"
+                }
+            ]
+        },
+        {
+            "default": null,
+            "name": "lossFunction",
+            "type": [
+                "null",
+                "string"
+             ],
+            "doc": "The loss function used for training as the class name. E.g.: com.linkedin.photon.ml.function.LogisticLossFunction"
+        }
+    ]
+}

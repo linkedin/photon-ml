@@ -1,0 +1,28 @@
+{
+    "name": "DoubleNameTermValueAvro",
+    "namespace": "com.linkedin.photon.avro.generated",
+    "type": "record",
+    "doc": "A tuple of name1, term1, name2, term2 and value. Used as representation for covariance matrix",
+    "fields": [
+        {
+            "name": "name1",
+            "type": "string"
+        },
+        {
+            "name": "term1",
+            "type": "string"
+        },
+        {
+            "name": "name2",
+            "type": "string"
+        },
+        {
+            "name": "term2",
+            "type": "string"
+        },
+        {
+            "name": "value",
+            "type": "double"
+        }
+    ]
+}

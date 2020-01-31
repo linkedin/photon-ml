@@ -14,8 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector, cholesky, diag}
-
+import breeze.linalg.{DenseMatrix, Matrix, Vector, cholesky, diag}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
@@ -50,22 +49,19 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
   with Serializable {
 
   /**
-   * Compute coefficient variances (if enabled).
+   * Compute coefficient variances (if enabled). Full Hessian matrix will be output if variance computation type is
+   * set to be FULL. For other variance computation type, NONE will be output.
    *
    * @param input The training data
    * @param coefficients The feature coefficients means
    * @return An optional feature coefficient variances vector
    */
-  override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
+  override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[DenseMatrix[Double]] =
     (objectiveFunction, varianceComputationType) match {
-      case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
-        Some(VectorUtils.invertVector(twiceDiffFunc.hessianDiagonal(input, coefficients)))
 
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.FULL) =>
         val hessianMatrix = twiceDiffFunc.hessianMatrix(input, coefficients)
-        val invHessianMatrix = choleskyInverse(cholesky(hessianMatrix))
-
-        Some(diag(invHessianMatrix))
+        Some(hessianMatrix)
 
       case _ =>
         None

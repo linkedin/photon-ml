@@ -14,12 +14,13 @@
  */
 package com.linkedin.photon.ml.projector
 
-import breeze.linalg.Vector
+import breeze.linalg.{Matrix, Vector}
 
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
- * Project [[Vector]] objects between spaces, where the projected space is a linear subspace of the original space.
+ * Project [[Vector]] / [[Matrix]] objects between spaces, where the projected space is a linear subspace of the
+ * original space.
  *
  * An example use case is training models on a subset of features, where a reduction in vector size will greatly
  * improve performance.
@@ -56,6 +57,15 @@ protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension
     remapVector(input, originalToProjectedSpaceMap, projectedSpaceDimension)
 
   /**
+   * Project [[Matrix]] to subspace.
+   *
+   * @param input A [[Matrix]] in the original space
+   * @return The same [[Matrix]] in the projected space
+   */
+  def projectForward(input: Matrix[Double]): Matrix[Double] =
+    remapMatrix(input, originalToProjectedSpaceMap, projectedSpaceDimension)
+
+  /**
    * Project coefficients into the new space.
    *
    * @param input A [[Vector]] in the projected space
@@ -63,6 +73,15 @@ protected[ml] class LinearSubspaceProjector(subspaceIndices: Set[Int], dimension
    */
   def projectBackward(input: Vector[Double]): Vector[Double] =
     remapVector(input, projectedToOriginalSpaceMap, originalSpaceDimension)
+
+  /**
+   * Project coefficients into the new space.
+   *
+   * @param input A [[Matrix]] in the projected space
+   * @return The same [[Matrix]] in the original space
+   */
+  def projectBackward(input: Matrix[Double]): Matrix[Double] =
+    remapMatrix(input, projectedToOriginalSpaceMap, originalSpaceDimension)
 }
 
 object LinearSubspaceProjector {
@@ -84,5 +103,32 @@ object LinearSubspaceProjector {
       .toArray
 
     VectorUtils.toVector(indexAndData, dimension)
+  }
+
+  /**
+   * Create a new [[Matrix]] by mapping the indices of an existing [[Matrix]].
+   *
+   * @param matrix The input [[Matrix]]
+   * @param map The map of old index to new index
+   * @param dimension The dimension of the new [[Matrix]]
+   * @return A new [[Matrix]] with re-mapped indices
+   */
+  private def remapMatrix(matrix: Matrix[Double], map: Map[Int, Int], dimension: Int): Matrix[Double] = {
+
+    // map matrix from higher dimension to lower dimension
+    val keys = map.keySet
+    val crossKeys = for {a <- keys; b <- keys} yield (a, b)
+
+    val matrixMap: Map[(Int, Int), (Int, Int)] = crossKeys.map {
+      case (a, b) => (a, b) -> (map(a), map(b))
+    }.toMap
+
+    val indexAndData = matrix
+      .activeIterator
+      .filter { case (key, _) => matrixMap.contains(key) }
+      .map { case (key, value) => (matrixMap(key)._1, matrixMap(key)._2, value) }
+      .toArray
+
+    VectorUtils.toMatrix(indexAndData, dimension)
   }
 }

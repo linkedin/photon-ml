@@ -15,9 +15,7 @@
 package com.linkedin.photon.ml.optimization
 
 import scala.math.abs
-
-import breeze.linalg.{Vector, sum}
-
+import breeze.linalg.{Matrix, Vector, sum}
 import com.linkedin.photon.ml.function.{L2Regularization, ObjectiveFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -64,7 +62,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @param variances The feature coefficient variances
    * @return A GLM with the provided feature coefficients
    */
-  protected def createModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GeneralizedLinearModel =
+  protected def createModel(coefficients: Vector[Double], variances: Option[Matrix[Double]]): GeneralizedLinearModel =
     glmConstructor(Coefficients(coefficients, variances))
 
   /**
@@ -78,10 +76,11 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
   protected def createModel(
       normalizationContext: BroadcastWrapper[NormalizationContext],
       coefficients: Vector[Double],
-      variances: Option[Vector[Double]]): GeneralizedLinearModel =
+      variances: Option[Matrix[Double]]): GeneralizedLinearModel =
+  // need to check
     createModel(
       normalizationContext.value.modelToOriginalSpace(coefficients),
-      variances.map(normalizationContext.value.modelToOriginalSpace))
+      variances.map(normalizationContext.value.varianceToOriginalSpace))
 
   /**
    * Compute coefficient variances
@@ -90,7 +89,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @param coefficients The feature coefficients means
    * @return The feature coefficient variances
    */
-  def computeVariances(input: objectiveFunction.Data, coefficients: Vector[Double]): Option[Vector[Double]]
+  def computeVariances(input: objectiveFunction.Data, coefficients: Vector[Double]): Option[Matrix[Double]]
 
   /**
    * Run the optimization algorithm on the input data, starting from an initial model of all-0 coefficients.

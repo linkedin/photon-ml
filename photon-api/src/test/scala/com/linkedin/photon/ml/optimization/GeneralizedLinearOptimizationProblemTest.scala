@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.optimization
 
 import scala.math.abs
 
-import breeze.linalg.{Vector, sum}
+import breeze.linalg.{Matrix, Vector, sum}
 import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.Test
@@ -226,7 +226,7 @@ object GeneralizedLinearOptimizationProblemTest {
     /**
      * Publi version of [[createModel]]
      */
-    def publicCreateModel(coefficients: Vector[Double], variances: Option[Vector[Double]]): GeneralizedLinearModel =
+    def publicCreateModel(coefficients: Vector[Double], variances: Option[Matrix[Double]]): GeneralizedLinearModel =
       createModel(coefficients, variances)
 
     //
@@ -236,7 +236,7 @@ object GeneralizedLinearOptimizationProblemTest {
     /**
      * Unused - needs definition for testing.
      */
-    override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] =
+    override def computeVariances(input: Iterable[LabeledPoint], coefficients: Vector[Double]): Option[Matrix[Double]] =
       None
 
     /**

@@ -110,9 +110,6 @@ class RandomEffectModel(
     stringBuilder.append(s"\nFeature Shard ID: '$featureShardId'")
     stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
     stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
-    if (modelsRDD.first()._2.coefficients.variancesOption.isDefined) {
-      stringBuilder.append(s"\nVariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
-    }
 
     stringBuilder.toString()
   }

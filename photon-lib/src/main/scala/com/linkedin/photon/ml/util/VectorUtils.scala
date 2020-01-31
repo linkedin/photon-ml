@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.util
 
 import scala.collection.mutable
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.{CSCMatrix, DenseMatrix, DenseVector, Matrix, SparseVector, Vector, inv}
 import org.apache.spark.ml.linalg.{DenseVector => SparkMLDenseVector, SparseVector => SparkMLSparseVector, Vector => SparkMLVector}
 import org.apache.spark.mllib.linalg.{DenseVector => SparkDenseVector, SparseVector => SparkSparseVector, Vector => SparkVector}
 
@@ -52,6 +52,62 @@ object VectorUtils {
     } else {
       toSparseVector(indexAndData, length)
     }
+
+  /**
+   * Convert an [[Array]] of ([[Int]] (row index), [[Int]] (column index), [[Double]] (value)) pairs into a [[Matrix]].
+   *
+   * @param indexAndData An [[Array]] of ([[Int]], [[Int]], [[Double]]) pairs of indices and data to be converted to
+   *                     a [[Matrix]]
+   * @param length The size of the resulting matrix. The matrix should be of the dimension length * length.
+   *
+   * @return The converted [[Matrix]]
+   */
+  protected[ml] def toMatrix(
+    indexAndData: Array[(Int, Int, Double)],
+    length: Int): Matrix[Double] =
+    if (length * SPARSE_VECTOR_ACTIVE_SIZE_TO_SIZE_RATIO < indexAndData.length) {
+      toDenseMatrix(indexAndData, length)
+    } else {
+      toSparseMatrix(indexAndData, length)
+    }
+
+  /**
+   * Convert an [[Array]] of ([[Int]] (row index), [[Int]] (column index), [[Double]] (value)) pairs into a [[CSCMatrix]].
+   *
+   * @note Does not check for repeated indices.
+   *
+   * @param indexAndData An [[Array]] of ([[Int]], [[Int]], [[Double]]) pairs
+   * @param length The size of the resulting matrix. The matrix should be of the dimension length * length.
+   * @return The converted [[CSCMatrix]]
+   */
+  protected[ml] def toSparseMatrix(indexAndData: Array[(Int, Int, Double)], length: Int): CSCMatrix[Double] = {
+    val builder = new CSCMatrix.Builder[Double](length, length)
+    indexAndData.foreach {
+      case (rowIndex, colIndex, value) =>
+        builder.add(rowIndex, colIndex, value)
+    }
+    builder.result()
+  }
+
+  /**
+   * Convert an [[Array]] of ([[Int]] (row index), [[Int]] (column index), [[Double]] (value)) pairs into a [[DenseMatrix]].
+   *
+   * @note Does not check for repeated indices.
+   *
+   * @param indexAndData An [[Array]] of ([[Int]], [[Int]], [[Double]]) pairs
+   * @param length The size of the resulting matrix. The matrix should be of the dimension length * length.
+   * @return The converted [[DenseMatrix]]
+   */
+  protected[ml] def toDenseMatrix(indexAndData: Array[(Int, Int, Double)], length: Int): DenseMatrix[Double] = {
+    val indexAndDataMap = indexAndData.map {
+      case (rowIndex, colIndex, value) =>
+        (rowIndex, colIndex) -> value
+    }.toMap
+
+    DenseMatrix.tabulate(length, length) {
+      (i, j) => if(indexAndDataMap.contains((i, j))) indexAndDataMap((i, j)) else 0D
+    }
+  }
 
   /**
    * Convert an [[Array]] of ([[Int]], [[Double]]) pairs into a [[SparseVector]].
@@ -257,6 +313,21 @@ object VectorUtils {
     }
 
   /**
+   * Determines when two matrix are "equal" within a very small tolerance.
+   *
+   * @note Zip stops without an error when the shortest argument stops! For that reason, we are going to return false if
+   *       the 2 vectors have different lengths.
+   *
+   * @param m1 The first matrix
+   * @param m2 The second matrix
+   * @return True if the two vectors are "equal within epsilon", false otherwise
+   */
+  def matrixAlmostEqual(m1: Matrix[Double], m2: Matrix[Double]): Boolean =
+    m1.rows == m2.rows && m1.cols == m2.cols && m1.toDenseMatrix.toArray.zip(m2.toDenseMatrix.toArray).forall {
+      case (e1, e2) => MathUtils.isAlmostZero(e2 - e1)
+    }
+
+  /**
    * Returns the indices for non-zero elements of the vector
    *
    * @param vector the input vector
@@ -294,4 +365,21 @@ object VectorUtils {
    * @return The inverted [[Vector]]
    */
   def invertVector(vector: Vector[Double]): Vector[Double] = vector.map(v => 1.0 / math.max(v, MathConst.EPSILON))
+
+  /**
+   * Input a possibly matrix whose diagonal elements and associated rows and columns might be zero,
+   * add back a diagonal element (right now it is hard coded as 10.) to guarantee it is invertible. This is used in
+   * incremental learning where a new feature comes in but there is no prior model available.
+   *
+   * @param matrix The input [[Matrix]]
+   * @return The [[DenseMatrix]] which has nonzero
+   */
+  def expandMatrix(matrix: Matrix[Double]): DenseMatrix[Double] = {
+    val denseMatrix = matrix.toDenseMatrix
+
+    val invertibleDenseMatrix = DenseMatrix.tabulate(denseMatrix.rows, denseMatrix.cols){case (i, j) =>
+        if (i == j && denseMatrix(i, j) < MathConst.EPSILON) 10.0 else denseMatrix(i, j)
+    }
+    invertibleDenseMatrix
+  }
 }

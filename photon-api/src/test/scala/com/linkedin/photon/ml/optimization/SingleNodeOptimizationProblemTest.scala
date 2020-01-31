@@ -63,15 +63,14 @@ class SingleNodeOptimizationProblemTest {
       .when(mockTwiceDiffFunction)
       .hessianMatrix(Matchers.any(), Matchers.any())
 
-    val diagonalVariance = DenseVector(Array(1D, 1D / MathConst.EPSILON, 0.5))
-    val matrixVariance = DenseVector(Array.fill(DIMENSIONS)(1D))
+    val matrixVariance = DenseMatrix.eye[Double](DIMENSIONS)
 
     Array(
       // var type, function, expected result
       Array(VarianceComputationType.NONE, mockOptimizerDiff, mockDiffFunction, None),
       Array(VarianceComputationType.NONE, mockOptimizerTwiceDiff, mockTwiceDiffFunction, None),
       Array(VarianceComputationType.SIMPLE, mockOptimizerDiff, mockDiffFunction, None),
-      Array(VarianceComputationType.SIMPLE, mockOptimizerTwiceDiff, mockTwiceDiffFunction, Some(diagonalVariance)),
+      Array(VarianceComputationType.SIMPLE, mockOptimizerTwiceDiff, mockTwiceDiffFunction, None),
       Array(VarianceComputationType.FULL, mockOptimizerDiff, mockDiffFunction, None),
       Array(VarianceComputationType.FULL, mockOptimizerTwiceDiff, mockTwiceDiffFunction, Some(matrixVariance)))
   }

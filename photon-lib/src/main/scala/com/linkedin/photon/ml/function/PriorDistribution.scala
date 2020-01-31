@@ -14,12 +14,10 @@
  */
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag}
-import breeze.numerics.sqrt
-import com.linkedin.photon.ml.constants.MathConst
+import breeze.linalg.{DenseMatrix, DenseVector, Matrix, Vector, diag}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
  * Trait for an incremental training objective function. It is assumed that the prior is a product of Gaussian and
@@ -28,11 +26,10 @@ import com.linkedin.photon.ml.util.BroadcastWrapper
  */
 trait PriorDistribution extends ObjectiveFunction {
 
-  val priorCoefficients: ModelCoefficients = ModelCoefficients(DenseVector.zeros(1))
+  val priorCoefficients: ModelCoefficients = ModelCoefficients(DenseVector.zeros(1), Some(DenseMatrix.eye[Double](1)))
 
   lazy protected val priorMeans: Vector[Double] = priorCoefficients.means
-  lazy protected val priorVariances: Vector[Double] = priorCoefficients.variancesOption.get
-  lazy protected val inversePriorVariances: DenseVector[Double] = priorVariances.map(v => if (v > MathConst.EPSILON) 1.0 / v else 1.0).toDenseVector
+  lazy protected val inversePriorVariances: DenseMatrix[Double] = VectorUtils.expandMatrix(priorCoefficients.variancesOption.get)
   protected var l2RegWeight: Double = 0D
 
   require(l2RegWeight >= 0D, s"Invalid regularization weight '$l2RegWeight")
@@ -69,9 +66,10 @@ trait PriorDistribution extends ObjectiveFunction {
    */
   protected def l2RegValue(coefficients: Vector[Double]): Double = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) *:* sqrt(inversePriorVariances)
+    val diff = (coefficients - priorMeans).toDenseVector
+    val weightedPenalty = diff.t * inversePriorVariances * diff
 
-    l2RegWeight * normalizedCoefficients.dot(normalizedCoefficients) / 2
+    l2RegWeight * weightedPenalty / 2
   }
 }
 
@@ -138,7 +136,8 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
    */
   protected def l2RegGradient(coefficients: Vector[Double]): Vector[Double] = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) *:* inversePriorVariances
+    val diff = (coefficients - priorMeans).toDenseVector
+    val normalizedCoefficients = inversePriorVariances * diff
 
     l2RegWeight * normalizedCoefficients
   }
@@ -196,7 +195,7 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
    * @return The Hessian diagonal of the Gaussian regularization term, with gradient direction vector
    */
   protected def l2RegHessianVector(multiplyVector: Vector[Double]): Vector[Double] =
-    l2RegWeight * (multiplyVector *:* inversePriorVariances)
+    l2RegWeight * inversePriorVariances * multiplyVector
 
   /**
    * Compute the Hessian diagonal of the Gaussian regularization term for the given model coefficients. Hessian
@@ -204,12 +203,12 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
    *
    * @return The Hessian diagonal of the Gaussian regularization term
    */
-  protected def l2RegHessianDiagonal: Vector[Double] = l2RegWeight * inversePriorVariances
+  protected def l2RegHessianDiagonal: Vector[Double] = l2RegWeight * diag(inversePriorVariances)
 
   /**
    * Compute the Hessian matrix of the Gaussian regularization term for the given model coefficients.
    *
    * @return The Hessian matrix of the Gaussian regularization term
    */
-  protected def l2RegHessianMatrix: DenseMatrix[Double] = l2RegWeight * diag(inversePriorVariances)
+  protected def l2RegHessianMatrix: DenseMatrix[Double] = l2RegWeight * inversePriorVariances
 }

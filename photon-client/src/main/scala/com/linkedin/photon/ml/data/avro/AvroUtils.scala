@@ -22,7 +22,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.{CSCMatrix, DenseMatrix, DenseVector, Matrix, SparseVector, Vector}
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Parser
 import org.apache.avro.file.{DataFileStream, DataFileWriter}
@@ -35,7 +35,7 @@ import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
+import com.linkedin.photon.avro.generated._
 import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -245,6 +245,80 @@ object AvroUtils {
     }
 
   /**
+   * Convert the matrix of type [[Matrix[Double]] to an array of Avro records of type [[DoubleNameTermValueAvro]].
+   *
+   * @param matrix The input matrix
+   * @param featureMap A map of feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
+   * @return An array of Avro records that contains the information of the input matrix
+   */
+  protected[avro] def convertMatrixAsArrayOfDoubleNameTermValueAvros(
+    matrix: Matrix[Double],
+    featureMap: IndexMap,
+    sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): Array[DoubleNameTermValueAvro] =
+    matrix match {
+      case dense: DenseMatrix[Double] =>
+        // column to column
+        val valueArray = dense.toArray
+        val rows = dense.rows
+        val cols = dense.cols
+        val rowIndexArray = Array.fill(cols)(0 until rows toArray).flatten
+        val colIndexArray = (for (i <- 0 until cols) yield Array.fill(rows)(i)).flatten.toArray
+
+        (0 until rows * cols).map {
+          index => (rowIndexArray(index), colIndexArray(index), valueArray(index))
+        }
+          .toArray.filter {
+          case (_, _, value) => math.abs(value) > sparsityThreshold
+        }
+          .sortWith((p1, p2) => math.abs(p1._3) > math.abs(p2._3))
+          .map {
+            case (rowIndex, colIndex, value) =>
+              val rowNT = featureMap.getFeatureName(rowIndex) match {
+                case Some(featureKey: String) =>
+                  (Utils.getFeatureNameFromKey(featureKey), Utils.getFeatureTermFromKey(featureKey))
+                case None =>
+                  throw new NoSuchElementException(s"Feature index $rowIndex not found in the feature map")
+              }
+              val colNT = featureMap.getFeatureName(colIndex) match {
+                case Some(featureKey: String) =>
+                  (Utils.getFeatureNameFromKey(featureKey), Utils.getFeatureTermFromKey(featureKey))
+                case None =>
+                  throw new NoSuchElementException(s"Feature index $colIndex not found in the feature map")
+              }
+              DoubleNameTermValueAvro.newBuilder().setName1(rowNT._1).setTerm1(rowNT._2).setName2(colNT._1).setTerm2(colNT._2).setValue(value).build()
+          }
+
+
+      case sparse: CSCMatrix[Double] =>
+        sparse
+          .activeIterator
+          .filter {
+            case ((_, _), value) =>
+              math.abs(value) > sparsityThreshold
+          }
+          .toArray
+          .sortWith((p1, p2) => math.abs(p1._2) > math.abs(p2._2))
+          .map {
+            case ((rowIndex, colIndex), value) =>
+              val rowNT = featureMap.getFeatureName(rowIndex) match {
+                case Some(featureKey: String) =>
+                  (Utils.getFeatureNameFromKey(featureKey), Utils.getFeatureTermFromKey(featureKey))
+                case None =>
+                  throw new NoSuchElementException(s"Feature index $rowIndex not found in the feature map")
+              }
+              val colNT = featureMap.getFeatureName(colIndex) match {
+                case Some(featureKey: String) =>
+                  (Utils.getFeatureNameFromKey(featureKey), Utils.getFeatureTermFromKey(featureKey))
+                case None =>
+                  throw new NoSuchElementException(s"Feature index $colIndex not found in the feature map")
+              }
+              DoubleNameTermValueAvro.newBuilder().setName1(rowNT._1).setTerm1(rowNT._2).setName2(colNT._1).setTerm2(colNT._2).setValue(value).build()
+          }
+
+    }
+
+  /**
    * Read the nameAndTerm of type [[NameAndTerm]] from Avro record of type [[GenericRecord]].
    *
    * @param record The input Avro record
@@ -329,19 +403,19 @@ object AvroUtils {
    * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    * @return The Avro record that contains the information of the input coefficients
    */
-  protected[avro] def convertGLMModelToBayesianLinearModelAvro(
+  protected[avro] def convertGLMModelToBayesianLinearModelFullMatrixAvro(
       model: GeneralizedLinearModel,
       modelId: String,
       featureMap: IndexMap,
-      sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): BayesianLinearModelAvro = {
+      sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): BayesianLinearModelFullMatrixAvro = {
 
     val modelCoefficients = model.coefficients
     val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients.means, featureMap, sparsityThreshold)
     val variancesAvrosOption = modelCoefficients
       .variancesOption
-      .map(convertVectorAsArrayOfNameTermValueAvros(_, featureMap, sparsityThreshold))
+      .map(convertMatrixAsArrayOfDoubleNameTermValueAvros(_, featureMap, sparsityThreshold))
     // TODO: Output type of model.
-    val avroFile = BayesianLinearModelAvro
+    val avroFile = BayesianLinearModelFullMatrixAvro
       .newBuilder()
       .setModelId(modelId)
       .setModelClass(model.getClass.getName)
@@ -356,25 +430,25 @@ object AvroUtils {
   }
 
   /**
-   * Convert the Avro record of type [[BayesianLinearModelAvro]] to the model type [[GeneralizedLinearModel]].
+   * Convert the Avro record of type [[BayesianLinearModelFullMatrixAvro]] to the model type [[GeneralizedLinearModel]].
    *
-   * @param bayesianLinearModelAvro The input Avro record
+   * @param bayesianLinearModelFullMatrixAvro The input Avro record
    * @param featureMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
    * @return The generalized linear model converted from the Avro record
    */
-  protected[avro] def convertBayesianLinearModelAvroToGLM(
-      bayesianLinearModelAvro: BayesianLinearModelAvro,
+  protected[avro] def convertBayesianLinearModelFullMatrixAvroToGLM(
+      bayesianLinearModelFullMatrixAvro: BayesianLinearModelFullMatrixAvro,
       featureMap: IndexMap): GeneralizedLinearModel = {
 
-    val meansAvros = bayesianLinearModelAvro.getMeans
-    val variancesAvros = bayesianLinearModelAvro.getVariances
-    val modelClass = bayesianLinearModelAvro.getModelClass.toString
+    val meansAvros = bayesianLinearModelFullMatrixAvro.getMeans
+    val variancesAvros = bayesianLinearModelFullMatrixAvro.getVariances
+    val modelClass = bayesianLinearModelFullMatrixAvro.getModelClass.toString
 
     val means = convertNameTermValueAvroList(meansAvros, featureMap)
     val coefficients = if (variancesAvros == null) {
       Coefficients(means)
     } else {
-      val variances = convertNameTermValueAvroList(variancesAvros, featureMap)
+      val variances = convertNameTermDoubleArrayValueAvroList(variancesAvros, featureMap)
       Coefficients(means, Some(variances))
     }
 
@@ -420,6 +494,43 @@ object AvroUtils {
       }
     }
     VectorUtils.toVector(indexAndValueArrayBuffer.toArray, length)
+  }
+
+  /**
+   * Convert the NameTermValueAvro List of the type [[JList[DoubleNameTermValue]]] to Breeze vector of type [[Matrix[Double]]].
+    *
+    * @param nameTermValueDoubleArrayAvroList List of the type [[JList[DoubleNameTermValue]]]
+    * @param featureMap The map from feature name of type [[NameAndTerm]] to feature index of type [[Int]]
+    * @return Breeze matrix of type [[Matrix[Double]]]
+    */
+  protected[avro] def convertNameTermDoubleArrayValueAvroList(
+    nameTermValueDoubleArrayAvroList: JList[DoubleNameTermValueAvro],
+    featureMap: IndexMap): Matrix[Double] = {
+
+    val iterator = nameTermValueDoubleArrayAvroList.iterator()
+    val indexAndValueArrayBuffer = new mutable.ArrayBuffer[(Int, Int, Double)]
+    val length = featureMap.featureDimension
+
+    while (iterator.hasNext) {
+      val matrixElement = iterator.next()
+      val name1 = matrixElement.getName1.toString
+      val term1 = matrixElement.getTerm1.toString
+      val name2 = matrixElement.getName2.toString
+      val term2 = matrixElement.getTerm2.toString
+      val rowKey = Utils.getFeatureKey(name1, term1)
+      val colKey = Utils.getFeatureKey(name2, term2)
+
+      if (featureMap.contains(rowKey) && featureMap.contains(colKey)) {
+        val value = matrixElement.getValue
+        val rowIndex = featureMap.getOrElse(rowKey,
+          throw new NoSuchElementException(s"nameAndTerm $rowKey not found in the feature map"))
+        val colIndex = featureMap.getOrElse(colKey,
+          throw new NoSuchElementException(s"nameAndTerm $colKey not found in the feature map"))
+
+        indexAndValueArrayBuffer += ((rowIndex, colIndex, value))
+      }
+    }
+    VectorUtils.toMatrix(indexAndValueArrayBuffer.toArray, length)
   }
 
   /**

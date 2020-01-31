@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.normalization
 
-import breeze.linalg.{DenseVector, Vector}
+import breeze.linalg.{DenseVector, Matrix, Vector}
 
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
@@ -88,6 +88,23 @@ protected[ml] class NormalizationContext(
 
       outputCoef
     }
+
+  /**
+   * Input variance will have quadratic scaling in the normalization. Will implement this later since in the current
+   * experiment feature normalization is not enabled.
+   *
+   * @param inputVariance Input Variance matrix
+   * @return The variance in the original space
+   */
+  def varianceToOriginalSpace(inputVariance: Matrix[Double]): Matrix[Double] = {
+    if (size == 0) {
+      inputVariance
+    } else {
+      require(size == inputVariance.rows && size == inputVariance.cols, "Matrix size and the scaling factor/shift size are different.")
+      // TODO: Implement the transformation
+      inputVariance
+    }
+  }
 
   /**
    * Transform the model coefficients of the original space to the transformed space. The key requirement for the
