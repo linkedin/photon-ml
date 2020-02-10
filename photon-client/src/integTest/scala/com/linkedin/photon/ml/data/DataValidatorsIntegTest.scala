@@ -81,6 +81,8 @@ class DataValidatorsIntegTest extends SparkTestUtils {
 
     // LabeledPoint with invalid weight
     val badWeight = new LabeledPoint(BinaryClassifier.positiveClassLabel, validVector, 0D, Double.NaN)
+    val negativeWeight = new LabeledPoint(BinaryClassifier.positiveClassLabel, validVector, 0D, -1)
+    val zeroWeight = new LabeledPoint(BinaryClassifier.positiveClassLabel, validVector, 0D, 0)
 
     Array(
       // Test linear regression checks for finite labels
@@ -130,9 +132,17 @@ class DataValidatorsIntegTest extends SparkTestUtils {
 
       // Test all task types require valid weight
       Array(Seq(badWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test that even one bad sample causes failure
       Array(
@@ -179,6 +189,8 @@ class DataValidatorsIntegTest extends SparkTestUtils {
 
     // Row with invalid weight
     val badWeight = getRow(validVector, validVector, weight = Double.NaN)
+    val negativeWeight = getRow(validVector, validVector, weight = -1)
+    val zeroWeight = getRow(validVector, validVector, weight = 0)
 
     Array(
       // Test linear regression checks for finite labels
@@ -236,9 +248,17 @@ class DataValidatorsIntegTest extends SparkTestUtils {
 
       // Test all task types require valid weight
       Array(Seq(badWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(negativeWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
+      Array(Seq(zeroWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test that even one bad sample causes failure
       Array(

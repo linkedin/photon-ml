@@ -20,7 +20,7 @@ import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.data.avro.ScoreProcessingUtils
+import com.linkedin.photon.ml.data.avro.ScoreProcessingUtilsIntegTest
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
@@ -62,7 +62,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
 
     runDriver(params)
 
-    val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtils.loadScoredItemsFromHDFS(scoresPath.toString, sc)
+    val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtilsIntegTest.loadScoredItemsFromHDFS(scoresPath.toString, sc)
 
     assertTrue(loadedModelIdWithScoredItemAsRDD.map(_._1).collect().forall(_ == modelId))
   }
@@ -110,7 +110,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
     runDriver(params)
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
-    val predictionAndObservations = ScoreProcessingUtils
+    val predictionAndObservations = ScoreProcessingUtilsIntegTest
       .loadScoredItemsFromHDFS(scoresPath.toString, sc)
       .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
@@ -153,7 +153,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
     runDriver(params)
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
-    val predictionAndObservations = ScoreProcessingUtils
+    val predictionAndObservations = ScoreProcessingUtilsIntegTest
       .loadScoredItemsFromHDFS(scoresPath.toString, sc)
       .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
@@ -182,7 +182,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
     runDriver(params)
 
     // Load the scores and compute the evaluation metric to see whether the scores make sense or not
-    val predictionAndObservations = ScoreProcessingUtils
+    val predictionAndObservations = ScoreProcessingUtilsIntegTest
       .loadScoredItemsFromHDFS(scoresPath.toString, sc)
       .map { case (_, scoredItem) => (scoredItem.predictionScore, scoredItem.label.get) }
     val rootMeanSquaredError = new RegressionMetrics(predictionAndObservations).rootMeanSquaredError
@@ -214,7 +214,7 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
 
 object GameScoringDriverIntegTest {
 
-  private val inputRoot = getClass.getClassLoader.getResource("GameIntegTest").getPath
+  private val inputRoot = new Path(getClass.getClassLoader.getResource("GameIntegTest").getPath)
   private val inputPath = new Path(inputRoot, "input/test-with-uid")
   private val featurePath = new Path(inputRoot, "input/feature-lists")
   private val fixedEffectModelPath = new Path(inputRoot, "fixedEffectOnlyGAMEModel")

@@ -234,60 +234,6 @@ object IOUtils {
   }
 
   /**
-   * Write a map of learned [[GeneralizedLinearModel]] to text files.
-   *
-   * @param sc The Spark context
-   * @param models The map of (Model Id -> [[GeneralizedLinearModel]])
-   * @param modelDir The directory for the output text files
-   */
-  def writeModelsInText(
-      sc: SparkContext,
-      models: Iterable[(Double, GeneralizedLinearModel)],
-      modelDir: String,
-      indexMapLoader: IndexMapLoader): Unit = {
-
-    models.foreach{ case (lambda, m) => println(lambda + ": " + m.toString)}
-
-    sc.parallelize(models.toSeq, models.size)
-      .mapPartitions({ iter =>
-        val indexMap = indexMapLoader.indexMapForRDD()
-        val modelStrs = new mutable.ArrayBuffer[String]()
-
-        while (iter.hasNext) {
-          val t = iter.next()
-          val regWeight = t._1
-          val model = t._2
-          val builder = new mutable.ArrayBuffer[String]()
-
-          model.coefficients
-            .means
-            .toArray
-            .zipWithIndex
-            .sortWith((p1, p2) => p1._1 > p2._1)
-            .foreach { case (value, index) =>
-              val nameAndTerm = indexMap.getFeatureName(index)
-              nameAndTerm.foreach { s =>
-                val tokens = s.split(Constants.DELIMITER)
-                if (tokens.length == 1) {
-                  builder += s"${tokens(0)}\t${""}\t$value\t$regWeight"
-                } else if (tokens.length == 2) {
-                  builder += s"${tokens(0)}\t${tokens(1)}\t$value\t$regWeight"
-                } else {
-                  throw new IOException(s"unknown name and terms: $s")
-                }
-              }
-            }
-
-          val s = builder.mkString("\n")
-          modelStrs += s
-        }
-
-        modelStrs.iterator
-      })
-      .saveAsTextFile(modelDir)
-  }
-
-  /**
    * Write to a stream while handling exceptions, and closing the stream correctly whether writing to it
    * succeeded or not.
    *

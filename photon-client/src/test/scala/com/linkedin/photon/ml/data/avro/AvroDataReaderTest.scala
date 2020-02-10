@@ -187,13 +187,19 @@ object AvroDataReaderTest {
   private val FeatureVal2 = 0.0
   private val FeatureKey2: String = Utils.getFeatureKey(FeatureName2, "")
 
+  private val NameField = "name"
+  private val TermField = "term"
+  private val ValueField = "value"
+
+  // Use schema identical to NameTermValueAvro but with different namespace, to see if it can be cast to
+  // NameTermValueAvro
   private val nameAndTermSchema: Schema = SchemaBuilder
     .record("testNameAndTermSchema")
     .namespace("com.linkedin.photon.ml.avro.data")
     .fields()
-    .name(AvroFieldNames.NAME).`type`().stringType().noDefault()
-    .name(AvroFieldNames.TERM).`type`().stringType().noDefault()
-    .name(AvroFieldNames.VALUE).`type`().doubleType().noDefault()
+    .name(NameField).`type`().stringType().noDefault()
+    .name(TermField).`type`().stringType().noDefault()
+    .name(ValueField).`type`().doubleType().noDefault()
     .endRecord()
 
   private val avroSchema: Schema = SchemaBuilder
@@ -240,14 +246,14 @@ object AvroDataReaderTest {
   record.put(NullableLongField, null)
 
   private val feature1 = new GenericData.Record(nameAndTermSchema)
-  feature1.put(AvroFieldNames.NAME, FeatureName1)
-  feature1.put(AvroFieldNames.TERM, "")
-  feature1.put(AvroFieldNames.VALUE, FeatureVal1)
+  feature1.put(NameField, FeatureName1)
+  feature1.put(TermField, "")
+  feature1.put(ValueField, FeatureVal1)
 
   private val feature2 = new GenericData.Record(nameAndTermSchema)
-  feature2.put(AvroFieldNames.NAME, FeatureName2)
-  feature2.put(AvroFieldNames.TERM, "")
-  feature2.put(AvroFieldNames.VALUE, FeatureVal2)
+  feature2.put(NameField, FeatureName2)
+  feature2.put(TermField, "")
+  feature2.put(ValueField, FeatureVal2)
 
   record.put(FeaturesField, List(feature1, feature2).asJava)
 }

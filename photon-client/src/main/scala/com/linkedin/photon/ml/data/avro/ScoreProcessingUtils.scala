@@ -16,11 +16,11 @@ package com.linkedin.photon.ml.data.avro
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
+import com.linkedin.photon.ml.data.InputColumnsNames
 
 /**
  * Some basic functions to read/write scores computed with GAME model from/to HDFS. The current implementation assumes
@@ -29,35 +29,6 @@ import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 object ScoreProcessingUtils {
 
   val DEFAULT_MODEL_ID = "N/A"
-
-  /**
-   * Load the scored items of type [[ScoredItem]] from the given input directory on HDFS.
-   *
-   * @param inputDir The given input directory
-   * @param sparkContext The Spark context
-   * @return An [[RDD]] of model ids of type [[String] and scored items of type [[ScoredItem]]
-   */
-  protected[ml] def loadScoredItemsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, ScoredItem)] = {
-
-    val scoreAvros = AvroUtils.readAvroFilesInDir[ScoringResultAvro](
-      sparkContext,
-      inputDir,
-      minNumPartitions = sparkContext.defaultParallelism)
-
-    scoreAvros.map { scoreAvro =>
-      val score = scoreAvro.getPredictionScore
-      val uid = Option(scoreAvro.getUid).map(_.toString)
-      val label = Option(scoreAvro.getLabel).map(_.toDouble)
-      val weight = Option(scoreAvro.getWeight).map(_.toDouble)
-      val ids = scoreAvro.getMetadataMap.asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
-      val idsWithUid = uid match {
-        case Some(id) => ids + (ResponsePredictionFieldNames.UID -> id)
-        case _ => ids
-      }
-      val modelId = scoreAvro.getModelId.toString
-      (modelId, ScoredItem(score, label, weight, idsWithUid))
-    }
-  }
 
   /**
    * Save the scored items of type [[ScoredItem]] to the given output directory on HDFS.
@@ -69,14 +40,15 @@ object ScoreProcessingUtils {
   protected[ml] def saveScoredItemsToHDFS(
       scoredItems: RDD[ScoredItem],
       outputDir: String,
-      modelId: Option[String]): Unit = {
+      modelId: Option[String],
+      columnsNames: InputColumnsNames): Unit = {
 
     val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, weightOpt, ids) =>
       val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
       val builder = ScoringResultAvro.newBuilder()
       builder.setPredictionScore(predictionScore)
       builder.setModelId(modelId.getOrElse(DEFAULT_MODEL_ID))
-      ids.get(ResponsePredictionFieldNames.UID).foreach(builder.setUid(_))
+      ids.get(columnsNames(InputColumnsNames.UID)).foreach(builder.setUid(_))
       labelOpt.foreach(builder.setLabel(_))
       weightOpt.foreach(builder.setWeight(_))
       builder.setMetadataMap(metaDataMap)

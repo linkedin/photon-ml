@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.data.avro
 
-import java.lang.{Double => JDouble}
 import java.util.{List => JList}
 
 import scala.collection.JavaConversions._
@@ -26,17 +25,17 @@ import breeze.linalg.{DenseVector, SparseVector, Vector}
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Parser
 import org.apache.avro.file.{DataFileStream, DataFileWriter}
-import org.apache.avro.generic.{GenericDatumReader, GenericRecord}
+import org.apache.avro.generic.{GenericDatumReader, GenericRecord, GenericRecordBuilder}
 import org.apache.avro.mapred._
-import org.apache.avro.specific.{SpecificDatumReader, SpecificDatumWriter, SpecificRecord}
+import org.apache.avro.specific.{SpecificData, SpecificDatumReader, SpecificDatumWriter, SpecificRecord}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, LatentFactorAvro, NameTermValueAvro}
-import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, IndexMap, IndexMapLoader}
+import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, NameTermValueAvro}
+import com.linkedin.photon.ml.index.IndexMap
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
@@ -48,6 +47,12 @@ object AvroUtils {
 
   // The upper limit of the file size the for reading single Avro file: 100 MB
   private val READ_SINGLE_AVRO_FILE_SIZE_LIMIT: Long = 100 << 20
+
+  private val CONVERSION_MAP: Map[Schema.Type, (GenericRecord, String) => Number] = Map(
+    Schema.Type.DOUBLE -> Utils.getDoubleAvro,
+    Schema.Type.FLOAT -> Utils.getFloatAvro,
+    Schema.Type.LONG -> Utils.getLongAvro,
+    Schema.Type.INT -> Utils.getIntAvro)
 
   /**
    * Read Avro generic records from the input paths on HDFS.
@@ -245,15 +250,32 @@ object AvroUtils {
     }
 
   /**
-   * Read the nameAndTerm of type [[NameAndTerm]] from Avro record of type [[GenericRecord]].
+   * Parse an Avro [[GenericRecord]] containing a [[NameTermValueAvro]] record.
+   *
+   * @param record A [[GenericRecord]] which is actually a [[NameTermValueAvro]]
+   * @return A [[NameTermValueAvro]] object containing the data of the input record
+   */
+  def readNameTermValueAvroFromGenericRecord(record: GenericRecord): NameTermValueAvro =
+    SpecificData
+      .get()
+      .deepCopy(NameTermValueAvro.SCHEMA$, translateRecord(record, NameTermValueAvro.SCHEMA$))
+      .asInstanceOf[NameTermValueAvro]
+
+  /**
+   * Read a [[NameAndTerm]] object from an Avro record of type [[GenericRecord]].
    *
    * @param record The input Avro record
    * @return The nameAndTerm parsed from the Avro record
    */
-  protected[avro] def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
+  def readNameAndTermFromGenericRecord(record: GenericRecord): NameAndTerm = {
 
-    val name = Utils.getStringAvro(record, AvroFieldNames.NAME)
-    val term = Utils.getStringAvro(record, AvroFieldNames.TERM, isNullOK = true)
+    val nameTermValueAvro = readNameTermValueAvroFromGenericRecord(record)
+
+    val name = nameTermValueAvro.getName.toString
+    val term = nameTermValueAvro.getTerm match {
+      case cs: CharSequence => cs.toString
+      case _ => ""
+    }
 
     NameAndTerm(name, term)
   }
@@ -271,22 +293,19 @@ object AvroUtils {
     genericRecords
       .flatMap {
         _.get(featureSectionKey) match {
-
           case recordList: JList[_] =>
             recordList.asScala.map {
               case record: GenericRecord =>
                 AvroUtils.readNameAndTermFromGenericRecord(record)
 
-              case any =>
+              case _ =>
                 throw new IllegalArgumentException(
-                  s"$any in features list is not a record. It needs to be an Avro record containingg a name and term for " +
-                    s"each feature.")
+                  s"Field '$featureSectionKey' contains invalid records. Must contain only NameTermValue records.")
             }
 
           case _ =>
             throw new IllegalArgumentException(
-              s"$featureSectionKey is not a list (and might be null). It needs to be a list of Avro records containing a " +
-                s"name and a term for each feature.")
+              s"Field '$featureSectionKey' is not a list (or it is null). It needs to be a list of NameTermValue records.")
         }
       }
       .distinct
@@ -306,20 +325,6 @@ object AvroUtils {
         (featureSectionKey, AvroUtils.readNameAndTermsFromGenericRecords(genericRecords, featureSectionKey))
       }
       .toMap
-
-  /**
-   * Check whether a model contains an intercept term or not.
-   *
-   * @param path The path to read the model from
-   * @return Whether the model contains an intercept or not
-   */
-  protected[ml] def modelContainsIntercept(sc: SparkContext, path: Path): Boolean =
-    readFromSingleAvro[BayesianLinearModelAvro](sc, path.toString, BayesianLinearModelAvro.getClassSchema.toString)
-      .head
-      .getMeans
-      .map(nameTermValueAvro => NameAndTerm(nameTermValueAvro.getName.toString, nameTermValueAvro.getTerm.toString))
-      .toSet
-      .contains(NameAndTerm.INTERCEPT_NAME_AND_TERM)
 
   /**
    * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]].
@@ -423,75 +428,28 @@ object AvroUtils {
   }
 
   /**
-   * Convert the latent factor of type [[Vector[Double]]] to Avro record of type [[LatentFactorAvro]].
+   * Convert an Avro [[GenericRecord]] to a [[SpecificRecord]] of a particular class that was written with a compatible
+   * but not identical [[Schema]].
    *
-   * @param effectId The id of the latent factor, e.g., row Id, col Id, user Id or itemId
-   * @param latentFactor The latent factor of the matrix factorization model
-   * @return The Avro record that contains the information of the input latent factor
+   * @param record The [[GenericRecord]] to be parsed
+   * @param targetSchema The schema of the Avro record that should be produced
+   * @return
    */
-  protected[avro] def convertLatentFactorToLatentFactorAvro(
-      effectId: String,
-      latentFactor: Vector[Double]): LatentFactorAvro = {
+  protected[avro] def translateRecord(record: GenericRecord, targetSchema: Schema): GenericRecord = {
 
-    val latentFactorAsList = latentFactor.toArray.map(JDouble.valueOf).toList
-    val avroFile = LatentFactorAvro.newBuilder().setEffectId(effectId).setLatentFactor(latentFactorAsList)
-    avroFile.build()
-  }
+    val recordBuilder = new GenericRecordBuilder(targetSchema)
 
-  /**
-   * Convert the given Avro record of type [[LatentFactorAvro]] to the latent factor of type [[Vector[Double]].
-   *
-   * @param latentFactorAvro The given Avro record
-   * @return The (effectId, latentFactor) pair converted from the input Avro record
-   */
-  protected[avro] def convertLatentFactorAvroToLatentFactor(
-      latentFactorAvro: LatentFactorAvro): (String, Vector[Double]) = {
+    targetSchema.getFields.foreach { field =>
 
-    val effectId = latentFactorAvro.getEffectId.toString
-    val latentFactor = new DenseVector[Double](latentFactorAvro.getLatentFactor.toArray().map(_.asInstanceOf[Double]))
-    (effectId, latentFactor)
-  }
+      val fieldType = field.schema.getType
 
-  /**
-   * Creates a default map of features, i.e. a Map[(String, Int)] from feature names to an ordinal counter,
-   * by scanning through a single model (typically, the fixed effects model).
-   * This is useful e.g. in model format conversions when we don't have the data to go over to build a
-   * feature index map.
-   *
-   * @note There might be faster ways to implement this: all the feature names are gathered first, then duplicates are
-   *       removed, when duplicates could be removed while aggregating the names, probably consuming a lot less memory.
-   *
-   * @param modelAvro The model (only one) to scan for feature names
-   * @return A DefaultIndexMap, which associates a unique integer id to each feature name
-   */
-  protected[avro] def makeFeatureIndexForModel(modelAvro: BayesianLinearModelAvro): IndexMap =
-    DefaultIndexMap(
-      modelAvro.getMeans.map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)))
+      if (CONVERSION_MAP.contains(fieldType)) {
+        recordBuilder.set(field, CONVERSION_MAP(fieldType)(record, field.name))
+      } else {
+        recordBuilder.set(field, record.get(field.name))
+      }
+    }
 
-  /**
-   * Creates a default map of features, i.e. a Map[(String, Int)] from feature names to an ordinal counter,
-   * by scanning through multiple models (typically, several random effects models).
-   * This is useful e.g. in model format conversions when we don't have the data to go over to build a
-   * feature index map.
-   *
-   * @note There might be faster ways to implement this: all the feature names are gathered first, then duplicates are
-   *       removed, when duplicates could be removed while aggregating the names, probably consuming a lot less memory.
-   *
-   * @param sc The Spark context
-   * @param modelAvros The models to scan for feature names
-   * @return A DefaultIndexMapLoader, which associates a unique integer id to each feature name
-   */
-  protected[avro] def makeFeatureIndexForModel(
-      sc: SparkContext,
-      modelAvros: RDD[BayesianLinearModelAvro]): IndexMapLoader = {
-
-    DefaultIndexMapLoader(
-      sc,
-      modelAvros
-        .flatMap(modelAvro =>
-          modelAvro
-            .getMeans
-            .map(nameTermValue => Utils.getFeatureKey(nameTermValue.getName, nameTermValue.getTerm)))
-        .collect)
+    recordBuilder.build()
   }
 }

@@ -251,8 +251,9 @@ class FeatureIndexingDriverIntegTest extends SparkTestUtils with TestTemplateWit
 
 object FeatureIndexingDriverIntegTest {
 
-  val heartInputPaths = Set(new Path("src/integTest/resources/DriverIntegTest/input/heart.avro"))
-  val yahooMusicInputPaths = Set(new Path("src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro"))
+  val heartInputPaths = Set(new Path("src/integTest/resources/GameIntegTest/input/heart/heart.avro"))
+  val yahooMusicInputPaths = Set(
+    new Path("src/integTest/resources/GameIntegTest/input/train/yahoo-music-train.avro"))
 
   val heartGlobalFeatureShardId = "global"
   val heartFeatureBags = Set("features")
