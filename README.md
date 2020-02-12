@@ -1,6 +1,5 @@
 # Photon Machine Learning (Photon ML)
 
-
 [![Build Status](https://travis-ci.org/linkedin/photon-ml.svg?branch=master)](https://travis-ci.org/linkedin/photon-ml)
 
 **Check out our [hands-on tutorial](https://github.com/linkedin/photon-ml/wiki/Photon-ML-Tutorial).**
