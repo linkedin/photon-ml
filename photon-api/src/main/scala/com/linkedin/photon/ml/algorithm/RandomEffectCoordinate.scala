@@ -270,7 +270,7 @@ object RandomEffectCoordinate {
    */
   protected[algorithm] def trainModel[Function <: SingleNodeObjectiveFunction](
     randomEffectDataset: DataFrame,
-    randomEffectType:REType,
+    randomEffectType: REType,
     featureShardId: FeatureShardId,
     randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
     initialRandomEffectModelOpt: Option[RandomEffectModel]): (RandomEffectModel, RandomEffectOptimizationTracker) = {

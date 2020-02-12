@@ -16,13 +16,11 @@ package com.linkedin.photon.ml.algorithm
 
 import scala.collection.mutable
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
-import com.linkedin.photon.ml.data.GameDatum
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
@@ -35,15 +33,17 @@ import com.linkedin.photon.ml.util.Timed
  *
  * @param updateSequence The order in which to update coordinates
  * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
- * @param validationDataAndEvaluationSuiteOpt Optional validation data and [[EvaluationSuite]] of validation metric
- *                                         [[com.linkedin.photon.ml.evaluation.Evaluator]] objects
+ * @param validationOpt Optional validation data
+ * @param evaluationSuiteOpt  Optional [[EvaluationSuite]] of validation metric
+ *                            [[com.linkedin.photon.ml.evaluation.Evaluator]] objects
  * @param lockedCoordinates Set of locked coordinates within the initial model for performing partial retraining
  * @param logger A logger instance
  */
 class CoordinateDescent(
     updateSequence: Seq[CoordinateId],
     descentIterations: Int,
-    validationDataAndEvaluationSuiteOpt: Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)],
+    validationOpt: Option[DataFrame],
+    evaluationSuiteOpt: Option[EvaluationSuite],
     lockedCoordinates: Set[CoordinateId],
     implicit private val logger: Logger) {
 
@@ -98,7 +98,7 @@ class CoordinateDescent(
    * @param initialModelsOpt An optional map of existing models
    */
   private def checkInput(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       initialModelsOpt: Option[Map[CoordinateId, DatumScoringModel]]): Unit = {
 
     // All coordinates in the update sequence must be passed as input
@@ -130,7 +130,7 @@ class CoordinateDescent(
    *         at the conclusion of coordinate descent).
    */
   def run(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       initialModelsOpt: Option[Map[CoordinateId, DatumScoringModel]]): (GameModel, Option[EvaluationResults]) = {
 
     checkInput(coordinates, initialModelsOpt)
@@ -145,10 +145,12 @@ class CoordinateDescent(
         coordinateId,
         coordinates(coordinateId),
         initialModels.get(coordinateId),
-        validationDataAndEvaluationSuiteOpt)
+        validationOpt,
+        evaluationSuiteOpt)
 
-    } else if (validationDataAndEvaluationSuiteOpt.isDefined) {
-      val (validationData, evaluationSuite) = validationDataAndEvaluationSuiteOpt.get
+    } else if (validationOpt.isDefined && evaluationSuiteOpt.isDefined) {
+      val validationData = validationOpt.get
+      val evaluationSuite = evaluationSuiteOpt.get
       val (model, evaluationsResults) = descendWithValidation(
         coordinates,
         updateSequence,
@@ -182,7 +184,7 @@ object CoordinateDescent {
    */
   protected[algorithm] def trainCoordinateModel(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       iteration: Int,
       initialModelOpt: Option[DatumScoringModel],
       residualsOpt: Option[CoordinateDataScores])(
@@ -279,7 +281,7 @@ object CoordinateDescent {
    */
   protected[algorithm] def trainOrFetchCoordinateModel(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       coordinatesToTrain: Seq[CoordinateId],
       initialModelOpt: Option[DatumScoringModel],
       residualsOpt: Option[CoordinateDataScores])(
@@ -311,12 +313,12 @@ object CoordinateDescent {
    */
   protected[algorithm] def evaluateModel(
       modelToEvaluate: DatumScoringModel,
-      validationData: RDD[(UniqueSampleId, GameDatum)],
+      validationData: DataFrame,
       evaluationSuite: EvaluationSuite)(
       implicit logger: Logger): EvaluationResults = Timed("Validate GAME model") {
 
     val validatingScores = Timed(s"Compute validation scores") {
-      modelToEvaluate.scoreForCoordinateDescent(validationData)
+      modelToEvaluate.scoreForCoordinateDescent(validationData) // TODO: to fix the error
     }
 
     Timed(s"Compute evaluation metrics") {
@@ -371,7 +373,7 @@ object CoordinateDescent {
    * @return A new [[GameModel]]
    */
   private def descend(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       updateSequence: Seq[CoordinateId],
       coordinatesToTrain: Seq[CoordinateId],
       iterations: Int,
@@ -491,12 +493,12 @@ object CoordinateDescent {
    * @return A (new [[GameModel]], model [[EvaluationResults]]) tuple
    */
   private def descendWithValidation(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       updateSequence: Seq[CoordinateId],
       coordinatesToTrain: Seq[CoordinateId],
       iterations: Int,
       initialModels: Map[CoordinateId, DatumScoringModel],
-      validationData: RDD[(UniqueSampleId, GameDatum)],
+      validationData: DataFrame,
       evaluationSuite: EvaluationSuite)(
       implicit logger: Logger): (GameModel, EvaluationResults) = {
 
@@ -645,24 +647,25 @@ object CoordinateDescent {
    * @param coordinateId The ID of the single coordinate for which to train a new model
    * @param coordinate The [[Coordinate]] for which to train a new model
    * @param initialModelOpt An optional existing model to use for warm-start training
-   * @param validationDataAndEvaluationSuiteOpt An optional (validation data, set of evaluation metrics to compute)
-   *                                            tuple
+   * @param validationOpt An optional validation data
+   * @param evaluationSuiteOpt An optional set of evaluation metrics to compute tuple
    * @param logger An implicit logger
    * @return A (new [[GameModel]], optional model [[EvaluationResults]]) tuple
    */
   private def descendSingleCoordinate(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       initialModelOpt: Option[DatumScoringModel],
-      validationDataAndEvaluationSuiteOpt: Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)])(
+      validationOpt: Option[DataFrame],
+      evaluationSuiteOpt: Option[EvaluationSuite])(
       implicit logger: Logger): (GameModel, Option[EvaluationResults]) = {
 
     val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, residualsOpt = None)
 
     persistModel(newModel, coordinateId, iteration = 1)
 
-    val evaluationResultsOpt = validationDataAndEvaluationSuiteOpt.map { case (validationData, evaluationSuite) =>
-      evaluateModel(newModel, validationData, evaluationSuite)
+    val evaluationResultsOpt = validationOpt.map { case validationData =>
+      evaluateModel(newModel, validationData, evaluationSuiteOpt.get)
     }
 
     (new GameModel(Map(coordinateId -> newModel)), evaluationResultsOpt)
