@@ -15,20 +15,21 @@
 package com.linkedin.photon.ml.data.scoring
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.{col, udf}
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.constants.{DataConst, MathConst}
 
 /**
  * The class used to track scored data points throughout training. The score objects are scores only, with no additional
  * information.
  *
- * @param scoresRdd The scores consist of (unique ID, score) pairs as explained above.
+ * @param scores The scores dataframe consist of (unique ID, score) pairs as explained above.
  */
-protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSampleId, Double)])
-  extends DataScores[Double, CoordinateDataScores](scoresRdd) {
+protected[ml] class CoordinateDataScores(override val scores: DataFrame)
+  extends DataScores[CoordinateDataScores](scores) {
 
   /**
    * Generic method to combine two [[CoordinateDataScores]] objects.
@@ -37,15 +38,16 @@ protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSamp
    * @param that The [[CoordinateDataScores]] instance to merge with this instance
    * @return A merged [[CoordinateDataScores]]
    */
-  private def joinAndApply(op: (Double, Double) => Double, that: CoordinateDataScores): CoordinateDataScores =
-    // Use fullOuterJoin: it's possible for some data to not be scored by a model
+  private def joinAndApply(op: UserDefinedFunction, that: CoordinateDataScores): CoordinateDataScores =
     new CoordinateDataScores(
       this
-        .scoresRdd
-        .fullOuterJoin(that.scoresRdd)
-        .mapValues { case (thisScoreOpt, thatScoreOpt) =>
-          op(thisScoreOpt.getOrElse(MathConst.DEFAULT_SCORE), thatScoreOpt.getOrElse(MathConst.DEFAULT_SCORE))
-        })
+        .scores
+        .withColumnRenamed(DataConst.SCORE, "s1")
+        // use fullOuterJoin: it's possible for some data to not be scored by a model
+        .join(that.scores.withColumnRenamed(DataConst.SCORE, "s2"), col(DataConst.ID), "fullouter")
+        .withColumn("newScore", op(col("s1"), col("s2")))
+        .select(DataConst.ID, "newScore")
+        .withColumnRenamed("newScore", DataConst.SCORE))
 
   /**
    * The addition operation for [[CoordinateDataScores]].
@@ -54,7 +56,21 @@ protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSamp
    * @param that The [[CoordinateDataScores]] instance to add to this instance
    * @return A new [[CoordinateDataScores]] instance encapsulating the accumulated values
    */
-  override def +(that: CoordinateDataScores): CoordinateDataScores = joinAndApply((a, b) => a + b, that)
+  override def +(that: CoordinateDataScores): CoordinateDataScores = {
+
+    val op = udf((a1: Double, a2: Double) => {
+      val s1 = Option(a1) match {
+        case Some(v) => v
+        case _ => MathConst.DEFAULT_SCORE
+      }
+      val s2 = Option(a2) match {
+        case Some(v) => v
+        case _ => MathConst.DEFAULT_SCORE
+      }
+      s1 + s2
+    })
+    joinAndApply(op, that)
+  }
 
   /**
    * The minus operation for [[CoordinateDataScores]].
@@ -63,7 +79,22 @@ protected[ml] class CoordinateDataScores(override val scoresRdd: RDD[(UniqueSamp
    * @param that The [[CoordinateDataScores]] instance to subtract from this instance
    * @return A new [[CoordinateDataScores]] instance encapsulating the subtracted values
    */
-  override def -(that: CoordinateDataScores): CoordinateDataScores = joinAndApply((a, b) => a - b, that)
+  override def -(that: CoordinateDataScores): CoordinateDataScores = {
+
+    val op = udf((a1: Double, a2: Double) => {
+      val s1 = Option(a1) match {
+        case Some(v) => v
+        case _ => MathConst.DEFAULT_SCORE
+      }
+      val s2 = Option(a2) match {
+        case Some(v) => v
+        case _ => MathConst.DEFAULT_SCORE
+      }
+
+      s1 - s2
+    })
+    joinAndApply(op, that)
+  }
 
   /**
    * Method used to define equality on multiple class levels while conforming to equality contract. Defines under
@@ -83,7 +114,7 @@ object CoordinateDataScores {
    * @param scores The scores, consisting of (unique ID, score) pairs.
    * @return A new [[CoordinateDataScores]] object
    */
-  def apply(scores: RDD[(UniqueSampleId, Double)]): CoordinateDataScores = new CoordinateDataScores(scores)
+  def apply(scores: DataFrame): CoordinateDataScores = new CoordinateDataScores(scores)
 
   /**
    * Convert a [[GameDatum]] and a raw score into a score object. For [[CoordinateDataScores]] this is the raw score.

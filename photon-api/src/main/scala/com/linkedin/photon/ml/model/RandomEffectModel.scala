@@ -14,33 +14,40 @@
  */
 package com.linkedin.photon.ml.model
 
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD._
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.{HashPartitioner, SparkContext}
+import org.apache.spark.ml.linalg.{Vector => SparkVector}
 
+import com.linkedin.photon.ml.{Constants, TaskType}
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.{UniqueSampleId, REId, REType, FeatureShardId}
+import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.RDDLike
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * Representation of a random effect model.
  *
- * @param modelsRDD The models, one for each unique random effect value
+ * @param models The models, one for each unique random effect value
  * @param randomEffectType The random effect type
  * @param featureShardId The feature shard id
  */
 class RandomEffectModel(
-    val modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+    val models: DataFrame,
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
   extends DatumScoringModel
   with RDDLike {
 
-  override val modelType: TaskType = RandomEffectModel.determineModelType(modelsRDD)
+  override val modelType: TaskType = RandomEffectModel.determineModelType(models)
 
   //
   // RandomEffectModel functions
@@ -49,11 +56,11 @@ class RandomEffectModel(
   /**
    * Create a new [[RandomEffectModel]] with new underlying models.
    *
-   * @param newModelsRdd The new underlying models, one per entity
+   * @param newModels The new underlying models, one per entity
    * @return A new [[RandomEffectModel]]
    */
-  def update(newModelsRdd: RDD[(REId, GeneralizedLinearModel)]): RandomEffectModel =
-    new RandomEffectModel(newModelsRdd, randomEffectType, featureShardId)
+  def update(newModels: DataFrame): RandomEffectModel =
+    new RandomEffectModel(newModels, randomEffectType, featureShardId)
 
   //
   // DatumScoringModel functions
@@ -63,35 +70,19 @@ class RandomEffectModel(
    * Compute the score for the dataset.
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
+   * @param dataset The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
    *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
-    RandomEffectModel.score(
-      dataPoints,
-      modelsRDD,
-      randomEffectType,
-      featureShardId,
-      ModelDataScores.toScore,
-      ModelDataScores.apply)
+  override def score(dataset: DataFrame): CoordinateDataScores = {
 
-  /**
-   * Compute the scores for the GAME dataset, and store the scores only.
-   *
-   * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
-   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
-   * @return The computed scores
-   */
-  override def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
-    RandomEffectModel.score(
-      dataPoints,
-      modelsRDD,
+    val scores = RandomEffectModel.score(
+      dataset,
+      models,
       randomEffectType,
-      featureShardId,
-      CoordinateDataScores.toScore,
-      CoordinateDataScores.apply)
+      featureShardId)
+    new CoordinateDataScores(scores)
+  }
 
   //
   // Summarizable functions
@@ -108,11 +99,11 @@ class RandomEffectModel(
 
     stringBuilder.append(s"\nRandom Effect Type: '$randomEffectType'")
     stringBuilder.append(s"\nFeature Shard ID: '$featureShardId'")
-    stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
-    stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
-    if (modelsRDD.first()._2.coefficients.variancesOption.isDefined) {
-      stringBuilder.append(s"\nVariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
-    }
+    //stringBuilder.append(s"\nLength: ${modelsRDD.values.map(_.coefficients.means.length).stats()}")
+    //stringBuilder.append(s"\nMean: ${modelsRDD.values.map(_.coefficients.meansL2Norm).stats()}")
+    //if (modelsRDD.first()._2.coefficients.variancesOption.isDefined) {
+    //  stringBuilder.append(s"\nVariance: ${modelsRDD.values.map(_.coefficients.variancesL2NormOption.get).stats()}")
+    //}
 
     stringBuilder.toString()
   }
@@ -126,56 +117,47 @@ class RandomEffectModel(
    *
    * @return The Spark context
    */
-  override protected[ml] def sparkContext: SparkContext = modelsRDD.sparkContext
+  override protected[ml] def sparkContext: SparkContext = SparkSession.builder.getOrCreate.sparkContext
 
-  /**
-   * Assign a given name to [[modelsRDD]].
-   *
-   * @note Not used to reference models in the logic of photon-ml, only used for logging currently.
-   * @param name The parent name for all [[RDD]]s in this class
-   * @return This object with the name of [[modelsRDD]] assigned
-   */
   override protected[ml] def setName(name: String): RandomEffectModel = {
-
-    modelsRDD.setName(name)
 
     this
   }
 
   /**
-   * Set the storage level of [[modelsRDD]], and persist their values across the cluster the first time they are
+   * Set the storage level of [[models]], and persist their values across the cluster the first time they are
    * computed.
    *
    * @param storageLevel The storage level
-   * @return This object with the storage level of [[modelsRDD]] set
+   * @return This object with the storage level of [[models]] set
    */
   override protected[ml] def persistRDD(storageLevel: StorageLevel): RandomEffectModel = {
 
-    if (!modelsRDD.getStorageLevel.isValid) modelsRDD.persist(storageLevel)
+    models.persist(storageLevel)
 
     this
   }
 
   /**
-   * Mark [[modelsRDD]] as non-persistent, and remove all blocks for them from memory and disk.
+   * Mark [[models]] as non-persistent, and remove all blocks for them from memory and disk.
    *
-   * @return This object with [[modelsRDD]] marked non-persistent
+   * @return This object with [[models]] marked non-persistent
    */
   override protected[ml] def unpersistRDD(): RandomEffectModel = {
 
-    if (modelsRDD.getStorageLevel.isValid) modelsRDD.unpersist()
+    models.unpersist()
 
     this
   }
 
   /**
-   * Materialize [[modelsRDD]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
+   * Materialize [[models]] (Spark data are lazy evaluated: this method forces them to be evaluated).
    *
-   * @return This object with [[modelsRDD]] materialized
+   * @return This object with [[models]] materialized
    */
   override protected[ml] def materialize(): RandomEffectModel = {
 
-    modelsRDD.count()
+    models.count()
 
     this
   }
@@ -194,23 +176,44 @@ class RandomEffectModel(
       val areTypesEqual = this.randomEffectType == other.randomEffectType
       val areShardsEqual = this.featureShardId == other.featureShardId
       lazy val areAllModelsEqual = this
-        .modelsRDD
-        .fullOuterJoin(other.modelsRDD)
-        .mapPartitions { iterator =>
-
-          val areModelsEqual = iterator.forall {
-            case (_, (Some(model1), Some(model2))) => model1.equals(model2)
-            case _ => false
-          }
-
-          Iterator.single(areModelsEqual)
-        }
-        .fold(true)(_ && _)
+        .models
+        .withColumnRenamed(DataConst.COEFFICIENTS, "s1")
+        .join(other.models.withColumnRenamed(DataConst.COEFFICIENTS, "s2"), col(DataConst.ID), "fullouter")
+        .filter("s1 is null or s2 is null or s1 != s2") //TODO: add udf to compare two vectors
+        .head(1)
+        .isEmpty
 
       areTypesEqual && areShardsEqual && areAllModelsEqual
 
     case _ =>
       false
+  }
+
+  /**
+   * Convert models from dataframe to RDD
+   * @return
+   */
+  def toRDD(): RDD[(REType, GeneralizedLinearModel)] = {
+    models
+      .select(randomEffectType, DataConst.MODEL_TYPE, DataConst.COEFFICIENTS)
+      .rdd
+      .map { row =>
+        val reid = row.getInt(0).toString
+        val modelType: TaskType = TaskType.withName(row.getString(1))
+        val coefficients = Coefficients(VectorUtils.mlToBreeze(row.getAs[SparkVector](2)))
+
+        val model = modelType match {
+          case TaskType.LINEAR_REGRESSION =>
+            LinearRegressionModel(coefficients)
+          case TaskType.LOGISTIC_REGRESSION =>
+            LogisticRegressionModel(coefficients)
+          case TaskType.POISSON_REGRESSION =>
+            PoissonRegressionModel(coefficients)
+          case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+            SmoothedHingeLossLinearSVMModel(coefficients)
+        }
+        (reid, model)
+      }
   }
 
   /**
@@ -233,67 +236,44 @@ object RandomEffectModel {
    *       that type - it will be faster for large numbers of random effect models. Note that it may still be a
    *       bottleneck if we check each time a new RandomEffectModel is created.
    *
-   * @param modelsRDD The random effect models
+   * @param models The random effect models
    * @return The GAME model type
    */
-  protected def determineModelType(modelsRDD: RDD[(REId, GeneralizedLinearModel)]): TaskType = {
+  protected def determineModelType(models: DataFrame): TaskType = {
 
-    val modelTypes = modelsRDD.values.map(_.modelType).distinct().collect()
+    val modelTypes = models.select(GeneralizedLinearModel.MODEL_TYPE).head(1)
 
     require(
       modelTypes.length == 1,
-      s"${modelsRDD.name} has multiple model types:\n${modelTypes.mkString(", ")}")
+      s"models has multiple model types:\n${modelTypes.mkString(", ")}")
 
-    modelTypes.head
+    TaskType.withName(modelTypes(0).getString(0))
   }
 
   /**
    * Compute the scores for a dataset, using random effect models.
    *
-   * @param dataPoints The dataset to score
-   * @param modelsRDD The individual random effect models to use for scoring
+   * @param dataset The dataset to score
+   * @param models The individual random effect models to use for scoring
    * @param randomEffectType The random effect type
    * @param featureShardId The feature shard id
    * @return The scores
    */
-  private def score[T, V](
-      dataPoints: RDD[(UniqueSampleId, GameDatum)],
-      modelsRDD: RDD[(REId, GeneralizedLinearModel)],
+  private def score (
+      dataset: DataFrame,
+      models: DataFrame,
       randomEffectType: REType,
-      featureShardId: FeatureShardId,
-      toScore: (GameDatum, Double) => T,
-      toResult: RDD[(UniqueSampleId, T)] => V): V = {
+      featureShardId: FeatureShardId): DataFrame = {
 
-    val hashPartitioner = new HashPartitioner(dataPoints.getNumPartitions)
+    val scores: DataFrame = dataset
+      .join(models, randomEffectType)
+      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(col(DataConst.COEFFICIENTS), col(featureShardId)))
+      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
 
-    /*
-     * We perform a replicated partitioned hash join here under the assumption that we can fit the per partition
-     * random effect models in memory. We first partition both relations using the same partitioner and then zip them.
-     * This ensures that the same keys from both relations go in the same partition. Given above, we can now perform the
-     * join by doing the following operations per partition:
-     *   1. Load the random effect models in memory
-     *   2. Iterate over the data points
-     *   3. For each data point, look up the corresponding random effect model in the in memory map and score
-     */
-    val scores = dataPoints
-      .map { case (uniqueId, gameDatum) =>
-        (gameDatum.idTagToValueMap(randomEffectType), (uniqueId, gameDatum))
-      }
-      .partitionBy(hashPartitioner)
-      .zipPartitions(modelsRDD.partitionBy(hashPartitioner)) { (dataIt, modelIt) =>
+    scores
+  }
 
-        val lookupTable = modelIt.toMap
-
-        dataIt.map { case (id, (uid, datum)) =>
-          val score = lookupTable
-            .get(id)
-            .map(_.computeScore(datum.featureShardContainer(featureShardId)))
-            .getOrElse(0.0)
-
-          (uid, toScore(datum, score))
-        }
-      }
-
-    toResult(scores)
+  def toDataFrame(input: RDD[(REType, GeneralizedLinearModel)]): DataFrame = {
+    null
   }
 }

@@ -15,14 +15,17 @@
 package com.linkedin.photon.ml.model
 
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.{col, lit}
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
-import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
+import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.constants.DataConst
+import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * Representation of a fixed effect model.
@@ -52,25 +55,12 @@ class FixedEffectModel(
    * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  override def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores =
-    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, ModelDataScores.toScore, ModelDataScores.apply)
+  override def score(dataPoints: DataFrame): CoordinateDataScores = {
+    val scores = FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
+    new CoordinateDataScores(scores)
+  }
 
-  /**
-   * Compute the scores for the GAME dataset, and store the scores only.
-   *
-   * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataPoints The dataset to score
-   * @return The computed scores
-   */
-  override protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores =
-    FixedEffectModel.score(
-      dataPoints,
-      modelBroadcast,
-      featureShardId,
-      CoordinateDataScores.toScore,
-      CoordinateDataScores.apply)
-
-  /**
+    /**
    * Build a summary string for the coefficients.
    *
    * @return String representation
@@ -115,22 +105,21 @@ object FixedEffectModel {
   /**
    * Compute the scores for the dataset.
    *
-   * @param dataPoints The dataset to score
+   * @param dataset The dataset to score
    * @param modelBroadcast The model to use for scoring
    * @param featureShardId The feature shard id
    * @return The scores
    */
-  private def score[T, V](
-      dataPoints: RDD[(UniqueSampleId, GameDatum)],
+  private def score(
+      dataset: DataFrame,
       modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: FeatureShardId,
-      toScore: (GameDatum, Double) => T,
-      toResult: RDD[(UniqueSampleId, T)] => V): V = {
+      featureShardId: FeatureShardId): DataFrame = {
 
-    val scores = dataPoints.mapValues { gameDatum =>
-      toScore(gameDatum, modelBroadcast.value.computeScore(gameDatum.featureShardContainer(featureShardId)))
-    }
+    val cofs = VectorUtils.breezeToMl(modelBroadcast.value.coefficients.means)
+    val scores = dataset
+      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
+      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
 
-    toResult(scores)
+    scores
   }
 }

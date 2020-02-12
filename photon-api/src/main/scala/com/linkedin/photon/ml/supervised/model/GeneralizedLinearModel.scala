@@ -15,7 +15,10 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.Vector
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector => SparkVector}
+
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.functions.udf
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.model.Coefficients
@@ -165,4 +168,34 @@ object GeneralizedLinearModel {
     broadcastModel.unpersist()
     result
   }
+
+  val MODEL_TYPE = "modelType"
+
+  /**
+   * A UDF to compute scores given a linear model and a feature vector
+   * @return The score which is the dot product of model coefficients and features
+   */
+  def scoreUdf = udf({(coefficients: SparkVector, features: SparkVector) =>
+    require(
+      coefficients.size == features.size,
+      s"Coefficients.size = ${coefficients.size} and features.size = ${features.size}")
+
+    val score = coefficients match {
+      case (dCoef: DenseVector) =>
+        val array = dCoef.toArray
+        var s = 0.0
+        features.foreachActive((i, v) => s += v * array(i))
+        s
+      case (sCoef: SparseVector) =>
+        val array = features.toArray
+        var s = 0.0
+        sCoef.foreachActive((i, v) => s += v * array(i))
+        s
+      case _ => throw new UnsupportedOperationException(
+        s"Coefficients type ${coefficients.getClass} is not supported.")
+
+    }
+    score
+  })
+
 }

@@ -19,29 +19,30 @@ import scala.collection.mutable
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession, functions}
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.sql.functions.col
-import com.linkedin.photon.ml.normalization.NormalizationContext
+import org.apache.spark.sql.{DataFrame, functions}
+import org.apache.spark.storage.StorageLevel
+
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
+import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.optimization._
+import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 /**
  * The optimization problem coordinate for a random effect model.
  *
- * @param rEType
- * @param rawData    The raw training dataframe
  * @tparam Objective The type of objective function used to solve individual random effect optimization problems
+ * @param rEType  The random effect type
+ * @param rawData    The raw training dataframe
  * @param optimizationProblem The random effect optimization problem
  * @param inputColumnsNames
  */
@@ -74,20 +75,10 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
   // Coordinate functions
   //
   override protected def updateDataset(scores: CoordinateDataScores) = {
-
-    // TODO: change scores to dataframe
-    val schemaFields = Array[StructField](
-      StructField(Constants.UNIQUE_SAMPLE_ID, DataTypes.LongType, nullable = false),
-      StructField("score", DataTypes.DoubleType, nullable = false))
-    dataset = SparkSession
-      .builder
-      .getOrCreate
-      .createDataFrame(scores.scoresRdd.map(Row.fromTuple(_)), new StructType(schemaFields))
+    dataset = scores.scores
       .join(rawData, Constants.UNIQUE_SAMPLE_ID)
-      // TODO: WHAT IF OFFSET DOESN'T EXIST
-      //.withColumnRenamed("score", inputColumnsNames(InputColumnsNames.OFFSET))
       .withColumn(inputColumnsNames(InputColumnsNames.OFFSET),
-                  col(inputColumnsNames(InputColumnsNames.OFFSET)) + col("score"))
+                  col(inputColumnsNames(InputColumnsNames.OFFSET)) + col(DataConst.SCORE))
   }
 
   /**
@@ -309,8 +300,8 @@ object RandomEffectCoordinate {
     // Left join the models to data and optimization problems for cases where we have a prior model but no new data
     val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
       .map { randomEffectModel =>
-        val modelsAndTrackers = randomEffectModel
-          .modelsRDD
+        val modelsRdd = randomEffectModel.toRDD()
+        val modelsAndTrackers = modelsRdd
           .leftOuterJoin(dataAndOptimizationProblems)
           .mapValues {
             case (localModel, Some((localDataset, optimizationProblem))) =>
@@ -343,7 +334,7 @@ object RandomEffectCoordinate {
       }
 
     val newRandomEffectModel = new RandomEffectModel(
-      newModels,
+      RandomEffectModel.toDataFrame(newModels),
       randomEffectType,
       featureShardId)
 
@@ -366,39 +357,6 @@ object RandomEffectCoordinate {
   protected[algorithm] def score(
       randomEffectDataset: DataFrame,
       randomEffectModel: RandomEffectModel): CoordinateDataScores = {
-
-    /*
-    // There may be more models than active data. However, since we're computing residuals for future coordinates, no
-    // data means no residual. Therefore, we use an inner join. Note that the active data and models use the same
-    // partitioner, but scores need to use GameDatum partitioner.
-    val activeScores = randomEffectDataset
-      .activeData
-      .join(randomEffectModel.modelsRDD)
-      .flatMap { case (_, (localDataset, model)) =>
-        localDataset.dataPoints.map { case (uniqueId, labeledPoint) =>
-          (uniqueId, model.computeScore(labeledPoint.features))
-        }
-      }
-      .partitionBy(randomEffectDataset.uniqueIdPartitioner)
-
-    // Passive data already uses the GameDatum partitioner. Note that this code assumes few (if any) entities have a
-    // passive dataset.
-    val passiveDataREIds = randomEffectDataset.passiveDataREIds
-    val modelsForPassiveData = randomEffectModel
-      .modelsRDD
-      .filter { case (reId, _) =>
-        passiveDataREIds.value.contains(reId)
-      }
-      .collectAsMap()
-    val passiveScores = randomEffectDataset
-      .passiveData
-      .mapValues { case (randomEffectId, labeledPoint) =>
-        modelsForPassiveData(randomEffectId).computeScore(labeledPoint.features)
-      }
-
-    new CoordinateDataScores(activeScores ++ passiveScores)
-
-     */
-    return null
+    randomEffectModel.score(randomEffectDataset)
   }
 }

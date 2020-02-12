@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.model
 
-import breeze.linalg.{DenseVector, SparseVector, Vector, norm}
+import breeze.linalg.{Vector, norm}
 import breeze.stats.meanAndVariance
 
 import com.linkedin.photon.ml.constants.MathConst

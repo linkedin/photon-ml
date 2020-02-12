@@ -14,24 +14,23 @@
  */
 package com.linkedin.photon.ml.data.scoring
 
-import scala.reflect.ClassTag
-
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.spark.RDDLike
+import com.linkedin.photon.ml.constants.DataConst
 
 /**
- * A base class for tracking scored data points, where the scores are stored in an [[RDD]] which associates the unique
+ * A base class for tracking scored data points, where the scores are stored in an [[DataFrame]]
+ * which associates the unique
  * ID of a data point with a score object.
  *
- * @param scoresRdd Data point scores, as described above
+ * @param scores Data point scores, as described above
  */
-abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
-    val scoresRdd: RDD[(UniqueSampleId, T)])
+abstract protected[ml] class DataScores[D <: DataScores[D]](
+    val scores: DataFrame)
   extends RDDLike {
 
   /**
@@ -57,54 +56,47 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    *
    * @return The Spark context
    */
-  override def sparkContext: SparkContext = scoresRdd.sparkContext
+  override def sparkContext: SparkContext = SparkSession.builder.getOrCreate.sparkContext
 
-  /**
-   * Set the name of [[scoresRdd]].
-   *
-   * @param name The parent name for all [[RDD]]s in this class
-   * @return This object with the name of [[scoresRdd]] assigned
-   */
-  override def setName(name: String): RDDLike = {
-
-    scoresRdd.setName(name)
+  /* RDDLike methods */
+ override def setName(name: String): RDDLike = {
 
     this
   }
 
   /**
-   * Set the storage level of [[scoresRdd]].
+   * Set the storage level of [[scores]].
    *
    * @param storageLevel The storage level
-   * @return This object with the storage level of [[scoresRdd]] set
+   * @return This object with the storage level of [[scores]] set
    */
   override def persistRDD(storageLevel: StorageLevel): RDDLike = {
 
-    if (!scoresRdd.getStorageLevel.isValid) scoresRdd.persist(storageLevel)
+    scores.persist(storageLevel)
 
     this
   }
 
   /**
-   * Mark [[scoresRdd]] as non-persistent, and remove all blocks for them from memory and disk.
+   * Mark [[scores]] as non-persistent, and remove all blocks for them from memory and disk.
    *
-   * @return This object with [[scoresRdd]] marked non-persistent
+   * @return This object with [[scores]] marked non-persistent
    */
   override def unpersistRDD(): RDDLike = {
 
-    if (scoresRdd.getStorageLevel.isValid) scoresRdd.unpersist()
+    scores.unpersist()
 
     this
   }
 
   /**
-   * Materialize [[scoresRdd]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be evaluated).
+   * Materialize [[scores]] (Spark data are lazy evaluated: this method forces them to be evaluated).
    *
-   * @return This object with [[scoresRdd]] materialized
+   * @return This object with [[scores]] materialized
    */
   override def materialize(): RDDLike = {
 
-    scoresRdd.count()
+    scores.count()
 
     this
   }
@@ -116,7 +108,7 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    * @param other Some other object
    * @return Whether this object can equal the other object
    */
-  def canEqual(other: Any): Boolean = other.isInstanceOf[DataScores[T, D]]
+  def canEqual(other: Any): Boolean = other.isInstanceOf[DataScores[D]]
 
   /**
    * Compare two [[DataScores]]s objects.
@@ -126,22 +118,16 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    */
   override def equals(other: Any): Boolean = other match {
 
-    case that: DataScores[T, D] =>
+    case that: DataScores[D] =>
 
       val canEqual = this.canEqual(that)
       lazy val areEqual = this
-        .scoresRdd
-        .fullOuterJoin(that.scoresRdd)
-        .mapPartitions { iterator =>
-
-          val areScoresEqual = iterator.forall {
-            case (_, (Some(thisScore), Some(thatScore))) => thisScore.equals(thatScore)
-            case _ => false
-          }
-
-          Iterator.single(areScoresEqual)
-        }
-        .fold(true)(_ && _)
+        .scores
+        .withColumnRenamed(DataConst.SCORE, "s1")
+        .join(that.scores.withColumnRenamed(DataConst.SCORE, "s2"), col(DataConst.ID), "fullouter")
+        .filter("s1 is null or s2 is null or s1 != s2")
+        .head(1)
+        .isEmpty
 
       canEqual && areEqual
 
@@ -154,5 +140,6 @@ abstract protected[ml] class DataScores[T : ClassTag, D <: DataScores[T, D]](
    *
    * @return An [[Int]] hash code
    */
-  override def hashCode: Int = scoresRdd.hashCode()
+  override def hashCode: Int = scores.hashCode()
+
 }

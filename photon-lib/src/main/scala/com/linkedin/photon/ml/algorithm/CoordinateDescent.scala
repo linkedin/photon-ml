@@ -20,7 +20,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
@@ -318,11 +318,11 @@ object CoordinateDescent {
       implicit logger: Logger): EvaluationResults = Timed("Validate GAME model") {
 
     val validatingScores = Timed(s"Compute validation scores") {
-      modelToEvaluate.scoreForCoordinateDescent(validationData) // TODO: to fix the error
+      modelToEvaluate.score(validationData)
     }
 
     Timed(s"Compute evaluation metrics") {
-      val results = evaluationSuite.evaluate(validatingScores.scoresRdd)
+      val results = evaluationSuite.evaluate(validatingScores.scores)  //todo: to fix it
 
       results
         .evaluations
@@ -397,7 +397,7 @@ object CoordinateDescent {
 
     var previousScores = firstCoordinate.score(firstCoordinateModel)
     var summedScores: CoordinateDataScores =
-      CoordinateDataScores(SparkSession.builder().getOrCreate().sparkContext.emptyRDD)
+      CoordinateDataScores(SparkSession.builder().getOrCreate().emptyDataFrame)
     val currentModels: mutable.Map[CoordinateId, DatumScoringModel] =
       mutable.Map(firstCoordinateId -> firstCoordinateModel)
     val currentScores: mutable.Map[CoordinateId, CoordinateDataScores] =
@@ -521,7 +521,7 @@ object CoordinateDescent {
 
     var previousScores = firstCoordinate.score(firstCoordinateModel)
     var summedScores: CoordinateDataScores =
-      CoordinateDataScores(SparkSession.builder().getOrCreate().sparkContext.emptyRDD)
+      CoordinateDataScores(SparkSession.builder().getOrCreate().emptyDataFrame)
     val currentModels: mutable.Map[CoordinateId, DatumScoringModel] =
       mutable.Map(firstCoordinateId -> firstCoordinateModel)
     val currentScores: mutable.Map[CoordinateId, CoordinateDataScores] =

@@ -23,19 +23,19 @@ import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{udf, col}
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.CoordinateId
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.model.{GameModel, RandomEffectModel}
+import com.linkedin.photon.ml.model.GameModel
 import com.linkedin.photon.ml.normalization._
 import com.linkedin.photon.ml.optimization.VarianceComputationType
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -497,7 +497,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         .map { coordinateId =>
           val coordinate: C forSome { type C <: Coordinate } = if (lockedCoordinates.contains(coordinateId)) {
             dataConfigs(coordinateId) match {
-              case _: FixedEffectDataConfiguration => new FixedEffectModelCoordinate(data)
+              case _: FixedEffectDataConfiguration => new FixedEffectModelCoordinate(data, dataConfigs(coordinateId).featureShardId)
               case _: RandomEffectDataConfiguration => new RandomEffectModelCoordinate(data)
               case oConfig => throw new UnsupportedOperationException(s"Unsupported coordinate type: ${oConfig.getClass}")
             }

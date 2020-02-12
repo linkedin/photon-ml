@@ -15,20 +15,20 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{DataTypes, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Constants
-import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, FixedEffectOptimizationTracker, OptimizationTracker}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
-
 
 /**
  * The optimization problem coordinate for a fixed effect model.
@@ -36,6 +36,7 @@ import com.linkedin.photon.ml.util.VectorUtils
  * @tparam Objective The type of objective function used to solve the fixed effect optimization problem
  * @param rawData The raw training data
  * @param optimizationProblem The fixed effect optimization problem
+ * @param inputColumnsNames
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
     rawData: DataFrame,
@@ -45,23 +46,16 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   extends Coordinate {
 
   var dataset: DataFrame =
-    rawData.select(featureShardId, inputColumnsNames(InputColumnsNames.RESPONSE))
+    rawData
+      .select(Constants.UNIQUE_SAMPLE_ID, featureShardId, inputColumnsNames(InputColumnsNames.RESPONSE))
+      .withColumn(inputColumnsNames(InputColumnsNames.OFFSET), lit(0.0))
 
 
   override protected def updateDataset(scores: CoordinateDataScores) = {
-    // TODO: change scores to dataframe
-      val schemaFields = Array[StructField](
-        StructField(Constants.UNIQUE_SAMPLE_ID, DataTypes.LongType, nullable = false),
-        StructField("score", DataTypes.DoubleType, nullable = false))
-      dataset = SparkSession
-        .builder
-        .getOrCreate
-        .createDataFrame(scores.scoresRdd.map(Row.fromTuple(_)), new StructType(schemaFields))
+      dataset = scores.scores
         .join(rawData, Constants.UNIQUE_SAMPLE_ID)
-        // TODO: WHAT IF OFFSET DOESN'T EXIST
-        //.withColumnRenamed("score", inputColumnsNames(InputColumnsNames.OFFSET))
         .withColumn(inputColumnsNames(InputColumnsNames.OFFSET),
-          col(inputColumnsNames(InputColumnsNames.OFFSET)) + col("score"))
+          col(inputColumnsNames(InputColumnsNames.OFFSET)) + col(DataConst.SCORE))
   }
 
 
@@ -79,7 +73,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
           dataset,
           optimizationProblem,
           featureShardId,
-          Some(model))
+          Some(fixedEffectModel))
 
       case _ =>
         throw new UnsupportedOperationException(
@@ -96,7 +90,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
     case fixedEffectModel: FixedEffectModel =>
-      FixedEffectCoordinate.score(dataset, fixedEffectModel)
+      FixedEffectCoordinate.score(dataset, fixedEffectModel, featureShardId)
 
     case _ =>
       throw new UnsupportedOperationException(
@@ -153,21 +147,19 @@ object FixedEffectCoordinate {
       new FixedEffectOptimizationTracker(stateTracker))
   }
 
-
   /**
-   * Score a dataset using a given [[FixedEffectModel]].
+   * Compute scores given a training dataset and a fixed effect model
    *
-   * @note The score is the dot product of the model coefficients with the feature values (i.e., it does not go
-   *       through a non-linear link function).
-   * @param fixedEffectDataset The dataset to score
-   * @param fixedEffectModel The model used to score the dataset
+   * @param dataset The dataset to score
+   * @param fixedEffectModel  The model used to score the dataset
+   * @param featureShardId The ID of the feature shard for the training data
    * @return The computed scores
    */
-  protected[algorithm] def score(
-    fixedEffectDataset: DataFrame,
-    fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
-
-    // TODO: to move model to data frame
-    null
+  def score(dataset: DataFrame, fixedEffectModel: FixedEffectModel, featureShardId: FeatureShardId): CoordinateDataScores = {
+    val cofs = VectorUtils.breezeToMl(fixedEffectModel.model.coefficients.means)
+    val scores = dataset
+      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
+      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
+    new CoordinateDataScores(scores)
   }
 }
