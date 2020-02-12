@@ -21,6 +21,7 @@ import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.functions.monotonically_increasing_id
 
 import com.linkedin.photon.ml._
 import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
@@ -359,8 +360,15 @@ object GameTrainingDriver extends GameDriver {
     val (trainingData, featureIndexMapLoaders) = Timed(s"Read training data") {
       readTrainingData(avroDataReader, featureIndexMapLoadersOpt)
     }
+    val gameTrainingData = Timed("Prepare GAME training data") {
+      trainingData.withColumn(Constants.UNIQUE_SAMPLE_ID, monotonically_increasing_id)
+    }
+
     val validationData = Timed(s"Read validation data") {
       readValidationData(avroDataReader, featureIndexMapLoaders)
+    }
+    val gameValidationData = Timed("Prepare GAME validation data") {
+      validationData.map(_.withColumn(Constants.UNIQUE_SAMPLE_ID, monotonically_increasing_id))
     }
 
     val interceptIndices = featureIndexMapLoaders.flatMap { case (coordinateId, indexMap) =>
@@ -371,8 +379,8 @@ object GameTrainingDriver extends GameDriver {
       }
     }
 
-    trainingData.persist(StorageLevel.DISK_ONLY)
-    validationData.map(_.persist(StorageLevel.DISK_ONLY))
+    gameTrainingData.persist(StorageLevel.DISK_ONLY)
+    gameValidationData.map(_.persist(StorageLevel.DISK_ONLY))
 
     val modelOpt = get(modelInputDirectory).map { modelDir =>
       Timed("Load model for warm-start training") {
@@ -420,7 +428,7 @@ object GameTrainingDriver extends GameDriver {
         getOrDefault(inputColumnNames),
         getRequiredParam(featureShardConfigurations).keySet)
 
-      validationData match {
+      gameValidationData match {
         case Some(x) => DataValidators.sanityCheckDataFrameForTraining(
           x,
           getRequiredParam(trainingTask),
@@ -470,17 +478,17 @@ object GameTrainingDriver extends GameDriver {
     }
 
     val explicitModels = Timed("Fit models") {
-      gameEstimator.fit(trainingData, validationData, gameOptimizationConfigs)
+      gameEstimator.fit(gameTrainingData, gameValidationData, gameOptimizationConfigs)
     }
 
     val tunedModels = Timed("Tune hyperparameters") {
       // Disable warm start for autotuning
       gameEstimator.setUseWarmStart(false)
-      runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
+      runHyperparameterTuning(gameEstimator, gameTrainingData, gameValidationData, explicitModels)
     }
 
-    trainingData.unpersist()
-    validationData.map(_.unpersist())
+    gameTrainingData.unpersist()
+    gameValidationData.map(_.unpersist())
 
     val (outputModels, bestModel) = selectModels(explicitModels, tunedModels)
 

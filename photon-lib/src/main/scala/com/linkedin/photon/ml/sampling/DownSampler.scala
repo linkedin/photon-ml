@@ -43,8 +43,8 @@ protected[ml] trait DownSampler {
    * @return The down-sampled dataset
    */
   def downSample(
-      labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
-      seed: Long = getSeed): RDD[(UniqueSampleId, LabeledPoint)]
+      labeledPoints: RDD[LabeledPoint],
+      seed: Long = getSeed): RDD[LabeledPoint]
 }
 
 object DownSampler {

@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.FixedEffectDataset
+import org.apache.spark.sql.DataFrame
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 
@@ -23,7 +23,7 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
  *
  * @param dataset The training dataset
  */
-class FixedEffectModelCoordinate(dataset: FixedEffectDataset) extends ModelCoordinate(dataset) {
+class FixedEffectModelCoordinate(dataset: DataFrame) extends ModelCoordinate {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.

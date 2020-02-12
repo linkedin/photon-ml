@@ -18,7 +18,9 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.linalg.SparseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.functions.monotonically_increasing_id
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
 import com.linkedin.photon.ml.util.VectorUtils
 
@@ -46,7 +48,7 @@ object GameConverters {
       featureShards: Set[FeatureShardId],
       idTagSet: Set[String],
       isResponseRequired: Boolean,
-      inputColumnsNames: InputColumnsNames = InputColumnsNames()): RDD[(UniqueSampleId, GameDatum)] = {
+      inputColumnsNames: InputColumnsNames = InputColumnsNames()): DataFrame = {
 
     val colNamesSet = inputColumnsNames.getNames
 
@@ -55,14 +57,7 @@ object GameConverters {
       idTagSet.intersect(colNamesSet).isEmpty,
       s"Cannot use required columns (${colNamesSet.mkString(", ")}) for random effect/validation grouping.")
 
-    val inputColumnsNamesBroadcast = data.sqlContext.sparkContext.broadcast(inputColumnsNames)
-
-    data
-      .rdd
-      .zipWithUniqueId
-      .map { case (row, index) =>
-        (index, getGameDatumFromRow(row, featureShards, idTagSet, isResponseRequired, inputColumnsNamesBroadcast))
-      }
+    data.withColumn(Constants.UNIQUE_SAMPLE_ID, monotonically_increasing_id)
   }
 
   /**

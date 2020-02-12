@@ -162,7 +162,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   protected[ml] def optimize(
       objectiveFunction: Function,
       initialCoefficients: Vector[Double])(
-      data: objectiveFunction.Data): (Vector[Double], Double) = {
+      data: objectiveFunction.Data): (Vector[Double], OptimizationStatesTracker) = {
 
     val normalizedInitialCoefficients = normalizationContext.value.modelToTransformedSpace(initialCoefficients)
 
@@ -183,7 +183,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
 
     statesTracker.convergenceReason = getConvergenceReason
     val currState = getCurrentState.get
-    (currState.coefficients, currState.loss)
+    (currState.coefficients, statesTracker)
   }
 
   /**

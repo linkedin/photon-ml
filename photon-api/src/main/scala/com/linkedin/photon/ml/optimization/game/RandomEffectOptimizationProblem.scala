@@ -16,9 +16,11 @@ package com.linkedin.photon.ml.optimization.game
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.REId
+import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.Types.{REId, REType}
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -124,8 +126,6 @@ object RandomEffectOptimizationProblem {
    *
    * @tparam RandomEffectObjective The type of objective function used to solve individual random effect optimization
    *                               problems
-   * @param linearSubspaceProjectorsRDD The per-entity [[LinearSubspaceProjector]] objects used to compress the
-   *                                    per-entity feature spaces
    * @param configuration The optimization problem configuration
    * @param objectiveFunctionFactory The objective function to optimize
    * @param glmConstructor The function to use for producing GLMs from trained coefficients
@@ -135,7 +135,8 @@ object RandomEffectOptimizationProblem {
    * @return A new [[RandomEffectOptimizationProblem]] object
    */
   def apply[RandomEffectObjective <: SingleNodeObjectiveFunction](
-      linearSubspaceProjectorsRDD: RDD[(REId, LinearSubspaceProjector)],
+      data: DataFrame,
+      rEType: REType,
       configuration: RandomEffectOptimizationConfiguration,
       objectiveFunctionFactory: Option[Int] => RandomEffectObjective,
       glmConstructor: Coefficients => GeneralizedLinearModel,
@@ -143,30 +144,26 @@ object RandomEffectOptimizationProblem {
       varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
       interceptIndexOpt: Option[Int]): RandomEffectOptimizationProblem[RandomEffectObjective] = {
 
+    val factors = normalizationContext.factorsOpt
+    val shiftsAndIntercept = normalizationContext.shiftsAndInterceptOpt
+    val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
+
     // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
-    val optimizationProblems = linearSubspaceProjectorsRDD
-      .mapValues { projector =>
-        val factors = normalizationContext.factorsOpt.map(factors => projector.projectForward(factors))
-        val shiftsAndIntercept = normalizationContext
-          .shiftsAndInterceptOpt
-          .map { case (shifts, intercept) =>
-            val newShifts = projector.projectForward(shifts)
-            val newIntercept = projector.originalToProjectedSpaceMap(intercept)
-
-            (newShifts, newIntercept)
-          }
-        val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
-        val projectedInterceptOpt = interceptIndexOpt.map { interceptIndex =>
-          projector.originalToProjectedSpaceMap(interceptIndex)
-        }
-
-        // TODO: Broadcast arguments to SingleNodeOptimizationProblem?
-        SingleNodeOptimizationProblem(
+    val optimizationProblems = data
+      .select(rEType, Constants.UNIQUE_SAMPLE_ID)
+      .groupBy(rEType)
+      .count
+      .rdd
+      .map { row =>
+        val reid = row.getInt(0).toString
+        val problem = SingleNodeOptimizationProblem(
           configuration,
-          objectiveFunctionFactory(projectedInterceptOpt),
+          objectiveFunctionFactory(interceptIndexOpt),
           glmConstructor,
           PhotonNonBroadcast(projectedNormalizationContext),
           varianceComputationType)
+
+        (reid, problem)
       }
 
     new RandomEffectOptimizationProblem(optimizationProblems, glmConstructor)
