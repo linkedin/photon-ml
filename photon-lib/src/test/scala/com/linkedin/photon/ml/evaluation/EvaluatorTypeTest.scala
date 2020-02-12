@@ -53,11 +53,6 @@ class EvaluatorTypeTest {
     assertFalse(EvaluatorType.PoissonLoss.betterThan(1D, 1D))
     assertFalse(EvaluatorType.PoissonLoss.betterThan(1D, 0D))
 
-    // Smoothed Hinge Loss
-    assertTrue(EvaluatorType.SmoothedHingeLoss.betterThan(0D, 1D))
-    assertFalse(EvaluatorType.SmoothedHingeLoss.betterThan(1D, 1D))
-    assertFalse(EvaluatorType.SmoothedHingeLoss.betterThan(1D, 0D))
-
     // Squared Loss
     assertTrue(EvaluatorType.SquaredLoss.betterThan(0D, 1D))
     assertFalse(EvaluatorType.SquaredLoss.betterThan(1D, 1D))

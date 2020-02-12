@@ -14,11 +14,12 @@
  */
 package com.linkedin.photon.ml.function
 
-import breeze.linalg.Vector
+import org.mockito.Mockito._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.function.glm.LogisticLossFunction
+import com.linkedin.photon.ml.optimization.NoRegularizationContext
+import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
 
 /**
  * Tests for [[DistributedObjectiveFunction]]
@@ -37,17 +38,28 @@ class DistributedObjectiveFunctionTest {
    */
   @Test(dataProvider = "invalidInput", expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testSetupWithInvalidInput(treeAggregateDepth: Int): Unit =
-    new MockDistributedObjectiveFunctionFactory(treeAggregateDepth)
+    buildDistributedObjectiveFunction(treeAggregateDepth)
 }
 
 object DistributedObjectiveFunctionTest {
 
-  class MockDistributedObjectiveFunctionFactory(treeAggregateDepth: Int)
-    extends DistributedObjectiveFunction(treeAggregateDepth) {
+  val MOCK_REGULARIZATION_WEIGHT = 0D
+  val MOCK_REGULARIZATION_CONTEXT = NoRegularizationContext
+  val MOCK_COORDINATE_CONFIG = mock(classOf[FixedEffectOptimizationConfiguration])
 
-    override protected[ml] def value(
-        input: Data,
-        coefficients: Vector[Double],
-        normalizationContext: BroadcastWrapper[NormalizationContext]): Double = 0D
-  }
+  doReturn(MOCK_REGULARIZATION_WEIGHT).when(MOCK_COORDINATE_CONFIG).regularizationWeight
+  doReturn(MOCK_REGULARIZATION_CONTEXT).when(MOCK_COORDINATE_CONFIG).regularizationContext
+
+  /**
+   * Helper function to build a [[DistributedObjectiveFunction]] object.
+   *
+   * @param treeAggregateDepth The tree aggregation depth (see [[DistributedObjectiveFunction]] for documentation)
+   * @return A new [[DistributedObjectiveFunction]] object
+   */
+  def buildDistributedObjectiveFunction(treeAggregateDepth: Int): DistributedObjectiveFunction =
+     DistributedObjectiveFunction(
+       MOCK_COORDINATE_CONFIG,
+       LogisticLossFunction,
+       treeAggregateDepth,
+       interceptIndexOpt = None)
 }

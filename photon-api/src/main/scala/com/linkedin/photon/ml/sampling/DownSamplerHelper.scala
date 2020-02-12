@@ -32,7 +32,7 @@ object DownSamplerHelper {
    */
   def buildFactory(trainingTask: TaskType): DownSamplerFactory = trainingTask match {
 
-    case TaskType.LOGISTIC_REGRESSION | TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+    case TaskType.LOGISTIC_REGRESSION =>
       (downSamplingRate: Double) => new BinaryClassificationDownSampler(downSamplingRate)
 
     case TaskType.LINEAR_REGRESSION | TaskType.POISSON_REGRESSION =>

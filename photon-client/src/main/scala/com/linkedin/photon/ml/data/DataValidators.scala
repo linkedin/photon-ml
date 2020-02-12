@@ -243,7 +243,6 @@ object DataValidators extends Logging {
       case TaskType.LINEAR_REGRESSION => linearRegressionValidators
       case TaskType.LOGISTIC_REGRESSION => logisticRegressionValidators
       case TaskType.POISSON_REGRESSION => poissonRegressionValidators
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => logisticRegressionValidators
     }
 
     // Check the data properties
@@ -328,7 +327,6 @@ object DataValidators extends Logging {
       case TaskType.LINEAR_REGRESSION => dataFrameLinearRegressionValidators
       case TaskType.LOGISTIC_REGRESSION => dataFrameLogisticRegressionValidators
       case TaskType.POISSON_REGRESSION => dataFramePoissonRegressionValidators
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => dataFrameLogisticRegressionValidators
     }
 
     // Check the data properties

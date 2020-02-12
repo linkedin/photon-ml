@@ -32,6 +32,7 @@ object PoissonLossFunction extends PointwiseLossFunction {
 
   /**
    * l(z, y) = exp(z) - y * z
+   *
    * dl/dz   = exp(z) - y
    *
    * @param margin The margin, i.e. z in l(z, y)

@@ -25,6 +25,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
@@ -156,7 +157,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
 
     val coefficients = generateDenseVector(OptimizationProblemIntegTestUtils.DIMENSIONS)
 
-    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[SingleNodeObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -167,7 +168,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(RegularizationType.L2).when(regContext).regularizationType
     doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-    val objective = SingleNodeGLMLossFunction(optConfig, lossFunction)
+    val objective = SingleNodeObjectiveFunction(optConfig, lossFunction)
 
     val optimizationProblem = new SingleNodeOptimizationProblem(
       optimizer,
@@ -205,7 +206,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     val dimensions = OptimizationProblemIntegTestUtils.DIMENSIONS
     val coefficients = generateDenseVector(dimensions)
 
-    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[SingleNodeObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -216,7 +217,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(RegularizationType.L2).when(regContext).regularizationType
     doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-    val objective = SingleNodeGLMLossFunction(optConfig, lossFunction)
+    val objective = SingleNodeObjectiveFunction(optConfig, lossFunction)
 
     val optimizationProblem = new SingleNodeOptimizationProblem(
       optimizer,
@@ -253,7 +254,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
         new LabeledPoint(label, DenseVector(features))
       }
 
-    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[SingleNodeObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -262,7 +263,7 @@ class SingleNodeOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(RegularizationType.NONE).when(regContext).regularizationType
 
-    val objective = SingleNodeGLMLossFunction(optConfig, LogisticLossFunction)
+    val objective = SingleNodeObjectiveFunction(optConfig, LogisticLossFunction)
 
     val optimizationProblem = new SingleNodeOptimizationProblem(
       optimizer,
