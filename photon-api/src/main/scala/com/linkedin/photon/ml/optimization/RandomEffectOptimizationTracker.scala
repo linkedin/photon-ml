@@ -61,11 +61,7 @@ object RandomEffectOptimizationTracker{
 
     val convergenceReasons = optimizationStatesTrackers
       .map { optimizationStatesTracker =>
-        val reason = optimizationStatesTracker
-          .convergenceReason
-          .getOrElse(DidNotConverge)
-
-        (reason, 1)
+        (optimizationStatesTracker.convergenceReason.getOrElse(DidNotConverge), 1)
       }
       .reduceByKey(_ + _)
       .collectAsMap()

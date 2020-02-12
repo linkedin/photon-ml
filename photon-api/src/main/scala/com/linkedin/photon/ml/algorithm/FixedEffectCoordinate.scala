@@ -96,7 +96,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
     case fixedEffectModel: FixedEffectModel =>
-       FixedEffectCoordinate.score(dataset, fixedEffectModel)
+      FixedEffectCoordinate.score(dataset, fixedEffectModel)
 
     case _ =>
       throw new UnsupportedOperationException(
@@ -167,9 +167,7 @@ object FixedEffectCoordinate {
     fixedEffectDataset: DataFrame,
     fixedEffectModel: FixedEffectModel): CoordinateDataScores = {
 
-    //val modelBroadcast = fixedEffectModel.modelBroadcast
-    //val scores = fixedEffectDataset.mapValues { features => modelBroadcast.value.computeScore(features)}
-    //new CoordinateDataScores(scores)
+    // TODO: to move model to data frame
     null
   }
 }

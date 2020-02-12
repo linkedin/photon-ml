@@ -144,10 +144,6 @@ object RandomEffectOptimizationProblem {
       varianceComputationType: VarianceComputationType = VarianceComputationType.NONE,
       interceptIndexOpt: Option[Int]): RandomEffectOptimizationProblem[RandomEffectObjective] = {
 
-    val factors = normalizationContext.factorsOpt
-    val shiftsAndIntercept = normalizationContext.shiftsAndInterceptOpt
-    val projectedNormalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
-
     // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
     val optimizationProblems = data
       .select(rEType, Constants.UNIQUE_SAMPLE_ID)
@@ -160,7 +156,7 @@ object RandomEffectOptimizationProblem {
           configuration,
           objectiveFunctionFactory(interceptIndexOpt),
           glmConstructor,
-          PhotonNonBroadcast(projectedNormalizationContext),
+          PhotonNonBroadcast(normalizationContext),
           varianceComputationType)
 
         (reid, problem)

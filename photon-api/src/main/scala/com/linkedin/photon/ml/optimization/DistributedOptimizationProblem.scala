@@ -14,12 +14,10 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{Vector => BVector}
-import breeze.linalg.{cholesky, diag}
+import breeze.linalg.{Vector, cholesky, diag}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
@@ -82,7 +80,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param coefficients The feature coefficients means
    * @return An optional feature coefficient variances vector
    */
-  override def computeVariances(input: RDD[LabeledPoint], coefficients: BVector[Double]): Option[BVector[Double]] = {
+  override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     val result = (objectiveFunction, varianceComputation) match {
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
@@ -111,15 +109,27 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param input The training data
    * @return The learned [[GeneralizedLinearModel]]
    */
-  override def run(input: RDD[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) = {
+  override def run(input: RDD[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) =
     run(input, initializeZeroModel(input.first.features.size))
 
-    val (optimizedCoefficients, stateTracker) = optimizer.optimize(
-      objectiveFunction,
-      BVector.zeros[Double](input.first.features.length))(
-      input)
+  /**
+   * Run the algorithm with the configured parameters, starting from the initial model provided
+   * (warm start in iterations over the regularization weights for hyperparameter tuning).
+   *
+   * @param input The training data
+   * @param initialModel The initial model from which to begin optimization
+   * @return The learned [[GeneralizedLinearModel]]
+   */
+  override def run(
+    input: RDD[LabeledPoint],
+    initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
-    (createModel(optimizedCoefficients), stateTracker)
+    val normalizationContext = optimizer.getNormalizationContext
+    val (optimizedCoefficients, stateTracker) = optimizer
+      .optimize(objectiveFunction, initialModel.coefficients.means)(input)
+    val optimizedVariances = computeVariances(input, optimizedCoefficients)
+
+    (createModel(normalizationContext, optimizedCoefficients, optimizedVariances), stateTracker)
   }
 
   /**

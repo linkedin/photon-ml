@@ -73,17 +73,29 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
     }
 
   /**
+   * Run the optimization algorithm on the input data, starting from an initial model of all-0 coefficients.
+   *
+   * @param input The training data
+   * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
+   */
+  override def run(input: Iterable[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) =
+    run(input, initializeZeroModel(input.head.features.size))
+
+
+  /**
    * Run the algorithm with the configured parameters, starting from the initial model provided
    * (warm start in iterations over the regularization weights for hyperparameter tuning).
    *
    * @param input The training data
    * @return The learned [[GeneralizedLinearModel]]
    */
-  override def run(input: Iterable[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) = {
+  override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
-    val (optimizedCoefficients, stateTracker) = optimizer.optimize(objectiveFunction, Vector.zeros[Double](input.head.features.length))(input)
+    val normalizationContext = optimizer.getNormalizationContext
+    val (optimizedCoefficients, stateTracker) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
+    val optimizedVariances = computeVariances(input, optimizedCoefficients)
 
-    (createModel(optimizedCoefficients), stateTracker)
+    (createModel(normalizationContext, optimizedCoefficients, optimizedVariances), stateTracker)
   }
 }
 

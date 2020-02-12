@@ -68,14 +68,12 @@ object CoordinateFactory {
 
     val lossFunctionFactory = lossFunctionFactoryConstructor(coordinateOptConfig)
 
-    var datasetName : String = ""
     (rETypeOpt, coordinateOptConfig, lossFunctionFactory) match {
       case (
           None,
           fEOptConfig: FixedEffectOptimizationConfiguration,
           distributedLossFunctionFactory: DistributedObjectiveFunctionFactory) =>
 
-        datasetName = "fixed-effect"
         val downSamplerOpt = if (DownSampler.isValidDownSamplingRate(fEOptConfig.downSamplingRate)) {
           Some(downSamplerFactory(fEOptConfig.downSamplingRate))
         } else {
@@ -102,8 +100,6 @@ object CoordinateFactory {
           rEOptConfig: RandomEffectOptimizationConfiguration,
           singleNodeLossFunctionFactory: SingleNodeObjectiveFunctionFactory) =>
 
-        datasetName = "random-effect"
-
         RandomEffectCoordinate(
           dataset,
           rEType,
@@ -119,7 +115,7 @@ object CoordinateFactory {
       case _ =>
         throw new UnsupportedOperationException(
           s"""Cannot build coordinate for the following input class combination:
-          |  ${datasetName}
+          |  ${rETypeOpt.getOrElse("fixed-effect")}
           |  ${coordinateOptConfig.getClass.getName}
           |  ${lossFunctionFactory.getClass.getName}""".stripMargin)
     }
