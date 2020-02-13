@@ -22,12 +22,13 @@ import org.testng.annotations.Test
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.evaluation.EvaluatorType.{AUC, RMSE}
+import com.linkedin.photon.ml.hyperparameter.HyperparameterTuningMode
 import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.normalization.NormalizationType
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.util.{DateRange, DoubleRange, PhotonLogger}
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, TaskType}
 
 /**
  * Unit tests for the [[ScoptGameTrainingParametersParser]].
@@ -62,7 +63,7 @@ class ScoptGameTrainingParametersParserTest {
     val normalization = NormalizationType.SCALE_WITH_MAX_MAGNITUDE
     val dataSummaryPath = new Path("/some/summary/path")
     val treeAggregateDepth = 5
-    val hyperparameterTunerName = HyperparameterTunerName.DUMMY
+    val hyperparameterTunerName = "some.fake.class"
     val hyperparameterTuningMode = HyperparameterTuningMode.BAYESIAN
     val hyperparameterTuningIter = 6
     val varianceComputation = VarianceComputationType.SIMPLE

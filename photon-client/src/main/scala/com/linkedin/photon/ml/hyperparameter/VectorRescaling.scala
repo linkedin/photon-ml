@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. All rights reserved.
+ * Copyright 2020 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -25,54 +25,6 @@ object VectorRescaling {
 
   val LOG_TRANSFORM = "LOG"
   val SQRT_TRANSFORM = "SQRT"
-
-  /**
-   * Apply forward transformation to a subset of elements in a vector.
-   *
-   * @param vector A DenseVector.
-   * @param transformMap A Map with key-value pairs of indices and names of transform functions.
-   * @return The transformed vector.
-   */
-  def transformForward(
-      vector: DenseVector[Double],
-      transformMap: Map[Int, String]): DenseVector[Double] = {
-
-    val vectorTransformed = vector.copy
-
-    transformMap.foreach { case (index, transform) =>
-      transform match {
-        case LOG_TRANSFORM => vectorTransformed(index) = Math.log10(vectorTransformed(index))
-        case SQRT_TRANSFORM => vectorTransformed(index) = Math.sqrt(vectorTransformed(index))
-        case other => throw new IllegalArgumentException(s"Unknown transformation: $other")
-      }
-    }
-
-    vectorTransformed
-  }
-
-  /**
-   * Apply backward transformation to a subset of elements in a vector.
-   *
-   * @param vector A DenseVector.
-   * @param transformMap A Map with key-value pairs of indices and names of transform functions.
-   * @return The transformed vector.
-   */
-  def transformBackward(
-      vector: DenseVector[Double],
-      transformMap: Map[Int, String]): DenseVector[Double] = {
-
-    val vectorTransformed = vector.copy
-
-    transformMap.foreach { case (index, transform) =>
-      transform match {
-        case LOG_TRANSFORM => vectorTransformed(index) = Math.pow(10, vectorTransformed(index))
-        case SQRT_TRANSFORM => vectorTransformed(index) = Math.pow(vectorTransformed(index), 2)
-        case other => throw new IllegalArgumentException(s"Unknown transformation: $other")
-      }
-    }
-
-    vectorTransformed
-  }
 
   /**
    * Apply forward scaling to a vector. Given a range [a, b] and an element x of the vector,
@@ -131,20 +83,4 @@ object VectorRescaling {
 
     vectorScaled
   }
-
-  /**
-   * This function applies forward transformation and scaling on prior data.
-   *
-   * @param priors A sequence of observations (vector, eval) from previous iterations or past dataset.
-   * @param hyperParams Hyper-parameter configuration.
-   * @return Obervations with vectors transformed and scaled forward.
-   */
-  def rescalePriors(priors: Seq[(DenseVector[Double], Double)], hyperParams: HyperparameterConfig): Seq[(DenseVector[Double], Double)] =
-
-    priors.map { case (candidate, eval) =>
-      val candidateTransformed = VectorRescaling.transformForward(candidate, hyperParams.transformMap)
-      val candidateScaled = VectorRescaling.scaleForward(candidateTransformed, hyperParams.ranges, hyperParams.discreteParams.keySet)
-
-      (candidateScaled, eval)
-    }
 }

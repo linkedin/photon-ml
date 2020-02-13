@@ -18,37 +18,12 @@ import breeze.linalg.DenseVector
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
-import com.linkedin.photon.ml.HyperparameterTuningMode
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
  * Unit tests for [[VectorRescaling]].
  */
 class VectorRescalingTest {
-
-  /**
-   * Unit test for VectorRescaling.transformForward
-   */
-  @Test
-  def testTransformForward(): Unit = {
-    val vector = DenseVector(1000, 0.001, 8, 4)
-    val transformMap = Map(0 -> "LOG", 1 -> "LOG", 3-> "SQRT")
-    val vectorTransformed = VectorRescaling.transformForward(vector, transformMap)
-    val expectedData = DenseVector(3.0, -3.0, 8.0, 2.0)
-    assertEquals(vectorTransformed, expectedData)
-  }
-
-  /**
-   * Unit test for VectorRescaling.transformBackward
-   */
-  @Test
-  def testTransformBackward(): Unit = {
-    val vector = DenseVector(3.0, -3.0, 8.0, 2.0)
-    val transformMap = Map(0 -> "LOG", 1 -> "LOG", 3-> "SQRT")
-    val vectorTransformed = VectorRescaling.transformBackward(vector, transformMap)
-    val expectedData = DenseVector(1000, 0.001, 8, 4)
-    assertEquals(vectorTransformed, expectedData)
-  }
 
   /**
    * Unit test for VectorRescaling.scaleForward
@@ -76,27 +51,5 @@ class VectorRescalingTest {
     val vectorScaled = VectorRescaling.scaleBackward(vector, ranges, discreteParam.keySet)
     val expectedData = DenseVector(5, 0.5, -1.0, 10.23)
     assertEquals(vectorScaled, expectedData)
-  }
-
-  /**
-   * Unit test for VectorRescaling.rescalePriors
-   */
-  @Test
-  def testRescalePriors(): Unit = {
-
-    val tuningMode = HyperparameterTuningMode.BAYESIAN
-    val hyperparameters = Seq("alpha", "beta", "gamma", "lambda")
-    val ranges = Seq(DoubleRange(0, 4), DoubleRange(0, 4), DoubleRange(-2, 2), DoubleRange(-2, 2))
-    val discreteParam = Map(0 -> 8)
-    val transformMap = Map(0 -> "LOG", 1 -> "LOG", 3-> "SQRT")
-
-    val hyperParams = HyperparameterConfig(tuningMode, hyperparameters, ranges, discreteParam, transformMap)
-
-    val priors = Seq((DenseVector(1000.0, 1000.0, 8.0, 4.0), 0.1))
-
-    val priorsRescaled = VectorRescaling.rescalePriors(priors, hyperParams)
-    val expectedData = Seq((DenseVector(0.6, 0.75, 2.5, 1), 0.1))
-
-    assertEquals(priorsRescaled, expectedData)
   }
 }

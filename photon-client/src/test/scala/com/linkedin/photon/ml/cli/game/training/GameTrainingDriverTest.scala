@@ -21,10 +21,11 @@ import org.mockito.Mockito._
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
-import com.linkedin.photon.ml.{DataValidationType, HyperparameterTunerName, HyperparameterTuningMode, TaskType}
+import com.linkedin.photon.ml.{DataValidationType, TaskType}
 import com.linkedin.photon.ml.data.{CoordinateDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluatorType}
+import com.linkedin.photon.ml.hyperparameter.HyperparameterTuningMode
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, FeatureShardConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.io.ModelOutputMode.ModelOutputMode
 import com.linkedin.photon.ml.model.GameModel
@@ -123,7 +124,7 @@ class GameTrainingDriverTest {
       .put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)
       .put(GameTrainingDriver.dataSummaryDirectory, mockPath)
       .put(GameTrainingDriver.treeAggregateDepth, mockInt)
-      .put(GameTrainingDriver.hyperParameterTunerName, HyperparameterTunerName.DUMMY)
+      .put(GameTrainingDriver.hyperParameterTunerName, mockString)
       .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
       .put(GameTrainingDriver.hyperParameterTuningIter, mockInt)
       .put(GameTrainingDriver.varianceComputationType, mockVarianceComputationType)
@@ -238,8 +239,21 @@ class GameTrainingDriverTest {
           .put(GameTrainingDriver.coordinateConfigurations, Map((coordinateId1, mockRECoordinateConfig)))),
       // No intercepts for standardization
       Array(validParamMap.copy.put(GameTrainingDriver.normalization, NormalizationType.STANDARDIZATION)),
+      // No tuner for hyperparameter tuning
+      Array(validParamMap.copy.put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)),
       // No iterations for hyperparameter tuning
-      Array(validParamMap.copy.put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)))
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
+          .put(GameTrainingDriver.hyperParameterTunerName, "some.fake.tuner")),
+      // No validation data for hyperparameter tuning
+      Array(
+        validParamMap
+          .copy
+          .put(GameTrainingDriver.hyperParameterTuning, HyperparameterTuningMode.BAYESIAN)
+          .put(GameTrainingDriver.hyperParameterTunerName, "some.fake.tuner")
+          .put(GameTrainingDriver.hyperParameterTuningIter, 1)))
   }
 
   /**
@@ -263,7 +277,6 @@ class GameTrainingDriverTest {
     GameTrainingDriver.getOrDefault(GameTrainingDriver.outputMode)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTunerName)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.hyperParameterTuning)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.varianceComputationType)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.dataValidation)

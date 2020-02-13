@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. All rights reserved.
+ * Copyright 2020 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -16,13 +16,13 @@ package com.linkedin.photon.ml.hyperparameter.tuner
 
 import breeze.linalg.DenseVector
 
-import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
-import com.linkedin.photon.ml.hyperparameter.EvaluationFunction
+import com.linkedin.photon.ml.hyperparameter.HyperparameterTuningMode.HyperparameterTuningMode
+import com.linkedin.photon.ml.hyperparameter.evaluation.EvaluationFunction
 
 /**
- * A dummy hyper-parameter tuner which runs an empty operation.
+ * Interface for hyper-parameter tuner.
  */
-class DummyTuner[T] extends HyperparameterTuner[T] {
+trait HyperparameterTuner[T] {
 
   /**
    * Search hyper-parameters to optimize the model
@@ -43,5 +43,5 @@ class DummyTuner[T] extends HyperparameterTuner[T] {
       evaluationFunction: EvaluationFunction[T],
       observations: Seq[(DenseVector[Double], Double)],
       priorObservations: Seq[(DenseVector[Double], Double)] = Seq(),
-      discreteParams: Map[Int, Int] = Map()): Seq[T] = Seq()
+      discreteParams: Map[Int, Int] = Map()): Seq[T]
 }
