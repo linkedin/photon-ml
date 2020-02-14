@@ -271,14 +271,14 @@ object RandomEffectDataset {
     //
 
     val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
-    keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
+    keyedGameDataset.persist(StorageLevel.MEMORY_AND_DISK)
 
     // In this RDD, there is a projector for every entity (even those which may later be filtered by the lower bound)
     val unfilteredProjectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
-    unfilteredProjectors.persist(storageLevel).count
+    unfilteredProjectors.persist(storageLevel)
 
     val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, unfilteredProjectors, randomEffectPartitioner)
-    projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
+    projectedKeyedGameDataset.persist(StorageLevel.MEMORY_AND_DISK)
 
     val unfilteredActiveData = generateGroupedActiveData(
       projectedKeyedGameDataset,
