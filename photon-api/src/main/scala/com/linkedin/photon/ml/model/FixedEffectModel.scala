@@ -15,14 +15,11 @@
 package com.linkedin.photon.ml.model
 
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
-import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.FeatureShardId
-import com.linkedin.photon.ml.constants.DataConst
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
@@ -53,11 +50,11 @@ class FixedEffectModel(
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
    * @param dataPoints The dataset to score
+   * @param scoreField The name of the score field
    * @return The computed scores
    */
-  override def score(dataPoints: DataFrame): CoordinateDataScores = {
-    val scores = FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId)
-    new CoordinateDataScores(scores)
+  override def computeScore(dataPoints: DataFrame, scoreField: String): DataFrame = {
+    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, scoreField)
   }
 
     /**
@@ -98,9 +95,14 @@ class FixedEffectModel(
    * @return An [[Int]] hash code
    */
   override def hashCode: Int = featureShardId.hashCode + model.hashCode
+
 }
 
 object FixedEffectModel {
+
+  def apply(glm: GeneralizedLinearModel, featureShardId: FeatureShardId): FixedEffectModel = {
+    new FixedEffectModel(SparkSession.builder.getOrCreate.sparkContext.broadcast(glm), featureShardId)
+  }
 
   /**
    * Compute the scores for the dataset.
@@ -113,13 +115,11 @@ object FixedEffectModel {
   private def score(
       dataset: DataFrame,
       modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: FeatureShardId): DataFrame = {
+      featureShardId: FeatureShardId,
+      scoreField: String): DataFrame = {
 
     val cofs = VectorUtils.breezeToMl(modelBroadcast.value.coefficients.means)
-    val scores = dataset
-      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
-      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
-
-    scores
+    dataset
+      .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
   }
 }

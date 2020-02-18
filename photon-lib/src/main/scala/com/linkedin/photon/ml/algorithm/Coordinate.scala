@@ -14,74 +14,37 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import org.apache.spark.sql.DataFrame
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 
 /**
-  * The optimization problem coordinate for each effect model.
-  *
-  */
+ * The optimization problem coordinate for each effect model.
+ *
+ */
 protected[ml] abstract class Coordinate {
 
   /**
-    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
-    *
-    * @return A (updated model, optimization state tracking information) tuple
-    */
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
+   *
+   * @return A (updated model, optimization state tracking information) tuple
+   */
   protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker)
 
   /**
-    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset with residuals from other
-    * coordinates.
-    *
-    * @param score The combined scores for each record of the other coordinates
-    * @return A (updated model, optimization state tracking information) tuple
-    */
-  protected[algorithm] def trainModel(score: CoordinateDataScores): (DatumScoringModel, OptimizationTracker) = {
-    updateDataset(score)
-    trainModel()
-  }
-
-  /**
-    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
-    * a starting point.
-    *
-    * @param model The model to use as a starting point
-    * @return A (updated model, optimization state tracking information) tuple
-    */
+   * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
+   * a starting point.
+   *
+   * @param model The model to use as a starting point
+   * @return A (updated model, optimization state tracking information) tuple
+   */
   protected[algorithm] def trainModel(model: DatumScoringModel): (DatumScoringModel, OptimizationTracker)
-
-  /**
-    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
-    * a starting point and with residuals from other coordinates.
-    *
-    * @param model The existing model
-    * @param score The combined scores for each record of the other coordinates
-    * @return A (updated model, optimization state tracking information) tuple
-    */
-  protected[algorithm] def trainModel(
-    model: DatumScoringModel,
-    score: CoordinateDataScores): (DatumScoringModel, OptimizationTracker) = {
-    updateDataset(score)
-    trainModel(model)
-  }
 
   /**
    * Generate a new dataset with updated offset.
    *
-   * @param scores The score dataset
+   * @param model The model of previous coordinate
    * @return A new dataset with the updated offsets
    */
-  protected def updateDataset(scores: CoordinateDataScores)
-
-  /**
-    * Compute scores for the coordinate data using a given model.
-    *
-    * @param model The input model
-    * @return The dataset scores
-    */
-  protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
+  def updateOffset(model: DatumScoringModel)
 }
 

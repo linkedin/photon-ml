@@ -19,14 +19,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.Types.{REId, REType}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.optimization.{SingleNodeOptimizationProblem, VarianceComputationType}
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
-import com.linkedin.photon.ml.projector.LinearSubspaceProjector
+import com.linkedin.photon.ml.optimization.{SingleNodeOptimizationProblem, VarianceComputationType}
 import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.PhotonNonBroadcast
@@ -146,7 +145,7 @@ object RandomEffectOptimizationProblem {
 
     // Generate new NormalizationContext and SingleNodeOptimizationProblem objects
     val optimizationProblems = data
-      .select(rEType, Constants.UNIQUE_SAMPLE_ID)
+      .select(rEType, DataConst.ID)
       .groupBy(rEType)
       .count
       .rdd

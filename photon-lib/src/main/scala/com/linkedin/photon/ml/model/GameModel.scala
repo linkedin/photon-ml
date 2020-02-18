@@ -20,8 +20,6 @@ import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.CoordinateId
-import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.util.ClassUtils
 
 /**
@@ -92,11 +90,10 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    * Compute score, PRIOR to going through any link function, i.e. just compute a dot product of feature values
    * and model coefficients.
    *
-   * @param dataPoints The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
-   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  override def score(dataPoints: DataFrame): CoordinateDataScores =
+  override def score(dataPoints: DataFrame): DataFrame =
     gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
 
   /**

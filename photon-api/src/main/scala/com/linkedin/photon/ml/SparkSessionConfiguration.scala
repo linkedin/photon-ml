@@ -21,7 +21,7 @@ import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkConf
 
-import com.linkedin.photon.ml.data.{GameDatum, LabeledPoint, LocalDataset}
+import com.linkedin.photon.ml.data.{GameDatum, LabeledPoint}
 import com.linkedin.photon.ml.function._
 import com.linkedin.photon.ml.function.glm.{HessianVectorAggregator, ValueAndGradientAggregator}
 import com.linkedin.photon.ml.model.Coefficients
@@ -57,7 +57,6 @@ object SparkSessionConfiguration {
     classOf[LabeledPoint],
     classOf[LBFGS],
     classOf[LinearRegressionModel],
-    classOf[LocalDataset],
     classOf[LogisticRegressionModel],
     classOf[Matrix[Double]],
     classOf[NormalizationContext],

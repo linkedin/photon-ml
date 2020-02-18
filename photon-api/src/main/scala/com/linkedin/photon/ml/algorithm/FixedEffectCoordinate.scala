@@ -15,49 +15,40 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
-import org.apache.spark.sql.functions.{col, lit}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.Types.FeatureShardId
-import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 import com.linkedin.photon.ml.optimization.{DistributedOptimizationProblem, FixedEffectOptimizationTracker, OptimizationTracker}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
 
 /**
  * The optimization problem coordinate for a fixed effect model.
  *
  * @tparam Objective The type of objective function used to solve the fixed effect optimization problem
- * @param rawData The raw training data
+ * @param dataset The raw training data
  * @param optimizationProblem The fixed effect optimization problem
  * @param inputColumnsNames
  */
 protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunction](
-    rawData: DataFrame,
+    var dataset: DataFrame,
     optimizationProblem: DistributedOptimizationProblem[Objective],
     featureShardId: FeatureShardId,
     inputColumnsNames: InputColumnsNames)
   extends Coordinate {
 
-  var dataset: DataFrame =
-    rawData
-      .select(Constants.UNIQUE_SAMPLE_ID, featureShardId, inputColumnsNames(InputColumnsNames.RESPONSE))
-      .withColumn(inputColumnsNames(InputColumnsNames.OFFSET), lit(0.0))
-
-
-  override protected def updateDataset(scores: CoordinateDataScores) = {
-      dataset = scores.scores
-        .join(rawData, Constants.UNIQUE_SAMPLE_ID)
-        .withColumn(inputColumnsNames(InputColumnsNames.OFFSET),
-          col(inputColumnsNames(InputColumnsNames.OFFSET)) + col(DataConst.SCORE))
+  override protected def updateOffset(model: DatumScoringModel) = {
+    model match {
+      case fixedEffectModel: FixedEffectModel =>
+        dataset = FixedEffectCoordinate.updateOffset(dataset, fixedEffectModel, featureShardId, inputColumnsNames)
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported model type: ${model.modelType}")
+    }
   }
-
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset using an existing model as
@@ -82,32 +73,18 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
 
 
   /**
-   * Compute scores for the coordinate dataset using the given model.
-   *
-   * @param model The input model
-   * @return The dataset scores
-   */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
-
-    case fixedEffectModel: FixedEffectModel =>
-      FixedEffectCoordinate.score(dataset, fixedEffectModel, featureShardId)
-
-    case _ =>
-      throw new UnsupportedOperationException(
-        s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
-  }
-
-
-  /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
    *
    * @return A (updated model, optimization state tracking information) tuple
    */
   override protected def trainModel(): (DatumScoringModel, OptimizationTracker) =
     FixedEffectCoordinate.trainModel(dataset, optimizationProblem, featureShardId, None)
+
 }
 
 object FixedEffectCoordinate {
+
+  def SCORE_FIELD = "fixed_score"
 
   /**
    * Train a new [[FixedEffectModel]] (i.e. run model optimization).
@@ -136,30 +113,44 @@ object FixedEffectCoordinate {
     rdd.persist(StorageLevel.MEMORY_ONLY)
 
     val (glm, stateTracker) = initialFixedEffectModelOpt
-      .map { initialFixedEffectModel =>
+      .map ( initialFixedEffectModel =>
         optimizationProblem.runWithSampling(rdd, initialFixedEffectModel.model)
-      }
+      )
       .getOrElse(optimizationProblem.runWithSampling(rdd))
 
     rdd.unpersist()
 
-    (new FixedEffectModel(SparkSession.builder.getOrCreate.sparkContext.broadcast(glm), featureShardId),
-      new FixedEffectOptimizationTracker(stateTracker))
+    (FixedEffectModel(glm, featureShardId), new FixedEffectOptimizationTracker(stateTracker))
   }
 
-  /**
-   * Compute scores given a training dataset and a fixed effect model
-   *
-   * @param dataset The dataset to score
-   * @param fixedEffectModel  The model used to score the dataset
-   * @param featureShardId The ID of the feature shard for the training data
-   * @return The computed scores
-   */
-  def score(dataset: DataFrame, fixedEffectModel: FixedEffectModel, featureShardId: FeatureShardId): CoordinateDataScores = {
-    val cofs = VectorUtils.breezeToMl(fixedEffectModel.model.coefficients.means)
-    val scores = dataset
-      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
-      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
-    new CoordinateDataScores(scores)
+  def updateOffset(
+    dataset: DataFrame, fixedEffectModel: FixedEffectModel, featureShardId: FeatureShardId,
+    inputColumnsNames: InputColumnsNames): DataFrame = {
+
+    require(
+      featureShardId == fixedEffectModel.featureShardId,
+      s"Fixed effect coordinate featureShardId ${featureShardId} != model.featureShardId ${
+        fixedEffectModel
+          .featureShardId
+      }")
+
+    val offset = inputColumnsNames(InputColumnsNames.OFFSET)
+    val hasOffsetField = ApiUtils.hasColumn(dataset, offset)
+    val hasCoordinateScoreField = ApiUtils.hasColumn(dataset, SCORE_FIELD)
+
+    if (hasOffsetField && hasCoordinateScoreField) {
+      // offset = offset - old_coordinateScore + new_coordinateScore
+      dataset.withColumn(offset, col(offset) - col(SCORE_FIELD))
+      fixedEffectModel.computeScore(dataset, SCORE_FIELD)
+        .withColumn(offset, col(offset) + col(SCORE_FIELD))
+    } else if (!hasOffsetField && !hasCoordinateScoreField) {
+      fixedEffectModel.computeScore(dataset, SCORE_FIELD)
+        .withColumn(offset, col(SCORE_FIELD))
+    } else if (hasOffsetField && !hasCoordinateScoreField) {
+      fixedEffectModel.computeScore(dataset, SCORE_FIELD)
+        .withColumn(offset, col(offset) + col(SCORE_FIELD))
+    } else {
+      throw new UnsupportedOperationException("It shouldn't happen!")
+    }
   }
 }

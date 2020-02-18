@@ -16,27 +16,22 @@ package com.linkedin.photon.ml.algorithm
 
 import scala.collection.mutable
 
-import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, functions}
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
-import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
-import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
+
 /**
  * The optimization problem coordinate for a random effect model.
  *
@@ -48,20 +43,22 @@ import com.linkedin.photon.ml.util.VectorUtils
  */
 protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
   rEType: REType,
-  rawData: DataFrame,
+  var rawData: DataFrame,
   optimizationProblem: RandomEffectOptimizationProblem[Objective],
   featureShardId: FeatureShardId,
   inputColumnsNames: InputColumnsNames)
-  extends Coordinate
-    with RDDLike {
+  extends Coordinate {
 
   /* Get the training data from raw data */
-  var dataset: DataFrame = {
-    val label =  inputColumnsNames(InputColumnsNames.RESPONSE)
+  var dataset: DataFrame = null
+
+  protected def updateDataset(): Unit = {
+
+    val label = inputColumnsNames(InputColumnsNames.RESPONSE)
     val offset = inputColumnsNames(InputColumnsNames.OFFSET)
     val weight = inputColumnsNames(InputColumnsNames.WEIGHT)
 
-    rawData
+    dataset = rawData
       .select(rEType, featureShardId, label, offset, weight)
       .groupBy(rEType)
       .agg(
@@ -74,11 +71,19 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
   //
   // Coordinate functions
   //
-  override protected def updateDataset(scores: CoordinateDataScores) = {
-    dataset = scores.scores
-      .join(rawData, Constants.UNIQUE_SAMPLE_ID)
-      .withColumn(inputColumnsNames(InputColumnsNames.OFFSET),
-                  col(inputColumnsNames(InputColumnsNames.OFFSET)) + col(DataConst.SCORE))
+  override protected def updateOffset(model: DatumScoringModel) = {
+
+    model match {
+      case randomEffectModel: RandomEffectModel =>
+        rawData = RandomEffectCoordinate.updateOffset(
+          rawData, randomEffectModel, featureShardId,
+          rEType, inputColumnsNames)
+
+        updateDataset()
+
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported model type: ${model.modelType}")
+    }
   }
 
   /**
@@ -89,7 +94,11 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    * @return A (updated model, optional optimization tracking information) tuple
    */
   override protected[algorithm] def trainModel(
-      model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) =
+      model: DatumScoringModel): (DatumScoringModel, OptimizationTracker) = {
+
+    if (dataset == null) {
+      updateDataset()
+    }
 
     model match {
       case randomEffectModel: RandomEffectModel =>
@@ -105,6 +114,7 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
         throw new UnsupportedOperationException(
           s"Updating model of type ${model.getClass} in ${this.getClass} is not supported")
     }
+  }
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
@@ -112,6 +122,9 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
    * @return A (updated model, optimization state tracking information) tuple
    */
   override protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker) = {
+    if (dataset == null) {
+      updateDataset()
+    }
 
     val (newModel, optimizationTracker) = RandomEffectCoordinate.trainModel(
       dataset,
@@ -121,84 +134,6 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
       None)
 
     (newModel, optimizationTracker)
-  }
-
-  /**
-   * Compute scores for the coordinate data using a given model.
-   *
-   * @param model The input model
-   * @return The dataset scores
-   */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
-    case randomEffectModel: RandomEffectModel =>
-      RandomEffectCoordinate.score(dataset, randomEffectModel)
-
-    case _ =>
-      throw new UnsupportedOperationException(
-        s"Scoring with model of type ${model.getClass} in ${this.getClass} is not supported")
-  }
-
-  //
-  // RDDLike Functions
-  //
-
-  /**
-   * Get the Spark context.
-   *
-   * @return The Spark context
-   */
-  override def sparkContext: SparkContext = optimizationProblem.sparkContext
-
-  /**
-   * Assign a given name to the [[optimizationProblem]] [[RDD]].
-   *
-   * @param name The parent name for all [[RDD]] objects in this class
-   * @return This object with the name of the [[optimizationProblem]] [[RDD]] assigned
-   */
-  override def setName(name: String): RandomEffectCoordinate[Objective] = {
-
-    optimizationProblem.setName(name)
-
-    this
-  }
-
-  /**
-   * Set the persistence storage level of the [[optimizationProblem]] [[RDD]].
-   *
-   * @param storageLevel The storage level
-   * @return This object with the storage level of the [[optimizationProblem]] [[RDD]] set
-   */
-  override def persistRDD(storageLevel: StorageLevel): RandomEffectCoordinate[Objective] = {
-
-    optimizationProblem.persistRDD(storageLevel)
-
-    this
-  }
-
-  /**
-   * Mark the [[optimizationProblem]] [[RDD]] as unused, and asynchronously remove all blocks for it from memory and
-   * disk.
-   *
-   * @return This object with the [[optimizationProblem]] [[RDD]] unpersisted
-   */
-  override def unpersistRDD(): RandomEffectCoordinate[Objective] = {
-
-    optimizationProblem.unpersistRDD()
-
-    this
-  }
-
-  /**
-   * Materialize the [[optimizationProblem]] [[RDD]] (Spark [[RDD]]s are lazy evaluated: this method forces them to be
-   * evaluated).
-   *
-   * @return This object with the [[optimizationProblem]] [[RDD]] materialized
-   */
-  override def materialize(): RandomEffectCoordinate[Objective] = {
-
-    optimizationProblem.materialize()
-
-    this
   }
 
 }
@@ -290,7 +225,7 @@ object RandomEffectCoordinate {
           result += LabeledPoint(lIter.next(), VectorUtils.mlToBreeze(fIter.next()), oIter.next(), wIter.next())
         }
 
-        (reid, LocalDataset(result.toArray))
+        (reid, result.toArray)
       }
 
     // TODO: remove pre-REID optimization problems
@@ -305,7 +240,7 @@ object RandomEffectCoordinate {
           .leftOuterJoin(dataAndOptimizationProblems)
           .mapValues {
             case (localModel, Some((localDataset, optimizationProblem))) =>
-              val trainingLabeledPoints = localDataset.dataPoints
+              val trainingLabeledPoints = localDataset
               val (updatedModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints, localModel)
 
               (updatedModel, Some(stateTrackers))
@@ -323,7 +258,7 @@ object RandomEffectCoordinate {
       .getOrElse {
         val modelsAndTrackers = dataAndOptimizationProblems
           .mapValues { case (localDataset, optimizationProblem) =>
-            val trainingLabeledPoints = localDataset.dataPoints
+            val trainingLabeledPoints = localDataset
             optimizationProblem.run(trainingLabeledPoints)
           }
         modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -341,6 +276,9 @@ object RandomEffectCoordinate {
     (newRandomEffectModel, randomEffectOptimizationTracker)
   }
 
+  def getScoreFieldName(rEType: REType): String = {
+    return s"${rEType}_score"
+  }
 
   /**
    * Score a dataset using a given [[RandomEffectModel]].
@@ -350,13 +288,47 @@ object RandomEffectCoordinate {
    *
    * @note The score is the raw dot product of the model coefficients and the feature values - it does not go through a
    *       non-linear link function.
-   * @param randomEffectDataset The data set to score
+   * @param dataset The data set to score
    * @param randomEffectModel The [[RandomEffectModel]] with which to score
    * @return The computed scores
    */
-  protected[algorithm] def score(
-      randomEffectDataset: DataFrame,
-      randomEffectModel: RandomEffectModel): CoordinateDataScores = {
-    randomEffectModel.score(randomEffectDataset)
+  def updateOffset(
+    dataset: DataFrame, randomEffectModel: RandomEffectModel, featureShardId: FeatureShardId,
+    rEType: REType,
+    inputColumnsNames: InputColumnsNames): DataFrame = {
+
+    require(
+      featureShardId == randomEffectModel.featureShardId,
+      s"Random effect coordinate featureShardId ${featureShardId} != model.featureShardId ${
+        randomEffectModel
+          .featureShardId
+      }")
+
+    require(
+      rEType == randomEffectModel.randomEffectType,
+      s"Random effect coordinate randomEffectType ${rEType} != model.randomEffectType ${
+        randomEffectModel
+          .randomEffectType
+      }")
+
+    val scoreField = getScoreFieldName(rEType)
+    val offset = inputColumnsNames(InputColumnsNames.OFFSET)
+    val hasOffsetField = ApiUtils.hasColumn(dataset, offset)
+    val hasCoordinateScoreField = ApiUtils.hasColumn(dataset, scoreField)
+
+    if (hasOffsetField && hasCoordinateScoreField) {
+      // offset = offset - old_coordinateScore + new_coordinateScore
+      dataset.withColumn(offset, col(offset) - col(scoreField))
+      randomEffectModel.computeScore(dataset, scoreField)
+        .withColumn(offset, col(offset) + col(scoreField))
+    } else if (!hasOffsetField && !hasCoordinateScoreField) {
+      randomEffectModel.computeScore(dataset, scoreField)
+        .withColumn(offset, col(scoreField))
+    } else if (hasOffsetField && !hasCoordinateScoreField) {
+      randomEffectModel.computeScore(dataset, scoreField)
+        .withColumn(offset, col(offset) + col(scoreField))
+    } else {
+      throw new UnsupportedOperationException("It shouldn't happen!")
+    }
   }
 }

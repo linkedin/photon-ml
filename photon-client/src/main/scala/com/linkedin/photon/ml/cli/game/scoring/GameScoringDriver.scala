@@ -25,7 +25,6 @@ import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfig
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data.avro._
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
 import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameScoringParametersParser

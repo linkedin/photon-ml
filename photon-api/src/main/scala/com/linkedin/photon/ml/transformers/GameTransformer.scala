@@ -24,8 +24,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
-import com.linkedin.photon.ml.data.{GameConverters, GameDatum, InputColumnsNames}
+import com.linkedin.photon.ml.data.{GameDatum, InputColumnsNames}
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.util._

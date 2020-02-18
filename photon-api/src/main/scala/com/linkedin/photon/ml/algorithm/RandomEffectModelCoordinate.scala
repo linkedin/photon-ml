@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.sql.DataFrame
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 
 /**
@@ -32,10 +31,10 @@ class RandomEffectModelCoordinate(dataset: DataFrame)
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
+  override protected def updateOffset(model: DatumScoringModel) = {
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.score(dataset, randomEffectModel)
+        RandomEffectCoordinate.updateOffset(dataset, randomEffectModel)
 
       case _ =>
         throw new UnsupportedOperationException(

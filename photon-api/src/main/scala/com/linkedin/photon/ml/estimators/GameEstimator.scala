@@ -322,7 +322,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
     // Transform the GAME validation data set into fixed and random effect specific data sets
     val evaluationSuiteOpt = Timed("Prepare validation data, if any") {
-      validationDataOpt.map { case validData => prepareValidationEvaluators(validData) }
+      validationDataOpt.map(validationData => prepareValidationEvaluators(validationData))
     }
 
     val coordinateDescent = new CoordinateDescent(
@@ -354,9 +354,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       }
     }
 
-    evaluationSuiteOpt.map { case evaluationSuite =>
-      evaluationSuite.unpersistRDD()
-    }
+    evaluationSuiteOpt.map(_.unpersistRDD())
 
     // Return the trained models, along with validation information (if any), and model configuration
     results

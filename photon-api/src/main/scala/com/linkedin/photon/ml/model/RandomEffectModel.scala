@@ -14,20 +14,15 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.storage.StorageLevel
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
 
-import com.linkedin.photon.ml.{Constants, TaskType}
+import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
 import com.linkedin.photon.ml.constants.DataConst
-import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
-import com.linkedin.photon.ml.spark.RDDLike
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
@@ -44,8 +39,7 @@ class RandomEffectModel(
     val models: DataFrame,
     val randomEffectType: REType,
     val featureShardId: FeatureShardId)
-  extends DatumScoringModel
-  with RDDLike {
+  extends DatumScoringModel {
 
   override val modelType: TaskType = RandomEffectModel.determineModelType(models)
 
@@ -70,18 +64,17 @@ class RandomEffectModel(
    * Compute the score for the dataset.
    *
    * @note Use a static method to avoid serializing entire model object during RDD operations.
-   * @param dataset The dataset to score (Note that the Long in the RDD is a unique identifier for the paired
-   *                   [[GameDatum]] object, referred to in the GAME code as the "unique id")
+   * @param dataset The dataset to score
    * @return The computed scores
    */
-  override def score(dataset: DataFrame): CoordinateDataScores = {
+  override def computeScore(dataset: DataFrame, scoreField: String): DataFrame = {
 
-    val scores = RandomEffectModel.score(
+    RandomEffectModel.score(
       dataset,
       models,
       randomEffectType,
-      featureShardId)
-    new CoordinateDataScores(scores)
+      featureShardId,
+      scoreField)
   }
 
   //
@@ -106,60 +99,6 @@ class RandomEffectModel(
     //}
 
     stringBuilder.toString()
-  }
-
-  //
-  // RDDLike functions
-  //
-
-  /**
-   * Get the Spark context.
-   *
-   * @return The Spark context
-   */
-  override protected[ml] def sparkContext: SparkContext = SparkSession.builder.getOrCreate.sparkContext
-
-  override protected[ml] def setName(name: String): RandomEffectModel = {
-
-    this
-  }
-
-  /**
-   * Set the storage level of [[models]], and persist their values across the cluster the first time they are
-   * computed.
-   *
-   * @param storageLevel The storage level
-   * @return This object with the storage level of [[models]] set
-   */
-  override protected[ml] def persistRDD(storageLevel: StorageLevel): RandomEffectModel = {
-
-    models.persist(storageLevel)
-
-    this
-  }
-
-  /**
-   * Mark [[models]] as non-persistent, and remove all blocks for them from memory and disk.
-   *
-   * @return This object with [[models]] marked non-persistent
-   */
-  override protected[ml] def unpersistRDD(): RandomEffectModel = {
-
-    models.unpersist()
-
-    this
-  }
-
-  /**
-   * Materialize [[models]] (Spark data are lazy evaluated: this method forces them to be evaluated).
-   *
-   * @return This object with [[models]] materialized
-   */
-  override protected[ml] def materialize(): RandomEffectModel = {
-
-    models.count()
-
-    this
   }
 
   /**
@@ -224,6 +163,7 @@ class RandomEffectModel(
    * @return An [[Int]] hash code
    */
   override def hashCode(): Int = super.hashCode()
+
 }
 
 object RandomEffectModel {
@@ -263,14 +203,12 @@ object RandomEffectModel {
       dataset: DataFrame,
       models: DataFrame,
       randomEffectType: REType,
-      featureShardId: FeatureShardId): DataFrame = {
+      featureShardId: FeatureShardId,
+      scoreField: String): DataFrame = {
 
-    val scores: DataFrame = dataset
+    dataset
       .join(models, randomEffectType)
-      .withColumn(DataConst.SCORE, GeneralizedLinearModel.scoreUdf(col(DataConst.COEFFICIENTS), col(featureShardId)))
-      .select(Constants.UNIQUE_SAMPLE_ID, DataConst.SCORE)
-
-    scores
+      .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(col(DataConst.COEFFICIENTS), col(featureShardId)))
   }
 
   def toDataFrame(input: RDD[(REType, GeneralizedLinearModel)]): DataFrame = {

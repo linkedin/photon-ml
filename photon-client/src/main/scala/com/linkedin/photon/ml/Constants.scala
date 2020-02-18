@@ -12,11 +12,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 package com.linkedin.photon.ml
 
 import org.joda.time.DateTimeZone
-import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.util.Utils
 
 /**
@@ -46,6 +44,4 @@ object Constants {
    * Default time zone for relative date calculations
    */
   val DEFAULT_TIME_ZONE = DateTimeZone.UTC
-
-  val UNIQUE_SAMPLE_ID = DataConst.ID
 }

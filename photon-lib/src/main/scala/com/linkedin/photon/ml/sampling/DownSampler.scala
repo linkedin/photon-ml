@@ -18,7 +18,6 @@ import java.util.Random
 
 import org.apache.spark.rdd.RDD
 
-import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 

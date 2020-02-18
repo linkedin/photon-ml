@@ -54,25 +54,6 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
   protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
 
   /**
-   * Compute the score for the given features.
-   *
-   * @note "score" = coefficients * features (no link function in the case of logistic regression: see above)
-   *
-   * @param features The input data point's feature
-   * @return The score for the passed features
-   */
-  def computeScore(features: Vector[Double]): Double = coefficients.computeScore(features)
-
-  /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-   * coefficients.
-   *
-   * @param features Vector representing a single data point's features
-   * @return Computed mean function value
-   */
-  def computeMeanFunction(features: Vector[Double]): Double = computeMeanFunctionWithOffset(features, 0.0)
-
-  /**
    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
    * coefficients.
    *
@@ -173,29 +154,30 @@ object GeneralizedLinearModel {
 
   /**
    * A UDF to compute scores given a linear model and a feature vector
+   *
    * @return The score which is the dot product of model coefficients and features
    */
-  def scoreUdf = udf({(coefficients: SparkVector, features: SparkVector) =>
-    require(
-      coefficients.size == features.size,
-      s"Coefficients.size = ${coefficients.size} and features.size = ${features.size}")
+  def scoreUdf = udf[Double, SparseVector, SparseVector](
+    { (coefficients: SparkVector, features: SparkVector) =>
+      require(
+        coefficients.size == features.size,
+        s"Coefficients.size = ${coefficients.size} and features.size = ${features.size}")
 
-    val score = coefficients match {
-      case (dCoef: DenseVector) =>
-        val array = dCoef.toArray
-        var s = 0.0
-        features.foreachActive((i, v) => s += v * array(i))
-        s
-      case (sCoef: SparseVector) =>
-        val array = features.toArray
-        var s = 0.0
-        sCoef.foreachActive((i, v) => s += v * array(i))
-        s
-      case _ => throw new UnsupportedOperationException(
-        s"Coefficients type ${coefficients.getClass} is not supported.")
+      var score = 0D
 
-    }
-    score
-  })
+      coefficients match {
+        case denseCoef: DenseVector =>
+          features.foreachActive { case (index, value) =>
+            score += value * denseCoef(index)
+          }
+
+        case sparseCoef: SparseVector =>
+          sparseCoef.foreachActive { case (index, coefficient) =>
+            score += coefficient * features(index)
+          }
+      }
+
+      score
+    })
 
 }

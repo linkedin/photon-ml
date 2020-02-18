@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores}
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
@@ -37,6 +36,6 @@ trait DatumScoringModel extends Summarizable {
    * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  def score(dataPoints: DataFrame): CoordinateDataScores
+  def computeScore(dataPoints: DataFrame, scoreField: String): DataFrame
 
 }
