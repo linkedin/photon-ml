@@ -36,7 +36,15 @@ class RandomEffectModelCoordinate(dataset: RandomEffectDataset)
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
+        if (dataset.passiveDataREIds.value.nonEmpty) {
+          val activeScores = RandomEffectCoordinate.scoreActiveData(dataset, projectModelForward(randomEffectModel))
+          val passiveScores = RandomEffectCoordinate.scorePassiveData(dataset, randomEffectModel)
+
+          activeScores + passiveScores
+
+        } else {
+          RandomEffectCoordinate.scoreActiveData(dataset, projectModelForward(randomEffectModel))
+        }
 
       case _ =>
         throw new UnsupportedOperationException(

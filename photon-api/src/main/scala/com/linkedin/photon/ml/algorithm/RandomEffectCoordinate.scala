@@ -103,7 +103,15 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
   override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = model match {
 
     case randomEffectModel: RandomEffectModel =>
-      RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
+      if (dataset.passiveDataREIds.value.nonEmpty) {
+        val activeScores = RandomEffectCoordinate.scoreActiveData(dataset, projectModelForward(randomEffectModel))
+        val passiveScores = RandomEffectCoordinate.scorePassiveData(dataset, randomEffectModel)
+
+        activeScores + passiveScores
+
+      } else {
+        RandomEffectCoordinate.scoreActiveData(dataset, projectModelForward(randomEffectModel))
+      }
 
     case _ =>
       throw new UnsupportedOperationException(
@@ -285,18 +293,18 @@ object RandomEffectCoordinate {
   }
 
   /**
-   * Score a [[RandomEffectDataset]] using a given [[RandomEffectModel]].
+   * Score the active data of a [[RandomEffectDataset]] using a given [[RandomEffectModel]].
    *
    * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
    * documentation.
    *
    * @note The score is the raw dot product of the model coefficients and the feature values - it does not go through a
    *       non-linear link function.
-   * @param randomEffectDataset The [[RandomEffectDataset]] to score
-   * @param randomEffectModel The [[RandomEffectModel]] with which to score
-   * @return The computed scores
+   * @param randomEffectDataset The [[RandomEffectDataset]] whose active data will be scored
+   * @param randomEffectModel The [[RandomEffectModel]] with which to score the active data
+   * @return The computed active data scores
    */
-  protected[algorithm] def score(
+  protected[algorithm] def scoreActiveData(
       randomEffectDataset: RandomEffectDataset,
       randomEffectModel: RandomEffectModel): CoordinateDataScores = {
 
@@ -313,6 +321,25 @@ object RandomEffectCoordinate {
       }
       .partitionBy(randomEffectDataset.uniqueIdPartitioner)
 
+    new CoordinateDataScores(activeScores)
+  }
+
+  /**
+   * Score the passive data of a [[RandomEffectDataset]] using a given [[RandomEffectModel]].
+   *
+   * For information about the differences between active and passive data, see the [[RandomEffectDataset]]
+   * documentation.
+   *
+   * @note The score is the raw dot product of the model coefficients and the feature values - it does not go through a
+   *       non-linear link function.
+   * @param randomEffectDataset The [[RandomEffectDataset]] whose passive data will be scored
+   * @param randomEffectModel The [[RandomEffectModel]] with which to score the passive data
+   * @return The computed passive data scores
+   */
+  protected[algorithm] def scorePassiveData(
+      randomEffectDataset: RandomEffectDataset,
+      randomEffectModel: RandomEffectModel): CoordinateDataScores = {
+
     // Passive data already uses the GameDatum partitioner. Note that this code assumes few (if any) entities have a
     // passive dataset.
     val passiveDataREIds = randomEffectDataset.passiveDataREIds
@@ -328,6 +355,6 @@ object RandomEffectCoordinate {
         modelsForPassiveData(randomEffectId).computeScore(labeledPoint.features)
       }
 
-    new CoordinateDataScores(activeScores ++ passiveScores)
+    new CoordinateDataScores(passiveScores)
   }
 }
