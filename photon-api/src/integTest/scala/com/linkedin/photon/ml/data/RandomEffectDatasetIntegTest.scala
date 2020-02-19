@@ -210,12 +210,9 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
     val featuresVector1 = DenseVector[Double](1D, 2D, 3D, 4D)
     val featuresVector2 = DenseVector[Double](5D, 6D, 7D, 8D)
 
-    val partitionMap: Map[REId, Int] = Map(rEId1 -> 0, rEId2 -> 0)
-    val rEPartitioner = new RandomEffectDatasetPartitioner(NUM_PARTITIONS, sc.broadcast(partitionMap))
-
-    val keyedGameDataset: Seq[(REId, (UniqueSampleId, LabeledPoint))] = Seq(
-      (rEId1, (uid1, LabeledPoint(1D, featuresVector1))),
-      (rEId2, (uid2, LabeledPoint(1D, featuresVector2))))
+    val keyedGameDataset: Seq[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = Seq(
+      (rEId1, Array((uid1, LabeledPoint(1D, featuresVector1)))),
+      (rEId2, Array((uid2, LabeledPoint(1D, featuresVector2)))))
     val keyedGameDatasetRDD = sc.parallelize(keyedGameDataset, NUM_PARTITIONS)
 
     val evenIndices = Set[Int](0, 2)
@@ -226,13 +223,14 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
       Seq((rEId1, linearSubspaceProjectorEven), (rEId2, linearSubspaceProjectorOdd)),
       NUM_PARTITIONS)
 
-    val projectedDataset = RandomEffectDataset.generateProjectedDataset(
+    val projectedDataset = RandomEffectDataset.generateProjectedActiveData(
       keyedGameDatasetRDD,
-      linearSubspaceProjectorsRDD,
-      rEPartitioner)
+      linearSubspaceProjectorsRDD)
     val projectedArray = projectedDataset.collect
-    val (evenREID, (evenUID, evenLabeledPoint)) = projectedArray(0)
-    val (oddREID, (oddUID, oddLabeledPoint)) = projectedArray(1)
+    val evenREID = projectedArray(0)._1
+    val (evenUID, evenLabeledPoint) = projectedArray(0)._2.dataPoints.head
+    val oddREID = projectedArray(1)._1
+    val (oddUID, oddLabeledPoint) = projectedArray(1)._2.dataPoints.head
 
     assertEquals(projectedDataset.count, 2)
     assertEquals(evenREID, rEId1)
@@ -263,8 +261,8 @@ class RandomEffectDatasetIntegTest extends SparkTestUtils {
         .forall { upperBound =>
           activeData
             .collect
-            .forall { case (_, localDataset) =>
-              localDataset.dataPoints.length <= upperBound
+            .forall { case (_, iterable) =>
+              iterable.size <= upperBound
             }
         })
   }
