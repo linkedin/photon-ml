@@ -28,9 +28,9 @@ import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffe
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization._
-import com.linkedin.photon.ml.optimization.game.{RandomEffectOptimizationConfiguration, RandomEffectOptimizationProblem}
+import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationConfiguration
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
+import com.linkedin.photon.ml.util.{ApiUtils, PhotonNonBroadcast, VectorUtils}
 
 /**
  * The optimization problem coordinate for a random effect model.
@@ -38,13 +38,13 @@ import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
  * @tparam Objective The type of objective function used to solve individual random effect optimization problems
  * @param rEType  The random effect type
  * @param rawData    The raw training dataframe
- * @param optimizationProblem The random effect optimization problem
+ * @param optimizationProblem The single node optimization problem
  * @param inputColumnsNames
  */
 protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunction](
   rEType: REType,
   var rawData: DataFrame,
-  optimizationProblem: RandomEffectOptimizationProblem[Objective],
+  optimizationProblem: SingleNodeOptimizationProblem[Objective],
   featureShardId: FeatureShardId,
   inputColumnsNames: InputColumnsNames)
   extends Coordinate {
@@ -169,17 +169,14 @@ object RandomEffectCoordinate {
     interceptIndexOpt: Option[Int] = None): RandomEffectCoordinate[RandomEffectObjective] = {
 
     // Generate parameters of ProjectedRandomEffectCoordinate
-    val randomEffectOptimizationProblem = RandomEffectOptimizationProblem(
-      data,
-      rEType,
+    val optimizationProblem = SingleNodeOptimizationProblem(
       configuration,
-      objectiveFunctionFactory,
+      objectiveFunctionFactory(interceptIndexOpt),
       glmConstructor,
-      normalizationContext,
-      varianceComputationType,
-      interceptIndexOpt)
+      PhotonNonBroadcast(normalizationContext),
+      varianceComputationType)
 
-    new RandomEffectCoordinate(rEType, data, randomEffectOptimizationProblem, featureShardId, inputColumnsNames)
+    new RandomEffectCoordinate(rEType, data, optimizationProblem, featureShardId, inputColumnsNames)
   }
 
   /**
@@ -189,7 +186,7 @@ object RandomEffectCoordinate {
    * @param randomEffectDataset The training dataset
    * @param randomEffectType
    * @param featureShardId
-   * @param randomEffectOptimizationProblem The per-entity optimization problems
+   * @param optimizationProblem The per-entity optimization problems
    * @param initialRandomEffectModelOpt An optional existing [[RandomEffectModel]] to use as a starting point for
    *                                    optimization
    * @return A (new [[RandomEffectModel]], optional optimization stats) tuple
@@ -198,10 +195,10 @@ object RandomEffectCoordinate {
     randomEffectDataset: DataFrame,
     randomEffectType: REType,
     featureShardId: FeatureShardId,
-    randomEffectOptimizationProblem: RandomEffectOptimizationProblem[Function],
+    optimizationProblem: SingleNodeOptimizationProblem[Function],
     initialRandomEffectModelOpt: Option[RandomEffectModel]): (RandomEffectModel, RandomEffectOptimizationTracker) = {
 
-    val rdd = randomEffectDataset
+    val data = randomEffectDataset
       .rdd
       .map { row =>
         val reid = row.getInt(0).toString
@@ -228,18 +225,14 @@ object RandomEffectCoordinate {
         (reid, result.toArray)
       }
 
-    // TODO: remove pre-REID optimization problems
-    // All 3 RDDs involved in these joins use the same partitioner
-    val dataAndOptimizationProblems = rdd.join(randomEffectOptimizationProblem.optimizationProblems)
-
     // Left join the models to data and optimization problems for cases where we have a prior model but no new data
     val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
       .map { randomEffectModel =>
         val modelsRdd = randomEffectModel.toRDD()
         val modelsAndTrackers = modelsRdd
-          .leftOuterJoin(dataAndOptimizationProblems)
+          .leftOuterJoin(data)
           .mapValues {
-            case (localModel, Some((localDataset, optimizationProblem))) =>
+            case (localModel, Some((localDataset))) =>
               val trainingLabeledPoints = localDataset
               val (updatedModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints, localModel)
 
@@ -256,11 +249,7 @@ object RandomEffectCoordinate {
         (models, optimizationTracker)
       }
       .getOrElse {
-        val modelsAndTrackers = dataAndOptimizationProblems
-          .mapValues { case (localDataset, optimizationProblem) =>
-            val trainingLabeledPoints = localDataset
-            optimizationProblem.run(trainingLabeledPoints)
-          }
+        val modelsAndTrackers = data.mapValues (optimizationProblem.run(_))
         modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)

@@ -16,7 +16,6 @@ package com.linkedin.photon.ml.evaluation
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
@@ -55,7 +54,7 @@ class EvaluationSuite(
    * @param scores The scores to evaluate
    * @return The evaluation metric values as [[EvaluationResults]]
    */
-  protected[ml] def evaluate(scores: DataFrame /* RDD[(UniqueSampleId, Double)]*/): EvaluationResults = {
+  protected[ml] def evaluate(scores: RDD[(UniqueSampleId, Double)]): EvaluationResults = {
 
     // Possible for all models to be missing a score for some datum, meaning the score for a datum is missing even after
     // summing scores from all models. Thus, need a leftOuterJoin.

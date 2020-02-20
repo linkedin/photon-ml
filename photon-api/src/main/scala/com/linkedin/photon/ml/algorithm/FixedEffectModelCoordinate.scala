@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.algorithm
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 
 /**
@@ -25,7 +26,10 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
  * @param dataset The training dataset
  * @param featureShardId The ID of the feature shard for the training data
  */
-class FixedEffectModelCoordinate(dataset: DataFrame, featureShardId: FeatureShardId) extends ModelCoordinate {
+class FixedEffectModelCoordinate(
+  dataset: DataFrame,
+  featureShardId: FeatureShardId,
+  inputColumnsNames: InputColumnsNames) extends ModelCoordinate {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -34,9 +38,10 @@ class FixedEffectModelCoordinate(dataset: DataFrame, featureShardId: FeatureShar
    * @return The output scores
    */
   override protected def updateOffset(model: DatumScoringModel) = {
+
     model match {
       case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.updateOffset(dataset, fixedEffectModel, featureShardId)
+        FixedEffectCoordinate.updateOffset(dataset, fixedEffectModel, featureShardId, inputColumnsNames)
 
       case _ =>
         throw new UnsupportedOperationException(

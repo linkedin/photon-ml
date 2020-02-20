@@ -18,6 +18,7 @@ import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
@@ -67,7 +68,7 @@ object ScoreProcessingUtils {
    * @param outputDir The given output directory
    */
   protected[ml] def saveScoredItemsToHDFS(
-      scoredItems: RDD[ScoredItem],
+      scoredItems: DataFrame, //[ScoredItem],
       outputDir: String,
       modelId: Option[String]): Unit = {
 

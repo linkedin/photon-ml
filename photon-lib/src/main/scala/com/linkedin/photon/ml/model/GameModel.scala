@@ -20,6 +20,7 @@ import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.CoordinateId
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.util.ClassUtils
 
 /**
@@ -27,12 +28,12 @@ import com.linkedin.photon.ml.util.ClassUtils
  *
  * @param gameModels A (modelName -> model) map containing the sub-models that make up the complete GAME model
  */
-class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) extends DatumScoringModel {
+class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) {
 
   // The model type should be consistent at construction time. However, copies of this object shouldn't need to call the
   // check again. Thus the value is lazy, so that anonymous classes can overwrite it without triggering a call to
   // determineModelType, but it's called immediately so that it's evaluated at construction time.
-  override lazy val modelType: TaskType = GameModel.determineModelType(gameModels)
+  lazy val modelType: TaskType = GameModel.determineModelType(gameModels)
   modelType
 
   /**
@@ -93,15 +94,23 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    * @param dataPoints The dataset to score
    * @return The computed scores
    */
-  override def score(dataPoints: DataFrame): DataFrame =
-    gameModels.values.map(_.score(dataPoints)).reduce(_ + _)
+  def score(dataPoints: DataFrame): DataFrame = {
+
+    gameModels.foreach { case (coordinateId: CoordinateId, coordinateModel: DatumScoringModel) =>
+      val scoreName = s"${coordinateId}_score"
+      coordinateModel.computeScore(dataPoints, scoreName, DataConst.SCORE)
+    }
+
+    dataPoints
+  }
+
 
   /**
    * Summarize this GAME model.
    *
    * @return A summary of the object in string representation
    */
-  override def toSummaryString: String = {
+  def toSummaryString: String = {
     gameModels.map { case (name, model) => s"Model name: $name, summary:\n${model.toSummaryString}\n" }.mkString("\n")
   }
 
@@ -131,7 +140,6 @@ class GameModel (private val gameModels: Map[CoordinateId, DatumScoringModel]) e
    * @return An [[Int]] hash code
    */
   override def hashCode(): Int = super.hashCode()
-
 }
 
 object GameModel {

@@ -20,9 +20,10 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.spark.BroadcastLike
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
 
 /**
  * Representation of a fixed effect model.
@@ -31,10 +32,10 @@ import com.linkedin.photon.ml.util.VectorUtils
  * @param featureShardId The feature shard id
  */
 class FixedEffectModel(
-    val modelBroadcast: Broadcast[GeneralizedLinearModel],
-    val featureShardId: String)
+  val modelBroadcast: Broadcast[GeneralizedLinearModel],
+  val featureShardId: String)
   extends DatumScoringModel
-  with BroadcastLike {
+    with BroadcastLike {
 
   override val modelType: TaskType = modelBroadcast.value.modelType
 
@@ -54,10 +55,28 @@ class FixedEffectModel(
    * @return The computed scores
    */
   override def computeScore(dataPoints: DataFrame, scoreField: String): DataFrame = {
+
     FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, scoreField)
   }
 
-    /**
+  /**
+   * Accumulatively compute the scores for the GAME dataset.
+   *
+   * @note "score" = sum(features * coefficients) (Before link function in the case of logistic regression, for example)
+   * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
+   * @param accumulativeScoreField The field name of the accumulativeScore
+   * @return The computed scores
+   */
+  override def computeScore(
+    dataPoints: DataFrame,
+    scoreField: String,
+    accumulativeScoreField: String): DataFrame = {
+
+    FixedEffectModel.score(dataPoints, modelBroadcast, featureShardId, scoreField, DataConst.SCORE)
+  }
+
+  /**
    * Build a summary string for the coefficients.
    *
    * @return String representation
@@ -69,6 +88,7 @@ class FixedEffectModel(
    * Clean up coefficient broadcast.
    */
   override protected[ml] def unpersistBroadcast(): BroadcastLike = {
+
     modelBroadcast.unpersist()
     this
   }
@@ -80,6 +100,7 @@ class FixedEffectModel(
    * @return True if both models have the same feature shard ID and underlying models, false otherwise
    */
   override def equals(that: Any): Boolean = {
+
     that match {
       case other: FixedEffectModel =>
         val sameMetaData = this.featureShardId == other.featureShardId
@@ -95,12 +116,12 @@ class FixedEffectModel(
    * @return An [[Int]] hash code
    */
   override def hashCode: Int = featureShardId.hashCode + model.hashCode
-
 }
 
 object FixedEffectModel {
 
   def apply(glm: GeneralizedLinearModel, featureShardId: FeatureShardId): FixedEffectModel = {
+
     new FixedEffectModel(SparkSession.builder.getOrCreate.sparkContext.broadcast(glm), featureShardId)
   }
 
@@ -113,13 +134,41 @@ object FixedEffectModel {
    * @return The scores
    */
   private def score(
-      dataset: DataFrame,
-      modelBroadcast: Broadcast[GeneralizedLinearModel],
-      featureShardId: FeatureShardId,
-      scoreField: String): DataFrame = {
+    dataset: DataFrame,
+    modelBroadcast: Broadcast[GeneralizedLinearModel],
+    featureShardId: FeatureShardId,
+    scoreField: String): DataFrame = {
 
     val cofs = VectorUtils.breezeToMl(modelBroadcast.value.coefficients.means)
     dataset
       .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
+  }
+
+  /**
+   * Compute the scores for the dataset.
+   *
+   * @param dataset The dataset to score
+   * @param modelBroadcast The model to use for scoring
+   * @param featureShardId The feature shard id
+   * @return The scores
+   */
+  private def score(
+    dataset: DataFrame,
+    modelBroadcast: Broadcast[GeneralizedLinearModel],
+    featureShardId: FeatureShardId,
+    scoreField: String,
+    accumulativeScoreField: String): DataFrame = {
+
+    val cofs = VectorUtils.breezeToMl(modelBroadcast.value.coefficients.means)
+
+    if (ApiUtils.hasColumn(dataset, DataConst.SCORE)) {
+      dataset
+        .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
+        .withColumn(DataConst.SCORE, col(DataConst.SCORE) + col(scoreField))
+    } else {
+      dataset
+        .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(cofs), col(featureShardId)))
+        .withColumn(DataConst.SCORE, col(scoreField))
+    }
   }
 }

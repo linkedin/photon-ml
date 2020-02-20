@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.model
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, lit}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
@@ -26,7 +26,7 @@ import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.VectorUtils
+import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
 
 /**
  * Representation of a random effect model.
@@ -75,6 +75,23 @@ class RandomEffectModel(
       randomEffectType,
       featureShardId,
       scoreField)
+  }
+
+  /**
+   * Accumulatively compute the scores for the GAME dataset.
+   *
+   * @note "score" = sum(features * coefficients) (Before link function in the case of logistic regression, for example)
+   * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
+   * @param accumulativeScoreField The field name of the accumulativeScore
+   * @return The computed scores
+   */
+  override def computeScore(
+    dataPoints: DataFrame,
+    scoreField: String,
+    accumulativeScoreField: String): DataFrame = {
+
+    RandomEffectModel.score(dataPoints, models, randomEffectType, featureShardId, scoreField, DataConst.SCORE)
   }
 
   //
@@ -209,6 +226,38 @@ object RandomEffectModel {
     dataset
       .join(models, randomEffectType)
       .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(col(DataConst.COEFFICIENTS), col(featureShardId)))
+  }
+
+  /**
+   * Compute the scores for the dataset.
+   *
+   * @param dataset The dataset to score
+   * @param models The individual random effect models to use for scoring
+   * @param randomEffectType The random effect type
+   * @param featureShardId The feature shard id
+   * @param scoreField The field name of the coordinate
+   * @param accumulativeScoreField  The field name of the accumulative score
+   * @return The scores
+   */
+  private def score(
+    dataset: DataFrame,
+    models: DataFrame,
+    randomEffectType: REType,
+    featureShardId: FeatureShardId,
+    scoreField: String,
+    accumulativeScoreField: String): DataFrame = {
+
+    if (ApiUtils.hasColumn(dataset, DataConst.SCORE)) {
+      dataset
+        .join(models, randomEffectType)
+        .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(DataConst.COEFFICIENTS), col(featureShardId)))
+        .withColumn(DataConst.SCORE, col(DataConst.SCORE) + col(scoreField))
+    } else {
+      dataset
+        .join(models, randomEffectType)
+        .withColumn(scoreField, GeneralizedLinearModel.scoreUdf(lit(DataConst.COEFFICIENTS), col(featureShardId)))
+        .withColumn(DataConst.SCORE, col(scoreField))
+    }
   }
 
   def toDataFrame(input: RDD[(REType, GeneralizedLinearModel)]): DataFrame = {

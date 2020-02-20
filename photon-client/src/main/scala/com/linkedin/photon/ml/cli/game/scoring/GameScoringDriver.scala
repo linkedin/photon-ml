@@ -21,16 +21,16 @@ import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.FeatureShardId
 import com.linkedin.photon.ml.cli.game.GameDriver
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameScoringParametersParser
-import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.transformers.GameTransformer
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
 
 /**
  * Driver for GAME full model scoring.
@@ -181,18 +181,20 @@ object GameScoringDriver extends GameDriver {
       transformer
     }
 
-    val scores = Timed("Score data") {
+    val gameDataWithScores = Timed("Score data") {
       gameTransformer.transform(dataFrame)
     }
 
-    gameModel.toMap.foreach {
-      case (_, model: RandomEffectModel) => model.unpersistRDD()
-      case _ =>
-    }
+//    gameModel.toMap.foreach {
+//      case (_, model: RandomEffectModel) => model.unpersistRDD()
+//      case _ =>
+//    }
 
     Timed("Save scores") {
-      saveScoresToHDFS(scores)
+      saveScoresToHDFS(gameDataWithScores)
     }
+
+    gameDataWithScores.unpersist()
   }
 
   /**
@@ -223,29 +225,27 @@ object GameScoringDriver extends GameDriver {
   /**
    * Save the computed scores to HDFS with auxiliary info.
    *
-   * @param scores The computed scores
+   * @param data The game dataset with computed scores
    */
-  protected def saveScoresToHDFS(scores: ModelDataScores): Unit = {
+  protected def saveScoresToHDFS(data: DataFrame): Unit = {
 
     // Take the offset information into account when writing the scores to HDFS
-    val scoredItems = scores.scoresRdd.map { case (_, scoredGameDatum) =>
-      ScoredItem(
-        scoredGameDatum.score + scoredGameDatum.offset,
-        Some(scoredGameDatum.response),
-        Some(scoredGameDatum.weight),
-        scoredGameDatum.idTagToValueMap)
-    }
+    val scoredItems = data.select(DataConst.SCORE + inputColumnNames(InputColumnsNames.OFFSET),
+      inputColumnNames(InputColumnsNames.RESPONSE),
+      inputColumnNames(InputColumnsNames.WEIGHT),
+      // scoredGameDatum.idTagToValueMap)
+    )
 
     if (getOrDefault(logDataAndModelStats)) {
       // Persist scored items here since we introduce multiple passes
-      scoredItems.setName("Scored items").persist(StorageLevel.MEMORY_AND_DISK)
+      scoredItems.persist(StorageLevel.MEMORY_AND_DISK)
 
       val numScoredItems = scoredItems.count()
       logger.info(s"Number of scored items to be written to HDFS: $numScoredItems \n")
     }
 
     val scoredItemsToBeSaved = get(outputFilesLimit) match {
-      case Some(limit) if limit < scoredItems.partitions.length => scoredItems.coalesce(getOrDefault(outputFilesLimit))
+      case Some(limit) => scoredItems.limit(getOrDefault(outputFilesLimit))
       case _ => scoredItems
     }
     val scoresDir = new Path(getRequiredParam(rootOutputDirectory), SCORES_DIR)

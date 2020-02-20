@@ -29,8 +29,9 @@ import org.slf4j.Logger
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.CoordinateId
+import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm._
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
@@ -407,10 +408,10 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val response = columnsNames(InputColumnsNames.RESPONSE)
     val offset = columnsNames(InputColumnsNames.OFFSET)
     val weight = columnsNames(InputColumnsNames.WEIGHT)
-    val validatingLabelsAndOffsetsAndWeights = dataset.select(response, offset, weight)
+    val validatingLabelsAndOffsetsAndWeights = dataset.select(DataConst.ID, response, offset, weight)
 
     val evaluators = get(validationEvaluators)
-      .map(_.map(EvaluatorFactory.buildEvaluator(_, dataset))) //TODO: fix the errors
+      .map(_.map(EvaluatorFactory.buildEvaluator(_, dataset)))
       .getOrElse {
         // Get default evaluators given the task type
         val taskType = getRequiredParam(trainingTask)
@@ -423,18 +424,25 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         Seq(defaultEvaluator)
       }
-    val evaluationSuite = EvaluationSuite(evaluators, validatingLabelsAndOffsetsAndWeights) //TODO: fix the errors
+
+    val validatingLabelsAndOffsetsAndWeightsRdd = validatingLabelsAndOffsetsAndWeights
+      .rdd.map(row => (row.getAs[UniqueSampleId](0), (row.getDouble(1), row.getDouble(2), row.getDouble(3))))
+    val evaluationSuite = EvaluationSuite(evaluators, validatingLabelsAndOffsetsAndWeightsRdd)
       .setName(s"Evaluation: validation data labels, offsets, and weights")
       .persistRDD(StorageLevel.MEMORY_AND_DISK)
 
     if (logger.isDebugEnabled) {
 
       val randUdf = udf({() => Random.nextInt()})
-      val randomScores = dataset.withColumn("score", randUdf()).select("score")
+      val randomScores = dataset.withColumn(DataConst.SCORE, randUdf())
+        .select(DataConst.ID, DataConst.SCORE)
+        .rdd
+        .map(row => (row.getAs[UniqueSampleId](0), row.getDouble(1)))
+
       randomScores.persist()
 
       evaluationSuite
-        .evaluate(randomScores) //TODO: fix the errors
+        .evaluate(randomScores)
         .evaluations
         .foreach { case (evaluator, evaluation) =>
           logger.debug(s"Random guessing baseline for evaluation metric '${evaluator.name}': $evaluation")
@@ -489,21 +497,30 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     val lockedCoordinates = get(partialRetrainLockedCoordinates).getOrElse(Set())
     val interceptIndices = getOrDefault(coordinateInterceptIndices)
 
+    val columnsNames = getOrDefault(inputColumnNames)
+
     // Create the optimization coordinates for each component model
     val coordinates: Map[CoordinateId, C forSome { type C <: Coordinate }] =
       updateSequence
         .map { coordinateId =>
-          val coordinate: C forSome { type C <: Coordinate } = if (lockedCoordinates.contains(coordinateId)) {
-            dataConfigs(coordinateId) match {
-              case _: FixedEffectDataConfiguration => new FixedEffectModelCoordinate(data, dataConfigs(coordinateId).featureShardId)
-              case _: RandomEffectDataConfiguration => new RandomEffectModelCoordinate(data)
-              case oConfig => throw new UnsupportedOperationException(s"Unsupported coordinate type: ${oConfig.getClass}")
+
+          val dataConfiguration: CoordinateDataConfiguration = dataConfigs(coordinateId)
+          val coordinate: C forSome {type C <: Coordinate} = if (lockedCoordinates.contains(coordinateId)) {
+            dataConfiguration match {
+              case fedc: FixedEffectDataConfiguration => new FixedEffectModelCoordinate(
+                data, fedc.featureShardId,
+                columnsNames)
+              case redc: RandomEffectDataConfiguration => new RandomEffectModelCoordinate(
+                redc.randomEffectType, data,
+                redc.featureShardId, columnsNames)
+              case oConfig => throw new UnsupportedOperationException(
+                s"Unsupported coordinate type: ${oConfig.getClass}")
             }
           } else {
             CoordinateFactory.build(
               data,
-              dataConfigs(coordinateId).featureShardId,
-              getOrDefault(inputColumnNames),
+              dataConfiguration.featureShardId,
+              columnsNames,
               configuration(coordinateId),
               lossFunctionFactoryFactory,
               glmConstructor,
@@ -511,7 +528,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
               normalizationContexts.getOrElse(coordinateId, NoNormalization()),
               variance,
               interceptIndices.get(coordinateId),
-              dataConfigs(coordinateId) match {
+              dataConfiguration match {
                 case redc: RandomEffectDataConfiguration => Some(redc.randomEffectType)
                 case _: FixedEffectDataConfiguration => None
               })

@@ -20,7 +20,8 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.Types.CoordinateId
+import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
@@ -202,28 +203,6 @@ object CoordinateDescent {
           coordinate.trainModel()
         })
 
-      /*(initialModelOpt, residualsOpt) match {
-        case (Some(initialModel), Some(residuals)) =>
-          Timed(s"Train new model with residuals using existing model as starting point") {
-            coordinate.trainModel(initialModel, residuals)
-          }
-
-        case (Some(initialModel), None) =>
-          Timed(s"Train new model using existing model as starting point") {
-            coordinate.trainModel(initialModel)
-          }
-
-        case (None, Some(residuals)) =>
-          Timed(s"Train new model with residuals") {
-            coordinate.trainModel(residuals)
-          }
-
-        case (None, None) =>
-          Timed(s"Train new model") {
-            coordinate.trainModel()
-          }
-      }*/
-
       logOptimizationSummary(logger, coordinateId, model, tracker)
 
       model
@@ -331,7 +310,11 @@ object CoordinateDescent {
     }
 
     Timed(s"Compute evaluation metrics") {
-      val results = evaluationSuite.evaluate(validatingScores)  //todo: to fix it
+      val scoresRdd =  validatingScores.select(DataConst.ID, DataConst.SCORE)
+        .rdd
+        .map(row => (row.getAs[UniqueSampleId](0), row.getDouble(1)))
+
+      val results = evaluationSuite.evaluate(scoresRdd)
 
       results
         .evaluations

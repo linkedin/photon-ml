@@ -34,8 +34,20 @@ trait DatumScoringModel extends Summarizable {
    *
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
    * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
    * @return The computed scores
    */
   def computeScore(dataPoints: DataFrame, scoreField: String): DataFrame
+
+  /**
+   * Accumulatively compute the scores for the GAME dataset.
+   *
+   * @note "score" = sum(features * coefficients) (Before link function in the case of logistic regression, for example)
+   * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
+   * @param accumulativeScoreField The field name of the accumulativeScore
+   * @return The computed scores
+   */
+  def computeScore(dataPoints: DataFrame, scoreField: String, accumulativeScoreField: String): DataFrame
 
 }
