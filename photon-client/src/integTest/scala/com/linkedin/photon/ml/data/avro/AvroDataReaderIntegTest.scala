@@ -24,7 +24,7 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 import com.linkedin.photon.ml.Constants
-import com.linkedin.photon.ml.index.{IndexMap, PalDBIndexMapLoader}
+import com.linkedin.photon.ml.index. PalDBIndexMapLoader
 import com.linkedin.photon.ml.io.FeatureShardConfiguration
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
 
@@ -43,7 +43,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     val dr = new AvroDataReader()
     val dataPath = new Path(INPUT_DIR, "avroMap")
     val featureConfigMap = Map("shard1" -> FeatureShardConfiguration(Set("xgboost_click"), hasIntercept = true))
-    val (df, _) = dr.readMerged(dataPath.toString, featureConfigMap, 1)
+    val (df, _) = dr.readMerged(dataPath.toString, featureConfigMap, None)
 
     assertEquals(df.count(), 2)
   }
@@ -60,7 +60,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   }
 
   /**
-   * Test reading a [[DataFrame]], using an existing [[IndexMap]].
+   * Test reading a [[DataFrame]], using an existing [[com.linkedin.photon.ml.index.IndexMap]].
    */
   @Test
   def testReadWithFeatureIndex(): Unit = sparkTest("testReadWithIndex") {
@@ -118,7 +118,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
     assertEquals(df.select(col(shardId)).take(1)(0).getAs[SparseVector](0).numActives, 30)
 
     // Assert that the intercept is not in the IndexMap
-    assertTrue(indexMapLoaders(shardId).indexMapForDriver().get(Constants.INTERCEPT_KEY).isEmpty)
+    assertFalse(indexMapLoaders(shardId).indexMapForDriver().contains(Constants.INTERCEPT_KEY))
 
     // Assert that all rows have been read
     assertEquals(df.count, 34810)
@@ -151,7 +151,7 @@ class AvroDataReaderIntegTest extends SparkTestUtils {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testReadInvalidPartitions(): Unit = sparkTest("testReadInvalidPartitions") {
     val dr = new AvroDataReader()
-    dr.read(TRAIN_INPUT_PATH.toString, -1)
+    dr.read(TRAIN_INPUT_PATH.toString, Some(-1))
   }
 
   /**
@@ -172,7 +172,7 @@ object AvroDataReaderIntegTest {
   private val TEST_INPUT_PATH = new Path(INPUT_DIR, "test")
   private val DUPLICATE_FEATURES_PATH = new Path(INPUT_DIR, "duplicateFeatures")
   private val INDEX_MAP_PATH = new Path(INPUT_DIR, "feature-indexes")
-  private val NUM_PARTITIONS = 4
+  private val NUM_PARTITIONS = Some(4)
   private val FEATURE_SHARD_CONFIGS_MAP = Map(
     "shard1" -> FeatureShardConfiguration(Set("userFeatures", "songFeatures"), hasIntercept = true),
     "shard2" -> FeatureShardConfiguration(Set("userFeatures"), hasIntercept = true),
