@@ -40,6 +40,7 @@ import com.linkedin.photon.ml.index.{DefaultIndexMap, DefaultIndexMapLoader, Ind
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util._
+import com.linkedin.photon.ml.TaskType.TaskType
 
 /**
  * Some basic functions to read/write Avro's [[GenericRecord]] from/to HDFS.
@@ -325,7 +326,7 @@ object AvroUtils {
    * @param featureMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
    * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    * @return The Avro record that contains the information of the input coefficients
-   */
+
   protected[avro] def convertGLMModelToBayesianLinearModelAvro(
       model: GeneralizedLinearModel,
       modelId: String,
@@ -342,6 +343,40 @@ object AvroUtils {
       .newBuilder()
       .setModelId(modelId)
       .setModelClass(model.getClass.getName)
+      .setLossFunction("")
+      .setMeans(meansAvros.toList)
+
+    if (variancesAvrosOption.isDefined) {
+      avroFile.setVariances(variancesAvrosOption.get.toList)
+    }
+
+    avroFile.build()
+  }*/
+
+  /**
+   * Convert the coefficients of type [[Coefficients]] to Avro record of type [[BayesianLinearModelAvro]].
+   *
+   * @param modelId The model's id
+   * @param featureMap The map from feature index of type [[Int]] to feature name of type [[NameAndTerm]]
+   * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
+   * @return The Avro record that contains the information of the input coefficients
+   */
+  protected[avro] def convertGLMModelToBayesianLinearModelAvro(
+    modelClassName: String,
+    modelCoefficients: Vector[Double],
+    variancesOption: Option[Vector[Double]],
+    modelId: String,
+    featureMap: IndexMap,
+    sparsityThreshold: Double = VectorUtils.DEFAULT_SPARSITY_THRESHOLD): BayesianLinearModelAvro = {
+
+    val meansAvros = convertVectorAsArrayOfNameTermValueAvros(modelCoefficients, featureMap, sparsityThreshold)
+    val variancesAvrosOption = variancesOption
+      .map(convertVectorAsArrayOfNameTermValueAvros(_, featureMap, sparsityThreshold))
+    // TODO: Output type of model.
+    val avroFile = BayesianLinearModelAvro
+      .newBuilder()
+      .setModelId(modelId)
+      .setModelClass(modelClassName)
       .setLossFunction("")
       .setMeans(meansAvros.toList)
 

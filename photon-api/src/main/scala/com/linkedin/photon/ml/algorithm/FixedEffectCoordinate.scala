@@ -19,7 +19,8 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.col
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.Types.{FeatureShardId, UniqueSampleId}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
@@ -41,7 +42,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
     inputColumnsNames: InputColumnsNames)
   extends Coordinate {
 
-  override protected def updateOffset(model: DatumScoringModel) = {
+  override protected[algorithm] def updateOffset(model: DatumScoringModel) = {
     model match {
       case fixedEffectModel: FixedEffectModel =>
         dataset = FixedEffectCoordinate.updateOffset(dataset, fixedEffectModel, featureShardId, inputColumnsNames)
@@ -64,6 +65,7 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
           dataset,
           optimizationProblem,
           featureShardId,
+          inputColumnsNames,
           Some(fixedEffectModel))
 
       case _ =>
@@ -77,8 +79,8 @@ protected[ml] class FixedEffectCoordinate[Objective <: DistributedObjectiveFunct
    *
    * @return A (updated model, optimization state tracking information) tuple
    */
-  override protected def trainModel(): (DatumScoringModel, OptimizationTracker) =
-    FixedEffectCoordinate.trainModel(dataset, optimizationProblem, featureShardId, None)
+  override protected[algorithm] def trainModel(): (DatumScoringModel, OptimizationTracker) =
+    FixedEffectCoordinate.trainModel(dataset, optimizationProblem, featureShardId, inputColumnsNames, None)
 
 }
 
@@ -100,15 +102,17 @@ object FixedEffectCoordinate {
     dataset: DataFrame,
     optimizationProblem: DistributedOptimizationProblem[Function],
     featureShardId: FeatureShardId,
+    inputColumnsNames: InputColumnsNames,
     initialFixedEffectModelOpt: Option[FixedEffectModel]): (FixedEffectModel, OptimizationTracker) = {
 
     val rdd = dataset
       .rdd
       .map { row =>
-        val features = row.getAs[SparkVector](0)
-        val label = row.getDouble(1)
+        val uid = row.getAs[UniqueSampleId](DataConst.ID)
+        val features = row.getAs[SparkVector](featureShardId)
+        val label = row.getAs[Double](inputColumnsNames(InputColumnsNames.RESPONSE))
 
-        LabeledPoint(label, VectorUtils.mlToBreeze(features))
+        (uid, LabeledPoint(label, VectorUtils.mlToBreeze(features)))
       }
     rdd.persist(StorageLevel.MEMORY_ONLY)
 

@@ -239,20 +239,21 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
 
     val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDatasetWithscores)
 
-    val offset = inputColumnNames(InputColumnsNames.OFFSET)
-    val response = inputColumnNames(InputColumnsNames.RESPONSE)
-    val weight = inputColumnNames(InputColumnsNames.WEIGHT)
+    val columnsNames = getOrDefault(inputColumnNames)
+    val offset = columnsNames(InputColumnsNames.OFFSET)
+    val response = columnsNames(InputColumnsNames.RESPONSE)
+    val weight = columnsNames(InputColumnsNames.WEIGHT)
     evaluator match {
       case se: SingleEvaluator =>
         val scoresRDD = gameDatasetWithscores
-            .select(col(DataConst.SCORE) + col(offset), response, weight)
+            .select(col(DataConst.SCORE) + col(offset), col(response), col(weight))
             .rdd.map (row => (row.getDouble(0), row.getDouble(1), row.getDouble(2)))
 
         se.evaluate(scoresRDD)
 
       case me: MultiEvaluator =>
         val scoresRDD = gameDatasetWithscores
-        .select(col(DataConst.ID), col(DataConst.SCORE) + col(offset), response, weight)
+        .select(col(DataConst.ID), col(DataConst.SCORE) + col(offset), col(response), col(weight))
         .rdd.map (row => (row.getAs[UniqueSampleId](0), (row.getDouble(1), row.getDouble(2), row.getDouble(3))))
 
         me.evaluate(scoresRDD)

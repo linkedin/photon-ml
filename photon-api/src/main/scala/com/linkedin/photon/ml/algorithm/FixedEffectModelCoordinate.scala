@@ -37,7 +37,7 @@ class FixedEffectModelCoordinate(
    * @param model The input model
    * @return The output scores
    */
-  override protected def updateOffset(model: DatumScoringModel) = {
+  override protected[algorithm] def updateOffset(model: DatumScoringModel) = {
 
     model match {
       case fixedEffectModel: FixedEffectModel =>

@@ -15,7 +15,7 @@
 package com.linkedin.photon.ml.sampling
 
 import java.util.Random
-
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.constants.MathConst
@@ -42,8 +42,8 @@ protected[ml] trait DownSampler {
    * @return The down-sampled dataset
    */
   def downSample(
-      labeledPoints: RDD[LabeledPoint],
-      seed: Long = getSeed): RDD[LabeledPoint]
+      labeledPoints: RDD[(UniqueSampleId, LabeledPoint)],
+      seed: Long = getSeed): RDD[(UniqueSampleId, LabeledPoint)]
 }
 
 object DownSampler {

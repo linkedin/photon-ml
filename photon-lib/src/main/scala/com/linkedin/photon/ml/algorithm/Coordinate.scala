@@ -45,6 +45,6 @@ protected[ml] abstract class Coordinate {
    * @param model The model of previous coordinate
    * @return A new dataset with the updated offsets
    */
-  def updateOffset(model: DatumScoringModel)
+  protected[algorithm] def updateOffset(model: DatumScoringModel)
 }
 

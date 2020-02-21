@@ -21,6 +21,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.avro.generated.ScoringResultAvro
+import com.linkedin.photon.ml.Types.REType
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
 
 /**
@@ -63,27 +64,34 @@ object ScoreProcessingUtils {
   /**
    * Save the scored items of type [[ScoredItem]] to the given output directory on HDFS.
    *
-   * @param scoredItems An [[RDD]] of scored items of type [[ScoredItem]]
+   * @param scoredItems An [[DataFrame]] of scored items [score, label, weight]
    * @param modelId The model's id that used to compute the scores
    * @param outputDir The given output directory
    */
   protected[ml] def saveScoredItemsToHDFS(
-      scoredItems: DataFrame, //[ScoredItem],
-      outputDir: String,
-      modelId: Option[String]): Unit = {
+    scoredItems: DataFrame,
+    reTypes: Iterable[REType],
+    outputDir: String,
+    modelId: Option[String]): Unit = {
 
-    val scoringResultAvros = scoredItems.map { case ScoredItem(predictionScore, labelOpt, weightOpt, ids) =>
-      val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
-      val builder = ScoringResultAvro.newBuilder()
-      builder.setPredictionScore(predictionScore)
-      builder.setModelId(modelId.getOrElse(DEFAULT_MODEL_ID))
-      ids.get(ResponsePredictionFieldNames.UID).foreach(builder.setUid(_))
-      labelOpt.foreach(builder.setLabel(_))
-      weightOpt.foreach(builder.setWeight(_))
-      builder.setMetadataMap(metaDataMap)
-      builder.build()
-    }
+    val scoringResultAvros = scoredItems
+      .rdd
+      .map { row =>
+        val predictionScore = row.getDouble(0)
+        val label = row.getDouble(1) // Nullable
+        val weight = row.getDouble(2) // Nullable
+        val ids = reTypes.map(reType => (reType, row.getAs[String](reType))).toMap
 
+        val metaDataMap = collection.mutable.Map(ids.toMap[CharSequence, CharSequence].toSeq: _*).asJava
+        val builder = ScoringResultAvro.newBuilder()
+        builder.setPredictionScore(predictionScore)
+        builder.setModelId(modelId.getOrElse(DEFAULT_MODEL_ID))
+        ids.get(ResponsePredictionFieldNames.UID).foreach(builder.setUid(_))
+        Option.apply(label).foreach(builder.setLabel(_))
+        Option.apply(weight).foreach(builder.setWeight(_))
+        builder.setMetadataMap(metaDataMap)
+        builder.build()
+      }
     AvroUtils.saveAsAvro(scoringResultAvros, outputDir, ScoringResultAvro.getClassSchema.toString)
   }
 }

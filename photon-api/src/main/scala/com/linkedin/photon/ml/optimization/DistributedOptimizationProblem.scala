@@ -17,7 +17,7 @@ package com.linkedin.photon.ml.optimization
 import breeze.linalg.{Vector, cholesky, diag}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
+import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, L2Regularization, TwiceDiffFunction}
@@ -139,8 +139,8 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param input The training data
    * @return The learned [[GeneralizedLinearModel]]
    */
-  def runWithSampling(input: RDD[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) =
-    runWithSampling(input, initializeZeroModel(input.first.features.size))
+  def runWithSampling(input: RDD[(UniqueSampleId, LabeledPoint)]): (GeneralizedLinearModel, OptimizationStatesTracker) =
+    runWithSampling(input, initializeZeroModel(input.values.first.features.size))
 
   /**
    * Run the algorithm with the configured parameters, starting from the initial model provided, and down-sample the
@@ -151,12 +151,12 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @return The learned [[GeneralizedLinearModel]]
    */
   def runWithSampling(
-      input: RDD[LabeledPoint],
+      input: RDD[(UniqueSampleId, LabeledPoint)],
       initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
     val data = (samplerOption match {
-        case Some(sampler) => sampler.downSample(input)
-        case None => input
+        case Some(sampler) => sampler.downSample(input).values
+        case None => input.values
       })
       .setName("In memory fixed effect training dataset")
       .persist(StorageLevel.MEMORY_AND_DISK)

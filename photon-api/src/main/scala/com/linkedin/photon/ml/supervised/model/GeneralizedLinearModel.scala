@@ -16,11 +16,12 @@ package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.Vector
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector => SparkVector}
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.udf
-
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.util.Summarizable
 
@@ -120,6 +121,15 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
 }
 
 object GeneralizedLinearModel {
+
+  // Schema for [[DataFrame]]
+  def schema: StructType = StructType(Array(
+    StructField(DataConst.MODEL_ID, StringType, false),
+    StructField(DataConst.MODEL_TYPE, StringType, false),
+    StructField(DataConst.COEFFICIENTS, VectorType , false),
+    StructField(DataConst.VARIANCES, VectorType, true)
+  ))
+
   /**
    * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
    * estimated coefficients and intercept.

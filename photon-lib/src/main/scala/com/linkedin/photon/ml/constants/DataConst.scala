@@ -18,6 +18,8 @@ object DataConst {
   val ID = "uniqueId"
   val SCORE = "score"
 
+  val MODEL_ID = "mId"
   val MODEL_TYPE = "modelType"
   val COEFFICIENTS = "coefficients"
+  val VARIANCES = "variances"
 }

@@ -14,14 +14,20 @@
  */
 package com.linkedin.photon.ml.util
 
+import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Number => JNumber, Object => JObject, String => JString}
+
+import scala.collection.JavaConverters._
+
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.util.Utf8
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import com.linkedin.photon.ml.Constants
 
+import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
-import com.linkedin.photon.ml.evaluation.{EvaluatorType, MultiAUC, MultiPrecisionAtK}
+import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, EvaluatorType}
+
+// TODO: Better documentation.
 
 /**
  * Some useful functions

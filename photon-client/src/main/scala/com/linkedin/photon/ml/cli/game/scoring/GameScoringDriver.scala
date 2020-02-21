@@ -19,15 +19,17 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.col
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, REType}
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data.avro._
 import com.linkedin.photon.ml.data.{DataValidators, InputColumnsNames}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.io.scopt.game.ScoptGameScoringParametersParser
+import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.transformers.GameTransformer
 import com.linkedin.photon.ml.util._
 import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
@@ -191,7 +193,11 @@ object GameScoringDriver extends GameDriver {
 //    }
 
     Timed("Save scores") {
-      saveScoresToHDFS(gameDataWithScores)
+      val reTypes = gameModel.toMap.values.collect {
+        case rem: RandomEffectModel => rem.randomEffectType
+      }
+
+      saveScoresToHDFS(gameDataWithScores, reTypes)
     }
 
     gameDataWithScores.unpersist()
@@ -227,14 +233,11 @@ object GameScoringDriver extends GameDriver {
    *
    * @param data The game dataset with computed scores
    */
-  protected def saveScoresToHDFS(data: DataFrame): Unit = {
+  protected def saveScoresToHDFS(data: DataFrame, reTypes: Iterable[REType]): Unit = {
 
     // Take the offset information into account when writing the scores to HDFS
-    val scoredItems = data.select(DataConst.SCORE + inputColumnNames(InputColumnsNames.OFFSET),
-      inputColumnNames(InputColumnsNames.RESPONSE),
-      inputColumnNames(InputColumnsNames.WEIGHT),
-      // scoredGameDatum.idTagToValueMap)
-    )
+    val columnsNames = getOrDefault(inputColumnNames)
+    val scoredItems = data.withColumn(DataConst.SCORE, col(DataConst.SCORE) + col(columnsNames(InputColumnsNames.OFFSET)))
 
     if (getOrDefault(logDataAndModelStats)) {
       // Persist scored items here since we introduce multiple passes
@@ -250,7 +253,7 @@ object GameScoringDriver extends GameDriver {
     }
     val scoresDir = new Path(getRequiredParam(rootOutputDirectory), SCORES_DIR)
 
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, scoresDir.toString, get(modelId))
+    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, reTypes, scoresDir.toString, get(modelId))
     scoredItems.unpersist()
   }
 
