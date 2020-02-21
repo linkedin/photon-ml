@@ -14,7 +14,6 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.apache.spark.ml.linalg.{Vector => SparkVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, lit}
@@ -23,10 +22,8 @@ import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
 import com.linkedin.photon.ml.constants.DataConst
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
-import com.linkedin.photon.ml.util.{ApiUtils, VectorUtils}
+import com.linkedin.photon.ml.util.ApiUtils
 
 /**
  * Representation of a random effect model.
@@ -143,33 +140,6 @@ class RandomEffectModel(
 
     case _ =>
       false
-  }
-
-  /**
-   * Convert models from dataframe to RDD
-   * @return
-   */
-  def toRDD(): RDD[(REType, GeneralizedLinearModel)] = {
-    models
-      .select(randomEffectType, DataConst.MODEL_TYPE, DataConst.COEFFICIENTS)
-      .rdd
-      .map { row =>
-        val reid = row.getInt(0).toString
-        val modelType: TaskType = TaskType.withName(row.getString(1))
-        val coefficients = Coefficients(VectorUtils.mlToBreeze(row.getAs[SparkVector](2)))
-
-        val model = modelType match {
-          case TaskType.LINEAR_REGRESSION =>
-            LinearRegressionModel(coefficients)
-          case TaskType.LOGISTIC_REGRESSION =>
-            LogisticRegressionModel(coefficients)
-          case TaskType.POISSON_REGRESSION =>
-            PoissonRegressionModel(coefficients)
-          case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-            SmoothedHingeLossLinearSVMModel(coefficients)
-        }
-        (reid, model)
-      }
   }
 
   /**

@@ -17,11 +17,14 @@ package com.linkedin.photon.ml.algorithm
 import scala.collection.mutable
 
 import org.apache.spark.ml.linalg.{Vector => SparkVector}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.{DataFrame, functions}
+import org.apache.spark.sql.functions.{col, collect_list}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.storage.StorageLevel
 
-import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
+import com.linkedin.photon.ml.TaskType
+import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType}
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, DatumScoringModel, RandomEffectModel}
@@ -29,7 +32,9 @@ import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.{ApiUtils, PhotonNonBroadcast, VectorUtils}
 
 /**
@@ -62,10 +67,10 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
       .select(rEType, featureShardId, label, offset, weight)
       .groupBy(rEType)
       .agg(
-        functions.collect_list(featureShardId),
-        functions.collect_list(label),
-        functions.collect_list(offset),
-        functions.collect_list(weight))
+        collect_list(featureShardId).alias("features"),
+        collect_list(label).alias("labels"),
+        collect_list(offset).alias("offsets"),
+        collect_list(weight).alias("weights"))
   }
 
   //
@@ -107,6 +112,7 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
           rEType,
           featureShardId,
           optimizationProblem,
+          inputColumnsNames,
           Some(randomEffectModel))
 
         (newModel, optimizationTracker)
@@ -131,6 +137,7 @@ protected[ml] class RandomEffectCoordinate[Objective <: SingleNodeObjectiveFunct
       rEType,
       featureShardId,
       optimizationProblem,
+      inputColumnsNames,
       None)
 
     (newModel, optimizationTracker)
@@ -183,7 +190,7 @@ object RandomEffectCoordinate {
    * Train a new [[RandomEffectModel]] (i.e. run model optimization for each entity).
    *
    * @tparam Function The type of objective function used to solve individual random effect optimization problems
-   * @param randomEffectDataset The training dataset
+   * @param trainingData The training dataset
    * @param randomEffectType
    * @param featureShardId
    * @param optimizationProblem The per-entity optimization problems
@@ -192,49 +199,27 @@ object RandomEffectCoordinate {
    * @return A (new [[RandomEffectModel]], optional optimization stats) tuple
    */
   protected[algorithm] def trainModel[Function <: SingleNodeObjectiveFunction](
-    randomEffectDataset: DataFrame,
+    trainingData: DataFrame,
     randomEffectType: REType,
     featureShardId: FeatureShardId,
     optimizationProblem: SingleNodeOptimizationProblem[Function],
+    inputColumnsNames: InputColumnsNames,
     initialRandomEffectModelOpt: Option[RandomEffectModel]): (RandomEffectModel, RandomEffectOptimizationTracker) = {
 
-    val data = randomEffectDataset
-      .rdd
-      .map { row =>
-        val reid = row.getInt(0).toString
-        val features = row.getList[SparkVector](1)
-        val labels = row.getList[Double](2)
-        val offsets = row.getList[Double](3)
-        val weights = row.getList[Double](4)
-
-        val fIter = features.iterator()
-        val lIter = labels.iterator()
-        val oIter = offsets.iterator()
-        val wIter = weights.iterator()
-
-        require(features.size == labels.size)
-        require(features.size == offsets.size)
-        require(features.size == weights.size)
-
-        val result = new mutable.ArrayBuffer[LabeledPoint](features.size)
-
-        (0 until features.size).map { _ =>
-          result += LabeledPoint(lIter.next(), VectorUtils.mlToBreeze(fIter.next()), oIter.next(), wIter.next())
-        }
-
-        (reid, result.toArray)
-      }
-
-    // Left join the models to data and optimization problems for cases where we have a prior model but no new data
     val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
       .map { randomEffectModel =>
-        val modelsRdd = randomEffectModel.toRDD()
-        val modelsAndTrackers = modelsRdd
-          .leftOuterJoin(data)
+
+        val modelsAndTrackers = randomEffectModel.models.join(trainingData, col(randomEffectType), "left_outer")
+          .rdd
+          .map { row =>
+            val reid = row.getAs[REId](randomEffectType)
+            val labeledPoints: Option[Array[LabeledPoint]] = getLabeledPoints(row)
+            val model = getModel(row)
+            (reid, (model, labeledPoints))
+          }
           .mapValues {
             case (localModel, Some((localDataset))) =>
-              val trainingLabeledPoints = localDataset
-              val (updatedModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints, localModel)
+              val (updatedModel, stateTrackers) = optimizationProblem.run(localDataset, localModel)
 
               (updatedModel, Some(stateTrackers))
 
@@ -249,7 +234,14 @@ object RandomEffectCoordinate {
         (models, optimizationTracker)
       }
       .getOrElse {
-        val modelsAndTrackers = data.mapValues (optimizationProblem.run(_))
+        val modelsAndTrackers = trainingData
+          .rdd
+          .map(
+            row => {
+              val reid = row.getAs[REId](randomEffectType)
+              (reid, getLabeledPoints(row).get)
+            })
+          .mapValues(optimizationProblem.run(_))
         modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
@@ -265,8 +257,62 @@ object RandomEffectCoordinate {
     (newRandomEffectModel, randomEffectOptimizationTracker)
   }
 
+  /**
+   * Get the score field name
+   * @param rEType    Random effect type
+   * @return   A field name
+   */
   def getScoreFieldName(rEType: REType): String = {
     return s"${rEType}_score"
+  }
+
+  /**
+   * Create a generalized linear model from an input row
+   * @param row   An input row
+   * @return  A generalized linear model
+   */
+  def getModel(row: Row): GeneralizedLinearModel = {
+    val coefficients = Coefficients(VectorUtils.mlToBreeze(row.getAs[SparkVector](DataConst.COEFFICIENTS)))
+    val modelType: TaskType = TaskType.withName(row.getAs[String](DataConst.MODEL_TYPE))
+    val model = modelType match {
+      case TaskType.LINEAR_REGRESSION =>
+        LinearRegressionModel(coefficients)
+      case TaskType.LOGISTIC_REGRESSION =>
+        LogisticRegressionModel(coefficients)
+      case TaskType.POISSON_REGRESSION =>
+        PoissonRegressionModel(coefficients)
+      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
+        SmoothedHingeLossLinearSVMModel(coefficients)
+    }
+    model
+  }
+
+  /**
+   * Create an optional array of labeled points
+   * @param row An input row
+   * @return An optional array of labeled points
+   */
+  def getLabeledPoints(row: Row): Option[Array[LabeledPoint]] = {
+
+    val features = row.getAs[List[SparkVector]]("features")
+    val labels = row.getAs[List[Double]]("labels")
+    val offsets = row.getAs[List[Double]]("offsets")
+    val weights = row.getAs[List[Double]]("weights")
+
+    if (features != null) {
+      require(features.size == labels.size)
+      require(features.size == offsets.size)
+      require(features.size == weights.size)
+
+      val result = new mutable.ArrayBuffer[LabeledPoint](features.size)
+
+      for (i <- features.indices)
+        result += LabeledPoint(labels(i), VectorUtils.mlToBreeze(features(i)), offsets(i), weights(i))
+
+      Option.apply(result.toArray)
+    } else {
+      None
+    }
   }
 
   /**
