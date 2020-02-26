@@ -42,13 +42,6 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     varianceComputation: VarianceComputationType) extends Logging {
 
   /**
-   * Get the optimization state trackers for the optimization problems solved
-   *
-   * @return Some(OptimizationStatesTracker) if optimization states were tracked, otherwise None
-   */
-  def getStatesTracker: OptimizationStatesTracker = optimizer.getStateTracker
-
-  /**
    * Create a default generalized linear model with 0-valued coefficients
    *
    * @param dimension The dimensionality of the model coefficients
@@ -98,7 +91,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @param input The training data
    * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
    */
-  def run(input: objectiveFunction.Data): GeneralizedLinearModel
+  def run(input: objectiveFunction.Data): (GeneralizedLinearModel, OptimizationStatesTracker)
 
   /**
    * Run the optimization algorithm on the input data, starting from the initial model provided.
@@ -107,7 +100,7 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @param initialModel The initial model from which to begin optimization
    * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
    */
-  def run(input: objectiveFunction.Data, initialModel: GeneralizedLinearModel): GeneralizedLinearModel
+  def run(input: objectiveFunction.Data, initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker)
 
   /**
    * Compute the regularization term value

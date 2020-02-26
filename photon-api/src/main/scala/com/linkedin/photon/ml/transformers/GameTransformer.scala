@@ -18,17 +18,18 @@ import org.apache.commons.cli.MissingArgumentException
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.Identifiable
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.{col, count, monotonically_increasing_id}
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
-import com.linkedin.photon.ml.Types.{FeatureShardId, REType, UniqueSampleId}
-import com.linkedin.photon.ml.data.scoring.ModelDataScores
-import com.linkedin.photon.ml.data.{GameConverters, GameDatum, InputColumnsNames}
+import com.linkedin.photon.ml.Types.{REType, UniqueSampleId}
+import com.linkedin.photon.ml.constants.DataConst
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.evaluation._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.util._
+
 
 /**
  * Scores input data using a [[GameModel]]. Plays a similar role to the [[org.apache.spark.ml.Model]].
@@ -147,7 +148,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
    * @param data Input [[DataFrame]] of samples
    * @return Scored data samples
    */
-  def transform(data: DataFrame): ModelDataScores = {
+  def transform(data: DataFrame): DataFrame = {
 
     validateParams()
 
@@ -169,7 +170,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
       .toSet
 
     val gameDataset = Timed("Preparing GAME dataset") {
-      prepareGameDataset(data, randomEffectTypes, featureShards)
+      data.withColumn(DataConst.ID, monotonically_increasing_id)
     }
 
     if (getOrDefault(logDataAndModelStats)) {
@@ -177,55 +178,27 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
       logger.debug(s"GAME model summary:\n${getRequiredParam(model).toSummaryString}")
     }
 
-    val scores = Timed("Computing scores") {
-      scoreGameDataset(gameDataset)
+    val storageLevel = if (getOrDefault(spillScoresToDisk)) {
+      StorageLevel.MEMORY_AND_DISK
+    } else {
+      StorageLevel.MEMORY_ONLY
     }
-
-    gameDataset.unpersist()
+    val gameDataWithScores = Timed("Computing scores") {
+      getRequiredParam(model).score(gameDataset)
+    }
+    gameDataWithScores.persist(storageLevel)
 
     Timed("Evaluating scores") {
       get(validationEvaluators).foreach(
         _.foreach { evaluatorType =>
-          val evaluationMetricValue = evaluateScores(evaluatorType, gameDataset, scores)
+          val evaluationMetricValue = evaluateScores(evaluatorType, gameDataWithScores)
           logger.info(s"Evaluation metric value on scores with $evaluatorType: $evaluationMetricValue")
         })
     }
 
-    // TODO: Instead, we should merge the scores back into the DataFrame in a new column (at least optionally)
-
-    scores
+    gameDataWithScores
   }
 
-  /**
-   * Builds a GAME dataset according to input data configuration.
-   *
-   * @param dataFrame A [[DataFrame]] of raw input data
-   * @param randomEffectTypes The set of unique identifier fields used by the random effects of the model
-   * @param featureShards The set of feature shards used by the model
-   * @return The prepared GAME dataset
-   */
-  protected def prepareGameDataset(
-      dataFrame: DataFrame,
-      randomEffectTypes: Set[REType],
-      featureShards: Set[FeatureShardId]): RDD[(UniqueSampleId, GameDatum)] = {
-
-    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
-    val partitioner = new LongHashPartitioner(parallelism)
-    val idTagSet = randomEffectTypes ++
-      get(validationEvaluators).map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
-    val gameDataset = GameConverters
-      .getGameDatasetFromDataFrame(
-        dataFrame,
-        featureShards,
-        idTagSet,
-        isResponseRequired = false,
-        getOrDefault(inputColumnNames))
-      .partitionBy(partitioner)
-      .setName("Game dataset with UIDs for scoring")
-      .persist(StorageLevel.DISK_ONLY)
-
-    gameDataset
-  }
 
   /**
    * Log some simple summary statistics for the GAME dataset.
@@ -233,7 +206,7 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
    * @param gameDataset The GAME dataset
    * @param randomEffectTypes The set of unique identifier fields used by the random effects of the model
    */
-  private def logGameDataset(gameDataset: RDD[(UniqueSampleId, GameDatum)], randomEffectTypes: Set[REType]): Unit = {
+  private def logGameDataset(gameDataset: DataFrame, randomEffectTypes: Set[REType]): Unit = {
 
     val numSamples = gameDataset.count()
 
@@ -242,63 +215,46 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
 
     randomEffectTypes.foreach { idTag =>
       val numSamplesStats = gameDataset
-        .map { case (_, gameData) =>
-          val idValue = gameData.idTagToValueMap(idTag)
-          (idValue, 1)
-        }
-        .reduceByKey(_ + _)
-        .values
-        .stats()
+          .groupBy(idTag).agg(count("*").alias("cnt"))
+        .describe("cnt")
+        .collect()
+        .map(t => t.getString(0) + "\t" + t.getDouble(1) + "\t" + t.getDouble(2))
+        .mkString("\n")
 
       logger.debug(s"numSamples for $idTag: $numSamplesStats")
     }
   }
 
-  /**
-   * Load the GAME model and score the GAME dataset.
-   *
-   * @param gameDataset The GAME dataset
-   * @return The scores
-   */
-  protected def scoreGameDataset(gameDataset: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores = {
-
-    val storageLevel = if (getOrDefault(spillScoresToDisk)) {
-      StorageLevel.MEMORY_AND_DISK
-    } else {
-      StorageLevel.MEMORY_ONLY
-    }
-    // Need to split these calls to keep correct return type
-    val scores = getRequiredParam(model).score(gameDataset)
-    scores.persistRDD(storageLevel).materialize()
-
-    scores
-  }
 
   /**
    * Evaluate the computed scores with the given evaluator type.
    *
    * @param evaluatorType The evaluator type
-   * @param scores The computed scores
-   * @param gameDataset The GAME dataset
+   * @param gameDatasetWithscores The GAME dataset
    * @return The evaluation metric
    */
   protected def evaluateScores(
       evaluatorType: EvaluatorType,
-      gameDataset: RDD[(UniqueSampleId, GameDatum)],
-      scores: ModelDataScores): Double = {
+      gameDatasetWithscores: DataFrame): Double = {
 
-    val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDataset)
+    val evaluator = EvaluatorFactory.buildEvaluator(evaluatorType, gameDatasetWithscores)
 
+    val columnsNames = getOrDefault(inputColumnNames)
+    val offset = columnsNames(InputColumnsNames.OFFSET)
+    val response = columnsNames(InputColumnsNames.RESPONSE)
+    val weight = columnsNames(InputColumnsNames.WEIGHT)
     evaluator match {
       case se: SingleEvaluator =>
-        val scoresRDD = scores.scoresRdd.map { case (_, sGD) =>
-          (sGD.score + sGD.offset, sGD.response, sGD.weight)
-        }
+        val scoresRDD = gameDatasetWithscores
+            .select(col(DataConst.SCORE) + col(offset), col(response), col(weight))
+            .rdd.map (row => (row.getDouble(0), row.getDouble(1), row.getDouble(2)))
 
         se.evaluate(scoresRDD)
 
       case me: MultiEvaluator =>
-        val scoresRDD = scores.scoresRdd.mapValues(sGD => (sGD.score + sGD.offset, sGD.response, sGD.weight))
+        val scoresRDD = gameDatasetWithscores
+        .select(col(DataConst.ID), col(DataConst.SCORE) + col(offset), col(response), col(weight))
+        .rdd.map (row => (row.getAs[UniqueSampleId](0), (row.getDouble(1), row.getDouble(2), row.getDouble(3))))
 
         me.evaluate(scoresRDD)
 

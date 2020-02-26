@@ -15,9 +15,13 @@
 package com.linkedin.photon.ml.supervised.model
 
 import breeze.linalg.Vector
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector => SparkVector}
 import org.apache.spark.rdd.RDD
-
+import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import com.linkedin.photon.ml.TaskType.TaskType
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.util.Summarizable
 
@@ -49,25 +53,6 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
    * @return The mean for the passed features
    */
   protected[ml] def computeMean(features: Vector[Double], offset: Double): Double
-
-  /**
-   * Compute the score for the given features.
-   *
-   * @note "score" = coefficients * features (no link function in the case of logistic regression: see above)
-   *
-   * @param features The input data point's feature
-   * @return The score for the passed features
-   */
-  def computeScore(features: Vector[Double]): Double = coefficients.computeScore(features)
-
-  /**
-   * Compute the value of the mean function of the generalized linear model given one data point using the estimated
-   * coefficients.
-   *
-   * @param features Vector representing a single data point's features
-   * @return Computed mean function value
-   */
-  def computeMeanFunction(features: Vector[Double]): Double = computeMeanFunctionWithOffset(features, 0.0)
 
   /**
    * Compute the value of the mean function of the generalized linear model given one data point using the estimated
@@ -136,6 +121,15 @@ abstract class GeneralizedLinearModel(val coefficients: Coefficients) extends Se
 }
 
 object GeneralizedLinearModel {
+
+  // Schema for [[DataFrame]]
+  def schema: StructType = StructType(Array(
+    StructField(DataConst.MODEL_ID, StringType, false),
+    StructField(DataConst.MODEL_TYPE, StringType, false),
+    StructField(DataConst.COEFFICIENTS, VectorType , false),
+    StructField(DataConst.VARIANCES, VectorType, true)
+  ))
+
   /**
    * Compute the value of the mean functions of the generalized linear model given a RDD of data points using the
    * estimated coefficients and intercept.
@@ -165,4 +159,35 @@ object GeneralizedLinearModel {
     broadcastModel.unpersist()
     result
   }
+
+  val MODEL_TYPE = "modelType"
+
+  /**
+   * A UDF to compute scores given a linear model and a feature vector
+   *
+   * @return The score which is the dot product of model coefficients and features
+   */
+  def scoreUdf = udf[Double, SparseVector, SparseVector](
+    { (coefficients: SparkVector, features: SparkVector) =>
+      require(
+        coefficients.size == features.size,
+        s"Coefficients.size = ${coefficients.size} and features.size = ${features.size}")
+
+      var score = 0D
+
+      coefficients match {
+        case denseCoef: DenseVector =>
+          features.foreachActive { case (index, value) =>
+            score += value * denseCoef(index)
+          }
+
+        case sparseCoef: SparseVector =>
+          sparseCoef.foreachActive { case (index, coefficient) =>
+            score += coefficient * features(index)
+          }
+      }
+
+      score
+    })
+
 }

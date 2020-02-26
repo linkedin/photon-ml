@@ -14,27 +14,14 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.Dataset
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.DatumScoringModel
 import com.linkedin.photon.ml.optimization.OptimizationTracker
 
 /**
  * The optimization problem coordinate for a pre-trained model.
  *
- * @tparam D The training dataset type
- * @param dataset The training dataset
  */
-abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(dataset) {
-
-  /**
-   * Update the coordinate with a new dataset.
-   *
-   * @param dataset The updated dataset
-   * @return A new coordinate with the updated dataset
-   */
-  override protected[algorithm] def updateCoordinateWithDataset(dataset: D): Coordinate[D] =
-    throw new UnsupportedOperationException("Attempted to update model coordinate.")
+abstract class ModelCoordinate extends Coordinate {
 
   /**
    * Compute an optimized model (i.e. run the coordinate optimizer) for the current dataset.
@@ -60,5 +47,5 @@ abstract class ModelCoordinate[D <: Dataset[D]](dataset: D) extends Coordinate(d
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores
+  override protected[algorithm] def updateOffset(model: DatumScoringModel)
 }

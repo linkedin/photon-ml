@@ -14,10 +14,10 @@
  */
 package com.linkedin.photon.ml.evaluation
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.data.GameDatum
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
 
 /**
@@ -29,13 +29,13 @@ object EvaluatorFactory {
    * Construct [[Evaluator]] objects.
    *
    * @param evaluatorType The [[EvaluatorType]]
-   * @param gameDataset A [[RDD]] of (unique ID, GAME data point) which may be necessary to construct [[MultiEvaluator]]
+   * @param gameDataset A [[DataFrame]] of (unique ID, GAME data point, scores) which may be necessary to construct [[MultiEvaluator]]
    *                    objects
    * @return A new [[Evaluator]]
    */
   protected[ml] def buildEvaluator(
       evaluatorType: EvaluatorType,
-      gameDataset: RDD[(UniqueSampleId, GameDatum)]): Evaluator =
+      gameDataset: DataFrame): Evaluator =
     evaluatorType match {
       case AUC => AreaUnderROCCurveEvaluator
 
@@ -52,12 +52,14 @@ object EvaluatorFactory {
       case SquaredLoss => SquaredLossEvaluator
 
       case MultiPrecisionAtK(k, idTag) =>
-        val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
-        new PrecisionAtKMultiEvaluator(k, idTag, ids)
+        val idsRDD = gameDataset.select(DataConst.ID, idTag)
+          .rdd.map(row => (row.getAs[UniqueSampleId](0), row.getString(1)))
+        new PrecisionAtKMultiEvaluator(k, idTag, idsRDD)
 
       case MultiAUC(idTag) =>
-        val ids = gameDataset.mapValues(_.idTagToValueMap(idTag))
-        new AreaUnderROCCurveMultiEvaluator(idTag, ids)
+        val idsRDD = gameDataset.select(DataConst.ID, idTag)
+          .rdd.map(row => (row.getAs[UniqueSampleId](0), row.getString(1)))
+        new AreaUnderROCCurveMultiEvaluator(idTag, idsRDD)
 
       case _ =>
         throw new UnsupportedOperationException(s"Unsupported evaluator type: $evaluatorType")

@@ -12,21 +12,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.data
+package com.linkedin.photon.ml.constants
 
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
-import com.linkedin.photon.ml.util.Summarizable
+object DataConst {
+  val ID = "uniqueId"
+  val SCORE = "score"
 
-/**
- * Interface for GAME dataset implementations.
- */
-protected[ml] trait Dataset[D <: Dataset[D]] extends Summarizable {
-
-  /**
-   * Add residual scores to the data offsets.
-   *
-   * @param keyScore The residual scores
-   * @return The dataset with updated offsets
-   */
-  def addScoresToOffsets(keyScore: CoordinateDataScores): D
+  val MODEL_ID = "mId"
+  val MODEL_TYPE = "modelType"
+  val COEFFICIENTS = "coefficients"
+  val VARIANCES = "variances"
 }

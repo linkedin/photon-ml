@@ -14,12 +14,9 @@
  */
 package com.linkedin.photon.ml.model
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 
 import com.linkedin.photon.ml.TaskType.TaskType
-import com.linkedin.photon.ml.Types.UniqueSampleId
-import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.{CoordinateDataScores, ModelDataScores}
 import com.linkedin.photon.ml.util.Summarizable
 
 /**
@@ -37,16 +34,20 @@ trait DatumScoringModel extends Summarizable {
    *
    * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
    * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
    * @return The computed scores
    */
-  def score(dataPoints: RDD[(UniqueSampleId, GameDatum)]): ModelDataScores
+  def computeScore(dataPoints: DataFrame, scoreField: String): DataFrame
 
   /**
-   * Compute the scores for the GAME dataset, and store the scores only.
+   * Accumulatively compute the scores for the GAME dataset.
    *
-   * @note "score" = features * coefficients (Before link function in the case of logistic regression, for example)
+   * @note "score" = sum(features * coefficients) (Before link function in the case of logistic regression, for example)
    * @param dataPoints The dataset to score
+   * @param scoreField The field name of the score
+   * @param accumulativeScoreField The field name of the accumulativeScore
    * @return The computed scores
    */
-  protected[ml] def scoreForCoordinateDescent(dataPoints: RDD[(UniqueSampleId, GameDatum)]): CoordinateDataScores
+  def computeScore(dataPoints: DataFrame, scoreField: String, accumulativeScoreField: String): DataFrame
+
 }

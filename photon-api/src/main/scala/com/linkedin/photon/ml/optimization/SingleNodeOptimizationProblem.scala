@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.optimization
 
 import breeze.linalg.{Vector, cholesky, diag}
-
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
@@ -79,23 +78,24 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
    * @param input The training data
    * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
    */
-  override def run(input: Iterable[LabeledPoint]): GeneralizedLinearModel =
+  override def run(input: Iterable[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) =
     run(input, initializeZeroModel(input.head.features.size))
 
+
   /**
-   * Run the optimization algorithm on the input data, starting from the initial model provided.
+   * Run the algorithm with the configured parameters, starting from the initial model provided
+   * (warm start in iterations over the regularization weights for hyperparameter tuning).
    *
    * @param input The training data
-   * @param initialModel The initial model from which to begin optimization
-   * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
+   * @return The learned [[GeneralizedLinearModel]]
    */
-  override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+  override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
     val normalizationContext = optimizer.getNormalizationContext
-    val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
+    val (optimizedCoefficients, stateTracker) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
 
-    createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
+    (createModel(normalizationContext, optimizedCoefficients, optimizedVariances), stateTracker)
   }
 }
 

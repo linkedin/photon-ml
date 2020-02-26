@@ -16,14 +16,12 @@ package com.linkedin.photon.ml.algorithm
 
 import scala.collection.mutable
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 
 import com.linkedin.photon.ml.Types.{CoordinateId, UniqueSampleId}
-import com.linkedin.photon.ml.data.GameDatum
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.evaluation.{EvaluationResults, EvaluationSuite, EvaluatorType}
 import com.linkedin.photon.ml.model.{DatumScoringModel, GameModel}
 import com.linkedin.photon.ml.optimization.OptimizationTracker
@@ -35,15 +33,17 @@ import com.linkedin.photon.ml.util.Timed
  *
  * @param updateSequence The order in which to update coordinates
  * @param descentIterations Number of coordinate descent iterations (updates to each coordinate in order)
- * @param validationDataAndEvaluationSuiteOpt Optional validation data and [[EvaluationSuite]] of validation metric
- *                                         [[com.linkedin.photon.ml.evaluation.Evaluator]] objects
+ * @param validationOpt Optional validation data
+ * @param evaluationSuiteOpt  Optional [[EvaluationSuite]] of validation metric
+ *                            [[com.linkedin.photon.ml.evaluation.Evaluator]] objects
  * @param lockedCoordinates Set of locked coordinates within the initial model for performing partial retraining
  * @param logger A logger instance
  */
 class CoordinateDescent(
     updateSequence: Seq[CoordinateId],
     descentIterations: Int,
-    validationDataAndEvaluationSuiteOpt: Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)],
+    validationOpt: Option[DataFrame],
+    evaluationSuiteOpt: Option[EvaluationSuite],
     lockedCoordinates: Set[CoordinateId],
     implicit private val logger: Logger) {
 
@@ -98,7 +98,7 @@ class CoordinateDescent(
    * @param initialModelsOpt An optional map of existing models
    */
   private def checkInput(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       initialModelsOpt: Option[Map[CoordinateId, DatumScoringModel]]): Unit = {
 
     // All coordinates in the update sequence must be passed as input
@@ -130,7 +130,7 @@ class CoordinateDescent(
    *         at the conclusion of coordinate descent).
    */
   def run(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       initialModelsOpt: Option[Map[CoordinateId, DatumScoringModel]]): (GameModel, Option[EvaluationResults]) = {
 
     checkInput(coordinates, initialModelsOpt)
@@ -145,10 +145,12 @@ class CoordinateDescent(
         coordinateId,
         coordinates(coordinateId),
         initialModels.get(coordinateId),
-        validationDataAndEvaluationSuiteOpt)
+        validationOpt,
+        evaluationSuiteOpt)
 
-    } else if (validationDataAndEvaluationSuiteOpt.isDefined) {
-      val (validationData, evaluationSuite) = validationDataAndEvaluationSuiteOpt.get
+    } else if (validationOpt.isDefined && evaluationSuiteOpt.isDefined) {
+      val validationData = validationOpt.get
+      val evaluationSuite = evaluationSuiteOpt.get
       val (model, evaluationsResults) = descendWithValidation(
         coordinates,
         updateSequence,
@@ -176,43 +178,30 @@ object CoordinateDescent {
    * @param iteration The current iteration of coordinate descent (for logging purposes)
    * @param initialModelOpt An optional initial model whose coefficients should be used as a starting point for
    *                        optimization
-   * @param residualsOpt Optional residual scores to add to the training data offsets
    * @param logger An implicit logger
    * @return The new model trained for the coordinate
    */
   protected[algorithm] def trainCoordinateModel(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       iteration: Int,
       initialModelOpt: Option[DatumScoringModel],
-      residualsOpt: Option[CoordinateDataScores])(
+      prevModelOpt: Option[DatumScoringModel])(
       implicit logger: Logger): DatumScoringModel =
 
     Timed(s"Optimizing coordinate '$coordinateId' for iteration $iteration") {
 
       logger.debug(s"Updating coordinate of class ${coordinate.getClass}")
 
-      val (model, tracker) = (initialModelOpt, residualsOpt) match {
-        case (Some(initialModel), Some(residuals)) =>
-          Timed(s"Train new model with residuals using existing model as starting point") {
-            coordinate.trainModel(initialModel, residuals)
-          }
+      prevModelOpt.map(model => coordinate.updateOffset(model))
 
-        case (Some(initialModel), None) =>
-          Timed(s"Train new model using existing model as starting point") {
-            coordinate.trainModel(initialModel)
-          }
-
-        case (None, Some(residuals)) =>
-          Timed(s"Train new model with residuals") {
-            coordinate.trainModel(residuals)
-          }
-
-        case (None, None) =>
-          Timed(s"Train new model") {
-            coordinate.trainModel()
-          }
-      }
+      val (model, tracker) = initialModelOpt.map(
+        initialModel => Timed(s"Train new model using existing model as starting point") {
+          coordinate.trainModel(initialModel)
+        }).getOrElse(
+        Timed(s"Train new model") {
+          coordinate.trainModel()
+        })
 
       logOptimizationSummary(logger, coordinateId, model, tracker)
 
@@ -273,23 +262,24 @@ object CoordinateDescent {
    * @param coordinatesToTrain A list of coordinates for which to train new models
    * @param initialModelOpt An optional initial model whose coefficients should be used as a starting point for
    *                        optimization
-   * @param residualsOpt Optional residual scores to add to the training data offsets
+//   * @param residualsOpt Optional residual scores to add to the training data offsets
    * @param logger An implicit logger
    * @return The locked model if a new model should not be trained for this coordinate, a newly trained model otherwise.
    */
   protected[algorithm] def trainOrFetchCoordinateModel(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       coordinatesToTrain: Seq[CoordinateId],
       initialModelOpt: Option[DatumScoringModel],
-      residualsOpt: Option[CoordinateDataScores])(
+      prevModelOpt: Option[DatumScoringModel])(
       implicit logger: Logger): DatumScoringModel =
 
     if (coordinatesToTrain.contains(coordinateId)) {
 
-      val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, residualsOpt)
+      prevModelOpt.map(coordinate.updateOffset(_))
+      val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, prevModelOpt)
 
-      persistModel(newModel, coordinateId, iteration = 1)
+      //persistModel(newModel, coordinateId, iteration = 1)
 
       newModel
 
@@ -310,17 +300,21 @@ object CoordinateDescent {
    *         [[com.linkedin.photon.ml.evaluation.Evaluator]]
    */
   protected[algorithm] def evaluateModel(
-      modelToEvaluate: DatumScoringModel,
-      validationData: RDD[(UniqueSampleId, GameDatum)],
+      modelToEvaluate: GameModel,
+      validationData: DataFrame,
       evaluationSuite: EvaluationSuite)(
       implicit logger: Logger): EvaluationResults = Timed("Validate GAME model") {
 
     val validatingScores = Timed(s"Compute validation scores") {
-      modelToEvaluate.scoreForCoordinateDescent(validationData)
+      modelToEvaluate.score(validationData)
     }
 
     Timed(s"Compute evaluation metrics") {
-      val results = evaluationSuite.evaluate(validatingScores.scoresRdd)
+      val scoresRdd =  validatingScores.select(DataConst.ID, DataConst.SCORE)
+        .rdd
+        .map(row => (row.getAs[UniqueSampleId](0), row.getDouble(1)))
+
+      val results = evaluationSuite.evaluate(scoresRdd)
 
       results
         .evaluations
@@ -331,14 +325,6 @@ object CoordinateDescent {
       results
     }
   }
-
-  /**
-   * Cache summed residual scores to memory/disk.
-   *
-   * @param coordinateDataScores The residual scores to cache
-   */
-  protected[algorithm] def persistSummedScores(coordinateDataScores: CoordinateDataScores): Unit =
-    coordinateDataScores.setName(s"Summed scores").persistRDD(StorageLevel.MEMORY_AND_DISK_SER).materialize()
 
   /**
    * Remove a cached model from cache.
@@ -371,48 +357,22 @@ object CoordinateDescent {
    * @return A new [[GameModel]]
    */
   private def descend(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       updateSequence: Seq[CoordinateId],
       coordinatesToTrain: Seq[CoordinateId],
       iterations: Int,
       initialModels: Map[CoordinateId, DatumScoringModel])(
       implicit logger: Logger): GameModel = {
 
-    var i: Int = 2
+    var i: Int = 1
+    val currentModels: mutable.Map[CoordinateId, DatumScoringModel] = mutable.Map()
+    // The optional model of previous coordinate
+    var prevModelOpt: Option[DatumScoringModel] = None
 
     //
-    // First coordinate, first iteration
+    // First iteration
     //
-
-    val firstCoordinateId = updateSequence.head
-    val firstCoordinate = coordinates(firstCoordinateId)
-    val firstCoordinateModel = trainOrFetchCoordinateModel(
-      firstCoordinateId,
-      firstCoordinate,
-      coordinatesToTrain,
-      initialModels.get(firstCoordinateId),
-      residualsOpt = None)
-
-    var previousScores = firstCoordinate.score(firstCoordinateModel)
-    var summedScores: CoordinateDataScores =
-      CoordinateDataScores(SparkSession.builder().getOrCreate().sparkContext.emptyRDD)
-    val currentModels: mutable.Map[CoordinateId, DatumScoringModel] =
-      mutable.Map(firstCoordinateId -> firstCoordinateModel)
-    val currentScores: mutable.Map[CoordinateId, CoordinateDataScores] =
-      mutable.Map(firstCoordinateId -> previousScores)
-
-    previousScores.persistRDD(StorageLevel.DISK_ONLY)
-
-    //
-    // Subsequent coordinates, first iteration
-    //
-
-    updateSequence.tail.foreach { coordinateId =>
-
-      val newSummedScores = previousScores + summedScores
-      persistSummedScores(newSummedScores)
-      summedScores.unpersistRDD()
-      summedScores = newSummedScores
+    updateSequence.foreach { coordinateId =>
 
       val coordinate = coordinates(coordinateId)
       val newModel = trainOrFetchCoordinateModel(
@@ -420,52 +380,36 @@ object CoordinateDescent {
         coordinate,
         coordinatesToTrain,
         initialModels.get(coordinateId),
-        Some(summedScores))
+        prevModelOpt)
 
-      val scores = coordinate.score(newModel)
-      scores.persistRDD(StorageLevel.DISK_ONLY)
-
+      // persist the new model
+      persistModel(newModel, coordinateId, 1)
       currentModels.put(coordinateId, newModel)
-      currentScores.put(coordinateId, scores)
-      previousScores = scores
+      prevModelOpt = Option.apply(newModel)
     }
 
     //
-    // Subsequent coordinates, subsequent iterations
+    // Subsequent iterations
     //
-
-    while (i <= iterations) {
+    while (i < iterations) {
 
       coordinatesToTrain.foreach { coordinateId =>
 
-        val oldScores = currentScores(coordinateId)
-        val newSummedScores = summedScores - oldScores + previousScores
-        persistSummedScores(newSummedScores)
-        summedScores.unpersistRDD()
-        oldScores.unpersistRDD()
-        summedScores = newSummedScores
-
         val coordinate = coordinates(coordinateId)
         val oldModelOpt = currentModels.get(coordinateId)
-        val newModel = trainCoordinateModel(coordinateId, coordinate, i, oldModelOpt, Some(summedScores))
+        val newModel = trainCoordinateModel(coordinateId, coordinate, i, oldModelOpt, prevModelOpt)
 
         persistModel(newModel, coordinateId, i)
-        unpersistModel(oldModelOpt.get)
-
-        val scores = coordinate.score(newModel)
-        scores.persistRDD(StorageLevel.DISK_ONLY)
-
         currentModels.put(coordinateId, newModel)
-        currentScores.put(coordinateId, scores)
-        previousScores = scores
+        unpersistModel(oldModelOpt.get)
+        prevModelOpt = Option.apply(newModel)
       }
 
       i += 1
     }
 
-    summedScores.unpersistRDD()
-    currentScores.foreach { case (_, scores) =>
-      scores.unpersistRDD()
+    currentModels.foreach { case (_, model) =>
+      unpersistModel(model)
     }
 
     new GameModel(currentModels.toMap)
@@ -491,57 +435,30 @@ object CoordinateDescent {
    * @return A (new [[GameModel]], model [[EvaluationResults]]) tuple
    */
   private def descendWithValidation(
-      coordinates: Map[CoordinateId, Coordinate[_]],
+      coordinates: Map[CoordinateId, Coordinate],
       updateSequence: Seq[CoordinateId],
       coordinatesToTrain: Seq[CoordinateId],
       iterations: Int,
       initialModels: Map[CoordinateId, DatumScoringModel],
-      validationData: RDD[(UniqueSampleId, GameDatum)],
+      validationData: DataFrame,
       evaluationSuite: EvaluationSuite)(
       implicit logger: Logger): (GameModel, EvaluationResults) = {
 
+    var i: Int = 1
+    val currentModels: mutable.Map[CoordinateId, DatumScoringModel] = mutable.Map()
+    // The optional model of previous coordinate
+    var prevModelOpt: Option[DatumScoringModel] = Option.empty
+
     val evaluatorType: EvaluatorType = evaluationSuite.primaryEvaluator.evaluatorType
-
-    var i: Int = 2
-
-    //
-    // First coordinate, first iteration
-    //
-
-    val firstCoordinateId = updateSequence.head
-    val firstCoordinate = coordinates(firstCoordinateId)
-    val firstCoordinateModel = trainOrFetchCoordinateModel(
-      firstCoordinateId,
-      firstCoordinate,
-      coordinatesToTrain,
-      initialModels.get(firstCoordinateId),
-      residualsOpt = None)
-
-    var previousScores = firstCoordinate.score(firstCoordinateModel)
-    var summedScores: CoordinateDataScores =
-      CoordinateDataScores(SparkSession.builder().getOrCreate().sparkContext.emptyRDD)
-    val currentModels: mutable.Map[CoordinateId, DatumScoringModel] =
-      mutable.Map(firstCoordinateId -> firstCoordinateModel)
-    val currentScores: mutable.Map[CoordinateId, CoordinateDataScores] =
-      mutable.Map(firstCoordinateId -> previousScores)
-    var bestModels: Map[CoordinateId, DatumScoringModel] = currentModels.toMap
-    var bestEvaluationResults: EvaluationResults = evaluateModel(
-      firstCoordinateModel,
-      validationData,
-      evaluationSuite)
-
-    previousScores.persistRDD(StorageLevel.DISK_ONLY)
+    var bestEvaluationResults: EvaluationResults = null
 
     //
-    // Subsequent coordinates, first iteration
+    // First iteration
     //
 
-    updateSequence.tail.foreach { coordinateId =>
+    updateSequence.foreach { coordinateId =>
 
-      val newSummedScores = previousScores + summedScores
-      persistSummedScores(newSummedScores)
-      summedScores.unpersistRDD()
-      summedScores = newSummedScores
+//      summedScores = previousScores + summedScores
 
       val coordinate = coordinates(coordinateId)
       val newModel = trainOrFetchCoordinateModel(
@@ -549,20 +466,19 @@ object CoordinateDescent {
         coordinate,
         coordinatesToTrain,
         initialModels.get(coordinateId),
-        Some(summedScores))
+        prevModelOpt)
 
-      val scores = coordinate.score(newModel)
-      scores.persistRDD(StorageLevel.DISK_ONLY)
-
+      // persist the new model
+      persistModel(newModel, coordinateId, 1)
       currentModels.put(coordinateId, newModel)
-      currentScores.put(coordinateId, scores)
-      previousScores = scores
+      prevModelOpt = Option.apply(newModel)
 
       val evaluationModel = new GameModel(currentModels.toMap)
       val evaluationResults = evaluateModel(evaluationModel, validationData, evaluationSuite)
 
       // Log warning if adding a coordinate reduces the overall model performance
-      if (evaluatorType.betterThan(bestEvaluationResults.primaryEvaluation, evaluationResults.primaryEvaluation)) {
+      if (bestEvaluationResults != null
+        && evaluatorType.betterThan(bestEvaluationResults.primaryEvaluation, evaluationResults.primaryEvaluation)) {
         logger.info(s"Warning: adding model for coordinate '$coordinateId' reduces overall model performance")
       }
 
@@ -573,36 +489,27 @@ object CoordinateDescent {
     // Subsequent coordinates, subsequent iterations
     //
 
-    bestModels = currentModels.toMap
+    var bestModels: Map[CoordinateId, DatumScoringModel] = currentModels.toMap
 
-    while (i <= iterations) {
+    while (i < iterations) {
 
       coordinatesToTrain.foreach { coordinateId =>
 
-        val oldScores = currentScores(coordinateId)
-        val newSummedScores = summedScores - oldScores + previousScores
-        persistSummedScores(newSummedScores)
-        summedScores.unpersistRDD()
-        oldScores.unpersistRDD()
-        summedScores = newSummedScores
+//        summedScores = summedScores - oldScores + previousScores
 
         val coordinate = coordinates(coordinateId)
         val oldModelOpt = currentModels.get(coordinateId)
-        val newModel = trainCoordinateModel(coordinateId, coordinate, i, oldModelOpt, Some(summedScores))
+        val newModel = trainCoordinateModel(coordinateId, coordinate, i, oldModelOpt, prevModelOpt)
 
         persistModel(newModel, coordinateId, i)
+        currentModels.put(coordinateId, newModel)
+        prevModelOpt = Option.apply(newModel)
+
         // If the best GAME model doesn't have a model for this coordinate or it does but it's not the old model,
         // unpersist the old model.
         if (bestModels.get(coordinateId).forall(!_.eq(oldModelOpt.get))) {
           unpersistModel(oldModelOpt.get)
         }
-
-        val scores = coordinate.score(newModel)
-        scores.persistRDD(StorageLevel.DISK_ONLY)
-
-        currentModels.put(coordinateId, newModel)
-        currentScores.put(coordinateId, scores)
-        previousScores = scores
 
         val evaluationModel = new GameModel(currentModels.toMap)
         val evaluationResults = evaluateModel(evaluationModel, validationData, evaluationSuite)
@@ -625,10 +532,6 @@ object CoordinateDescent {
       i += 1
     }
 
-    summedScores.unpersistRDD()
-    currentScores.foreach { case (_, scores) =>
-      scores.unpersistRDD()
-    }
     currentModels.foreach { case (coordinateId, model) =>
       // If the best GAME model doesn't have a model for this coordinate or it does but they don't match, unpersist it
       if (bestModels.get(coordinateId).forall(!_.eq(model))) {
@@ -645,26 +548,28 @@ object CoordinateDescent {
    * @param coordinateId The ID of the single coordinate for which to train a new model
    * @param coordinate The [[Coordinate]] for which to train a new model
    * @param initialModelOpt An optional existing model to use for warm-start training
-   * @param validationDataAndEvaluationSuiteOpt An optional (validation data, set of evaluation metrics to compute)
-   *                                            tuple
+   * @param validationOpt An optional validation data
+   * @param evaluationSuiteOpt An optional set of evaluation metrics to compute tuple
    * @param logger An implicit logger
    * @return A (new [[GameModel]], optional model [[EvaluationResults]]) tuple
    */
   private def descendSingleCoordinate(
       coordinateId: CoordinateId,
-      coordinate: Coordinate[_],
+      coordinate: Coordinate,
       initialModelOpt: Option[DatumScoringModel],
-      validationDataAndEvaluationSuiteOpt: Option[(RDD[(UniqueSampleId, GameDatum)], EvaluationSuite)])(
+      validationOpt: Option[DataFrame],
+      evaluationSuiteOpt: Option[EvaluationSuite])(
       implicit logger: Logger): (GameModel, Option[EvaluationResults]) = {
 
-    val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, residualsOpt = None)
+    val newModel = trainCoordinateModel(coordinateId, coordinate, iteration = 1, initialModelOpt, prevModelOpt = None)
 
     persistModel(newModel, coordinateId, iteration = 1)
 
-    val evaluationResultsOpt = validationDataAndEvaluationSuiteOpt.map { case (validationData, evaluationSuite) =>
-      evaluateModel(newModel, validationData, evaluationSuite)
+    val gameModel = new GameModel(Map(coordinateId -> newModel))
+    val evaluationResultsOpt = validationOpt.map { case validationData =>
+      evaluateModel(gameModel, validationData, evaluationSuiteOpt.get)
     }
 
-    (new GameModel(Map(coordinateId -> newModel)), evaluationResultsOpt)
+    (gameModel, evaluationResultsOpt)
   }
 }

@@ -23,14 +23,16 @@ import scala.io.Source
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.ml.param.ParamMap
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.avro.generated.{BayesianLinearModelAvro, FeatureSummarizationResultAvro}
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId}
 import com.linkedin.photon.ml.cli.game.training.GameTrainingDriver
+import com.linkedin.photon.ml.constants.DataConst
 import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.index.{IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.model._
@@ -227,9 +229,9 @@ object ModelProcessingUtils {
                 s"Missing feature shard definition for '$featureShardId' required by coordinate '$name' in loaded model")
           }
           val modelsRDDInputPath = new Path(innerPath, AvroConstants.COEFFICIENTS)
-          val modelsRDD = loadModelsRDDFromHDFS(modelsRDDInputPath.toString, indexMapLoader, sc)
+          val models = loadModelsDataFrameFromHDFS(modelsRDDInputPath.toString, indexMapLoader, sc)
 
-          (name, new RandomEffectModel(modelsRDD, randomEffectType, featureShardId).persistRDD(storageLevel))
+          (name, new RandomEffectModel(models, randomEffectType, featureShardId)/*.persist(storageLevel)*/)
         }
 
     } else {
@@ -276,18 +278,18 @@ object ModelProcessingUtils {
 
     //Write the coefficientsRDD
     val coefficientsRDDOutputDir = new Path(randomEffectModelOutputDir, AvroConstants.COEFFICIENTS).toString
-    val modelsRDD = randomEffectModelFileLimit match {
+    val models = randomEffectModelFileLimit match {
       case Some(fileLimit) =>
         require(fileLimit > 0, "Attempt to coalesce random effect model RDD into fewer than 1 partitions")
 
         // Control the number of output files by re-partitioning the RDD.
-        randomEffectModel.modelsRDD.coalesce(fileLimit)
+        randomEffectModel.models.coalesce(fileLimit)
 
       case None =>
-        randomEffectModel.modelsRDD
+        randomEffectModel.models
     }
 
-    saveModelsRDDToHDFS(modelsRDD, indexMapLoader, coefficientsRDDOutputDir, sparsityThreshold)
+    saveModelsDataFrameToHDFS(models, indexMapLoader, coefficientsRDDOutputDir, sparsityThreshold)
   }
 
   /**
@@ -307,7 +309,9 @@ object ModelProcessingUtils {
       sparsityThreshold: Double): Unit = {
 
     val bayesianLinearModelAvro = AvroUtils.convertGLMModelToBayesianLinearModelAvro(
-      model,
+      model.getClass.getName,
+      model.coefficients.means,
+      model.coefficients.variancesOption,
       AvroConstants.FIXED_EFFECT,
       featureMap,
       sparsityThreshold)
@@ -344,23 +348,39 @@ object ModelProcessingUtils {
   }
 
   /**
-   * Save an [[RDD]] of GLM to HDFS.
+   * Save an [[DataFrame]] of GLM to HDFS.
    *
-   * @param modelsRDD The models to save
+   * @param models The models to save
    * @param featureMapLoader A loader for the feature to index map
    * @param outputDir The directory to which to save the models
    * @param sparsityThreshold The model sparsity threshold, or the minimum absolute value considered nonzero
    */
-  private def saveModelsRDDToHDFS(
-      modelsRDD: RDD[(String, GeneralizedLinearModel)],
+  private def saveModelsDataFrameToHDFS(
+      models: DataFrame, /*(RDD[(String, GeneralizedLinearModel)],*/
       featureMapLoader: IndexMapLoader,
       outputDir: String,
       sparsityThreshold: Double): Unit = {
 
+    val modelsRDD = models
+      .rdd
+      .map(row => {
+        val id = row.getAs[String](DataConst.MODEL_ID)
+        val modelType = row.getAs[String](DataConst.MODEL_TYPE)
+        val coefficients = VectorUtils.mlToBreeze(row.getAs[SparkMLVector](DataConst.COEFFICIENTS))
+        val variances = row.getAs[SparkMLVector](DataConst.VARIANCES)
+        val variancesOption = if (variances != null) {
+          Option.apply(VectorUtils.mlToBreeze(variances))
+        } else {
+          None
+        }
+        (id, modelType, coefficients, variancesOption)
+      }
+    )
+
     val linearModelAvro = modelsRDD.mapPartitions { iter =>
       val featureMap = featureMapLoader.indexMapForRDD()
-      iter.map { case (modelId, model) =>
-        AvroUtils.convertGLMModelToBayesianLinearModelAvro(model, modelId, featureMap, sparsityThreshold)
+      iter.map { case (modelId, modelType, coefficients, variancesOption) =>
+        AvroUtils.convertGLMModelToBayesianLinearModelAvro(modelType, coefficients, variancesOption, modelId, featureMap, sparsityThreshold)
       }
     }
 
@@ -368,35 +388,36 @@ object ModelProcessingUtils {
   }
 
   /**
-   * Load multiple GLM into a [[RDD]].
+   * Load multiple GLM into a [[DataFrame]].
    *
    * TODO: Currently only the means of the coefficients are loaded, the variances are discarded
    *
    * @param coefficientsRDDInputDir The input directory from which to read models
    * @param indexMapLoader A loader for the feature to index map
    * @param sc The Spark context
-   * @return A [[RDD]] of GLMs loaded from HDFS and a loader for the feature to index map it uses
+   * @return A [[DataFrame]] of GLMs loaded from HDFS and a loader for the feature to index map it uses
    */
-  private def loadModelsRDDFromHDFS(
+  private def loadModelsDataFrameFromHDFS(
       coefficientsRDDInputDir: String,
       indexMapLoader: IndexMapLoader,
-      sc: SparkContext): RDD[(String, GeneralizedLinearModel)] = {
+      sc: SparkContext): DataFrame = {
 
     val modelAvros = AvroUtils.readAvroFilesInDir[BayesianLinearModelAvro](
       sc,
       coefficientsRDDInputDir,
       minNumPartitions = sc.defaultParallelism)
 
-    modelAvros.mapPartitions { iter =>
+    val rdd = modelAvros.mapPartitions { iter =>
       val indexMap = indexMapLoader.indexMapForRDD()
 
       iter.map { modelAvro =>
         val modelId = modelAvro.getModelId.toString
         val glm = AvroUtils.convertBayesianLinearModelAvroToGLM(modelAvro, indexMap)
-
-        (modelId, glm)
+        Row.fromTuple(modelId, glm.modelType, glm.coefficients.means, glm.coefficients.variancesOption.getOrElse(null))
       }
     }
+
+    SparkSession.builder().getOrCreate().createDataFrame(rdd, GeneralizedLinearModel.schema)
   }
 
   /**

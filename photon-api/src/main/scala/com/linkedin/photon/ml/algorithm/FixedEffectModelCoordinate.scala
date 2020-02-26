@@ -14,16 +14,22 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.FixedEffectDataset
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import org.apache.spark.sql.DataFrame
+
+import com.linkedin.photon.ml.Types.FeatureShardId
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.model.{DatumScoringModel, FixedEffectModel}
 
 /**
  * The optimization problem coordinate for a pre-trained fixed effect model.
  *
  * @param dataset The training dataset
+ * @param featureShardId The ID of the feature shard for the training data
  */
-class FixedEffectModelCoordinate(dataset: FixedEffectDataset) extends ModelCoordinate(dataset) {
+class FixedEffectModelCoordinate(
+  dataset: DataFrame,
+  featureShardId: FeatureShardId,
+  inputColumnsNames: InputColumnsNames) extends ModelCoordinate {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -31,10 +37,11 @@ class FixedEffectModelCoordinate(dataset: FixedEffectDataset) extends ModelCoord
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
+  override protected[algorithm] def updateOffset(model: DatumScoringModel) = {
+
     model match {
       case fixedEffectModel: FixedEffectModel =>
-        FixedEffectCoordinate.score(dataset, fixedEffectModel)
+        FixedEffectCoordinate.updateOffset(dataset, fixedEffectModel, featureShardId, inputColumnsNames)
 
       case _ =>
         throw new UnsupportedOperationException(

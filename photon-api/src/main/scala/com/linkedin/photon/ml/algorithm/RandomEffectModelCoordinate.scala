@@ -14,8 +14,10 @@
  */
 package com.linkedin.photon.ml.algorithm
 
-import com.linkedin.photon.ml.data.RandomEffectDataset
-import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import org.apache.spark.sql.DataFrame
+
+import com.linkedin.photon.ml.Types.{FeatureShardId, REType}
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
 
 /**
@@ -23,9 +25,12 @@ import com.linkedin.photon.ml.model.{DatumScoringModel, RandomEffectModel}
  *
  * @param dataset The training dataset
  */
-class RandomEffectModelCoordinate(dataset: RandomEffectDataset)
-  extends ModelCoordinate(dataset)
-  with ModelProjection {
+class RandomEffectModelCoordinate(
+  rEType: REType,
+  dataset: DataFrame,
+  featureShardId: FeatureShardId,
+  inputColumnsNames: InputColumnsNames)
+  extends ModelCoordinate {
 
   /**
    * Score the effect-specific dataset in the coordinate with the input model.
@@ -33,10 +38,11 @@ class RandomEffectModelCoordinate(dataset: RandomEffectDataset)
    * @param model The input model
    * @return The output scores
    */
-  override protected[algorithm] def score(model: DatumScoringModel): CoordinateDataScores = {
+  override protected[algorithm] def updateOffset(model: DatumScoringModel) = {
+
     model match {
       case randomEffectModel: RandomEffectModel =>
-        RandomEffectCoordinate.score(dataset, projectModelForward(randomEffectModel))
+        RandomEffectCoordinate.updateOffset(dataset, randomEffectModel, featureShardId, rEType, inputColumnsNames)
 
       case _ =>
         throw new UnsupportedOperationException(

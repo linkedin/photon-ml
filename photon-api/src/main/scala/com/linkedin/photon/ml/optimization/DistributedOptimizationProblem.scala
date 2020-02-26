@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.optimization
 import breeze.linalg.{Vector, cholesky, diag}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
-
 import com.linkedin.photon.ml.Types.UniqueSampleId
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
@@ -110,7 +109,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param input The training data
    * @return The learned [[GeneralizedLinearModel]]
    */
-  override def run(input: RDD[LabeledPoint]): GeneralizedLinearModel =
+  override def run(input: RDD[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) =
     run(input, initializeZeroModel(input.first.features.size))
 
   /**
@@ -121,13 +120,16 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param initialModel The initial model from which to begin optimization
    * @return The learned [[GeneralizedLinearModel]]
    */
-  override def run(input: RDD[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+  override def run(
+    input: RDD[LabeledPoint],
+    initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
     val normalizationContext = optimizer.getNormalizationContext
-    val (optimizedCoefficients, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
+    val (optimizedCoefficients, stateTracker) = optimizer
+      .optimize(objectiveFunction, initialModel.coefficients.means)(input)
     val optimizedVariances = computeVariances(input, optimizedCoefficients)
 
-    createModel(normalizationContext, optimizedCoefficients, optimizedVariances)
+    (createModel(normalizationContext, optimizedCoefficients, optimizedVariances), stateTracker)
   }
 
   /**
@@ -137,8 +139,8 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param input The training data
    * @return The learned [[GeneralizedLinearModel]]
    */
-  def runWithSampling(input: RDD[(UniqueSampleId, LabeledPoint)]): GeneralizedLinearModel =
-    runWithSampling(input, initializeZeroModel(input.first._2.features.size))
+  def runWithSampling(input: RDD[(UniqueSampleId, LabeledPoint)]): (GeneralizedLinearModel, OptimizationStatesTracker) =
+    runWithSampling(input, initializeZeroModel(input.values.first.features.size))
 
   /**
    * Run the algorithm with the configured parameters, starting from the initial model provided, and down-sample the
@@ -150,7 +152,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    */
   def runWithSampling(
       input: RDD[(UniqueSampleId, LabeledPoint)],
-      initialModel: GeneralizedLinearModel): GeneralizedLinearModel = {
+      initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) = {
 
     val data = (samplerOption match {
         case Some(sampler) => sampler.downSample(input).values
