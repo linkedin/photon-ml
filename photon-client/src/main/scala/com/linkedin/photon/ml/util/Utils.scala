@@ -42,6 +42,7 @@ object Utils {
    * @return The feature name
    */
   def getFeatureKey(record: GenericRecord, nameKey: String, termKey: String, delimiter: String): String = {
+
     val name = getStringAvro(record, nameKey)
     val term = getStringAvro(record, termKey, isNullOK = true)
     getFeatureKey(name, term, delimiter)
@@ -66,6 +67,7 @@ object Utils {
    * @return The feature name
    */
   def getFeatureNameFromKey(key: String, delimiter: String = Constants.DELIMITER): String = {
+
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
     key.split(delimiter).headOption.getOrElse("")
   }
@@ -78,6 +80,7 @@ object Utils {
    * @return The feature term
    */
   def getFeatureTermFromKey(key: String, delimiter: String = Constants.DELIMITER): String = {
+
     require(delimiter.r.findAllIn(key).length == 1, s"Provided input [$key] is not a valid feature key")
     key.split(delimiter).lift(1).getOrElse("")
   }
@@ -88,10 +91,11 @@ object Utils {
    * @param record The generic record
    * @param key The key of the field
    * @param isNullOK Whether null is accepted. If set to true, then an empty string will be returned if the
-   *                 corresponding field of the key is null, otherwise, exception will be thrown.
+   * corresponding field of the key is null, otherwise, exception will be thrown.
    * @return The String typed field
    */
   def getStringAvro(record: GenericRecord, key: String, isNullOK: Boolean = false): String = {
+
     record.get(key) match {
       case id@(_: Utf8 | _: JString) => id.toString
       case number: JNumber => number.toString
@@ -108,6 +112,7 @@ object Utils {
    * @return The Double typed field
    */
   def getDoubleAvro(record: GenericRecord, key: String): Double = {
+
     record.get(key) match {
       case number: JNumber => number.doubleValue
       case id@(_: Utf8 | _: JString) => atod(id.toString)
@@ -135,7 +140,7 @@ object Utils {
           // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
           // equivalence failures downstream.
           case s@(_: Utf8 | _: JString) => s.toString
-          case x@(_: Number  | _: JBoolean) => x
+          case x@(_: Number | _: JBoolean) => x
           case _ => null
         })
       }.filter(_._2 != null).toMap
@@ -152,6 +157,7 @@ object Utils {
    * @return The double parsed from the string, or an exception if string is empty or double is NaN or Infinity
    */
   private def atod(string: String): Double = {
+
     if (string.length() < 1) {
       throw new IllegalArgumentException("Can't convert empty string to double")
     }
@@ -172,6 +178,7 @@ object Utils {
    * @return The Float typed field
    */
   def getFloatAvro(record: GenericRecord, key: String): Float = {
+
     record.get(key) match {
       case number: JNumber => number.floatValue
       case id@(_: Utf8 | _: JString) => atof(id.toString)
@@ -187,6 +194,7 @@ object Utils {
    * @return A float parse from the string, or an exception if the string is empty or the flat is NaN or Infinity
    */
   private def atof(string: String): Float = {
+
     if (string.length() < 1) {
       throw new IllegalArgumentException("Can't convert empty string to float")
     }
@@ -207,6 +215,7 @@ object Utils {
    * @return The Int typed field
    */
   def getIntAvro(record: GenericRecord, key: String): Int = {
+
     record.get(key) match {
       case number: JNumber => number.intValue
       case id@(_: Utf8 | _: JString) => id.toString.toInt
@@ -223,6 +232,7 @@ object Utils {
    * @return The Long typed field
    */
   def getLongAvro(record: GenericRecord, key: String): Long = {
+
     record.get(key) match {
       case number: JNumber => number.longValue()
       case id@(_: Utf8 | _: JString) => id.toString.toLong
@@ -239,6 +249,7 @@ object Utils {
    * @return The Boolean typed field
    */
   def getBooleanAvro(record: GenericRecord, key: String): Boolean = {
+
     record.get(key) match {
       case booleanValue: JBoolean => booleanValue.booleanValue
       // NOTE Scala String#toBoolean method is better than JBoolean#parseBoolean in the sense that it only accepts
@@ -256,6 +267,7 @@ object Utils {
    * @param hadoopConf The Hadoop Configuration object
    */
   def deleteHDFSDir(dir: Path, hadoopConf: Configuration): Unit = {
+
     val fs = dir.getFileSystem(hadoopConf)
     if (fs.exists(dir)) fs.delete(dir, true)
   }
@@ -267,6 +279,7 @@ object Utils {
    * @param hadoopConf The Hadoop Configuration object
    */
   def createHDFSDir(dir: Path, hadoopConf: Configuration): Unit = {
+
     val fs = dir.getFileSystem(hadoopConf)
     if (!fs.exists(dir)) fs.mkdirs(dir)
   }
@@ -281,17 +294,18 @@ object Utils {
    * @param map Input map to look up
    * @param key The key to be looked up in the provided map
    * @param elseBranch If one wants to fail on not finding a value of type [[T]] in the map, an
-   *                   [[IllegalArgumentException]] will be thrown with the error message provided. If one wants to
-   *                   continue without failure, a default value is expected that will be returned
+   * [[IllegalArgumentException]] will be thrown with the error message provided. If one wants to
+   * continue without failure, a default value is expected that will be returned
    * @tparam T Intended return type of the method
    * @throws java.lang.IllegalArgumentException Exception thrown if a value of type [[T]] isn't found in the map and
-   *                                            the error message is non-empty
+   * the error message is non-empty
    * @return A value of type [[T]] or throw an [[IllegalArgumentException]]
    */
   @throws(classOf[IllegalArgumentException])
   def getKeyFromMapOrElse[T](map: Map[String, Any], key: String, elseBranch: Either[String, T]): T = {
+
     map.get(key) match {
-      case Some(x: T) => x  // type erasure warning here
+      case Some(x: T) => x // type erasure warning here
       case _ =>
         elseBranch match {
           case Left(errorMsg) => throw new IllegalArgumentException(errorMsg)
