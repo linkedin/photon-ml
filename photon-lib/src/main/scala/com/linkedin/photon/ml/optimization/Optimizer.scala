@@ -14,9 +14,8 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{norm, Vector}
+import breeze.linalg.{DenseVector, Vector, norm}
 import breeze.numerics.abs
-
 import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util._
@@ -41,9 +40,12 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
   with Logging {
 
   /**
-   * Tracks all the intermediate states of the optimizer and times the optimization.
+   * Tracks all the intermediate states of the optimizer and times the optimization. Set a dummy optimization state
+   * now as a workaround of a currently known issue.
    */
-  private var statesTracker: OptimizationStatesTracker = _
+  private var statesTracker: OptimizationStatesTracker = new OptimizationStatesTracker()
+  val dummyOptimizationState = OptimizerState(DenseVector(0.0), 0.0, DenseVector(0.0), 1)
+  statesTracker.track(dummyOptimizationState)
 
   /**
    * The absolute tolerances for the optimization problem.
