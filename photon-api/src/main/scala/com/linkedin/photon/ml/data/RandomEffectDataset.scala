@@ -26,8 +26,10 @@ import org.apache.spark.{Partitioner, SparkContext}
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
+import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -251,14 +253,17 @@ object RandomEffectDataset {
    * Build a new [[RandomEffectDataset]] from the raw data using the given configuration.
    *
    * @param gameDataset The [[RDD]] of [[GameDatum]] used to generate the random effect dataset
+   * @param priorRandomEffectModelOpt The optional prior random effects models used in building projectors
    * @param randomEffectDataConfiguration The data configuration for the random effect dataset
    * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
    *                                the data distribution equal amongst partitions
    * @param existingModelKeysRddOpt Optional set of entities that have existing models
+   * @param storageLevel Spark storage level for RDDs
    * @return A new [[RandomEffectDataset]]
    */
   def apply(
       gameDataset: RDD[(UniqueSampleId, GameDatum)],
+      priorRandomEffectModelOpt: Option[RandomEffectModel],
       randomEffectDataConfiguration: RandomEffectDataConfiguration,
       randomEffectPartitioner: RandomEffectDatasetPartitioner,
       existingModelKeysRddOpt: Option[RDD[REId]],
@@ -274,7 +279,7 @@ object RandomEffectDataset {
     keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
 
     // In this RDD, there is a projector for every entity (even those which may later be filtered by the lower bound)
-    val unfilteredProjectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner)
+    val unfilteredProjectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner, priorRandomEffectModelOpt)
     unfilteredProjectors.persist(storageLevel).count
 
     val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, unfilteredProjectors, randomEffectPartitioner)
@@ -378,12 +383,16 @@ object RandomEffectDataset {
    * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
    * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
    *                                the data distribution equal amongst partitions
+   * @param priorRandomEffectModelOpt Optional initial random effect models, which will union with data to generate
+   *                                  projectors
    * @return An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
    */
   protected[data] def generateLinearSubspaceProjectors(
       keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      randomEffectPartitioner: RandomEffectDatasetPartitioner): RDD[(REId, LinearSubspaceProjector)] = {
+      randomEffectPartitioner: RandomEffectDatasetPartitioner,
+      priorRandomEffectModelOpt: Option[RandomEffectModel]): RDD[(REId, LinearSubspaceProjector)] = {
 
+    val sc = SparkSession.builder().getOrCreate().sparkContext
     val originalSpaceDimension = keyedGameDataset
       .take(1)
       .head
@@ -392,9 +401,16 @@ object RandomEffectDataset {
       .features
       .length
 
+    val priorModels = priorRandomEffectModelOpt.map(_.modelsRDD).getOrElse(sc.emptyRDD[(REId, GeneralizedLinearModel)])
+
     keyedGameDataset
-      .mapValues { case (_, labeledPoint) =>
-        VectorUtils.getActiveIndices(labeledPoint.features)
+      .leftOuterJoin(priorModels)
+      .mapValues { case ((_, labeledPoint), priorModelOpt) =>
+        val dataActiveIndices = VectorUtils.getActiveIndices(labeledPoint.features)
+        priorModelOpt match {
+          case Some(priorModel) => dataActiveIndices.union(VectorUtils.getActiveIndices(priorModel.coefficients.means))
+          case None => dataActiveIndices
+        }
       }
       .foldByKey(mutable.Set[Int](), randomEffectPartitioner)(_.union(_))
       .mapValues(activeIndices => new LinearSubspaceProjector(activeIndices.toSet, originalSpaceDimension))

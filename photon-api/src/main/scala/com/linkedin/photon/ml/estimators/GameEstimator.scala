@@ -471,6 +471,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       gameDataset: RDD[(UniqueSampleId, GameDatum)]): Map[CoordinateId, D forSome { type D <: Dataset[D] }] = {
 
     val coordinateDataConfigs = getRequiredParam(coordinateDataConfigurations)
+    val initialModelOpt = get(initialModel)
 
     coordinateDataConfigs.map { case (coordinateId, config) =>
 
@@ -507,12 +508,32 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val randomEffectDataset = RandomEffectDataset(
-            gameDataset,
-            reConfig,
-            rePartitioner,
-            existingModelKeysRddOpt,
-            StorageLevel.DISK_ONLY)
+          val randomEffectDataset = if(initialModelOpt.isDefined) {
+            val reModels = initialModelOpt.get.getModel(coordinateId).map {
+              case reModel: RandomEffectModel =>
+                reModel
+
+              case other =>
+                throw new IllegalArgumentException(
+                  s"Model type mismatch: expected Random Effect Model but found '${other.getClass}'")
+            }
+
+            RandomEffectDataset(
+              gameDataset,
+              reModels,
+              reConfig,
+              rePartitioner,
+              existingModelKeysRddOpt,
+              StorageLevel.DISK_ONLY)
+          } else {
+            RandomEffectDataset(
+              gameDataset,
+              None,
+              reConfig,
+              rePartitioner,
+              existingModelKeysRddOpt,
+              StorageLevel.DISK_ONLY)
+          }
           randomEffectDataset.setName(s"Random Effect Data Set: $coordinateId")
 
           if (logger.isDebugEnabled) {
