@@ -235,23 +235,32 @@ object RandomEffectCoordinate {
       .activeData
       .join(randomEffectOptimizationProblem.optimizationProblems)
 
-    // Left join the models to the (data, optimization problem) tuple for cases where we have a prior model but no new
-    // data
+    // Outer join the models to data and optimization problems
     val (newModels, randomEffectOptimizationTracker) = initialRandomEffectModelOpt
       .map { randomEffectModel =>
         val modelsAndTrackers = randomEffectModel
           .modelsRDD
-          .leftOuterJoin(dataAndOptimizationProblems)
+          .fullOuterJoin(dataAndOptimizationProblems)
           .mapValues {
-            case (localModel, Some((localDataset, optimizationProblem))) =>
+            case (Some(localModel), Some((localDataset, optimizationProblem))) =>
               val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
               val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
               val stateTrackers = optimizationProblem.getStatesTracker
 
               (updatedModel, Some(stateTrackers))
 
-            case (localModel, _) =>
+            case (Some(localModel), None) =>
               (localModel, None)
+
+            case (None, Some((localDataset, optimizationProblem))) =>
+              val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
+              val updatedModel = optimizationProblem.run(trainingLabeledPoints)
+              val stateTrackers = optimizationProblem.getStatesTracker
+
+              (updatedModel, Some(stateTrackers))
+
+            case _ =>
+              throw new IllegalStateException("Either a initial random effect model or data should be present!")
           }
         modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 
