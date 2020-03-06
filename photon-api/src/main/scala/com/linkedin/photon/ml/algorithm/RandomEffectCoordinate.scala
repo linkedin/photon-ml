@@ -254,8 +254,7 @@ object RandomEffectCoordinate {
 
             case (None, Some((localDataset, optimizationProblem))) =>
               val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-              val updatedModel = optimizationProblem.run(trainingLabeledPoints)
-              val stateTrackers = optimizationProblem.getStatesTracker
+              val (updatedModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints)
 
               (updatedModel, Some(stateTrackers))
 
@@ -264,24 +263,24 @@ object RandomEffectCoordinate {
           }
         modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 
-        val models = modelsAndTrackers.mapValues(_._1)
+        val updatedModels = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.flatMap(_._2._2))
 
-        (models, optimizationTracker)
+        (updatedModels, optimizationTracker)
       }
       .getOrElse {
         val modelsAndTrackers = dataAndOptimizationProblems.mapValues { case (localDataset, optimizationProblem) =>
           val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-          val (newModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints)
+          val (model, stateTrackers) = optimizationProblem.run(trainingLabeledPoints)
 
-          (newModel, stateTrackers)
+          (model, stateTrackers)
         }
         modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 
-        val models = modelsAndTrackers.mapValues(_._1)
+        val updatedModels = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.map(_._2._2))
 
-        (models, optimizationTracker)
+        (updatedModels, optimizationTracker)
       }
 
     val newRandomEffectModel = new RandomEffectModel(

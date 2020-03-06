@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import breeze.linalg.{cholesky, diag, Vector => BVector}
+import breeze.linalg.{cholesky, diag, Vector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
@@ -83,7 +83,7 @@ protected[ml] class DistributedOptimizationProblem[Objective <: DistributedObjec
    * @param coefficients The feature coefficients means
    * @return An optional feature coefficient variances vector
    */
-  override def computeVariances(input: RDD[LabeledPoint], coefficients: BVector[Double]): Option[BVector[Double]] = {
+  override def computeVariances(input: RDD[LabeledPoint], coefficients: Vector[Double]): Option[Vector[Double]] = {
 
     val result = (objectiveFunction, varianceComputation) match {
       case (twiceDiffFunc: TwiceDiffFunction, VarianceComputationType.SIMPLE) =>
