@@ -20,9 +20,12 @@ import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
- * Trait for an incremental training objective function. It is assumed that the prior is a product of Gaussian and
- * Laplace distributions. The L1 regularization weight refers to the relative weight of the Laplace prior. The L2
- * regularization weight refers to the relative weight of the Gaussian prior.
+ * Trait for an incremental training objective function. It is assumed that the prior is Gaussian Distribution with mean
+ * as prior model's means and variance as prior model's variances. incrementalWeight controls importance of the prior
+ * distribution. The larger incrementalWeight is, the more important the prior distribution is. incrementalWeight has a
+ * default value of 1. l2RegWeight sets the L2 regularization term for any feature which is not included in the prior
+ * model. For any feature which is included in the prior model, the equivalent L2 regularization term is
+ * incrementalWeight / prior model's variance.
  */
 trait PriorDistribution extends ObjectiveFunction {
 
