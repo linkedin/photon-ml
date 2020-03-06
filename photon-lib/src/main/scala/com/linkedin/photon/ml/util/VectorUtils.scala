@@ -296,5 +296,5 @@ object VectorUtils {
    * @return The inverted [[Vector]]
    */
   def invertVectorWithZeroHandler(vector: Vector[Double], zeroReplacedVal: Double): Vector[Double] =
-    vector.map(v => if (v > MathConst.EPSILON) 1.0 / v else zeroReplacedVal)
+    vector.map(v => if (math.abs(v) > MathConst.EPSILON) 1.0 / v else zeroReplacedVal)
 }
