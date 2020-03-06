@@ -123,9 +123,10 @@ object FixedEffectCoordinate {
 
     val newModel = initialFixedEffectModelOpt
       .map { initialFixedEffectModel =>
-        optimizationProblem.runWithSampling(input, initialFixedEffectModel.model)
+        val (model, _) = optimizationProblem.runWithSampling(input, initialFixedEffectModel.model)
+        model
       }
-      .getOrElse(optimizationProblem.runWithSampling(input))
+      .getOrElse(optimizationProblem.runWithSampling(input)._1)
     val updatedModelBroadcast = input.sparkContext.broadcast(newModel)
 
     new FixedEffectModel(updatedModelBroadcast, featureShardId)

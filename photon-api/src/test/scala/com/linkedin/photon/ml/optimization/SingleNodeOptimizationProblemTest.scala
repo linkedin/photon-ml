@@ -123,8 +123,7 @@ class SingleNodeOptimizationProblemTest {
 
     doReturn(broadcastNormalization).when(optimizer).getNormalizationContext
     doReturn(normalization).when(broadcastNormalization).value
-    doReturn((means, None)).when(optimizer).optimize(objectiveFunction, means)(trainingData)
-    doReturn(statesTracker).when(optimizer).getStateTracker
+    doReturn((means, statesTracker, None)).when(optimizer).optimize(objectiveFunction, means)(trainingData)
     doReturn(Array(state)).when(statesTracker).getTrackedStates
     doReturn(means).when(state).coefficients
     doReturn(coefficients).when(initialModel).coefficients
@@ -136,7 +135,7 @@ class SingleNodeOptimizationProblemTest {
       LogisticRegressionModel.apply,
       VarianceComputationType.NONE)
 
-    val model = problem.run(trainingData, initialModel)
+    val (model, _) = problem.run(trainingData, initialModel)
 
     assertTrue(means.eq(model.coefficients.means))
   }
