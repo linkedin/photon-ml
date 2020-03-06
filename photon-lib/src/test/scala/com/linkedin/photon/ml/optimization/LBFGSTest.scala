@@ -47,7 +47,7 @@ class LBFGSTest {
     val objective = new TestObjective
     val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(1), 0.0, 0.0))
     val initialCoefficients = CommonTestUtils.generateDenseVector(1)
-    val (actualCoef, actualValue) = lbfgs.optimize(objective, initialCoefficients)(trainingData)
+    val (actualCoef, _, actualValue) = lbfgs.optimize(objective, initialCoefficients)(trainingData)
 
     Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, Array(TestObjective.CENTROID), LBFGSTest.EPSILON)
     assertEquals(actualValue, LBFGSTest.EXPECTED_LOSS, LBFGSTest.EPSILON)

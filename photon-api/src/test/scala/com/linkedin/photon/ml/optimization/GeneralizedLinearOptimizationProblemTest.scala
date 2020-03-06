@@ -213,6 +213,7 @@ object GeneralizedLinearOptimizationProblemTest {
       VarianceComputationType.NONE) {
 
     private val mockGLM = mock(classOf[GeneralizedLinearModel])
+    private val mockStateTracker = mock(classOf[OptimizationStatesTracker])
 
     //
     // Public versions of protected methods for testing
@@ -242,13 +243,13 @@ object GeneralizedLinearOptimizationProblemTest {
     /**
      * Unused - needs definition for testing.
      */
-    override def run(input: Iterable[LabeledPoint]): GeneralizedLinearModel = mockGLM
+    override def run(input: Iterable[LabeledPoint]): (GeneralizedLinearModel, OptimizationStatesTracker) = (mockGLM, mockStateTracker)
 
     /**
      * Unused - needs definition for testing.
      */
-    override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): GeneralizedLinearModel =
-      mockGLM
+    override def run(input: Iterable[LabeledPoint], initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker) =
+      (mockGLM, mockStateTracker)
   }
 
   // No way to pass Mixin class type to Mockito, need to define a concrete class

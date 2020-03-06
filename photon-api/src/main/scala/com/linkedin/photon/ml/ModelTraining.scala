@@ -184,7 +184,7 @@ object ModelTraining extends Logging {
           // Initialize the list with the result from the first regularization weight
           optimizationProblem.updateRegularizationWeight(currentWeight)
 
-          val glm = if (numWarmStartModels == 0) {
+          val (glm, stateTracker) = if (numWarmStartModels == 0) {
 
             logger.info(s"No warm start model found; beginning training with a 0-coefficients model")
 
@@ -199,14 +199,14 @@ object ModelTraining extends Logging {
             optimizationProblem.run(trainingData, warmStartModels(maxLambda))
           }
 
-          List((currentWeight, glm, optimizationProblem.getStatesTracker))
+          List((currentWeight, glm, stateTracker))
 
         case (latestWeightsModelsAndTrackers, currentWeight) =>
 
           optimizationProblem.updateRegularizationWeight(currentWeight)
 
           // Train the rest of the models
-          val glm = if (useWarmStart) {
+          val (glm, stateTracker) = if (useWarmStart) {
             val previousModel = latestWeightsModelsAndTrackers.head._2
 
             logger.info(s"Training model with regularization weight $currentWeight started (warm start)")
@@ -219,7 +219,7 @@ object ModelTraining extends Logging {
             optimizationProblem.run(trainingData)
           }
 
-          (currentWeight, glm, optimizationProblem.getStatesTracker) +: latestWeightsModelsAndTrackers
+          (currentWeight, glm, stateTracker) +: latestWeightsModelsAndTrackers
       }
 
     broadcastNormalizationContext.unpersist()
