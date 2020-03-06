@@ -241,6 +241,19 @@ class VectorUtilsTest {
   @Test(expectedExceptions = Array(classOf[IllegalArgumentException]))
   def testInitializeZerosVectorOfSameTypeOfUnsupportedVectorType(): Unit =
     VectorUtils.zeroOfSameType(new MockVector[Double]())
+
+  @DataProvider
+  def invertVectorWithZeroHandlerProvider() = Array(
+    Array(DenseVector(1.0, 0.0, 2.0), 3.0, DenseVector(1.0, 3.0, 0.5)),
+    Array(new SparseVector(Array(1, 2), Array(1.0, 2.0), 3), 4.0, DenseVector(4.0, 1.0, 0.5))
+  )
+
+  /**
+   * Test inverting vectors with zero handler.
+   */
+  @Test(dataProvider = "invertVectorWithZeroHandlerProvider")
+  def testInvertVectorWithZeroHandler(vector: Vector[Double], replacedVal: Double, expectedVector: Vector[Double]): Unit =
+    assertEquals(VectorUtils.invertVectorWithZeroHandler(vector, replacedVal), expectedVector)
 }
 
 object VectorUtilsTest {

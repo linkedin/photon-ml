@@ -254,7 +254,11 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       !ignoreThreshold || initialModelOpt.isDefined,
       "'Ignore threshold for new models' flag set but no initial model provided for warm-start")
 
-    // Warm-start, partial re-training, and incremental training are mutually exclusive.
+    // Warm-start, partial re-training, and incremental training require the same initial GAME model to be provided as
+    // input. Partial re-training requires some coordinates to be locked. These locked coordinates and the coordinates
+    // to be trained are mutually exclusive. For those coordinates to be trained, warm start will be enabled if any
+    // initial model is present. Moreover, if incremental training is enabled, this initial model will be used to
+    // construct a prior distribution.
     val coordinatesToTrain = (isIncrementalTraining, lockedModelCoordsOpt, initialModelOpt) match {
       case (true, None, None) =>
         throw new InvalidParameterException(s"'${incrementalTraining.name}' is enabled but no initial model provided.")

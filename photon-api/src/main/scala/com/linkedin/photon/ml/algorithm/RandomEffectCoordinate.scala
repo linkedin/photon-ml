@@ -262,7 +262,7 @@ object RandomEffectCoordinate {
             case _ =>
               throw new IllegalStateException("Either a initial random effect model or data should be present!")
           }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.flatMap(_._2._2))
@@ -276,7 +276,7 @@ object RandomEffectCoordinate {
 
           (newModel, stateTrackers)
         }
-        modelsAndTrackers.persist(StorageLevel.MEMORY_AND_DISK_SER)
+        modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 
         val models = modelsAndTrackers.mapValues(_._1)
         val optimizationTracker = RandomEffectOptimizationTracker(modelsAndTrackers.map(_._2._2))
