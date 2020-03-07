@@ -314,7 +314,7 @@ trait GameTestUtils extends SparkTestUtils {
       seed)
 
     val optimizationProblem = generateRandomEffectOptimizationProblem(randomEffectDataset)
-    val coordinate = new RandomEffectCoordinate[SingleNodeGLMLossFunction](randomEffectDataset, optimizationProblem)
+    val coordinate = new RandomEffectCoordinate(randomEffectDataset, optimizationProblem)
     val models = sc.parallelize(generateLinearModelsForRandomEffects(randomEffectIds, dimensions))
     val model = new RandomEffectModel(
       models,

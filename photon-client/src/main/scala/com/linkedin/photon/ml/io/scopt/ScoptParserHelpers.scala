@@ -71,6 +71,7 @@ object ScoptParserHelpers extends Logging {
   val COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE = "reg.alpha.range"
   val COORDINATE_OPT_CONFIG_REG_WEIGHTS = "reg.weights"
   val COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE = "reg.weight.range"
+  val COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT = "incremental.weight"
   val COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE = "down.sampling.rate"
 
   val COORDINATE_CONFIG_REQUIRED_ARGS = Map(
@@ -87,7 +88,8 @@ object ScoptParserHelpers extends Logging {
     (COORDINATE_OPT_CONFIG_REG_ALPHA, "<value>"),
     (COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE, "<start>-<end>"),
     (COORDINATE_OPT_CONFIG_REG_WEIGHTS, "<list of values>"),
-    (COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE, "<start>-<end>"))
+    (COORDINATE_OPT_CONFIG_REG_WEIGHT_RANGE, "<start>-<end>"),
+    (COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT, "<value>"))
   val COORDINATE_CONFIG_FIXED_EFFECT_OPTIONAL_ARGS = Map(
     (COORDINATE_OPT_CONFIG_DOWN_SAMPLING_RATE, "<value>"))
   val COORDINATE_CONFIG_RANDOM_EFFECT_OPTIONAL_ARGS = Map(
@@ -226,6 +228,8 @@ object ScoptParserHelpers extends Logging {
       .get(COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE)
       .map(parseDoubleRange)
 
+    val incrementalWeight = input.get(COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT).map(_.toDouble)
+
     val reTypeOpt = input.get(COORDINATE_DATA_CONFIG_RANDOM_EFFECT_TYPE)
     val config = reTypeOpt match {
       // Random effect coordinate
@@ -241,7 +245,8 @@ object ScoptParserHelpers extends Logging {
           optimizerConfig,
           regularizationContext,
           regularizationWeightRange = regularizationWeightRange,
-          elasticNetParamRange = elasticNetParamRange)
+          elasticNetParamRange = elasticNetParamRange,
+          incrementalWeight = incrementalWeight)
 
         // Log warnings for fixed effect coordinate settings found in random effect coordinate
         COORDINATE_CONFIG_FIXED_ONLY_ARGS.foreach { config =>
@@ -258,7 +263,8 @@ object ScoptParserHelpers extends Logging {
           optimizerConfig,
           regularizationContext,
           regularizationWeightRange = regularizationWeightRange,
-          elasticNetParamRange = elasticNetParamRange)
+          elasticNetParamRange = elasticNetParamRange,
+          incrementalWeight = incrementalWeight)
 
         // Log warnings for random effect coordinate settings found in fixed effect coordinate
         COORDINATE_CONFIG_RANDOM_ONLY_ARGS.foreach { config =>
@@ -474,6 +480,10 @@ object ScoptParserHelpers extends Logging {
           optConfig.elasticNetParamRange.foreach { range =>
             argsMap += (COORDINATE_OPT_CONFIG_REG_ALPHA_RANGE -> doubleRangeToString(range))
           }
+      }
+
+      optConfig.incrementalWeight.foreach { weight =>
+        argsMap += (COORDINATE_OPT_CONFIG_INCREMENTAL_WEIGHT -> weight.toString)
       }
 
       //

@@ -19,9 +19,11 @@ import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function._
+import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -150,6 +152,7 @@ object DistributedGLMLossFunction {
    * @param configuration The optimization problem configuration
    * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
    * @param treeAggregateDepth The tree aggregation depth
+   * @param priorModelOpt Optional prior model, required if this is an objective function for incremental training
    * @param interceptIndexOpt The index of the intercept, if there is one
    * @return A new DistributedGLMLossFunction
    */
@@ -157,20 +160,36 @@ object DistributedGLMLossFunction {
       configuration: GLMOptimizationConfiguration,
       singleLossFunction: PointwiseLossFunction,
       treeAggregateDepth: Int,
+      priorModelOpt: Option[GeneralizedLinearModel] = None,
       interceptIndexOpt: Option[Int] = None): DistributedGLMLossFunction = {
 
     val regularizationContext = configuration.regularizationContext
     val regularizationWeight = configuration.regularizationWeight
 
-    regularizationContext.regularizationType match {
-      case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
-        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with L2RegularizationTwiceDiff {
-          l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+    priorModelOpt match {
+      case None =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+              with L2RegularizationTwiceDiff {
 
-          override def interceptOpt: Option[Int] = interceptIndexOpt
+                l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+                override def interceptOpt: Option[Int] = interceptIndexOpt
+              }
+
+          case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
         }
 
-      case _ => new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth)
+      case Some(priorModel) =>
+        val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val priorModelCoefficients = priorModel.coefficients
+
+        new DistributedGLMLossFunction(singleLossFunction, treeAggregateDepth) with PriorDistributionTwiceDiff {
+          override val priorCoefficients: ModelCoefficients = priorModelCoefficients
+          l2RegWeight = l2Weight
+          incrementalWeight = configuration.incrementalWeight.getOrElse(1.0D)
+        }
     }
   }
 }
