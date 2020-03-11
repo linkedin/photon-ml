@@ -182,21 +182,20 @@ class BaseGLMIntegTest extends SparkTestUtils {
     val optimizationProblem = optimizationProblemBuilder(normalizationContext)
 
     // Step 2: Run optimization
-    val models = BaseGLMIntegTest.LAMBDAS.map { lambda =>
+    val modelsAndStateTrackers = BaseGLMIntegTest.LAMBDAS.map { lambda =>
       optimizationProblem.updateRegularizationWeight(lambda)
-      val result = optimizationProblem.run(trainingSet)
-      val statesTracker = optimizationProblem.getStatesTracker
+      val (model, statesTracker) = optimizationProblem.run(trainingSet)
 
       // Step 3: Check convergence
       BaseGLMIntegTest.checkConvergence(statesTracker)
 
-      result
+      (model, statesTracker)
     }
 
     // Step 4: Validate the models
-    models.foreach( m => {
-      m.validateCoefficients()
-      validator.validateModelPredictions(m, trainingSet)
+    modelsAndStateTrackers.foreach( t => {
+      t._1.validateCoefficients()
+      validator.validateModelPredictions(t._1, trainingSet)
     })
   }
 }

@@ -63,7 +63,7 @@ class LBFGSBTest {
         (lowerBounds(pos) + upperBounds(pos)) / 2
       }
       .toArray
-    val (actualCoef, actualValue) = lbfgsb.optimize(objective, DenseVector[Double](initialCoefficients))(trainingData)
+    val (actualCoef, _, actualValue) = lbfgsb.optimize(objective, DenseVector[Double](initialCoefficients))(trainingData)
 
     Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, LBFGSBTest.EPSILON)
     assertEquals(actualValue, expectedValue, LBFGSBTest.EPSILON)
