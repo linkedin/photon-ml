@@ -17,11 +17,10 @@ package com.linkedin.photon.ml.function
 import breeze.linalg.{DenseVector, diag}
 import org.testng.annotations.Test
 import org.testng.Assert.assertEquals
-import org.mockito.Mockito.mock
 
 import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
-import com.linkedin.photon.ml.normalization.NormalizationContext
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
+import com.linkedin.photon.ml.util.PhotonNonBroadcast
 
 /**
  * Unit tests for [[PriorDistribution]], [[PriorDistributionDiff]], and [[PriorDistributionTwiceDiff]].
@@ -38,12 +37,13 @@ class PriorDistributionTest {
   @Test
   def testAll(): Unit = {
 
-    val mockNormalization = mock(classOf[BroadcastWrapper[NormalizationContext]])
+    val noNormalizationBroadcast = PhotonNonBroadcast(NoNormalization())
 
     val coefficients = DenseVector.ones[Double](DIMENSION)
     val priorMean = coefficients *:* 2D
     val multiplyVector = coefficients *:* 3D
     val priorVar = coefficients *:* 4D
+    val normalizationContext = PhotonNonBroadcast(new NormalizationContext(Some(coefficients *:* 2D), None))
 
     val increWeight = 10D
 
@@ -58,20 +58,31 @@ class PriorDistributionTest {
      * l2RegValue = sum(DenseVector.fill(DIMENSION){pow(1 - 2, 2) / 4)}) * increWeight / 2 = 0.25 * increWeight * DIMENSION / 2;
      * l2RegGradient = (1 - 2) / 4 * increWeight = (-0.25) * increWeight;
      * l2RegHessianDiagonal = 1 / 4 * increWeight = 0.25 * increWeight;
-     * l2RegHessianVector = 3 / 4 * increWeight = 0.75 * increWeight.
+     * l2RegHessianVector = 3 / 4 * increWeight = 0.75 * increWeight;
+     * l2RegNormalizedValue = sum(DenseVector.fill(DIMENSION){pow(1 - 2 / 2, 2) / 1)}) * increWeight / 2 =  0;
+     * l2RegNormalizedGradient = (1 - 2 / 2) / 1 * increWeight = 0;
+     * l2RegHessianVector = 3 / 1 * increWeight = 3 * increWeight.
      */
     val expectedValue = MockObjectiveFunction.VALUE + 0.25 * increWeight * DIMENSION / 2
     val expectedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT + (-0.25) * increWeight))
     val expectedVector = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_VECTOR + 0.75 * increWeight))
     val expectedDiagonal = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_DIAGONAL + 0.25 * increWeight))
     val expectedMatrix = diag(DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_MATRIX + 0.25 * increWeight)))
+    val expectedNormalizedValue = MockObjectiveFunction.VALUE
+    val expectedNormalizedGradient = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.GRADIENT))
+    val expectedNormalizedVector = DenseVector(Array.fill(DIMENSION)(MockObjectiveFunction.HESSIAN_VECTOR + 3 * increWeight))
 
-    assertEquals(mockObjectiveFunction.value(Unit, coefficients, mockNormalization), expectedValue)
-    assertEquals(mockObjectiveFunction.gradient(Unit, coefficients, mockNormalization), expectedGradient)
+    assertEquals(mockObjectiveFunction.value(Unit, coefficients, noNormalizationBroadcast), expectedValue)
+    assertEquals(mockObjectiveFunction.gradient(Unit, coefficients, noNormalizationBroadcast), expectedGradient)
     assertEquals(
-      mockObjectiveFunction.hessianVector(Unit, coefficients, multiplyVector, mockNormalization),
+      mockObjectiveFunction.hessianVector(Unit, coefficients, multiplyVector, noNormalizationBroadcast),
       expectedVector)
     assertEquals(mockObjectiveFunction.hessianDiagonal(Unit, coefficients), expectedDiagonal)
     assertEquals(mockObjectiveFunction.hessianMatrix(Unit, coefficients), expectedMatrix)
+    assertEquals(mockObjectiveFunction.value(Unit, coefficients, normalizationContext), expectedNormalizedValue)
+    assertEquals(mockObjectiveFunction.gradient(Unit, coefficients, normalizationContext), expectedNormalizedGradient)
+    assertEquals(
+      mockObjectiveFunction.hessianVector(Unit, coefficients, multiplyVector, normalizationContext),
+      expectedNormalizedVector)
   }
 }

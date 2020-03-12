@@ -41,6 +41,20 @@ trait PriorDistribution extends ObjectiveFunction {
   require(l2RegWeight >= 0D, s"Invalid regularization weight '$l2RegWeight")
 
   /**
+   * Transform prior means and prior variances to the transformed space using NormalizationContext
+   *
+   * @param normalizationContext The normalization context
+   * @return The tuple of transformed prior means and inverse transformed prior variances
+   */
+  protected[ml] def normalizePrior(
+    normalizationContext: BroadcastWrapper[NormalizationContext]): (Vector[Double], Vector[Double]) = {
+    val transformedPriorMeans = normalizationContext.value.coefToTransformedSpace(priorMeans)
+    val transformedPriorVar = normalizationContext.value.varToTransformedSpace(priorVariances)
+    val inverseTransformedPriorVar = VectorUtils.invertVectorWithZeroHandler(transformedPriorVar, l2RegWeight).toDenseVector
+    (transformedPriorMeans, inverseTransformedPriorVar)
+  }
+
+  /**
    * Compute the value of the function over the given data for the given model coefficients, with regularization towards
    * the prior coefficients.
    *
@@ -53,20 +67,21 @@ trait PriorDistribution extends ObjectiveFunction {
       input: Data,
       coefficients: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
-    super.value(input, coefficients, normalizationContext) + l2RegValue(coefficients)
+    super.value(input, coefficients, normalizationContext) + l2RegValue(coefficients, normalizationContext)
 
   /**
    * Compute the Gaussian regularization term for the given model coefficients. L2 regularization term is
    * incrementalWeight * sum(pow(coefficients - priorMeans, 2) :/ priorVariance) / 2.
    *
    * @param coefficients The model coefficients
+   * @param normalizationContext The normalization context
    * @return The Gaussian regularization term value
    */
-  protected def l2RegValue(coefficients: Vector[Double]): Double = {
+  protected def l2RegValue(coefficients: Vector[Double], normalizationContext: BroadcastWrapper[NormalizationContext]): Double = {
+    val (transformedPriorMeans, inverseTransformedPriorVar) = normalizePrior(normalizationContext)
+    val normalizedSquaredCoef = (coefficients - transformedPriorMeans) *:* inverseTransformedPriorVar *:* (coefficients - transformedPriorMeans)
 
-    val normalizedSquaredCoefficients = (coefficients - priorMeans) *:* inversePriorVariances *:* (coefficients - priorMeans)
-
-    incrementalWeight * sum(normalizedSquaredCoefficients) / 2
+    incrementalWeight * sum(normalizedSquaredCoef) / 2
   }
 }
 
@@ -118,8 +133,8 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
       normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) = {
 
     val (baseValue, baseGradient) = super.calculate(input, coefficients, normalizationContext)
-    val valueWithRegularization = baseValue + l2RegValue(coefficients)
-    val gradientWithRegularization = baseGradient + l2RegGradient(coefficients)
+    val valueWithRegularization = baseValue + l2RegValue(coefficients, normalizationContext)
+    val gradientWithRegularization = baseGradient + l2RegGradient(coefficients, normalizationContext)
 
     (valueWithRegularization, gradientWithRegularization)
   }
@@ -129,13 +144,17 @@ trait PriorDistributionDiff extends DiffFunction with PriorDistribution {
    * incrementalWeight * (coefficients - priorMeans) :/ priorVariance.
    *
    * @param coefficients The model coefficients
+   * @param normalizationContext The normalization context
    * @return The gradient of the Gaussian regularization term
    */
-  protected def l2RegGradient(coefficients: Vector[Double]): Vector[Double] = {
+  protected def l2RegGradient(
+    coefficients: Vector[Double],
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] = {
 
-    val normalizedCoefficients = (coefficients - priorMeans) *:* inversePriorVariances
+    val (transformedPriorMeans, inverseTransformedPriorVar) = normalizePrior(normalizationContext)
+    val normalizedCoef = (coefficients - transformedPriorMeans) *:* inverseTransformedPriorVar
 
-    incrementalWeight * normalizedCoefficients
+    incrementalWeight * normalizedCoef
   }
 }
 
@@ -158,8 +177,8 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
       coefficients: Vector[Double],
       multiplyVector: Vector[Double],
       normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
-    super.hessianVector(input, coefficients, multiplyVector, normalizationContext) +
-      l2RegHessianVector(multiplyVector)
+    super.hessianVector(input, coefficients, multiplyVector, normalizationContext) +:+
+      l2RegHessianVector(multiplyVector, normalizationContext)
 
   /**
    * Compute the Hessian diagonal of the objective function over the given data for the given model coefficients, with
@@ -170,7 +189,7 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
    * @return The Hessian diagonal of the objective function and regularization terms
    */
   abstract override protected[ml] def hessianDiagonal(input: Data, coefficients: Vector[Double]): Vector[Double] =
-    super.hessianDiagonal(input, coefficients) :+ l2RegHessianDiagonal
+    super.hessianDiagonal(input, coefficients) +:+ l2RegHessianDiagonal
 
   /**
    * Compute the Hessian matrix of the objective function over the given data for the given model coefficients, with
@@ -188,10 +207,15 @@ trait PriorDistributionTwiceDiff extends TwiceDiffFunction with PriorDistributio
    * coefficients.
    *
    * @param multiplyVector The gradient direction vector
+   * @param normalizationContext The normalization context
    * @return The Hessian diagonal of the Gaussian regularization term, with gradient direction vector
    */
-  protected def l2RegHessianVector(multiplyVector: Vector[Double]): Vector[Double] =
-    incrementalWeight * (multiplyVector *:* inversePriorVariances)
+  protected def l2RegHessianVector(
+    multiplyVector: Vector[Double],
+    normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] = {
+    val (_, inverseTransformedPriorVar) = normalizePrior(normalizationContext)
+    incrementalWeight * (multiplyVector *:* inverseTransformedPriorVar)
+  }
 
   /**
    * Compute the Hessian diagonal of the Gaussian regularization term for the given model coefficients. Hessian

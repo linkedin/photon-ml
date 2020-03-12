@@ -68,22 +68,6 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
     glmConstructor(Coefficients(coefficients, variances))
 
   /**
-   * Create a GLM from given normalized coefficients (potentially including intercept)
-   *
-   * @param normalizationContext The normalization context
-   * @param coefficients The feature coefficients means
-   * @param variances The feature coefficient variances
-   * @return A GLM with the provided feature coefficients
-   */
-  protected def createModel(
-      normalizationContext: BroadcastWrapper[NormalizationContext],
-      coefficients: Vector[Double],
-      variances: Option[Vector[Double]]): GeneralizedLinearModel =
-    createModel(
-      normalizationContext.value.modelToOriginalSpace(coefficients),
-      variances.map(normalizationContext.value.modelToOriginalSpace))
-
-  /**
    * Compute coefficient variances
    *
    * @param input The training data

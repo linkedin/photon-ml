@@ -164,7 +164,7 @@ abstract class Optimizer[-Function <: ObjectiveFunction](
       initialCoefficients: Vector[Double])(
       data: objectiveFunction.Data): (Vector[Double], OptimizationStatesTracker, Double) = {
 
-    val normalizedInitialCoefficients = normalizationContext.value.modelToTransformedSpace(initialCoefficients)
+    val normalizedInitialCoefficients = normalizationContext.value.coefToTransformedSpace(initialCoefficients)
 
     // Reset Optimizer inner state
     clearOptimizerInnerState()
