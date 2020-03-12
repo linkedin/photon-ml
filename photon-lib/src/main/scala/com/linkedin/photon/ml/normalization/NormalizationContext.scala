@@ -69,12 +69,12 @@ protected[ml] class NormalizationContext(
    * have:
    *
    * w = w' .* factor
-   * b = - w'^T^ shift + b'
+   * b = - w ^T^ shift + b'
    *
    * @param inputCoef The coefficients + the intercept (if present) in the transformed space
    * @return The coefficients + the intercept (if present) in the original space
    */
-  def modelToOriginalSpace(inputCoef: Vector[Double]): Vector[Double] =
+  def coefToOriginalSpace(inputCoef: Vector[Double]): Vector[Double] =
     if (size == 0) {
       inputCoef
     } else {
@@ -108,7 +108,7 @@ protected[ml] class NormalizationContext(
    * @param inputCoef The coefficients + the intercept (if present) in the original space
    * @return The coefficients + the intercept (if present) in the transformed space
    */
-  def modelToTransformedSpace(inputCoef: Vector[Double]): Vector[Double] =
+  def coefToTransformedSpace(inputCoef: Vector[Double]): Vector[Double] =
     if (size == 0) {
       inputCoef
     } else {
@@ -125,6 +125,36 @@ protected[ml] class NormalizationContext(
       }
 
       outputCoef
+    }
+
+  /**
+   * Transform the variance of the model coefficients of the original space to the transformed space. Will be used in
+   * constructing the prior.
+   *
+   * w' = w ./ factor
+   * b' = w^T^ shift + b
+   *
+   * Then variance transformation formula is
+   *
+   * Var(w') = Var(w) ./ (factor .* factor)
+   * Var(b') = Var(b)
+   *
+   * @param inputVar The variance of coefficients + the intercept (if present) in the transformed space
+   * @return The variance of coefficients + the intercept (if present) in the original space
+   */
+  def varToTransformedSpace(inputVar: Vector[Double]): Vector[Double] =
+    if (size == 0) {
+      inputVar
+    } else {
+      require(size == inputVar.size, "Vector size and the scaling factor size are different.")
+
+      val outputVar = inputVar.copy
+
+      factorsOpt.foreach { factors =>
+        // Factors of intercept is 1
+        outputVar :/= (factors *:* factors)
+      }
+      outputVar
     }
 }
 

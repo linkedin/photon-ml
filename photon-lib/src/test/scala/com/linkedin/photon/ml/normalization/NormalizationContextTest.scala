@@ -16,7 +16,7 @@ package com.linkedin.photon.ml.normalization
 
 import scala.util.Random
 
-import breeze.linalg.{DenseVector, Vector}
+import breeze.linalg.{DenseVector, Vector, sum}
 import org.apache.spark.mllib.stat.MultivariateOnlineSummarizer
 import org.testng.Assert
 import org.testng.annotations.{DataProvider, Test}
@@ -97,7 +97,7 @@ class NormalizationContextTest {
    * @param shiftsAndIntercept The translational shifts and intercept index
    */
   @Test(dataProvider = "validInput")
-  def testModelToOriginalSpace(
+  def testCoefToOriginalSpace(
       factors: Option[Vector[Double]],
       shiftsAndIntercept: Option[(Vector[Double], Int)]): Unit = {
 
@@ -106,7 +106,7 @@ class NormalizationContextTest {
     val transformedVector = transformVector(normalizationContext, originalVector)
 
     val transformedCoefs = getRandomVector(shiftsAndIntercept.isDefined)
-    val originalCoefs = normalizationContext.modelToOriginalSpace(transformedCoefs)
+    val originalCoefs = normalizationContext.coefToOriginalSpace(transformedCoefs)
 
     // Test model transformation to the original space
     Assert.assertEquals(
@@ -123,7 +123,7 @@ class NormalizationContextTest {
    * @param shiftsAndIntercept The translational shifts and intercept index
    */
   @Test(dataProvider = "validInput")
-  def testModelToTransformedSpace(
+  def testCoefToTransformedSpace(
       factors: Option[Vector[Double]],
       shiftsAndIntercept: Option[(Vector[Double], Int)]): Unit = {
 
@@ -132,13 +132,39 @@ class NormalizationContextTest {
     val transformedVector = transformVector(normalizationContext, originalVector)
 
     val originalCoefs = getRandomVector(shiftsAndIntercept.isDefined)
-    val transformedCoefs = normalizationContext.modelToTransformedSpace(originalCoefs)
+    val transformedCoefs = normalizationContext.coefToTransformedSpace(originalCoefs)
 
     // Test model transformation to the transformed space
     Assert.assertEquals(
       transformedCoefs.dot(transformedVector),
       originalCoefs.dot(originalVector),
       CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+  }
+
+  /**
+   * Verify variance of the original coefficients are transformed correctly to the transformed space.
+   *
+   * @param factors The scaling factors
+   * @param shiftsAndIntercept The translational shifts and intercept index
+   */
+  @Test(dataProvider = "validInput")
+  def testVarToTransformedSpace(
+    factors: Option[Vector[Double]],
+    shiftsAndIntercept: Option[(Vector[Double], Int)]): Unit = {
+    val normalizationContext = new NormalizationContext(factors, shiftsAndIntercept)
+    val originalVar = new DenseVector(Array.tabulate(DIM)(_ => math.abs(RANDOM.nextGaussian())))
+    val transformedVar = normalizationContext.varToTransformedSpace(originalVar)
+    if (normalizationContext.factorsOpt.isEmpty) {
+      Assert.assertEquals(
+        sum(transformedVar),
+        sum(originalVar),
+        CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    } else {
+      Assert.assertEquals(
+        sum(transformedVar),
+        sum(originalVar :/ TEST_FACTOR_SQUARED),
+        CommonTestUtils.HIGH_PRECISION_TOLERANCE)
+    }
   }
 
   @DataProvider
@@ -165,6 +191,7 @@ object NormalizationContextTest {
   private val RANDOM = new Random(SEED)
   private val SIGMA = 5.0
   private val TEST_FACTOR = DenseVector(0.5, 2.0, -0.1, -0.4, 1.0)
+  private val TEST_FACTOR_SQUARED = DenseVector(0.25, 4.0, 0.01, 0.16, 1.0)
   private val TEST_SHIFT = DenseVector(-0.5, 0.1, 4.0, -2.0, 0.0)
   private val INTERCEPT_INDEX: Option[Int] = Some(4)
 
