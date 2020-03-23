@@ -392,7 +392,6 @@ object RandomEffectDataset {
       randomEffectPartitioner: RandomEffectDatasetPartitioner,
       priorRandomEffectModelOpt: Option[RandomEffectModel]): RDD[(REId, LinearSubspaceProjector)] = {
 
-    val sc = SparkSession.builder().getOrCreate().sparkContext
     val originalSpaceDimension = unfilteredActiveDataset
       .take(1)
       .head
@@ -401,17 +400,27 @@ object RandomEffectDataset {
       .features
       .length
 
-    val priorModels = priorRandomEffectModelOpt.map(_.modelsRDD).getOrElse(sc.emptyRDD[(REId, GeneralizedLinearModel)])
+    val priorModelsOpt = priorRandomEffectModelOpt.map(_.modelsRDD)
 
-    unfilteredActiveDataset
-      .leftOuterJoin(priorModels)
-      .mapValues { case ((_, labeledPoint), priorModelOpt) =>
-        val dataActiveIndices = VectorUtils.getActiveIndices(labeledPoint.features)
-        priorModelOpt match {
-          case Some(priorModel) => dataActiveIndices.union(VectorUtils.getActiveIndices(priorModel.coefficients.means))
-          case None => dataActiveIndices
+    val featureIndex = if (priorModelsOpt.isEmpty) {
+      unfilteredActiveDataset
+        .mapValues { case (_, labeledPoint) =>
+          VectorUtils.getActiveIndices(labeledPoint.features)
         }
-      }
+    } else {
+      val priorModels = priorModelsOpt.get
+      unfilteredActiveDataset
+        .leftOuterJoin(priorModels)
+        .mapValues { case ((_, labeledPoint), priorModelOpt) =>
+          val dataActiveIndices = VectorUtils.getActiveIndices(labeledPoint.features)
+          priorModelOpt match {
+            case Some(priorModel) => dataActiveIndices.union(VectorUtils.getActiveIndices(priorModel.coefficients.means))
+            case None => dataActiveIndices
+          }
+        }
+    }
+
+    featureIndex
       .foldByKey(mutable.Set[Int](), randomEffectPartitioner)(_.union(_))
       .mapValues(activeIndices => new LinearSubspaceProjector(activeIndices.toSet, originalSpaceDimension))
   }
