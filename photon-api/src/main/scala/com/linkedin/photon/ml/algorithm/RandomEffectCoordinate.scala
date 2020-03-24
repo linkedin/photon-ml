@@ -15,7 +15,6 @@
 package com.linkedin.photon.ml.algorithm
 
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.data._
@@ -254,8 +253,7 @@ object RandomEffectCoordinate {
           .mapValues {
             case (Some(localModel), Some((localDataset, optimizationProblem))) =>
               val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-              val updatedModel = optimizationProblem.run(trainingLabeledPoints, localModel)
-              val stateTrackers = optimizationProblem.getStatesTracker
+              val (updatedModel, stateTrackers) = optimizationProblem.run(trainingLabeledPoints, localModel)
 
               (updatedModel, Some(stateTrackers))
 
@@ -264,8 +262,7 @@ object RandomEffectCoordinate {
 
             case (None, Some((localDataset, optimizationProblem))) =>
               val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-              val updatedModel = optimizationProblem.run(trainingLabeledPoints)
-              val stateTrackers = optimizationProblem.getStatesTracker
+              val (updatedModel,stateTrackers) = optimizationProblem.run(trainingLabeledPoints)
 
               (updatedModel, Some(stateTrackers))
 
@@ -282,10 +279,9 @@ object RandomEffectCoordinate {
       .getOrElse {
         val modelsAndTrackers = dataAndOptimizationProblems.mapValues { case (localDataset, optimizationProblem) =>
           val trainingLabeledPoints = localDataset.dataPoints.map(_._2)
-          val newModel = optimizationProblem.run(trainingLabeledPoints)
-          val stateTrackers = optimizationProblem.getStatesTracker
+          val (model, stateTrackers) = optimizationProblem.run(trainingLabeledPoints)
 
-          (newModel, stateTrackers)
+          (model, stateTrackers)
         }
         modelsAndTrackers.persist(StorageLevel.MEMORY_ONLY_SER)
 

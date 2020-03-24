@@ -65,7 +65,7 @@ class OWLQNTest {
     val objective = new TestObjective
     val trainingData = Array(LabeledPoint(0.0, CommonTestUtils.generateDenseVector(expectedCoef.length), 0.0, 0.0))
     val initialCoefficients = CommonTestUtils.generateDenseVector(expectedCoef.length)
-    val (actualCoef, actualValue) = owlqn.optimize(objective, initialCoefficients)(trainingData)
+    val (actualCoef, _, actualValue) = owlqn.optimize(objective, initialCoefficients)(trainingData)
 
     Assertions.assertIterableEqualsWithTolerance(actualCoef.toArray, expectedCoef, OWLQNTest.EPSILON)
     Assert.assertEquals(actualValue, expectedValue, OWLQNTest.EPSILON)

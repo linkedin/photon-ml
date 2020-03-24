@@ -110,12 +110,12 @@ class FixedEffectCoordinateTest {
       case Some(initialModel) =>
         val rawModel = initialModel.model
 
-        doReturn(updatedModel).when(optimizationProblem).runWithSampling(labeledPoints, rawModel)
+        doReturn((updatedModel, statesTracker)).when(optimizationProblem).runWithSampling(labeledPoints, rawModel)
 
         coordinate.trainModel(initialModel)
 
       case None =>
-        doReturn(updatedModel).when(optimizationProblem).runWithSampling(labeledPoints)
+        doReturn((updatedModel, statesTracker)).when(optimizationProblem).runWithSampling(labeledPoints)
 
         coordinate.trainModel()
     }
