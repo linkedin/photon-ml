@@ -276,37 +276,38 @@ object RandomEffectDataset {
     //
 
     val keyedGameDataset = generateKeyedGameDataset(gameDataset, randomEffectDataConfiguration)
-    keyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
+    keyedGameDataset.persist(StorageLevel.MEMORY_AND_DISK_SER).count
 
     // In this RDD, there is a projector for every entity (even those which may later be filtered by the lower bound)
     val unfilteredProjectors = generateLinearSubspaceProjectors(keyedGameDataset, randomEffectPartitioner, priorRandomEffectModelOpt)
     unfilteredProjectors.persist(storageLevel).count
 
-    val projectedKeyedGameDataset = generateProjectedDataset(keyedGameDataset, unfilteredProjectors, randomEffectPartitioner)
-    projectedKeyedGameDataset.persist(StorageLevel.MEMORY_ONLY_SER).count
-
     val unfilteredActiveData = generateGroupedActiveData(
-      projectedKeyedGameDataset,
+      keyedGameDataset,
       randomEffectDataConfiguration,
       randomEffectPartitioner)
+    val projectedGroupedActiveData = generateProjectedActiveData(unfilteredActiveData, unfilteredProjectors)
+    val projectedUnfilteredActiveData = featureSelectionOnActiveData(
+      projectedGroupedActiveData,
+      randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound)
 
     val (activeData, passiveData, uniqueIdToRandomEffectIds, projectors) =
       randomEffectDataConfiguration.numActiveDataPointsLowerBound match {
 
         case Some(activeDataLowerBound) =>
 
-          unfilteredActiveData.persist(StorageLevel.MEMORY_ONLY_SER)
+          projectedUnfilteredActiveData.persist(StorageLevel.MEMORY_ONLY_SER)
 
           // Filter entities which do not meet active data lower bound threshold
           val filteredActiveData = filterActiveData(
-            unfilteredActiveData,
+            projectedUnfilteredActiveData,
             activeDataLowerBound,
             existingModelKeysRddOpt)
           filteredActiveData.persist(storageLevel).count
 
           val passiveData = generatePassiveData(
-            projectedKeyedGameDataset,
-            generateIdMap(unfilteredActiveData, uniqueIdPartitioner))
+            keyedGameDataset,
+            generateIdMap(projectedUnfilteredActiveData, uniqueIdPartitioner))
           passiveData.persist(storageLevel).count
 
           val uniqueIdToRandomEffectIds = generateIdMap(filteredActiveData, uniqueIdPartitioner)
@@ -315,22 +316,22 @@ object RandomEffectDataset {
           val filteredProjectors = filterProjectors(unfilteredProjectors, filteredActiveData)
           filteredProjectors.persist(storageLevel).count
 
-          unfilteredActiveData.unpersist()
+          projectedUnfilteredActiveData.unpersist()
           unfilteredProjectors.unpersist()
 
           (filteredActiveData, passiveData, uniqueIdToRandomEffectIds, filteredProjectors)
 
         case None =>
 
-          unfilteredActiveData.persist(storageLevel).count
+          projectedUnfilteredActiveData.persist(storageLevel).count
 
-          val uniqueIdToRandomEffectIds = generateIdMap(unfilteredActiveData, uniqueIdPartitioner)
+          val uniqueIdToRandomEffectIds = generateIdMap(projectedUnfilteredActiveData, uniqueIdPartitioner)
           uniqueIdToRandomEffectIds.persist(storageLevel).count
 
-          val passiveData = generatePassiveData(projectedKeyedGameDataset, uniqueIdToRandomEffectIds)
+          val passiveData = generatePassiveData(keyedGameDataset, uniqueIdToRandomEffectIds)
           passiveData.persist(storageLevel).count
 
-          (unfilteredActiveData, passiveData, uniqueIdToRandomEffectIds, unfilteredProjectors)
+          (projectedUnfilteredActiveData, passiveData, uniqueIdToRandomEffectIds, unfilteredProjectors)
     }
 
     //
@@ -338,7 +339,6 @@ object RandomEffectDataset {
     //
 
     keyedGameDataset.unpersist()
-    projectedKeyedGameDataset.unpersist()
 
     //
     // Return new dataset
@@ -380,7 +380,7 @@ object RandomEffectDataset {
   /**
    * Generate the [[LinearSubspaceProjector]] objects used to compress the feature vectors for each per-entity dataset.
    *
-   * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
+   * @param unfilteredActiveDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
    * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
    *                                the data distribution equal amongst partitions
    * @param priorRandomEffectModelOpt Optional initial random effect models, which will union with data to generate
@@ -388,12 +388,11 @@ object RandomEffectDataset {
    * @return An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
    */
   protected[data] def generateLinearSubspaceProjectors(
-      keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+      unfilteredActiveDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
       randomEffectPartitioner: RandomEffectDatasetPartitioner,
       priorRandomEffectModelOpt: Option[RandomEffectModel]): RDD[(REId, LinearSubspaceProjector)] = {
 
-    val sc = SparkSession.builder().getOrCreate().sparkContext
-    val originalSpaceDimension = keyedGameDataset
+    val originalSpaceDimension = unfilteredActiveDataset
       .take(1)
       .head
       ._2
@@ -401,84 +400,56 @@ object RandomEffectDataset {
       .features
       .length
 
-    val priorModels = priorRandomEffectModelOpt.map(_.modelsRDD).getOrElse(sc.emptyRDD[(REId, GeneralizedLinearModel)])
+    val priorModelsOpt = priorRandomEffectModelOpt.map(_.modelsRDD)
 
-    keyedGameDataset
-      .leftOuterJoin(priorModels)
-      .mapValues { case ((_, labeledPoint), priorModelOpt) =>
-        val dataActiveIndices = VectorUtils.getActiveIndices(labeledPoint.features)
-        priorModelOpt match {
-          case Some(priorModel) => dataActiveIndices.union(VectorUtils.getActiveIndices(priorModel.coefficients.means))
-          case None => dataActiveIndices
+    val featureIndex = if (priorModelsOpt.isEmpty) {
+      unfilteredActiveDataset
+        .mapValues { case (_, labeledPoint) =>
+          VectorUtils.getActiveIndices(labeledPoint.features)
         }
-      }
+    } else {
+      val priorModels = priorModelsOpt.get
+      unfilteredActiveDataset
+        .leftOuterJoin(priorModels)
+        .mapValues { case ((_, labeledPoint), priorModelOpt) =>
+          val dataActiveIndices = VectorUtils.getActiveIndices(labeledPoint.features)
+          priorModelOpt match {
+            case Some(priorModel) => dataActiveIndices.union(VectorUtils.getActiveIndices(priorModel.coefficients.means))
+            case None => dataActiveIndices
+          }
+        }
+    }
+
+    featureIndex
       .foldByKey(mutable.Set[Int](), randomEffectPartitioner)(_.union(_))
       .mapValues(activeIndices => new LinearSubspaceProjector(activeIndices.toSet, originalSpaceDimension))
   }
 
   /**
-   * Project the per-entity datasets to a linear subspace - thus reducing the size of their feature vectors (for faster
-   * optimization).
-   *
-   * @param keyedGameDataset The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]]
-   * @param projectors An [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
-   * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
-   *                                the data distribution equal amongst partitions
-   * @return The data for the given feature shard, keyed by the [[REId]]s for the given [[REType]], with feature vectors
-   *         reduced to the smallest linear subspace possible without loss
-   */
-  protected[data] def generateProjectedDataset(
-      keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      projectors: RDD[(REId, LinearSubspaceProjector)],
-      randomEffectPartitioner: RandomEffectDatasetPartitioner): RDD[(REId, (UniqueSampleId, LabeledPoint))] =
-
-    keyedGameDataset
-      .partitionBy(randomEffectPartitioner)
-      .zipPartitions(projectors) { case (dataIt, projectorsIt) =>
-
-        val projectorLookupTable = projectorsIt.toMap
-
-        dataIt.map { case (rEID, (uID, LabeledPoint(label, features, offset, weight))) =>
-
-          val projector = projectorLookupTable(rEID)
-          val projectedFeatures = projector.projectForward(features)
-
-          (rEID, (uID, LabeledPoint(label, projectedFeatures, offset, weight)))
-        }
-      }
-
-  /**
    * Generate active data, down-sampling using reservoir sampling if the data for any entity exceeds the upper bound.
    *
-   * @param projectedKeyedDataset The input data, keyed by entity ID
+   * @param keyedGameDataset The input data, keyed by entity ID
    * @param randomEffectDataConfiguration The random effect data configuration
    * @param randomEffectPartitioner A specialized partitioner to co-locate all data from a single entity, while keeping
    *                                the data distribution equal amongst partitions
    * @return The input data, grouped by entity ID, and down-sampled if necessary
    */
   protected[data] def generateGroupedActiveData(
-      projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      randomEffectDataConfiguration: RandomEffectDataConfiguration,
-      randomEffectPartitioner: Partitioner): RDD[(REId, LocalDataset)] = {
+    keyedGameDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+    randomEffectDataConfiguration: RandomEffectDataConfiguration,
+    randomEffectPartitioner: Partitioner): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] =
 
-    // Filter data using reservoir sampling if active data size is bounded
-    val groupedActiveData = randomEffectDataConfiguration
+  // Filter data using reservoir sampling if active data size is bounded
+    randomEffectDataConfiguration
       .numActiveDataPointsUpperBound
       .map { activeDataUpperBound =>
         groupDataByKeyAndSample(
-          projectedKeyedDataset,
+          keyedGameDataset,
           randomEffectPartitioner,
           activeDataUpperBound,
           randomEffectDataConfiguration.randomEffectType)
       }
-      .getOrElse(projectedKeyedDataset.groupByKey(randomEffectPartitioner))
-      .mapValues { iterable =>
-        LocalDataset(iterable.toArray, isSortedByFirstIndex = false)
-      }
-
-    // Filter features if feature dimension of active data is bounded
-    featureSelectionOnActiveData(groupedActiveData, randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound)
-  }
+      .getOrElse(keyedGameDataset.groupByKey(randomEffectPartitioner))
 
   /**
    * Generate a dataset grouped by random effect ID and limited to a maximum number of samples selected via reservoir
@@ -495,10 +466,10 @@ object RandomEffectDataset {
    * @return An [[RDD]] of data grouped by individual ID
    */
   private def groupDataByKeyAndSample(
-      projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
-      partitioner: Partitioner,
-      sampleCap: Int,
-      randomEffectType: REType): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = {
+    projectedKeyedDataset: RDD[(REId, (UniqueSampleId, LabeledPoint))],
+    partitioner: Partitioner,
+    sampleCap: Int,
+    randomEffectType: REType): RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])] = {
 
     // Helper class for defining a constant ordering between data samples (necessary for RDD re-computation)
     case class ComparableLabeledPointWithId(comparableKey: Int, uniqueId: UniqueSampleId, labeledPoint: LabeledPoint)
@@ -519,14 +490,14 @@ object RandomEffectDataset {
       }
 
     val mergeValue = (
-        minHeapWithFixedCapacity: MinHeapWithFixedCapacity[ComparableLabeledPointWithId],
-        comparableLabeledPointWithId: ComparableLabeledPointWithId) => {
+      minHeapWithFixedCapacity: MinHeapWithFixedCapacity[ComparableLabeledPointWithId],
+      comparableLabeledPointWithId: ComparableLabeledPointWithId) => {
       minHeapWithFixedCapacity += comparableLabeledPointWithId
     }
 
     val mergeCombiners = (
-        minHeapWithFixedCapacity1: MinHeapWithFixedCapacity[ComparableLabeledPointWithId],
-        minHeapWithFixedCapacity2: MinHeapWithFixedCapacity[ComparableLabeledPointWithId]) => {
+      minHeapWithFixedCapacity1: MinHeapWithFixedCapacity[ComparableLabeledPointWithId],
+      minHeapWithFixedCapacity2: MinHeapWithFixedCapacity[ComparableLabeledPointWithId]) => {
       minHeapWithFixedCapacity1 ++= minHeapWithFixedCapacity2
     }
 
@@ -540,10 +511,10 @@ object RandomEffectDataset {
         ComparableLabeledPointWithId(comparableKey, uniqueId, labeledPoint)
       }
       .combineByKey[MinHeapWithFixedCapacity[ComparableLabeledPointWithId]](
-        createCombiner,
-        mergeValue,
-        mergeCombiners,
-        partitioner)
+      createCombiner,
+      mergeValue,
+      mergeCombiners,
+      partitioner)
       .mapValues { minHeapWithFixedCapacity =>
         val count = minHeapWithFixedCapacity.getCount
         val data = minHeapWithFixedCapacity.getData
@@ -554,6 +525,55 @@ object RandomEffectDataset {
         }
       }
   }
+
+  /**
+   * Project the per-entity datasets to a linear subspace - thus reducing the size of their feature vectors (for faster
+   * optimization).
+   *
+   * @param keyedGameDataset Per-entity datasets, keyed by the [[REId]]s for the given [[REType]]
+   * @param projectors A [[RDD]] of per-entity [[LinearSubspaceProjector]] objects
+   * @return The per-entity datasets, keyed by the [[REId]]s for the given [[REType]], with feature vectors reduced to
+   *         the smallest linear subspace possible without loss
+   */
+  protected[data] def generateProjectedActiveData(
+      keyedGameDataset: RDD[(REId, Iterable[(UniqueSampleId, LabeledPoint)])],
+      projectors: RDD[(REId, LinearSubspaceProjector)]): RDD[(REId, LocalDataset)] =
+
+    keyedGameDataset
+      .join(projectors)
+      .mapValues { case (localData, projector) =>
+        val projectedData = localData.map { case (uid, LabeledPoint(label, features, offset, weight)) =>
+          (uid, LabeledPoint(label, projector.projectForward(features), offset, weight))
+        }
+
+        LocalDataset(projectedData.toArray, isSortedByFirstIndex = false)
+      }
+
+  /**
+   * Reduce active data feature dimension for entities with few samples. The maximum feature dimension is limited to
+   * the number of samples multiplied by the feature dimension ratio. Features are chosen by greatest Pearson
+   * correlation score.
+   *
+   * @param activeData An [[RDD]] of data grouped by entity ID
+   * @param numFeaturesToSamplesRatioUpperBoundOpt Optional ratio of samples to feature dimension
+   * @return The input data with feature dimension reduced for entities whose feature dimension greatly exceeded the
+   *         number of available samples
+   */
+  private def featureSelectionOnActiveData(
+    activeData: RDD[(REId, LocalDataset)],
+    numFeaturesToSamplesRatioUpperBoundOpt: Option[Double]): RDD[(REId, LocalDataset)] =
+    numFeaturesToSamplesRatioUpperBoundOpt
+      .map { numFeaturesToSamplesRatioUpperBound =>
+        activeData.mapValues { localDataset =>
+
+          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataset.numDataPoints).toInt
+          // In case the above product overflows
+          if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
+
+          localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
+        }
+      }
+      .getOrElse(activeData)
 
   /**
    * Filter out entities with less data than a given threshold.
@@ -584,32 +604,6 @@ object RandomEffectDataset {
           data.numDataPoints >= numActiveDataPointsLowerBound
         }
     }
-
-  /**
-   * Reduce active data feature dimension for entities with few samples. The maximum feature dimension is limited to
-   * the number of samples multiplied by the feature dimension ratio. Features are chosen by greatest Pearson
-   * correlation score.
-   *
-   * @param activeData An [[RDD]] of data grouped by entity ID
-   * @param numFeaturesToSamplesRatioUpperBoundOpt Optional ratio of samples to feature dimension
-   * @return The input data with feature dimension reduced for entities whose feature dimension greatly exceeded the
-   *         number of available samples
-   */
-  private def featureSelectionOnActiveData(
-      activeData: RDD[(REId, LocalDataset)],
-      numFeaturesToSamplesRatioUpperBoundOpt: Option[Double]): RDD[(REId, LocalDataset)] =
-    numFeaturesToSamplesRatioUpperBoundOpt
-      .map { numFeaturesToSamplesRatioUpperBound =>
-        activeData.mapValues { localDataset =>
-
-          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataset.numDataPoints).toInt
-          // In case the above product overflows
-          if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
-
-          localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
-        }
-      }
-      .getOrElse(activeData)
 
   /**
    * Generate a map of unique sample id to random effect id for active data samples.
