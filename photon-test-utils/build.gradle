@@ -26,3 +26,6 @@ dependencies {
   compile("org.scalanlp:breeze-macros$scalaSuffix:0.11.2")
   compile("org.testng:testng:6.9.9")
 }
+
+apply from: rootProject.file('release-bintray.gradle')
+

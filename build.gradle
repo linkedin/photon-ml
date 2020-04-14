@@ -16,13 +16,11 @@
 // TODO: checkstyle plugin
 
 buildscript {
-  if (!project.hasProperty('overrideBuildEnvironment')) {
-    repositories {
-      jcenter()
-      maven {
-        // For avro compiler plugin gradle-avro-plugin
-        url 'https://plugins.gradle.org/m2/'
-      }
+  repositories {
+    jcenter()
+    maven {
+      // For avro compiler plugin gradle-avro-plugin
+      url 'https://plugins.gradle.org/m2/'
     }
   }
 
@@ -48,6 +46,14 @@ if (project.hasProperty('overrideBuildEnvironment')) {
 allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
+
+  repositories {
+    jcenter()
+    maven {
+      // For avro compiler plugin gradle-avro-plugin
+      url 'https://plugins.gradle.org/m2/'
+    }
+  }
 }
 
 apply from: 'build-scripts/rat.gradle'

@@ -51,4 +51,8 @@ artifacts {
   testOutput testsJar
 }
 
+<<<<<<< HEAD
 apply from: rootProject.file('release-bintray.gradle')
+=======
+apply from: rootProject.file('release-bintray.gradle')
+>>>>>>> Publish jar to JFrog Bintray
