@@ -29,6 +29,10 @@ buildscript {
   dependencies {
     classpath 'com.commercehub.gradle.plugin:gradle-avro-plugin:0.7.0'
     classpath 'org.github.ngbinh.scalastyle:gradle-scalastyle-plugin_2.10:0.8.2'
+    classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
+    classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+    classpath 'org.jetbrains.dokka:dokka-gradle-plugin:0.9.16'
+
     // shadow allows us to build fat/shadow jars. See doc at: http://imperceptiblethoughts.com/shadow/.
     classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
   }
@@ -89,6 +93,8 @@ rat {
     'derby.log',
     'metastore_db/**',
     'gradle.properties',
+    'local.properties',
+    '**/gradle.properties',
     'log4j.properties',
     'photon-api/src/integTest/resources/**',
     'photon-api/src/test/resources/**',
