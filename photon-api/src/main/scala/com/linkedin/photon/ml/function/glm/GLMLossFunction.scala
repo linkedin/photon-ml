@@ -30,7 +30,6 @@ object GLMLossFunction {
    * @param lossFunction A [[PointwiseLossFunction]] for training a generalized linear model
    * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
    * @param config Optimization problem configuration
-   * @param isIncrementalTraining Is this an objective function for incremental training?
    * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
    *         optimization settings.
    */

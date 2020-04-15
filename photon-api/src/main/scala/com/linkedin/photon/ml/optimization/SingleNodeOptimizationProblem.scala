@@ -91,9 +91,10 @@ protected[ml] class SingleNodeOptimizationProblem[Objective <: SingleNodeObjecti
 
     val normalizationContext = optimizer.getNormalizationContext
     val (optimizedCoefficients, stateTracker, _) = optimizer.optimize(objectiveFunction, initialModel.coefficients.means)(input)
-    val optimizedVariances = computeVariances(input, optimizedCoefficients)
+    val origOptimizedCoef = normalizationContext.value.coefToOriginalSpace(optimizedCoefficients)
+    val origOptimizedVar = computeVariances(input, origOptimizedCoef)
 
-    (createModel(normalizationContext, optimizedCoefficients, optimizedVariances), stateTracker)
+    (createModel(origOptimizedCoef, origOptimizedVar), stateTracker)
   }
 }
 
