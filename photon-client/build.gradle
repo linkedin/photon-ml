@@ -42,3 +42,5 @@ integTest {
     file('.').listFiles().findAll { it.name.endsWith('_ALL') }.each { delete it }
   }
 }
+
+apply from: rootProject.file('release-bintray.gradle')

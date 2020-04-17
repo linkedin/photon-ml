@@ -30,3 +30,5 @@ avro {
 }
 
 compileJava.source(generateAvro.outputs)
+
+apply from: rootProject.file('release-bintray.gradle')
