@@ -22,6 +22,7 @@ import scala.util.Try
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileContext, Options, Path}
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.joda.time.{DateTimeZone, Days}
 
 import com.linkedin.photon.ml.Constants
@@ -370,40 +371,37 @@ object IOUtils {
   /**
    * Save GAME per-group evaluation in terms of (random effect id, evaluation value) to HDFS.
    *
-   * @param sc The Spark context
+   * @param sparkSession The Spark session
    * @param outputDir The directory in HDFS where to save the evaluation
    * @param evaluationResultsOpt An Option of evaluation results
    * @param logger The logger instance for the application
    */
   def saveGameEvaluationToHDFS(
-    sc: SparkContext,
+    sparkSession: SparkSession,
     outputDir: Path,
     evaluationResultsOpt: Option[EvaluationResults],
     logger: PhotonLogger): Unit = {
 
-    val evalFilename = "evaluationResults"
     evaluationResultsOpt match {
       case Some(evaluationResults) => evaluationResults.evaluations.foreach {
         case (evaluatorType, (_, Some(groupEval))) => {
           val evaluatorName = evaluatorType.name.split(MultiEvaluatorType.shardedEvaluatorIdNameSplitter)
           logger.debug(s"Save per-group evaluation of ${evaluatorName(0)} on ${evaluatorName(1)}")
           val evalOutputDir = new Path(new Path(outputDir, evaluatorName(0)), evaluatorName(1))
-          val builder = new StringBuilder
-          Utils.createHDFSDir(evalOutputDir, sc.hadoopConfiguration)
-          groupEval.collect.foreach {
-            case (id, value) => builder.append(s"$id:$value\n")
-          }
-          writeStringsToHDFS(
-            Iterator(builder.mkString),
-            new Path(evalOutputDir, evalFilename),
-            sc.hadoopConfiguration,
-            false)
+          sparkSession
+            .createDataFrame(groupEval)
+            .toDF(evaluatorName(1), evaluatorName(0))
+            .coalesce(1)
+            .write
+            .mode(SaveMode.Overwrite)
+            .format("com.databricks.spark.avro")
+            .save(evalOutputDir.toString)
         }
         case (evaluatorType, (_, None)) =>
           logger.debug(s"No per-group evaluation of ${evaluatorType.name}.")
         case _ => throw new IllegalArgumentException("Unknown format of evaluation result.")
       }
-      case _ => logger.info(s"No evaluation result to be saved to HDFS.")
+      case _ => logger.debug(s"No evaluation result to be saved to HDFS.")
     }
   }
 }

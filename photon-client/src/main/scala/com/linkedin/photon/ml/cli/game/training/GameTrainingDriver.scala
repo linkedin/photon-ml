@@ -19,7 +19,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml._
@@ -72,6 +72,7 @@ object GameTrainingDriver extends GameDriver {
   protected[training] val BEST_MODEL_DIR = "best"
   protected[training] val GROUP_EVAL_DIR = "group-eval"
 
+  protected[training] var sparkSession: SparkSession = _
   protected[training] var sc: SparkContext = _
   protected[training] implicit var logger: PhotonLogger = _
 
@@ -890,7 +891,7 @@ object GameTrainingDriver extends GameDriver {
 
           Utils.createHDFSDir(evalOutputDir, hadoopConfiguration)
           IOUtils.saveGameEvaluationToHDFS(
-            sc,
+            sparkSession,
             evalOutputDir,
             evaluationOpt,
             logger)
@@ -910,7 +911,8 @@ object GameTrainingDriver extends GameDriver {
     val params: ParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
 
-    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
+    sparkSession = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = sparkSession.sparkContext
     logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS_FILE_NAME), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 

@@ -68,7 +68,7 @@ abstract class MultiEvaluator(
    * Compute an evaluation metric on a per-group basis and save the per group results.
    *
    * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight))
-   * @return Evaluation metric value
+   * @return A tuple of evaluation metric mean value and per-group evaluation
    */
   def evaluatePerGroup(
       scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]):
