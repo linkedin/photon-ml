@@ -151,7 +151,7 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
     val evaluations = (0 until (coordinateCount - 1)).map(_ => Random.nextDouble()) :+ finalEvaluation
     val bestEvaluation = evaluations.min
     val evaluationResults = evaluations.map { evaluation =>
-      EvaluationResults(Map(evaluatorType -> evaluation), evaluatorType)
+      EvaluationResults(Map(evaluatorType -> (evaluation, None)), evaluatorType)
     }
     val evaluationResultsIterator = evaluationResults.iterator
 
@@ -244,7 +244,7 @@ class CoordinateDescentIntegTest extends SparkTestUtils {
     // Verify results
     //
 
-    assertEquals(result.get.evaluations(evaluatorType), finalEvaluation, MathConst.EPSILON)
+    assertEquals(result.get.evaluations(evaluatorType)._1, finalEvaluation, MathConst.EPSILON)
     assertNotEquals(result.get.evaluations(evaluatorType), bestEvaluation)
   }
 

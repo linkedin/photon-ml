@@ -14,6 +14,8 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import org.apache.spark.rdd.RDD
+
 /**
  * Helper object which wraps around a [[Map]] of [[EvaluatorType]] to evaluation metric, and tracks the primary
  * [[EvaluatorType]] / evaluation metric (e.g. used for model selection).
@@ -21,7 +23,9 @@ package com.linkedin.photon.ml.evaluation
  * @param evaluations A [[Map]] of [[EvaluatorType]] to evaluation metric
  * @param primaryEvaluator The primary [[EvaluatorType]]
  */
-case class EvaluationResults(evaluations: Map[EvaluatorType, Double], primaryEvaluator: EvaluatorType) {
+case class EvaluationResults(
+    evaluations: Map[EvaluatorType, (Double, Option[RDD[(String, Double)]])],
+    primaryEvaluator: EvaluatorType) {
 
   require(evaluations.contains(primaryEvaluator), "Primary evaluator not found in evaluations")
 
@@ -30,6 +34,6 @@ case class EvaluationResults(evaluations: Map[EvaluatorType, Double], primaryEva
    *
    * @return The primary evaluation metric
    */
-  def primaryEvaluation: Double = evaluations(primaryEvaluator)
+  def primaryEvaluation: Double = evaluations(primaryEvaluator)._1
 }
 

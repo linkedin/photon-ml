@@ -65,6 +65,37 @@ abstract class MultiEvaluator(
   }
 
   /**
+   * Compute an evaluation metric on a per-group basis and save the per group results.
+   *
+   * @param scoresAndLabelsAndWeights A [[RDD]] of pairs (uniqueId, (score, label, weight))
+   * @return Evaluation metric value
+   */
+  def evaluatePerGroup(
+      scoresAndLabelsAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]):
+    (Double, Option[RDD[(String, Double)]]) = {
+
+    // Create a local copy of the localEvaluator, so that the underlying object won't get shipped to the executor nodes
+    val localEvaluator = this.localEvaluator
+
+    // EvaluationSuite guarantees that all validation data is in scoresAndLabelsAndWeights RDD, and ids RDD is directly
+    // mapped from validation data. Thus, inner join should be guaranteed to not lose any data.
+    val groupedData = scoresAndLabelsAndWeights
+      .join(ids)
+      .map { case (_, (scoreLabelAndWeight, id)) => (id, scoreLabelAndWeight) }
+      .groupByKey()
+
+      val perGroupEvaluation = groupedData
+        .mapValues(scoreLabelAndWeights => localEvaluator.evaluate(scoreLabelAndWeights.toArray))
+        .filter(results => !(results._2.isInfinite || results._2.isNaN))
+
+      val meanEvaluation = perGroupEvaluation
+        .values
+        .mean()
+
+      (meanEvaluation, Some(perGroupEvaluation))
+  }
+
+  /**
    * Compares two [[MultiEvaluator]] objects.
    *
    * @param other Some other object

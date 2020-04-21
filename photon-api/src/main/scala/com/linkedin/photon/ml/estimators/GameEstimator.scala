@@ -141,6 +141,12 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "use warm start",
     "Whether to train the current model with coefficients initialized by the previous model.")
 
+
+  val savePerGroupEvaluationResult: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "save per-group evaluation result",
+    "Flag to enable save per-group evaluation result."
+  )
+
   //
   // Initialize object
   //
@@ -185,6 +191,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
   def setIncrementalTraining(value: Boolean): this.type = set(incrementalTraining, value)
 
+  def setSavePerGroupEvaluationResult(value: Boolean): this.type = set(savePerGroupEvaluationResult, value)
+
   //
   // Params trait extensions
   //
@@ -218,6 +226,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(useWarmStart, true)
     setDefault(incrementalTraining, false)
+    setDefault(savePerGroupEvaluationResult, false)
   }
 
   /**
@@ -689,7 +698,9 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
 
         Seq(defaultEvaluator)
       }
-    val evaluationSuite = EvaluationSuite(evaluators, validatingLabelsAndOffsetsAndWeights)
+    val savePerGroupEvaluation = getOrDefault(savePerGroupEvaluationResult)
+    logger.debug(s"Whether to save per-group evaluation: $savePerGroupEvaluation")
+    val evaluationSuite = EvaluationSuite(evaluators, validatingLabelsAndOffsetsAndWeights, savePerGroupEvaluation)
       .setName(s"Evaluation: validation data labels, offsets, and weights")
       .persistRDD(StorageLevel.MEMORY_AND_DISK)
 
@@ -700,7 +711,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       evaluationSuite
         .evaluate(randomScores)
         .evaluations
-        .foreach { case (evaluator, evaluation) =>
+        .foreach { case (evaluator, (evaluation, _)) =>
           logger.debug(s"Random guessing baseline for evaluation metric '${evaluator.name}': $evaluation")
         }
 

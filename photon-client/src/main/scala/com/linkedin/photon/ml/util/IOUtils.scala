@@ -26,6 +26,7 @@ import org.joda.time.{DateTimeZone, Days}
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.evaluation.{EvaluationResults, MultiEvaluatorType}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -364,5 +365,45 @@ object IOUtils {
       }
 
     builder.mkString
+  }
+
+  /**
+   * Save GAME per-group evaluation in terms of (random effect id, evaluation value) to HDFS.
+   *
+   * @param sc The Spark context
+   * @param outputDir The directory in HDFS where to save the evaluation
+   * @param evaluationResultsOpt An Option of evaluation results
+   * @param logger The logger instance for the application
+   */
+  def saveGameEvaluationToHDFS(
+    sc: SparkContext,
+    outputDir: Path,
+    evaluationResultsOpt: Option[EvaluationResults],
+    logger: PhotonLogger): Unit = {
+
+    val evalFilename = "evaluationResults"
+    evaluationResultsOpt match {
+      case Some(evaluationResults) => evaluationResults.evaluations.foreach {
+        case (evaluatorType, (_, Some(groupEval))) => {
+          val evaluatorName = evaluatorType.name.split(MultiEvaluatorType.shardedEvaluatorIdNameSplitter)
+          logger.debug(s"Save per-group evaluation of ${evaluatorName(0)} on ${evaluatorName(1)}")
+          val evalOutputDir = new Path(new Path(outputDir, evaluatorName(0)), evaluatorName(1))
+          val builder = new StringBuilder
+          Utils.createHDFSDir(evalOutputDir, sc.hadoopConfiguration)
+          groupEval.collect.foreach {
+            case (id, value) => builder.append(s"$id:$value\n")
+          }
+          writeStringsToHDFS(
+            Iterator(builder.mkString),
+            new Path(evalOutputDir, evalFilename),
+            sc.hadoopConfiguration,
+            false)
+        }
+        case (evaluatorType, (_, None)) =>
+          logger.debug(s"No per-group evaluation of ${evaluatorType.name}.")
+        case _ => throw new IllegalArgumentException("Unknown format of evaluation result.")
+      }
+      case _ => logger.info(s"No evaluation result to be saved to HDFS.")
+    }
   }
 }

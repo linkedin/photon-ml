@@ -70,6 +70,7 @@ object GameTrainingDriver extends GameDriver {
   protected[training] val MODELS_DIR = "models"
   protected[training] val MODEL_SPEC_DIR = "model-spec"
   protected[training] val BEST_MODEL_DIR = "best"
+  protected[training] val GROUP_EVAL_DIR = "group-eval"
 
   protected[training] var sc: SparkContext = _
   protected[training] implicit var logger: PhotonLogger = _
@@ -175,6 +176,10 @@ object GameTrainingDriver extends GameDriver {
     "incremental training",
     "Flag to enable incremental training.")
 
+  val savePerGroupEvaluationResult: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "save per-group evaluation result",
+    "Flag to save group evaluation result for random effect in a separate output file.")
+
   //
   // Initialize object
   //
@@ -221,6 +226,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(incrementalTraining, false)
+    setDefault(savePerGroupEvaluationResult, true) //TODO: Testing purpose, default to false before push
   }
 
   /**
@@ -470,6 +476,7 @@ object GameTrainingDriver extends GameDriver {
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
         .setUseWarmStart(true)
         .setIncrementalTraining(getOrDefault(incrementalTraining))
+        .setSavePerGroupEvaluationResult(getOrDefault(savePerGroupEvaluationResult))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)
@@ -498,6 +505,12 @@ object GameTrainingDriver extends GameDriver {
 
     Timed("Save models") {
       saveModelToHDFS(featureIndexMapLoaders, outputModels, bestModel)
+    }
+
+    if (getOrDefault(savePerGroupEvaluationResult)) {
+      Timed("Save per-group evaluation result") {
+        savePerGroupEvaluationToHDFS(outputModels)
+      }
     }
   }
 
@@ -851,6 +864,36 @@ object GameTrainingDriver extends GameDriver {
             REMFileLimit,
             featureShardIdToFeatureMapLoader,
             getOrDefault(modelSparsityThreshold))
+
+          modelIndex + 1
+      }
+    }
+
+  /**
+   * Write the per-group evaluation to HDFS.
+   *
+   * @param models All the models that were producing during training
+   */
+  private def savePerGroupEvaluationToHDFS(models: Seq[GameEstimator.GameResult]): Unit =
+
+    if (getOrDefault(outputMode) != ModelOutputMode.NONE) {
+
+      val hadoopConfiguration = sc.hadoopConfiguration
+      val rootOutputDir = getRequiredParam(rootOutputDirectory)
+      val allOutputDir = new Path(rootOutputDir, GROUP_EVAL_DIR)
+
+      // Write additional models to HDFS
+      models.foldLeft(0) {
+        case (modelIndex, (_, _, evaluationOpt)) =>
+
+          val evalOutputDir = new Path(allOutputDir, modelIndex.toString)
+
+          Utils.createHDFSDir(evalOutputDir, hadoopConfiguration)
+          IOUtils.saveGameEvaluationToHDFS(
+            sc,
+            evalOutputDir,
+            evaluationOpt,
+            logger)
 
           modelIndex + 1
       }

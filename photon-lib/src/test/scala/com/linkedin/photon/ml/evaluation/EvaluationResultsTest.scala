@@ -14,6 +14,7 @@
  */
 package com.linkedin.photon.ml.evaluation
 
+import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.Test
 
@@ -31,7 +32,7 @@ class EvaluationResultsTest {
   def testInvalidInput(): Unit = {
 
     val primaryEvaluator: EvaluatorType = EvaluatorType.AUC
-    val evaluations: Map[EvaluatorType, Double] = Map()
+    val evaluations: Map[EvaluatorType, (Double, Option[RDD[(String, Double)]])] = Map()
 
     EvaluationResults(evaluations, primaryEvaluator)
   }
@@ -44,7 +45,8 @@ class EvaluationResultsTest {
 
     val evaluation: Double = 1.23
     val primaryEvaluator: EvaluatorType = EvaluatorType.AUC
-    val evaluations: Map[EvaluatorType, Double] = Map(primaryEvaluator -> evaluation)
+    val evaluations: Map[EvaluatorType, (Double, Option[RDD[(String, Double)]])] =
+      Map(primaryEvaluator -> (evaluation, None))
     val evaluationResults: EvaluationResults = EvaluationResults(evaluations, primaryEvaluator)
 
     assertEquals(evaluation, evaluationResults.primaryEvaluation, MathConst.EPSILON)
