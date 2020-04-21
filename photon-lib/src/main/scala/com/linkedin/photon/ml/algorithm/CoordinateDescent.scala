@@ -325,7 +325,7 @@ object CoordinateDescent {
       results
         .evaluations
         .foreach { case (evaluatorType, evaluation) =>
-          logger.info(s"${evaluatorType.name}: $evaluation")
+          logger.info(s"${evaluatorType.name}: ${evaluation._1}")
         }
 
       results

@@ -168,7 +168,11 @@ object ScoptGameTrainingParametersParser extends ScoptGameParametersParser {
 
       // Incremental training
       ScoptParameter[Boolean, Boolean](
-        GameTrainingDriver.incrementalTraining))
+        GameTrainingDriver.incrementalTraining),
+
+      // Save per-group evaluation result
+      ScoptParameter[Boolean, Boolean](
+        GameTrainingDriver.savePerGroupEvaluationResult))
 
   override protected val parser: OptionParser[ParamMap] = new OptionParser[ParamMap]("GAME-Training") {
 

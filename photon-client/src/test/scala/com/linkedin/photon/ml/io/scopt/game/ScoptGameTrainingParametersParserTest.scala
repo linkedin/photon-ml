@@ -67,6 +67,7 @@ class ScoptGameTrainingParametersParserTest {
     val hyperparameterTuningIter = 6
     val varianceComputation = VarianceComputationType.SIMPLE
     val ignoreThreshold = true
+    val savePerGroupEvaluationResult = true
 
     val featureShard1 = "featureShard1"
     val featureBags1 = Set("bag1", "bag2")
@@ -170,6 +171,7 @@ class ScoptGameTrainingParametersParserTest {
       .put(GameTrainingDriver.hyperParameterTuningIter, hyperparameterTuningIter)
       .put(GameTrainingDriver.varianceComputationType, varianceComputation)
       .put(GameTrainingDriver.ignoreThresholdForNewModels, ignoreThreshold)
+      .put(GameTrainingDriver.savePerGroupEvaluationResult, savePerGroupEvaluationResult)
 
     val finalParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(
       ScoptGameTrainingParametersParser.printForCommandLine(initialParamMap).flatMap(_.split(" ")).toArray)

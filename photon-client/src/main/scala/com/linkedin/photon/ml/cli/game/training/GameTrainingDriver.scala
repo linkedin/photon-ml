@@ -227,7 +227,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(incrementalTraining, false)
-    setDefault(savePerGroupEvaluationResult, true) //TODO: Testing purpose, default to false before push
+    setDefault(savePerGroupEvaluationResult, false)
   }
 
   /**

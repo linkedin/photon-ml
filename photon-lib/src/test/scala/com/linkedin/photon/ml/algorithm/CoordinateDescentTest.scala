@@ -233,7 +233,7 @@ class CoordinateDescentTest {
     val mockEvaluationResults = mock(classOf[EvaluationResults])
 
     val evaluatorType = EvaluatorType.AUC
-    val evaluation = 1D
+    val evaluation = (1D, None)
     val evaluations = Map(evaluatorType -> evaluation)
 
     doReturn(mockValidationScores).when(mockModel).scoreForCoordinateDescent(mockValidationData)

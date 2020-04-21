@@ -397,10 +397,15 @@ object IOUtils {
             .format("com.databricks.spark.avro")
             .save(evalOutputDir.toString)
         }
-        case (evaluatorType, (_, None)) =>
-          logger.debug(s"No per-group evaluation of ${evaluatorType.name}.")
+
+        // No per-group evaluation result be saved to HDFS.
+        case (_, (_, None)) =>
+
+        // Incorrect format of evaluation results.
         case _ => throw new IllegalArgumentException("Unknown format of evaluation result.")
       }
+
+      // No evaluation result to be saved to HDFS.
       case _ => logger.debug(s"No evaluation result to be saved to HDFS.")
     }
   }

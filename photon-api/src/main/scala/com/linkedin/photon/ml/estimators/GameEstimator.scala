@@ -141,7 +141,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
     "use warm start",
     "Whether to train the current model with coefficients initialized by the previous model.")
 
-
   val savePerGroupEvaluationResult: Param[Boolean] = ParamUtils.createParam[Boolean](
     "save per-group evaluation result",
     "Flag to enable save per-group evaluation result."
