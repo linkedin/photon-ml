@@ -50,3 +50,5 @@ configurations {
 artifacts {
   testOutput testsJar
 }
+
+apply from: rootProject.file('release-bintray.gradle')
