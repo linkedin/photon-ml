@@ -47,7 +47,7 @@ ext {
   bintrayName = 'photon-ml'
   bintrayOrg = 'linkedin'
 
-  publishedGroupId = 'com.linkedin.photon.ml'
+  publishedGroupId = 'com.linkedin.li-photon-ml'
   libraryName = 'photon-ml'
   artifact = POM_ARTIFACT_ID
   packagingType = POM_PACKAGING
@@ -56,7 +56,7 @@ ext {
   siteUrl = 'https://github.com/linkedin/photon-ml'
   gitUrl = 'https://github.com/linkedin/photon-ml.git'
 
-  libraryVersion = '19.0.0'
+  libraryVersion = '19.0.1'
 
   licenseName = 'Apache-2.0'
   licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0'
