@@ -80,7 +80,7 @@ bintray {
   user = properties.getProperty("bintray.user")
   key = properties.getProperty("bintray.apikey")
 
-  override = true // override existing versions
+  override = false // override existing versions
   configurations = ['archives']
   pkg {
     repo = bintrayRepo
