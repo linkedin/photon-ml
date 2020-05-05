@@ -22,10 +22,12 @@ import scala.util.Try
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileContext, Options, Path}
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.joda.time.{DateTimeZone, Days}
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.evaluation.{EvaluationResults, MultiEvaluatorType}
 import com.linkedin.photon.ml.index.IndexMapLoader
 import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
@@ -364,5 +366,47 @@ object IOUtils {
       }
 
     builder.mkString
+  }
+
+  /**
+   * Save GAME per-group evaluation in terms of (random effect id, evaluation value) to HDFS.
+   *
+   * @param sparkSession The Spark session
+   * @param outputDir The directory in HDFS where to save the evaluation
+   * @param evaluationResultsOpt An Option of evaluation results
+   * @param logger The logger instance for the application
+   */
+  def saveGameEvaluationToHDFS(
+    sparkSession: SparkSession,
+    outputDir: Path,
+    evaluationResultsOpt: Option[EvaluationResults],
+    logger: PhotonLogger): Unit = {
+
+    evaluationResultsOpt match {
+      case Some(evaluationResults) => evaluationResults.evaluations.foreach {
+        case (evaluatorType, (_, Some(groupEval))) => {
+          val evaluatorName = evaluatorType.name.split(MultiEvaluatorType.shardedEvaluatorIdNameSplitter)
+          logger.debug(s"Save per-group evaluation of ${evaluatorName(0)} on ${evaluatorName(1)}")
+          val evalOutputDir = new Path(new Path(outputDir, evaluatorName(0)), evaluatorName(1))
+          sparkSession
+            .createDataFrame(groupEval)
+            .toDF(evaluatorName(1), evaluatorName(0))
+            .coalesce(1)
+            .write
+            .mode(SaveMode.Overwrite)
+            .format("com.databricks.spark.avro")
+            .save(evalOutputDir.toString)
+        }
+
+        // No per-group evaluation result be saved to HDFS.
+        case (_, (_, None)) =>
+
+        // Incorrect format of evaluation results.
+        case _ => throw new IllegalArgumentException("Unknown format of evaluation result.")
+      }
+
+      // No evaluation result to be saved to HDFS.
+      case _ => logger.debug(s"No evaluation result to be saved to HDFS.")
+    }
   }
 }

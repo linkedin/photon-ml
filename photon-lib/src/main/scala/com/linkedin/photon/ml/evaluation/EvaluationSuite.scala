@@ -30,11 +30,13 @@ import com.linkedin.photon.ml.spark.RDDLike
  *                         for model selection)
  * @param labelAndOffsetAndWeights A [[RDD]] of (unique ID, (label, offset, weight) tuple), which is joined with a
  *                                 [[RDD]] of scores to compute validation metrics
+ * @param savePerGroupEvaluation Whether to save per group evaluation in a separate output file
  */
 class EvaluationSuite(
     val evaluators: Set[Evaluator],
     val primaryEvaluator: Evaluator,
-    labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))])
+    labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))],
+    savePerGroupEvaluation: Boolean = false)
   extends RDDLike {
 
   checkInvariants()
@@ -68,10 +70,14 @@ class EvaluationSuite(
     val evaluations = evaluators
       .map {
         case evaluator: SingleEvaluator =>
-          (evaluator.evaluatorType, evaluator.evaluate(scoresAndLabelsAndWeights.values))
+          (evaluator.evaluatorType, (evaluator.evaluate(scoresAndLabelsAndWeights.values), None))
 
         case multiEvaluator: MultiEvaluator =>
-          (multiEvaluator.evaluatorType, multiEvaluator.evaluate(scoresAndLabelsAndWeights))
+          if (savePerGroupEvaluation) {
+            (multiEvaluator.evaluatorType, multiEvaluator.evaluatePerGroup(scoresAndLabelsAndWeights))
+          } else {
+            (multiEvaluator.evaluatorType, (multiEvaluator.evaluate(scoresAndLabelsAndWeights), None))
+          }
 
         case otherEvaluator =>
           throw new IllegalArgumentException(s"Cannot process Evaluator of type '${otherEvaluator.getClass}'")
@@ -159,11 +165,13 @@ object EvaluationSuite {
    *
    * @param evaluators Ordered set of [[Evaluator]] objects
    * @param labelAndOffsetAndWeights [[RDD]] of samples: their unique ID, label, offset, and weight
+   * @param savePerGroupEvaluation Whether to save per group evaluation in a separate output file
    * @return A new [[EvaluationSuite]]
    */
   def apply(
       evaluators: Seq[Evaluator],
-      labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))]): EvaluationSuite = {
+      labelAndOffsetAndWeights: RDD[(UniqueSampleId, (Double, Double, Double))],
+      savePerGroupEvaluation: Boolean = false): EvaluationSuite = {
 
     val numEvaluators = evaluators.size
     val numUniqueEvaluators = evaluators.map(_.getEvaluatorName).toSet.size
@@ -171,6 +179,6 @@ object EvaluationSuite {
     require(numEvaluators == numUniqueEvaluators, "Evaluators contain duplicates")
 
     // Use first Evaluator as the primary Evaluator
-    new EvaluationSuite(evaluators.toSet, evaluators.head, labelAndOffsetAndWeights)
+    new EvaluationSuite(evaluators.toSet, evaluators.head, labelAndOffsetAndWeights, savePerGroupEvaluation)
   }
 }

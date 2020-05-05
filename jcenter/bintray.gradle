@@ -43,6 +43,7 @@
  * */
 
 apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
 
 version = libraryVersion
 
@@ -103,6 +104,23 @@ bintray {
         passphrase = properties.getProperty("bintray.gpg.password")
         //Optional. The passphrase for GPG signing'
       }
+    }
+  }
+}
+
+publishToMavenLocal.dependsOn assemble
+publishToMavenLocal.dependsOn sourcesJar
+
+publishing {
+  repositories {
+    maven {
+      url "file://~/.m2/repository"
+    }
+  }
+  publications {
+    testing(MavenPublication) {
+      from components.java
+      artifact sourcesJar
     }
   }
 }

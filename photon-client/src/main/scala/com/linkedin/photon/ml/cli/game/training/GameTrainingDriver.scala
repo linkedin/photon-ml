@@ -19,7 +19,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.{Vector => SparkMLVector}
 import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml._
@@ -70,7 +70,9 @@ object GameTrainingDriver extends GameDriver {
   protected[training] val MODELS_DIR = "models"
   protected[training] val MODEL_SPEC_DIR = "model-spec"
   protected[training] val BEST_MODEL_DIR = "best"
+  protected[training] val GROUP_EVAL_DIR = "group-eval"
 
+  protected[training] var sparkSession: SparkSession = _
   protected[training] var sc: SparkContext = _
   protected[training] implicit var logger: PhotonLogger = _
 
@@ -175,6 +177,10 @@ object GameTrainingDriver extends GameDriver {
     "incremental training",
     "Flag to enable incremental training.")
 
+  val savePerGroupEvaluationResult: Param[Boolean] = ParamUtils.createParam[Boolean](
+    "save per-group evaluation result",
+    "Flag to save group evaluation result for random effect in a separate output file.")
+
   //
   // Initialize object
   //
@@ -221,6 +227,7 @@ object GameTrainingDriver extends GameDriver {
     setDefault(timeZone, Constants.DEFAULT_TIME_ZONE)
     setDefault(ignoreThresholdForNewModels, false)
     setDefault(incrementalTraining, false)
+    setDefault(savePerGroupEvaluationResult, false)
   }
 
   /**
@@ -470,6 +477,7 @@ object GameTrainingDriver extends GameDriver {
         .setIgnoreThresholdForNewModels(getOrDefault(ignoreThresholdForNewModels))
         .setUseWarmStart(true)
         .setIncrementalTraining(getOrDefault(incrementalTraining))
+        .setSavePerGroupEvaluationResult(getOrDefault(savePerGroupEvaluationResult))
 
       get(inputColumnNames).foreach(estimator.setInputColumnNames)
       modelOpt.foreach(estimator.setInitialModel)
@@ -498,6 +506,12 @@ object GameTrainingDriver extends GameDriver {
 
     Timed("Save models") {
       saveModelToHDFS(featureIndexMapLoaders, outputModels, bestModel)
+    }
+
+    if (getOrDefault(savePerGroupEvaluationResult)) {
+      Timed("Save per-group evaluation result") {
+        savePerGroupEvaluationToHDFS(outputModels)
+      }
     }
   }
 
@@ -857,6 +871,36 @@ object GameTrainingDriver extends GameDriver {
     }
 
   /**
+   * Write the per-group evaluation to HDFS.
+   *
+   * @param models All the models that were producing during training
+   */
+  private def savePerGroupEvaluationToHDFS(models: Seq[GameEstimator.GameResult]): Unit =
+
+    if (getOrDefault(outputMode) != ModelOutputMode.NONE) {
+
+      val hadoopConfiguration = sc.hadoopConfiguration
+      val rootOutputDir = getRequiredParam(rootOutputDirectory)
+      val allOutputDir = new Path(rootOutputDir, GROUP_EVAL_DIR)
+
+      // Write additional models to HDFS
+      models.foldLeft(0) {
+        case (modelIndex, (_, _, evaluationOpt)) =>
+
+          val evalOutputDir = new Path(allOutputDir, modelIndex.toString)
+
+          Utils.createHDFSDir(evalOutputDir, hadoopConfiguration)
+          IOUtils.saveGameEvaluationToHDFS(
+            sparkSession,
+            evalOutputDir,
+            evaluationOpt,
+            logger)
+
+          modelIndex + 1
+      }
+    }
+
+  /**
    * Entry point to the driver.
    *
    * @param args The command line arguments for the job
@@ -867,7 +911,8 @@ object GameTrainingDriver extends GameDriver {
     val params: ParamMap = ScoptGameTrainingParametersParser.parseFromCommandLine(args)
     params.toSeq.foreach(set)
 
-    sc = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true).sparkContext
+    sparkSession = SparkSessionConfiguration.asYarnClient(getOrDefault(applicationName), useKryo = true)
+    sc = sparkSession.sparkContext
     logger = new PhotonLogger(new Path(getRequiredParam(rootOutputDirectory), LOGS_FILE_NAME), sc)
     logger.setLogLevel(getOrDefault(logLevel))
 
