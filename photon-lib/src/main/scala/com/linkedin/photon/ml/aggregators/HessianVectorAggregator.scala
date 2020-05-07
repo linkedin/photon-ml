@@ -12,12 +12,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function.glm
+package com.linkedin.photon.ml.aggregators
 
 import breeze.linalg.{Vector, axpy}
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast, PhotonNonBroadcast}
 

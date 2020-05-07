@@ -16,8 +16,9 @@ package com.linkedin.photon.ml.function
 
 import breeze.linalg.{DenseMatrix, Vector}
 
+import com.linkedin.photon.ml.aggregators._
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.{HessianDiagonalAggregator, HessianMatrixAggregator, HessianVectorAggregator, PointwiseLossFunction, ValueAndGradientAggregator}
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
 import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.RegularizationType
