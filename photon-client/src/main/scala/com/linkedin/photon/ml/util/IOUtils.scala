@@ -391,7 +391,7 @@ object IOUtils {
           sparkSession
             .createDataFrame(groupEval)
             .toDF(evaluatorName(1), evaluatorName(0))
-            .coalesce(1)
+            .repartition(1)
             .write
             .mode(SaveMode.Overwrite)
             .format("com.databricks.spark.avro")
