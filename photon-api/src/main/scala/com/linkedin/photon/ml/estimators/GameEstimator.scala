@@ -595,7 +595,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
             None
           }
 
-          val randomEffectDataset = if(initialModelOpt.isDefined) {
+          val randomEffectDataset = if(initialModelOpt.isDefined && getOrDefault(incrementalTraining)) {
             val reModels = initialModelOpt.get.getModel(coordinateId).map {
               case reModel: RandomEffectModel =>
                 reModel
