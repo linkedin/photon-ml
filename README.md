@@ -88,6 +88,10 @@ Load existing models and use their coefficients as a starting point for optimiza
 #### Partial re-training
 Load existing models, but lock their coefficients. Allows efficient re-training of portions of a GAME model.
 
+#### Incremental Learning
+Load existing models, use their coefficients and variances to construct an informative prior to train models incrementally.
+Incremental trained models have comparable performance as the model using both the previous data and current data.
+
 ## Experimental Features
 Photon ML currently contains a number of experimental features that have not been fully tested.
 
@@ -98,9 +102,6 @@ In addition to the Generalized Linear Models described above, Photon-ML also sup
 Automatically explore the hyperparameter space for your GAME model. Two types of search exist:
 - Random search: Use Sobol sequences to randomly, but evenly, explore the hyperparameter space
 - Bayesian search: Use a Gaussian process to perform a directed search throughout the hyperparameter space
-
-#### Regularize by Previous Model During Warm-Start Training
-Use the means and variances of an existing model to help approximate good coefficients when doing warm-start training. Allows multiple rounds of warm-start training on small datasets to achieve parity with cold-start training on a single large dataset.
 
 ## How to Build
 **Note**: Before building, please make sure environment variable ```JAVA_HOME``` is pointed at a Java 8 JDK property. Photon ML is not compatible with JDK < 1.8.
