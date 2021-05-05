@@ -14,11 +14,17 @@
  */
 package com.linkedin.photon.ml.data.avro
 
+import scala.collection.JavaConverters._
+
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
+import com.linkedin.photon.avro.generated.ScoringResultAvro
 import com.linkedin.photon.ml.cli.game.scoring.ScoredItem
+import com.linkedin.photon.ml.data.InputColumnsNames
 import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
 
 /**
@@ -26,27 +32,29 @@ import com.linkedin.photon.ml.test.{SparkTestUtils, TestTemplateWithTmpDir}
  */
 class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWithTmpDir {
 
+  import ScoreProcessingUtilsIntegTest._
+
   private val completeScoreItems = Array(
     ScoredItem(
       predictionScore = 1.0,
       label = Some(1.0),
       weight = Some(1.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "1"), ("id2", "2"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "1"), ("id2", "2"))),
     ScoredItem(
       predictionScore = 0.0,
       label = Some(0.0),
       weight = Some(2.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "3"), ("id2", "4"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "3"), ("id2", "4"))),
     ScoredItem(
       predictionScore = 0.5,
       label = Some(0.5),
       weight = Some(-1.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "5"), ("id2", "6"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "5"), ("id2", "6"))),
     ScoredItem(
       predictionScore = -1.0,
       label = Some(-0.5),
       weight = Some(0.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "7"), ("id2", "8")))
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "7"), ("id2", "8")))
   )
 
   private val scoredItemsWithoutUid = Array(
@@ -61,22 +69,22 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       predictionScore = 1.0,
       label = None,
       weight = Some(1.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "1"), ("id2", "2"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "1"), ("id2", "2"))),
     ScoredItem(
       predictionScore = 0.0,
       label = None,
       weight = Some(2.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "3"), ("id2", "4"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "3"), ("id2", "4"))),
     ScoredItem(
       predictionScore = 0.5,
       label = None,
       weight = Some(-1.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "5"), ("id2", "6"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "5"), ("id2", "6"))),
     ScoredItem(
       predictionScore = -1.0,
       label = None,
       weight = Some(0.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "7"), ("id2", "8")))
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "7"), ("id2", "8")))
   )
 
   private val scoredItemsWithoutWeight = Array(
@@ -84,22 +92,22 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       predictionScore = 1.0,
       label = Some(1.0),
       weight = None,
-      idTagToValueMap = Map((AvroFieldNames.UID, "1"), ("id2", "2"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "1"), ("id2", "2"))),
     ScoredItem(
       predictionScore = 0.0,
       label = Some(0.0),
       weight = None,
-      idTagToValueMap = Map((AvroFieldNames.UID, "3"), ("id2", "4"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "3"), ("id2", "4"))),
     ScoredItem(
       predictionScore = 0.5,
       label = Some(0.5),
       weight = None,
-      idTagToValueMap = Map((AvroFieldNames.UID, "5"), ("id2", "6"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "5"), ("id2", "6"))),
     ScoredItem(
       predictionScore = -1.0,
       label = Some(-0.5),
       weight = None,
-      idTagToValueMap = Map((AvroFieldNames.UID, "7"), ("id2", "8")))
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "7"), ("id2", "8")))
   )
 
   private val scoredItemsWithoutIds = Array(
@@ -121,12 +129,12 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       predictionScore = 1.0,
       label = None,
       weight = Some(1.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "1"), ("id2", "2"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "1"), ("id2", "2"))),
     ScoredItem(
       predictionScore = 0.0,
       label = Some(0.0),
       weight = None,
-      idTagToValueMap = Map((AvroFieldNames.UID, "3"), ("id2", "4"))),
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "3"), ("id2", "4"))),
     ScoredItem(
       predictionScore = 0.5,
       label = Some(0.5),
@@ -136,7 +144,7 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       predictionScore = -1.0,
       label = Some(-0.5),
       weight = Some(0.0),
-      idTagToValueMap = Map((AvroFieldNames.UID, "7"), ("id2", "8")))
+      idTagToValueMap = Map((InputColumnsNames.UID.toString, "7"), ("id2", "8")))
   )
 
   @DataProvider
@@ -157,8 +165,8 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
     sparkTest("testLoadAndSaveScoredItems") {
       val scoredItemsAsRDD = sc.parallelize(scoredItems, 1)
       val dir = new Path(getTmpDir, "scores").toString
-      ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsAsRDD, dir, Some(modelId))
-      val loadedModelIdWithScoredItemAsRDD = ScoreProcessingUtils.loadScoredItemsFromHDFS(dir, sc)
+      ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsAsRDD, dir, Some(modelId), InputColumnsNames())
+      val loadedModelIdWithScoredItemAsRDD = loadScoredItemsFromHDFS(dir, sc)
       val loadedModelIds = loadedModelIdWithScoredItemAsRDD.map(_._1)
 
       // Same model Id
@@ -170,8 +178,40 @@ class ScoreProcessingUtilsIntegTest extends SparkTestUtils with TestTemplateWith
       assertEquals(loadedScoredItem.deep, scoredItems.deep)
 
       // Same unique ids
-      val loadedUids = loadedScoredItem.map(_.idTagToValueMap.get(AvroFieldNames.UID))
-      val uids = scoredItems.map(_.idTagToValueMap.get(AvroFieldNames.UID))
+      val loadedUids = loadedScoredItem.map(_.idTagToValueMap.get(InputColumnsNames.UID.toString.toString))
+      val uids = scoredItems.map(_.idTagToValueMap.get(InputColumnsNames.UID.toString.toString))
       assertEquals(loadedUids.deep, uids.deep)
     }
+}
+
+object ScoreProcessingUtilsIntegTest {
+
+  /**
+   * Load the scored items of type [[ScoredItem]] from the given input directory on HDFS.
+   *
+   * @param inputDir The given input directory
+   * @param sparkContext The Spark context
+   * @return An [[RDD]] of model ids of type [[String] and scored items of type [[ScoredItem]]
+   */
+  protected[ml] def loadScoredItemsFromHDFS(inputDir: String, sparkContext: SparkContext): RDD[(String, ScoredItem)] = {
+
+    val scoreAvros = AvroUtils.readAvroFilesInDir[ScoringResultAvro](
+      sparkContext,
+      inputDir,
+      minNumPartitions = sparkContext.defaultParallelism)
+
+    scoreAvros.map { scoreAvro =>
+      val score = scoreAvro.getPredictionScore
+      val uid = Option(scoreAvro.getUid).map(_.toString)
+      val label = Option(scoreAvro.getLabel).map(_.toDouble)
+      val weight = Option(scoreAvro.getWeight).map(_.toDouble)
+      val ids = scoreAvro.getMetadataMap.asScala.map { case (k, v) => (k.toString, v.toString) }.toMap
+      val idsWithUid = uid match {
+        case Some(id) => ids + (InputColumnsNames.UID.toString.toString -> id)
+        case _ => ids
+      }
+      val modelId = scoreAvro.getModelId.toString
+      (modelId, ScoredItem(score, label, weight, idsWithUid))
+    }
+  }
 }

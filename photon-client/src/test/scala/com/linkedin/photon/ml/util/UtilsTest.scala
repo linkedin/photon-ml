@@ -84,19 +84,6 @@ class UtilsTest extends TestTemplateWithTmpDir {
   }
 
   /**
-   * Test that a unique feature key can be correctly extracted from a [[GenericRecord]].
-   */
-  @Test
-  def testGetFeatureKeyFromRecord(): Unit = {
-    val record = new TestRecordBuilder()
-      .setStringValue("name_value", "term_value")
-      .build()
-
-    assertEquals(Utils.getFeatureKey(record, "stringField", "utf8StringField", "\t"), "name_value\tterm_value")
-    assertEquals(Utils.getFeatureKey(record, "stringField", "utf8StringField", " "), "name_value term_value")
-  }
-
-  /**
    * Test that a unique feature key can be decomposed into the underlying (name, term) pair.
    */
   @Test

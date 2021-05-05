@@ -25,7 +25,7 @@ import org.apache.hadoop.fs.Path
 
 import com.linkedin.photon.ml.Constants
 import com.linkedin.photon.ml.evaluation.EvaluatorType._
-import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, EvaluatorType}
+import com.linkedin.photon.ml.evaluation.{EvaluatorType, MultiAUC, MultiPrecisionAtK}
 
 // TODO: Better documentation.
 
@@ -35,24 +35,12 @@ import com.linkedin.photon.ml.evaluation.{MultiAUC, MultiPrecisionAtK, Evaluator
 object Utils {
 
   /**
-   * Get the feature key from an Avro generic record as key = name + delimiter + term.
-   *
-   * @param record The Avro generic record
-   * @param delimiter The delimiter used to combine/separate name and term.
-   * @return The feature name
-   */
-  def getFeatureKey(record: GenericRecord, nameKey: String, termKey: String, delimiter: String): String = {
-    val name = getStringAvro(record, nameKey)
-    val term = getStringAvro(record, termKey, isNullOK = true)
-    getFeatureKey(name, term, delimiter)
-  }
-
-  /**
    * Get the feature key as a concatenation of name and term delimited by
    * [[com.linkedin.photon.ml.Constants.DELIMITER]].
    *
    * @param name Feature name
    * @param term Feature term
+   * @param delimiter Delimiter to use between name and term
    * @return Feature key
    */
   def getFeatureKey(name: CharSequence, term: CharSequence, delimiter: String = Constants.DELIMITER): String =
@@ -269,35 +257,6 @@ object Utils {
   def createHDFSDir(dir: Path, hadoopConf: Configuration): Unit = {
     val fs = dir.getFileSystem(hadoopConf)
     if (!fs.exists(dir)) fs.mkdirs(dir)
-  }
-
-  /**
-   * This is a slight modification of the default getOrElse method provided by scala.
-   *
-   * The method looks up the key in the given map from [[String]] to [[Any]]. If it finds something of the provided
-   * generic type [[T]], returns it. Otherwise, depending on the contents of the input [[Either]], an exception is
-   * thrown or a default value is returned.
-   *
-   * @param map Input map to look up
-   * @param key The key to be looked up in the provided map
-   * @param elseBranch If one wants to fail on not finding a value of type [[T]] in the map, an
-   *                   [[IllegalArgumentException]] will be thrown with the error message provided. If one wants to
-   *                   continue without failure, a default value is expected that will be returned
-   * @tparam T Intended return type of the method
-   * @throws java.lang.IllegalArgumentException Exception thrown if a value of type [[T]] isn't found in the map and
-   *                                            the error message is non-empty
-   * @return A value of type [[T]] or throw an [[IllegalArgumentException]]
-   */
-  @throws(classOf[IllegalArgumentException])
-  def getKeyFromMapOrElse[T](map: Map[String, Any], key: String, elseBranch: Either[String, T]): T = {
-    map.get(key) match {
-      case Some(x: T) => x  // type erasure warning here
-      case _ =>
-        elseBranch match {
-          case Left(errorMsg) => throw new IllegalArgumentException(errorMsg)
-          case Right(defaultValue) => defaultValue
-        }
-    }
   }
 
   /**

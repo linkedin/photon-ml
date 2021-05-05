@@ -251,7 +251,11 @@ object GameScoringDriver extends GameDriver {
     }
     val scoresDir = new Path(getRequiredParam(rootOutputDirectory), SCORES_DIR)
 
-    ScoreProcessingUtils.saveScoredItemsToHDFS(scoredItemsToBeSaved, scoresDir.toString, get(modelId))
+    ScoreProcessingUtils.saveScoredItemsToHDFS(
+      scoredItemsToBeSaved,
+      scoresDir.toString,
+      get(modelId),
+      getOrDefault(inputColumnNames))
     scoredItems.unpersist()
   }
 

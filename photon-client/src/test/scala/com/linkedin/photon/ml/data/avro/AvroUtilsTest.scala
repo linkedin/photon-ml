@@ -14,7 +14,7 @@
  */
 package com.linkedin.photon.ml.data.avro
 
-import breeze.linalg.{DenseVector, SparseVector, Vector}
+import breeze.linalg.{DenseVector, SparseVector}
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -41,12 +41,13 @@ class AvroUtilsTest {
     val denseVector = new DenseVector[Double](data = Array(0.0, 1.0, 2.0, 3.0))
     val denseCoefficients = Coefficients(denseVector)
     val modelId = "modelId"
-    val indexMap = new DefaultIndexMap(Map(
-      Utils.getFeatureKey("0", "0") -> 0,
-      Utils.getFeatureKey("1", "1") -> 1,
-      Utils.getFeatureKey("2", "2") -> 2,
-      Utils.getFeatureKey("3", "3") -> 3
-    ).toMap)
+    val indexMap = new DefaultIndexMap(
+      Map(
+        Utils.getFeatureKey("0", "0") -> 0,
+        Utils.getFeatureKey("1", "1") -> 1,
+        Utils.getFeatureKey("2", "2") -> 2,
+        Utils.getFeatureKey("3", "3") -> 3)
+        .toMap)
 
     val sparseGlm: GeneralizedLinearModel = new LogisticRegressionModel(sparseCoefficients)
 
@@ -67,26 +68,5 @@ class AvroUtilsTest {
     val recoveredDenseGlm = AvroUtils.convertBayesianLinearModelAvroToGLM(denseCoefficientsAvro, indexMap)
 
     assertEquals(denseCoefficients, recoveredDenseGlm.coefficients)
-  }
-
-  // Test both the convertLatentFactorAsLatentFactorAvro and readLatentFactorFromLatentFactorAvro functions
-  @Test
-  def testLatentFactorAndLatentFactorAvroRecordConversion(): Unit = {
-    // Meta data
-    val effectId = "effectId"
-
-    // Case 1: latentFactor of length 0
-    val emptyLatentFactor = Vector.fill[Double](size = 0)(0)
-    val emptyLatentFactorAvro = AvroUtils.convertLatentFactorToLatentFactorAvro(effectId, emptyLatentFactor)
-    val recoveredEmptyLatentFactor = AvroUtils.convertLatentFactorAvroToLatentFactor(emptyLatentFactorAvro)
-    assertEquals(recoveredEmptyLatentFactor._1, effectId)
-    assertEquals(recoveredEmptyLatentFactor._2, emptyLatentFactor)
-
-    // Case 2: latentFactor of length > 0
-    val latentFactor = Vector.tabulate[Double](size = 10)(i => i)
-    val latentFactorAvro = AvroUtils.convertLatentFactorToLatentFactorAvro(effectId, latentFactor)
-    val recoveredLatentFactor = AvroUtils.convertLatentFactorAvroToLatentFactor(latentFactorAvro)
-    assertEquals(recoveredLatentFactor._1, effectId)
-    assertEquals(recoveredLatentFactor._2, latentFactor)
   }
 }

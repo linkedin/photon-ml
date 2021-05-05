@@ -233,7 +233,7 @@ object FeatureIndexingDriver extends PhotonParams with Logging {
           }
           .reduce(_ ++ _)
           .map { record =>
-            Utils.getFeatureKey(record, AvroFieldNames.NAME, AvroFieldNames.TERM, Constants.DELIMITER)
+            AvroUtils.readNameAndTermFromGenericRecord(record).getFeatureKey()
           }
       }.mapPartitions { iter =>
         // Step 2: Map features to (feature hash code, feature name)

@@ -10,7 +10,7 @@
         },
         {
             "name": "term",
-            "type": "string"
+            "type": ["null", "string"]
         },
         {
             "name": "value",

@@ -246,7 +246,7 @@ class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_D
 object AvroDataReader {
 
   // Avro to sql primitive type map
-  private val primitiveTypeMap = Map(
+  private val PRIMITIVE_TYPE_MAP = Map(
     INT -> IntegerType,
     LONG -> LongType,
     FLOAT -> FloatType,
@@ -289,13 +289,19 @@ object AvroDataReader {
       }
       .map {
         case record: GenericRecord =>
-          val nameAndTerm = AvroUtils.readNameAndTermFromGenericRecord(record)
-          val featureKey = Utils.getFeatureKey(nameAndTerm.name, nameAndTerm.term)
+          val nameTermValueAvro = AvroUtils.readNameTermValueAvroFromGenericRecord(record)
+          val name = nameTermValueAvro.getName
+          val term = nameTermValueAvro.getTerm match {
+            case cs: CharSequence => cs
+            case _ => ""
+          }
+          val featureKey = Utils.getFeatureKey(name, term)
 
-          featureKey -> Utils.getDoubleAvro(record, TrainingExampleFieldNames.VALUE)
+          featureKey -> nameTermValueAvro.getValue.toDouble
 
         case other => throw new IllegalArgumentException(s"$other in features list is not a GenericRecord")
-      }.toArray
+      }
+      .toArray
   }
 
   /**
@@ -386,7 +392,7 @@ object AvroDataReader {
   protected[data] def avroTypeToSql(name: String, avroSchema: Schema): Option[StructField] =
     avroSchema.getType match {
       case avroType @ (INT | LONG | FLOAT | DOUBLE | STRING | BOOLEAN) =>
-        Some(StructField(name, primitiveTypeMap(avroType), nullable = false))
+        Some(StructField(name, PRIMITIVE_TYPE_MAP(avroType), nullable = false))
 
       case MAP =>
         avroTypeToSql(name, avroSchema.getValueType).map { valueSchema =>
@@ -409,13 +415,13 @@ object AvroDataReader {
         } else avroSchema.getTypes.asScala.map(_.getType) match {
 
           case numericTypes if allNumericTypes(numericTypes) =>
-            Some(StructField(name, primitiveTypeMap(getDominantNumericType(numericTypes)), nullable = false))
+            Some(StructField(name, PRIMITIVE_TYPE_MAP(getDominantNumericType(numericTypes)), nullable = false))
 
           // When there are cases of multiple non-null types, resolve to a single sql type
           case types: Seq[Schema.Type] =>
             // If String is in the union, choose String
             if (types.contains(STRING)) {
-              Some(StructField(name, primitiveTypeMap(STRING), nullable = false))
+              Some(StructField(name, PRIMITIVE_TYPE_MAP(STRING), nullable = false))
 
             // Otherwise, choose first type in list
             } else {

@@ -14,7 +14,8 @@
  */
 package com.linkedin.photon.ml.data.avro
 
-import com.linkedin.photon.ml.util.Summarizable
+import com.linkedin.photon.ml.Constants
+import com.linkedin.photon.ml.util.{Summarizable, Utils}
 
 /**
  * A compact way to represent the feature key as (name, term) pair.
@@ -23,6 +24,15 @@ import com.linkedin.photon.ml.util.Summarizable
  *       after Avro related classes/functions are decoupled from the rest of code
  */
 protected[ml] case class NameAndTerm(name: String, term: String) extends Summarizable {
+
+  /**
+   * Get the feature key as a concatenation of name and term delimited by
+   * [[com.linkedin.photon.ml.Constants.DELIMITER]].
+   *
+   * @param delimiter Delimiter to use between name and term
+   * @return Feature key
+   */
+  def getFeatureKey(delimiter: String = Constants.DELIMITER): String = Utils.getFeatureKey(name, term, delimiter)
 
   /**
    * Build a human-readable summary for the [[NameAndTerm]].
