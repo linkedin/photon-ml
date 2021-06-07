@@ -29,7 +29,6 @@ import com.linkedin.photon.ml.data.scoring.CoordinateDataScores
 import com.linkedin.photon.ml.model.RandomEffectModel
 import com.linkedin.photon.ml.projector.LinearSubspaceProjector
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
-import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.util.VectorUtils
 
 /**
@@ -287,27 +286,24 @@ object RandomEffectDataset {
       randomEffectDataConfiguration,
       randomEffectPartitioner)
     val projectedGroupedActiveData = generateProjectedActiveData(unfilteredActiveData, unfilteredProjectors)
-    val projectedUnfilteredActiveData = featureSelectionOnActiveData(
-      projectedGroupedActiveData,
-      randomEffectDataConfiguration.numFeaturesToSamplesRatioUpperBound)
 
     val (activeData, passiveData, uniqueIdToRandomEffectIds, projectors) =
       randomEffectDataConfiguration.numActiveDataPointsLowerBound match {
 
         case Some(activeDataLowerBound) =>
 
-          projectedUnfilteredActiveData.persist(StorageLevel.MEMORY_ONLY_SER)
+          projectedGroupedActiveData.persist(StorageLevel.MEMORY_ONLY_SER)
 
           // Filter entities which do not meet active data lower bound threshold
           val filteredActiveData = filterActiveData(
-            projectedUnfilteredActiveData,
+            projectedGroupedActiveData,
             activeDataLowerBound,
             existingModelKeysRddOpt)
           filteredActiveData.persist(storageLevel).count
 
           val passiveData = generatePassiveData(
             keyedGameDataset,
-            generateIdMap(projectedUnfilteredActiveData, uniqueIdPartitioner))
+            generateIdMap(projectedGroupedActiveData, uniqueIdPartitioner))
           passiveData.persist(storageLevel).count
 
           val uniqueIdToRandomEffectIds = generateIdMap(filteredActiveData, uniqueIdPartitioner)
@@ -316,22 +312,22 @@ object RandomEffectDataset {
           val filteredProjectors = filterProjectors(unfilteredProjectors, filteredActiveData)
           filteredProjectors.persist(storageLevel).count
 
-          projectedUnfilteredActiveData.unpersist()
+          projectedGroupedActiveData.unpersist()
           unfilteredProjectors.unpersist()
 
           (filteredActiveData, passiveData, uniqueIdToRandomEffectIds, filteredProjectors)
 
         case None =>
 
-          projectedUnfilteredActiveData.persist(storageLevel).count
+          projectedGroupedActiveData.persist(storageLevel).count
 
-          val uniqueIdToRandomEffectIds = generateIdMap(projectedUnfilteredActiveData, uniqueIdPartitioner)
+          val uniqueIdToRandomEffectIds = generateIdMap(projectedGroupedActiveData, uniqueIdPartitioner)
           uniqueIdToRandomEffectIds.persist(storageLevel).count
 
           val passiveData = generatePassiveData(keyedGameDataset, uniqueIdToRandomEffectIds)
           passiveData.persist(storageLevel).count
 
-          (projectedUnfilteredActiveData, passiveData, uniqueIdToRandomEffectIds, unfilteredProjectors)
+          (projectedGroupedActiveData, passiveData, uniqueIdToRandomEffectIds, unfilteredProjectors)
     }
 
     //
@@ -521,7 +517,7 @@ object RandomEffectDataset {
         val weightMultiplierOpt = if (count > sampleCap) Some(1D * count / sampleCap) else None
 
         data.map { case ComparableLabeledPointWithId(_, uniqueId, LabeledPoint(label, features, offset, weight)) =>
-          (uniqueId, LabeledPoint(label, features, offset, weightMultiplierOpt.map(_ * weight).getOrElse(weight)))
+          (uniqueId, LabeledPoint(label, features, offset, weightMultiplierOpt.fold(weight)(_ * weight)))
         }
       }
   }
@@ -548,32 +544,6 @@ object RandomEffectDataset {
 
         LocalDataset(projectedData.toArray, isSortedByFirstIndex = false)
       }
-
-  /**
-   * Reduce active data feature dimension for entities with few samples. The maximum feature dimension is limited to
-   * the number of samples multiplied by the feature dimension ratio. Features are chosen by greatest Pearson
-   * correlation score.
-   *
-   * @param activeData An [[RDD]] of data grouped by entity ID
-   * @param numFeaturesToSamplesRatioUpperBoundOpt Optional ratio of samples to feature dimension
-   * @return The input data with feature dimension reduced for entities whose feature dimension greatly exceeded the
-   *         number of available samples
-   */
-  private def featureSelectionOnActiveData(
-    activeData: RDD[(REId, LocalDataset)],
-    numFeaturesToSamplesRatioUpperBoundOpt: Option[Double]): RDD[(REId, LocalDataset)] =
-    numFeaturesToSamplesRatioUpperBoundOpt
-      .map { numFeaturesToSamplesRatioUpperBound =>
-        activeData.mapValues { localDataset =>
-
-          var numFeaturesToKeep = math.ceil(numFeaturesToSamplesRatioUpperBound * localDataset.numDataPoints).toInt
-          // In case the above product overflows
-          if (numFeaturesToKeep < 0) numFeaturesToKeep = Int.MaxValue
-
-          localDataset.filterFeaturesByPearsonCorrelationScore(numFeaturesToKeep)
-        }
-      }
-      .getOrElse(activeData)
 
   /**
    * Filter out entities with less data than a given threshold.
@@ -644,7 +614,7 @@ object RandomEffectDataset {
    *
    * @param unfilteredProjectors The unfiltered projectors
    * @param filteredActiveData The filtered active data
-   * @return [[unfilteredProjectors]] with all projectors for entities not in [[filteredActiveData]] removed
+   * @return A [[RDD]] of projectors, but only for entities in the filtered active data
    */
   protected[data] def filterProjectors(
       unfilteredProjectors: RDD[(REId, LinearSubspaceProjector)],
