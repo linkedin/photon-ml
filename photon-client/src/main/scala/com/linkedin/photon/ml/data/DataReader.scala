@@ -38,66 +38,73 @@ abstract class DataReader(
     defaultFeatureColumn -> FeatureShardConfiguration(Set(defaultFeatureColumn), defaultIntercept))
 
   /**
-   * Reads the file at the given path into a DataFrame, assuming the default feature vector.
+   * Reads the file at the given path into a [[DataFrame]], assuming the default feature vector.
    *
    * @param path The path to the file or folder
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(path: String, numPartitions: Int): (DataFrame, IndexMapLoader) = read(Seq(path), numPartitions)
+  def read(path: String, numPartitionsOpt: Option[Int]): (DataFrame, IndexMapLoader) = read(Seq(path), numPartitionsOpt)
 
   /**
    * Reads the file at the given path into a DataFrame, assuming the default feature vector.
    *
    * @param path The path to the file or folder
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @param intercept Whether to add a feature representing the intercept to the feature vector
    * @return The loaded and transformed DataFrame
    */
-  def read(path: String, numPartitions: Int, intercept: Boolean): (DataFrame, IndexMapLoader) =
-    read(Seq(path), numPartitions, intercept)
+  def read(path: String, numPartitionsOpt: Option[Int], intercept: Boolean): (DataFrame, IndexMapLoader) =
+    read(Seq(path), numPartitionsOpt, intercept)
 
   /**
    * Reads the file at the given path into a DataFrame, using the given index map for feature names.
    *
    * @param path The path to the file or folder
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(path: String, indexMapLoaders: Map[MergedColumnName, IndexMapLoader], numPartitions: Int): DataFrame =
-    read(Seq(path), indexMapLoaders, numPartitions)
+  def read(
+      path: String,
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      numPartitionsOpt: Option[Int]): DataFrame =
+    read(Seq(path), indexMapLoaders, numPartitionsOpt)
 
   /**
    * Reads the files at the given paths into a DataFrame, assuming the default feature vector.
    *
    * @param paths The paths to the files or folders
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(paths: Seq[String], numPartitions: Int): (DataFrame, IndexMapLoader) = {
+  def read(paths: Seq[String], numPartitionsOpt: Option[Int]): (DataFrame, IndexMapLoader) = {
 
-    val (data, indexMapLoaders) = readMerged(paths, defaultFeatureConfigMap, numPartitions)
+    val (data, indexMapLoaders) = readMerged(paths, defaultFeatureConfigMap, numPartitionsOpt)
 
     (data, indexMapLoaders(defaultFeatureColumn))
   }
@@ -106,19 +113,20 @@ abstract class DataReader(
    * Reads the files at the given paths into a DataFrame, assuming the default feature vector.
    *
    * @param paths The paths to the files or folders
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @param intercept Whether to add a feature representing the intercept to the feature vector
    * @return The loaded and transformed DataFrame
    */
-  def read(paths: Seq[String], numPartitions: Int, intercept: Boolean): (DataFrame, IndexMapLoader) = {
+  def read(paths: Seq[String], numPartitionsOpt: Option[Int], intercept: Boolean): (DataFrame, IndexMapLoader) = {
 
     val featureConfigMap = Map(defaultFeatureColumn -> FeatureShardConfiguration(Set(defaultFeatureColumn), intercept))
-    val (data, indexMapLoaders) = readMerged(paths, featureConfigMap, numPartitions)
+    val (data, indexMapLoaders) = readMerged(paths, featureConfigMap, numPartitionsOpt)
 
     (data, indexMapLoaders(defaultFeatureColumn))
   }
@@ -128,16 +136,20 @@ abstract class DataReader(
    *
    * @param paths The paths to the files or folders
    * @param indexMapLoaders A map of index map loaders, containing one loader for each merged feature column
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
-  def read(paths: Seq[String], indexMapLoaders: Map[MergedColumnName, IndexMapLoader], numPartitions: Int): DataFrame =
-    readMerged(paths, indexMapLoaders, defaultFeatureConfigMap, numPartitions)
+  def read(
+      paths: Seq[String],
+      indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
+      numPartitionsOpt: Option[Int]): DataFrame =
+    readMerged(paths, indexMapLoaders, defaultFeatureConfigMap, numPartitionsOpt)
 
   /**
    * Reads the file at the given path into a DataFrame, using the given index map for feature names. Merges source
@@ -156,20 +168,21 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       path: String,
       indexMapLoadersOpt: Option[Map[MergedColumnName, IndexMapLoader]],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
-    readMerged(Seq(path), indexMapLoadersOpt, featureColumnConfigsMap, numPartitions)
+      numPartitionsOpt: Option[Int]): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
+    readMerged(Seq(path), indexMapLoadersOpt, featureColumnConfigsMap, numPartitionsOpt)
 
   /**
    * Reads the file at the given path into a DataFrame, using the given index map for feature names. Merges source
@@ -188,25 +201,26 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       paths: Seq[String],
       indexMapLoadersOpt: Option[Map[MergedColumnName, IndexMapLoader]],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
+      numPartitionsOpt: Option[Int]): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
     indexMapLoadersOpt match {
       case Some(indexMapLoaders) =>
-        (readMerged(paths, indexMapLoaders, featureColumnConfigsMap, numPartitions), indexMapLoaders)
+        (readMerged(paths, indexMapLoaders, featureColumnConfigsMap, numPartitionsOpt), indexMapLoaders)
 
       case None =>
-        readMerged(paths, featureColumnConfigsMap, numPartitions)
+        readMerged(paths, featureColumnConfigsMap, numPartitionsOpt)
     }
 
   /**
@@ -224,19 +238,20 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       path: String,
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
-    readMerged(Seq(path), featureColumnConfigsMap, numPartitions)
+      numPartitionsOpt: Option[Int]): (DataFrame, Map[MergedColumnName, IndexMapLoader]) =
+    readMerged(Seq(path), featureColumnConfigsMap, numPartitionsOpt)
 
   /**
    * Reads the file at the given path into a DataFrame, using the given index map for feature names. Merges source
@@ -254,20 +269,21 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       path: String,
       indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): DataFrame =
-    readMerged(Seq(path), indexMapLoaders, featureColumnConfigsMap, numPartitions)
+      numPartitionsOpt: Option[Int]): DataFrame =
+    readMerged(Seq(path), indexMapLoaders, featureColumnConfigsMap, numPartitionsOpt)
 
   /**
    * Reads the files at the given paths into a DataFrame, generating a default index map for feature names. Merges
@@ -284,18 +300,19 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       paths: Seq[String],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader])
+      numPartitionsOpt: Option[Int]): (DataFrame, Map[MergedColumnName, IndexMapLoader])
 
   /**
    * Reads the files at the given paths into a DataFrame, using the given index map for feature names. Merges source
@@ -313,17 +330,18 @@ abstract class DataReader(
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   def readMerged(
       paths: Seq[String],
       indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): DataFrame
+      numPartitionsOpt: Option[Int]): DataFrame
 }

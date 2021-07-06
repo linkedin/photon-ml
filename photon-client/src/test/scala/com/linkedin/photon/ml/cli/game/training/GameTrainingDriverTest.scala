@@ -259,7 +259,6 @@ class GameTrainingDriverTest {
     GameTrainingDriver.clear()
 
     GameTrainingDriver.getOrDefault(GameTrainingDriver.inputColumnNames)
-    GameTrainingDriver.getOrDefault(GameTrainingDriver.minValidationPartitions)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.outputMode)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.overrideOutputDirectory)
     GameTrainingDriver.getOrDefault(GameTrainingDriver.normalization)

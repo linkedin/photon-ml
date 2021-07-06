@@ -120,28 +120,36 @@ object Utils {
    * Fetch the java map from an Avro map field.
    *
    * @param record The Avro generic record
-   * @param key The field key
+   * @param field The field key
    * @return A java map of String -> Object
    */
   def getMapAvro(
       record: GenericRecord,
-      key: String,
+      field: String,
       isNullOK: Boolean = false): Map[String, JObject] = {
 
-    type T = java.util.Map[Any, JObject] // to avoid type erasure warning
-    record.get(key) match {
-      case map: T => map.asScala.map {
-        case (k, value) => (k.toString, value match {
-          // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
-          // equivalence failures downstream.
-          case s@(_: Utf8 | _: JString) => s.toString
-          case x@(_: Number  | _: JBoolean) => x
-          case _ => null
-        })
-      }.filter(_._2 != null).toMap
+    val map = record.get(field).asInstanceOf[java.util.Map[Any, JObject]]
 
-      case obj: JObject => throw new IllegalArgumentException(s"$obj is not map type.")
-      case _ => if (isNullOK) null else throw new IllegalArgumentException(s"field $key is null")
+    if (map == null && isNullOK) {
+      null
+    } else if (map == null) {
+      throw new IllegalArgumentException(s"field '$field' is null")
+    } else {
+      map
+        .asScala
+        .flatMap { case (key, value) =>
+
+          val keyString = key.toString
+
+          value match {
+            // Need to convert Utf8 values to String here, because otherwise we get schema casting errors and misleading
+            // equivalence failures downstream.
+            case s@(_: Utf8 | _: JString) => Some((keyString, s.toString))
+            case x@(_: Number  | _: JBoolean) => Some((keyString, x))
+            case _ => None
+          }
+        }
+        .toMap
     }
   }
 
@@ -291,7 +299,7 @@ object Utils {
   @throws(classOf[IllegalArgumentException])
   def getKeyFromMapOrElse[T](map: Map[String, Any], key: String, elseBranch: Either[String, T]): T = {
     map.get(key) match {
-      case Some(x: T) => x  // type erasure warning here
+      case Some(x) => x.asInstanceOf[T]
       case _ =>
         elseBranch match {
           case Left(errorMsg) => throw new IllegalArgumentException(errorMsg)

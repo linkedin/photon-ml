@@ -33,7 +33,6 @@ import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.{FixedEffectDataConfiguration, GameConverters, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro._
-import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.evaluation.RMSEEvaluator
 import com.linkedin.photon.ml.io.{FeatureShardConfiguration, FixedEffectCoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
 import com.linkedin.photon.ml.normalization.NormalizationType
@@ -69,8 +68,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
   /**
    * Test GAME training with a fixed effect model only, and an intercept.
    *
-   * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default. This
-   *       happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
+   * @note Intercepts are optional in [[com.linkedin.photon.ml.estimators.GameEstimator]], but [[GameDriver]] will setup
+   *       an intercept by default. This happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
    */
   @Test
   def testFixedEffectsWithIntercept(): Unit = sparkTest("testFixedEffectsWithIntercept") {
@@ -105,8 +104,8 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
    * Test GAME training with a fixed effect model only, and an intercept, and no validation, and only the best model is
    * output.
    *
-   * @note Intercepts are optional in [[GameEstimator]], but [[GameDriver]] will setup an intercept by default. This
-   *       happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
+   * @note Intercepts are optional in [[com.linkedin.photon.ml.estimators.GameEstimator]], but [[GameDriver]] will setup
+   *       an intercept by default. This happens in [[GameDriver.prepareFeatureMapsDefault()]], and there only.
    */
   @Test
   def testFixedEffectsWithAdditionalOpts(): Unit = sparkTest("testFixedEffectsWithIntercept") {
@@ -331,9 +330,6 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
     runDriver(mixedEffectSeriousRunArgs.put(GameTrainingDriver.rootOutputDirectory, outputDir))
 
     val globalModelPath = bestModelPath(outputDir, AvroConstants.FIXED_EFFECT, "global")
-    val userModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-user")
-    val songModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-song")
-    val artistModelPath = bestModelPath(outputDir, AvroConstants.RANDOM_EFFECT, "per-artist")
     val fs = outputDir.getFileSystem(sc.hadoopConfiguration)
 
     assertTrue(fs.exists(globalModelPath))
@@ -593,7 +589,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       Seq(testPath.toString),
       indexMapLoadersOpt,
       featureShardConfigs,
-      numPartitions = 2)
+      None)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataset = GameConverters
@@ -644,7 +640,7 @@ class GameTrainingDriverIntegTest extends SparkTestUtils with GameTestUtils with
       Seq(testPath.toString),
       indexMapLoadersOpt,
       featureShardConfigs,
-      numPartitions = 2)
+      None)
     val partitioner = new LongHashPartitioner(testData.rdd.partitions.length)
 
     val gameDataset = GameConverters

@@ -70,6 +70,7 @@ class AvroDataWriter {
         val response = getValueAsDouble(r, responseColumn)
         val offset = if (hasOffset) getValueAsDouble(r, OFFSET) else DEFAULTS(OFFSET)
         val weight = if (hasWeight) getValueAsDouble(r, WEIGHT) else DEFAULTS(WEIGHT)
+
         rowBuilder
           .setResponse(response)
           .setOffset(offset)

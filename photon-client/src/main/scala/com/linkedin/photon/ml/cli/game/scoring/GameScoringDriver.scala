@@ -17,8 +17,8 @@ package com.linkedin.photon.ml.cli.game.scoring
 import org.apache.commons.cli.MissingArgumentException
 import org.apache.hadoop.fs.Path
 import org.apache.spark.SparkContext
-import org.apache.spark.ml.param.{Param, ParamMap, Params}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.ml.param.{Param, ParamMap, ParamValidators, Params}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml.{Constants, DataValidationType, SparkSessionConfiguration, TaskType}
@@ -52,6 +52,11 @@ object GameScoringDriver extends GameDriver {
   //
   // Parameters
   //
+
+  val scoringPartitions: Param[Int] = ParamUtils.createParam(
+    "scoring partitions",
+    "Number of partitions to use for the data being scored",
+    ParamValidators.gt[Int](0.0))
 
   val modelId: Param[String] = ParamUtils.createParam(
     "model id",
@@ -206,8 +211,6 @@ object GameScoringDriver extends GameDriver {
       featureShardIdToIndexMapLoaderMapOpt: Option[Map[FeatureShardId, IndexMapLoader]])
     : (DataFrame, Map[FeatureShardId, IndexMapLoader]) = {
 
-    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
-
     // Handle date range input
     val dateRangeOpt = IOUtils.resolveRange(get(inputDataDateRange), get(inputDataDaysRange), getOrDefault(timeZone))
     val recordsPaths = pathsForDateRange(getRequiredParam(inputDataDirectories), dateRangeOpt)
@@ -218,7 +221,7 @@ object GameScoringDriver extends GameDriver {
       recordsPaths.map(_.toString),
       featureShardIdToIndexMapLoaderMapOpt,
       getRequiredParam(featureShardConfigurations),
-      parallelism)
+      get(scoringPartitions))
   }
 
   /**
@@ -246,7 +249,7 @@ object GameScoringDriver extends GameDriver {
     }
 
     val scoredItemsToBeSaved = get(outputFilesLimit) match {
-      case Some(limit) if limit < scoredItems.partitions.length => scoredItems.coalesce(getOrDefault(outputFilesLimit))
+      case Some(limit) if limit < scoredItems.partitions.length => scoredItems.coalesce(limit)
       case _ => scoredItems
     }
     val scoresDir = new Path(getRequiredParam(rootOutputDirectory), SCORES_DIR)

@@ -52,6 +52,8 @@ class ModelDataScores(override val scoresRdd: RDD[(UniqueSampleId, ScoredGameDat
             case (Some(thisScore), Some(thatScore)) => op(thisScore, thatScore)
             case (Some(thisScore), None) => op(thisScore, thisScore.copy(score = MathConst.DEFAULT_SCORE))
             case (None, Some(thatScore)) => op(thatScore.copy(score = MathConst.DEFAULT_SCORE), thatScore)
+            // Only included so that Scala doesn't throw a compiler warning. Obviously, this case can never happen
+            case (None, None) => throw new UnsupportedOperationException("No scores to merge")
           }
         })
 

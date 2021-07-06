@@ -209,8 +209,6 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
       randomEffectTypes: Set[REType],
       featureShards: Set[FeatureShardId]): RDD[(UniqueSampleId, GameDatum)] = {
 
-    val parallelism = sc.getConf.get("spark.default.parallelism", s"${sc.getExecutorStorageStatus.length * 3}").toInt
-    val partitioner = new LongHashPartitioner(parallelism)
     val idTagSet = randomEffectTypes ++
       get(validationEvaluators).map(MultiEvaluatorType.getMultiEvaluatorIdTags).getOrElse(Seq())
     val gameDataset = GameConverters
@@ -220,7 +218,6 @@ class GameTransformer(val sc: SparkContext, implicit val logger: Logger) extends
         idTagSet,
         isResponseRequired = false,
         getOrDefault(inputColumnNames))
-      .partitionBy(partitioner)
       .setName("Game dataset with UIDs for scoring")
       .persist(StorageLevel.DISK_ONLY)
 
