@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. All rights reserved.
+ * Copyright 2020 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -12,12 +12,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml
+package com.linkedin.photon.ml.hyperparameter
 
 /**
- * Supported options for hyperparameter tuner name
+ * Supported options for hyperparameter tuning mode
  */
-object HyperparameterTunerName extends Enumeration {
-  type HyperparameterTunerName = Value
-  val DUMMY, ATLAS = Value
+object HyperparameterTuningMode extends Enumeration {
+
+  type HyperparameterTuningMode = Value
+
+  val BAYESIAN, RANDOM, NONE = Value
 }

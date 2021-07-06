@@ -12,11 +12,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.estimators
-
-import scala.math.log
+package com.linkedin.photon.ml.hyperparameter.evaluation
 
 import java.util.Random
+
+import scala.math.log
 
 import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
@@ -25,6 +25,7 @@ import org.testng.Assert._
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
+import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game._
