@@ -20,7 +20,8 @@ import org.testng.Assert.assertTrue
 import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
+import com.linkedin.photon.ml.function.DistributedObjectiveFunction
+import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
@@ -117,7 +118,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(lbfgsConfig, SquaredLossFunction, treeAggregateDepth = 1),
+            DistributedObjectiveFunction(lbfgsConfig, SquaredLossFunction, treeAggregateDepth = 1),
             None,
             LinearRegressionModel.apply,
             normalizationContext,
@@ -132,7 +133,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(lbfgsConfig, PoissonLossFunction, treeAggregateDepth = 1),
+            DistributedObjectiveFunction(lbfgsConfig, PoissonLossFunction, treeAggregateDepth = 1),
             None,
             PoissonRegressionModel.apply,
             normalizationContext,
@@ -149,7 +150,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
         (normalizationContext: BroadcastWrapper[NormalizationContext]) =>
           DistributedOptimizationProblem(
             lbfgsConfig,
-            DistributedGLMLossFunction(lbfgsConfig, LogisticLossFunction, treeAggregateDepth = 1),
+            DistributedObjectiveFunction(lbfgsConfig, LogisticLossFunction, treeAggregateDepth = 1),
             None,
             LogisticRegressionModel.apply,
             normalizationContext,
@@ -171,7 +172,7 @@ class BaseGLMIntegTest extends SparkTestUtils {
   def runGeneralizedLinearOptimizationProblemScenario(
       desc: String,
       optimizationProblemBuilder: BroadcastWrapper[NormalizationContext] =>
-        DistributedOptimizationProblem[DistributedGLMLossFunction],
+        DistributedOptimizationProblem[DistributedObjectiveFunction],
       data: Seq[LabeledPoint],
       validator: ModelValidator[GeneralizedLinearModel]): Unit = sparkTest(desc) {
 

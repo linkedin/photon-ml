@@ -38,7 +38,6 @@ class EvaluatorFactoryIntegTest extends SparkTestUtils {
       Array(RMSE),
       Array(PoissonLoss),
       Array(LogisticLoss),
-      Array(SmoothedHingeLoss),
       Array(SquaredLoss),
       Array(MultiPrecisionAtK(1, ID_TAG)),
       Array(MultiPrecisionAtK(5, ID_TAG)),

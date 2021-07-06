@@ -417,11 +417,6 @@ class UtilsTest extends TestTemplateWithTmpDir {
     val poissonLoss2 = "pOISson_lOSS"
     assertEquals(PoissonLoss, Utils.evaluatorWithName(poissonLoss2))
 
-    val smoothedHingeLoss1 = "  sMooThEDHingELoss"
-    assertEquals(SmoothedHingeLoss, Utils.evaluatorWithName(smoothedHingeLoss1))
-    val smoothedHingeLoss2 = "SmOOTheD_Hinge_LOSS"
-    assertEquals(SmoothedHingeLoss, Utils.evaluatorWithName(smoothedHingeLoss2))
-
     val squareLoss1 = "sQUAREDlosS "
     assertEquals(SquaredLoss, Utils.evaluatorWithName(squareLoss1))
     val squareLoss2 = "SquAREd_LOss"

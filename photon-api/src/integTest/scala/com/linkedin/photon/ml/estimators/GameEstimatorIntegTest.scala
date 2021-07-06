@@ -301,7 +301,6 @@ class GameEstimatorIntegTest extends SparkTestUtils with TestTemplateWithTmpDir 
     Array(
       Array(TaskType.LINEAR_REGRESSION, RMSE),
       Array(TaskType.LOGISTIC_REGRESSION, AUC),
-      Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, AUC),
       Array(TaskType.POISSON_REGRESSION, PoissonLoss))
 
   /**

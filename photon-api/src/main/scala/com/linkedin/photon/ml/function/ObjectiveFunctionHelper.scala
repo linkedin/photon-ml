@@ -17,9 +17,8 @@ package com.linkedin.photon.ml.function
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.algorithm.Coordinate
-import com.linkedin.photon.ml.function.glm.{GLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
-import com.linkedin.photon.ml.function.svm.SmoothedHingeLossFunction
-import com.linkedin.photon.ml.optimization.game.CoordinateOptimizationConfiguration
+import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PointwiseLossFunction, PoissonLossFunction, SquaredLossFunction}
+import com.linkedin.photon.ml.optimization.game.{CoordinateOptimizationConfiguration, FixedEffectOptimizationConfiguration, RandomEffectOptimizationConfiguration}
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 
 /**
@@ -41,10 +40,34 @@ object ObjectiveFunctionHelper {
    */
   def buildFactory(taskType: TaskType, treeAggregateDepth: Int): ObjectiveFunctionFactoryFactory =
     taskType match {
-      case TaskType.LOGISTIC_REGRESSION => GLMLossFunction.buildFactory(LogisticLossFunction, treeAggregateDepth)
-      case TaskType.LINEAR_REGRESSION => GLMLossFunction.buildFactory(SquaredLossFunction, treeAggregateDepth)
-      case TaskType.POISSON_REGRESSION => GLMLossFunction.buildFactory(PoissonLossFunction, treeAggregateDepth)
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossFunction.buildFactory(treeAggregateDepth)
+      case TaskType.LOGISTIC_REGRESSION => factoryHelper(LogisticLossFunction, treeAggregateDepth)
+      case TaskType.LINEAR_REGRESSION => factoryHelper(SquaredLossFunction, treeAggregateDepth)
+      case TaskType.POISSON_REGRESSION => factoryHelper(PoissonLossFunction, treeAggregateDepth)
       case _ => throw new IllegalArgumentException(s"Unknown optimization task type: $taskType")
+    }
+
+  /**
+   * Construct a factory function for building distributed and non-distributed generalized linear model loss functions.
+   *
+   * @param lossFunction A [[PointwiseLossFunction]] for training a generalized linear model
+   * @param treeAggregateDepth The tree-aggregate depth to use during aggregation
+   * @return A function which builds the appropriate type of [[ObjectiveFunction]] for a given [[Coordinate]] type and
+   *         optimization settings.
+   */
+  private def factoryHelper
+      (lossFunction: PointwiseLossFunction, treeAggregateDepth: Int)
+      (config: CoordinateOptimizationConfiguration): (Option[GeneralizedLinearModel], Option[Int]) => ObjectiveFunction =
+    config match {
+      case fEOptConfig: FixedEffectOptimizationConfiguration =>
+        (priorModelOpt: Option[GeneralizedLinearModel], interceptIndexOpt: Option[Int]) =>
+          DistributedObjectiveFunction(fEOptConfig, lossFunction, treeAggregateDepth, priorModelOpt,  interceptIndexOpt)
+
+      case rEOptConfig: RandomEffectOptimizationConfiguration =>
+        (priorModelOpt: Option[GeneralizedLinearModel], interceptIndexOpt: Option[Int]) =>
+          SingleNodeObjectiveFunction(rEOptConfig, lossFunction, priorModelOpt, interceptIndexOpt)
+
+      case _ =>
+        throw new UnsupportedOperationException(
+          s"Cannot create a GLM loss function from a coordinate configuration with class '${config.getClass.getName}'")
     }
 }

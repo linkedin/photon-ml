@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.Types.{CoordinateId, FeatureShardId, UniqueSampleI
 import com.linkedin.photon.ml.algorithm._
 import com.linkedin.photon.ml.data._
 import com.linkedin.photon.ml.evaluation._
-import com.linkedin.photon.ml.function.ObjectiveFunctionHelper
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, ObjectiveFunctionHelper, SingleNodeObjectiveFunction}
 import com.linkedin.photon.ml.function.glm._
 import com.linkedin.photon.ml.model.{FixedEffectModel, GameModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization._
@@ -42,7 +42,7 @@ import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceCompu
 import com.linkedin.photon.ml.optimization.game._
 import com.linkedin.photon.ml.sampling.DownSamplerHelper
 import com.linkedin.photon.ml.spark.{BroadcastLike, RDDLike}
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util._
 
@@ -57,8 +57,8 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
   import GameEstimator._
 
   // 2 types that make the code more readable
-  type SingleNodeLossFunctionConstructor = PointwiseLossFunction => SingleNodeGLMLossFunction
-  type DistributedLossFunctionConstructor = PointwiseLossFunction => DistributedGLMLossFunction
+  type SingleNodeLossFunctionConstructor = PointwiseLossFunction => SingleNodeObjectiveFunction
+  type DistributedLossFunctionConstructor = PointwiseLossFunction => DistributedObjectiveFunction
 
   private implicit val parent: Identifiable = this
 
@@ -689,7 +689,7 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
         // Get default evaluators given the task type
         val taskType = getRequiredParam(trainingTask)
         val defaultEvaluator = taskType match {
-          case TaskType.LOGISTIC_REGRESSION | TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => AreaUnderROCCurveEvaluator
+          case TaskType.LOGISTIC_REGRESSION => AreaUnderROCCurveEvaluator
           case TaskType.LINEAR_REGRESSION => RMSEEvaluator
           case TaskType.POISSON_REGRESSION => PoissonLossEvaluator
           case _ => throw new UnsupportedOperationException(s"$taskType is not a valid GAME training task")
@@ -755,7 +755,6 @@ class GameEstimator(val sc: SparkContext, implicit val logger: Logger) extends P
       case TaskType.LOGISTIC_REGRESSION => LogisticRegressionModel.apply _
       case TaskType.LINEAR_REGRESSION => LinearRegressionModel.apply _
       case TaskType.POISSON_REGRESSION => PoissonRegressionModel.apply _
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM => SmoothedHingeLossLinearSVMModel.apply _
       case _ => throw new Exception("Need to specify a valid loss function")
     }
     val downSamplerFactory = DownSamplerHelper.buildFactory(task)

@@ -21,15 +21,15 @@ import org.apache.spark.serializer.KryoSerializer
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.SparkConf
 
+import com.linkedin.photon.ml.aggregators._
 import com.linkedin.photon.ml.data.{GameDatum, LabeledPoint, LocalDataset}
 import com.linkedin.photon.ml.function._
-import com.linkedin.photon.ml.function.glm.{HessianVectorAggregator, ValueAndGradientAggregator}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization._
 import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
 import com.linkedin.photon.ml.projector.LinearSubspaceProjector
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 
@@ -52,6 +52,8 @@ object SparkSessionConfiguration {
     classOf[GeneralizedLinearModel],
     classOf[GeneralizedLinearOptimizationProblem[_]],
     classOf[GLMOptimizationConfiguration],
+    classOf[HessianDiagonalAggregator],
+    classOf[HessianMatrixAggregator],
     classOf[HessianVectorAggregator],
     classOf[LinearSubspaceProjector],
     classOf[LabeledPoint],
@@ -70,7 +72,6 @@ object SparkSessionConfiguration {
     classOf[Set[Int]],
     classOf[SingleNodeObjectiveFunction],
     classOf[SingleNodeOptimizationProblem[_]],
-    classOf[SmoothedHingeLossLinearSVMModel],
     classOf[SparseVector[Double]],
     classOf[TRON],
     classOf[ValueAndGradientAggregator],

@@ -23,13 +23,12 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
-import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.NoNormalization
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.optimization.{L2RegularizationContext, NoRegularizationContext}
+import com.linkedin.photon.ml.optimization.game.{FixedEffectOptimizationConfiguration, GLMOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.{ElasticNetRegularizationContext, L2RegularizationContext, NoRegularizationContext, OptimizerConfig}
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.PhotonBroadcast
+import com.linkedin.photon.ml.util.{PhotonBroadcast, PhotonNonBroadcast}
 
 /**
  * Integration tests for [[DistributedObjectiveFunction]] to verify that the loss functions compute gradients & Hessians
@@ -39,11 +38,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
   import DistributedObjectiveFunctionIntegTest._
 
-  private val twiceDiffTasks = Array(
+  private val tasks = Array(
     TaskType.LOGISTIC_REGRESSION,
     TaskType.LINEAR_REGRESSION,
     TaskType.POISSON_REGRESSION)
-  private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
   private val binaryClassificationDatasetGenerationFuncs = Array(
     generateBenignDatasetBinaryClassification _,
     generateWeightedBenignDatasetBinaryClassification _,
@@ -67,15 +65,15 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return Anonymous functions to generate the loss function and training data for the gradient tests
    */
   @DataProvider(parallel = true)
-  def getDifferentiableFunctions: Array[Array[Object]] = diffTasks
+  def getDifferentiableFunctions: Array[Array[Object]] = tasks
     .flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -85,10 +83,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -98,25 +96,12 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
-            Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
-          }
-        }
-
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        treeAggregateDepths.flatMap { treeAggDepth =>
-          def lossFuncBuilder =
-            () => DistributedSmoothedHingeLossFunction(NO_REG_CONFIGURATION_MOCK, treeAggDepth)
-
-          def lossFuncWithL2Builder =
-            () => DistributedSmoothedHingeLossFunction(L2_REG_CONFIGURATION_MOCK, treeAggDepth)
-
-          binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq[(Object, Object)]((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
           }
         }
@@ -132,15 +117,15 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
    * @return Anonymous functions to generate the loss function and training data for the Hessian tests
    */
   @DataProvider(parallel = true)
-  def getTwiceDifferentiableFunctions: Array[Array[Object]] = twiceDiffTasks
+  def getTwiceDifferentiableFunctions: Array[Array[Object]] = tasks
     .flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction, treeAggDepth)
 
           binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -150,10 +135,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.LINEAR_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction, treeAggDepth)
 
           linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -163,10 +148,10 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
       case TaskType.POISSON_REGRESSION =>
         treeAggregateDepths.flatMap { treeAggDepth =>
           def lossFuncBuilder =
-            () => DistributedGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           def lossFuncWithL2Builder =
-            () => DistributedGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
+            () => DistributedObjectiveFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction, treeAggDepth)
 
           poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
             Seq((lossFuncBuilder, dataGenFunc), (lossFuncWithL2Builder, dataGenFunc))
@@ -573,10 +558,92 @@ class DistributedObjectiveFunctionIntegTest extends SparkTestUtils {
 
     normalizationContextBroadcast.bv.unpersist()
   }
+
+  /**
+   * Verify the value of loss function without regularization.
+   */
+  @Test
+  def testValueNoRegularization(): Unit = sparkTest("testValueNoRegularization") {
+
+    val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
+    val coefficients = COEFFICIENT_VECTOR
+
+    val fixedEffectRegularizationContext = NoRegularizationContext
+    val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(
+      FIXED_EFFECT_OPTIMIZER_CONFIG,
+      fixedEffectRegularizationContext)
+    val distributedGLMLossFunction = DistributedObjectiveFunction(
+      fixedEffectOptimizationConfiguration,
+      LogisticLossFunction,
+      TREE_AGGREGATE_DEPTH)
+    val value = distributedGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // expectValue = log(1 + exp(3)) + log(1 + exp(2)) = 5.1755
+    assertEquals(value, 5.1755, EPSILON)
+  }
+
+  /**
+   * Verify the value of loss function with L2 regularization.
+   */
+  @Test
+  def testValueWithL2Regularization(): Unit = sparkTest("testValueWithL2Regularization") {
+
+    val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
+    val coefficients = COEFFICIENT_VECTOR
+
+    val fixedEffectRegularizationContext = L2RegularizationContext
+    val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(
+      FIXED_EFFECT_OPTIMIZER_CONFIG,
+      fixedEffectRegularizationContext,
+      FIXED_EFFECT_REGULARIZATION_WEIGHT)
+    val distributedGLMLossFunction = DistributedObjectiveFunction(
+      fixedEffectOptimizationConfiguration,
+      LogisticLossFunction,
+      TREE_AGGREGATE_DEPTH)
+    val value = distributedGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + 1 * ((-2)^2 + 3^2) / 2 = 11.6755
+    assertEquals(value, 11.6755, EPSILON)
+  }
+
+  /**
+   * Verify the value of loss function with elastic net regularization.
+   */
+  @Test
+  def testValueWithElasticNetRegularization(): Unit = sparkTest("testValueWithElasticNetRegularization") {
+
+    val labeledPoints = sc.parallelize(Array(LABELED_POINT_1, LABELED_POINT_2))
+    val coefficients = COEFFICIENT_VECTOR
+
+    val fixedEffectRegularizationContext = ElasticNetRegularizationContext(ALPHA)
+    val fixedEffectOptimizationConfiguration = FixedEffectOptimizationConfiguration(
+      FIXED_EFFECT_OPTIMIZER_CONFIG,
+      fixedEffectRegularizationContext,
+      FIXED_EFFECT_REGULARIZATION_WEIGHT)
+    val distributedGLMLossFunction = DistributedObjectiveFunction(
+      fixedEffectOptimizationConfiguration,
+      LogisticLossFunction,
+      TREE_AGGREGATE_DEPTH)
+    val value = distributedGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // L1 is computed by the optimizer.
+    // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + (1 - 0.4) * 1 * ((-2)^2 + 3^2) / 2 = 9.0755
+    assertEquals(value, 9.0755, EPSILON)
+  }
 }
 
 object DistributedObjectiveFunctionIntegTest {
 
+  // Gradient and Hessian test constants
   private val SPARK_CONSISTENCY_CHECK_SAMPLES = 5
   private val NUM_PARTITIONS = 4
   private val PROBLEM_DIMENSION = 5
@@ -592,6 +659,17 @@ object DistributedObjectiveFunctionIntegTest {
   private val WEIGHT_RANDOM_SEED = 100
   private val WEIGHT_RANDOM_MAX = 10
   private val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
+
+  // Regularization test constants
+  private val FIXED_EFFECT_OPTIMIZER_CONFIG = mock(classOf[OptimizerConfig])
+  private val LABELED_POINT_1 = new LabeledPoint(0, DenseVector(0.0, 1.0))
+  private val LABELED_POINT_2 = new LabeledPoint(1, DenseVector(1.0, 0.0))
+  private val COEFFICIENT_VECTOR = Vector(-2.0, 3.0)
+  private val NORMALIZATION_CONTEXT = NoNormalization()
+  private val FIXED_EFFECT_REGULARIZATION_WEIGHT = 1D
+  private val ALPHA = 0.4
+  private val TREE_AGGREGATE_DEPTH = 2
+  private val EPSILON = 1e-3
 
   doReturn(L2RegularizationContext).when(L2_REG_CONFIGURATION_MOCK).regularizationContext
   doReturn(REGULARIZATION_WEIGHT).when(L2_REG_CONFIGURATION_MOCK).regularizationWeight

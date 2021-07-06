@@ -23,8 +23,6 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
-import com.linkedin.photon.ml.function.glm.SingleNodeGLMLossFunction
-import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
@@ -45,16 +43,13 @@ class SingleNodeOptimizationProblemTest {
   @DataProvider
   def varianceInput(): Array[Array[Any]] = {
 
-    val mockDiffFunction = mock(classOf[SingleNodeSmoothedHingeLossFunction])
-    val mockTwiceDiffFunction = mock(classOf[SingleNodeGLMLossFunction])
-    val mockOptimizerDiff = mock(classOf[Optimizer[SingleNodeSmoothedHingeLossFunction]])
-    val mockOptimizerTwiceDiff = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val mockTwiceDiffFunction = mock(classOf[SingleNodeObjectiveFunction])
+    val mockOptimizerTwiceDiff = mock(classOf[Optimizer[SingleNodeObjectiveFunction]])
     val mockStatesTracker = mock(classOf[OptimizationStatesTracker])
 
     val hessianDiagonal = DenseVector(Array(1D, 0D, 2D))
     val hessianMatrix = DenseMatrix.eye[Double](DIMENSIONS)
 
-    doReturn(mockStatesTracker).when(mockOptimizerDiff).getStateTracker
     doReturn(mockStatesTracker).when(mockOptimizerTwiceDiff).getStateTracker
     doReturn(hessianDiagonal)
       .when(mockTwiceDiffFunction)
@@ -67,12 +62,8 @@ class SingleNodeOptimizationProblemTest {
     val matrixVariance = DenseVector(Array.fill(DIMENSIONS)(1D))
 
     Array(
-      // var type, function, expected result
-      Array(VarianceComputationType.NONE, mockOptimizerDiff, mockDiffFunction, None),
       Array(VarianceComputationType.NONE, mockOptimizerTwiceDiff, mockTwiceDiffFunction, None),
-      Array(VarianceComputationType.SIMPLE, mockOptimizerDiff, mockDiffFunction, None),
       Array(VarianceComputationType.SIMPLE, mockOptimizerTwiceDiff, mockTwiceDiffFunction, Some(diagonalVariance)),
-      Array(VarianceComputationType.FULL, mockOptimizerDiff, mockDiffFunction, None),
       Array(VarianceComputationType.FULL, mockOptimizerTwiceDiff, mockTwiceDiffFunction, Some(matrixVariance)))
   }
 
@@ -112,8 +103,8 @@ class SingleNodeOptimizationProblemTest {
     val normalization = NoNormalization()
 
     val trainingData = mock(classOf[Iterable[LabeledPoint]])
-    val objectiveFunction = mock(classOf[SingleNodeGLMLossFunction])
-    val optimizer = mock(classOf[Optimizer[SingleNodeGLMLossFunction]])
+    val objectiveFunction = mock(classOf[SingleNodeObjectiveFunction])
+    val optimizer = mock(classOf[Optimizer[SingleNodeObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val state = mock(classOf[OptimizerState])
     val broadcastNormalization = mock(classOf[BroadcastWrapper[NormalizationContext]])

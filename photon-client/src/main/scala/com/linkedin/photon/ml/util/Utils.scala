@@ -312,7 +312,6 @@ object Utils {
     case RMSE.name => RMSE
     case LogisticLoss.name | "LOGISTICLOSS" => LogisticLoss
     case PoissonLoss.name | "POISSONLOSS" => PoissonLoss
-    case SmoothedHingeLoss.name | "SMOOTHEDHINGELOSS" => SmoothedHingeLoss
     case SquaredLoss.name | "SQUAREDLOSS" => SquaredLoss
     case MultiPrecisionAtK.batchPrecisionAtKPattern(k, _) =>
       val MultiPrecisionAtK.batchPrecisionAtKPattern(_, idName) = name.trim

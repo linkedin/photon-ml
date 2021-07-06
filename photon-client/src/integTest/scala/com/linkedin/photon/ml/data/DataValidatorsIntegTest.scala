@@ -97,16 +97,6 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       Array(Seq(negativeLabel), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(nanLabel), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
-      // Test smoothed hinge loss checks for binary label
-      Array(
-        Seq(binaryLabel, zeroLabel),
-        TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM,
-        DataValidationType.VALIDATE_FULL,
-        true),
-      Array(Seq(positiveLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(negativeLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(nanLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-
       // Test Poisson regression checks for non-negative label
       Array(
         Seq(positiveLabel, binaryLabel, zeroLabel),
@@ -119,19 +109,16 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       // Test all task types require finite features
       Array(Seq(badFeatures), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeatures), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badFeatures), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeatures), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test all task types require finite offset
       Array(Seq(badOffset), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badOffset), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badOffset), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badOffset), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test all task types require valid weight
       Array(Seq(badWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test that even one bad sample causes failure
@@ -195,16 +182,6 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       Array(Seq(negativeLabel), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(nanLabel), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
-      // Test smoothed hinge loss checks for binary label
-      Array(
-        Seq(binaryLabel, zeroLabel),
-        TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM,
-        DataValidationType.VALIDATE_FULL,
-        true),
-      Array(Seq(positiveLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(negativeLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(nanLabel), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-
       // Test Poisson regression checks for non-negative label
       Array(
         Seq(positiveLabel, binaryLabel, zeroLabel),
@@ -221,9 +198,6 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       Array(Seq(badFeatures1), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeatures2), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeaturesBoth), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badFeatures1), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badFeatures2), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badFeaturesBoth), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeatures1), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeatures2), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badFeaturesBoth), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
@@ -231,13 +205,11 @@ class DataValidatorsIntegTest extends SparkTestUtils {
       // Test all task types require finite offset
       Array(Seq(badOffset), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badOffset), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badOffset), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badOffset), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test all task types require valid weight
       Array(Seq(badWeight), TaskType.LINEAR_REGRESSION, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.LOGISTIC_REGRESSION, DataValidationType.VALIDATE_FULL, false),
-      Array(Seq(badWeight), TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM, DataValidationType.VALIDATE_FULL, false),
       Array(Seq(badWeight), TaskType.POISSON_REGRESSION, DataValidationType.VALIDATE_FULL, false),
 
       // Test that even one bad sample causes failure

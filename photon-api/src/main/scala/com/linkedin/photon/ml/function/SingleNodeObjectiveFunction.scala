@@ -14,13 +14,176 @@
  */
 package com.linkedin.photon.ml.function
 
+import breeze.linalg.{DenseMatrix, Vector}
+
+import com.linkedin.photon.ml.aggregators._
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
+import com.linkedin.photon.ml.model.{Coefficients => ModelCoefficients}
+import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.RegularizationType
+import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
+import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
+import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
- * The base objective function used by SingleNodeOptimizationProblems. This function works with data locally as part of
- * a single task (on a single executor).
+ * This class is used to calculate the value, gradient, and Hessian of generalized linear models for individual
+ * optimization problems. The loss function of a generalized linear model can all be expressed as:
+ *
+ * L(w) = \sum_i l(z_i, y_i)
+ *
+ * with:
+ *
+ * z_i = w^T^ x_i.
+ *
+ * Different generalized linear models will have different l(z, y). The functionality of l(z, y) is provided by a
+ * [[PointwiseLossFunction]]. Since the loss function could change for different types of normalization, a normalization
+ * context object indicates which normalization strategy is used to evaluate the loss function.
+ *
+ * @param singlePointLossFunction A single loss function l(z, y) used for the generalized linear model
  */
-abstract class SingleNodeObjectiveFunction extends ObjectiveFunction with Serializable {
+protected[ml] class SingleNodeObjectiveFunction private (singlePointLossFunction: PointwiseLossFunction)
+  extends ObjectiveFunction(singlePointLossFunction)
+    with TwiceDiffFunction {
 
   type Data = Iterable[LabeledPoint]
+
+  /**
+   * Compute the value of the function over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the objective value
+   * @param coefficients The model coefficients used to compute the function's value
+   * @param normalizationContext The normalization context
+   * @return The computed value of the function
+   */
+  override protected[ml] def value(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Double =
+    calculate(input, coefficients, normalizationContext)._1
+
+  /**
+   * Compute the gradient of the function over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the gradient
+   * @param coefficients The model coefficients used to compute the function's gradient
+   * @param normalizationContext The normalization context
+   * @return The computed gradient of the function
+   */
+  override protected[ml] def gradient(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
+    calculate(input, coefficients, normalizationContext)._2
+
+  /**
+   * Compute both the value and the gradient of the function for the given model coefficients (computing value and
+   * gradient at once is sometimes more efficient than computing them sequentially).
+   *
+   * @param input The given data over which to compute the value and gradient
+   * @param coefficients The model coefficients used to compute the function's value and gradient
+   * @param normalizationContext The normalization context
+   * @return The computed value and gradient of the function
+   */
+  override protected[ml] def calculate(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): (Double, Vector[Double]) =
+    ValueAndGradientAggregator.calculateValueAndGradient(
+      input,
+      coefficients,
+      singlePointLossFunction,
+      normalizationContext)
+
+  /**
+   * Compute the Hessian matrix over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed Hessian matrix
+   */
+  override protected[ml] def hessianMatrix(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): DenseMatrix[Double] =
+    HessianMatrixAggregator.calcHessianMatrix(input, coefficients, singlePointLossFunction)
+
+  /**
+   * Compute an approximation of the Hessian diagonal over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the diagonal of the Hessian matrix
+   * @param coefficients The model coefficients used to compute the diagonal of the Hessian matrix
+   * @return The computed diagonal of the Hessian matrix
+   */
+  override protected[ml] def hessianDiagonal(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double]): Vector[Double] =
+    HessianDiagonalAggregator.calcHessianDiagonal(input, coefficients, singlePointLossFunction)
+
+  /**
+   * Compute the Hessian of the function over the given data for the given model coefficients.
+   *
+   * @param input The given data over which to compute the Hessian
+   * @param coefficients The model coefficients used to compute the function's hessian, multiplied by a given vector
+   * @param multiplyVector The given vector to be dot-multiplied with the Hessian. For example, in conjugate
+   *                       gradient method this would correspond to the gradient multiplyVector.
+   * @param normalizationContext The normalization context
+   * @return The computed Hessian multiplied by the given multiplyVector
+   */
+  override protected[ml] def hessianVector(
+      input: Iterable[LabeledPoint],
+      coefficients: Vector[Double],
+      multiplyVector: Vector[Double],
+      normalizationContext: BroadcastWrapper[NormalizationContext]): Vector[Double] =
+    HessianVectorAggregator.calcHessianVector(
+      input,
+      coefficients,
+      multiplyVector,
+      singlePointLossFunction,
+      normalizationContext)
+}
+
+object SingleNodeObjectiveFunction {
+
+  /**
+   * Factory method to create a new objective function with SingleNodeGLMLossFunctions as the base loss function.
+   *
+   * @param configuration The optimization problem configuration
+   * @param singleLossFunction The PointwiseLossFunction providing functionality for l(z, y)
+   * @param priorModelOpt Optional prior model, required if this is an objective function for incremental training
+   * @param interceptIndexOpt The index of the intercept, if there is one
+   * @return A new SingleNodeGLMLossFunction
+   */
+  def apply(
+      configuration: GLMOptimizationConfiguration,
+      singleLossFunction: PointwiseLossFunction,
+      priorModelOpt: Option[GeneralizedLinearModel] = None,
+      interceptIndexOpt: Option[Int] = None): SingleNodeObjectiveFunction = {
+
+    val regularizationContext = configuration.regularizationContext
+    val regularizationWeight = configuration.regularizationWeight
+
+    priorModelOpt match {
+      case None =>
+        regularizationContext.regularizationType match {
+          case RegularizationType.L2 | RegularizationType.ELASTIC_NET =>
+            new SingleNodeObjectiveFunction(singleLossFunction) with L2RegularizationTwiceDiff {
+              l2RegWeight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+
+              override def interceptOpt: Option[Int] = interceptIndexOpt
+            }
+
+          case _ => new SingleNodeObjectiveFunction(singleLossFunction)
+        }
+
+      case Some(priorModel) =>
+        val l2Weight = regularizationContext.getL2RegularizationWeight(regularizationWeight)
+        val priorModelCoefficients = priorModel.coefficients
+
+        new SingleNodeObjectiveFunction(singleLossFunction) with PriorDistributionTwiceDiff {
+          override val priorCoefficients: ModelCoefficients = priorModelCoefficients
+          l2RegWeight = l2Weight
+          incrementalWeight = configuration.incrementalWeight.getOrElse(1.0D)
+        }
+    }
+  }
 }

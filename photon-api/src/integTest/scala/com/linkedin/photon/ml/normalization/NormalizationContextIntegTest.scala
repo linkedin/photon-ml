@@ -28,7 +28,7 @@ import org.testng.annotations.{DataProvider, Test}
 import com.linkedin.photon.ml.{ModelTraining, TaskType}
 import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.DistributedObjectiveFunction
-import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
+import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationType.NormalizationType
 import com.linkedin.photon.ml.optimization._
@@ -202,18 +202,17 @@ class NormalizationContextIntegTest extends SparkTestUtils with GameTestUtils {
 
     val configuration = FixedEffectOptimizationConfiguration(generateOptimizerConfig())
 
-    val testData = for (optimizerType <- OptimizerType.values;
-                        taskType<- TaskType.values.filterNot(_ == TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)) yield {
+    val testData = for (optimizerType <- OptimizerType.values; taskType <- TaskType.values) yield {
 
       val objectiveFunction = taskType match {
         case TaskType.LOGISTIC_REGRESSION =>
-          DistributedGLMLossFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1)
+          DistributedObjectiveFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1)
 
         case TaskType.LINEAR_REGRESSION =>
-          DistributedGLMLossFunction(configuration, SquaredLossFunction, treeAggregateDepth = 1)
+          DistributedObjectiveFunction(configuration, SquaredLossFunction, treeAggregateDepth = 1)
 
         case TaskType.POISSON_REGRESSION =>
-          DistributedGLMLossFunction(configuration, PoissonLossFunction, treeAggregateDepth = 1)
+          DistributedObjectiveFunction(configuration, PoissonLossFunction, treeAggregateDepth = 1)
       }
       val optimizerNorm = optimizerType match {
         case OptimizerType.LBFGS =>

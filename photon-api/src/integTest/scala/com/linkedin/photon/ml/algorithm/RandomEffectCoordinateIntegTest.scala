@@ -21,7 +21,7 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.RandomEffectDataset
-import com.linkedin.photon.ml.function.glm.SingleNodeGLMLossFunction
+import com.linkedin.photon.ml.function.SingleNodeObjectiveFunction
 import com.linkedin.photon.ml.model.{Coefficients, RandomEffectModel}
 import com.linkedin.photon.ml.optimization.game.RandomEffectOptimizationProblem
 import com.linkedin.photon.ml.projector.{LinearSubspaceProjector, LinearSubspaceProjectorTest}
@@ -35,7 +35,6 @@ import com.linkedin.photon.ml.util.{GameTestUtils, MathUtils}
 class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils {
 
   import RandomEffectCoordinateIntegTest._
-
 
   /**
    *
@@ -64,7 +63,7 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
       "someShard")
 
     val mockRandomEffectDataset = mock(classOf[RandomEffectDataset])
-    val mockRandomEffectOptimizationProblem = mock(classOf[RandomEffectOptimizationProblem[SingleNodeGLMLossFunction]])
+    val mockRandomEffectOptimizationProblem = mock(classOf[RandomEffectOptimizationProblem[SingleNodeObjectiveFunction]])
 
     doReturn(linearSubspaceProjectors).when(mockRandomEffectDataset).projectors
 
@@ -120,7 +119,7 @@ class RandomEffectCoordinateIntegTest extends SparkTestUtils with GameTestUtils 
       "someShard")
 
     val mockRandomEffectDataset = mock(classOf[RandomEffectDataset])
-    val mockRandomEffectOptimizationProblem = mock(classOf[RandomEffectOptimizationProblem[SingleNodeGLMLossFunction]])
+    val mockRandomEffectOptimizationProblem = mock(classOf[RandomEffectOptimizationProblem[SingleNodeObjectiveFunction]])
 
     doReturn(linearSubspaceProjectors).when(mockRandomEffectDataset).projectors
 

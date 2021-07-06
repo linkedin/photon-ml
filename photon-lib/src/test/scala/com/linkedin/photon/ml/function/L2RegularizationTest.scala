@@ -20,6 +20,7 @@ import org.testng.annotations.Test
 import org.testng.Assert.assertEquals
 
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.TestObjective
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
@@ -109,7 +110,9 @@ object L2RegularizationTest {
   /**
    * Mock [[ObjectiveFunction]] for testing [[L2Regularization]].
    */
-  class MockObjectiveFunction extends ObjectiveFunction with TwiceDiffFunction {
+  class MockObjectiveFunction
+    extends ObjectiveFunction(new TestObjective.MockPointwiseLossFunction)
+      with TwiceDiffFunction {
 
     import MockObjectiveFunction._
 
