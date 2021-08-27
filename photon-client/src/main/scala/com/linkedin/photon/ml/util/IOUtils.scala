@@ -330,8 +330,8 @@ object IOUtils {
   def toHDFSFile(sc: SparkContext, fileName: String)(writeOp: PrintWriter => Unit): Try[Unit] = {
 
     val cf = sc.hadoopConfiguration
-    val (fs, fc) = (org.apache.hadoop.fs.FileSystem.get(cf), FileContext.getFileContext(cf))
     val (file, tmpFile, bkpFile) = (new Path(fileName), new Path(fileName + "-tmp"), new Path(fileName + ".prev"))
+    val (fs, fc) = (file.getFileSystem(cf), FileContext.getFileContext(cf))
 
     toStream(fs.create(tmpFile))(writeOp)
       .map(_ => if (fs.exists(file)) fc.rename(file, bkpFile, Options.Rename.OVERWRITE))

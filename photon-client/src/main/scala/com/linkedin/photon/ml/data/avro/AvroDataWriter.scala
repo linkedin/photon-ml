@@ -81,8 +81,8 @@ class AvroDataWriter {
 
     // Write the converted dataset back to HDFS
     if (overwrite) {
-      val fs = FileSystem.get(sc.hadoopConfiguration)
       val output = new Path(outputPath)
+      val fs = output.getFileSystem(sc.hadoopConfiguration)
       if (fs.exists(output)) {
         fs.delete(output, true)
       }

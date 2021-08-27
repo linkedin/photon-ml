@@ -68,7 +68,7 @@ class PalDBIndexMapBuilder extends IndexMapBuilder with Serializable {
    */
   override def close(): Unit = {
     _storeWriter.close()
-    val fs = FileSystem.get(new Configuration())
+    val fs = _dstFilePath.getFileSystem(new Configuration())
     fs.copyFromLocalFile(new Path(_tmpFile.toString), _dstFilePath)
   }
 

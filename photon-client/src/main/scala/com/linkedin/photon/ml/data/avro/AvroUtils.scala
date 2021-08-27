@@ -137,8 +137,8 @@ object AvroUtils {
     } else {
       new GenericDatumReader[T](schema)
     }
-    val fs = FileSystem.get(sc.hadoopConfiguration)
     val inputPath = new Path(path)
+    val fs = inputPath.getFileSystem(sc.hadoopConfiguration)
     val fileSize = fs.getContentSummary(inputPath).getLength
 
     require(fileSize < READ_SINGLE_AVRO_FILE_SIZE_LIMIT,

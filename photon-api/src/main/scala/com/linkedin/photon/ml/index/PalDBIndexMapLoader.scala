@@ -89,7 +89,7 @@ object PalDBIndexMapLoader {
       numPartitions: Int,
       namespace: String = IndexMap.GLOBAL_NS): PalDBIndexMapLoader = {
 
-    val hadoopFS = FileSystem.get(sc.hadoopConfiguration)
+    val hadoopFS = offHeapIndexMapDir.getFileSystem(sc.hadoopConfiguration)
 
     //
     // Pre-conditions
