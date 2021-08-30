@@ -23,15 +23,16 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
 import com.linkedin.photon.ml._
-import com.linkedin.photon.ml.HyperparameterTunerName.HyperparameterTunerName
-import com.linkedin.photon.ml.HyperparameterTuningMode.HyperparameterTuningMode
+import com.linkedin.photon.ml.hyperparameter.HyperparameterTuningMode.HyperparameterTuningMode
 import com.linkedin.photon.ml.TaskType.TaskType
 import com.linkedin.photon.ml.Types._
 import com.linkedin.photon.ml.cli.game.GameDriver
 import com.linkedin.photon.ml.data.{DataValidators, FixedEffectDataConfiguration, InputColumnsNames, RandomEffectDataConfiguration}
 import com.linkedin.photon.ml.data.avro.{AvroDataReader, ModelProcessingUtils}
 import com.linkedin.photon.ml.estimators.GameEstimator.GameOptimizationConfiguration
-import com.linkedin.photon.ml.estimators.{GameEstimator, GameEstimatorEvaluationFunction}
+import com.linkedin.photon.ml.estimators.GameEstimator
+import com.linkedin.photon.ml.hyperparameter.HyperparameterTuningMode
+import com.linkedin.photon.ml.hyperparameter.evaluation.GameEstimatorEvaluationFunction
 import com.linkedin.photon.ml.hyperparameter.tuner.HyperparameterTunerFactory
 import com.linkedin.photon.ml.index.{IndexMap, IndexMapLoader}
 import com.linkedin.photon.ml.io.{CoordinateConfiguration, ModelOutputMode, RandomEffectCoordinateConfiguration}
@@ -145,7 +146,7 @@ object GameTrainingDriver extends GameDriver {
     "Suggested depth for tree aggregation.",
     ParamValidators.gt[Int](0.0))
 
-  val hyperParameterTunerName: Param[HyperparameterTunerName] = ParamUtils.createParam[HyperparameterTunerName](
+  val hyperParameterTunerName: Param[String] = ParamUtils.createParam[String](
     "hyper parameter tuner",
     "Package name of hyperparameter tuner."
   )
@@ -217,7 +218,6 @@ object GameTrainingDriver extends GameDriver {
     setDefault(outputMode, ModelOutputMode.BEST)
     setDefault(overrideOutputDirectory, false)
     setDefault(normalization, NormalizationType.NONE)
-    setDefault(hyperParameterTunerName, HyperparameterTunerName.DUMMY)
     setDefault(hyperParameterTuning, HyperparameterTuningMode.NONE)
     setDefault(varianceComputationType, VarianceComputationType.NONE)
     setDefault(dataValidation, DataValidationType.VALIDATE_DISABLED)
@@ -329,12 +329,24 @@ object GameTrainingDriver extends GameDriver {
       case _ =>
     }
 
-    // If hyperparameter tuning is enabled, need to specify the number of tuning iterations
+    // If hyperparameter tuning is enabled...
     hyperParameterTuningMode match {
       case HyperparameterTuningMode.BAYESIAN | HyperparameterTuningMode.RANDOM =>
-        require(
+
+      // ... need to specify the hyperparameter tuner
+      require(
+          paramMap.get(hyperParameterTunerName).isDefined,
+          "Hyperparameter tuning enabled, but tuner not specified.")
+
+      // ... need to specify the number of tuning iterations
+      require(
           paramMap.get(hyperParameterTuningIter).isDefined,
           "Hyperparameter tuning enabled, but number of iterations unspecified.")
+
+      // ... validation data must be provided
+      require(
+        paramMap.get(validationDataDirectories).isDefined,
+        "Hyperparameter tuning enabled, but no validation data provided")
 
       case _ =>
     }
@@ -493,10 +505,16 @@ object GameTrainingDriver extends GameDriver {
       gameEstimator.fit(trainingData, validationData, gameOptimizationConfigs)
     }
 
-    val tunedModels = Timed("Tune hyperparameters") {
-      // Disable warm start for autotuning
-      gameEstimator.setUseWarmStart(false)
-      runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
+    val tunedModels = getOrDefault(hyperParameterTuning) match {
+      case HyperparameterTuningMode.NONE =>
+        Seq()
+
+      case _ =>
+        Timed("Tune hyperparameters") {
+          // Disable warm start for autotuning
+          gameEstimator.setUseWarmStart(false)
+          runHyperparameterTuning(gameEstimator, trainingData, validationData, explicitModels)
+        }
     }
 
     trainingData.unpersist()
@@ -678,45 +696,42 @@ object GameTrainingDriver extends GameDriver {
       estimator: GameEstimator,
       trainingData: DataFrame,
       validationData: Option[DataFrame],
-      models: Seq[GameEstimator.GameResult]): Seq[GameEstimator.GameResult] =
+      models: Seq[GameEstimator.GameResult]): Seq[GameEstimator.GameResult] = {
 
-    validationData match {
-      case Some(testData) if getOrDefault(hyperParameterTuning) != HyperparameterTuningMode.NONE =>
+    val (_, baseConfig, evaluationResults) = models.head
 
-        val (_, baseConfig, evaluationResults) = models.head
+    val iteration = getOrDefault(hyperParameterTuningIter)
+    val dimension = baseConfig
+      .toSeq
+      .map {
+        case (_, config: GLMOptimizationConfiguration) =>
+          config.regularizationContext.regularizationType match {
+            case RegularizationType.ELASTIC_NET => 2
+            case RegularizationType.L2 => 1
+            case RegularizationType.L1 => 1
+            case RegularizationType.NONE => 0
+          }
+        case _ =>
+            throw new IllegalArgumentException(s"Unknown optimization config!")
+      }
+      .sum
+    val mode = getOrDefault(hyperParameterTuning)
 
-        val iteration = getOrDefault(hyperParameterTuningIter)
+    val evaluator = evaluationResults.get.primaryEvaluator
+    val isOptMax = evaluator.betterThan(1.0, 0.0)
+    val evaluationFunction = new GameEstimatorEvaluationFunction(
+      estimator,
+      baseConfig,
+      trainingData,
+      validationData.get,
+      isOptMax)
 
-        val dimension = baseConfig.toSeq.map {
-          case (_, config: GLMOptimizationConfiguration) =>
-            config.regularizationContext.regularizationType match {
-              case RegularizationType.ELASTIC_NET => 2
-              case RegularizationType.L2 => 1
-              case RegularizationType.L1 => 1
-              case RegularizationType.NONE => 0
-            }
-          case _ => throw new IllegalArgumentException(s"Unknown optimization config!")
-        }.sum
+    val observations = evaluationFunction.convertObservations(models)
 
-        val mode = getOrDefault(hyperParameterTuning)
+    val hyperparameterTuner = HyperparameterTunerFactory(getOrDefault(hyperParameterTunerName))
 
-        val evaluator = evaluationResults.get.primaryEvaluator
-        val isOptMax = evaluator.betterThan(1.0, 0.0)
-        val evaluationFunction = new GameEstimatorEvaluationFunction(
-          estimator,
-          baseConfig,
-          trainingData,
-          testData,
-          isOptMax)
-
-        val observations = evaluationFunction.convertObservations(models)
-
-        val hyperparameterTuner = HyperparameterTunerFactory[GameEstimator.GameResult](getOrDefault(hyperParameterTunerName))
-
-        hyperparameterTuner.search(iteration, dimension, mode, evaluationFunction, observations)
-
-      case _ => Seq()
-    }
+    hyperparameterTuner.search(iteration, dimension, mode, evaluationFunction, observations)
+  }
 
   /**
    * Select which models will be output to HDFS.

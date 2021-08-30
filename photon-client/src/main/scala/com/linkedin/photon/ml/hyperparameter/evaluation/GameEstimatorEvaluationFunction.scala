@@ -12,7 +12,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.estimators
+package com.linkedin.photon.ml.hyperparameter.evaluation
 
 import scala.collection.mutable
 import scala.math.{exp, log}
@@ -20,10 +20,11 @@ import scala.math.{exp, log}
 import breeze.linalg.DenseVector
 import org.apache.spark.sql.DataFrame
 
+import com.linkedin.photon.ml.estimators.GameEstimator
 import com.linkedin.photon.ml.estimators.GameEstimator.{GameOptimizationConfiguration, GameResult}
-import com.linkedin.photon.ml.hyperparameter.{EvaluationFunction, VectorRescaling}
-import com.linkedin.photon.ml.optimization.{ElasticNetRegularizationContext, RegularizationContext, RegularizationType}
+import com.linkedin.photon.ml.hyperparameter.VectorRescaling
 import com.linkedin.photon.ml.optimization.game._
+import com.linkedin.photon.ml.optimization.{ElasticNetRegularizationContext, RegularizationContext, RegularizationType}
 import com.linkedin.photon.ml.util.DoubleRange
 
 /**
@@ -51,7 +52,7 @@ class GameEstimatorEvaluationFunction(
   private val baseConfigSeq = baseConfig.toSeq.sortBy(_._1)
 
   // Pull the hyperparameter ranges from the optimization configuration
-  protected[estimators] val ranges: Seq[DoubleRange] = baseConfigSeq
+  protected[evaluation] val ranges: Seq[DoubleRange] = baseConfigSeq
     .flatMap {
       case (_, config: GLMOptimizationConfiguration) =>
         val regularizationWeightRange = config
