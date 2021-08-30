@@ -84,7 +84,7 @@ object NameAndTermFeatureMapUtils {
       outputPath: Path,
       sc: SparkContext): Unit = {
 
-    val hadoopFS = FileSystem.get(sc.hadoopConfiguration)
+    val hadoopFS = outputPath.getFileSystem(sc.hadoopConfiguration)
     val tmpPath = new Path(outputPath.getParent, s"${outputPath.getName}-tmp")
 
     // saveAsTextFile in a temporary folder
