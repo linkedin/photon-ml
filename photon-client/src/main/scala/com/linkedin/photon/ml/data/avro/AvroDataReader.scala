@@ -74,18 +74,21 @@ class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_D
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   override def readMerged(
       paths: Seq[String],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = {
+      numPartitionsOpt: Option[Int]): (DataFrame, Map[MergedColumnName, IndexMapLoader]) = {
+
+    val numPartitions = numPartitionsOpt.getOrElse(SparkSession.builder.getOrCreate.sparkContext.defaultParallelism)
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")
@@ -114,19 +117,22 @@ class AvroDataReader(defaultFeatureColumn: String = InputColumnsNames.FEATURES_D
    *
    *                                This configuration merges the "profileFeatures" and "titleFeatures" columns into a
    *                                single column named "userFeatures".
-   * @param numPartitions The minimum number of partitions. Spark is generally moving away from manually specifying
-   *                      partition counts like this, in favor of inferring it. However, Photon currently still exposes
-   *                      partition counts as a means for tuning job performance. The auto-inferred counts are usually
-   *                      much lower than the necessary counts for Photon (especially GAME), so this caused a lot of
-   *                      shuffling when repartitioning from the auto-partitioned data to the GAME data. We expose this
-   *                      setting here to avoid the shuffling.
+   * @param numPartitionsOpt An optional minimum number of partitions for the [[DataFrame]]. If no minimum is provided,
+   *                         the default parallelism is used. Spark is generally moving away from manually specifying
+   *                         partition counts like this, in favor of inferring it. However, Photon still exposes
+   *                         partition counts as a means for tuning job performance. The auto-inferred counts are
+   *                         usually much lower than the necessary counts for Photon (especially GAME). This causes a
+   *                         lot of shuffling when repartitioning from the auto-partitioned data to the processed GAME
+   *                         data. This setting is exposed to allow tuning which can avoid the shuffling.
    * @return The loaded and transformed DataFrame
    */
   override def readMerged(
       paths: Seq[String],
       indexMapLoaders: Map[MergedColumnName, IndexMapLoader],
       featureColumnConfigsMap: Map[MergedColumnName, FeatureShardConfiguration],
-      numPartitions: Int): DataFrame = {
+      numPartitionsOpt: Option[Int]): DataFrame = {
+
+    val numPartitions = numPartitionsOpt.getOrElse(SparkSession.builder.getOrCreate.sparkContext.defaultParallelism)
 
     require(paths.nonEmpty, "No paths specified. You must specify at least one input path.")
     require(numPartitions >= 0, "Partition count cannot be negative.")

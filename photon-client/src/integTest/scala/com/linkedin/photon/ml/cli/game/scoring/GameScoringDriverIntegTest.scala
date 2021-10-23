@@ -69,8 +69,9 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
 
   @DataProvider
   def numOutputFilesProvider(): Array[Array[Any]] = Array(
-    Array(1, 1),
-    Array(10, 3))
+    Array(1, 1, 1),
+    Array(10, 5, 5),
+    Array(5, 10, 5))
 
   /**
    * Test that the scoring job can correctly limit the maximum number of output files.
@@ -79,12 +80,16 @@ class GameScoringDriverIntegTest extends SparkTestUtils with TestTemplateWithTmp
    * @param expectedOutputFiles The expected number of output files
    */
   @Test(dataProvider = "numOutputFilesProvider")
-  def testNumOutputFiles(outputFilesLimit: Int, expectedOutputFiles: Int): Unit = sparkTest("testNumOutputFiles") {
+  def testNumOutputFiles(
+      scoringPartitions: Int,
+      outputFilesLimit: Int,
+      expectedOutputFiles: Int): Unit = sparkTest("testNumOutputFiles") {
 
     val outputPath = new Path(getTmpDir)
     val scoresPath = new Path(outputPath, s"${GameScoringDriver.SCORES_DIR}")
     val params = fixedEffectArgs
       .put(GameScoringDriver.rootOutputDirectory, outputPath)
+      .put(GameScoringDriver.scoringPartitions, scoringPartitions)
       .put(GameScoringDriver.outputFilesLimit, outputFilesLimit)
 
     runDriver(params)

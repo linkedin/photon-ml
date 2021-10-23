@@ -213,7 +213,6 @@ object GameTrainingDriver extends GameDriver {
   override protected def setDefaultParams(): Unit = {
 
     setDefault(inputColumnNames, InputColumnsNames())
-    setDefault(minValidationPartitions, 1)
     setDefault(outputMode, ModelOutputMode.BEST)
     setDefault(overrideOutputDirectory, false)
     setDefault(normalization, NormalizationType.NONE)
@@ -550,7 +549,7 @@ object GameTrainingDriver extends GameDriver {
       trainingRecordsPath.map(_.toString),
       featureIndexMapLoadersOpt,
       getRequiredParam(featureShardConfigurations),
-      numPartitions)
+      Some(numPartitions))
   }
 
   /**
@@ -577,7 +576,7 @@ object GameTrainingDriver extends GameDriver {
         validationRecordsPath.map(_.toString),
         featureIndexMapLoaders,
         getRequiredParam(featureShardConfigurations),
-        getOrDefault(minValidationPartitions))
+        get(minValidationPartitions))
     }
 
   /**
