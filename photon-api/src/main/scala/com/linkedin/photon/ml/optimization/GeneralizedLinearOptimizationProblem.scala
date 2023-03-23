@@ -14,16 +14,13 @@
  */
 package com.linkedin.photon.ml.optimization
 
-import scala.math.abs
+import breeze.linalg.Vector
 
-import breeze.linalg.{Vector, sum}
-
-import com.linkedin.photon.ml.function.{L2Regularization, ObjectiveFunction}
+import com.linkedin.photon.ml.function.ObjectiveFunction
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.optimization.VarianceComputationType.VarianceComputationType
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
-import com.linkedin.photon.ml.util.{BroadcastWrapper, Logging}
+import com.linkedin.photon.ml.util.Logging
 
 /**
  * An abstract base for the convex optimization problem which produce trained generalized linear models (GLMs) when
@@ -92,55 +89,4 @@ protected[ml] abstract class GeneralizedLinearOptimizationProblem[Objective <: O
    * @return The learned GLM for the given optimization problem, data, regularization type, and regularization weight
    */
   def run(input: objectiveFunction.Data, initialModel: GeneralizedLinearModel): (GeneralizedLinearModel, OptimizationStatesTracker)
-
-  /**
-   * Compute the regularization term value
-   *
-   * @param model A trained GLM
-   * @return The regularization term value of this optimization problem for the given GLM
-   */
-  def getRegularizationTermValue(model: GeneralizedLinearModel): Double = {
-    import GeneralizedLinearOptimizationProblem._
-
-    val l1RegValue = optimizer match {
-      case l1Optimizer: OWLQN => getL1RegularizationTermValue(model, l1Optimizer.l1RegularizationWeight)
-      case _ => 0D
-    }
-    val l2RegValue = objectiveFunction match {
-      case l2ObjFunc: L2Regularization =>
-        getL2RegularizationTermValue(model, l2ObjFunc.l2RegularizationWeight)
-      case _ => 0D
-    }
-
-    l1RegValue + l2RegValue
-  }
-}
-
-object GeneralizedLinearOptimizationProblem {
-  /**
-   * Compute the L1 regularization term value
-   *
-   * @param model the model
-   * @param regularizationWeight the weight of the regularization value
-   * @return L1 regularization term value
-   */
-  protected[ml] def getL1RegularizationTermValue(
-      model: GeneralizedLinearModel,
-      regularizationWeight: Double): Double =
-    sum(model.coefficients.means.map(abs)) * regularizationWeight
-
-  /**
-   * Compute the L2 regularization term value
-   *
-   * @param model the model
-   * @param regularizationWeight the weight of the regularization value
-   * @return L2 regularization term value
-   */
-  protected[ml] def getL2RegularizationTermValue(
-      model: GeneralizedLinearModel,
-      regularizationWeight: Double): Double = {
-
-    val coefficients = model.coefficients.means
-    coefficients.dot(coefficients) * regularizationWeight / 2
-  }
 }

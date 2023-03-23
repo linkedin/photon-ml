@@ -17,6 +17,7 @@ package com.linkedin.photon.ml.optimization
 import breeze.linalg.{DenseMatrix, Vector, sum}
 
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
 import com.linkedin.photon.ml.function.{ObjectiveFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
@@ -25,7 +26,7 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 /**
  * Test objective function used solely to exercise the optimizers.
  */
-class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
+class TestObjective extends ObjectiveFunction(new TestObjective.MockPointwiseLossFunction) with TwiceDiffFunction {
 
   type Data = Iterable[LabeledPoint]
 
@@ -130,6 +131,13 @@ class TestObjective extends ObjectiveFunction with TwiceDiffFunction {
 object TestObjective {
 
   val CENTROID = 4.0
+
+  class MockPointwiseLossFunction extends PointwiseLossFunction {
+
+    def lossAndDzLoss(margin: Double, label: Double): (Double, Double) = (0, 0)
+
+    def DzzLoss(margin: Double, label: Double): Double = 0
+  }
 
   /**
    * Compute the value and gradient at a single data point. Since the function has known minimum, the input data is

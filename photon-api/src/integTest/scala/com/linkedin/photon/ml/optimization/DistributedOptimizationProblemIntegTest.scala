@@ -17,7 +17,6 @@ package com.linkedin.photon.ml.optimization
 import java.util.Random
 
 import breeze.linalg.{DenseMatrix, DenseVector, Vector, diag, pinv}
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.mockito.Mockito._
 import org.testng.Assert._
@@ -25,16 +24,13 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.constants.MathConst
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.L2RegularizationDiff
+import com.linkedin.photon.ml.function.DistributedObjectiveFunction
 import com.linkedin.photon.ml.function.glm._
-import com.linkedin.photon.ml.function.svm.DistributedSmoothedHingeLossFunction
 import com.linkedin.photon.ml.model.Coefficients
-import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
 import com.linkedin.photon.ml.optimization.game.FixedEffectOptimizationConfiguration
-import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.test.{CommonTestUtils, SparkTestUtils}
-import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
+import com.linkedin.photon.ml.util.VectorUtils
 
 /**
  * Integration tests for [[DistributedOptimizationProblem]].
@@ -42,7 +38,6 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
 
   import CommonTestUtils._
-  import DistributedOptimizationProblemIntegTest._
 
   /**
    * Function to generate a mock [[GeneralizedLinearModel]].
@@ -141,87 +136,6 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
   }
 
   /**
-   * Test that regularization weights can be updated.
-   */
-  @Test
-  def testUpdateRegularizationWeight(): Unit = sparkTest("testUpdateRegularizationWeight") {
-
-    val normalization = NoNormalization()
-    val initL1Weight = 1D
-    val initL2Weight = 2D
-    val finalL1Weight = 3D
-    val finalL2Weight = 4D
-    val finalElasticWeight = 5D
-    val alpha = 0.75
-    val elasticFinalL1Weight = finalElasticWeight * alpha
-    val elasticFinalL2Weight = finalElasticWeight * (1 - alpha)
-
-    val normalizationMock = mock(classOf[BroadcastWrapper[NormalizationContext]])
-    val optimizer = mock(classOf[Optimizer[DistributedSmoothedHingeLossFunction]])
-    val statesTracker = mock(classOf[OptimizationStatesTracker])
-    val objectiveFunction = mock(classOf[DistributedSmoothedHingeLossFunction])
-
-    doReturn(normalization).when(normalizationMock).value
-    doReturn(statesTracker).when(optimizer).getStateTracker
-
-    val optimizerL1 = new OWLQN(initL1Weight, normalizationMock)
-    val objectiveFunctionL2 = new L2LossFunction(sc)
-    objectiveFunctionL2.l2RegularizationWeight = initL2Weight
-
-    val l1Problem = new DistributedOptimizationProblem(
-      optimizerL1,
-      objectiveFunction,
-      samplerOption = None,
-      LogisticRegressionModel.apply,
-      L1RegularizationContext,
-      VarianceComputationType.NONE)
-    val l2Problem = new DistributedOptimizationProblem(
-      optimizer,
-      objectiveFunctionL2,
-      samplerOption = None,
-      LogisticRegressionModel.apply,
-      L2RegularizationContext,
-      VarianceComputationType.NONE)
-    val elasticProblem = new DistributedOptimizationProblem(
-      optimizerL1,
-      objectiveFunctionL2,
-      samplerOption = None,
-      LogisticRegressionModel.apply,
-      ElasticNetRegularizationContext(alpha),
-      VarianceComputationType.NONE)
-
-    // Check update to L1/L2 weights individually
-    assertNotEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-
-    l1Problem.updateRegularizationWeight(finalL1Weight)
-    l2Problem.updateRegularizationWeight(finalL2Weight)
-
-    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, finalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, finalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-
-    // Check updates to L1/L2 weights together
-    optimizerL1.l1RegularizationWeight = initL1Weight
-    objectiveFunctionL2.l2RegularizationWeight = initL2Weight
-
-    assertNotEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-
-    elasticProblem.updateRegularizationWeight(finalElasticWeight)
-
-    assertNotEquals(optimizerL1.l1RegularizationWeight, initL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertNotEquals(objectiveFunctionL2.l2RegularizationWeight, initL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(optimizerL1.l1RegularizationWeight, elasticFinalL1Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-    assertEquals(objectiveFunctionL2.l2RegularizationWeight, elasticFinalL2Weight, CommonTestUtils.HIGH_PRECISION_TOLERANCE)
-  }
-
-  /**
    * Test simple coefficient variance computation for weighted data points, with regularization.
    *
    * @param regularizationWeight Regularization weight
@@ -239,7 +153,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val input = sc.parallelize(dataGenerationFunction())
     val coefficients = generateDenseVector(OptimizationProblemIntegTestUtils.DIMENSIONS)
 
-    val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[DistributedObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -250,7 +164,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(RegularizationType.L2).when(regContext).regularizationType
     doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-    val objective = DistributedGLMLossFunction(optConfig, lossFunction, treeAggregateDepth = 1)
+    val objective = DistributedObjectiveFunction(optConfig, lossFunction, treeAggregateDepth = 1)
 
     val optimizationProblem = new DistributedOptimizationProblem(
       optimizer,
@@ -292,7 +206,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     val dimensions = OptimizationProblemIntegTestUtils.DIMENSIONS
     val coefficients = generateDenseVector(dimensions)
 
-    val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[DistributedObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -303,7 +217,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(RegularizationType.L2).when(regContext).regularizationType
     doReturn(regularizationWeight).when(regContext).getL2RegularizationWeight(regularizationWeight)
 
-    val objective = DistributedGLMLossFunction(optConfig, lossFunction, treeAggregateDepth = 1)
+    val objective = DistributedObjectiveFunction(optConfig, lossFunction, treeAggregateDepth = 1)
 
     val optimizationProblem = new DistributedOptimizationProblem(
       optimizer,
@@ -345,7 +259,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
       }
     }
 
-    val optimizer = mock(classOf[Optimizer[DistributedGLMLossFunction]])
+    val optimizer = mock(classOf[Optimizer[DistributedObjectiveFunction]])
     val statesTracker = mock(classOf[OptimizationStatesTracker])
     val regContext = mock(classOf[RegularizationContext])
     val optConfig = mock(classOf[FixedEffectOptimizationConfiguration])
@@ -354,7 +268,7 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
     doReturn(regContext).when(optConfig).regularizationContext
     doReturn(RegularizationType.NONE).when(regContext).regularizationType
 
-    val objective = DistributedGLMLossFunction(optConfig, LogisticLossFunction, treeAggregateDepth = 1)
+    val objective = DistributedObjectiveFunction(optConfig, LogisticLossFunction, treeAggregateDepth = 1)
 
     val optimizationProblem = new DistributedOptimizationProblem(
       optimizer,
@@ -401,12 +315,4 @@ class DistributedOptimizationProblemIntegTest extends SparkTestUtils {
 
     VectorUtils.areAlmostEqual(actual, expected)
   }
-}
-
-object DistributedOptimizationProblemIntegTest {
-
-  // No way to pass Mixin class type to Mockito, need to define a concrete class
-  private class L2LossFunction(sc: SparkContext)
-    extends DistributedSmoothedHingeLossFunction(treeAggregateDepth = 1)
-      with L2RegularizationDiff
 }

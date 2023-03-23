@@ -16,13 +16,14 @@ package com.linkedin.photon.ml.function
 
 import breeze.linalg.Vector
 
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
 import com.linkedin.photon.ml.normalization.NormalizationContext
 import com.linkedin.photon.ml.util.BroadcastWrapper
 
 /**
  * The base objective function class for an optimization problem.
  */
-abstract class ObjectiveFunction {
+abstract class ObjectiveFunction(singlePointLossFunction: PointwiseLossFunction) {
 
   type Data
 

@@ -22,6 +22,7 @@ import com.linkedin.photon.ml.data.LabeledPoint
 import com.linkedin.photon.ml.function.{ObjectiveFunction, TwiceDiffFunction}
 import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.NormalizationContext
+import com.linkedin.photon.ml.optimization.TestObjective.MockPointwiseLossFunction
 import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
 
 /**
@@ -29,7 +30,9 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, VectorUtils}
  *
  * This function has known minimum at [[IntegTestObjective.CENTROID]].
  */
-class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int) extends ObjectiveFunction with TwiceDiffFunction {
+class IntegTestObjective(sc: SparkContext, treeAggregateDepth: Int)
+  extends ObjectiveFunction(new MockPointwiseLossFunction)
+    with TwiceDiffFunction {
 
   type Data = RDD[LabeledPoint]
 

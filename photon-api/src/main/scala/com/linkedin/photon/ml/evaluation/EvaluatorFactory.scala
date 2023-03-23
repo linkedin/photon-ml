@@ -47,8 +47,6 @@ object EvaluatorFactory {
 
       case LogisticLoss => LogisticLossEvaluator
 
-      case SmoothedHingeLoss => SmoothedHingeLossEvaluator
-
       case SquaredLoss => SquaredLossEvaluator
 
       case MultiPrecisionAtK(k, idTag) =>

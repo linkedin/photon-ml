@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. All rights reserved.
+ * Copyright 2017 LinkedIn Corp. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain a
  * copy of the License at
@@ -12,16 +12,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.linkedin.photon.ml.function.glm
+package com.linkedin.photon.ml.aggregators
 
 import breeze.linalg._
 import org.apache.spark.rdd.RDD
 
 import com.linkedin.photon.ml.data.LabeledPoint
+import com.linkedin.photon.ml.function.glm.PointwiseLossFunction
 import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast, PhotonNonBroadcast}
 
 /**
- * An aggregator to calculate the diagonal of the Hessian matrix of a generalized linear model loss function on a
+ * An aggregator to calculate the Hessian matrix of a generalized linear model loss function on a dataset.
  *
  * This class is heavily influenced by [[ValueAndGradientAggregator]] and [[HessianVectorAggregator]]. Note that unlike
  * those two classes, this class does not handle normalization.
@@ -30,7 +31,7 @@ import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonBroadcast, PhotonNon
  * @param coefficients The coefficients for the GLM
  */
 @SerialVersionUID(1L)
-protected[ml] class HessianDiagonalAggregator(
+protected[ml] class HessianMatrixAggregator(
     lossFunction: PointwiseLossFunction,
     coefficients: BroadcastWrapper[Vector[Double]]) extends Serializable {
 
@@ -41,31 +42,27 @@ protected[ml] class HessianDiagonalAggregator(
    *      = \sum_i ∂^2^ (u_i * l(z_i, y_i)) / (∂ w_j)(∂ w_k)
    *      = \sum_i (∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i * X_i_j * X_i_k
    *
-   * Therefore, for the diagonal h of the Hessian matrix (j = k):
+   * Therefore:
    *
-   * h = \sum_i e((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i, m) *:* X_i *:* X_i
+   * H = \sum_i ((∂^2^ l(z_i, y_i) / (∂ z_i)^2^) * u_i) *:* (X_i x X_i)
    *
-   * where:
-   *
-   * e(a, b) = A vector of length b where each value is a
-   * m = The dimension of all X (and therefore w as well as H, which is square)
-   *
-   * vectorSum is the aggregator value for vector h.
+   * matrixSum is the aggregator value for the matrix H.
    */
-  protected var vectorSum: Vector[Double] = DenseVector.zeros[Double](coefficients.value.length)
+  protected val matrixSum: DenseMatrix[Double] =
+    DenseMatrix.zeros[Double](coefficients.value.length, coefficients.value.length)
 
   /**
-   * Getter for the cumulative Hessian diagonal.
+   * Getter for the cumulative Hessian matrix.
    *
-   * @return The cumulative Hessian diagonal
+   * @return The cumulative Hessian matrix
    */
-  def hessianDiagonal: Vector[Double] = vectorSum
+  def hessian: DenseMatrix[Double] = matrixSum
 
   /**
    * Add a data point to the aggregator.
    *
    * @param datum The data point
-   * @return This aggregator object itself
+   * @return The aggregator object itself
    */
   def add(datum: LabeledPoint): this.type = {
 
@@ -78,7 +75,11 @@ protected[ml] class HessianDiagonalAggregator(
     val margin = datum.computeMargin(coefficients.value)
     val dzzLoss = lossFunction.DzzLoss(margin, label)
 
-    axpy(weight * dzzLoss, features *:* features, vectorSum)
+    // Convert features to a dense matrix so that we can compute the outer product
+    val x = features.toDenseVector.asDenseMatrix
+    val hessianMatrix = dzzLoss * (x.t * x)
+
+    axpy(weight, hessianMatrix, matrixSum)
 
     this
   }
@@ -89,67 +90,68 @@ protected[ml] class HessianDiagonalAggregator(
    * @param that The other aggregator
    * @return This aggregator object itself, with the contents of the other aggregator object merged into it
    */
-  def merge(that: HessianDiagonalAggregator): this.type = {
+  def merge(that: HessianMatrixAggregator): this.type = {
 
     // TODO: The below tests are technically correct, but unnecessarily slow. Currently the only time that two
     // TODO: aggregators are merged is during aggregation, where they are copies of the same initial object.
 //    require(lossFunction.equals(that.lossFunction), "Attempting to merge aggregators with different loss functions")
 //    require(coefficients == that.coefficients, "Attempting to merge aggregators with different coefficients vectors")
 
-    vectorSum :+= that.vectorSum
+    matrixSum :+= that.matrixSum
 
     this
   }
 }
 
-object HessianDiagonalAggregator {
+object HessianMatrixAggregator {
 
   /**
-   * Calculate the Hessian diagonal for an objective function in Spark.
+   * Calculate the Hessian matrix for an objective function in Spark.
    *
    * @param input An RDD of data points
    * @param coefficients The current model coefficients
-   * @param singleLossFunction The GLM loss function
+   * @param singleLossFunction The function used to compute loss for predictions
    * @param treeAggregateDepth The tree aggregate depth
-   * @return The Hessian vector
+   * @return The Hessian matrix
    */
-  def calcHessianDiagonal(
+  def calcHessianMatrix(
       input: RDD[LabeledPoint],
       coefficients: Vector[Double],
       singleLossFunction: PointwiseLossFunction,
-      treeAggregateDepth: Int): Vector[Double] = {
+      treeAggregateDepth: Int): DenseMatrix[Double] = {
 
     val coefficientsBroadcast = input.sparkContext.broadcast(coefficients)
-    val aggregator = new HessianDiagonalAggregator(singleLossFunction, PhotonBroadcast(coefficientsBroadcast))
+    val aggregator = new HessianMatrixAggregator(singleLossFunction, PhotonBroadcast(coefficientsBroadcast))
     val resultAggregator = input.treeAggregate(aggregator)(
       seqOp = (ag, datum) => ag.add(datum),
       combOp = (ag1, ag2) => ag1.merge(ag2),
-      depth = treeAggregateDepth)
+      depth = treeAggregateDepth
+    )
 
     coefficientsBroadcast.unpersist()
 
-    resultAggregator.hessianDiagonal
+    resultAggregator.hessian
   }
 
   /**
-   * Calculate the Hessian diagonal for an objective function locally.
+   * Calculate the Hessian matrix for an objective function locally.
    *
    * @param input An iterable set of points
    * @param coefficients The current model coefficients
-   * @param singleLossFunction The GLM loss function
-   * @return The Hessian vector
+   * @param singleLossFunction The function used to compute loss for predictions
+   * @return The Hessian matrix
    */
-  def calcHessianDiagonal(
+  def calcHessianMatrix(
       input: Iterable[LabeledPoint],
       coefficients: Vector[Double],
-      singleLossFunction: PointwiseLossFunction): Vector[Double] = {
+      singleLossFunction: PointwiseLossFunction): DenseMatrix[Double] = {
 
-    val aggregator = new HessianDiagonalAggregator(singleLossFunction, PhotonNonBroadcast(coefficients))
+    val aggregator = new HessianMatrixAggregator(singleLossFunction, PhotonNonBroadcast(coefficients))
     val resultAggregator = input.aggregate(aggregator)(
       seqop = (ag, datum) => ag.add(datum),
-      combop = (ag1, ag2) => ag1.merge(ag2))
+      combop = (ag1, ag2) => ag1.merge(ag2)
+    )
 
-    resultAggregator.hessianDiagonal
+    resultAggregator.hessian
   }
 }
-

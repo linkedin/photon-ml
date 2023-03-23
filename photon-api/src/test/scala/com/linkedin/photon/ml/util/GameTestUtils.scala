@@ -25,7 +25,8 @@ import com.linkedin.photon.ml.{SparkSessionConfiguration, TaskType}
 import com.linkedin.photon.ml.Types.{FeatureShardId, REId, REType, UniqueSampleId}
 import com.linkedin.photon.ml.algorithm.{FixedEffectCoordinate, RandomEffectCoordinate}
 import com.linkedin.photon.ml.data._
-import com.linkedin.photon.ml.function.glm.{DistributedGLMLossFunction, LogisticLossFunction, SingleNodeGLMLossFunction}
+import com.linkedin.photon.ml.function.{DistributedObjectiveFunction, SingleNodeObjectiveFunction}
+import com.linkedin.photon.ml.function.glm.LogisticLossFunction
 import com.linkedin.photon.ml.model.{Coefficients, FixedEffectModel, RandomEffectModel}
 import com.linkedin.photon.ml.normalization.NoNormalization
 import com.linkedin.photon.ml.optimization.OptimizerType.OptimizerType
@@ -144,13 +145,13 @@ trait GameTestUtils extends SparkTestUtils {
    *
    * @return A newly generated fixed effect optimization problem
    */
-  def generateFixedEffectOptimizationProblem: DistributedOptimizationProblem[DistributedGLMLossFunction] = {
+  def generateFixedEffectOptimizationProblem: DistributedOptimizationProblem[DistributedObjectiveFunction] = {
 
     val configuration = FixedEffectOptimizationConfiguration(generateOptimizerConfig())
 
     DistributedOptimizationProblem(
       configuration,
-      DistributedGLMLossFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1),
+      DistributedObjectiveFunction(configuration, LogisticLossFunction, treeAggregateDepth = 1),
       None,
       LogisticRegressionModel.apply,
       PhotonBroadcast(sc.broadcast(NoNormalization())),
@@ -182,7 +183,7 @@ trait GameTestUtils extends SparkTestUtils {
       featureShardId: FeatureShardId,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed): (FixedEffectCoordinate[DistributedGLMLossFunction], FixedEffectModel) = {
+      seed: Int = DefaultSeed): (FixedEffectCoordinate[DistributedObjectiveFunction], FixedEffectModel) = {
 
     val dataset = generateFixedEffectDataset(featureShardId, size, dimensions, seed)
     val optimizationProblem = generateFixedEffectOptimizationProblem
@@ -266,7 +267,7 @@ trait GameTestUtils extends SparkTestUtils {
    * @return A newly generated random effect optimization problem
    */
   def generateRandomEffectOptimizationProblem(
-      dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeGLMLossFunction] = {
+      dataset: RandomEffectDataset): RandomEffectOptimizationProblem[SingleNodeObjectiveFunction] = {
 
     val configuration = RandomEffectOptimizationConfiguration(generateOptimizerConfig())
     val normalizationBroadcast = sc.broadcast(NoNormalization())
@@ -275,7 +276,7 @@ trait GameTestUtils extends SparkTestUtils {
       .mapValues { _ =>
         SingleNodeOptimizationProblem(
           configuration,
-          SingleNodeGLMLossFunction(configuration, LogisticLossFunction),
+          SingleNodeObjectiveFunction(configuration, LogisticLossFunction),
           LogisticRegressionModel.apply,
           PhotonBroadcast(normalizationBroadcast),
           VarianceComputationType.NONE)
@@ -301,7 +302,7 @@ trait GameTestUtils extends SparkTestUtils {
       numEntities: Int,
       size: Int,
       dimensions: Int,
-      seed: Int = DefaultSeed): (RandomEffectCoordinate[SingleNodeGLMLossFunction], RandomEffectModel) = {
+      seed: Int = DefaultSeed): (RandomEffectCoordinate[SingleNodeObjectiveFunction], RandomEffectModel) = {
 
     val randomEffectIds = (1 to numEntities).map("re" + _)
 

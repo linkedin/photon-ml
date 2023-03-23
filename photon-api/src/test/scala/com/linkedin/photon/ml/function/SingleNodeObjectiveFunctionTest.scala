@@ -23,13 +23,12 @@ import org.testng.annotations.{DataProvider, Test}
 
 import com.linkedin.photon.ml.TaskType
 import com.linkedin.photon.ml.data.LabeledPoint
-import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PoissonLossFunction, SingleNodeGLMLossFunction, SquaredLossFunction}
-import com.linkedin.photon.ml.function.svm.SingleNodeSmoothedHingeLossFunction
+import com.linkedin.photon.ml.function.glm.{LogisticLossFunction, PoissonLossFunction, SquaredLossFunction}
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext}
-import com.linkedin.photon.ml.optimization.game.GLMOptimizationConfiguration
-import com.linkedin.photon.ml.optimization.{L2RegularizationContext, NoRegularizationContext}
+import com.linkedin.photon.ml.optimization.game.{GLMOptimizationConfiguration, RandomEffectOptimizationConfiguration}
+import com.linkedin.photon.ml.optimization.{ElasticNetRegularizationContext, L2RegularizationContext, NoRegularizationContext, OptimizerConfig}
 import com.linkedin.photon.ml.test.SparkTestUtils
-import com.linkedin.photon.ml.util.BroadcastWrapper
+import com.linkedin.photon.ml.util.{BroadcastWrapper, PhotonNonBroadcast}
 
 /**
  * Unit tests to verify that the loss functions compute gradients & Hessians accurately.
@@ -38,9 +37,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
 
   import SingleNodeObjectiveFunctionTest._
 
-  private val twiceDiffTasks =
-    Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
-  private val diffTasks = twiceDiffTasks ++ Array(TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM)
+  private val tasks = Array(TaskType.LOGISTIC_REGRESSION, TaskType.LINEAR_REGRESSION, TaskType.POISSON_REGRESSION)
   private val binaryClassificationDatasetGenerationFuncs = Array(
     generateBenignDatasetBinaryClassification _,
     generateWeightedBenignDatasetBinaryClassification _,
@@ -63,36 +60,28 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
    * @return Anonymous functions to generate the loss function and training data for the gradient tests
    */
   @DataProvider(parallel = true)
-  def getDifferentiableFunctions: Array[Array[Object]] = diffTasks.flatMap {
+  def getDifferentiableFunctions: Array[Array[Object]] = tasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
 
         binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
 
         linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
 
         poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
-          Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
-        }
-
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val lossFunc = SingleNodeSmoothedHingeLossFunction(NO_REG_CONFIGURATION_MOCK)
-        val lossFuncWithL2 = SingleNodeSmoothedHingeLossFunction(L2_REG_CONFIGURATION_MOCK)
-
-        binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq[(SingleNodeObjectiveFunction, _)]((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
@@ -107,26 +96,26 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
    * @return Anonymous functions to generate the loss function and training data for the Hessian tests
    */
   @DataProvider(parallel = true)
-  def getTwiceDifferentiableFunctions: Array[Array[Object]] = twiceDiffTasks.flatMap {
+  def getTwiceDifferentiableFunctions: Array[Array[Object]] = tasks.flatMap {
       case TaskType.LOGISTIC_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, LogisticLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, LogisticLossFunction)
 
         binaryClassificationDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.LINEAR_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, SquaredLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, SquaredLossFunction)
 
         linearRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
         }
 
       case TaskType.POISSON_REGRESSION =>
-        val lossFunc = SingleNodeGLMLossFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
-        val lossFuncWithL2 = SingleNodeGLMLossFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFunc = SingleNodeObjectiveFunction(NO_REG_CONFIGURATION_MOCK, PoissonLossFunction)
+        val lossFuncWithL2 = SingleNodeObjectiveFunction(L2_REG_CONFIGURATION_MOCK, PoissonLossFunction)
 
         poissonRegressionDatasetGenerationFuncs.flatMap { dataGenFunc =>
           Seq((lossFunc, dataGenFunc), (lossFuncWithL2, dataGenFunc))
@@ -463,7 +452,7 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
     dependsOnMethods = Array("checkGradientConsistentWithObjectiveLocal"),
     groups = Array[String]("ObjectiveFunctionTests", "testCore"))
   def checkHessianConsistentWithObjectiveLocal(
-    function: SingleNodeGLMLossFunction with TwiceDiffFunction,
+    function: SingleNodeObjectiveFunction with TwiceDiffFunction,
     dataGenerationFunction: () => List[LabeledPoint]): Unit = {
 
     val data = dataGenerationFunction()
@@ -510,9 +499,89 @@ class SingleNodeObjectiveFunctionTest extends SparkTestUtils {
       }
     }
   }
+
+  /**
+   * Verify the value of loss function without regularization.
+   */
+  @Test
+  def testValueNoRegularization(): Unit = {
+
+    val labeledPoints = Iterable(LABELED_POINT_1, LABELED_POINT_2)
+    val coefficients = COEFFICIENT_VECTOR
+
+    val randomEffectRegularizationContext = NoRegularizationContext
+    val randomEffectOptimizationConfiguration = RandomEffectOptimizationConfiguration(
+      RANDOM_EFFECT_OPTIMIZER_CONFIG,
+      randomEffectRegularizationContext)
+    val singleNodeGLMLossFunction = SingleNodeObjectiveFunction(
+      randomEffectOptimizationConfiguration,
+      LogisticLossFunction)
+    val value = singleNodeGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // expectValue = log(1 + exp(3)) + log(1 + exp(2)) = 5.1755
+    assertEquals(value, 5.1755, EPSILON)
+  }
+
+  /**
+   * Verify the value of loss function with L2 regularization.
+   */
+  @Test
+  def testValueWithL2Regularization(): Unit = {
+
+    val labeledPoints = Iterable(LABELED_POINT_1, LABELED_POINT_2)
+    val coefficients = COEFFICIENT_VECTOR
+
+    val randomEffectRegularizationContext = L2RegularizationContext
+    val randomEffectOptimizationConfiguration = RandomEffectOptimizationConfiguration(
+      RANDOM_EFFECT_OPTIMIZER_CONFIG,
+      randomEffectRegularizationContext,
+      RANDOM_EFFECT_REGULARIZATION_WEIGHT)
+    val singleNodeGLMLossFunction = SingleNodeObjectiveFunction(
+      randomEffectOptimizationConfiguration,
+      LogisticLossFunction)
+    val value = singleNodeGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + 1 * ((-2)^2 + 3^2) / 2 = 11.6755
+    assertEquals(value, 11.6755, EPSILON)
+  }
+
+  /**
+   * Verify the value of loss function with elastic net regularization.
+   */
+  @Test
+  def testValueWithElasticNetRegularization(): Unit = {
+
+    val labeledPoints = Iterable(LABELED_POINT_1, LABELED_POINT_2)
+    val coefficients = COEFFICIENT_VECTOR
+
+    val randomEffectRegularizationContext = ElasticNetRegularizationContext(ALPHA)
+    val randomEffectOptimizationConfiguration = RandomEffectOptimizationConfiguration(
+      RANDOM_EFFECT_OPTIMIZER_CONFIG,
+      randomEffectRegularizationContext,
+      RANDOM_EFFECT_REGULARIZATION_WEIGHT)
+    val singleNodeGLMLossFunction = SingleNodeObjectiveFunction(
+      randomEffectOptimizationConfiguration,
+      LogisticLossFunction)
+    val value = singleNodeGLMLossFunction.value(
+      labeledPoints,
+      coefficients,
+      PhotonNonBroadcast(NORMALIZATION_CONTEXT))
+
+    // L1 is computed by the optimizer.
+    // expectedValue = log(1 + exp(3)) + log(1 + exp(2)) + (1 - 0.4) * 1 * ((-2)^2 + 3^2) / 2 = 9.0755
+    assertEquals(value, 9.0755, EPSILON)
+  }
 }
 
 object SingleNodeObjectiveFunctionTest {
+
+  // Gradient and Hessian test constants
   private val LOCAL_CONSISTENCY_CHECK_SAMPLES = 25
   private val PROBLEM_DIMENSION = 5
   private val NORMALIZATION = NoNormalization()
@@ -528,6 +597,16 @@ object SingleNodeObjectiveFunctionTest {
   private val WEIGHT_RANDOM_SEED = 100
   private val WEIGHT_RANDOM_MAX = 10
   private val TRAINING_SAMPLES = PROBLEM_DIMENSION * PROBLEM_DIMENSION
+
+  // Regularization test constants
+  private val RANDOM_EFFECT_OPTIMIZER_CONFIG = mock(classOf[OptimizerConfig])
+  private val LABELED_POINT_1 = new LabeledPoint(0, DenseVector(0.0, 1.0))
+  private val LABELED_POINT_2 = new LabeledPoint(1, DenseVector(1.0, 0.0))
+  private val COEFFICIENT_VECTOR = DenseVector(-2.0, 3.0)
+  private val NORMALIZATION_CONTEXT = NoNormalization()
+  private val RANDOM_EFFECT_REGULARIZATION_WEIGHT = 1D
+  private val ALPHA = 0.4
+  private val EPSILON = 1e-3
 
   doReturn(NORMALIZATION).when(NORMALIZATION_MOCK).value
   doReturn(L2RegularizationContext).when(L2_REG_CONFIGURATION_MOCK).regularizationContext

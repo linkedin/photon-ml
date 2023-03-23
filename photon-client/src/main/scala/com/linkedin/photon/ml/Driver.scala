@@ -33,7 +33,7 @@ import com.linkedin.photon.ml.model.Coefficients
 import com.linkedin.photon.ml.normalization.{NoNormalization, NormalizationContext, NormalizationType}
 import com.linkedin.photon.ml.optimization.{OptimizationStatesTracker, RegularizationContext}
 import com.linkedin.photon.ml.stat.FeatureDataStatistics
-import com.linkedin.photon.ml.supervised.classification.{LogisticRegressionModel, SmoothedHingeLossLinearSVMModel}
+import com.linkedin.photon.ml.supervised.classification.LogisticRegressionModel
 import com.linkedin.photon.ml.supervised.model.GeneralizedLinearModel
 import com.linkedin.photon.ml.supervised.regression.{LinearRegressionModel, PoissonRegressionModel}
 import com.linkedin.photon.ml.util.{IOUtils, PhotonLogger, Utils}
@@ -427,9 +427,6 @@ protected[ml] class Driver(
         ModelSelection.selectBestPoissonRegressionModel(models, perModelMetrics)
       case TaskType.LOGISTIC_REGRESSION =>
         val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[LogisticRegressionModel]))
-        ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
-      case TaskType.SMOOTHED_HINGE_LOSS_LINEAR_SVM =>
-        val models = lambdaModelAndTrackers.map(x => (x._1, x._2.asInstanceOf[SmoothedHingeLossLinearSVMModel]))
         ModelSelection.selectBestLinearClassifier(models, perModelMetrics)
     }
     val bestModelDir = new Path(params.outputDir, BEST_MODEL_TEXT).toString
